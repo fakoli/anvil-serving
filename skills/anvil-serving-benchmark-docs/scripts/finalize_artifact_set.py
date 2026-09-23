@@ -126,10 +126,10 @@ def _legacy_plaintext_files(source: dict[str, Any], base: Path) -> set[str]:
     return result
 
 
-def _validate_artifact_payload(path: Path, relative: str, legacy_plaintext: set[str]) -> None:
+def _validate_artifact_payload(payload: bytes, path: Path, relative: str, legacy_plaintext: set[str]) -> None:
     if path.suffix.lower() != ".json":
         return
-    text = path.read_text(encoding="utf-8")
+    text = payload.decode("utf-8")
     try:
         value = _json_loads(text, label=relative)
     except json.JSONDecodeError:
@@ -197,6 +197,7 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
     if source_path.is_symlink():
         raise ValueError(f"source cannot be a symlink: {source_path}")
     source_path = source_path.resolve()
+    snapshots = {source_path: source_path.stat()}
     source = _read(source_path)
     if source.get("schema") != SOURCE_SCHEMA:
         raise ValueError(f"source schema must be {SOURCE_SCHEMA}")
@@ -254,8 +255,9 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
                 )
             role_files.add(normalized_relative)
             declared_files.add(normalized_relative)
-            _validate_artifact_payload(path, normalized_relative, legacy_plaintext)
+            snapshots.setdefault(path, path.stat())
             payload = path.read_bytes()
+            _validate_artifact_payload(payload, path, normalized_relative, legacy_plaintext)
             if max_artifact_bytes is not None and len(payload) >= max_artifact_bytes:
                 raise ValueError(
                     f"retained artifact violates size_policy: {normalized_relative} "
@@ -297,6 +299,12 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
         "size_policy": size_policy,
         "generated_from": source_path.name,
     }
+    for path, before in snapshots.items():
+        after = path.lstat()
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns
+        ):
+            raise ValueError(f"artifact changed during finalization: {path.name}")
     output_path.write_text(
         json.dumps(output, indent=2, sort_keys=False) + "\n",
         encoding="utf-8",

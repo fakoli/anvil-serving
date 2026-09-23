@@ -629,6 +629,12 @@ def _run_agentic_case(
                 content = message.get("content")
                 final_answer = content if isinstance(content, str) else ""
                 break
+            expected_batch = len(expected["tool_calls"]) if expected.get("tool_mode") == "parallel" else 1
+            if len(calls) != expected_batch:
+                observed_calls.extend({"name": call["name"], "arguments": call["arguments"]} for call in calls)
+                raise BenchmarkJobError(
+                    "tool_batch_mismatch", "tool calls do not match the required sequential or parallel turn grouping"
+                )
             message.setdefault("role", "assistant")
             messages.append(message)
             for call in calls:

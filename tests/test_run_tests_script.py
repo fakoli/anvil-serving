@@ -118,3 +118,34 @@ def test_git_identity_failure_invalidates_receipt_before_lookup(monkeypatch, tmp
     assert result["state"] == "preflight_failed"
     assert result["source"] is None and result["finished_at"]
     assert "Git source identity" in result["problems"][0]
+
+
+@pytest.mark.parametrize("after", [
+    {"head": "new", "dirty": False},
+    {"head": "old", "dirty": True},
+    ValueError("cannot establish Git source identity"),
+])
+def test_runner_rejects_changed_or_unreadable_end_identity(monkeypatch, tmp_path, after):
+    identities = iter([{"head": "old", "dirty": False}, after])
+
+    def identity():
+        result = next(identities)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    class Process:
+        def wait(self, timeout=None):
+            return 0
+
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr(run_tests, "source_identity", identity)
+    monkeypatch.setattr(run_tests, "preflight", lambda *_args: [])
+    monkeypatch.setattr(run_tests.subprocess, "Popen", lambda *_args, **_kwargs: Process())
+    receipt = tmp_path / "receipt.json"
+    assert run_tests.main(["--receipt", str(receipt)]) == 2
+    result = json.loads(receipt.read_text())
+    assert result["state"] == ("source_unverified" if isinstance(after, Exception) else "source_changed")
+    assert result["exit_code"] == 2 and result["finished_at"]

@@ -147,9 +147,16 @@ def main(argv: list[str] | None = None) -> int:
         command = [sys.executable, "-m", "pytest", *args, "--basetemp", base_temp]
         receipt.update(state="running", command=command)
         write_receipt(options.receipt, receipt)
-        signal.signal(signal.SIGTERM, interrupted)
         process = subprocess.Popen(command, env=env, start_new_session=os.name != "nt")
         code = process.wait(timeout=options.timeout)
+        try:
+            receipt["source_after"] = source_identity()
+        except ValueError as error:
+            receipt.update(state="source_unverified", exit_code=2, error=str(error))
+            return 2
+        if receipt["source_after"] != receipt["source"]:
+            receipt.update(state="source_changed", exit_code=2)
+            return 2
         receipt.update(state="passed" if code == 0 else "failed", exit_code=code)
         return code
     except subprocess.TimeoutExpired:

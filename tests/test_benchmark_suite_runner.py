@@ -500,3 +500,47 @@ def test_agentic_runner_rejects_invalid_case_selection(case_ids):
             spec("agentic", case_ids=case_ids),
             caller=AgentCaller(),
         )
+
+
+@pytest.mark.parametrize("case", ["tool-recovery", "tool-sequence", "dependent-result", "debug-loop", "parallel-tools"])
+def test_fixture_rejects_wrong_turn_grouping_before_consumption(case, monkeypatch):
+    from anvil_serving.benchmarking.agentic import build_agentic_scenario
+    from anvil_serving.benchmarking import suite_runner
+
+    _, expected = build_agentic_scenario(case)
+    emitted = expected["tool_calls"][:1] if case == "parallel-tools" else expected["tool_calls"]
+    monkeypatch.setattr(suite_runner, "_fixture_result", lambda *_args: pytest.fail("consumed sequential fixture"))
+
+    def caller(*_args, **_kwargs):
+        return {"latency_s": 0.01, "response": {"choices": [{"message": {
+            "tool_calls": [{"id": f"call-{i}", "type": "function", "function": {
+                "name": call["name"], "arguments": json.dumps(call["arguments"]),
+            }} for i, call in enumerate(emitted)],
+        }}]}}
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    observation = run_agentic_suite(profile, spec("agentic", case_ids=[case]), caller=caller)["observations"][0]
+    assert not observation["passed"]
+    assert observation["failure_class"] == "protocol_failure"
+    assert observation["stages"]["protocol"]["passed"] is False
+    assert observation["tool_calls"] == emitted
+
+
+def test_parallel_runner_requires_and_accepts_one_complete_batch():
+    from anvil_serving.benchmarking.agentic import build_agentic_scenario
+
+    _, expected = build_agentic_scenario("parallel-tools")
+
+    def caller(_base, _model, _key, messages, **_kwargs):
+        tool_results = [m for m in messages if m["role"] == "tool"]
+        message = {"content": expected["final"]}
+        if not tool_results:
+            message = {"tool_calls": [{"id": f"call-{i}", "type": "function", "function": {
+                "name": call["name"], "arguments": json.dumps(call["arguments"]),
+            }} for i, call in enumerate(reversed(expected["tool_calls"]))]}
+        return {"latency_s": 0.01, "response": {"choices": [{"message": message}]}}
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    assert run_agentic_suite(profile, spec("agentic", case_ids=["parallel-tools"]), caller=caller)["passed"]

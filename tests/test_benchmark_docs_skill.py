@@ -1015,3 +1015,24 @@ def test_documented_template_bundle_finalizes_after_control_selection(tmp_path, 
     assert output.read_bytes() == first
     retained = {item["path"] for item in manifest["artifact_roles"][0]["files"]}
     assert set(controls).issubset(retained) is retain_controls
+
+
+@pytest.mark.parametrize("mutate", ["artifact", "source"])
+def test_finalizer_rejects_changes_between_read_and_manifest_write(tmp_path, monkeypatch, mutate):
+    artifact = tmp_path / "evidence.json"
+    artifact.write_text('{"metric":1}')
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=[artifact.name]))
+    module = _finalizer_module()
+    validate = module._validate_artifact_payload
+
+    def validate_then_replace(payload, path, relative, legacy):
+        validate(payload, path, relative, legacy)
+        target = artifact if mutate == "artifact" else source
+        replacement = tmp_path / "replacement"
+        replacement.write_bytes(b'{"metric":1,"metric":2}')
+        replacement.replace(target)
+
+    monkeypatch.setattr(module, "_validate_artifact_payload", validate_then_replace)
+    with pytest.raises(ValueError, match="changed during finalization"):
+        module.finalize(source)
+    assert not (tmp_path / "artifact-manifest.json").exists()

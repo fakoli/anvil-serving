@@ -49,7 +49,8 @@ interpreter, source revision, tracked diff digest, command, completion state and
 exit code in `.pytest_cache/run-tests-receipt.json`; use `--receipt PATH` for
 private durable campaign evidence. `--timeout SECONDS` records a timeout and
 stops the test process. A running, missing or interrupted receipt is never a
-pass. A dirty-tree receipt describes a development run, not final acceptance.
+pass. The wrapper checks source identity again after pytest; changed or
+unreadable source cannot produce a passing receipt. A dirty-tree receipt describes a development run, not final acceptance.
 Keep receipts private because commands and paths can contain operator identity.
 
 After the final change, freeze a clean source revision and run the full suite

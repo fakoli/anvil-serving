@@ -282,6 +282,10 @@ def score_agentic_trace(
             _tool_call_matches(item, wanted)
             for item, wanted in zip(tool_calls, expected_calls, strict=True)
         )
+    failure = trace.get("failure")
+    failure_code = failure.get("code") if isinstance(failure, Mapping) else None
+    if failure_code == "tool_batch_mismatch":
+        protocol_passed = False
     final = trace.get("final_answer")
     final_passed = False
     markers = expected.get("result_markers", [])
@@ -367,8 +371,6 @@ def score_agentic_trace(
             history_passed = history_passed and all(
                 earlier < later for earlier, later in zip(growth, growth[1:])
             )
-    failure = trace.get("failure")
-    failure_code = failure.get("code") if isinstance(failure, Mapping) else None
     if failure_code == "reasoning_budget_exhausted":
         classification = "reasoning_budget_exhausted"
     elif failure_code in {"infrastructure_error", "endpoint_error", "timeout"}:
