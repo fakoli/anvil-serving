@@ -56,8 +56,13 @@ def inspect_image_identity(image, *, labels=(), runner=subprocess.run):
     if reference.startswith("sha256:"):
         if row["image_id"] != reference:
             raise DockerImageCleanupError("resolved image ID does not match requested identity")
-    elif reference not in digests:
-        raise DockerImageCleanupError("resolved repository digest does not match requested identity")
+    else:
+        repository, digest = reference.rsplit("@", 1)
+        # RepoDigests omit an optional tag, but preserve a registry's port.
+        if repository.rfind(":") > repository.rfind("/"):
+            repository = repository.rsplit(":", 1)[0]
+        if f"{repository}@{digest}" not in digests:
+            raise DockerImageCleanupError("resolved repository digest does not match requested identity")
     for field in ("os", "architecture"):
         if not isinstance(row.get(field), str) or not re.fullmatch(r"[a-z0-9_+-]{1,64}", row[field]):
             raise DockerImageCleanupError("Docker returned invalid platform identity")

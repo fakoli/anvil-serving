@@ -86,39 +86,55 @@ def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
     assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
 
 
-def test_planning_accepts_an_ordered_numbered_workflow():
-    scenario, expected = build_agentic_scenario("planning")
-    trace = passing_trace(expected)
-    trace["final_answer"] = "1. Inspect\n2. Patch\n3. Test"
-
-    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
-
-
 @pytest.mark.parametrize(("answer", "passed"), [
-    ("1. **Inspect** the existing tests and test coverage.\n"
-     "2. **Patch** the defect.\n3. **Test** the change.", True),
-    ("1. Inspect\n   - Test coverage is missing.\n2. Patch\n3. Test", True),
-    ("## Inspect\n- Test coverage is missing.\n## Patch\n## Test", True),
-    ("- Inspect\n  - Test coverage is missing.\n- Patch\n- Test", True),
-    ("1. Patch\n2. Inspect\n3. Test", False),
-    ("1. Inspect\n2. Test\n3. Patch", False),
-    ("Inspect -> Patch -> Test", True),
-    ("inspection -> dispatch -> test", False),
-    ("1. Inspect the code before deciding how to patch and test it.", False),
-    ("We should inspect before we patch and test.", False),
+    ("inspect -> patch -> test", True),
+    ("  Inspect  ->  Patch  ->  Test\n", True),
+    ("# Step 1: Inspect\n# Step 2: Patch\n# Step 3: Test", False),
+    ("1. Inspect\n2. Patch\n3. Test", False),
+    ("inspect, patch, test", False),
+    ("inspect -> patch -> test.", False),
+    ("patch -> inspect -> test", False),
+    ("inspect -> patch -> test, then deploy", False),
 ])
-def test_planning_scores_step_order_not_incidental_substrings(answer, passed):
+def test_planning_requires_disclosed_canonical_workflow(answer, passed):
     scenario, expected = build_agentic_scenario("planning")
     trace = passing_trace(expected)
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "4"
+    assert result["oracle_revision"] == "7"
+
+
+def test_fixture_prompts_disclose_scored_format_result_and_tool_boundaries():
+    planning, _ = build_agentic_scenario("planning")
+    assert "additional punctuation, or other text:\ninspect -> patch -> test" in planning["messages"][0]["content"]
+    assert "inspect -> patch -> test" in planning["messages"][0]["content"]
+    for case, requirement in (
+        ("tool-sequence", "exact marker"),
+        ("dependent-result", "exact status string"),
+        ("tool-recovery", "exact marker"),
+    ):
+        scenario, _ = build_agentic_scenario(case)
+        assert requirement in scenario["messages"][0]["content"]
+    debug, expected = build_agentic_scenario("debug-loop")
+    prompt = debug["messages"][0]["content"]
+    assert "sum of its inputs a and b" in prompt
+    assert "exactly those four tool calls in that order" in prompt
+    assert "do not call extra tools" in prompt
+    trace = passing_trace(expected)
+    trace["tool_calls"] = [*trace["tool_calls"], {"name": "read_file", "arguments": {"path": "calc.py"}}]
+    assert score_agentic_trace(debug, expected, trace)["failure_class"] == "protocol_failure"
 
 
 def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
     scenario, expected = build_agentic_scenario("debug-loop")
     assert "unit tests" in scenario["messages"][0]["content"]
+    edit = next(tool["function"] for tool in scenario["tools"]
+                if tool["function"]["name"] == "apply_edit")
+    contract = edit["parameters"]["properties"]["edit"]["description"]
+    assert "complete replacement source line" in contract
+    assert "literal text without a trailing newline" in contract
+    assert "description of the change" in contract
     trace = passing_trace(expected)
     trace["final_answer"] = "The requested fix is applied and the unit tests now pass."
 
@@ -126,6 +142,13 @@ def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
 
     assert result["passed"] is True
     assert result["stages"]["result_incorporation"] == {"passed": True}
+
+    trace["tool_calls"] = [dict(call) for call in expected["tool_calls"]]
+    trace["tool_calls"][2] = {
+        "name": "apply_edit",
+        "arguments": {"path": "calc.py", "edit": "Replace subtraction with addition"},
+    }
+    assert score_agentic_trace(scenario, expected, trace)["failure_class"] == "protocol_failure"
 
 
 @pytest.mark.parametrize(

@@ -279,6 +279,41 @@ def test_agent_completion_without_official_report_is_incomplete(tmp_path):
     assert result["failure"]["stage"] == "official_grader"
 
 
+@pytest.mark.parametrize("graded", [False, True])
+def test_limits_exceeded_with_trajectory_and_empty_patch_preserves_agent_failure(tmp_path, graded):
+    value = plan(tmp_path)
+    runner = SuccessfulRunner(value)
+
+    def limits_exceeded(argv, cwd, timeout, env):
+        result = runner(argv, cwd, timeout, env)
+        if "swebench.py" in argv[1]:
+            output = Path(value["paths"]["output"])
+            trajectory_path = output / INSTANCE / f"{INSTANCE}.traj.json"
+            trajectory = json.loads(trajectory_path.read_text())
+            trajectory["info"]["exit_status"] = "LimitsExceeded"
+            trajectory_path.write_text(json.dumps(trajectory))
+            predictions_path = output / "preds.json"
+            predictions = json.loads(predictions_path.read_text())
+            predictions[INSTANCE]["model_patch"] = ""
+            predictions_path.write_text(json.dumps(predictions))
+        else:
+            report_path = next(Path(value["paths"]["grader_work"]).glob("*.json"))
+            report_path.write_text(json.dumps({
+                "completed_ids": [INSTANCE] if graded else [],
+                "resolved_ids": [],
+                "error_ids": [],
+            }))
+        return result
+
+    result = run_swe_benchmark(value, runner=limits_exceeded, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert len(runner.calls) == 2
+    assert result["state"] == "incomplete"
+    assert result["official_grader_complete"] is graded
+    assert result["summary"]["graded"] == int(graded)
+    assert result["instances"][0]["failure_class"] == "model_failure"
+    assert result["failure"] == {"class": "model_failure", "stage": "agent", "code": "swe_limits_exceeded"}
+
+
 def test_agent_instance_failure_is_graded_but_remains_an_agent_failure(tmp_path):
     value = plan(tmp_path)
     calls = []

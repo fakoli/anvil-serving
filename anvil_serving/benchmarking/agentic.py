@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import re
 from typing import Any, Mapping
 
 from .jobs import BenchmarkJobError
@@ -13,7 +12,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "4"
+AGENTIC_ORACLE_REVISION = "7"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -36,7 +35,7 @@ RECOVERY_RESULT_TYPES = (
 
 
 def _tool(name: str, required: list[str]) -> dict[str, Any]:
-    return {
+    tool = {
         "type": "function",
         "function": {
             "name": name,
@@ -49,6 +48,12 @@ def _tool(name: str, required: list[str]) -> dict[str, Any]:
             },
         },
     }
+    if name == "apply_edit":
+        tool["function"]["parameters"]["properties"]["edit"]["description"] = (
+            "The complete replacement source line, as literal text without a trailing newline. "
+            "Do not supply a diff, Markdown fences, or a description of the change."
+        )
+    return tool
 
 
 def build_agentic_scenario(
@@ -86,11 +91,12 @@ def build_agentic_scenario(
     if scenario_type == "planning":
         scenario["messages"] = [{
             "role": "user",
-            "content": "Return only the safe three-step workflow for changing code: inspect, patch, test.",
+            "content": (
+                "Return the following workflow on one line, with arrows and no headings, "
+                "additional punctuation, or other text:\ninspect -> patch -> test"
+            ),
         }]
         expected["final"] = "inspect -> patch -> test"
-        expected["final_kind"] = "ordered_terms"
-        expected["final_terms"] = ["inspect", "patch", "test"]
     elif scenario_type == "reasoning":
         scenario["messages"] = [{
             "role": "user",
@@ -106,7 +112,10 @@ def build_agentic_scenario(
         expected["final_kind"] = "exact_json"
     elif scenario_type == "tool-sequence":
         scenario["messages"] = [{
-            "role": "user", "content": "Read ticket T-17, then read the file named by the ticket."
+            "role": "user", "content": (
+                "Read ticket T-17, then read the file named by the ticket. "
+                "Include the file result's exact marker in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("read_ticket", ["id"]), _tool("read_file", ["path"])]
         scenario["injected_results"] = [
@@ -144,7 +153,10 @@ def build_agentic_scenario(
         })
     elif scenario_type == "dependent-result":
         scenario["messages"] = [{
-            "role": "user", "content": "Look up user Ada, then update that exact user to active."
+            "role": "user", "content": (
+                "Look up user Ada, then update that exact user to active. "
+                "Include the update result's exact status string in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("lookup_user", ["name"]), _tool("update_user", ["id", "state"])]
         scenario["injected_results"] = [
@@ -165,7 +177,10 @@ def build_agentic_scenario(
         scenario["scenario_id"] = f"tool-recovery-{recovery_result}"
         expected["scenario_id"] = scenario["scenario_id"]
         scenario["messages"] = [{
-            "role": "user", "content": "Fetch build B-9. If the result is unusable, retry once safely."
+            "role": "user", "content": (
+                "Fetch build B-9. If the result is unusable, retry once safely. "
+                "Include the successful result's exact marker in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("fetch_build", ["id", "attempt"])]
         fixtures = {
@@ -194,7 +209,12 @@ def build_agentic_scenario(
     elif scenario_type == "debug-loop":
         scenario["messages"] = [{
             "role": "user",
-            "content": "Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests.",
+            "content": (
+                "This deterministic fixture's function must return the sum of its inputs a and b. "
+                "Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests. "
+                "Make exactly those four tool calls in that order, one per turn; do not call extra tools "
+                "or inspect other files. After the second test result, report whether the tests pass."
+            ),
         }]
         scenario["tools"] = [
             _tool("run_tests", ["scope"]),
@@ -305,28 +325,6 @@ def score_agentic_trace(
     elif expected.get("final_kind") == "contains_terms":
         terms = expected.get("final_terms", [])
         final_passed = bool(terms) and all(term in normalized_final for term in terms)
-    elif expected.get("final_kind") == "ordered_terms":
-        terms = expected.get("final_terms", [])
-        if terms:
-            labels = "|".join(re.escape(term) for term in terms)
-            # Prefer step headings over incidental words inside their descriptions.
-            answer = final if isinstance(final, str) else ""
-            headings = []
-            for prefix in (r"(?:\d+[.)]|\#{1,6})[ \t]+", r"(?:[-*+][ \t]+)?"):
-                matches = re.findall(
-                    rf"(?im)^([ \t]*){prefix}(?:\*\*|__|`)?({labels})\b",
-                    answer,
-                )
-                if matches:
-                    depth = min(len(indent.expandtabs()) for indent, _ in matches)
-                    headings = [label for indent, label in matches if len(indent.expandtabs()) == depth]
-                if len(headings) > 1:
-                    break
-            # The canonical inline workflow is exact; prose mentions are not steps.
-            final_passed = (
-                [item.casefold() for item in headings] == terms
-                or normalized_final == " -> ".join(terms)
-            )
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)

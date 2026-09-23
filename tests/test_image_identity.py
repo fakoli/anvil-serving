@@ -77,3 +77,22 @@ def test_full_id_must_resolve_exactly():
         return subprocess.CompletedProcess(argv, 0, json.dumps(fixture_row()), '')
     with pytest.raises(DockerImageCleanupError, match='does not match'):
         inspect_image_identity('sha256:' + 'c' * 64, runner=run)
+
+
+@pytest.mark.parametrize('repository', ['registry.example/runtime', 'registry.example:5000/runtime'])
+def test_tagged_digest_matches_repository_and_digest_without_losing_registry_port(repository):
+    digest = repository + '@sha256:' + 'b' * 64
+    reference = repository + ':release' + digest[digest.index('@'):]
+
+    def run(argv, **kwargs):
+        assert argv[-1] == reference
+        return subprocess.CompletedProcess(argv, 0, json.dumps(fixture_row(repo_digests=[digest])), '')
+
+    assert inspect_image_identity(reference, runner=run)['requested_identity'] == reference
+
+    def wrong_digest(argv, **kwargs):
+        row = fixture_row(repo_digests=[repository + '@sha256:' + 'c' * 64])
+        return subprocess.CompletedProcess(argv, 0, json.dumps(row), '')
+
+    with pytest.raises(DockerImageCleanupError, match='does not match'):
+        inspect_image_identity(reference, runner=wrong_digest)
