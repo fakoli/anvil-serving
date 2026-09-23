@@ -27,8 +27,12 @@ assert.ok(selectedPi, "Pi executable was not resolved");
 const packageIdentity = JSON.parse(readFileSync(join(dirname(realpathSync(selectedPi)), "package.json"), "utf8"));
 assert.deepEqual({ name: packageIdentity.name, version: packageIdentity.version }, { name: "@earendil-works/pi-coding-agent", version: "0.85.1" });
 const home = await mkdtemp(join(tmpdir(), "pi-browser-owner-"));
-const previewRoot = join(home, "preview-root"), previewViewer = join(home, "preview-viewer.mjs"), previewProof = join(home, "preview-proof.json");
+const previewRoot = join(home, "preview-root"), previewViewer = join(home, "preview-viewer.mjs"), previewProof = join(home, "preview-proof.json"), neutralPreviewRoot = join(home, "neutral-preview-root"), neutralPreviewProof = join(home, "neutral-preview-proof.json");
 await writeFile(previewViewer, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";const path=process.argv.at(-1),[image,stat]=await Promise.all([readFile(path),lstat(path)]);await writeFile(process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF,JSON.stringify({digest:createHash("sha256").update(image).digest("hex"),mode:stat.mode&0o777}));`); await chmod(previewViewer, 0o700);
+const priorPreviewProof = process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF; process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF = neutralPreviewProof;
+const neutralPreview = await createFixtureObservationAdapter({ piSessionId: "neutral-preview-session", preview: { viewer: [previewViewer], runtimeRoot: neutralPreviewRoot } });
+try { await neutralPreview.execute({ operation: "capture" }); await neutralPreview.execute({ operation: "preview" }); } finally { await neutralPreview.close(); if (priorPreviewProof === undefined) delete process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF; else process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF = priorPreviewProof; }
+const expectedPreviewDigest = JSON.parse(await readFile(neutralPreviewProof, "utf8")).digest;
 const providerCaptures = [];
 let sessionFile;
 let providerSecondSnapshot;
@@ -104,8 +108,9 @@ try {
   await rpc("preview-current", "prompt", { message: "/browser_fixture_preview" });
   await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 1);
   const preview = logged("PI_BROWSER_OWNER_PREVIEW")[0]; assert.deepEqual(preview, { schema: "browser-owner-adapter/v1", status: "ok", operation: "preview", binding: receipt.binding, result: { status: "shown" } });
-  const previewAttestation = JSON.parse(await readFile(previewProof, "utf8")); assert.match(previewAttestation.digest, /^[0-9a-f]{64}$/); assert.equal(previewAttestation.mode, 0o600);
-  assert.equal(providerCaptures.length, 2, "human preview made a provider request"); assert.doesNotMatch(JSON.stringify(preview), /iVBOR|data:image|file:|private_path/);
+  const previewAttestation = JSON.parse(await readFile(previewProof, "utf8")); assert.equal(previewAttestation.digest, expectedPreviewDigest, "viewer did not receive the fixture screenshot"); assert.equal(previewAttestation.mode, 0o600);
+  const previewHistory = await readFile(state.data.sessionFile, "utf8"); assert.doesNotMatch(previewHistory, /iVBOR|data:image|private_path|file:/); assert.equal(previewHistory.includes(previewRoot), false, "preview root leaked to Pi history");
+  assert.equal(providerCaptures.length, 2, "human preview made a provider request"); assert.doesNotMatch(JSON.stringify(preview), /iVBOR|data:image|file:|private_path/); assert.equal((stdout + stderr).includes(previewRoot), false, "preview root leaked to Pi logs");
   await rpc("agent-negative", "prompt", { message: "[browser-negative]" });
   await wait(() => events.length < records().length && providerCaptures.length === 4);
   const negativeCall = records().find((event) => event.type === "message_end" && event.message?.role === "assistant" && event.message?.content?.some((part) => part.type === "toolCall" && part.name === "browser_resolve"));

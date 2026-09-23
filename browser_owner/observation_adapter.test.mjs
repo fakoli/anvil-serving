@@ -27,10 +27,11 @@ test("fixture adapter exposes bounded read-only receipts and an active opaque pr
   assert.equal((await adapter.execute({ operation: "release", args: { observation_id: capture.result.observation_id } })).status, "ok"); assert.equal((await adapter.execute({ operation: "preview" })).code, "unknown_observation");
 });
 
-test("adapter replaces preview identity and closure refuses retained observation IDs", { timeout: 15_000 }, async (t) => {
-  const adapter = await createFixtureObservationAdapter(); t.after(() => adapter.close());
-  const first = await adapter.execute({ operation: "capture" }), second = await adapter.execute({ operation: "capture" }); assert.notEqual(first.result.observation_id, second.result.observation_id); assert.equal((await adapter.execute({ operation: "release", args: { observation_id: first.result.observation_id } })).status, "ok"); assert.equal((await adapter.execute({ operation: "preview" })).code, "preview_disabled");
-  await adapter.close(); assert.equal((await adapter.execute({ operation: "preview" })).code, "owner_closed");
+test("queued preview follows the most recent completed capture", { timeout: 15_000 }, async (t) => {
+  const fixture = await previewFixture(), previous = process.env.FIXTURE_PREVIEW_PROOF; process.env.FIXTURE_PREVIEW_PROOF = fixture.proof; let tick = 0;
+  const adapter = await createFixtureObservationAdapter({ preview: fixture.preview, clock: () => tick }); t.after(async () => { if (previous === undefined) delete process.env.FIXTURE_PREVIEW_PROOF; else process.env.FIXTURE_PREVIEW_PROOF = previous; await adapter.close(); await rm(fixture.root, { recursive: true, force: true }); });
+  const first = await adapter.execute({ operation: "capture" }); tick = 60_001; const second = adapter.execute({ operation: "capture" }), preview = adapter.execute({ operation: "preview" }); const [latest, shown] = await Promise.all([second, preview]);
+  assert.equal(shown.status, "ok", "preview selected the superseded expired observation"); assert.notEqual(first.result.observation_id, latest.result.observation_id, "fixture did not create a distinct second observation");
 });
 
 test("adapter forwards an already-aborted capture", { timeout: 15_000 }, async (t) => {

@@ -26,7 +26,7 @@ async function fixtureServer() {
 }
 
 /** A fixture-only, source-owned boundary. It never exposes navigation or image bytes. */
-export async function createFixtureObservationAdapter({ piSessionId = "fixture-session", preview } = {}) {
+export async function createFixtureObservationAdapter({ piSessionId = "fixture-session", preview, clock } = {}) {
   if (!opaque(piSessionId, /^[A-Za-z0-9-]{1,128}$/)) throw new Error("invalid_session_binding");
   const fixture = await fixtureServer();
   let owner;
@@ -34,13 +34,13 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
     const origin = new URL(fixture.url).origin;
     owner = await createBrowserOwner({
       launch: () => chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome", headless: true, args: ["--disable-gpu"] }),
-      documentOrigins: [origin], subresourceOrigins: [origin], limits: LIMITS, jev: { enabled: false }, preview,
+      documentOrigins: [origin], subresourceOrigins: [origin], limits: LIMITS, jev: { enabled: false }, preview, ...(clock ? { clock } : {}),
     });
     const session = owner.session();
     await session.navigate(fixture.url);
     let sequence = 0, closed = false;
     let active;
-    const execute = async (request, { signal } = {}) => {
+    const run = async (request, { signal } = {}) => {
       if (closed) return refusal("owner_closed");
       if (!plain(request) || !["capture", "resolve", "release", "preview"].includes(request.operation)) return refusal("invalid_request");
       try {
@@ -66,6 +66,10 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
         return bounded("release", { observation_id: request.args.observation_id, released: true }, binding);
       } catch (error) { return refusal(error instanceof OwnerError ? error.code : "owner_failed"); }
     };
-    return Object.freeze({ execute, async close() { if (closed) return; closed = true; await owner.close(); await fixture.close(); } });
+    let serial = Promise.resolve();
+    const execute = (request, options = {}) => {
+      const pending = serial.then(() => run(request, options)); serial = pending.catch(() => {}); return pending;
+    };
+    return Object.freeze({ execute, async close() { if (closed) return; closed = true; await serial; await owner.close(); await fixture.close(); } });
   } catch (error) { await owner?.close().catch(() => {}); await fixture.close(); throw error; }
 }
