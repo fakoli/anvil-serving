@@ -39,7 +39,7 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
     const session = owner.session();
     await session.navigate(fixture.url);
     let sequence = 0, closed = false;
-    let active;
+    let active, binding;
     const run = async (request, { signal } = {}) => {
       if (closed) return refusal("owner_closed");
       if (!plain(request) || !["capture", "resolve", "release", "preview"].includes(request.operation)) return refusal("invalid_request");
@@ -47,7 +47,7 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
         if (request.operation === "capture") {
           if (Object.keys(request).length !== 1) return refusal("invalid_request");
           const result = await session.capture({ schema: "widget-resolution/v1", request_id: `fixture-${++sequence}`, target: { description: "synthetic report", qualifiers: [] }, predicates: ["exists", "in_viewport", "occluded", "enabled"], scope: { kind: "document", root: "document" }, require_unique: true }, { signal });
-          const binding = Object.freeze({ pi_session_id: piSessionId, owner_session_id: result.session_id });
+          binding = Object.freeze({ pi_session_id: piSessionId, owner_session_id: result.session_id });
           active = Object.freeze({ observation_id: result.observation_id, binding });
           return bounded("capture", result, binding);
         }
@@ -58,11 +58,11 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
         if (!plain(request.args) || Object.keys(request).length !== 2) return refusal("invalid_request");
         if (request.operation === "resolve") {
           if (Object.keys(request.args).length !== 2 || !opaque(request.args.observation_id, /^[0-9a-f-]{36}$/) || !opaque(request.args.entity_id, /^e-[1-9][0-9]*$/)) return refusal("invalid_request");
-          return bounded("resolve", await session.resolve(request.args.observation_id, request.args.entity_id), active?.binding);
+          return bounded("resolve", await session.resolve(request.args.observation_id, request.args.entity_id), binding);
         }
         if (Object.keys(request.args).length !== 1 || !opaque(request.args.observation_id, /^[0-9a-f-]{36}$/)) return refusal("invalid_request");
         await session.release(request.args.observation_id);
-        const binding = active?.binding; if (active?.observation_id === request.args.observation_id) active = undefined;
+        if (active?.observation_id === request.args.observation_id) active = undefined;
         return bounded("release", { observation_id: request.args.observation_id, released: true }, binding);
       } catch (error) { return refusal(error instanceof OwnerError ? error.code : "owner_failed"); }
     };
