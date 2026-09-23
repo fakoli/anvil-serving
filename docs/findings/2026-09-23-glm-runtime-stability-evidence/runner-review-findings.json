@@ -1,0 +1,124 @@
+{
+  "review": "independent adversarial review of the runtime stability runner",
+  "reviewer_model": "gpt-5.6-sol",
+  "implementing_model": "gpt-6-astra",
+  "evaluated_model": null,
+  "snapshot": {
+    "git_head": "609032f21337938543bea051ba51e63eb75241cf",
+    "files": {
+      "anvil_serving/benchmarking/stability.py": "99998e4301db0f083ecd3a328bdb932c050e742973eec0b356de59d8db5888f2",
+      "anvil_serving/benchmarking/requests.py": "9fe06c3a2c0e70500711b14c7a642b14d5e8684aa061a1cb8d66b8665564adff",
+      "anvil_serving/benchmark_evidence.py": "560e280c1934a79b3f21d779bf8fa4c2ff249f27cc48a3f4ae3efbbed8c681d1",
+      "anvil_serving/commands/eval.py": "cbddaee853ac9227f66d38448af99e15b86aa570cab8c71ad12ef6ef98f6c946",
+      "tests/test_stability_benchmark.py": "350e25392c41d9d3fef0115652d4ca54254097464233ba21c336f08785481947",
+      "docs/benchmarks/runtime-stability.md": "6e51e6b717068ba0d769df8d057baa16803dd94b0f41e90b7fbb24deab5f812e",
+      "skills/anvil-serving-llm-qualification/references/runtime-investigation.md": "8053e5406a0c3ce4f4b6930514ee06c28199414a143c213c50f475959dd861a6"
+    }
+  },
+  "recommendation": "accept_for_guarded_live_replay",
+  "blocking_findings": [],
+  "findings": [],
+  "resolved_findings": [
+    {
+      "severity": "high",
+      "classification": "refuted_after_fix",
+      "area": "exact identity and drift",
+      "input_or_state": "The managed container, image, recipe, registry, model revision, served name, or bound port changes before or during a round.",
+      "wrong_result_prevented": "A completed artifact bound to stale operator declarations.",
+      "evidence": [
+        "anvil_serving/benchmarking/stability.py:167",
+        "anvil_serving/benchmarking/stability.py:180",
+        "anvil_serving/benchmarking/stability.py:215",
+        "anvil_serving/benchmarking/stability.py:301",
+        "anvil_serving/benchmark_evidence.py:343"
+      ]
+    },
+    {
+      "severity": "high",
+      "classification": "refuted_after_fix",
+      "area": "resource bounds and total deadline",
+      "input_or_state": "A faulty tokenizer reports count=1, an SSE peer emits an oversized or never-terminated line, or the total run exceeds its declared deadline.",
+      "wrong_result_prevented": "Unbounded prompt allocation, stream buffering, request exposure, or client lifetime.",
+      "evidence": [
+        "anvil_serving/benchmarking/stability.py:137",
+        "anvil_serving/benchmarking/stability.py:362",
+        "anvil_serving/benchmarking/stability.py:419",
+        "anvil_serving/benchmarking/requests.py:382"
+      ]
+    },
+    {
+      "severity": "high",
+      "classification": "refuted_after_fix",
+      "area": "real decode trigger and overlap",
+      "input_or_state": "Anchor output occurs while the contender is only checkpointing locally or before its HTTP response begins.",
+      "wrong_result_prevented": "False client-overlap coverage or a claim that the scheduler performed prefill/decode overlap.",
+      "evidence": [
+        "anvil_serving/benchmarking/stability.py:234",
+        "anvil_serving/benchmarking/stability.py:304",
+        "anvil_serving/benchmark_evidence.py:375",
+        "docs/benchmarks/runtime-stability.md:63"
+      ]
+    },
+    {
+      "severity": "high",
+      "classification": "refuted_after_fix",
+      "area": "failure evidence",
+      "input_or_state": "Malformed protocol, HTTP/auth failures, transport failure, tokenizer failure, semantic retrieval failure, missing coverage, or client timeout.",
+      "wrong_result_prevented": "Collapsing materially different failures into a generic success or harness result, or continuing later rounds.",
+      "evidence": [
+        "anvil_serving/benchmarking/stability.py:35",
+        "anvil_serving/benchmarking/stability.py:290",
+        "anvil_serving/benchmarking/stability.py:329",
+        "anvil_serving/benchmarking/requests.py:395"
+      ]
+    },
+    {
+      "severity": "medium",
+      "classification": "refuted_after_fix",
+      "area": "malformed and boundary input",
+      "input_or_state": "Duplicate JSON keys, CRLF/control characters, FIFO/device scenarios, files over 64 KiB, occupied outputs, and command/path metacharacters.",
+      "wrong_result_prevented": "A malformed preview, blocking special-file read, artifact overwrite, or shell interpretation.",
+      "evidence": [
+        "anvil_serving/benchmarking/stability.py:45",
+        "anvil_serving/benchmarking/stability.py:54",
+        "anvil_serving/benchmarking/stability.py:397",
+        "tests/test_stability_benchmark.py:82",
+        "tests/test_stability_benchmark.py:180"
+      ]
+    }
+  ],
+  "residual_risk": [
+    {
+      "classification": "plausible",
+      "risk": "A same-container in-process engine reload that preserves the container ID and managed labels is not independently attested by this HTTP runner.",
+      "mitigation": "The artifact labels this as managed-label identity, scheduler_overlap remains not_measured, and docs require owning-engine logs and separate startup evidence.",
+      "references": [
+        "docs/benchmarks/runtime-stability.md:21",
+        "skills/anvil-serving-llm-qualification/references/runtime-investigation.md:19"
+      ]
+    },
+    {
+      "classification": "confirmed",
+      "risk": "operation_contracts reports no stability MCP/controller operation; the supported surface is local CLI only.",
+      "mitigation": "The scenario is restricted to 127.0.0.1 and an exact locally managed Docker container. Add a controller wrapper only when remote owner execution is required."
+    },
+    {
+      "classification": "confirmed",
+      "risk": "No live GLM request was run in this review, so the code review establishes harness safety and offline behavior, not model/runtime stability.",
+      "mitigation": "Retain the explicit --confirm and authorized maintenance-window gate for the first live replay; promoted remains false."
+    }
+  ],
+  "missing_tests": [
+    "A real Docker-backed model endpoint and owning-engine log correlation; intentionally deferred to the human-gated live trial.",
+    "A same-container hot reload with unchanged managed labels; the runner documents this as outside its attestation boundary.",
+    "MCP/controller dispatch parity; no wrapper is declared in operation_contracts."
+  ],
+  "verification": {
+    "focused_and_compatibility_tests": "266 passed in 5.52s",
+    "diff_check": "passed; frozen worktree clean",
+    "full_suite": "9587 passed, 53 skipped before final reader/input tightening; final tightening covered by the 266-test targeted rerun",
+    "operation_contracts_stability_matches": 0,
+    "live_requests": 0,
+    "service_or_model_operations": 0
+  }
+}

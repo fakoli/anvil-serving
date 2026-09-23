@@ -1,0 +1,57 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently recheck the corrected SSE evidence delta and DCP1 recipe for the already-defined bounded diagnostic trial.",
+  "gate_state": "human_required",
+  "targets": {
+    "candidate_recipe": "/evidence/glm-runtime-20260923/candidate-dcp1-recipe.toml",
+    "small_scenario": "/evidence/glm-runtime-20260923/dcp1-small-scenario.json",
+    "overlap_scenario": "/evidence/glm-runtime-20260923/dcp1-175k-overlap-scenario.json",
+    "runner_checkout": "/workspace/anvil-serving"
+  },
+  "tools_used": [
+    {
+      "name": "read_only_diff_recipe_preview_and_scenario_review",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "three corrected hold findings",
+      "error": null
+    },
+    {
+      "name": "offline_pytest",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "270 focused and compatibility tests",
+      "error": null
+    },
+    {
+      "name": "git_diff_check",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "current uncommitted evidence delta",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-stability-code-review-20260923/dcp1-followup-findings.json",
+      "kind": "independent-followup-review",
+      "evidence_scope": "bounded DCP1 diagnostic trial",
+      "summary": {
+        "recommendation": "accept_for_bounded_trial",
+        "blocking_findings": 0,
+        "resolved_findings": 3,
+        "live_requests_by_reviewer": 0
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "human_gate_required": true,
+  "promoted": false
+}

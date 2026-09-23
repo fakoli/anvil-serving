@@ -1,0 +1,165 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": false,
+  "finished_at": "2026-09-23T17:26:44.135967+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:26:25.455586+00:00",
+      "phase": "start",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:26:25.496518+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:26:44.129765+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": false,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 28909.265299728,
+        "error": "stream completed without visible content",
+        "error_type": "ValueError",
+        "expected_values": [
+          "VALUE_755e81cdf552",
+          "VALUE_ecfa9745c653",
+          "VALUE_6160dd7e112f"
+        ],
+        "failure_classes": [
+          "protocol_error"
+        ],
+        "finished_at": "2026-09-23T17:26:44.092854+00:00",
+        "first_output": 28896.982427726,
+        "http_status": null,
+        "last_output": 28909.265229478,
+        "partial_visible": "",
+        "prompt_sha256": "02375020418443271b435021724b359ee25c5088eaaecff6451acfe67558bcd7",
+        "prompt_tokens_tokenized": 4092,
+        "request_id": null,
+        "response_headers_at": 28890.703506716,
+        "start": 28890.69312818,
+        "started_at": "2026-09-23T17:26:25.520673+00:00",
+        "status": "failed",
+        "stream_id": "chatcmpl-87ab19a65f066cb5"
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 28904.812917069,
+        "expected_values": [
+          "VALUE_8bcdb606972f",
+          "VALUE_d760b8bd50a3",
+          "VALUE_af7a884052e9"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:26:39.640472+00:00",
+        "first_output": 28902.519159313,
+        "last_output": 28904.798321333,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_8bcdb606972f\n- **KEY_1** = VALUE_d760b8bd50a3\n- **KEY_2** = VALUE_af7a884052e9",
+        "prompt_sha256": "9465f6504f13792c5af82b5680fcc337ecb9569d5a6908976c97ffd02d36922a",
+        "prompt_tokens_tokenized": 1021,
+        "request_id": null,
+        "response_headers_at": 28897.002417075,
+        "result": {
+          "content_chunks": 60,
+          "e2e": 7.81416672299747,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 161,
+          "output_token_source": "usage",
+          "reasoning_chunks": 96,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.520428896998055,
+          "ttft": 6.944460596998397,
+          "usage": {
+            "completion_tokens": 161,
+            "prompt_tokens": 1021,
+            "total_tokens": 1182
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_8bcdb606972f\n- **KEY_1** = VALUE_d760b8bd50a3\n- **KEY_2** = VALUE_af7a884052e9",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 28896.995535168,
+        "started_at": "2026-09-23T17:26:31.823073+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-bfbd6b5812e2b4e5",
+        "usage_verified": true
+      },
+      "coverage_passed": false,
+      "failure_classes": [
+        "protocol_error",
+        "coverage_not_exercised"
+      ],
+      "index": 0,
+      "overlap_output_at": 28897.006245255,
+      "retrieval_passed": false,
+      "runtime_passed": false
+    }
+  ],
+  "runtime_passed": false,
+  "scenario": {
+    "anchor_max_tokens": 512,
+    "anchor_tokens": 4096,
+    "base_url": "http://127.0.0.1:8002/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-dcp1-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+    },
+    "contender_max_tokens": 512,
+    "contender_tokens": 1024,
+    "context_limit": 327680,
+    "managed_container": "glm-runtime-dcp1-candidate",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "prefix_mode": "unique",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "6d44a62f57fb659bbe0989edd6851110d14845c86ea258ca0eda4184adba0e5a",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T17:26:25.359814+00:00",
+  "status": "incomplete"
+}

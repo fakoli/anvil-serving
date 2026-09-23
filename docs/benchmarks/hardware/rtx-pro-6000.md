@@ -1,5 +1,13 @@
 # RTX PRO 6000 benchmark view
 
+**2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
+an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
+prefill, while its serial control passed. A single-setting DCP1 trial passed
+three matched overlaps, with a smaller reported KV pool. It remains an
+experimental mitigation; the exact baseline was restored. First-fault
+attribution and broader qualification remain open. See the
+[dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 

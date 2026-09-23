@@ -1,0 +1,180 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-09-23T17:35:13.517255+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:33:38.202423+00:00",
+      "phase": "start",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:33:38.237498+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:35:13.510995+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 29418.641793446,
+        "expected_values": [
+          "VALUE_53bc3f976af7",
+          "VALUE_61555016ab29",
+          "VALUE_be851d658fc4"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:35:13.469349+00:00",
+        "first_output": 29359.191579024,
+        "last_output": 29418.641645886,
+        "partial_visible": "# Values\n\n- **KEY_0** = VALUE_53bc3f976af7\n- **KEY_1** = VALUE_61555016ab29\n- **KEY_2** = VALUE_be851d658fc4\n\n---\n\n# Engineering Guide: Software Component Design, Implementation, and Testing\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Define clear boundaries between components using interface contracts. Each component should encapsulate a single responsibility with well-defined inputs and outputs. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `DataValidator` component accepts raw input, applies validation rules, and returns a `ValidationResult` object containing success status and error details.\n\n**Edge Cases:** Components receiving null inputs, empty collections, or malformed data structures must be handled gracefully without crashing the system.\n\n**Tests:** Write unit tests that verify component behavior in isolation. Test boundary conditions, invalid inputs, and ensure the component maintains its contract under all circumstances.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Design interfaces that are minimal yet sufficient. Follow the Interface Segregation Principle by creating small, focused interfaces rather than large monolithic ones. Use generics where appropriate to increase type safety.\n\n**Example:** Instead of a single `DataProcessor` interface with 15 methods, create `Readable`, `Writable`, `Validatable`, and `Transformable` interfaces that can be composed.\n\n**Edge Cases:** Interfaces must handle scenarios where implementing classes provide unexpected behavior. Document whether methods can return null, throw exceptions, or have side effects.\n\n**Tests:** Create mock implementations of interfaces to verify that consuming components interact correctly with the contract. Test that all interface methods are exercised.\n\n---\n\n## Section 3: Error Handling Strategies\n\n**Implementation:** Implement a layered error handling approach. Use custom exception types that carry contextual information. Distinguish between recoverable and non-recoverable errors. Implement retry logic with exponential backoff for transient failures.\n\n**Example:** A `NetworkService` component catches `SocketTimeoutException` and retries up to 3 times with delays of 1s, 2s, and 4s before propagating a `ServiceUnavailableException`.\n\n**Edge Cases:** Handle scenarios where errors occur during error handling. Prevent infinite retry loops. Ensure resources are properly released even when exceptions are thrown.\n\n**Tests:** Write tests that simulate various failure modes. Verify retry counts, backoff timing, and that the correct exception types are propagated. Test resource cleanup in error paths.\n\n---\n\n## Section 4: Data Validation Framework\n\n**Implementation:** Build a composable validation framework where individual validation rules can be chained together. Each rule returns a `ValidationOutcome` with pass/fail status and descriptive error messages.\n\n**Example:** A user registration validator chains: `NotNullRule`, `EmailFormatRule`, `PasswordStrengthRule`, and `UniqueUsernameRule` to produce a comprehensive validation result.\n\n**Edge Cases:** Handle validation of complex nested objects, circular references, and extremely large data sets. Consider performance implications of validation on large payloads.\n\n**Tests:** Test each validation rule independently and in combination. Verify that error messages are accurate and that validation short-circuits appropriately when configured to do so.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Implement a type-safe configuration system that validates configuration values at startup. Use environment-specific configuration files with a clear precedence hierarchy. Support runtime configuration updates where appropriate.\n\n**Example:** A `DatabaseConfig` class reads connection strings, pool sizes, and timeout values from configuration, validates them, and provides typed accessor methods.\n\n**Edge Cases:** Handle missing configuration keys, invalid value formats, and conflicting configuration sources. Ensure the system fails fast at startup rather than at runtime.\n\n**Tests:** Write tests that verify configuration parsing, validation, and precedence. Test behavior with missing files, malformed JSON/YAML, and invalid values.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Implement structured logging with consistent log levels, correlation IDs, and contextual metadata. Use a logging facade to decouple application code from specific logging implementations.\n\n**Example:** A `RequestHandler` logs the start and end of each request with a correlation ID, duration, status code, and relevant business context.\n\n**Edge Cases:** Handle logging failures gracefully without affecting application behavior. Avoid logging sensitive data. Manage log volume to prevent disk exhaustion.\n\n**Tests:** Verify that log messages contain expected fields, appropriate levels are used, and sensitive data is redacted. Test that logging failures do not propagate exceptions.\n\n---\n\n## Section 7: Thread Safety and Concurrency\n\n**Implementation:** Identify shared mutable state and protect it using appropriate synchronization mechanisms. Prefer immutable data structures where possible. Use concurrent collections and atomic operations for high-contention scenarios.\n\n**Example:** A `CacheManager` uses a `ConcurrentHashMap` for storage and implements a read-through pattern with proper synchronization for cache misses.\n\n**Edge Cases:** Handle race conditions, deadlocks, livelocks, and thread starvation. Consider what happens when threads are interrupted during operations.\n\n**Tests:** Write concurrent tests that stress the component with multiple threads. Use tools to detect race conditions. Verify correctness under high concurrency and measure performance.\n\n---\n\n## Section 8: Memory Management\n\n**Implementation:** Implement proper resource management using try-with-resources or equivalent patterns. Avoid memory leaks by properly releasing references. Use weak references for caches where appropriate.\n\n**Example:** A `FileProcessor` ensures file handles are closed even when processing fails, using try-with-resources blocks and implementing a cleanup method for emergency scenarios.\n\n**Edge Cases:** Handle out-of-memory conditions gracefully. Consider what happens when large files are processed with limited heap space. Prevent resource leaks in exception paths.\n\n**Tests:** Write tests that verify resources are released after normal and exceptional completion. Use memory profiling to detect leaks. Test with constrained memory environments.\n\n---\n\n## Section 9: Serialization and Deserialization\n\n**Implementation:** Implement robust serialization that handles version compatibility. Use schema validation before deserialization. Support both forward and backward compatibility where needed.\n\n**Example:** A `MessageSerializer` includes a version field in serialized output and can deserialize messages from previous versions by applying appropriate transformations.\n\n**Edge Cases:** Handle corrupted data, unknown fields, missing required fields, and type mismatches. Consider what happens with extremely large serialized payloads.\n\n**Tests:** Test round-trip serialization for all supported types. Verify backward compatibility with older format versions. Test with corrupted and malformed data.\n\n---\n\n## Section 10: API Design and Versioning\n\n**Implementation:** Design APIs with clear versioning strategies. Use semantic versioning for component releases. Maintain backward compatibility within major versions. Document breaking changes clearly.\n\n**Example:** A REST API uses URL versioning (`/api/v1/users`) and maintains v1 endpoints while developing v2. Deprecated fields are marked and removal is scheduled for the next major version.\n\n**Edge Cases:** Handle requests with unsupported API versions gracefully. Ensure deprecated endpoints continue to function. Manage the transition period between versions.\n\n**Tests:** Write integration tests for each API version. Verify that deprecated functionality still works. Test that version negotiation behaves correctly.\n\n---\n\n## Se",
+        "prompt_sha256": "4c67e2889b43f10c0fae23cfbec6fff7a8fbe02ac032eefddbb5cd84eb2bcc0c",
+        "prompt_tokens_tokenized": 174800,
+        "request_id": null,
+        "response_headers_at": 29323.926255663,
+        "result": {
+          "content_chunks": 3927,
+          "e2e": 94.89850596700126,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 158,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 35.448354565000045,
+          "ttft": 43.952741990000504,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 174800,
+            "total_tokens": 178896
+          },
+          "visible_content": "# Values\n\n- **KEY_0** = VALUE_53bc3f976af7\n- **KEY_1** = VALUE_61555016ab29\n- **KEY_2** = VALUE_be851d658fc4\n\n---\n\n# Engineering Guide: Software Component Design, Implementation, and Testing\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Define clear boundaries between components using interface contracts. Each component should encapsulate a single responsibility with well-defined inputs and outputs. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `DataValidator` component accepts raw input, applies validation rules, and returns a `ValidationResult` object containing success status and error details.\n\n**Edge Cases:** Components receiving null inputs, empty collections, or malformed data structures must be handled gracefully without crashing the system.\n\n**Tests:** Write unit tests that verify component behavior in isolation. Test boundary conditions, invalid inputs, and ensure the component maintains its contract under all circumstances.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Design interfaces that are minimal yet sufficient. Follow the Interface Segregation Principle by creating small, focused interfaces rather than large monolithic ones. Use generics where appropriate to increase type safety.\n\n**Example:** Instead of a single `DataProcessor` interface with 15 methods, create `Readable`, `Writable`, `Validatable`, and `Transformable` interfaces that can be composed.\n\n**Edge Cases:** Interfaces must handle scenarios where implementing classes provide unexpected behavior. Document whether methods can return null, throw exceptions, or have side effects.\n\n**Tests:** Create mock implementations of interfaces to verify that consuming components interact correctly with the contract. Test that all interface methods are exercised.\n\n---\n\n## Section 3: Error Handling Strategies\n\n**Implementation:** Implement a layered error handling approach. Use custom exception types that carry contextual information. Distinguish between recoverable and non-recoverable errors. Implement retry logic with exponential backoff for transient failures.\n\n**Example:** A `NetworkService` component catches `SocketTimeoutException` and retries up to 3 times with delays of 1s, 2s, and 4s before propagating a `ServiceUnavailableException`.\n\n**Edge Cases:** Handle scenarios where errors occur during error handling. Prevent infinite retry loops. Ensure resources are properly released even when exceptions are thrown.\n\n**Tests:** Write tests that simulate various failure modes. Verify retry counts, backoff timing, and that the correct exception types are propagated. Test resource cleanup in error paths.\n\n---\n\n## Section 4: Data Validation Framework\n\n**Implementation:** Build a composable validation framework where individual validation rules can be chained together. Each rule returns a `ValidationOutcome` with pass/fail status and descriptive error messages.\n\n**Example:** A user registration validator chains: `NotNullRule`, `EmailFormatRule`, `PasswordStrengthRule`, and `UniqueUsernameRule` to produce a comprehensive validation result.\n\n**Edge Cases:** Handle validation of complex nested objects, circular references, and extremely large data sets. Consider performance implications of validation on large payloads.\n\n**Tests:** Test each validation rule independently and in combination. Verify that error messages are accurate and that validation short-circuits appropriately when configured to do so.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Implement a type-safe configuration system that validates configuration values at startup. Use environment-specific configuration files with a clear precedence hierarchy. Support runtime configuration updates where appropriate.\n\n**Example:** A `DatabaseConfig` class reads connection strings, pool sizes, and timeout values from configuration, validates them, and provides typed accessor methods.\n\n**Edge Cases:** Handle missing configuration keys, invalid value formats, and conflicting configuration sources. Ensure the system fails fast at startup rather than at runtime.\n\n**Tests:** Write tests that verify configuration parsing, validation, and precedence. Test behavior with missing files, malformed JSON/YAML, and invalid values.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Implement structured logging with consistent log levels, correlation IDs, and contextual metadata. Use a logging facade to decouple application code from specific logging implementations.\n\n**Example:** A `RequestHandler` logs the start and end of each request with a correlation ID, duration, status code, and relevant business context.\n\n**Edge Cases:** Handle logging failures gracefully without affecting application behavior. Avoid logging sensitive data. Manage log volume to prevent disk exhaustion.\n\n**Tests:** Verify that log messages contain expected fields, appropriate levels are used, and sensitive data is redacted. Test that logging failures do not propagate exceptions.\n\n---\n\n## Section 7: Thread Safety and Concurrency\n\n**Implementation:** Identify shared mutable state and protect it using appropriate synchronization mechanisms. Prefer immutable data structures where possible. Use concurrent collections and atomic operations for high-contention scenarios.\n\n**Example:** A `CacheManager` uses a `ConcurrentHashMap` for storage and implements a read-through pattern with proper synchronization for cache misses.\n\n**Edge Cases:** Handle race conditions, deadlocks, livelocks, and thread starvation. Consider what happens when threads are interrupted during operations.\n\n**Tests:** Write concurrent tests that stress the component with multiple threads. Use tools to detect race conditions. Verify correctness under high concurrency and measure performance.\n\n---\n\n## Section 8: Memory Management\n\n**Implementation:** Implement proper resource management using try-with-resources or equivalent patterns. Avoid memory leaks by properly releasing references. Use weak references for caches where appropriate.\n\n**Example:** A `FileProcessor` ensures file handles are closed even when processing fails, using try-with-resources blocks and implementing a cleanup method for emergency scenarios.\n\n**Edge Cases:** Handle out-of-memory conditions gracefully. Consider what happens when large files are processed with limited heap space. Prevent resource leaks in exception paths.\n\n**Tests:** Write tests that verify resources are released after normal and exceptional completion. Use memory profiling to detect leaks. Test with constrained memory environments.\n\n---\n\n## Section 9: Serialization and Deserialization\n\n**Implementation:** Implement robust serialization that handles version compatibility. Use schema validation before deserialization. Support both forward and backward compatibility where needed.\n\n**Example:** A `MessageSerializer` includes a version field in serialized output and can deserialize messages from previous versions by applying appropriate transformations.\n\n**Edge Cases:** Handle corrupted data, unknown fields, missing required fields, and type mismatches. Consider what happens with extremely large serialized payloads.\n\n**Tests:** Test round-trip serialization for all supported types. Verify backward compatibility with older format versions. Test with corrupted and malformed data.\n\n---\n\n## Section 10: API Design and Versioning\n\n**Implementation:** Design APIs with clear versioning strategies. Use semantic versioning for component releases. Maintain backward compatibility within major versions. Document breaking changes clearly.\n\n**Example:** A REST API uses URL versioning (`/api/v1/users`) and maintains v1 endpoints while developing v2. Deprecated fields are marked and removal is scheduled for the next major version.\n\n**Edge Cases:** Handle requests with unsupported API versions gracefully. Ensure deprecated endpoints continue to function. Manage the transition period between versions.\n\n**Tests:** Write integration tests for each API version. Verify that deprecated functionality still works. Test that version negotiation behaves correctly.\n\n---\n\n## Se",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 29323.728965494,
+        "started_at": "2026-09-23T17:33:38.556505+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-ace3d84f4e44bbce",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 29368.740025007,
+        "expected_values": [
+          "VALUE_fe7d8e546963",
+          "VALUE_7fdbf5e1f727",
+          "VALUE_02c75c7e6edc"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:34:23.567580+00:00",
+        "first_output": 29365.659143659,
+        "last_output": 29368.725383431,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_fe7d8e546963\n- **KEY_1** = VALUE_7fdbf5e1f727\n- **KEY_2** = VALUE_02c75c7e6edc",
+        "prompt_sha256": "37e0f2b426bdd38d85a434f75600cb7fe310117cf09de796ae374ba44fd1e3ba",
+        "prompt_tokens_tokenized": 31815,
+        "request_id": null,
+        "response_headers_at": 29359.242987842,
+        "result": {
+          "content_chunks": 62,
+          "e2e": 9.531545311001537,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 214,
+          "output_token_source": "usage",
+          "reasoning_chunks": 145,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 6.450695262999943,
+          "ttft": 8.632989243000338,
+          "usage": {
+            "completion_tokens": 214,
+            "prompt_tokens": 31815,
+            "total_tokens": 32029
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_fe7d8e546963\n- **KEY_1** = VALUE_7fdbf5e1f727\n- **KEY_2** = VALUE_02c75c7e6edc",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 29359.205356858,
+        "started_at": "2026-09-23T17:34:14.032890+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-80d045576b8cc8c6",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "overlap_output_at": 29359.243093002,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 174956,
+    "base_url": "http://127.0.0.1:8002/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-dcp1-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 31963,
+    "context_limit": 327680,
+    "managed_container": "glm-runtime-dcp1-candidate",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "prefix_mode": "unique",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "4e5ead8f24a4a0f199a74870a039ea50ebc46b3a48edee8d6d184a0ea382e573",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T17:33:38.097958+00:00",
+  "status": "completed"
+}

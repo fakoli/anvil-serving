@@ -7,6 +7,9 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-09-23-glm-runtime-stability.md`
+(dual-Max-Q runtime crash reproduction and bounded DCP1 mitigation; exact baseline restored, no performance ranking or promotion);
+
 `docs/findings/2026-09-18-glm53-vision.md`;
 `docs/findings/2026-09-18-glm53-vision-evidence/README.md`;
 `docs/findings/2026-09-18-glm53-vision-evidence/publication-summary.md`

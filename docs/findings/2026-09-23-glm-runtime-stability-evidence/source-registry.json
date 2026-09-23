@@ -1,0 +1,67 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-23-glm-runtime-stability",
+  "observed_at": "2026-09-23T16:51:00Z",
+  "sources": [
+    {
+      "id": "vllm-debug-ima",
+      "url": "https://vllm.ai/blog/2025-08-11-cuda-debugging",
+      "published_or_observed": "2025-08-11",
+      "age_class": "historical",
+      "evidence_type": "official runtime debugging method",
+      "hardware_runtime_relevance": "Related CUDA/vLLM/GLM methods; external recipe and hardware results do not qualify this exact EXL3 deployment.",
+      "decision_impact": "CUDA core dumps and asynchronous error attribution; method only, not an applied fix.",
+      "observed_at": "2026-09-23T16:51:00Z"
+    },
+    {
+      "id": "lil-mixed-serving",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/2960b922466aa3167da0c7f6b3918b329bc36216/models/glm-5.3-flash/validation/scheduler-serving-r28.1.md",
+      "published_or_observed": "2026-09-23",
+      "age_class": "current",
+      "evidence_type": "maintainer validation record",
+      "hardware_runtime_relevance": "Related CUDA/vLLM/GLM methods; external recipe and hardware results do not qualify this exact EXL3 deployment.",
+      "decision_impact": "Separate decode plus new-request evidence from throughput, cache and cancellation coverage.",
+      "observed_at": "2026-09-23T16:51:00Z"
+    },
+    {
+      "id": "lil-kernel-boundaries",
+      "url": "https://github.com/local-inference-lab/b12x/blob/10a553ef980571f23a073f930cb386fbc8a77e07/AGENTS.md",
+      "published_or_observed": "2026-09-23",
+      "age_class": "current",
+      "evidence_type": "maintainer kernel instructions",
+      "hardware_runtime_relevance": "Related CUDA/vLLM/GLM methods; external recipe and hardware results do not qualify this exact EXL3 deployment.",
+      "decision_impact": "High recycled page IDs and graph ownership tests motivate deeper reproduction; no local kernel proof.",
+      "observed_at": "2026-09-23T16:51:00Z"
+    },
+    {
+      "id": "lil-scoped-cache",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/2960b922466aa3167da0c7f6b3918b329bc36216/models/glm-5.3-flash/validation/concurrent-checkpoints-r32.md",
+      "published_or_observed": "2026-09-23",
+      "age_class": "current",
+      "evidence_type": "maintainer validation record",
+      "hardware_runtime_relevance": "Related CUDA/vLLM/GLM methods; external recipe and hardware results do not qualify this exact EXL3 deployment.",
+      "decision_impact": "Keep output-format failures separate from passing bounded cache evidence.",
+      "observed_at": "2026-09-23T16:51:00Z"
+    },
+    {
+      "id": "imported-vllm-dcp-merge",
+      "url": "https://github.com/Entrpi/vllm-glm-5.3-flash-spark/blob/6dc2f516688fe6f84c6994dcd20fddf296853a6c/vllm/model_executor/layers/sparse_attn_indexer.py",
+      "published_or_observed": "2026-09-23",
+      "age_class": "historical",
+      "evidence_type": "pinned imported runtime source",
+      "hardware_runtime_relevance": "B12X DCP top-k merge function at the imported Git revision matches the captured source path/line; downstream kpool addition is absent in this Git tree.",
+      "decision_impact": "The function returns for DCP world size1, supporting a single-delta DCP1 isolation trial. This does not attest every downstream patch or prove first-fault root cause.",
+      "observed_at": "2026-09-23T16:51:00Z"
+    },
+    {
+      "observed_at": "2026-09-23T16:51:00Z",
+      "published_or_observed": "2026-09-23",
+      "age_class": "current",
+      "evidence_type": "maintainer skill",
+      "hardware_runtime_relevance": "Method for CUDA runtime diagnosis; not qualification of this downstream EXL3 image.",
+      "id": "lil-vllm-debug-skill",
+      "url": "https://github.com/local-inference-lab/vllm/blob/e77be22511ab91ecf217760524b7579c366cca2a/.agents/skills/debug-ima/SKILL.md",
+      "decision_impact": "First-fault diagnosis, independent controls and private bounded debug artifacts inform the qualification skill."
+    }
+  ]
+}

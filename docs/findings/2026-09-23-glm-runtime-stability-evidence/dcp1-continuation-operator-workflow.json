@@ -1,0 +1,36 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Review bounded DCP1 continuation after the first 175K overlap pass within the remaining live window.",
+  "gate_state": "human_required",
+  "targets": {
+    "first_pass": "/evidence/glm-runtime-20260923/dcp1-175k-overlap.json",
+    "continuation_scenario": "/evidence/glm-runtime-20260923/dcp1-175k-repeat2-scenario.json"
+  },
+  "tools_used": [
+    {
+      "name": "read_only_native_artifact_review",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "first DCP1 175K result and continuation scenario",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-stability-code-review-20260923/dcp1-continuation-review.json",
+      "kind": "independent-continuation-review",
+      "evidence_scope": "bounded DCP1 runtime investigation",
+      "summary": {
+        "recommendation": "accept_reduced_continuation",
+        "blocking_findings": 0,
+        "promoted": false
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "human_gate_required": true,
+  "promoted": false
+}

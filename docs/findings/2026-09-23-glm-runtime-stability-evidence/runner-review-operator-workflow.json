@@ -1,0 +1,68 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent adversarial review of the local runtime stability runner before the first live GLM incident replay.",
+  "gate_state": "human_required",
+  "targets": {
+    "checkout": "/workspace/anvil-serving",
+    "executable_source_commit": "609032f21337938543bea051ba51e63eb75241cf",
+    "reviewed_head_with_docs_only_followup": "13d5bdb0edc5aac83e186d6244310dd40a07baf4",
+    "scope": "runtime-stability-runner",
+    "live_endpoint": "not_contacted"
+  },
+  "tools_used": [
+    {
+      "name": "git_status_diff_hash",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "clean checkout at 13d5bdb0 with executable source fixed at 609032f2",
+      "error": null
+    },
+    {
+      "name": "offline_pytest",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "266 focused and compatibility tests",
+      "error": null
+    },
+    {
+      "name": "operation_contracts",
+      "source_class": "mcp",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "current checkout MCP catalog; no stability wrapper declared",
+      "error": null
+    },
+    {
+      "name": "workflow_packet_validate",
+      "source_class": "mcp",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "/tmp/anvil-stability-code-review-20260923/operator-workflow.json",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-stability-code-review-20260923/findings.json",
+      "kind": "adversarial-code-review",
+      "evidence_scope": "runtime-stability-runner",
+      "summary": {
+        "accept_reject_hold": "accept",
+        "blocking_findings": 0,
+        "residual_risks": 3,
+        "verification": "266 passed; frozen full suite 9587 passed, 53 skipped",
+        "source_commit": "609032f21337938543bea051ba51e63eb75241cf"
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "human_gate_required": true,
+  "promoted": false
+}

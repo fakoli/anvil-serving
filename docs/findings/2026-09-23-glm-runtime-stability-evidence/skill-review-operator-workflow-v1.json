@@ -1,0 +1,75 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently validate the runtime-investigation qualification skill change with matched cases and adversarial probes",
+  "gate_state": "not_required",
+  "targets": {
+    "repository": "/workspace/anvil-serving",
+    "baseline_revision": "fec9ca9797b1dd840768e5b52ef77f157bbf35f6",
+    "baseline_skill_sha256": "638bca6230dad1ff59b0a99f464d015391d1e0359aab4e9d0ac0f35086119725",
+    "candidate_skill_sha256": "14fef87f0b02ee8d5f350c185cd86d8aca6e8a8ea8ac11f877b5178df1dc85ae",
+    "candidate_reference_sha256": "8053e5406a0c3ce4f4b6930514ee06c28199414a143c213c50f475959dd861a6",
+    "implementing_model": "gpt-6-astra",
+    "reviewer_model": "gpt-5.6-sol",
+    "evaluation_type": "bounded independent instruction simulation"
+  },
+  "tools_used": [
+    {
+      "name": "git_diff_status_log",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "/workspace/anvil-serving",
+      "error": null
+    },
+    {
+      "name": "read_only_file_and_test_source_inspection",
+      "source_class": "manual",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "qualification skill, runtime reference, governing docs, and in-progress stability tests",
+      "error": null
+    },
+    {
+      "name": "operation_contracts_source_inspection",
+      "source_class": "manual",
+      "ok": false,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "repo-scoped MCP operation contracts",
+      "error": "operation_contracts was not exposed as a callable reviewer tool; the checked-in contract implementation was inspected read-only"
+    },
+    {
+      "name": "workflow_packet_validate_source_inspection",
+      "source_class": "manual",
+      "ok": false,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "/tmp/anvil-runtime-skill-review-20260923/operator-workflow-v1.json",
+      "error": "workflow_packet_validate was not exposed as a callable reviewer tool; packet shape was checked against the source validator"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-runtime-skill-review-20260923/report.md",
+      "kind": "findings-summary",
+      "evidence_scope": "instruction-review",
+      "promotion_quality_evidence": false,
+      "summary": {
+        "disposition": "accept_skill_text",
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "resolved_findings": 3,
+        "candidate_behavior": "material improvement preserving authority gates and passing a fresh unsupported-tokenizer transfer case",
+        "runner_review": "separate independent code review and passing verification still required before live use"
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "review_disposition": "accept_skill_text",
+  "human_gate_required": false,
+  "promoted": false
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.runtime-workload/v1",
+  "purpose": "Synthetic reproduction of long-context decode plus fresh prefill; separate configuration and hardware-envelope screens.",
+  "incident_shapes": [
+    {
+      "anchor_computed_tokens": 174956,
+      "fresh_prompt_tokens": 31963
+    },
+    {
+      "anchor_computed_tokens": 201166,
+      "fresh_prompt_tokens": 46916
+    }
+  ],
+  "synthetic_prompt": "Three independently checkable retrieval records spread through repeated prose; anchor continues a long engineering guide. No user task content copied.",
+  "prompt_count_tolerance": "0.5 percent or 8 tokens; compare tokenizer and usage",
+  "output_policy": {
+    "anchor_cap": 4096,
+    "contender_cap": 1024,
+    "thinking_enabled": true,
+    "temperature": 0,
+    "visible_capture_chars": 8192,
+    "length_finish": "diagnostic allowed; not natural-completion qualification"
+  },
+  "cases": [
+    "small adapter qualification",
+    "serial control at each incident size",
+    "overlap at each incident size",
+    "three repeated-prefix rounds",
+    "larger context after passing smaller cases"
+  ],
+  "coverage_limit": "Client overlap only; exact scheduler batch, cache hit/eviction, kernel page ID and graph state require separate owner evidence.",
+  "new_failure_stop": "No following trial on identity drift, runtime failure, Xid, OOM or incomplete coverage; preserve failed artifacts before recovery."
+}

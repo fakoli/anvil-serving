@@ -1,0 +1,27 @@
+{
+  "command": "models recipes status --container intelligence-glm-exl3-327k-r10-vision8-apc-nospec",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\n  \"bound_port\": 8001,\n  \"bound_ports\": [\n    8001\n  ],\n  \"container\": \"intelligence-glm-exl3-327k-r10-vision8-apc-nospec\",\n  \"container_id\": \"redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814\",\n  \"gpu_selection\": [\n    \"GPU-00000000-0000-0000-0000-000000000001\",\n    \"GPU-00000000-0000-0000-0000-000000000002\"\n  ],\n  \"health\": null,\n  \"image_digest\": \"sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692\",\n  \"model\": \"brandonmusic/GLM-5.3-Flash-tr3-4bpw\",\n  \"native_kv_offload\": false,\n  \"recipe_digest\": \"e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd\",\n  \"registry_digest\": \"7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105\",\n  \"revision\": \"a5fee929cf4888b1824323e33e8a19b60129e025\",\n  \"running\": true,\n  \"served_identity\": \"glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

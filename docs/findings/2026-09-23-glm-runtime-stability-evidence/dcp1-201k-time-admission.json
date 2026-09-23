@@ -1,0 +1,7 @@
+{
+  "remaining_seconds_at_guard": 139.460154,
+  "required_seconds": 145,
+  "proposed_hard_trial_deadline_seconds": 140,
+  "cutoff": "2026-09-23T17:42:00Z",
+  "decision": "not admitted; zero201Kgeneration requests; restore exact baseline"
+}

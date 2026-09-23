@@ -1,0 +1,449 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-23-glm-runtime-stability",
+    "capability": "GLM runtime stability and bounded configuration diagnosis",
+    "repository_revision": "15c7161f55124000954d120d3e9b078bed4d6f43",
+    "dirty_state": "Final executable and skill revision; publication-only files assembled afterward. Native run revisions retained separately.",
+    "started_at": "2026-09-23T16:53:02.208872+00:00",
+    "completed_at": "2026-09-23T17:52:35.435862+00:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false,
+    "start_time_scope": "First retained stability run; earlier preflight/research preceded it."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.stability/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "6b93825a7efea6d3163cd614bfa7d41ef469c8329433577a10038273545aa7f4",
+          "bytes": 5880
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "6291f4071731106e6ef3e0b99d060f34451a0d0028f7f27385d304bdc6bf9448",
+          "bytes": 1755
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "1ee2ea4d18b540820f873c0c783760dd80c11f77de76691efbbd9cdea6f784e1",
+          "bytes": 4043
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "3a564933e562ba6a46df2154778b1cf64d47800c7455b7d12bcfca9f3898e789",
+          "bytes": 1421
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-plan.md",
+          "sha256": "1d545f9874d9f5ab0d3c3153b8c91bd75cea52d5e0bcb2e90b5edfdb389b95ac",
+          "bytes": 3347
+        },
+        {
+          "path": "notebook.md",
+          "sha256": "c2709a02c3b5fa26428d03c89a92d1c68f9dc87439d28d15f5c9435f06ebd162",
+          "bytes": 7363
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "70cbf1271db5b8b8000b45c56443625ca92338f38abc61412925bdfc1a0b539e",
+          "bytes": 2711
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-recipe.toml",
+          "sha256": "ff4488beee7d4d49cb6a0dff73cb7c3c662d2990b6a9d519110244f9b040bc51",
+          "bytes": 5206
+        },
+        {
+          "path": "candidate-dcp1-recipe.toml",
+          "sha256": "f1eed7c227de4b0b004b4d50f47fb10429bc000f981e996e1aeb81f6711652ec",
+          "bytes": 5139
+        },
+        {
+          "path": "baseline-recipe-status.json",
+          "sha256": "55b3f44a51a423e0934b5294a739da2d09533586c81d68d3b7ca1f7d6ed68e2e",
+          "bytes": 1645
+        },
+        {
+          "path": "baseline-gpus.csv",
+          "sha256": "6316930950d72e77775cc2a5fefe0e5bf0c61509d7b05182ede1477a7d3ce8fe",
+          "bytes": 359
+        },
+        {
+          "path": "dcp1-start-identity.json",
+          "sha256": "b857e3b03adccb12d03d3a36b73c12a11f4066e544921e59e9bd807b7ab2e858",
+          "bytes": 1291
+        },
+        {
+          "path": "dcp1-start-status.json",
+          "sha256": "42b8b13cac4c949275eab62c5c1c0ab56733fd1bf135c0bdc3bd8c05e89f71cf",
+          "bytes": 1040
+        },
+        {
+          "path": "dcp1-admission.json",
+          "sha256": "a81812c7cc217721cfb815a86710bef5acecc0546d308a56e5e247ec45e47ca8",
+          "bytes": 1797
+        },
+        {
+          "path": "dcp1-startup.log",
+          "sha256": "7a700236136099699d29568a8344c897d48d16045819fbf551709266bc711f99",
+          "bytes": 50658
+        },
+        {
+          "path": "development-source.json",
+          "sha256": "efd5db8b2725ba78d03f4616b6c45cf3d2a9465306a148ab14cc3cae9bbe74e2",
+          "bytes": 3431
+        },
+        {
+          "path": "sanitization-receipts.json",
+          "sha256": "2db9cc01e0c859c95ef92a99f833dc7ab5e6f2af9b0c74c90d47aaaf8b41bbbb",
+          "bytes": 18426
+        },
+        {
+          "path": "dcp1-small-scenario-comparison.json",
+          "sha256": "16efa067f16c6267dc6073c018cb585b202c78cfb68a32db3c1dcff0d320b9ec",
+          "bytes": 1341
+        },
+        {
+          "path": "dcp1-175k-scenario-comparison.json",
+          "sha256": "16efa067f16c6267dc6073c018cb585b202c78cfb68a32db3c1dcff0d320b9ec",
+          "bytes": 1341
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-small.json",
+          "sha256": "a3b167ed327b0c1f2f7c63e3a8f7dc53512e45611e7046144453dd0140aa94d2",
+          "bytes": 20090
+        },
+        {
+          "path": "baseline-175k-serial.json",
+          "sha256": "1de65e2207835401032bc14355d564106e176856e9aeeeb5b29b7f21ac832031",
+          "bytes": 24197
+        },
+        {
+          "path": "baseline-175k-overlap.json",
+          "sha256": "f38fab8f728653b08c20cc2699feb4ab922f6182ba8fac3cc7b1e5b023e3086e",
+          "bytes": 5863
+        },
+        {
+          "path": "baseline-preflight.json",
+          "sha256": "54619924a0d718298ab6ece136d53e8be7cf59323971694bfcca5696a9201eb7",
+          "bytes": 19931
+        },
+        {
+          "path": "baseline-preflight-thinking-enabled.json",
+          "sha256": "39f27d29cba203997fbe26a3ca2b3c67ca86b28fc21303bfe45d9a0dae75f3e5",
+          "bytes": 7227
+        },
+        {
+          "path": "baseline-json-thinking-enabled.json",
+          "sha256": "def14fd3635c5edd47d8c8421e9d97c6f84dcd211a3a2c408ca5304c360eb030",
+          "bytes": 1760
+        },
+        {
+          "path": "json-policy-disabled-2.json",
+          "sha256": "45c37a66e2cc84c1d633e86dda34f87cb15f8d1c7e68cbfed8224bf1c50165d2",
+          "bytes": 1785
+        },
+        {
+          "path": "json-policy-disabled-3.json",
+          "sha256": "c78969b7f32b6d68d2601f1e750fe94f1a6eb5df35dc0b51ac2cde779f939d5a",
+          "bytes": 1785
+        },
+        {
+          "path": "json-policy-enabled-2.json",
+          "sha256": "e038953ef1bb0010a3219914c2af7d05e643b4c5c89d9f53646758ff88276f89",
+          "bytes": 1755
+        },
+        {
+          "path": "json-policy-enabled-3.json",
+          "sha256": "7f57abf780e216e50546022c6ece53d4010ffb84f15382c7f7cac9be297dabf8",
+          "bytes": 1755
+        },
+        {
+          "path": "dcp1-preflight.json",
+          "sha256": "23540f8468b8e4f06fe862902a8367c43c4466ccf440f079e23e58af615408dd",
+          "bytes": 7135
+        },
+        {
+          "path": "dcp1-small.json",
+          "sha256": "f0786c0ac334dffee1486204fae4ac3b4e6636c41e5bfb88f57f7850eb4deb08",
+          "bytes": 6726
+        },
+        {
+          "path": "dcp1-small-matched.json",
+          "sha256": "c0e803df12b860f36fb6dff7a7113108a1557c1578188ce9b89b87ec072b6481",
+          "bytes": 20826
+        },
+        {
+          "path": "dcp1-175k-overlap.json",
+          "sha256": "be79599627ed3fd1cb9cae519bdd5251b31543af24b4925b423d2437a5b5e918",
+          "bytes": 23894
+        },
+        {
+          "path": "dcp1-175k-repeat2.json",
+          "sha256": "9cfd2a564427fc807da9ebbbf751e29bd426ff36d84a72d27c547fc302949495",
+          "bytes": 45461
+        },
+        {
+          "path": "dcp1-final-metrics.json",
+          "sha256": "600165c6eacb52814ba132224099c02cc7d1d0ba538db66fd369e1b5fe2aaab0",
+          "bytes": 621
+        },
+        {
+          "path": "dcp1-final-owner.log",
+          "sha256": "27d9bce52b69d96716fbbce88abfdfbf59c0f377003b295413bc7342f7c1261d",
+          "bytes": 67815
+        },
+        {
+          "path": "dcp1-final-status.json",
+          "sha256": "b6b125b3edd19773606790bc70a32bed5fb82fdea2fb9107e421110b4b9d8b5d",
+          "bytes": 1291
+        },
+        {
+          "path": "dcp1-final-kernel.log",
+          "sha256": "19c4e28b2f54ea8f217db4e622b0a5c758efa7b77ce2dc0394b6d159568c0b2e",
+          "bytes": 17
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "719f88486e0c5783ce688f55c5653159187bfe25920320ca4f334555d40a803f",
+          "bytes": 5896
+        },
+        {
+          "path": "crash-175k-correlation.json",
+          "sha256": "5d300e9364c46114e4593feb658cfeb6b155da037367b62f44de9241f6f84c14",
+          "bytes": 2185
+        },
+        {
+          "path": "crash-175k-overlap-model-combined.log",
+          "sha256": "dd103bb294a105bac18b68cec1af0f91d952a824bae11b7128f12a807e7b800d",
+          "bytes": 116270
+        },
+        {
+          "path": "crash-175k-overlap-kernel.log",
+          "sha256": "292d235a274ccf523d2e3f1207595f5dc37b2258977414129a0e7425eaad2db0",
+          "bytes": 462
+        },
+        {
+          "path": "crash-175k-overlap-status.json",
+          "sha256": "fbb350d6463e5091f3633c8e6cdfbbe6e878491c2de82407ba1ca20bcebe01a8",
+          "bytes": 1645
+        },
+        {
+          "path": "dcp1-small-kernel.log",
+          "sha256": "19c4e28b2f54ea8f217db4e622b0a5c758efa7b77ce2dc0394b6d159568c0b2e",
+          "bytes": 17
+        },
+        {
+          "path": "dcp1-small-owner.log",
+          "sha256": "2977926385c624afe66de71fa08a29d65728a2e09a1650b6817be7158866598d",
+          "bytes": 21382
+        },
+        {
+          "path": "dcp1-201k-time-admission.json",
+          "sha256": "5ae6fd5e2152d071fc273e256072006df4d3481fa513b563bc83b8d765bdb276",
+          "bytes": 240
+        },
+        {
+          "path": "skill-review-report.txt",
+          "sha256": "dc9fb2b1edf21ed87ed9edf2b8e7a43704a13c2cfdd3faab79b41abd967c41c1",
+          "bytes": 25260
+        },
+        {
+          "path": "skill-review-operator-workflow-v1.json",
+          "sha256": "ab925fe27f692b974f54b8dd572b22928dceca9a442cc3d9d1c70944ac898fe1",
+          "bytes": 2890
+        },
+        {
+          "path": "skill-delta-review.json",
+          "sha256": "bfae04461b3f3529a995a51ef3c631bf98a934de8acf6a6c8cab66e21e64e892",
+          "bytes": 6958
+        },
+        {
+          "path": "skill-scenario-comparability-review.json",
+          "sha256": "1cfdc8dcb3e5c9308743379c55133a243d5dfc1b0707098fca970587f1a6267f",
+          "bytes": 4835
+        },
+        {
+          "path": "runner-review-findings.json",
+          "sha256": "6c4772e46c66cb14c73683f1ab62eef8cf8edbbc13dfbd874dc782d4010851e3",
+          "bytes": 6660
+        },
+        {
+          "path": "runner-review-operator-workflow.json",
+          "sha256": "b317c0c3f26222ffda27a9f46ec044a5c2574eb401747fca377547796e3922a0",
+          "bytes": 2101
+        },
+        {
+          "path": "dcp1-followup-findings.json",
+          "sha256": "fb019bb5324309f56221a50f0b68e4a0a4268d2543a655d6ea4e835f1ae26749",
+          "bytes": 4639
+        },
+        {
+          "path": "dcp1-followup-operator-workflow.json",
+          "sha256": "884c3280d0da0851a97757678835af6da6a5c85767b657e355efe37841453756",
+          "bytes": 1765
+        },
+        {
+          "path": "dcp1-result-retention-followup.json",
+          "sha256": "4d3e288c65e956f017c949bf160745d03dc427ba99827490345500b55403234a",
+          "bytes": 3524
+        },
+        {
+          "path": "dcp1-result-retention-operator-workflow.json",
+          "sha256": "63386dd2c19b4e431d1e2e634f671b967426b43fa4b0515b93ff6f363d5f5fc8",
+          "bytes": 1750
+        },
+        {
+          "path": "dcp1-continuation-review.json",
+          "sha256": "c1a2cc023b02da851554b6e6b5f49e6ce7987b16f325c6e84b456906efbcd7f7",
+          "bytes": 1821
+        },
+        {
+          "path": "dcp1-continuation-operator-workflow.json",
+          "sha256": "ef281aad673325c19facf6bb4249fcc56afdc1a389e78871364cbdb78fb36f5e",
+          "bytes": 1148
+        },
+        {
+          "path": "publication-review.json",
+          "sha256": "a7bd4914b29560038a3a9e0d3b6f362c58869f6f85cbdfc4d94eb4dc427a799b",
+          "bytes": 7878
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "e3b053463acef1901da2a8baf80bfd52c7c159318f092d55b53c7df3249d5238",
+          "bytes": 1974
+        },
+        {
+          "path": "restoration-status.json",
+          "sha256": "66b9048a4c6c7a78ce5bcfe63967474580d46708b4fa89df3f6c723b979169d9",
+          "bytes": 1339
+        },
+        {
+          "path": "restoration-startup.log",
+          "sha256": "106e5992a575dde616e6ac3f7316a1c891ac7df78165a335e14191a767ae3b73",
+          "bytes": 62345
+        },
+        {
+          "path": "restoration-direct-preflight.json",
+          "sha256": "0a879fef25b37ec1a2c2ece428c1815645c6481bb1494e1fd511257d56c05170",
+          "bytes": 3345
+        },
+        {
+          "path": "restoration-routed-preflight.json",
+          "sha256": "a6c85c6ce2a003f596ce48b539f412eacba2bbffd0b1efa5ddb28e1b54eea0ee",
+          "bytes": 3125
+        },
+        {
+          "path": "restoration-router-sha256.json",
+          "sha256": "95d15b2c04a8cde94155ee6fc62f56d704ea4135976783b816486b89fdf55641",
+          "bytes": 250
+        },
+        {
+          "path": "restoration-kernel.log",
+          "sha256": "19c4e28b2f54ea8f217db4e622b0a5c758efa7b77ce2dc0394b6d159568c0b2e",
+          "bytes": 17
+        },
+        {
+          "path": "restoration-gpus.csv",
+          "sha256": "84f7365bfbd4b247b44cb3174c733c9fc7d268cb7476228912a3e7a473e3530c",
+          "bytes": 359
+        },
+        {
+          "path": "recovery1-preflight.json",
+          "sha256": "28143c0e3b99a9e2deced9b9899332a789c86ccba31c70f8efec7ea21d705d58",
+          "bytes": 3303
+        },
+        {
+          "path": "recovery1-routed-preflight.json",
+          "sha256": "5019e1bd1991a68b8ac5550ed6f9c72d8569522b84f6f725d6e5855db0e9d0ef",
+          "bytes": 3155
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "cc0c94abbc463939a188a3e681852c56dd15e9239463efdac4b2797054138646",
+          "bytes": 7185
+        }
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated finding and sanitized recipe provide the shareable technical result."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

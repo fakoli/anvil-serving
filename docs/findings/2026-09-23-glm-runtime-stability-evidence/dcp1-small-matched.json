@@ -1,0 +1,180 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-09-23T17:33:17.916611+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:32:50.207398+00:00",
+      "phase": "start",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:32:50.244536+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:33:17.910125+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 29303.042336866,
+        "expected_values": [
+          "VALUE_ed71d0b8b577",
+          "VALUE_91d32e9eb63e",
+          "VALUE_13d5c4b76d55"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:33:17.869891+00:00",
+        "first_output": 29276.273045668,
+        "last_output": 29303.042235446,
+        "partial_visible": "# Extracted Values\n\n- **KEY_0** = `VALUE_ed71d0b8b577`\n- **KEY_1** = `VALUE_91d32e9eb63e`\n- **KEY_2** = `VALUE_13d5c4b76d55`\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\n## 1. Component Architecture Fundamentals\n\n**Implementation:** Design components as self-contained units with a single responsibility, explicit inputs, and explicit outputs. Each component should expose a minimal public surface and hide internals behind private scope.\n\n**Example:** A `Validator` class that accepts a string and returns a result object, rather than a class that validates, logs, writes to disk, and sends email.\n\n**Edge cases:** Components that grow responsibilities over time (\"god objects\"); circular dependencies between components; components with hidden global state.\n\n**Tests:** Assert that a component can be instantiated in isolation with no network or filesystem access. A smoke test per component should run in under 100ms.\n\n## 2. Defining Component Interfaces\n\n**Implementation:** Define contracts using interfaces, protocols, or abstract base classes. Prefer narrow interfaces (Interface Segregation Principle) so consumers depend only on what they use.\n\n**Example:**\n\n```python\nclass Storage(Protocol):\n    def save(self, key: str, data: bytes) -> None: ...\n    def load(self, key: str) -> bytes: ...\n```\n\n**Edge cases:** Interfaces that leak implementation types (e.g., exposing a database cursor); optional methods that force consumers to check capabilities; evolving an interface without breaking implementers.\n\n**Tests:** Write conformance tests that any implementation of the interface must pass, then run the same suite against every concrete implementation.\n\n## 3. Dependency Injection\n\n**Implementation:** Pass dependencies through constructors or method parameters rather than instantiating them internally. This makes components testable and swaps trivial.\n\n**Example:**\n\n```python\nclass ReportGenerator:\n    def __init__(self, storage: Storage, clock: Clock):\n        self.storage = storage\n        self.clock = clock\n```\n\n**Edge cases:** Dependency cycles (A needs B, B needs A); optional dependencies with sensible defaults; DI containers that hide wiring failures until runtime.\n\n**Tests:** Verify a component can be constructed with fakes; verify construction fails fast (raises) when a required dependency is `None`.\n\n## 4. Configuration Management\n\n**Implementation:** Load configuration from a single source at startup, validate it, and freeze it. Distinguish config (deployment-specific) from code (logic).\n\n**Example:** Parse environment variables into a typed `Config` dataclass, failing at boot if `PORT` is not an integer in 1\u201365535.\n\n**Edge cases:** Missing keys; empty-string values that look present; type coercion surprises (\"0\" being falsy); config that changes mid-run; secrets accidentally logged.\n\n**Tests:** Table-driven tests covering: valid config, missing key, malformed value, boundary port values (1, 65535, 0, 65536), and duplicate keys with conflicting precedence.\n\n## 5. Error Handling Strategies\n\n**Implementation:** Choose per error type: recover, retry, degrade, or fail fast. Define a hierarchy of domain exceptions. Never swallow exceptions silently.\n\n**Example:**\n\n```python\nclass ComponentError(Exception): ...\nclass TransientError(ComponentError): ...\nclass PermanentError(ComponentError): ...\n```\n\n**Edge cases:** Exceptions raised in cleanup handlers (`finally`/destructors); errors during error handling; exceptions that lose their cause (re-raise with chaining); catching `Exception` too broadly and masking bugs.\n\n**Tests:** Assert each failure path raises the correct exception type; assert the original cause is preserved (`__cause__`); assert no partial writes remain after a failed operation.\n\n## 6. Logging and Observability\n\n**Implementation:** Log at appropriate levels (DEBUG for diagnostics, INFO for lifecycle events, WARNING for recoverable anomalies, ERROR for failures). Include correlation IDs. Keep logs structured (key\u2013value or JSON).\n\n**Example:** `log.info(\"component.started\", component=\"validator\", version=\"1.4.2\")`\n\n**Edge cases:** Logging sensitive data (PII, tokens); log injection via newlines in user input; extremely large log values; logging inside tight loops causing I/O bottlenecks.\n\n**Tests:** Capture log output in tests and assert on level, keys, and absence of secret fields. Test that a 10,000-character user-supplied string does not break the log formatter.\n\n## 7. Unit Testing Fundamentals\n\n**Implementation:** Test one behavior per test. Follow Arrange\u2013Act\u2013Assert. Name tests descriptively: `test_<unit>_<behavior>_<expected_result>`.\n\n**Example:**\n\n```python\ndef test_parser_rejects_empty_input():\n    parser = Parser()\n    with pytest.raises(EmptyInputError):\n        parser.parse(\"\")\n```\n\n**Edge cases:** Tests that assert on implementation details (private methods, call order) and break during refactoring; tests with hidden interdependencies via shared module state; tests that pass vacuously (no assertions executed).\n\n**Tests:** Enforce with linting that every test function contains at least one assertion; run tests in random order to detect ordering dependencies.\n\n## 8. Test Doubles: Mocks, Stubs, and Fakes\n\n**Implementation:** Use stubs for state verification (canned answers), mocks for interaction verification (was it called correctly), and fakes for lightweight working implementations (in-memory database).\n\n**Example:** An in-memory `FakeStorage` implementing the `Storage` protocol with a dict, used in place of a real database.\n\n**Edge cases:** Over-mocking, which makes tests tautological (testing the mock, not the code); mocks that drift from the real interface's behavior; fakes that diverge on subtle semantics (e.g., case sensitivity of keys).\n\n**Tests:** Run the interface conformance suite (Section 2) against fakes as well as real implementations. Periodically validate mocks against real implementations via contract tests.\n\n## 9. Property-Based Testing\n\n**Implementation:** Instead of hand-picked examples, define invariants that must hold for arbitrary inputs, and let the framework generate cases (e.g., Hypothesis, QuickCheck).\n\n**Example:** For any list `xs`, `sort(reverse=True)` of `sort(xs)` equals `sort(xs)`; for any string `s`, `parse(format(s)) == s` (round-trip property).\n\n**Edge cases:** Generated inputs that are valid but semantically meaningless; shrinking producing minimal counterexamples that reveal real bugs; properties that are too weak (always true) and test nothing.\n\n**Tests:** Run property suites in CI with a fixed seed for reproducibility, plus a periodic job with higher iteration counts. Assert the round-trip, idempotence,",
+        "prompt_sha256": "e6a25445f8e4de72aa17b12793bd19f8bed629f51285da3497b7c304b91ec735",
+        "prompt_tokens_tokenized": 4088,
+        "request_id": null,
+        "response_headers_at": 29275.449349696,
+        "result": {
+          "content_chunks": 1416,
+          "e2e": 27.598137033000967,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 2048,
+          "output_token_source": "usage",
+          "reasoning_chunks": 584,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.8288937149991398,
+          "ttft": 9.44940595799926,
+          "usage": {
+            "completion_tokens": 2048,
+            "prompt_tokens": 4088,
+            "total_tokens": 6136
+          },
+          "visible_content": "# Extracted Values\n\n- **KEY_0** = `VALUE_ed71d0b8b577`\n- **KEY_1** = `VALUE_91d32e9eb63e`\n- **KEY_2** = `VALUE_13d5c4b76d55`\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\n## 1. Component Architecture Fundamentals\n\n**Implementation:** Design components as self-contained units with a single responsibility, explicit inputs, and explicit outputs. Each component should expose a minimal public surface and hide internals behind private scope.\n\n**Example:** A `Validator` class that accepts a string and returns a result object, rather than a class that validates, logs, writes to disk, and sends email.\n\n**Edge cases:** Components that grow responsibilities over time (\"god objects\"); circular dependencies between components; components with hidden global state.\n\n**Tests:** Assert that a component can be instantiated in isolation with no network or filesystem access. A smoke test per component should run in under 100ms.\n\n## 2. Defining Component Interfaces\n\n**Implementation:** Define contracts using interfaces, protocols, or abstract base classes. Prefer narrow interfaces (Interface Segregation Principle) so consumers depend only on what they use.\n\n**Example:**\n\n```python\nclass Storage(Protocol):\n    def save(self, key: str, data: bytes) -> None: ...\n    def load(self, key: str) -> bytes: ...\n```\n\n**Edge cases:** Interfaces that leak implementation types (e.g., exposing a database cursor); optional methods that force consumers to check capabilities; evolving an interface without breaking implementers.\n\n**Tests:** Write conformance tests that any implementation of the interface must pass, then run the same suite against every concrete implementation.\n\n## 3. Dependency Injection\n\n**Implementation:** Pass dependencies through constructors or method parameters rather than instantiating them internally. This makes components testable and swaps trivial.\n\n**Example:**\n\n```python\nclass ReportGenerator:\n    def __init__(self, storage: Storage, clock: Clock):\n        self.storage = storage\n        self.clock = clock\n```\n\n**Edge cases:** Dependency cycles (A needs B, B needs A); optional dependencies with sensible defaults; DI containers that hide wiring failures until runtime.\n\n**Tests:** Verify a component can be constructed with fakes; verify construction fails fast (raises) when a required dependency is `None`.\n\n## 4. Configuration Management\n\n**Implementation:** Load configuration from a single source at startup, validate it, and freeze it. Distinguish config (deployment-specific) from code (logic).\n\n**Example:** Parse environment variables into a typed `Config` dataclass, failing at boot if `PORT` is not an integer in 1\u201365535.\n\n**Edge cases:** Missing keys; empty-string values that look present; type coercion surprises (\"0\" being falsy); config that changes mid-run; secrets accidentally logged.\n\n**Tests:** Table-driven tests covering: valid config, missing key, malformed value, boundary port values (1, 65535, 0, 65536), and duplicate keys with conflicting precedence.\n\n## 5. Error Handling Strategies\n\n**Implementation:** Choose per error type: recover, retry, degrade, or fail fast. Define a hierarchy of domain exceptions. Never swallow exceptions silently.\n\n**Example:**\n\n```python\nclass ComponentError(Exception): ...\nclass TransientError(ComponentError): ...\nclass PermanentError(ComponentError): ...\n```\n\n**Edge cases:** Exceptions raised in cleanup handlers (`finally`/destructors); errors during error handling; exceptions that lose their cause (re-raise with chaining); catching `Exception` too broadly and masking bugs.\n\n**Tests:** Assert each failure path raises the correct exception type; assert the original cause is preserved (`__cause__`); assert no partial writes remain after a failed operation.\n\n## 6. Logging and Observability\n\n**Implementation:** Log at appropriate levels (DEBUG for diagnostics, INFO for lifecycle events, WARNING for recoverable anomalies, ERROR for failures). Include correlation IDs. Keep logs structured (key\u2013value or JSON).\n\n**Example:** `log.info(\"component.started\", component=\"validator\", version=\"1.4.2\")`\n\n**Edge cases:** Logging sensitive data (PII, tokens); log injection via newlines in user input; extremely large log values; logging inside tight loops causing I/O bottlenecks.\n\n**Tests:** Capture log output in tests and assert on level, keys, and absence of secret fields. Test that a 10,000-character user-supplied string does not break the log formatter.\n\n## 7. Unit Testing Fundamentals\n\n**Implementation:** Test one behavior per test. Follow Arrange\u2013Act\u2013Assert. Name tests descriptively: `test_<unit>_<behavior>_<expected_result>`.\n\n**Example:**\n\n```python\ndef test_parser_rejects_empty_input():\n    parser = Parser()\n    with pytest.raises(EmptyInputError):\n        parser.parse(\"\")\n```\n\n**Edge cases:** Tests that assert on implementation details (private methods, call order) and break during refactoring; tests with hidden interdependencies via shared module state; tests that pass vacuously (no assertions executed).\n\n**Tests:** Enforce with linting that every test function contains at least one assertion; run tests in random order to detect ordering dependencies.\n\n## 8. Test Doubles: Mocks, Stubs, and Fakes\n\n**Implementation:** Use stubs for state verification (canned answers), mocks for interaction verification (was it called correctly), and fakes for lightweight working implementations (in-memory database).\n\n**Example:** An in-memory `FakeStorage` implementing the `Storage` protocol with a dict, used in place of a real database.\n\n**Edge cases:** Over-mocking, which makes tests tautological (testing the mock, not the code); mocks that drift from the real interface's behavior; fakes that diverge on subtle semantics (e.g., case sensitivity of keys).\n\n**Tests:** Run the interface conformance suite (Section 2) against fakes as well as real implementations. Periodically validate mocks against real implementations via contract tests.\n\n## 9. Property-Based Testing\n\n**Implementation:** Instead of hand-picked examples, define invariants that must hold for arbitrary inputs, and let the framework generate cases (e.g., Hypothesis, QuickCheck).\n\n**Example:** For any list `xs`, `sort(reverse=True)` of `sort(xs)` equals `sort(xs)`; for any string `s`, `parse(format(s)) == s` (round-trip property).\n\n**Edge cases:** Generated inputs that are valid but semantically meaningless; shrinking producing minimal counterexamples that reveal real bugs; properties that are too weak (always true) and test nothing.\n\n**Tests:** Run property suites in CI with a fixed seed for reproducibility, plus a periodic job with higher iteration counts. Assert the round-trip, idempotence,",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 29275.440292914,
+        "started_at": "2026-09-23T17:32:50.267838+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-8f85763cd6aad3b1",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 29278.524119699,
+        "expected_values": [
+          "VALUE_0200e340f059",
+          "VALUE_5c401f624918",
+          "VALUE_b6b8f75e9fa4"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:32:53.351676+00:00",
+        "first_output": 29276.625988423,
+        "last_output": 29278.509095252,
+        "partial_visible": "VALUE_0200e340f059\nVALUE_5c401f624918\nVALUE_b6b8f75e9fa4",
+        "prompt_sha256": "be50658c46c2a1602b1d7eccb69451aec5fcf2beaec1a64f974b40f82bfc4e74",
+        "prompt_tokens_tokenized": 1016,
+        "request_id": null,
+        "response_headers_at": 29276.293071328,
+        "result": {
+          "content_chunks": 34,
+          "e2e": 2.2353529920001165,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 133,
+          "output_token_source": "usage",
+          "reasoning_chunks": 94,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.3372435259989288,
+          "ttft": 1.7416397279994271,
+          "usage": {
+            "completion_tokens": 133,
+            "prompt_tokens": 1016,
+            "total_tokens": 1149
+          },
+          "visible_content": "VALUE_0200e340f059\nVALUE_5c401f624918\nVALUE_b6b8f75e9fa4",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 29276.286122651,
+        "started_at": "2026-09-23T17:32:51.113662+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-b8827c5ee8984f7f",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "overlap_output_at": 29276.297168018,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 2048,
+    "anchor_tokens": 4096,
+    "base_url": "http://127.0.0.1:8002/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-dcp1-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 1024,
+    "context_limit": 327680,
+    "managed_container": "glm-runtime-dcp1-candidate",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "prefix_mode": "unique",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "59795ff8e7c55bddb458aded414669f937a982a26b685fc588622ba837a971d0",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T17:32:50.109847+00:00",
+  "status": "completed"
+}

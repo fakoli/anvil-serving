@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-23-glm-runtime-stability",
+  "status": "restored",
+  "observed_at": "2026-09-23T17:52:35.435862+00:00",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "baseline-recipe.toml",
+      "baseline-recipe-status.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "restoration-status.json",
+      "restoration-startup.log",
+      "restoration-direct-preflight.json",
+      "restoration-routed-preflight.json",
+      "restoration-router-sha256.json",
+      "restoration-kernel.log"
+    ]
+  },
+  "identity_fields_matched": [
+    "recipe_digest",
+    "registry_digest",
+    "image_digest",
+    "revision",
+    "model",
+    "served_identity",
+    "bound_port",
+    "gpu_selection"
+  ],
+  "differences": [
+    "New managed container ID after authorized reload; same recipe, registry, image, checkpoint, GPU assignment, endpoint and served identity."
+  ],
+  "post_run_checks": [
+    {
+      "name": "direct enabled-thinking smoke and JSON",
+      "passed": true
+    },
+    {
+      "name": "authenticated llm.primary smoke and JSON",
+      "passed": true
+    },
+    {
+      "name": "router file SHA unchanged",
+      "passed": true
+    },
+    {
+      "name": "exclusive operating mode and GPU ownership unchanged; no unresolved owners",
+      "passed": true
+    },
+    {
+      "name": "candidate absent from managed inventory",
+      "passed": true
+    },
+    {
+      "name": "original startup DCP2 and containment gate observed",
+      "passed": true
+    }
+  ],
+  "mode": "dual-gpu-exclusive",
+  "exclusive_owner": "tp2-glm53-exl3-327k-r10-vision8-apc-nospec",
+  "gpu_role_count": 2,
+  "unresolved_owner_count": 0,
+  "blocked_workload_count": 28,
+  "candidate_unloaded": true,
+  "verified": true,
+  "not_applicable_reason": null,
+  "limitation": "Recovery acceptance is not a fix for the reproduced large-overlap defect."
+}

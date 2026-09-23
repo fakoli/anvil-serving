@@ -1,0 +1,55 @@
+{
+  "review": "Independent follow-up of bounded failed-result retention and corrected DCP1 small scenario",
+  "reviewer_model": "gpt-5.6-sol",
+  "implementing_model": "gpt-6-astra",
+  "evaluated_model": "GLM-5.3-Flash exact managed EXL3 DCP1 profile",
+  "verdict": "accept_corrected_small_then_accept_175k_only_if_small_passes",
+  "blocking_findings": [],
+  "resolved_findings": [
+    {
+      "classification": "refuted_after_fix",
+      "area": "partial semantic-failure evidence",
+      "evidence": "The runner retains the bounded returned result before validation, preserving usage, finish reasons, reasoning count, terminal state, and visible capture even when visible output is absent. The round remains failed and later rounds stop.",
+      "references": [
+        "anvil_serving/benchmarking/stability.py:270",
+        "tests/test_stability_benchmark.py:291",
+        "tests/test_stability_benchmark.py:360"
+      ]
+    },
+    {
+      "classification": "refuted_after_fix",
+      "area": "semantic versus protocol taxonomy",
+      "evidence": "A terminal stream with supported finish reason and no visible output is semantic_output_absent; malformed, missing-terminal, missing-finish, and unsupported-finish streams remain protocol_error. Server error and transport classes remain separate.",
+      "references": [
+        "anvil_serving/benchmarking/stability.py:272",
+        "anvil_serving/benchmarking/stability.py:278",
+        "anvil_serving/benchmarking/stability.py:294"
+      ]
+    },
+    {
+      "classification": "refuted_after_fix",
+      "area": "matched small-budget scenario",
+      "evidence": "The corrected DCP1 small scenario matches the baseline 4096/1024 prompts and 2048/1024 output caps; only endpoint and managed candidate identity differ.",
+      "reference": "/evidence/glm-runtime-20260923/dcp1-small-matched-scenario.json"
+    }
+  ],
+  "accepted_sequence": [
+    "Run exactly one corrected matched small overlap using scenario SHA-256 f071de85f89ea64fd8be43dc797bf71370d82c116ff9012be9e5b7d9d6dfd67c.",
+    "Require runtime, managed identity, token usage, retrieval, and client-overlap coverage to pass; stop on any semantic, protocol, transport, server, identity, Xid, CUDA, OOM, or unrelated-workload failure.",
+    "Only after the corrected small artifact passes may the previously accepted one-round 175K/32K overlap scenario SHA-256 fa7eaff3554690e90a1958131d709a26066c2489c832b15b36e57be84e15440c run.",
+    "The measured 825268-token DCP1 KV capacity exceeds both bounded scenarios' prompt-plus-maximum-output demand. Reobserve effective DCP1 and exact managed identity before and after each request.",
+    "Keep the failed 512-token small artifact immutable. Its empty visible output with a length stop is consistent with output-budget exhaustion but does not prove that diagnosis because the original artifact omitted usage.",
+    "A passing large arm remains mitigation evidence only. Restore and verify the exact baseline afterward; promoted remains false."
+  ],
+  "verification": {
+    "focused_tests": "32 passed in 8.34s independently",
+    "focused_and_compatibility_tests": "271 passed in 9.05s from retained campaign log",
+    "diff_check": "passed",
+    "stability_sha256": "0d65a23a98cc5ff769c96f711fc2861844cf2bd5e1fa16dfef87703bfe015d0e",
+    "test_sha256": "3ae57abc54146aeb06d4b5b1bbbf632a10037c8ebfd77bfc09d8ee3d633f23a4",
+    "live_requests_by_reviewer": 0,
+    "service_or_model_mutations_by_reviewer": 0
+  },
+  "human_gate_required": true,
+  "promoted": false
+}

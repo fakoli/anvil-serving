@@ -1,5 +1,13 @@
 # GLM-5.3-Flash
 
+**2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
+an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
+prefill, while its serial control passed. A single-setting DCP1 trial passed
+three matched overlaps, with a smaller reported KV pool. It remains an
+experimental mitigation; the exact baseline was restored. First-fault
+attribution and broader qualification remain open. See the
+[dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
@@ -28,8 +36,10 @@
     - **Important limitation:** performance uses synthetic 32-request finalist cells at about
       25K actual prompt tokens, not a general speed or intelligence claim. No full-window
       concurrent capacity, video, broad SWE, soak, or fresh reboot proof is retained.
-    - **Review dates:** locally measured and reviewed 2026-09-19 UTC; the earlier 4-bpw
-      qualification and mixed-quant startup failure remain retained history.
+    - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
+      DCP2. The DCP1 mitigation is unpromoted; restored does not mean fixed.
+    - **Review dates:** runtime investigation 2026-09-23 UTC; APC qualification
+      2026-09-19. Earlier 4-bpw and mixed-quant results remain retained history.
 
 ### Review narrative
 

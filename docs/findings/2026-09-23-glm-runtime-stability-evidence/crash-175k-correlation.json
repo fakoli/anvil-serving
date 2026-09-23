@@ -1,0 +1,58 @@
+{
+  "schema": "anvil-serving.runtime-incident-correlation/v1",
+  "observed_at": "2026-09-23T16:57:18Z",
+  "native_trial": "baseline-175k-overlap.json",
+  "native_classification": [
+    "protocol_error",
+    "coverage_not_exercised"
+  ],
+  "owner_classification": "CUDA illegal memory access with EngineDeadError and process exit",
+  "kernel_classification": "Xid 31 FAULT_PDE ACCESS_TYPE_VIRT_WRITE on both GPUs",
+  "driver": "615.71.09",
+  "scheduler": {
+    "num_running_reqs": 2,
+    "anchor_computed_tokens": 174807,
+    "anchor_output_tokens": 10,
+    "fresh_prompt_tokens": 31816,
+    "decode_tokens": 1,
+    "prefill_tokens": 2047,
+    "kv_cache_usage_fraction": 0.14960629921259838,
+    "speculation_tokens": 0,
+    "multimodal_features": 0
+  },
+  "engine_request_ids": {
+    "anchor": "chatcmpl-aa76274bced356ef-be83474f",
+    "contender": "chatcmpl-9f4e530b545624ca-abba75e2"
+  },
+  "binding": "Isolated direct endpoint with only two synthetic requests; timing, role and token lengths match owner scheduler. First runner revision did not retain SSE chunk IDs; owner IDs are correlated separately, not backfilled into the native artifact.",
+  "stack": [
+    "sparse_attn_indexer_kpool",
+    "_merge_kpool_dcp_topk",
+    "_merge_b12x_dcp_topk",
+    "triton_gather_topk_ids_by_position"
+  ],
+  "cause_limit": "Asynchronous CUDA stack is an implicated path, not proven first invalid operation. Driver upgrade did not prevent this reproduction.",
+  "control": "baseline-175k-serial.json passed",
+  "evidence": [
+    {
+      "path": "baseline-175k-overlap.json",
+      "sha256": "a665db5408023854620539adb0e9497ce3ab83937cf6e95609bb36d46cec269d",
+      "bytes": 5819
+    },
+    {
+      "path": "crash-175k-overlap-model-combined.log",
+      "sha256": "42e70eb02f6abe6a6a0041ae718065d27856fb8a78f87a688e0b920cad9dc40e",
+      "bytes": 116092
+    },
+    {
+      "path": "crash-175k-overlap-kernel.log",
+      "sha256": "be1ccb9b49ae15c559a902f1dfc55c5ef1de486cf47d42b0eb7ff1adcd7d38dd",
+      "bytes": 460
+    },
+    {
+      "path": "crash-175k-overlap-status.json",
+      "sha256": "1273bf621fbce81cda493d65102e80c958164dbd16a765f38905f85386b5ae03",
+      "bytes": 1495
+    }
+  ]
+}

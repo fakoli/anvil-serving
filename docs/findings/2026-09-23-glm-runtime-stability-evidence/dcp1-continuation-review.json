@@ -1,0 +1,33 @@
+{
+  "review": "Independent bounded-continuation review after first DCP1 175K pass",
+  "verdict": "accept_two_175k_rounds_then_conditionally_one_201k_round",
+  "first_175k_evidence": {
+    "artifact": "/evidence/glm-runtime-20260923/dcp1-175k-overlap.json",
+    "sha256": "bad99a7b375bae1ef7cdac01d86f2ad900e878717e347ba57dac886019dd7e18",
+    "runtime_passed": true,
+    "coverage_passed": true,
+    "retrieval_passed": true,
+    "actual_prompt_tokens": [
+      174800,
+      31815
+    ],
+    "client_overlap": true,
+    "scheduler_overlap": "not_measured",
+    "identity_observations": 3
+  },
+  "accepted_bounds": [
+    "Run the frozen two-round 175K unique scenario SHA-256 26ef01cd3c400dda5d0ca82873733b151749261adb82a0c407a1c97f2ad900e878717e347ba57dac886019dd7e18.",
+    "Stop immediately on any runtime, retrieval, token, coverage, identity, semantic, protocol, transport, server, Xid, CUDA, OOM, or unrelated-workload failure.",
+    "After both rounds pass, reassess time. Run at most one 201K/47K round only when measured duration leaves enough margin to finish before the 17:42Z stop-new-traffic cutoff while preserving the 30-minute restoration reserve.",
+    "Do not run any 310K cell in this live window. Mark 201K or 310K cells not run as explicitly untested.",
+    "Retain cache metrics before and after each executed cell, restore the exact baseline, and make no performance, root-cause, qualification, reliability-rate, or promotion claim."
+  ],
+  "blocking_findings": [],
+  "residual_risk": [
+    "One successful DCP1 175K round is bounded mitigation evidence, not a stability rate.",
+    "Client overlap does not prove scheduler-internal overlap.",
+    "Repeated-prefix, 310K, modality, cache-churn, and finalist qualification remain untested."
+  ],
+  "human_gate_required": true,
+  "promoted": false
+}

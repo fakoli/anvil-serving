@@ -1,0 +1,116 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently recheck the small incident-control and first-fault-attribution instruction delta without live work",
+  "gate_state": "not_required",
+  "targets": {
+    "repository": "/workspace/anvil-serving",
+    "file": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
+    "previous_sha256": "8053e5406a0c3ce4f4b6930514ee06c28199414a143c213c50f475959dd861a6",
+    "candidate_sha256": "039acfed3458d820d3eec7c0fe1cfa00c8ae568408b7645f2aa8cc65a9284a00",
+    "implementing_model": "gpt-6-astra",
+    "reviewer_model": "gpt-5.6-sol",
+    "scope": "instruction delta only; no runner re-grading, model requests, lifecycle work, or publication mutation"
+  },
+  "tools_used": [
+    {
+      "name": "git_status_and_read_only_file_inspection",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "/workspace/anvil-serving",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-runtime-skill-review-20260923/delta-recheck-operator-workflow-v1.json",
+      "kind": "findings-summary",
+      "evidence_scope": "instruction-delta-review",
+      "promotion_quality_evidence": false,
+      "summary": {
+        "disposition": "accept",
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "promoted": false
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "review_disposition": "accept_delta",
+  "human_gate_required": false,
+  "promoted": false,
+  "delta_review": {
+    "findings": [],
+    "acceptance": "ACCEPT",
+    "line_review": [
+      {
+        "reference": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md:31",
+        "result": "accept",
+        "reason": "The exact parent GPU-fault or engine-death control may be retained instead of deliberately recreating a destructive failure only for reverse-order symmetry. Lines 32-33 require the omission and inference limit to remain explicit. This narrows the matched-order rule without turning a retained crash into performance or root-cause proof."
+      },
+      {
+        "reference": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md:100",
+        "result": "accept",
+        "reason": "Core-dump diagnosis is required when claiming first-fault attribution for a reproducible CUDA illegal access. Lines 102-104 permit a bounded configuration-mitigation trial to proceed while keeping kernel root cause unresolved and dump storage private and bounded."
+      }
+    ],
+    "behavioral_controls": {
+      "incident": {
+        "input_state": "The exact upgraded-driver parent reproduced engine death at 175K anchor plus 32K overlap; serial passed and exact recovery passed.",
+        "required_result": "Retain the destructive parent control, do not deliberately recrash for reverse-order symmetry, allow the separately authorized single-delta mitigation trial, and limit any conclusion to the measured mitigation exposure. The incident and kernel cause remain unresolved without first-fault evidence.",
+        "classification": "confirmed safe"
+      },
+      "mutation_authority": {
+        "input_state": "A separate reviewer accepted the DCP1 single-delta runner and the authorized operator is loading it.",
+        "required_result": "Treat that acceptance and authorization as external inputs; do not infer route, promotion, host-repair, or unrelated workload-interruption authority. This read-only reviewer performs no live action.",
+        "classification": "confirmed preserved"
+      },
+      "publication_only": {
+        "input_state": "A publication refresh is requested while first-fault attribution remains incomplete.",
+        "required_result": "Publish the retained parent failure, serial control, recovery, and bounded DCP1 outcome as applicable; label DCP1 as mitigation or unresolved investigation, retain known limits and omitted reverse-order control, and make no request, lifecycle, resolution, or promotion claim.",
+        "classification": "confirmed safe"
+      },
+      "fresh_transfer": {
+        "input_state": "A parent CUDA fault was retained on driver A, while a candidate combines driver B with a configuration delta and the protected parent cannot safely be recrashed.",
+        "required_result": "The retained fault may justify avoiding a destructive rerun, but it is not a matched driver-B control. Record the combined identity change and inference limit; classify a clean candidate only as bounded mitigation evidence, not proof that either the driver or configuration fixed the fault. First-fault attribution still requires the isolated diagnostic path.",
+        "classification": "pass"
+      }
+    },
+    "breakage_probes": [
+      {
+        "axis": "fail_closed_unreadable_state",
+        "concrete_state": "The retained parent artifact or exact recipe/driver identity is unreadable.",
+        "wrong_result": "Use an anecdotal crash as the parent control and skip the reverse-order run.",
+        "result": "refuted by the existing exact-identity, scenario-hash, unknown-is-not-passing, and effective-identity requirements; the new exception applies only to the parent control."
+      },
+      {
+        "axis": "malformed_boundary_input",
+        "concrete_state": "A malformed or boundary scenario is offered as retained crash evidence.",
+        "wrong_result": "Treat invalid runner evidence as a destructive parent control.",
+        "result": "refuted by the unchanged offline validation and malformed/boundary requirements at lines 47-55; this delta does not weaken them."
+      },
+      {
+        "axis": "resource_exhaustion",
+        "concrete_state": "Reverse-order symmetry would deliberately trigger another GPU fault, or core dumps could fill disk.",
+        "wrong_result": "Recrash solely for order balance or collect unbounded private dumps.",
+        "result": "refuted by lines 31-33 and 100-107."
+      },
+      {
+        "axis": "state_drift",
+        "concrete_state": "The retained parent used driver A while the candidate uses driver B plus a recipe delta.",
+        "wrong_result": "Attribute a clean candidate to the recipe delta alone.",
+        "result": "refuted when the existing identity rules and the new inference-limit requirement are applied; the transfer case passes only with a combined-change, bounded-mitigation conclusion."
+      }
+    ],
+    "residual_risk": [
+      "A single clean DCP1 exposure cannot establish crash rate, root cause, or a driver/configuration fix.",
+      "Without a core dump or equivalent isolated first-fault artifact, kernel attribution remains unresolved.",
+      "The separate runner review and live DCP1 operation are external evidence and were not re-executed or re-graded here."
+    ],
+    "missing_tests": [],
+    "promotion_decision": "No promotion was requested or authorized; promoted=false remains mandatory."
+  }
+}

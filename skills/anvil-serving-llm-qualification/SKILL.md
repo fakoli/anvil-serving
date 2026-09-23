@@ -17,6 +17,10 @@ and read its canonical skill; never infer the checkout from the caller's cwd.
 Read `references/evidence-contract.md` and `references/configuration-search.md`
 before starting. The latter owns failure investigation and candidate stopping
 rules; preserve failed configurations while testing supported successors.
+For runtime crashes, configuration improvement, or hardware-limit exploration,
+read [runtime-investigation.md](references/runtime-investigation.md) before live
+requests. Validate its incident scenario offline first; finish the incident
+branch separately from a replacement-model comparison.
 Apply the shared `session-improvement-loop:research-synthesis` policy through its Anvil
 bindings without requiring the
 user to ask for fusion: use one initial researcher and shared source registry,
