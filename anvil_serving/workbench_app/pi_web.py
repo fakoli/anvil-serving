@@ -531,9 +531,9 @@ def _git_result(
     return result
 
 
-def _verify_bridge_source(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]]) -> dict[str, str]:
+def _verify_bridge_source(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]], version: str) -> dict[str, str]:
     """Prove one complete, clean checkout before copying any source bytes."""
-    manifest = bridge_manifest()
+    manifest = bridge_manifest(version)
     source = Path(source)
     package_json = source / "package.json"
     app_shell = source / "components" / "AppShell.tsx"
@@ -689,9 +689,9 @@ def _artifact_tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
-def _apply_bridge_patch(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]]) -> None:
+def _apply_bridge_patch(source: Path, *, run: Callable[..., subprocess.CompletedProcess[str]], version: str) -> None:
     from importlib.resources import files
-    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.patch")
+    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, f"{version}-host-bridge.patch")
     try:
         result = run(["patch", "--batch", "--forward", "-p1", "-i", str(patch)], cwd=source, check=False, text=True, capture_output=True, timeout=30)
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -700,19 +700,19 @@ def _apply_bridge_patch(source: Path, *, run: Callable[..., subprocess.Completed
         raise PiWebError("cannot apply the pinned Pi Web bridge to the reviewed source")
 
 
-def _bridge_install_descriptor(*, parent_origin: str, artifact_sha256: str) -> dict[str, object]:
-    return {"bridge": bridge_manifest(), "parent_origin": parent_origin, "artifact_sha256": artifact_sha256}
+def _bridge_install_descriptor(*, parent_origin: str, artifact_sha256: str, version: str) -> dict[str, object]:
+    return {"bridge": bridge_manifest(version), "parent_origin": parent_origin, "artifact_sha256": artifact_sha256}
 
 
 def _build_staged_bridge(
-    source: Path, destination: Path, *, node: str, parent_origin: str, service_user: str, user_home: str,
+    source: Path, destination: Path, *, node: str, parent_origin: str, service_user: str, user_home: str, version: str,
     run: Callable[..., subprocess.CompletedProcess[str]], chown: Callable[[Path, int, int], None], uid: int,
 ) -> dict[str, object]:
-    manifest = _verify_bridge_source(source, run=run)
+    manifest = _verify_bridge_source(source, run=run, version=version)
     _archive_tracked_bridge_source(
         source, destination, manifest=manifest, run=run, chown=chown, uid=uid,
     )
-    _apply_bridge_patch(destination, run=run)
+    _apply_bridge_patch(destination, run=run, version=version)
     npm = npm_script_for(node)
     prefix = ["runuser", "-u", service_user, "--"]
     _bounded_run(run, prefix + _build_env(node=node, user_home=user_home) + [node, str(npm), "ci"], cwd=destination)
@@ -720,7 +720,7 @@ def _build_staged_bridge(
     entry = destination / "bin" / "pi-web.js"
     if not _regular_file(entry):
         raise PiWebError("the pinned Pi Web bridge did not produce its entry script")
-    return _bridge_install_descriptor(parent_origin=parent_origin, artifact_sha256=_artifact_tree_sha256(destination))
+    return _bridge_install_descriptor(parent_origin=parent_origin, artifact_sha256=_artifact_tree_sha256(destination), version=version)
 
 
 def _safe_install_root(root: Path) -> None:
@@ -891,6 +891,7 @@ class PiWebInstaller:
         return _bridge_install_descriptor(
             parent_origin=_bridge_origin(self.config.bridge_parent_origin),
             artifact_sha256=_artifact_tree_sha256(version_dir),
+            version=self.config.version,
         )
 
     def _installed_bridge_matches(self, root: Path, version_dir: Path) -> bool:
@@ -969,7 +970,7 @@ class PiWebInstaller:
         try:
             descriptor = _build_staged_bridge(
                 config.bridge_source, staged, node=node, parent_origin=expected_origin,
-                service_user=config.service_user, user_home=user_home, run=self._run,
+                service_user=config.service_user, user_home=user_home, version=config.version, run=self._run,
                 chown=self._chown, uid=uid,
             )
             return True, descriptor, self._promote_bridge(staged, version_dir)
@@ -1200,19 +1201,19 @@ _BRIDGE_PACKAGE = "anvil_serving"
 _BRIDGE_DIR = "_pi_web_bridge"
 
 
-def bridge_manifest():
+def bridge_manifest(version: str = DEFAULT_VERSION):
     """Return the installed immutable bridge descriptor without staging it."""
     from importlib.resources import files
     try:
-        raw = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.json").read_bytes()
+        raw = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, f"{version}-host-bridge.json").read_bytes()
         manifest = json.loads(raw)
     except (OSError, ValueError) as exc:
         raise PiWebError("the pinned Pi Web bridge asset is unavailable") from exc
     if (type(manifest) is not dict or manifest.get("schema") != "anvil-serving.pi-web-bridge/v1"
-            or manifest.get("package") != PACKAGE or manifest.get("version") != DEFAULT_VERSION
+            or manifest.get("package") != PACKAGE or manifest.get("version") != version
             or not isinstance(manifest.get("patch_sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", manifest["patch_sha256"])):
         raise PiWebError("the pinned Pi Web bridge asset is invalid")
-    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, "0.9.0-host-bridge.patch").read_bytes()
+    patch = files(_BRIDGE_PACKAGE).joinpath(_BRIDGE_DIR, f"{version}-host-bridge.patch").read_bytes()
     if __import__("hashlib").sha256(patch).hexdigest() != manifest["patch_sha256"]:
         raise PiWebError("the pinned Pi Web bridge asset changed")
     for field in ("source_commit", "package_json_sha256", "app_shell_sha256"):
