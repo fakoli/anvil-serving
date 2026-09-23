@@ -1,7 +1,9 @@
 """The public signature gate must scan committed bytes, never test output."""
 import importlib.util
+import io
 import json
 import subprocess
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -42,6 +44,11 @@ def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, mon
         return subprocess.CompletedProcess(command, scanner_exit, b"sensitive stdout", b"sensitive stderr")
 
     monkeypatch.setattr(scanner.subprocess, "run", run)
+    # Early 3.11 lacks extraction filters; the snapshot must not need extractall.
+    def unsupported_extractall(*args, **kwargs):
+        raise AssertionError("snapshot must copy only regular files")
+
+    monkeypatch.setattr(scanner.tarfile.TarFile, "extractall", unsupported_extractall)
     result = scanner.scan_signature_snapshot(tmp_path)
     assert result["ok"] is (scanner_exit == 0)
     assert result["exit_code"] == scanner_exit and len(result["head"]) == 40
@@ -51,6 +58,29 @@ def test_signature_gate_exports_head_and_preserves_scanner_failure(tmp_path, mon
     with pytest.raises(ValueError, match="commit tracked changes"):
         scanner.scan_signature_snapshot(tmp_path)
     assert len(paths) == 1
+
+
+@pytest.mark.parametrize("name,kind", [
+    ("../outside", tarfile.REGTYPE), ("/outside", tarfile.REGTYPE),
+    ("C:outside", tarfile.REGTYPE), ("..\\outside", tarfile.REGTYPE),
+    ("link", tarfile.SYMTYPE), ("hardlink", tarfile.LNKTYPE),
+])
+def test_signature_snapshot_rejects_unsafe_archive_members(tmp_path, monkeypatch, name, kind):
+    archive = io.BytesIO()
+    with tarfile.open(fileobj=archive, mode="w") as bundle:
+        member = tarfile.TarInfo(name)
+        member.type = kind
+        member.linkname = "../outside"
+        bundle.addfile(member)
+
+    def git(root, *args):
+        return {"status": b"", "rev-parse": b"a" * 40,
+                "show": b"ghcr.io/gitleaks/gitleaks@sha256:" + b"a" * 64,
+                "archive": archive.getvalue()}[args[0]]
+
+    monkeypatch.setattr(scanner, "run_git", git)
+    with pytest.raises(ValueError, match="unsupported snapshot archive member"):
+        scanner.scan_signature_snapshot(tmp_path)
 
 
 @pytest.mark.parametrize("depth", [0, 1, 2])
