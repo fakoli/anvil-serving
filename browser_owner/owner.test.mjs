@@ -495,14 +495,18 @@ test("owner Jev rechecks every abstention after mutation, navigation, and expiry
   for (const change of ["mutation", "navigation"]) for (const choice of abstentions) {
     const trusted = trustedPageHook(); let release, entered; const wait = new Promise((resolve) => { release = resolve; }), started = new Promise((resolve) => { entered = resolve; });
     const core = await owner(site.origin, {}, undefined, trusted.prepare, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); entered(); await wait; return { code: 0, stdout: answer(projection, choice, projection.entities.map((entity) => entity.id)) }; }));
-    const session = core.session(), page = await trusted.page; t.after(() => core.close()); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `${change}-${choice}` })); const pending = session.jevResolve(observation.observation_id); await started;
+    try {
+    const session = core.session(), page = await trusted.page; await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `${change}-${choice}` })); const pending = session.jevResolve(observation.observation_id); await started;
     if (change === "mutation") await page.evaluate(() => document.querySelector("button").setAttribute("data-after-reply", "yes")); else await page.goto(`${site.origin}/`);
     release(); assert.equal((await pending).outcome, change === "mutation" ? "stale_observation" : "unknown_observation");
+    } finally { await core.close(); }
   }
   for (const choice of abstentions) {
     let tick = 0;
     const core = await owner(site.origin, { ttl: 5 }, () => tick, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); tick = 6; return { code: 0, stdout: answer(projection, choice, projection.entities.map((entity) => entity.id)) }; }));
-    const session = core.session(); t.after(() => core.close()); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `expiry-${choice}` })); assert.deepEqual(await session.jevResolve(observation.observation_id), { outcome: "expired_observation" });
+    try {
+    const session = core.session(); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `expiry-${choice}` })); assert.deepEqual(await session.jevResolve(observation.observation_id), { outcome: "expired_observation" });
+    } finally { await core.close(); }
   }
 });
 
