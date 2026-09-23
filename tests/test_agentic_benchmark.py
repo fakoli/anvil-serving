@@ -86,39 +86,28 @@ def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
     assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
 
 
-def test_planning_accepts_an_ordered_numbered_workflow():
-    scenario, expected = build_agentic_scenario("planning")
-    trace = passing_trace(expected)
-    trace["final_answer"] = "1. Inspect\n2. Patch\n3. Test"
-
-    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
-
-
 @pytest.mark.parametrize(("answer", "passed"), [
-    ("1. **Inspect** the existing tests and test coverage.\n"
-     "2. **Patch** the defect.\n3. **Test** the change.", True),
-    ("1. Inspect\n   - Test coverage is missing.\n2. Patch\n3. Test", True),
-    ("## Inspect\n- Test coverage is missing.\n## Patch\n## Test", True),
-    ("- Inspect\n  - Test coverage is missing.\n- Patch\n- Test", True),
-    ("1. Patch\n2. Inspect\n3. Test", False),
-    ("1. Inspect\n2. Test\n3. Patch", False),
-    ("Inspect -> Patch -> Test", True),
-    ("inspection -> dispatch -> test", False),
-    ("1. Inspect the code before deciding how to patch and test it.", False),
-    ("We should inspect before we patch and test.", False),
+    ("inspect -> patch -> test", True),
+    ("  Inspect  ->  Patch  ->  Test\n", True),
+    ("# Step 1: Inspect\n# Step 2: Patch\n# Step 3: Test", False),
+    ("1. Inspect\n2. Patch\n3. Test", False),
+    ("inspect, patch, test", False),
+    ("inspect -> patch -> test.", False),
+    ("patch -> inspect -> test", False),
+    ("inspect -> patch -> test, then deploy", False),
 ])
-def test_planning_scores_step_order_not_incidental_substrings(answer, passed):
+def test_planning_requires_disclosed_canonical_workflow(answer, passed):
     scenario, expected = build_agentic_scenario("planning")
     trace = passing_trace(expected)
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "6"
+    assert result["oracle_revision"] == "7"
 
 
 def test_fixture_prompts_disclose_scored_format_result_and_tool_boundaries():
     planning, _ = build_agentic_scenario("planning")
-    assert "three separate step headings" in planning["messages"][0]["content"]
+    assert "additional punctuation, or other text:\ninspect -> patch -> test" in planning["messages"][0]["content"]
     assert "inspect -> patch -> test" in planning["messages"][0]["content"]
     for case, requirement in (
         ("tool-sequence", "exact marker"),

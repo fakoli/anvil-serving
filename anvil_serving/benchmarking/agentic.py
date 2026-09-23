@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import re
 from typing import Any, Mapping
 
 from .jobs import BenchmarkJobError
@@ -13,7 +12,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "6"
+AGENTIC_ORACLE_REVISION = "7"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -93,13 +92,11 @@ def build_agentic_scenario(
         scenario["messages"] = [{
             "role": "user",
             "content": (
-                "Return only the safe three-step workflow for changing code: inspect, patch, test. "
-                "Use three separate step headings in that order, or exactly: inspect -> patch -> test."
+                "Return the following workflow on one line, with arrows and no headings, "
+                "additional punctuation, or other text:\ninspect -> patch -> test"
             ),
         }]
         expected["final"] = "inspect -> patch -> test"
-        expected["final_kind"] = "ordered_terms"
-        expected["final_terms"] = ["inspect", "patch", "test"]
     elif scenario_type == "reasoning":
         scenario["messages"] = [{
             "role": "user",
@@ -328,28 +325,6 @@ def score_agentic_trace(
     elif expected.get("final_kind") == "contains_terms":
         terms = expected.get("final_terms", [])
         final_passed = bool(terms) and all(term in normalized_final for term in terms)
-    elif expected.get("final_kind") == "ordered_terms":
-        terms = expected.get("final_terms", [])
-        if terms:
-            labels = "|".join(re.escape(term) for term in terms)
-            # Prefer step headings over incidental words inside their descriptions.
-            answer = final if isinstance(final, str) else ""
-            headings = []
-            for prefix in (r"(?:\d+[.)]|\#{1,6})[ \t]+", r"(?:[-*+][ \t]+)?"):
-                matches = re.findall(
-                    rf"(?im)^([ \t]*){prefix}(?:\*\*|__|`)?({labels})\b",
-                    answer,
-                )
-                if matches:
-                    depth = min(len(indent.expandtabs()) for indent, _ in matches)
-                    headings = [label for indent, label in matches if len(indent.expandtabs()) == depth]
-                if len(headings) > 1:
-                    break
-            # The canonical inline workflow is exact; prose mentions are not steps.
-            final_passed = (
-                [item.casefold() for item in headings] == terms
-                or normalized_final == " -> ".join(terms)
-            )
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
