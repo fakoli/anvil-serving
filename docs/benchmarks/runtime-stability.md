@@ -107,7 +107,7 @@ an allowed diagnostic finish reason; it does not establish natural completion.
 false. Neither this artifact nor an ordinary throughput result resolves an
 incident that its workload did not exercise.
 
-Follow the [qualification investigation workflow](../../skills/anvil-serving-llm-qualification/references/runtime-investigation.md)
+Follow the [qualification investigation workflow](https://github.com/fakoli/anvil-serving/blob/main/skills/anvil-serving-llm-qualification/references/runtime-investigation.md)
 for parent/changed/reverse-parent trials, bounded envelope searches, detailed
 recipe notes and restoration. Use the existing [campaign publication contract](repeatable-campaigns.md)
 for the full identity, raw evidence, failed attempts, tested limits and public
