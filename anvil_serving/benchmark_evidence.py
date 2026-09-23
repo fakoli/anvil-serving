@@ -354,8 +354,10 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             errors.append(str(exc))
         rounds = _list(raw.get("rounds"))
         identities = _list(raw.get("identity_observations"))
-        identity_redacted = any(str(_mapping(row).get("container_id", "")).startswith("redacted:")
-                                for row in identities)
+        identity_redacted = (bool(identities)
+                             and raw.get("configuration_identity") == "managed_container_observed_labels_matched"
+                             and all(re.fullmatch(r"redacted:sha256:[0-9a-f]{64}", str(_mapping(row).get("container_id", "")))
+                                     for row in identities))
         identity_recorded = (bool(identities)
                              and raw.get("configuration_identity") == "managed_container_observed_labels_matched"
                              and all(re.fullmatch(r"[0-9a-f]{64}", str(_mapping(row).get("container_id", "")))

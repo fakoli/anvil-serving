@@ -175,6 +175,8 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             for invalid_id in ("redacted:sha256:short", "redacted:" + "b" * 64, "a" * 64):
                 sanitized["identity_observations"][-1]["container_id"] = invalid_id
                 assert summarize_payload(sanitized, "invalid.json")["validation_errors"]
+                incomplete = {**sanitized, "status": "incomplete"}
+                assert summarize_payload(incomplete, "mixed.json")["container_identity_provenance"] == "unverified"
             for changes in ({"promoted": True}, {"performance_eligible": True},
                             {"scheduler_overlap": "measured"}, {"identity_observations": []},
                             {"configuration_identity": "unverified"}):
