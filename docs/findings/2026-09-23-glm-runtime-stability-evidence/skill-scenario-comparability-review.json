@@ -1,0 +1,83 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently review the final parent/candidate scenario-comparability skill addition after an accidental output-cap mismatch",
+  "gate_state": "not_required",
+  "targets": {
+    "repository": "/workspace/anvil-serving",
+    "file": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
+    "baseline_before_addition_sha256": "039acfed3458d820d3eec7c0fe1cfa00c8ae568408b7645f2aa8cc65a9284a00",
+    "rejected_intermediate_sha256": "f535c7540e631d9da97067168c16e82c4509622b771b4de9596e30ec7201fe22",
+    "final_candidate_sha256": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277",
+    "implementing_model": "gpt-6-astra",
+    "reviewer_model": "gpt-5.6-sol",
+    "scope": "final three-line instruction addition only; no live action or broad replay"
+  },
+  "tools_used": [
+    {
+      "name": "git_status_and_read_only_file_inspection",
+      "source_class": "cli",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "/workspace/anvil-serving",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/tmp/anvil-runtime-skill-review-20260923/final-scenario-comparability-delta-operator-workflow-v1.json",
+      "kind": "findings-summary",
+      "evidence_scope": "instruction-delta-review",
+      "promotion_quality_evidence": false,
+      "summary": {
+        "disposition": "accept",
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "intermediate_rejected": 1,
+        "promoted": false
+      }
+    }
+  ],
+  "advisory_priors": [],
+  "recommendation": "needs_more_data",
+  "review_disposition": "accept_final_delta",
+  "human_gate_required": false,
+  "promoted": false,
+  "delta_review": {
+    "findings": [],
+    "acceptance": "ACCEPT",
+    "reference": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md:18",
+    "behavior": "Mechanically compare normalized parent and candidate scenario fields before traffic, retain the diff including both output caps and reasoning policy, preserve accidental mismatches as failed or non-comparable attempts, and correct them under a new scenario identity.",
+    "fresh_mismatched_budget_control": {
+      "input_state": {
+        "parent_anchor_output_cap": 2048,
+        "candidate_anchor_output_cap": 512,
+        "other_intended_delta": "DCP1 only",
+        "reasoning_policy": "otherwise matched"
+      },
+      "wrong_result": "Treat the 512-cap no-answer as a matched DCP1 regression, erase it after a 2048 retry, or combine it with the matched 2048 results.",
+      "required_result": "The normalized pre-traffic diff catches the cap mismatch. If the accidental attempt already exists, retain it as failed and non-comparable. Create a new scenario identity with the 2048 cap; only that matched identity may support the later pass and 3/3 overlap statement.",
+      "classification": "pass"
+    },
+    "reasoning_policy_transfer": {
+      "input_state": "Output caps match, but the candidate silently changes reasoning policy.",
+      "required_result": "The same normalized diff blocks traffic or marks any existing attempt non-comparable; the corrected policy receives a new scenario identity.",
+      "classification": "pass"
+    },
+    "incident_control": "The accidental 512-cap no-answer remains evidence of that malformed comparison only. It cannot close or worsen the incident; the exact 2048 matched retry and three repeated overlap passes remain bounded mitigation evidence, not root-cause proof.",
+    "mutation_control": "The addition authorizes no model request, reload, repair, route change, or promotion. Existing preview, confirmation, resource-owner, and human gates remain intact.",
+    "publication_control": "Publication must retain the 512-cap attempt as failed/non-comparable and identify the corrected 2048 scenario separately. It may report the three matched passes but cannot rewrite the first attempt or imply root-cause resolution or promotion.",
+    "intermediate_finding": {
+      "classification": "confirmed and resolved",
+      "severity": "medium",
+      "detail": "The intermediate text required only an unspecified comparison, which could be satisfied by the same fallible visual review that allowed the live mismatch. The final text now requires a mechanical normalized diff and retention of that diff."
+    },
+    "residual_risk": [
+      "The normalized comparison must include the complete scenario schema; the explicit output-cap and reasoning-policy fields are minimums, not an allowlist.",
+      "Matched 3/3 exposure remains bounded mitigation evidence and does not estimate crash rate or establish kernel root cause."
+    ],
+    "missing_tests": [],
+    "promotion_decision": "No promotion was requested or authorized; promoted=false remains mandatory."
+  }
+}

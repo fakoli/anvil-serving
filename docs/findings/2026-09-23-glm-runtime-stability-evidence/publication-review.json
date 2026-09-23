@@ -1,0 +1,104 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent read-only adversarial review of the GLM runtime stability source and public evidence delta from fec9ca97 through 15c7161f, including claim reconciliation, privacy, recipe reconstruction, restoration, failed native artifacts, limitations, and additive schema safety.",
+  "gate_state": "accepted_for_pr_exact_head_ci",
+  "targets": [
+    {
+      "kind": "source_range",
+      "base": "fec9ca97",
+      "head": "15c7161f55124000954d120d3e9b078bed4d6f43"
+    },
+    {
+      "kind": "publication",
+      "path": "docs/findings/2026-09-23-glm-runtime-stability.md"
+    },
+    {
+      "kind": "evidence_bundle",
+      "path": "docs/findings/2026-09-23-glm-runtime-stability-evidence"
+    }
+  ],
+  "tools_used": [
+    "read-only git diff/status/log inspection",
+    "source and documentation inspection",
+    "native-to-summary metric reconciliation",
+    "manifest and sanitization-receipt hash verification",
+    "privacy and identity-pattern scans",
+    "offline summarize_payload breakage probes"
+  ],
+  "artifacts": {
+    "findings_summary": [],
+    "reviewed_hashes": {
+      "source_head": "15c7161f55124000954d120d3e9b078bed4d6f43",
+      "source_tree": "2fdc23239c57042a61e34c4b4f93adb1e948f287",
+      "pre_review_insertion_manifest_sha256": "b9f8b69e03f414255565c62ad157cf7ddef04f5c1580a92434e45b2aeef1b1f6",
+      "development_source_sha256": "efd5db8b2725ba78d03f4616b6c45cf3d2a9465306a148ab14cc3cae9bbe74e2",
+      "summary_sha256": "cc0c94abbc463939a188a3e681852c56dd15e9239463efdac4b2797054138646",
+      "public_parent_recipe_sha256": "ff4488beee7d4d49cb6a0dff73cb7c3c662d2990b6a9d519110244f9b040bc51",
+      "public_dcp1_recipe_sha256": "f1eed7c227de4b0b004b4d50f47fb10429bc000f981e996e1aeb81f6711652ec"
+    },
+    "verified": [
+      "DCP2 serial passed and the matched overlap retained engine death, illegal-memory-access evidence, and two GPU Xid31 FAULT_PDE virtual-write faults; first-fault attribution remains explicitly unresolved.",
+      "DCP1 retained one corrected matched-small pass and three matched 175K/32K overlap passes. The record makes no reliability-rate, broad quality, speed, scheduler-batch, replacement, or promotion claim.",
+      "The accidental 512-token DCP1 failure remains immutable and explicitly non-comparable with the 2048-token parent/matched-small cap.",
+      "The 201K guard retained 139.460154 seconds available versus 145 required and records zero generation requests.",
+      "Startup-reported KV capacity is kept distinct from configured metadata: DCP2 1416244 tokens, DCP1 825268 tokens, configured context 327680 and C4. The publication explains that four full configured windows exceed the DCP1 pool.",
+      "The sanitized parent and candidate recipes preserve immutable weights/image and all compute settings except DCP2 to DCP1, with only isolated name/port and narrative metadata changes. Both remain experimental and require local identity materialization plus managed preview.",
+      "Restoration returned the original DCP2 recipe/registry/image/checkpoint/model/port/GPU assignment; direct and authenticated routed smoke/JSON checks passed, the router hash and exclusive ownership remained unchanged, and the candidate is absent.",
+      "All seven public stability artifacts summarize without validation errors, report sanitized container provenance, remain performance-ineligible and promoted=false, and cannot enter performance comparison.",
+      "All 30 public container_id occurrences use valid redacted:sha256 tokens; private/public file receipts retain provenance. No private host, personal path, live GPU UUID, private address, credential, or raw container ID was found.",
+      "The pre-review-insertion manifest has 10 final roles, 69 unique referenced files, exact byte/hash matches, no symlinks, and only its source and generated manifest are self-excluded."
+    ],
+    "breakage_probes": [
+      {
+        "axis": "fail_closed_unreadable_state",
+        "state": "refuted",
+        "input": "missing, unreadable, hash-invalid, identity-unavailable, or changed managed state",
+        "wrong_result_prevented": "counting a completed runtime exposure or replay-ready identity",
+        "evidence": "scenario/output reservation, managed identity gates, validation errors, and 69/69 manifest file checks"
+      },
+      {
+        "axis": "malformed_boundary_input",
+        "state": "refuted",
+        "input": "CRLF/control characters, duplicate keys, oversized/FIFO/device scenario input, command/path metacharacters, malformed or mixed raw/redacted IDs",
+        "wrong_result_prevented": "network traffic, shell execution, or a recorded/sanitized provenance label",
+        "evidence": "strict scenario parser and 15c7161f three-state identity classification"
+      },
+      {
+        "axis": "resource_exhaustion_and_bounds",
+        "state": "refuted_with_documented_limit",
+        "input": "faulty tokenizer growth, oversized metadata/SSE lines, stalled streams, or insufficient remaining campaign time",
+        "wrong_result_prevented": "unbounded memory/network execution or a claimed 201K trial",
+        "evidence": "prompt/response/SSE bounds, per-request and total deadlines, process-tree termination, and zero-request 201K refusal; server-compute stop after client kill remains unknown"
+      },
+      {
+        "axis": "cross_seam_state_drift",
+        "state": "refuted_for_reviewed_scope",
+        "input": "container/config change across rounds, recipe/scenario mismatch, stale source receipt, or failed restoration",
+        "wrong_result_prevented": "matched-trial or restored-baseline claims across different state",
+        "evidence": "per-round managed identity, scenario hashes and mechanical comparisons, 15c7161f source receipt, exact recipe diff, and restoration receipt"
+      }
+    ],
+    "verification_receipts": {
+      "focused_current_head": "272 passed in 8.91s; Ruff passed",
+      "full_local_prior_head": "9596 passed, 53 skipped in 321.18s at 262dc3b1",
+      "publication": "strict docs, CLI audit, link, diff, privacy/hygiene, manifest and native artifact validation reported passing",
+      "required_next_check": "exact 15c7161f PR-head CI"
+    },
+    "residual_risk": [
+      "Kernel first fault is unresolved; there is no CUDA core dump, sanitizer, reduced-kernel oracle, reverse-order recrash, 201K/310K replay, cache-churn/cancellation test, full-window C4 result, or sustained soak.",
+      "DCP1 has lower startup-reported KV capacity and lacks fresh protected vision/OCR, broad agentic/SWE, natural-output coherence, and real-client qualification.",
+      "The runtime source attestation is partial because the downstream kpool addition is absent from the imported public Git revision.",
+      "The final manifest hash will change once this review packet is inserted; the hash above intentionally identifies the exact pre-review-insertion bundle."
+    ]
+  },
+  "advisory_priors": [
+    "Source/publication implementer: GPT-6 Astra.",
+    "Evaluated model/runtime: GLM-5.3-Flash EXL3; reviewer: independent GPT-5.6 Sol.",
+    "The evaluated GLM model did not grade its own evidence; deterministic gates and independent reviewer packets remain separate.",
+    "No promotion was requested, authorized, or performed. The exact DCP2 baseline remains restored.",
+    "operation_contracts and workflow_packet_validate were unavailable; no claim of transport-parity or packet-sufficiency proof is made from their absence."
+  ],
+  "recommendation": "ACCEPT the reviewed source and public evidence for PR exact-head CI. Preserve no-promotion and the documented diagnostic limits; any DCP1 deployment or promotion requires a separate human gate and the open quality, modality, client, capacity, sustained-runtime, and attribution work.",
+  "human_gate_required": false,
+  "promoted": false
+}

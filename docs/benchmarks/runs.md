@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-09-23 GLM runtime investigation
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-09-23 | Runtime stability / configuration diagnosis | Same pinned EXL3 4-bpw/v84 image, FP8 KV, TP2/EP2, APC, no MTP, batch 2,048; DCP2 parent versus DCP1 | 2x RTX PRO 6000 Blackwell Max-Q | Parent serial passed; 175K/32K overlap crashed with two Xid31 faults; DCP1 3/3 matched overlaps passed; reported KV 1,416,244 → 825,268 tokens | `functional` diagnostic, `challenger`, `no-promotion`; exact baseline restored; no speed, failure-rate or full-envelope claim | [GLM dossier](models/glm53-flash.md) · [finding](../findings/2026-09-23-glm-runtime-stability.md) |
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 ## 2026-09-22 model shortlist validation

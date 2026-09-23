@@ -1,0 +1,58 @@
+{
+  "revision": "15c7161f55124000954d120d3e9b078bed4d6f43",
+  "files": {
+    "anvil_serving/benchmarking/stability.py": "0d65a23a98cc5ff769c96f711fc2861844cf2bd5e1fa16dfef87703bfe015d0e",
+    "anvil_serving/benchmarking/requests.py": "7bf9166af26f6866fe4bce4cb3becc1f5e0fd06cea13d581f405229814b94e64",
+    "anvil_serving/benchmark_evidence.py": "dd249460df92a1da7be2aff93632be57de0e2e8fac3f46f8bf1be4de160b05db",
+    "anvil_serving/commands/eval.py": "cbddaee853ac9227f66d38448af99e15b86aa570cab8c71ad12ef6ef98f6c946",
+    "skills/anvil-serving-llm-qualification/SKILL.md": "14fef87f0b02ee8d5f350c185cd86d8aca6e8a8ea8ac11f877b5178df1dc85ae",
+    "skills/anvil-serving-llm-qualification/references/runtime-investigation.md": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277",
+    "tests/test_stability_benchmark.py": "095010ce562770257cfe6985f14de5fcf78fc0d345fe2b790b69180979cd8661"
+  },
+  "offline_targeted_tests": "272 passed in 8.91s after both final provenance-label corrections.",
+  "skill_review": "Accepted independent paired scenario simulations, fresh transfer case and mechanical scenario-diff follow-up; not measured model performance.",
+  "broad_tests": {
+    "revision": "262dc3b1661bc74ff9acba32806bf21a198bc128",
+    "passed": 9596,
+    "skipped": 53,
+    "seconds": 321.18,
+    "scope": "Full local suite before the final identity-provenance label corrections; final corrections covered by 272 targeted tests. Exact PR-head CI is a separate release gate.",
+    "superseded_attempt": "Earlier final run stopped at an unclassified hardware mention; entry added, focused docs and this full run passed."
+  },
+  "documentation": "Strict MkDocs, 843 tracked Markdown links, skill quick_validate, full CLI audit, Ruff and public semantic-hygiene scan passed.",
+  "prior_live_revision": "13d5bdb0edc5aac83e186d6244310dd40a07baf4",
+  "package_validation": {
+    "build": "sdist and wheel built",
+    "metadata": "twine passed both artifacts",
+    "clean_wheel_smoke": {
+      "ok": true,
+      "result": {
+        "canonical_command": "anvil-serving router run --help",
+        "entrypoint": "/tmp/anvil-wheel-smoke-ata5__ol/venv/bin/anvil-serving",
+        "installed_package": "/tmp/anvil-wheel-smoke-ata5__ol/venv/lib/python3.13/site-packages/anvil_serving/__init__.py",
+        "package_data": [
+          "anvil_serving/py.typed",
+          "anvil_serving/_benchmark_profiles/smoke.json",
+          "anvil_serving/_benchmark_profiles/scout.json",
+          "anvil_serving/_benchmark_profiles/deep.json",
+          "anvil_serving/_node/mcp_proxy.mjs",
+          "anvil_serving/_media_workflows/bundle.lock.json",
+          "anvil_serving/_media_workflows/registry.json",
+          "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.json",
+          "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.graph.json",
+          "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.json",
+          "anvil_serving/_media_workflows/video.wan2.2-ti2v-5b-v1.graph.json",
+          "anvil_serving/_hermes_skills/anvil-media/SKILL.md"
+        ],
+        "wheel": "anvil_serving-1.3.0-py3-none-any.whl"
+      }
+    },
+    "revision": "262dc3b1661bc74ff9acba32806bf21a198bc128",
+    "new_command_preview": {
+      "passed": true,
+      "network_requests": 0,
+      "output_created": false,
+      "invocation": "Clean isolated wheel installation; eval benchmark stability --dry-run."
+    }
+  }
+}

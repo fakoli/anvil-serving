@@ -1,0 +1,40 @@
+{
+  "bound_port": 8002,
+  "bound_ports": [
+    8002
+  ],
+  "container": "glm-runtime-dcp1-candidate",
+  "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+  "gpu_selection": [
+    "GPU-00000000-0000-0000-0000-000000000001",
+    "GPU-00000000-0000-0000-0000-000000000002"
+  ],
+  "health": null,
+  "host_memory": {
+    "current_bytes": 55151386624,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 1048576,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 13932,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 55834574848,
+    "ram_plus_swap_limit_bytes": 55835623424
+  },
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "native_kv_offload": false,
+  "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+  "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "running": true,
+  "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "state": "running"
+}

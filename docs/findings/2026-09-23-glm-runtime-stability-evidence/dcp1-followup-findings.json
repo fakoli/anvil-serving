@@ -1,0 +1,67 @@
+{
+  "review": "Independent follow-up of the three DCP1 hold findings",
+  "reviewer_model": "gpt-5.6-sol",
+  "implementing_model": "gpt-6-astra",
+  "evaluated_model": "GLM-5.3-Flash exact managed EXL3 profile",
+  "verdict": "accept_for_already_defined_bounded_dcp1_trial",
+  "blocking_findings": [],
+  "resolved_findings": [
+    {
+      "classification": "refuted_after_fix",
+      "area": "exact SSE identity",
+      "evidence": "Present SSE IDs must now be nonempty strings of at most 512 characters and are compared without truncation; changing IDs fail as protocol_error.",
+      "references": [
+        "anvil_serving/benchmarking/requests.py:404",
+        "anvil_serving/benchmarking/stability.py:240",
+        "tests/test_stability_benchmark.py:291"
+      ]
+    },
+    {
+      "classification": "refuted_after_fix",
+      "area": "malformed SSE identity",
+      "evidence": "Empty, non-string, and over-512-character IDs fail closed; the real CLI synthetic transport includes non-string, oversized, and changing-ID cases.",
+      "references": [
+        "anvil_serving/benchmarking/requests.py:405",
+        "tests/test_stability_benchmark.py:291"
+      ]
+    },
+    {
+      "classification": "refuted_after_fix",
+      "area": "candidate recipe identity",
+      "evidence": "Hardware note, trial note, and rationale consistently describe DCP1; the immutable publisher image tag's DCP2 name is explicitly explained and startup remains the effective-setting gate.",
+      "references": [
+        "/evidence/glm-runtime-20260923/candidate-dcp1-recipe.toml:22",
+        "/evidence/glm-runtime-20260923/candidate-dcp1-recipe.toml:95",
+        "/evidence/glm-runtime-20260923/candidate-dcp1-recipe.toml:105"
+      ]
+    }
+  ],
+  "accepted_trial_envelope": [
+    "Use the managed candidate recipe bound to registry digest cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4 and rendered recipe digest 561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d.",
+    "Keep the candidate isolated at 127.0.0.1:8002 with no route, client-catalog, driver, image, weights, KV dtype, APC, batching, context, sequence cap, containment, or speculation change.",
+    "After managed load, require startup logs and managed identity to prove effective DCP1 and measure KV capacity. The measured capacity must exceed the actual tokenized simultaneous prompt plus maximum-output demand before the 175K/32K request.",
+    "Run the one-round small thinking-enabled overlap scenario first, then the one-round 175K/32K overlap only if small runtime, retrieval, token, identity, and coverage gates pass.",
+    "Stop immediately on Xid, CUDA error, engine death, OOM, identity drift, missed coverage, malformed/server error, or unrelated workload; preserve native, owner, kernel, status, and identity evidence.",
+    "A passing arm is bounded mitigation evidence only. It does not establish kernel root cause, crash rate, full C4 context capacity, performance eligibility, qualification, or promotion.",
+    "Restore and verify the exact DCP2 baseline afterward. Do not deliberately rerun the known-crashing parent overlap merely to satisfy reverse-order control guidance."
+  ],
+  "verification": {
+    "focused_and_compatibility_tests": "270 passed in 8.28s independently",
+    "diff_check": "passed",
+    "ruff": "reported passing by campaign owner; reviewer environment does not contain the Ruff module or executable",
+    "candidate_registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+    "candidate_recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "small_scenario_sha256": "a399feed2807ff64ff7563ef1398e2b1eedeb20d477f8daf82d16d8c31c597f1",
+    "overlap_scenario_sha256": "fa7eaff3554690e90a1958131d709a26066c2489c832b15b36e57be84e15440c",
+    "source_hashes": {
+      "anvil_serving/benchmarking/requests.py": "7bf9166af26f6866fe4bce4cb3becc1f5e0fd06cea13d581f405229814b94e64",
+      "anvil_serving/benchmarking/stability.py": "76544b202b4abab239fc6b51f4a19fda43429127edd4122fa6106508b24f1f67",
+      "tests/test_stability_benchmark.py": "32066f7d79a6b8c62a7bbfc74c8f000b4b170d858fae71dfc932779d5ea7b6c9"
+    },
+    "live_requests_by_reviewer": 0,
+    "service_or_model_mutations_by_reviewer": 0
+  },
+  "skill_lesson": "Configuration-search guidance should explicitly allow a safety exception to reverse-order parent controls when the matched parent already reproducibly causes GPU Xid or engine death. Preserve and bind the measured parent evidence instead of deliberately repeating a destructive fault.",
+  "human_gate_required": true,
+  "promoted": false
+}

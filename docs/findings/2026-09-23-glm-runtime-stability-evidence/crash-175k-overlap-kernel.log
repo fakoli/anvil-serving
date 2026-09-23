@@ -1,0 +1,2 @@
+Sep 23 16:57:18 primary-node kernel: NVRM: Xid (PCI:0000:03:00): 31, pid=728881, name=python, intr 00000000. MMU Fault: ENGINE GRAPHICS GPC6 GPCCLIENT_T1_4 faulted @ 0xc4_cfa23000. Fault is of type FAULT_PDE ACCESS_TYPE_VIRT_WRITE
+Sep 23 16:57:18 primary-node kernel: NVRM: Xid (PCI:0000:01:00): 31, pid=728880, name=python, intr 00000000. MMU Fault: ENGINE GRAPHICS GPC7 GPCCLIENT_T1_8 faulted @ 0xc4_c22df000. Fault is of type FAULT_PDE ACCESS_TYPE_VIRT_WRITE

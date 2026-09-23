@@ -1,0 +1,301 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-09-23T17:39:21.345959+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:36:20.987188+00:00",
+      "phase": "start",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:36:21.023059+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:37:50.670736+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:37:50.706450+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "bound_port": 8002,
+      "container_id": "redacted:sha256:47e68a072e935b78edb4c6653a7c388e408a0bd34778e43d0a51f912458aa992",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T17:39:21.339577+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 29575.802643838,
+        "expected_values": [
+          "VALUE_663c7dde4128",
+          "VALUE_60a26a0c2933",
+          "VALUE_4540ec0d35fc"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:37:50.630199+00:00",
+        "first_output": 29517.059451998,
+        "last_output": 29575.802535987,
+        "partial_visible": "# Key Values\n\n**KEY_0** = VALUE_663c7dde4128\n**KEY_1** = VALUE_60a26a0c2933\n**KEY_2** = VALUE_4540ec0d35fc\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Design components as self-contained units with well-defined interfaces. Each component should encapsulate a single responsibility and expose its functionality through a minimal public API. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `PaymentProcessor` component should accept a `PaymentGateway` interface rather than hard-coding a specific gateway implementation. This allows swapping between Stripe, PayPal, or test doubles without modifying the processor.\n\n**Edge Cases:** Circular dependencies between components must be detected at design time. Components with too many dependencies (greater than 5-7) indicate a design smell requiring refactoring.\n\n**Tests:** Write architecture tests that verify component boundaries. Use tools like ArchUnit (Java) or import-linter (Python) to enforce that components do not reach into each other's internals.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Define interfaces that are small, focused, and client-oriented. Follow the Interface Segregation Principle \u2014 clients should not be forced to depend on methods they do not use. Use versioned interfaces to manage evolution over time.\n\n**Example:** Instead of a monolithic `UserService` interface with 20 methods, split into `UserReader`, `UserWriter`, and `UserAuthenticator` interfaces. Clients consuming only read operations depend solely on `UserReader`.\n\n**Edge Cases:** Interfaces that are too granular lead to combinatorial explosion of implementations. Interfaces that are too broad create tight coupling. Balance is achieved through iterative refinement based on actual consumer needs.\n\n**Tests:** Write contract tests that verify all implementations of an interface behave consistently. Use parameterized tests that run the same suite against every concrete implementation.\n\n---\n\n## Section 3: Dependency Injection Patterns\n\n**Implementation:** Use constructor injection as the primary pattern. Setter injection for optional dependencies. Method injection for per-call dependencies. Use DI containers to manage lifecycle and wiring in production, but wire manually in tests.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repository: OrderRepository, \n                 notifier: NotificationService):\n        self._repository = repository\n        self._notifier = notifier\n```\n\n**Edge Cases:** Circular dependency chains in DI containers cause runtime failures. Optional dependencies that are never provided may cause silent failures. Singleton-scoped dependencies shared across requests can cause thread-safety issues.\n\n**Tests:** Verify that all required dependencies are provided at construction time. Test that the DI container resolves all registered services without errors during application startup.\n\n---\n\n## Section 4: Unit Testing Fundamentals\n\n**Implementation:** Write unit tests that isolate the component under test by replacing all external dependencies with test doubles. Follow the Arrange-Act-Assert pattern. Each test should verify a single behavior. Name tests descriptively using the format `test_<method>_<scenario>_<expected_result>`.\n\n**Example:**\n```python\ndef test_calculate_discount_premium_customer_applies_20_percent():\n    # Arrange\n    calculator = DiscountCalculator()\n    customer = Customer(tier=\"premium\")\n    order_total = 100.0\n    \n    # Act\n    result = calculator.calculate_discount(customer, order_total)\n    \n    # Assert\n    assert result == 20.0\n```\n\n**Edge Cases:** Tests that depend on execution order are fragile. Tests that share mutable state between test cases produce flaky results. Tests that assert on implementation details rather than behavior break during refactoring.\n\n**Tests:** Ensure unit tests run in under 100ms each. Maintain a minimum of 80% code coverage for critical components. Run tests in random order to detect hidden dependencies.\n\n---\n\n## Section 5: Test Doubles Classification\n\n**Implementation:** Understand and correctly apply the five types of test doubles: dummies (passed but never used), stubs (provide canned answers), spies (record calls for later verification), mocks (pre-programmed with expectations), and fakes (working lightweight implementations).\n\n**Example:** Use a stub `DatabaseStub` that returns predefined user records when testing a `UserService`. Use a spy `EmailSpy` to verify that a welcome email was sent after registration. Use a fake `InMemoryUserRepository` for integration-style unit tests.\n\n**Edge Cases:** Over-mocking leads to tests that verify implementation rather than behavior. Mocks that are too specific break when internal implementation changes. Fakes that diverge from real behavior create false confidence.\n\n**Tests:** Regularly review test suites for over-mocking. Prefer fakes over mocks for stateful dependencies. Verify spy assertions are meaningful, not just checking that methods were called.\n\n---\n\n## Section 6: Mocking Best Practices\n\n**Implementation:** Mock only at architectural boundaries (external services, databases, file systems). Never mock value objects or data structures. Use mock frameworks that support strict mode to catch unexpected calls. Reset mocks between tests.\n\n**Example:**\n```python\n@patch('payment_service.gateway.charge')\ndef test_process_payment_success(mock_charge):\n    mock_charge.return_value = ChargeResult(success=True, transaction_id=\"tx123\")\n    service = PaymentService(gateway=MockGateway())\n    result = service.process(order)\n    assert result.status == \"completed\"\n```\n\n**Edge Cases:** Mocking concrete classes rather than interfaces creates brittle tests. Mocks that return mutable objects shared across tests cause contamination. Async mocks require special handling to properly await.\n\n**Tests:** Verify that mocks are called with expected arguments using argument matchers. Test that mocks are not called when they should not be (negative verification). Ensure mock setup does not overshadow the behavior being tested.\n\n---\n\n## Section 7: Integration Testing Strategy\n\n**Implementation:** Write integration tests that verify components work correctly together. Use real implementations for in-process dependencies and test doubles only for external systems. Maintain a separate test suite for integration tests with longer timeouts.\n\n**Example:** An integration test for `OrderService` + `InventoryService` + `PaymentService` uses real implementations of all three, but replaces the actual payment gateway with a sandbox/stub that simulates responses.\n\n**Edge Cases:** Integration tests that depend on external service availability are flaky. Shared databases between integration tests cause data contamination. Network latency in integration tests makes them slow and unreliable.\n\n**Tests:** Use test containers (Docker-based) for database integration tests. Implement retry mechanisms for tests that interact with external systems. Tag integration tests separately so they can be excluded from fast feedback loops.\n\n---\n\n## Section 8: Test Data Management\n\n**Implementation:** Use builder pattern or object mother pattern to create test data. Generate test data programmatically rather than maintaining static fixtures. Use factories that produce valid objects with sensible defaults that can be overridden per test.\n\n**Example:**\n```python\nclass UserBuilder:\n    def __init__(self):\n        self._user = User(name=\"Test User\", email=\"test@example.com\", \n                         age=30, role=\"user\")\n    \n    def with_role(self, role):\n        self._user.role = role\n        return self\n    \n    def with_age(self, age):\n        self._user.age = age\n        return self\n    \n    def build(self):\n        return self._user\n```\n\n**Edge Cases:** Test data that becomes stale as the domain model evolves causes test failures. Hardcoded IDs in test data conflict with auto-generated IDs. Unicode and special characters in test data reveal encoding bugs.\n\n**Tests:** Validate that test data buil",
+        "prompt_sha256": "77a5f4c869d2be52e73b859f5d6d7a51d71fa1814f82c64480487e9f36b8569a",
+        "prompt_tokens_tokenized": 174798,
+        "request_id": null,
+        "response_headers_at": 29486.692411031,
+        "result": {
+          "content_chunks": 3926,
+          "e2e": 89.28076709900051,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 157,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 30.537627630001225,
+          "ttft": 38.43511451000086,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 174798,
+            "total_tokens": 178894
+          },
+          "visible_content": "# Key Values\n\n**KEY_0** = VALUE_663c7dde4128\n**KEY_1** = VALUE_60a26a0c2933\n**KEY_2** = VALUE_4540ec0d35fc\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Design components as self-contained units with well-defined interfaces. Each component should encapsulate a single responsibility and expose its functionality through a minimal public API. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `PaymentProcessor` component should accept a `PaymentGateway` interface rather than hard-coding a specific gateway implementation. This allows swapping between Stripe, PayPal, or test doubles without modifying the processor.\n\n**Edge Cases:** Circular dependencies between components must be detected at design time. Components with too many dependencies (greater than 5-7) indicate a design smell requiring refactoring.\n\n**Tests:** Write architecture tests that verify component boundaries. Use tools like ArchUnit (Java) or import-linter (Python) to enforce that components do not reach into each other's internals.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Define interfaces that are small, focused, and client-oriented. Follow the Interface Segregation Principle \u2014 clients should not be forced to depend on methods they do not use. Use versioned interfaces to manage evolution over time.\n\n**Example:** Instead of a monolithic `UserService` interface with 20 methods, split into `UserReader`, `UserWriter`, and `UserAuthenticator` interfaces. Clients consuming only read operations depend solely on `UserReader`.\n\n**Edge Cases:** Interfaces that are too granular lead to combinatorial explosion of implementations. Interfaces that are too broad create tight coupling. Balance is achieved through iterative refinement based on actual consumer needs.\n\n**Tests:** Write contract tests that verify all implementations of an interface behave consistently. Use parameterized tests that run the same suite against every concrete implementation.\n\n---\n\n## Section 3: Dependency Injection Patterns\n\n**Implementation:** Use constructor injection as the primary pattern. Setter injection for optional dependencies. Method injection for per-call dependencies. Use DI containers to manage lifecycle and wiring in production, but wire manually in tests.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repository: OrderRepository, \n                 notifier: NotificationService):\n        self._repository = repository\n        self._notifier = notifier\n```\n\n**Edge Cases:** Circular dependency chains in DI containers cause runtime failures. Optional dependencies that are never provided may cause silent failures. Singleton-scoped dependencies shared across requests can cause thread-safety issues.\n\n**Tests:** Verify that all required dependencies are provided at construction time. Test that the DI container resolves all registered services without errors during application startup.\n\n---\n\n## Section 4: Unit Testing Fundamentals\n\n**Implementation:** Write unit tests that isolate the component under test by replacing all external dependencies with test doubles. Follow the Arrange-Act-Assert pattern. Each test should verify a single behavior. Name tests descriptively using the format `test_<method>_<scenario>_<expected_result>`.\n\n**Example:**\n```python\ndef test_calculate_discount_premium_customer_applies_20_percent():\n    # Arrange\n    calculator = DiscountCalculator()\n    customer = Customer(tier=\"premium\")\n    order_total = 100.0\n    \n    # Act\n    result = calculator.calculate_discount(customer, order_total)\n    \n    # Assert\n    assert result == 20.0\n```\n\n**Edge Cases:** Tests that depend on execution order are fragile. Tests that share mutable state between test cases produce flaky results. Tests that assert on implementation details rather than behavior break during refactoring.\n\n**Tests:** Ensure unit tests run in under 100ms each. Maintain a minimum of 80% code coverage for critical components. Run tests in random order to detect hidden dependencies.\n\n---\n\n## Section 5: Test Doubles Classification\n\n**Implementation:** Understand and correctly apply the five types of test doubles: dummies (passed but never used), stubs (provide canned answers), spies (record calls for later verification), mocks (pre-programmed with expectations), and fakes (working lightweight implementations).\n\n**Example:** Use a stub `DatabaseStub` that returns predefined user records when testing a `UserService`. Use a spy `EmailSpy` to verify that a welcome email was sent after registration. Use a fake `InMemoryUserRepository` for integration-style unit tests.\n\n**Edge Cases:** Over-mocking leads to tests that verify implementation rather than behavior. Mocks that are too specific break when internal implementation changes. Fakes that diverge from real behavior create false confidence.\n\n**Tests:** Regularly review test suites for over-mocking. Prefer fakes over mocks for stateful dependencies. Verify spy assertions are meaningful, not just checking that methods were called.\n\n---\n\n## Section 6: Mocking Best Practices\n\n**Implementation:** Mock only at architectural boundaries (external services, databases, file systems). Never mock value objects or data structures. Use mock frameworks that support strict mode to catch unexpected calls. Reset mocks between tests.\n\n**Example:**\n```python\n@patch('payment_service.gateway.charge')\ndef test_process_payment_success(mock_charge):\n    mock_charge.return_value = ChargeResult(success=True, transaction_id=\"tx123\")\n    service = PaymentService(gateway=MockGateway())\n    result = service.process(order)\n    assert result.status == \"completed\"\n```\n\n**Edge Cases:** Mocking concrete classes rather than interfaces creates brittle tests. Mocks that return mutable objects shared across tests cause contamination. Async mocks require special handling to properly await.\n\n**Tests:** Verify that mocks are called with expected arguments using argument matchers. Test that mocks are not called when they should not be (negative verification). Ensure mock setup does not overshadow the behavior being tested.\n\n---\n\n## Section 7: Integration Testing Strategy\n\n**Implementation:** Write integration tests that verify components work correctly together. Use real implementations for in-process dependencies and test doubles only for external systems. Maintain a separate test suite for integration tests with longer timeouts.\n\n**Example:** An integration test for `OrderService` + `InventoryService` + `PaymentService` uses real implementations of all three, but replaces the actual payment gateway with a sandbox/stub that simulates responses.\n\n**Edge Cases:** Integration tests that depend on external service availability are flaky. Shared databases between integration tests cause data contamination. Network latency in integration tests makes them slow and unreliable.\n\n**Tests:** Use test containers (Docker-based) for database integration tests. Implement retry mechanisms for tests that interact with external systems. Tag integration tests separately so they can be excluded from fast feedback loops.\n\n---\n\n## Section 8: Test Data Management\n\n**Implementation:** Use builder pattern or object mother pattern to create test data. Generate test data programmatically rather than maintaining static fixtures. Use factories that produce valid objects with sensible defaults that can be overridden per test.\n\n**Example:**\n```python\nclass UserBuilder:\n    def __init__(self):\n        self._user = User(name=\"Test User\", email=\"test@example.com\", \n                         age=30, role=\"user\")\n    \n    def with_role(self, role):\n        self._user.role = role\n        return self\n    \n    def with_age(self, age):\n        self._user.age = age\n        return self\n    \n    def build(self):\n        return self._user\n```\n\n**Edge Cases:** Test data that becomes stale as the domain model evolves causes test failures. Hardcoded IDs in test data conflict with auto-generated IDs. Unicode and special characters in test data reveal encoding bugs.\n\n**Tests:** Validate that test data buil",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 29486.50651364,
+        "started_at": "2026-09-23T17:36:21.334057+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-a58e3d4350084438",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 29525.015035442,
+        "expected_values": [
+          "VALUE_3dd1d45bd5de",
+          "VALUE_61079d0fd986",
+          "VALUE_e023511c5ec5"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:36:59.842591+00:00",
+        "first_output": 29522.935003385,
+        "last_output": 29525.000489436,
+        "partial_visible": "KEY_0 = VALUE_3dd1d45bd5de\nKEY_1 = VALUE_61079d0fd986\nKEY_2 = VALUE_e023511c5ec5",
+        "prompt_sha256": "989ae8411cd41b00ae6e0b2a0d9efb7c76ec95587c9839938a183bd8aa82cc65",
+        "prompt_tokens_tokenized": 31822,
+        "request_id": null,
+        "response_headers_at": 29517.110143194,
+        "result": {
+          "content_chunks": 44,
+          "e2e": 7.939697403999162,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 145,
+          "output_token_source": "usage",
+          "reasoning_chunks": 96,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.8596869470020465,
+          "ttft": 7.29949515699991,
+          "usage": {
+            "completion_tokens": 145,
+            "prompt_tokens": 31822,
+            "total_tokens": 31967
+          },
+          "visible_content": "KEY_0 = VALUE_3dd1d45bd5de\nKEY_1 = VALUE_61079d0fd986\nKEY_2 = VALUE_e023511c5ec5",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 29517.072415941,
+        "started_at": "2026-09-23T17:36:51.899956+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-a966e42e50abe31e",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "overlap_output_at": 29517.119720078,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 29666.469419073,
+        "expected_values": [
+          "VALUE_2b0218f53577",
+          "VALUE_a93abb7b5939",
+          "VALUE_273a8c23e210"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:39:21.296975+00:00",
+        "first_output": 29607.559006659,
+        "last_output": 29666.469313273,
+        "partial_visible": "# Extracted Values\n\n- **KEY_0** = VALUE_2b0218f53577\n- **KEY_1** = VALUE_a93abb7b5939\n- **KEY_2** = VALUE_273a8c23e210\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Component Architecture Principles\n\n**Implementation:** Design components with single responsibility, high cohesion, and low coupling. Each component should encapsulate one logical domain of functionality.\n\n**Example:** A `UserAuthenticator` component handles only authentication logic\u2014not session management or password hashing utilities.\n\n**Edge Cases:** Components that grow beyond ~300 lines often indicate responsibility creep. Monitor for \"god object\" anti-patterns.\n\n**Tests:** Verify component boundaries by asserting that internal state is not exposed through public APIs. Use architecture tests (e.g., ArchUnit) to enforce layer constraints.\n\n---\n\n## 2. Interface Contracts\n\n**Implementation:** Define explicit interfaces before implementation. Use contract-first design with clear preconditions, postconditions, and invariants.\n\n**Example:** `interface Repository<T> { T findById(String id); List<T> findAll(); void save(T entity); }`\n\n**Edge Cases:** Null returns vs. Optional, empty collections vs. null, and exception signaling must be documented in the contract.\n\n**Tests:** Write contract tests that any implementation must satisfy. Use parameterized tests across multiple implementations.\n\n---\n\n## 3. Dependency Injection\n\n**Implementation:** Inject dependencies through constructors rather than field injection or service locators. This ensures immutability and testability.\n\n**Example:** `public OrderService(PaymentGateway gateway, NotificationService notifier) { this.gateway = gateway; this.notifier = notifier; }`\n\n**Edge Cases:** Circular dependencies must be detected at startup. Optional dependencies should use `Optional<T>` or nullable annotations.\n\n**Tests:** Verify that all required dependencies are non-null at construction time. Test that the component functions correctly with mock dependencies.\n\n---\n\n## 4. Unit Testing Fundamentals\n\n**Implementation:** Follow the Arrange-Act-Assert (AAA) pattern. Each test should verify one behavior in isolation.\n\n**Example:**\n```java\n@Test\nvoid shouldRejectExpiredToken() {\n    // Arrange\n    Token token = createExpiredToken();\n    // Act\n    boolean result = validator.isValid(token);\n    // Assert\n    assertFalse(result);\n}\n```\n\n**Edge Cases:** Tests must not depend on execution order, shared mutable state, or external systems.\n\n**Tests:** Ensure test coverage exceeds 80% for critical paths. Use mutation testing to verify test quality.\n\n---\n\n## 5. Mocking and Stubbing\n\n**Implementation:** Use mocks to verify interactions and stubs to provide controlled responses. Prefer hand-rolled fakes for complex collaborators.\n\n**Example:** `when(paymentGateway.charge(any())).thenReturn(PaymentResult.success(\"txn_123\"));`\n\n**Edge Cases:** Over-mocking leads to brittle tests coupled to implementation details. Avoid mocking value objects.\n\n**Tests:** Verify mock invocations with argument matchers. Test that unstubbed methods return sensible defaults.\n\n---\n\n## 6. Integration Testing\n\n**Implementation:** Test component interactions using real implementations where feasible. Use test containers for database and message broker dependencies.\n\n**Example:** Spin up a PostgreSQL container, run migrations, and test the full repository-to-database flow.\n\n**Edge Cases:** Network latency, connection pool exhaustion, and transaction isolation levels can cause flaky integration tests.\n\n**Tests:** Use retry mechanisms for infrastructure-dependent assertions. Verify data consistency across component boundaries.\n\n---\n\n## 7. Error Handling Strategy\n\n**Implementation:** Distinguish between recoverable errors (exceptions) and unrecoverable errors (panics/fatal). Use typed exceptions with meaningful messages.\n\n**Example:** `throw new ValidationException(\"Email format invalid\", ErrorCode.INVALID_EMAIL);`\n\n**Edge Cases:** Handle null pointers, index out of bounds, and concurrent modification exceptions explicitly. Never swallow exceptions silently.\n\n**Tests:** Assert exception types, messages, and error codes. Test that resources are released in finally blocks or try-with-resources.\n\n---\n\n## 8. Logging and Observability\n\n**Implementation:** Use structured logging with consistent levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs for distributed tracing.\n\n**Example:** `log.info(\"Order processed: orderId={}, userId={}, duration={}ms\", orderId, userId, duration);`\n\n**Edge Cases:** Avoid logging sensitive data (PII, credentials). Handle log rotation and prevent disk exhaustion.\n\n**Tests:** Verify log output using log capture mechanisms. Assert that correlation IDs propagate through async call chains.\n\n---\n\n## 9. Configuration Management\n\n**Implementation:** Externalize configuration using environment variables, config files, or config servers. Support profile-based overrides.\n\n**Example:** `@Value(\"${database.pool.size:10}\") int poolSize;`\n\n**Edge Cases:** Missing required configuration should fail fast at startup. Type mismatches in config values must produce clear errors.\n\n**Tests:** Test configuration parsing with valid, invalid, and missing values. Verify that defaults are applied correctly.\n\n---\n\n## 10. Data Validation\n\n**Implementation:** Validate input at system boundaries using schema validation or programmatic checks. Apply the \"validate early, validate often\" principle.\n\n**Example:** `if (email == null || !email.matches(EMAIL_REGEX)) { throw new ValidationException(\"Invalid email\"); }`\n\n**Edge Cases:** Unicode strings, extremely long inputs, and injection attempts must be handled. Validate nested objects recursively.\n\n**Tests:** Use property-based testing (e.g., jqwik) to generate edge-case inputs. Test boundary values (0, 1, -1, MAX_INT, empty string).\n\n---\n\n## 11. Immutability Patterns\n\n**Implementation:** Design value objects as immutable. Use builder patterns for complex object construction.\n\n**Example:** `public record Money(BigDecimal amount, Currency currency) {}`\n\n**Edge Cases:** Defensive copying of mutable collections in constructors and accessors. Handle serialization of immutable types.\n\n**Tests:** Verify that attempts to modify immutable objects fail or return new instances. Test thread safety of shared immutable objects.\n\n---\n\n## 12. Concurrency and Thread Safety\n\n**Implementation:** Use immutable data structures, concurrent collections, and proper synchronization primitives. Prefer higher-level abstractions (CompletableFuture, actors).\n\n**Example:** `ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();`\n\n**Edge Cases:** Race conditions, deadlocks, livelocks, and thread starvation. Test with high concurrency levels.\n\n**Tests:** Use stress tests with multiple threads. Verify no data corruption under concurrent access. Use tools like jcstress.\n\n---\n\n## 13. Database Access Patterns\n\n**Implementation:** Use repository pattern to abstract data access. Implement connection pooling with proper timeout configuration.\n\n**Example:** `class UserRepository implements Repository<User> { private final DataSource dataSource; }`\n\n**Edge Cases:** Connection leaks, transaction deadlocks, optimistic locking failures, and N+1 query problems.\n\n**Tests:** Test with real databases using test containers. Verify transaction rollback on failure. Test connection pool behavior under load.\n\n---\n\n## 14. API Design and Versioning\n\n**Implementation:** Design RESTful APIs with proper HTTP semantics. Use semantic versioning for API changes.\n\n**Example:** `GET /api/v1/users/{id}` returns 200 with user data, 404 if not found.\n\n**Edge Cases:** Backward compatibility during version transitions. Handle unknown fields gracefully in deserialization.\n\n**Tests:** Contract tests for API consumers. Test all HTTP status codes. Verify content negotiation.\n\n---\n\n## 15. Serialization and Deserialization\n\n**Implementation:** Use well-defined serialization formats (JSON, Protobuf). Handle versioning in serialized data.\n\n**Example:** `ObjectMapper mapper = new ObjectMapper(); User user = mapper.readValue(json, User.class);`\n\n**Edge Cases:** Unknown fields",
+        "prompt_sha256": "432eea8935619ac2fb64fe6301deb22354416c32065b6cdae2cbc36edfab41fa",
+        "prompt_tokens_tokenized": 174797,
+        "request_id": null,
+        "response_headers_at": 29576.366791376,
+        "result": {
+          "content_chunks": 3830,
+          "e2e": 90.27556263599763,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 247,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 31.36520770199786,
+          "ttft": 40.70162868999978,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 174797,
+            "total_tokens": 178893
+          },
+          "visible_content": "# Extracted Values\n\n- **KEY_0** = VALUE_2b0218f53577\n- **KEY_1** = VALUE_a93abb7b5939\n- **KEY_2** = VALUE_273a8c23e210\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Component Architecture Principles\n\n**Implementation:** Design components with single responsibility, high cohesion, and low coupling. Each component should encapsulate one logical domain of functionality.\n\n**Example:** A `UserAuthenticator` component handles only authentication logic\u2014not session management or password hashing utilities.\n\n**Edge Cases:** Components that grow beyond ~300 lines often indicate responsibility creep. Monitor for \"god object\" anti-patterns.\n\n**Tests:** Verify component boundaries by asserting that internal state is not exposed through public APIs. Use architecture tests (e.g., ArchUnit) to enforce layer constraints.\n\n---\n\n## 2. Interface Contracts\n\n**Implementation:** Define explicit interfaces before implementation. Use contract-first design with clear preconditions, postconditions, and invariants.\n\n**Example:** `interface Repository<T> { T findById(String id); List<T> findAll(); void save(T entity); }`\n\n**Edge Cases:** Null returns vs. Optional, empty collections vs. null, and exception signaling must be documented in the contract.\n\n**Tests:** Write contract tests that any implementation must satisfy. Use parameterized tests across multiple implementations.\n\n---\n\n## 3. Dependency Injection\n\n**Implementation:** Inject dependencies through constructors rather than field injection or service locators. This ensures immutability and testability.\n\n**Example:** `public OrderService(PaymentGateway gateway, NotificationService notifier) { this.gateway = gateway; this.notifier = notifier; }`\n\n**Edge Cases:** Circular dependencies must be detected at startup. Optional dependencies should use `Optional<T>` or nullable annotations.\n\n**Tests:** Verify that all required dependencies are non-null at construction time. Test that the component functions correctly with mock dependencies.\n\n---\n\n## 4. Unit Testing Fundamentals\n\n**Implementation:** Follow the Arrange-Act-Assert (AAA) pattern. Each test should verify one behavior in isolation.\n\n**Example:**\n```java\n@Test\nvoid shouldRejectExpiredToken() {\n    // Arrange\n    Token token = createExpiredToken();\n    // Act\n    boolean result = validator.isValid(token);\n    // Assert\n    assertFalse(result);\n}\n```\n\n**Edge Cases:** Tests must not depend on execution order, shared mutable state, or external systems.\n\n**Tests:** Ensure test coverage exceeds 80% for critical paths. Use mutation testing to verify test quality.\n\n---\n\n## 5. Mocking and Stubbing\n\n**Implementation:** Use mocks to verify interactions and stubs to provide controlled responses. Prefer hand-rolled fakes for complex collaborators.\n\n**Example:** `when(paymentGateway.charge(any())).thenReturn(PaymentResult.success(\"txn_123\"));`\n\n**Edge Cases:** Over-mocking leads to brittle tests coupled to implementation details. Avoid mocking value objects.\n\n**Tests:** Verify mock invocations with argument matchers. Test that unstubbed methods return sensible defaults.\n\n---\n\n## 6. Integration Testing\n\n**Implementation:** Test component interactions using real implementations where feasible. Use test containers for database and message broker dependencies.\n\n**Example:** Spin up a PostgreSQL container, run migrations, and test the full repository-to-database flow.\n\n**Edge Cases:** Network latency, connection pool exhaustion, and transaction isolation levels can cause flaky integration tests.\n\n**Tests:** Use retry mechanisms for infrastructure-dependent assertions. Verify data consistency across component boundaries.\n\n---\n\n## 7. Error Handling Strategy\n\n**Implementation:** Distinguish between recoverable errors (exceptions) and unrecoverable errors (panics/fatal). Use typed exceptions with meaningful messages.\n\n**Example:** `throw new ValidationException(\"Email format invalid\", ErrorCode.INVALID_EMAIL);`\n\n**Edge Cases:** Handle null pointers, index out of bounds, and concurrent modification exceptions explicitly. Never swallow exceptions silently.\n\n**Tests:** Assert exception types, messages, and error codes. Test that resources are released in finally blocks or try-with-resources.\n\n---\n\n## 8. Logging and Observability\n\n**Implementation:** Use structured logging with consistent levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs for distributed tracing.\n\n**Example:** `log.info(\"Order processed: orderId={}, userId={}, duration={}ms\", orderId, userId, duration);`\n\n**Edge Cases:** Avoid logging sensitive data (PII, credentials). Handle log rotation and prevent disk exhaustion.\n\n**Tests:** Verify log output using log capture mechanisms. Assert that correlation IDs propagate through async call chains.\n\n---\n\n## 9. Configuration Management\n\n**Implementation:** Externalize configuration using environment variables, config files, or config servers. Support profile-based overrides.\n\n**Example:** `@Value(\"${database.pool.size:10}\") int poolSize;`\n\n**Edge Cases:** Missing required configuration should fail fast at startup. Type mismatches in config values must produce clear errors.\n\n**Tests:** Test configuration parsing with valid, invalid, and missing values. Verify that defaults are applied correctly.\n\n---\n\n## 10. Data Validation\n\n**Implementation:** Validate input at system boundaries using schema validation or programmatic checks. Apply the \"validate early, validate often\" principle.\n\n**Example:** `if (email == null || !email.matches(EMAIL_REGEX)) { throw new ValidationException(\"Invalid email\"); }`\n\n**Edge Cases:** Unicode strings, extremely long inputs, and injection attempts must be handled. Validate nested objects recursively.\n\n**Tests:** Use property-based testing (e.g., jqwik) to generate edge-case inputs. Test boundary values (0, 1, -1, MAX_INT, empty string).\n\n---\n\n## 11. Immutability Patterns\n\n**Implementation:** Design value objects as immutable. Use builder patterns for complex object construction.\n\n**Example:** `public record Money(BigDecimal amount, Currency currency) {}`\n\n**Edge Cases:** Defensive copying of mutable collections in constructors and accessors. Handle serialization of immutable types.\n\n**Tests:** Verify that attempts to modify immutable objects fail or return new instances. Test thread safety of shared immutable objects.\n\n---\n\n## 12. Concurrency and Thread Safety\n\n**Implementation:** Use immutable data structures, concurrent collections, and proper synchronization primitives. Prefer higher-level abstractions (CompletableFuture, actors).\n\n**Example:** `ConcurrentHashMap<String, Session> sessions = new ConcurrentHashMap<>();`\n\n**Edge Cases:** Race conditions, deadlocks, livelocks, and thread starvation. Test with high concurrency levels.\n\n**Tests:** Use stress tests with multiple threads. Verify no data corruption under concurrent access. Use tools like jcstress.\n\n---\n\n## 13. Database Access Patterns\n\n**Implementation:** Use repository pattern to abstract data access. Implement connection pooling with proper timeout configuration.\n\n**Example:** `class UserRepository implements Repository<User> { private final DataSource dataSource; }`\n\n**Edge Cases:** Connection leaks, transaction deadlocks, optimistic locking failures, and N+1 query problems.\n\n**Tests:** Test with real databases using test containers. Verify transaction rollback on failure. Test connection pool behavior under load.\n\n---\n\n## 14. API Design and Versioning\n\n**Implementation:** Design RESTful APIs with proper HTTP semantics. Use semantic versioning for API changes.\n\n**Example:** `GET /api/v1/users/{id}` returns 200 with user data, 404 if not found.\n\n**Edge Cases:** Backward compatibility during version transitions. Handle unknown fields gracefully in deserialization.\n\n**Tests:** Contract tests for API consumers. Test all HTTP status codes. Verify content negotiation.\n\n---\n\n## 15. Serialization and Deserialization\n\n**Implementation:** Use well-defined serialization formats (JSON, Protobuf). Handle versioning in serialized data.\n\n**Example:** `ObjectMapper mapper = new ObjectMapper(); User user = mapper.readValue(json, User.class);`\n\n**Edge Cases:** Unknown fields",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 29576.185479247,
+        "started_at": "2026-09-23T17:37:51.013018+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-b69ea830341c1a50",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 29615.768335536,
+        "expected_values": [
+          "VALUE_7e549b2c598b",
+          "VALUE_9340421a5dda",
+          "VALUE_d7366e1f0211"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T17:38:30.595890+00:00",
+        "first_output": 29613.563160496,
+        "last_output": 29615.752920477,
+        "partial_visible": "KEY_0 = VALUE_7e549b2c598b\nKEY_1 = VALUE_9340421a5dda\nKEY_2 = VALUE_d7366e1f0211",
+        "prompt_sha256": "9e2db5fad3ffe1b4c04fd8da38c42a1dcf0d5072f33f0b4839e76659dca2d47e",
+        "prompt_tokens_tokenized": 31816,
+        "request_id": null,
+        "response_headers_at": 29607.599696071,
+        "result": {
+          "content_chunks": 47,
+          "e2e": 8.197330356997554,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 153,
+          "output_token_source": "usage",
+          "reasoning_chunks": 101,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.992171576999681,
+          "ttft": 7.511101819000032,
+          "usage": {
+            "completion_tokens": 153,
+            "prompt_tokens": 31816,
+            "total_tokens": 31969
+          },
+          "visible_content": "KEY_0 = VALUE_7e549b2c598b\nKEY_1 = VALUE_9340421a5dda\nKEY_2 = VALUE_d7366e1f0211",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 29607.566579788,
+        "started_at": "2026-09-23T17:38:22.394120+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-bad2aad26468d77f",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "overlap_output_at": 29607.608301202,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 174956,
+    "base_url": "http://127.0.0.1:8002/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-dcp1-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 31963,
+    "context_limit": 327680,
+    "managed_container": "glm-runtime-dcp1-candidate",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "prefix_mode": "unique",
+    "rounds": 2,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "849bd4f948be41093f4f17df29a08471857f6d135136410a8358ce6221ccb193",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T17:36:20.909727+00:00",
+  "status": "completed"
+}

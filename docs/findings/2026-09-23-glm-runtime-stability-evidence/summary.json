@@ -1,0 +1,245 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-23-glm-runtime-stability",
+  "complete": true,
+  "identity": {
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96 GB, PCIe, native Linux",
+    "driver": "615.71.09",
+    "weights_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "runner_revision": "fdc53d1f834b06a8ca75324e3b84407030a91506",
+    "source_attestation": "Partial; downstream kpool patch absent from the imported public Git revision."
+  },
+  "measurement": {
+    "path": "online direct; routed restoration acceptance",
+    "warm_cold_state": "warm weights and compiled cache; fresh run/round prefixes; cache metrics retained separately",
+    "performance_eligible": false
+  },
+  "profiles": {
+    "dcp2": {
+      "large_serial_passed": 1,
+      "large_serial_attempted": 1,
+      "large_overlap_passed": 0,
+      "large_overlap_attempted": 1,
+      "measured_startup_kv_tokens": 1416244,
+      "failure": "CUDA illegal memory access, EngineDeadError, two Xid31 virtual-write PDE faults"
+    },
+    "dcp1": {
+      "large_overlap_passed": 3,
+      "large_overlap_attempted": 3,
+      "measured_startup_kv_tokens": 825268,
+      "configured_context": 327680,
+      "configured_max_sequences": 4,
+      "measured_large_concurrency": 2,
+      "single_compute_delta": "decode_context_parallel_size: 2 to 1"
+    }
+  },
+  "request_policy_json": {
+    "disabled_passed": 0,
+    "enabled_passed": 3,
+    "attempted_per_arm": 3,
+    "limits": "One repeated deterministic JSON fixture; separate enabled full-preflight pass excluded from these counts; no CUDA attribution."
+  },
+  "trial_matrix": [
+    {
+      "artifact": "baseline-small.json",
+      "round": 0,
+      "status": "completed",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 4089,
+        "contender": 1017
+      },
+      "actual_output_tokens": {
+        "anchor": 2048,
+        "contender": 145
+      },
+      "output_caps": {
+        "anchor": 2048,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "baseline-175k-serial.json",
+      "round": 0,
+      "status": "completed",
+      "mode": "serial",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 174798,
+        "contender": 31820
+      },
+      "actual_output_tokens": {
+        "anchor": 4096,
+        "contender": 220
+      },
+      "output_caps": {
+        "anchor": 4096,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "baseline-175k-overlap.json",
+      "round": 0,
+      "status": "incomplete",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": false,
+      "coverage_passed": false,
+      "retrieval_passed": false,
+      "actual_prompt_tokens": {
+        "anchor": 174798,
+        "contender": 31816
+      },
+      "actual_output_tokens": {
+        "anchor": null,
+        "contender": null
+      },
+      "output_caps": {
+        "anchor": 4096,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "dcp1-small.json",
+      "round": 0,
+      "status": "incomplete",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": false,
+      "coverage_passed": false,
+      "retrieval_passed": false,
+      "actual_prompt_tokens": {
+        "anchor": 4092,
+        "contender": 1021
+      },
+      "actual_output_tokens": {
+        "anchor": null,
+        "contender": 161
+      },
+      "output_caps": {
+        "anchor": 512,
+        "contender": 512
+      }
+    },
+    {
+      "artifact": "dcp1-small-matched.json",
+      "round": 0,
+      "status": "completed",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 4088,
+        "contender": 1016
+      },
+      "actual_output_tokens": {
+        "anchor": 2048,
+        "contender": 133
+      },
+      "output_caps": {
+        "anchor": 2048,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "dcp1-175k-overlap.json",
+      "round": 0,
+      "status": "completed",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 174800,
+        "contender": 31815
+      },
+      "actual_output_tokens": {
+        "anchor": 4096,
+        "contender": 214
+      },
+      "output_caps": {
+        "anchor": 4096,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "dcp1-175k-repeat2.json",
+      "round": 0,
+      "status": "completed",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 174798,
+        "contender": 31822
+      },
+      "actual_output_tokens": {
+        "anchor": 4096,
+        "contender": 145
+      },
+      "output_caps": {
+        "anchor": 4096,
+        "contender": 1024
+      }
+    },
+    {
+      "artifact": "dcp1-175k-repeat2.json",
+      "round": 1,
+      "status": "completed",
+      "mode": "overlap",
+      "prefix_mode": "unique",
+      "runtime_passed": true,
+      "coverage_passed": true,
+      "retrieval_passed": true,
+      "actual_prompt_tokens": {
+        "anchor": 174797,
+        "contender": 31816
+      },
+      "actual_output_tokens": {
+        "anchor": 4096,
+        "contender": 153
+      },
+      "output_caps": {
+        "anchor": 4096,
+        "contender": 1024
+      }
+    }
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "challenger"
+    ],
+    "promotion_authorized": false,
+    "result": "Bounded DCP1 mitigation candidate; exact baseline restored and direct/routed acceptance passed.",
+    "next_gate": "Repeat larger incident shape and cache-state exposure, independent quality/modality/client gates, and first-fault diagnosis before root-cause closure"
+  },
+  "limitations": [
+    "Kernel first fault unresolved; no CUDA core dump, sanitizer or reduced kernel probe.",
+    "No model reliability-rate or speed claim.",
+    "201K request time guard refused before traffic; zero 201K generation requests.",
+    "310K, full-window C4, repeated-prefix/cache-eviction/cancellation probes unrun.",
+    "No fresh candidate vision/OCR, broad agentic/SWE, full-output coherence or real-client qualification.",
+    "One mismatched 512-cap small failure retained; exact budget exhaustion unproved.",
+    "Known-crashing parent reverse-order repetition omitted.",
+    "Source attestation partial; successful scheduler batch not measured."
+  ],
+  "restoration": "restoration.json",
+  "scope": "Diagnostic campaign closed at the time limit. Replacement qualification and hardware envelope remain incomplete."
+}

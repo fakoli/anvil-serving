@@ -1,0 +1,143 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": false,
+  "finished_at": "2026-09-23T16:57:19.007665+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:56:39.933129+00:00",
+      "phase": "start",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    },
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:56:39.974826+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    },
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:57:19.001598+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": false,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 27144.139251468,
+        "error": "stream completed without visible content",
+        "error_type": "ValueError",
+        "expected_values": [
+          "VALUE_1618242b96bb",
+          "VALUE_6c8fbd484a61",
+          "VALUE_76a1a639a093"
+        ],
+        "failure_classes": [
+          "protocol_error"
+        ],
+        "finished_at": "2026-09-23T16:57:18.966805+00:00",
+        "first_output": 27143.265839343,
+        "http_status": null,
+        "last_output": 27143.341481937,
+        "partial_visible": "",
+        "prompt_sha256": "113c7c2aa9e8cbbbc81482629b80c518d339f46858fb901c1f2cc19392406afd",
+        "prompt_tokens_tokenized": 174798,
+        "request_id": null,
+        "response_headers_at": 27105.707294531,
+        "start": 27105.492304528,
+        "started_at": "2026-09-23T16:56:40.319845+00:00",
+        "status": "failed"
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 27144.134940718,
+        "error": "stream completed without visible content",
+        "error_type": "ValueError",
+        "expected_values": [
+          "VALUE_01a982645d38",
+          "VALUE_4435648e4f0d",
+          "VALUE_a422b8786e6a"
+        ],
+        "failure_classes": [
+          "protocol_error"
+        ],
+        "finished_at": "2026-09-23T16:57:18.962496+00:00",
+        "http_status": null,
+        "partial_visible": "",
+        "prompt_sha256": "3cc42b7b4394842f8f7037d47d52a737829e3864aff171463783d77f04c04785",
+        "prompt_tokens_tokenized": 31816,
+        "request_id": null,
+        "response_headers_at": 27143.31370077,
+        "start": 27143.278257883,
+        "started_at": "2026-09-23T16:57:18.105796+00:00",
+        "status": "failed"
+      },
+      "coverage_passed": false,
+      "failure_classes": [
+        "protocol_error",
+        "coverage_not_exercised"
+      ],
+      "index": 0,
+      "overlap_output_at": 27143.314568602,
+      "retrieval_passed": false,
+      "runtime_passed": false
+    }
+  ],
+  "runtime_passed": false,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 174956,
+    "base_url": "http://127.0.0.1:8001/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-apc-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 31963,
+    "context_limit": 327680,
+    "managed_container": "intelligence-glm-exl3-327k-r10-vision8-apc-nospec",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+    "prefix_mode": "unique",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "d4ff03123f7f1875d527266e7d43da2708a333e7f081cb9c88d2dea2d563ce40",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T16:56:39.829278+00:00",
+  "status": "incomplete"
+}

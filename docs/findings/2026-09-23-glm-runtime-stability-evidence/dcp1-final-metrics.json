@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-09-23T17:40:22.880462+00:00",
+  "metrics": [
+    "vllm:num_requests_running{engine=\"0\",model_name=\"glm53-flash-exl3-runtime-dcp1-candidate\"} 0.0",
+    "vllm:num_requests_waiting{engine=\"0\",model_name=\"glm53-flash-exl3-runtime-dcp1-candidate\"} 0.0",
+    "vllm:kv_cache_usage_perc{engine=\"0\",model_name=\"glm53-flash-exl3-runtime-dcp1-candidate\"} 0.0",
+    "vllm:prefix_cache_queries_total{engine=\"0\",model_name=\"glm53-flash-exl3-runtime-dcp1-candidate\"} 653415.0",
+    "vllm:prefix_cache_hits_total{engine=\"0\",model_name=\"glm53-flash-exl3-runtime-dcp1-candidate\"} 9984.0"
+  ]
+}

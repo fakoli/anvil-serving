@@ -1,0 +1,33 @@
+{
+  "different_fields": {
+    "model": [
+      "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+      "glm53-flash-exl3-runtime-dcp1-candidate"
+    ],
+    "configuration": [
+      {
+        "label": "r10-apc-driver615-thinking-enabled",
+        "recipe_sha256": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+        "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+        "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "registry_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105"
+      },
+      {
+        "label": "r10-dcp1-driver615-thinking-enabled",
+        "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+        "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+        "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+      }
+    ],
+    "base_url": [
+      "http://127.0.0.1:8001/v1",
+      "http://127.0.0.1:8002/v1"
+    ],
+    "managed_container": [
+      "intelligence-glm-exl3-327k-r10-vision8-apc-nospec",
+      "glm-runtime-dcp1-candidate"
+    ]
+  },
+  "only_endpoint_and_immutable_configuration_differ": true
+}

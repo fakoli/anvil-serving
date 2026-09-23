@@ -1,0 +1,169 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "campaign": {
+    "id": "2026-09-23-glm-runtime-stability",
+    "capability": "GLM runtime stability and bounded configuration diagnosis",
+    "repository_revision": "15c7161f55124000954d120d3e9b078bed4d6f43",
+    "dirty_state": "Final executable and skill revision; publication-only files assembled afterward. Native run revisions retained separately.",
+    "started_at": "2026-09-23T16:53:02.208872+00:00",
+    "completed_at": "2026-09-23T17:52:35.435862+00:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false,
+    "start_time_scope": "First retained stability run; earlier preflight/research preceded it."
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.stability/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "campaign-plan.md",
+        "notebook.md",
+        "campaign-state.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "baseline-recipe.toml",
+        "candidate-dcp1-recipe.toml",
+        "baseline-recipe-status.json",
+        "baseline-gpus.csv",
+        "dcp1-start-identity.json",
+        "dcp1-start-status.json",
+        "dcp1-admission.json",
+        "dcp1-startup.log",
+        "development-source.json",
+        "sanitization-receipts.json",
+        "dcp1-small-scenario-comparison.json",
+        "dcp1-175k-scenario-comparison.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "baseline-small.json",
+        "baseline-175k-serial.json",
+        "baseline-175k-overlap.json",
+        "baseline-preflight.json",
+        "baseline-preflight-thinking-enabled.json",
+        "baseline-json-thinking-enabled.json",
+        "json-policy-disabled-2.json",
+        "json-policy-disabled-3.json",
+        "json-policy-enabled-2.json",
+        "json-policy-enabled-3.json",
+        "dcp1-preflight.json",
+        "dcp1-small.json",
+        "dcp1-small-matched.json",
+        "dcp1-175k-overlap.json",
+        "dcp1-175k-repeat2.json",
+        "dcp1-final-metrics.json",
+        "dcp1-final-owner.log",
+        "dcp1-final-status.json",
+        "dcp1-final-kernel.log"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "crash-175k-correlation.json",
+        "crash-175k-overlap-model-combined.log",
+        "crash-175k-overlap-kernel.log",
+        "crash-175k-overlap-status.json",
+        "dcp1-small-kernel.log",
+        "dcp1-small-owner.log",
+        "dcp1-201k-time-admission.json",
+        "skill-review-report.txt",
+        "skill-review-operator-workflow-v1.json",
+        "skill-delta-review.json",
+        "skill-scenario-comparability-review.json",
+        "runner-review-findings.json",
+        "runner-review-operator-workflow.json",
+        "dcp1-followup-findings.json",
+        "dcp1-followup-operator-workflow.json",
+        "dcp1-result-retention-followup.json",
+        "dcp1-result-retention-operator-workflow.json",
+        "dcp1-continuation-review.json",
+        "dcp1-continuation-operator-workflow.json",
+        "publication-review.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration-status.json",
+        "restoration-startup.log",
+        "restoration-direct-preflight.json",
+        "restoration-routed-preflight.json",
+        "restoration-router-sha256.json",
+        "restoration-kernel.log",
+        "restoration-gpus.csv",
+        "recovery1-preflight.json",
+        "recovery1-routed-preflight.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Native and derived records preserve exact identities, failures and scope limits."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated finding and sanitized recipe provide the shareable technical result."
+    }
+  ]
+}

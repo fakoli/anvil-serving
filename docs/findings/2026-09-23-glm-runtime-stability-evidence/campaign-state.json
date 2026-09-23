@@ -1,0 +1,93 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-23-glm-runtime-stability",
+  "updated_at": "2026-09-23T17:52:35.435862+00:00",
+  "status": "closed",
+  "current_stage": "publication",
+  "launcher": {
+    "invocation": "python3 -m anvil_serving.cli",
+    "version": "1.3.0",
+    "repository_revision": "15c7161f55124000954d120d3e9b078bed4d6f43",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "baseline-175k-overlap.json",
+        "baseline-175k-serial.json",
+        "baseline-small.json",
+        "dcp1-175k-overlap.json",
+        "dcp1-175k-repeat2.json",
+        "dcp1-small-matched.json",
+        "dcp1-small.json"
+      ],
+      "failures": [
+        "Original CUDA/Xid31 fault reproduced; DCP1 had one mismatched small-output-budget failure followed by matched small and three matched large passes."
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "not-run",
+      "evidence": [],
+      "failures": [
+        "Full qualification gates deferred at the declared time limit. Preflight and literal retrieval are bounded diagnostics only."
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "not-run",
+      "evidence": [],
+      "failures": [
+        "Full qualification gates deferred at the declared time limit. Preflight and literal retrieval are bounded diagnostics only."
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "artifact-manifest.json",
+        "summary.json",
+        "coverage-and-gaps.md"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "baseline-small.json round 0: completed",
+    "baseline-175k-serial.json round 0: completed",
+    "baseline-175k-overlap.json round 0: incomplete",
+    "dcp1-small.json round 0: incomplete",
+    "dcp1-small-matched.json round 0: completed",
+    "dcp1-175k-overlap.json round 0: completed",
+    "dcp1-175k-repeat2.json round 0: completed",
+    "dcp1-175k-repeat2.json round 1: completed"
+  ],
+  "next_actions": [
+    "DCP1 remains unpromoted; larger context, cache state, independent quality/modality/client gates and kernel attribution need a future bounded campaign."
+  ],
+  "promotion_authorized": false
+}

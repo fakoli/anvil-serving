@@ -1,0 +1,179 @@
+(Worker_TP0_EP0 pid=263)
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:00<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:00<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:05<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:05<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:06<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:06<?, ?it/s]
+
+
+Profiling CUDA graph memory (PIECEWISE):   0%|          | 0/4 [00:10<?, ?it/s]
+Profiling CUDA graph memory (PIECEWISE):  25%|██▌       | 1/4 [00:11<00:35, 11.92s/it]
+
+
+Profiling CUDA graph memory (PIECEWISE):  25%|██▌       | 1/4 [00:12<00:35, 11.92s/it]
+
+
+Profiling CUDA graph memory (PIECEWISE):  25%|██▌       | 1/4 [00:13<00:35, 11.92s/it]
+
+
+Profiling CUDA graph memory (PIECEWISE):  25%|██▌       | 1/4 [00:13<00:35, 11.92s/it]
+
+
+Profiling CUDA graph memory (PIECEWISE):  25%|██▌       | 1/4 [00:17<00:35, 11.92s/it]
+Profiling CUDA graph memory (PIECEWISE):  50%|█████     | 2/4 [00:19<00:19,  9.64s/it]
+Profiling CUDA graph memory (PIECEWISE):  75%|███████▌  | 3/4 [00:20<00:05,  5.56s/it]
+Profiling CUDA graph memory (PIECEWISE): 100%|██████████| 4/4 [00:21<00:00,  3.86s/it]
+Profiling CUDA graph memory (PIECEWISE): 100%|██████████| 4/4 [00:21<00:00,  5.48s/it]
+(Worker_TP0_EP0 pid=263)
+Profiling CUDA graph memory (FULL):   0%|          | 0/4 [00:00<?, ?it/s]
+Profiling CUDA graph memory (FULL):  25%|██▌       | 1/4 [00:00<00:00,  6.17it/s]
+Profiling CUDA graph memory (FULL):  50%|█████     | 2/4 [00:00<00:00,  4.97it/s]
+Profiling CUDA graph memory (FULL):  75%|███████▌  | 3/4 [00:00<00:00,  5.60it/s]
+Profiling CUDA graph memory (FULL): 100%|██████████| 4/4 [00:00<00:00,  6.07it/s]
+Profiling CUDA graph memory (FULL): 100%|██████████| 4/4 [00:00<00:00,  5.83it/s]
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:44,306 - INFO - autotuner.py:809 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:44,306 - INFO - autotuner.py:809 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:44,507 - INFO - autotuner.py:832 - flashinfer.jit: [Autotuner]: Autotuning process ends
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:44,507 - INFO - autotuner.py:832 - flashinfer.jit: [Autotuner]: Autotuning process ends
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:44,522 - INFO - autotuner.py:2264 - flashinfer.jit: [Autotuner]: Saved 0 configs to /cache/jit/cu133-torch213-vllm174c789e09-b12x12c426322c-lmcachee045d729bc/flashinfer-autotune/31bab91f6e82675aae8970504d4f53ef2fbe8ea4fcc514054abed69eb1895c59/autotune_configs.json (0 new, 0 from previous config)
+(Worker_TP0_EP0 pid=263)
+Capturing CUDA graphs (PIECEWISE):   0%|          | 0/4 [00:00<?, ?it/s]
+Capturing CUDA graphs (PIECEWISE):  25%|██▌       | 1/4 [00:00<00:02,  1.50it/s]
+Capturing CUDA graphs (PIECEWISE):  50%|█████     | 2/4 [00:01<00:01,  1.54it/s]
+Capturing CUDA graphs (PIECEWISE):  75%|███████▌  | 3/4 [00:01<00:00,  1.56it/s]
+Capturing CUDA graphs (PIECEWISE): 100%|██████████| 4/4 [00:02<00:00,  1.57it/s]
+Capturing CUDA graphs (PIECEWISE): 100%|██████████| 4/4 [00:02<00:00,  1.56it/s]
+(Worker_TP0_EP0 pid=263)
+Capturing CUDA graphs (FULL):   0%|          | 0/4 [00:00<?, ?it/s]
+Capturing CUDA graphs (FULL):  25%|██▌       | 1/4 [00:00<00:00,  6.86it/s]
+Capturing CUDA graphs (FULL):  50%|█████     | 2/4 [00:00<00:00,  6.86it/s]
+Capturing CUDA graphs (FULL):  75%|███████▌  | 3/4 [00:00<00:00,  6.89it/s]
+Capturing CUDA graphs (FULL): 100%|██████████| 4/4 [00:00<00:00,  6.92it/s]
+Capturing CUDA graphs (FULL): 100%|██████████| 4/4 [00:00<00:00,  6.90it/s]
+(APIServer pid=1) INFO:     Started server process [1]
+(APIServer pid=1) INFO:     Waiting for application startup.
+(APIServer pid=1) INFO:     Application startup complete.
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:21  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:26  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:26  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_fused_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_fused_tilelang`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:31  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:33  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_fused_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:34  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_fused_tilelang`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:34  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:24:39  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:23:22  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:23:26  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:23:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_post_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:23:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_post_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:21  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:26  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:26  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_fused_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_fused_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:27  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:31  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:33  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_fused_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:34  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_fused_tilelang`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:34  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP1_EP1 pid=264) 2026-09-23 17:24:39  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:44 [model_runner.py:1246] Estimated MRV2 CUDA graph memory: 0.25 GiB total (0.11 GiB retained in the reusable pool)
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:44 [gpu_worker.py:661] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9700 is equivalent to --gpu-memory-utilization=0.9674 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9726. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:44 [model_runner.py:1246] Estimated MRV2 CUDA graph memory: 0.25 GiB total (0.11 GiB retained in the reusable pool)
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:44 [gpu_worker.py:646] Available KV cache memory: 6.41 GiB
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:44 [gpu_worker.py:661] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9700 is equivalent to --gpu-memory-utilization=0.9674 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9726. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=241) INFO 09-23 17:24:44 [kv_cache_utils.py:2580] GPU KV cache size: 825,268 tokens, Maximum concurrency for 327,680 tokens per request: 2.52x
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:44 [kernel_warmup.py:625] Using FlashInfer autotune cache file: /cache/jit/cu133-torch213-vllm174c789e09-b12x12c426322c-lmcachee045d729bc/flashinfer-autotune/31bab91f6e82675aae8970504d4f53ef2fbe8ea4fcc514054abed69eb1895c59/autotune_configs.json
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:48 [model_runner.py:1318] Graph capturing finished in 4 secs, took 0.06 GiB
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:48 [gpu_worker.py:813] CUDA graph pool memory: 0.06 GiB (actual), 0.25 GiB (estimated), difference: 0.18 GiB (284.8%).
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:48 [gpu_worker.py:876] Free memory on device (94.03/95.06 GiB) on startup. Desired GPU memory utilization is (0.97, 92.21 GiB). Actual usage is 84.89 GiB for consumed memory (weights + non-torch), 0.91 GiB for peak activation, and 0.06 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=6654121288` (6.2 GiB) to fit into requested memory, or `--kv-cache-memory-bytes=8610739200` (8.02 GiB) to fully utilize gpu memory. Current kv cache memory in use is 6.41 GiB.
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:48 [model_runner.py:1318] Graph capturing finished in 4 secs, took 0.06 GiB
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:48 [gpu_worker.py:813] CUDA graph pool memory: 0.06 GiB (actual), 0.25 GiB (estimated), difference: 0.18 GiB (284.8%).
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:48 [gpu_worker.py:876] Free memory on device (94.03/95.06 GiB) on startup. Desired GPU memory utilization is (0.97, 92.21 GiB). Actual usage is 84.89 GiB for consumed memory (weights + non-torch), 0.91 GiB for peak activation, and 0.06 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory-bytes=6654121288` (6.2 GiB) to fit into requested memory, or `--kv-cache-memory-bytes=8610739200` (8.02 GiB) to fully utilize gpu memory. Current kv cache memory in use is 6.41 GiB.
+(Worker_TP0_EP0 pid=263) INFO 09-23 17:24:49 [jit_monitor.py:79] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(Worker_TP1_EP1 pid=264) INFO 09-23 17:24:49 [jit_monitor.py:79] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:24:50 [torch_utils.py:251] OMP_NUM_THREADS=2 is set; leaving Torch threads at 2 for serving. Multi-threaded torch CPU ops during serving can degrade performance through spin-wait contention and cgroup CPU-quota throttling.
+(EngineCore pid=241) INFO 09-23 17:24:50 [core.py:367] init engine (profile, create kv cache, warmup model) took 99.25 s
+(EngineCore pid=241) INFO 09-23 17:24:53 [kernel.py:310] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'])
+(EngineCore pid=241) INFO 09-23 17:24:53 [compilation.py:329] Enabled custom fusions: norm_quant, act_quant
+(APIServer pid=1) INFO 09-23 17:24:53 [api_server.py:685] Supported tasks: ['generate']
+(APIServer pid=1) INFO 09-23 17:24:53 [parser_manager.py:37] "auto" tool choice has been enabled.
+(APIServer pid=1) INFO 09-23 17:24:53 [hf.py:540] Detected the chat template content format to be 'openai'. You can set `--chat-template-content-format` to override this.
+(APIServer pid=1) INFO 09-23 17:24:54 [base.py:235] Multi-modal warmup completed in 1.322s
+(APIServer pid=1) INFO 09-23 17:24:55 [base.py:235] Readonly multi-modal warmup completed in 0.987s
+(APIServer pid=1) WARNING 09-23 17:24:55 [model.py:1723] Default vLLM sampling parameters have been overridden by /root/.cache/huggingface: `{'temperature': 1.0, 'top_p': 0.95}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+(APIServer pid=1) INFO 09-23 17:24:55 [api_server.py:689] Starting vLLM server on http://0.0.0.0:8002
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:51] Available routes are:
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /openapi.json, Methods: GET, HEAD
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /docs, Methods: GET, HEAD
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /docs/oauth2-redirect, Methods: GET, HEAD
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /redoc, Methods: GET, HEAD
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /load, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /version, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /health, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /metrics, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /tokenize, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /detokenize, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/models, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /ping, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /ping, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /invocations, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/chat/completions, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/chat/completions/batch, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/responses, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/responses/{response_id}, Methods: GET
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/responses/{response_id}/cancel, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/completions, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/messages, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/messages/count_tokens, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /generative_scoring, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /scale_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /is_scaling_elastic_ep, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/chat/completions/render, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/completions/render, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/chat/completions/derender, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /v1/completions/derender, Methods: POST
+(APIServer pid=1) INFO 09-23 17:24:55 [launcher.py:60] Route: /inference/v1/generate, Methods: POST
+(APIServer pid=1) INFO:     100.64.0.10:58102 - "GET /health HTTP/1.1" 200 OK
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:25:57 [jit_monitor.py:135] Triton kernel JIT compilation during inference: BuildPrefillChunkMetadataKernel.kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:25:58 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _pack_topk_routes_small_prefix_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO:     100.64.0.10:41184 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:41192 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:26:03 [jit_monitor.py:135] TileLang JIT compilation during inference: mhc_pre_big_fuse_with_norm_tilelang. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 09-23 17:26:06 [loggers.py:314] Engine 000: Avg prompt throughput: 210.6 tokens/s, Avg generation throughput: 34.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.2%, Prefix cache hit rate: 0.0%
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:26:03  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:129): TileLang begins to compile kernel `mhc_pre_big_fuse_with_norm_tilelang` with `out_idx=None`
+(Worker_TP0_EP0 pid=263) 2026-09-23 17:26:07  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:137): TileLang completes to compile kernel `mhc_pre_big_fuse_with_norm_tilelang`
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:26:09 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _pack_topk_routes_post_prefix_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO:     100.64.0.10:41202 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:26:11 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _kpool_softmax_rotate_write_cache_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(Worker_TP0_EP0 pid=263) WARNING 09-23 17:26:11 [jit_monitor.py:135] Triton kernel JIT compilation during inference: _kpool_tail_seed_kernel. This causes a latency spike; consider extending warmup to cover this shape/config.
+(APIServer pid=1) INFO 09-23 17:26:16 [loggers.py:314] Engine 000: Avg prompt throughput: 1084.4 tokens/s, Avg generation throughput: 11.4 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 10.7%, Prefix cache hit rate: 42.8%
+(APIServer pid=1) INFO:     100.64.0.10:53650 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:53658 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:53660 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:53676 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54516 - "GET /v1/models HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54530 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54534 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54540 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54542 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54558 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54568 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54574 - "POST /tokenize HTTP/1.1" 200 OK
+(APIServer pid=1) INFO:     100.64.0.10:54588 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 09-23 17:26:26 [loggers.py:314] Engine 000: Avg prompt throughput: 246.3 tokens/s, Avg generation throughput: 12.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.2%, Prefix cache hit rate: 36.4%
+(APIServer pid=1) INFO:     100.64.0.10:53424 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=1) INFO 09-23 17:26:36 [loggers.py:314] Engine 000: Avg prompt throughput: 204.4 tokens/s, Avg generation throughput: 0.4 tokens/s, Running: 2 reqs, Waiting: 0 reqs, GPU KV cache usage: 4.8%, Prefix cache hit rate: 35.1%
+(APIServer pid=1) INFO 09-23 17:26:46 [loggers.py:314] Engine 000: Avg prompt throughput: 102.1 tokens/s, Avg generation throughput: 66.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 35.1%
+(APIServer pid=1) INFO 09-23 17:26:56 [loggers.py:314] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 35.1%

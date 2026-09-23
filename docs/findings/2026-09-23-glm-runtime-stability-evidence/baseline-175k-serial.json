@@ -1,0 +1,177 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-09-23T16:55:45.930464+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:54:02.322438+00:00",
+      "phase": "start",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    },
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:54:02.356686+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    },
+    {
+      "bound_port": 8001,
+      "container_id": "redacted:sha256:da05904c561c395238f8ded4ab6e4f18e92608842229046a3a76cdb690b7a814",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T16:55:45.924075+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_digest": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 27040.998905971,
+        "expected_values": [
+          "VALUE_b9275525652e",
+          "VALUE_aabf229b96ce",
+          "VALUE_6d0ca10f5b2c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T16:55:35.826460+00:00",
+        "first_output": 26985.64443417,
+        "last_output": 27040.998780971,
+        "partial_visible": "# Extracted Values\n\n- **KEY_0** = `VALUE_b9275525652e`\n- **KEY_1** = `VALUE_aabf229b96ce`\n- **KEY_2** = `VALUE_6d0ca10f5b2c`\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\n## 1. Component Design Principles\n\n**Implementation:** Design components around a single responsibility. Each component should own one concern and expose it through a narrow interface. Prefer composition over inheritance so behavior can be assembled at runtime.\n\n**Example:** A `UserValidator` validates only; it does not persist or log audit trails.\n\n**Edge cases:** Components that accumulate \"just one more\" responsibility become untestable; watch for growing constructor signatures.\n\n**Tests:** Assert that a component can be instantiated with no external dependencies (or only injected ones). If it cannot, the design is leaking concerns.\n\n---\n\n## 2. Defining Component Interfaces\n\n**Implementation:** Define interfaces explicitly (abstract classes, protocols, or traits). Keep methods small in number and orthogonal. Document preconditions and postconditions on every method.\n\n**Example:**\n```python\nclass Storage(Protocol):\n    def put(self, key: str, value: bytes) -> None: ...\n    def get(self, key: str) -> bytes | None: ...\n```\n\n**Edge cases:** Interfaces with optional parameters invite ambiguity; interfaces returning `None` for \"not found\" vs. \"error\" need explicit contracts.\n\n**Tests:** Write a conformance test suite that any implementation of the interface must pass, then run it against every implementation.\n\n---\n\n## 3. Dependency Injection\n\n**Implementation:** Pass dependencies through constructors rather than creating them internally. This makes components deterministic and swappable in tests.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repo: OrderRepo, clock: Clock):\n        self.repo = repo\n        self.clock = clock\n```\n\n**Edge cases:** Circular dependency graphs; optional dependencies that silently default to production implementations.\n\n**Tests:** Inject a fake clock and fake repo; verify the component never reaches for globals or singletons (assert via import-linting or a test that freezes module state).\n\n---\n\n## 4. Configuration Management\n\n**Implementation:** Load configuration once at startup, validate it, and pass it as an immutable object. Never read environment variables deep inside business logic.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass Config:\n    retries: int\n    timeout_ms: int\n\ndef load_config(env: dict) -> Config:\n    return Config(retries=int(env[\"RETRIES\"]), timeout_ms=int(env[\"TIMEOUT_MS\"]))\n```\n\n**Edge cases:** Missing keys, wrong types, negative numbers, zero timeouts, values at int overflow boundaries.\n\n**Tests:** Table-driven tests over malformed env dicts; assert a clear validation error naming the offending key.\n\n---\n\n## 5. Error Handling Strategies\n\n**Implementation:** Distinguish expected errors (domain exceptions) from unexpected ones (bugs). Wrap external failures into your own exception hierarchy so callers don't depend on third-party error types.\n\n**Example:**\n```python\nclass ComponentError(Exception): ...\nclass NotFound(ComponentError): ...\nclass RateLimited(ComponentError): ...\n```\n\n**Edge cases:** Swallowed exceptions, exceptions raised in cleanup paths (`finally`), errors during error handling.\n\n**Tests:** Force each failure mode with a stub and assert the correct domain exception type and message context.\n\n---\n\n## 6. Logging and Observability\n\n**Implementation:** Log at boundaries (entry, exit, failure), not inside tight loops. Use structured key-value logs. Never log secrets or full payloads.\n\n**Example:**\n```python\nlog.info(\"cache.miss\", extra={\"key_hash\": hash(key), \"latency_ms\": elapsed})\n```\n\n**Edge cases:** Log injection via user-controlled strings; high-cardinality labels blowing up metric backends; PII in stack traces.\n\n**Tests:** Capture log output with a test handler; assert required fields exist and forbidden patterns (e.g., raw tokens) never appear.\n\n---\n\n## 7. Unit Testing Fundamentals\n\n**Implementation:** One behavior per test. Name tests as sentences: `test_rejects_expired_token`. Arrange\u2013Act\u2013Assert structure, always.\n\n**Example:**\n```python\ndef test_rejects_expired_token():\n    token = make_token(expired=True)          # Arrange\n    with pytest.raises(AuthError):            # Act + Assert\n        verify(token)\n```\n\n**Edge cases:** Tests that pass vacuously (asserting nothing); tests coupled to implementation details like private method names.\n\n**Tests:** Run a mutation check occasionally \u2014 if killing a mutant doesn't fail any test, coverage is illusory.\n\n---\n\n## 8. Test Doubles: Mocks, Stubs, Fakes\n\n**Implementation:** Use stubs for state queries, mocks for interaction verification, and fakes for stateful collaborators. Prefer fakes when behavior matters.\n\n**Example:** An in-memory `FakeUserRepo` implementing the same protocol as the database-backed repo.\n\n**Edge cases:** Over-mocked tests that break on any refactor; mocks that encode implementation rather than contract.\n\n**Tests:** Run the real implementation and the fake against the same conformance suite (see \u00a72) so they can never drift.\n\n---\n\n## 9. Property-Based Testing\n\n**Implementation:** Define invariants that must hold for all inputs, and let the framework generate cases (Hypothesis, fast-check, QuickCheck).\n\n**Example:**\n```python\n@given(st.lists(st.integers()))\ndef test_sort_idempotent(xs):\n    assert sort(sort(xs)) == sort(xs)\n```\n\n**Edge cases:** NaN, empty collections, huge integers, unicode edge strings \u2014 generators find these automatically.\n\n**Tests:** Always shrink-and-replay failing seeds; store discovered counterexamples as regular regression tests.\n\n---\n\n## 10. Table-Driven Tests\n\n**Implementation:** Encode input/expected pairs as data and loop. This makes coverage gaps visible at a glance.\n\n**Example:**\n```python\nCASES = [(\"1,2\", 3), (\"0,0\", 0), (\"-1,1\", 0), (\"\", ValueError)]\n@pytest.mark.parametrize(\"inp,want\", CASES)\ndef test_parse(inp, want): ...\n```\n\n**Edge cases:** Rows that duplicate each other; expected values that were copy-pasted from actual (wrong) output.\n\n**Tests:** Review tables in code review specifically for \"suspiciously convenient\" expectations.\n\n---\n\n## 11. Edge Case Identification\n\n**Implementation:** Systematically enumerate: empty, one, many; zero, negative, max; null, malformed, hostile; first, last, duplicate.\n\n**Example:** For a `slice(list, start, end)` function: empty list, `start > end`, negative indices, `end` beyond length.\n\n**Edge cases:** The edge cases of the edge-case logic itself (e.g., clamping code that overflows).\n\n**Tests:** Maintain a checklist per data type (string, int, list, time) and require it be applied to every new API.\n\n---\n\n## 12. Boundary Value Analysis\n\n**Implementation:** For every numeric limit, test `limit-1`, `limit`, `limit+1`, and both sides of every comparison operator.\n\n**Example:** A rate limiter allowing 100 req/min: test request 99, 100, 101, and behavior across the minute boundary.\n\n**Edge cases:** Off-by-one from `<=` vs `<`; inclusive/exclusive range confusion in docs vs code.\n\n**Tests:** Parametrize directly over boundary offsets so intent is explicit in the test name.\n\n---\n\n## 13. Null and Empty Input Handling\n\n**Implementation:** Decide per API whether `None`/empty is valid. If invalid, fail fast with a descriptive error; if valid, define exact semantics.\n\n**Example:** `search(query=\"\")` returns all results vs. raises `EmptyQueryError` \u2014 pick one and document it.\n\n**Edge cases:** Empty string vs. whitespace-only vs. `None`; empty list vs. list of empty strings; `None` inside a collection.\n\n**Tests:** A dedicated test class per public method covering all null/empty variants.\n\n---\n\n## 14. Concurrency and Thread Safety\n\n**Implementation:** Identify shared mutable state. Either eliminate it (immutability), encapsulate it behind locks, or document that the component is not thread-safe.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self): self._lock = threading.Lock(); self._n = 0\n    def inc(self):\n        with self._lock: self._n += 1\n```\n\n**Edge cases:** Check-then-act races, lock ordering deadlocks, reen",
+        "prompt_sha256": "0e8ff8d5b589c22a0bda5efc978bf37d0b140fb634684b689ada1258376db46a",
+        "prompt_tokens_tokenized": 174798,
+        "request_id": null,
+        "response_headers_at": 26948.071286093,
+        "result": {
+          "content_chunks": 3398,
+          "e2e": 93.12428883699977,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 643,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 37.76987590600038,
+          "ttft": 47.1594290719986,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 174798,
+            "total_tokens": 178894
+          },
+          "visible_content": "# Extracted Values\n\n- **KEY_0** = `VALUE_b9275525652e`\n- **KEY_1** = `VALUE_aabf229b96ce`\n- **KEY_2** = `VALUE_6d0ca10f5b2c`\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\n## 1. Component Design Principles\n\n**Implementation:** Design components around a single responsibility. Each component should own one concern and expose it through a narrow interface. Prefer composition over inheritance so behavior can be assembled at runtime.\n\n**Example:** A `UserValidator` validates only; it does not persist or log audit trails.\n\n**Edge cases:** Components that accumulate \"just one more\" responsibility become untestable; watch for growing constructor signatures.\n\n**Tests:** Assert that a component can be instantiated with no external dependencies (or only injected ones). If it cannot, the design is leaking concerns.\n\n---\n\n## 2. Defining Component Interfaces\n\n**Implementation:** Define interfaces explicitly (abstract classes, protocols, or traits). Keep methods small in number and orthogonal. Document preconditions and postconditions on every method.\n\n**Example:**\n```python\nclass Storage(Protocol):\n    def put(self, key: str, value: bytes) -> None: ...\n    def get(self, key: str) -> bytes | None: ...\n```\n\n**Edge cases:** Interfaces with optional parameters invite ambiguity; interfaces returning `None` for \"not found\" vs. \"error\" need explicit contracts.\n\n**Tests:** Write a conformance test suite that any implementation of the interface must pass, then run it against every implementation.\n\n---\n\n## 3. Dependency Injection\n\n**Implementation:** Pass dependencies through constructors rather than creating them internally. This makes components deterministic and swappable in tests.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, repo: OrderRepo, clock: Clock):\n        self.repo = repo\n        self.clock = clock\n```\n\n**Edge cases:** Circular dependency graphs; optional dependencies that silently default to production implementations.\n\n**Tests:** Inject a fake clock and fake repo; verify the component never reaches for globals or singletons (assert via import-linting or a test that freezes module state).\n\n---\n\n## 4. Configuration Management\n\n**Implementation:** Load configuration once at startup, validate it, and pass it as an immutable object. Never read environment variables deep inside business logic.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass Config:\n    retries: int\n    timeout_ms: int\n\ndef load_config(env: dict) -> Config:\n    return Config(retries=int(env[\"RETRIES\"]), timeout_ms=int(env[\"TIMEOUT_MS\"]))\n```\n\n**Edge cases:** Missing keys, wrong types, negative numbers, zero timeouts, values at int overflow boundaries.\n\n**Tests:** Table-driven tests over malformed env dicts; assert a clear validation error naming the offending key.\n\n---\n\n## 5. Error Handling Strategies\n\n**Implementation:** Distinguish expected errors (domain exceptions) from unexpected ones (bugs). Wrap external failures into your own exception hierarchy so callers don't depend on third-party error types.\n\n**Example:**\n```python\nclass ComponentError(Exception): ...\nclass NotFound(ComponentError): ...\nclass RateLimited(ComponentError): ...\n```\n\n**Edge cases:** Swallowed exceptions, exceptions raised in cleanup paths (`finally`), errors during error handling.\n\n**Tests:** Force each failure mode with a stub and assert the correct domain exception type and message context.\n\n---\n\n## 6. Logging and Observability\n\n**Implementation:** Log at boundaries (entry, exit, failure), not inside tight loops. Use structured key-value logs. Never log secrets or full payloads.\n\n**Example:**\n```python\nlog.info(\"cache.miss\", extra={\"key_hash\": hash(key), \"latency_ms\": elapsed})\n```\n\n**Edge cases:** Log injection via user-controlled strings; high-cardinality labels blowing up metric backends; PII in stack traces.\n\n**Tests:** Capture log output with a test handler; assert required fields exist and forbidden patterns (e.g., raw tokens) never appear.\n\n---\n\n## 7. Unit Testing Fundamentals\n\n**Implementation:** One behavior per test. Name tests as sentences: `test_rejects_expired_token`. Arrange\u2013Act\u2013Assert structure, always.\n\n**Example:**\n```python\ndef test_rejects_expired_token():\n    token = make_token(expired=True)          # Arrange\n    with pytest.raises(AuthError):            # Act + Assert\n        verify(token)\n```\n\n**Edge cases:** Tests that pass vacuously (asserting nothing); tests coupled to implementation details like private method names.\n\n**Tests:** Run a mutation check occasionally \u2014 if killing a mutant doesn't fail any test, coverage is illusory.\n\n---\n\n## 8. Test Doubles: Mocks, Stubs, Fakes\n\n**Implementation:** Use stubs for state queries, mocks for interaction verification, and fakes for stateful collaborators. Prefer fakes when behavior matters.\n\n**Example:** An in-memory `FakeUserRepo` implementing the same protocol as the database-backed repo.\n\n**Edge cases:** Over-mocked tests that break on any refactor; mocks that encode implementation rather than contract.\n\n**Tests:** Run the real implementation and the fake against the same conformance suite (see \u00a72) so they can never drift.\n\n---\n\n## 9. Property-Based Testing\n\n**Implementation:** Define invariants that must hold for all inputs, and let the framework generate cases (Hypothesis, fast-check, QuickCheck).\n\n**Example:**\n```python\n@given(st.lists(st.integers()))\ndef test_sort_idempotent(xs):\n    assert sort(sort(xs)) == sort(xs)\n```\n\n**Edge cases:** NaN, empty collections, huge integers, unicode edge strings \u2014 generators find these automatically.\n\n**Tests:** Always shrink-and-replay failing seeds; store discovered counterexamples as regular regression tests.\n\n---\n\n## 10. Table-Driven Tests\n\n**Implementation:** Encode input/expected pairs as data and loop. This makes coverage gaps visible at a glance.\n\n**Example:**\n```python\nCASES = [(\"1,2\", 3), (\"0,0\", 0), (\"-1,1\", 0), (\"\", ValueError)]\n@pytest.mark.parametrize(\"inp,want\", CASES)\ndef test_parse(inp, want): ...\n```\n\n**Edge cases:** Rows that duplicate each other; expected values that were copy-pasted from actual (wrong) output.\n\n**Tests:** Review tables in code review specifically for \"suspiciously convenient\" expectations.\n\n---\n\n## 11. Edge Case Identification\n\n**Implementation:** Systematically enumerate: empty, one, many; zero, negative, max; null, malformed, hostile; first, last, duplicate.\n\n**Example:** For a `slice(list, start, end)` function: empty list, `start > end`, negative indices, `end` beyond length.\n\n**Edge cases:** The edge cases of the edge-case logic itself (e.g., clamping code that overflows).\n\n**Tests:** Maintain a checklist per data type (string, int, list, time) and require it be applied to every new API.\n\n---\n\n## 12. Boundary Value Analysis\n\n**Implementation:** For every numeric limit, test `limit-1`, `limit`, `limit+1`, and both sides of every comparison operator.\n\n**Example:** A rate limiter allowing 100 req/min: test request 99, 100, 101, and behavior across the minute boundary.\n\n**Edge cases:** Off-by-one from `<=` vs `<`; inclusive/exclusive range confusion in docs vs code.\n\n**Tests:** Parametrize directly over boundary offsets so intent is explicit in the test name.\n\n---\n\n## 13. Null and Empty Input Handling\n\n**Implementation:** Decide per API whether `None`/empty is valid. If invalid, fail fast with a descriptive error; if valid, define exact semantics.\n\n**Example:** `search(query=\"\")` returns all results vs. raises `EmptyQueryError` \u2014 pick one and document it.\n\n**Edge cases:** Empty string vs. whitespace-only vs. `None`; empty list vs. list of empty strings; `None` inside a collection.\n\n**Tests:** A dedicated test class per public method covering all null/empty variants.\n\n---\n\n## 14. Concurrency and Thread Safety\n\n**Implementation:** Identify shared mutable state. Either eliminate it (immutability), encapsulate it behind locks, or document that the component is not thread-safe.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self): self._lock = threading.Lock(); self._n = 0\n    def inc(self):\n        with self._lock: self._n += 1\n```\n\n**Edge cases:** Check-then-act races, lock ordering deadlocks, reen",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 26947.868123449,
+        "started_at": "2026-09-23T16:54:02.695663+00:00",
+        "status": "completed",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 27051.051879821,
+        "expected_values": [
+          "VALUE_ffe51a8a7664",
+          "VALUE_9a285c1395b4",
+          "VALUE_c807fdd6cc4e"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T16:55:45.879435+00:00",
+        "first_output": 27048.115267696,
+        "last_output": 27051.037921267,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_ffe51a8a7664\n- **KEY_1** = VALUE_9a285c1395b4\n- **KEY_2** = VALUE_c807fdd6cc4e",
+        "prompt_sha256": "fad5b7d3389d127276cbb80f55fe7ec71f889ca074350917a46191bad464d685",
+        "prompt_tokens_tokenized": 31820,
+        "request_id": null,
+        "response_headers_at": 27041.050691157,
+        "result": {
+          "content_chunks": 61,
+          "e2e": 10.036799400000746,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 220,
+          "output_token_source": "usage",
+          "reasoning_chunks": 152,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 7.100212574998295,
+          "ttft": 9.21629730299901,
+          "usage": {
+            "completion_tokens": 220,
+            "prompt_tokens": 31820,
+            "total_tokens": 32040
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_ffe51a8a7664\n- **KEY_1** = VALUE_9a285c1395b4\n- **KEY_2** = VALUE_c807fdd6cc4e",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 27041.011850853,
+        "started_at": "2026-09-23T16:55:35.839393+00:00",
+        "status": "completed",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 174956,
+    "base_url": "http://127.0.0.1:8001/v1",
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-apc-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "e7781602f75cfb2dc4fa1852e28457aae8659908d74caff2c3a02fb71378bbfd",
+      "registry_sha256": "7c13c5251170faf06d1a20978dd82b789898bb8f56c067442672abced6d24105"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 31963,
+    "context_limit": 327680,
+    "managed_container": "intelligence-glm-exl3-327k-r10-vision8-apc-nospec",
+    "mode": "serial",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+    "prefix_mode": "unique",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "352a9e2a13af8104dedb7b4bbeade50ac60aa9af49f469adc23e7d2d0f8a0a6c",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T16:54:02.237526+00:00",
+  "status": "completed"
+}
