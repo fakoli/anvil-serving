@@ -26,7 +26,7 @@ async function fixtureServer() {
 }
 
 /** A fixture-only, source-owned boundary. It never exposes navigation or image bytes. */
-export async function createFixtureObservationAdapter({ piSessionId = "fixture-session" } = {}) {
+export async function createFixtureObservationAdapter({ piSessionId = "fixture-session", preview } = {}) {
   if (!opaque(piSessionId, /^[A-Za-z0-9-]{1,128}$/)) throw new Error("invalid_session_binding");
   const fixture = await fixtureServer();
   let owner;
@@ -34,29 +34,35 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
     const origin = new URL(fixture.url).origin;
     owner = await createBrowserOwner({
       launch: () => chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome", headless: true, args: ["--disable-gpu"] }),
-      documentOrigins: [origin], subresourceOrigins: [origin], limits: LIMITS, jev: { enabled: false },
+      documentOrigins: [origin], subresourceOrigins: [origin], limits: LIMITS, jev: { enabled: false }, preview,
     });
     const session = owner.session();
     await session.navigate(fixture.url);
     let sequence = 0, closed = false;
-    let binding;
+    let active;
     const execute = async (request, { signal } = {}) => {
       if (closed) return refusal("owner_closed");
-      if (!plain(request) || !["capture", "resolve", "release"].includes(request.operation)) return refusal("invalid_request");
+      if (!plain(request) || !["capture", "resolve", "release", "preview"].includes(request.operation)) return refusal("invalid_request");
       try {
         if (request.operation === "capture") {
           if (Object.keys(request).length !== 1) return refusal("invalid_request");
           const result = await session.capture({ schema: "widget-resolution/v1", request_id: `fixture-${++sequence}`, target: { description: "synthetic report", qualifiers: [] }, predicates: ["exists", "in_viewport", "occluded", "enabled"], scope: { kind: "document", root: "document" }, require_unique: true }, { signal });
-          binding = { pi_session_id: piSessionId, owner_session_id: result.session_id };
+          const binding = Object.freeze({ pi_session_id: piSessionId, owner_session_id: result.session_id });
+          active = Object.freeze({ observation_id: result.observation_id, binding });
           return bounded("capture", result, binding);
+        }
+        if (request.operation === "preview") {
+          if (Object.keys(request).length !== 1 || !active || active.binding.pi_session_id !== piSessionId) return refusal("unknown_observation");
+          return bounded("preview", await session.preview(active.observation_id), active.binding);
         }
         if (!plain(request.args) || Object.keys(request).length !== 2) return refusal("invalid_request");
         if (request.operation === "resolve") {
           if (Object.keys(request.args).length !== 2 || !opaque(request.args.observation_id, /^[0-9a-f-]{36}$/) || !opaque(request.args.entity_id, /^e-[1-9][0-9]*$/)) return refusal("invalid_request");
-          return bounded("resolve", await session.resolve(request.args.observation_id, request.args.entity_id), binding);
+          return bounded("resolve", await session.resolve(request.args.observation_id, request.args.entity_id), active?.binding);
         }
         if (Object.keys(request.args).length !== 1 || !opaque(request.args.observation_id, /^[0-9a-f-]{36}$/)) return refusal("invalid_request");
         await session.release(request.args.observation_id);
+        const binding = active?.binding; if (active?.observation_id === request.args.observation_id) active = undefined;
         return bounded("release", { observation_id: request.args.observation_id, released: true }, binding);
       } catch (error) { return refusal(error instanceof OwnerError ? error.code : "owner_failed"); }
     };

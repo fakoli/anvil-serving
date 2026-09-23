@@ -29,6 +29,10 @@ export default function (pi: any) {
     const widened = parse(await resolve("fixture-widened", { observation_id: captureResult.result.observation_id, entity_id: disabled.id, url: "https://example.test/" }, new AbortController().signal, () => {}, ctx));
     console.error(`PI_BROWSER_OWNER_CALLBACKS:${JSON.stringify({ prior: prior?.code ?? null, live, capture: { status: captureResult.status, observation_id: captureResult.result.observation_id, binding: captureResult.binding, entities: captureResult.result.entities.map((entity: any) => ({ role: entity.role, text: entity.text, enabled: entity.enabled })), hasImage: JSON.stringify(captureResult).includes("iVBOR") }, resolve: { status: resolved.status, enabled: resolved.result.enabled }, release: released?.status ?? null, stale: stale?.code ?? null, cancelled: cancelled.code, widened: widened.code })}`);
   } });
+  pi.registerCommand("browser_fixture_preview", { description: "Show the current synthetic fixture locally", async handler(args: string) {
+    const result = args.trim() ? { schema: "browser-owner-adapter/v1", status: "refused", code: "invalid_request" } : await mustAdapter().execute({ operation: "preview" });
+    console.error(`PI_BROWSER_OWNER_PREVIEW:${JSON.stringify(result)}`);
+  } });
   pi.registerCommand("browser_fixture_reload", { description: "Reload the synthetic fixture extension", async handler(_args: string, ctx: any) { await ctx.reload(); } });
   pi.on("context", () => { pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "context" }); });
   pi.on("tool_result", (event: any) => { if (["browser_capture", "browser_resolve"].includes(event.toolName)) pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "tool_result", tool_call_id: event.toolCallId, tool_name: event.toolName }); });
@@ -45,7 +49,8 @@ export default function (pi: any) {
     if (adapter) throw new Error("owner_already_open");
     const header = ctx.sessionManager.getHeader();
     if (!header?.id) throw new Error("missing_session_header");
-    adapter = await createFixtureObservationAdapter({ piSessionId: header.id });
+    const viewer = process.env.PI_BROWSER_FIXTURE_PREVIEW_VIEWER, runtimeRoot = process.env.PI_BROWSER_FIXTURE_PREVIEW_ROOT;
+    adapter = await createFixtureObservationAdapter({ piSessionId: header.id, preview: viewer && runtimeRoot ? { viewer: [viewer], runtimeRoot } : undefined });
     pi.setActiveTools(["browser_capture", "browser_resolve", "browser_release"]);
     console.error(`PI_BROWSER_OWNER_READY:${JSON.stringify({ reason: event.reason, session_id: header.id, active: pi.getActiveTools().sort() })}`);
   });

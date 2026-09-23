@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import { readFileSync, realpathSync } from "node:fs";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
@@ -27,6 +27,8 @@ assert.ok(selectedPi, "Pi executable was not resolved");
 const packageIdentity = JSON.parse(readFileSync(join(dirname(realpathSync(selectedPi)), "package.json"), "utf8"));
 assert.deepEqual({ name: packageIdentity.name, version: packageIdentity.version }, { name: "@earendil-works/pi-coding-agent", version: "0.85.1" });
 const home = await mkdtemp(join(tmpdir(), "pi-browser-owner-"));
+const previewRoot = join(home, "preview-root"), previewViewer = join(home, "preview-viewer.mjs"), previewProof = join(home, "preview-proof.json");
+await writeFile(previewViewer, `#!${process.execPath}\nimport { createHash } from "node:crypto";import { lstat,readFile,writeFile } from "node:fs/promises";const path=process.argv.at(-1),[image,stat]=await Promise.all([readFile(path),lstat(path)]);await writeFile(process.env.PI_BROWSER_FIXTURE_PREVIEW_PROOF,JSON.stringify({digest:createHash("sha256").update(image).digest("hex"),mode:stat.mode&0o777}));`); await chmod(previewViewer, 0o700);
 const providerCaptures = [];
 let sessionFile;
 let providerSecondSnapshot;
@@ -46,7 +48,7 @@ const provider = createServer(async (request, response) => {
   });
 });
 await new Promise((resolve, reject) => provider.once("error", reject).listen(0, "127.0.0.1", resolve));
-const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--provider", "fixture-browser", "--model", "fixture-browser", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", PI_BROWSER_FIXTURE_PROVIDER_URL: `http://127.0.0.1:${provider.address().port}/v1`, PI_BROWSER_IMAGE_CAPABLE: process.env.PI_BROWSER_IMAGE_CAPABLE || "1", PI_BROWSER_FIXTURE_REWRITE: process.env.PI_BROWSER_FIXTURE_REWRITE || "", CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
+const child = spawn(pi, ["--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--extension", "./tests/computer_use/pi_browser_owner_probe/extension.ts", "--provider", "fixture-browser", "--model", "fixture-browser", "--session-dir", join(home, "sessions")], { cwd: process.cwd(), env: { PATH: process.env.PATH || "", HOME: home, PI_CODING_AGENT_DIR: join(home, "agent"), PI_CODING_AGENT_SESSION_DIR: join(home, "sessions"), PI_OFFLINE: "1", PI_BROWSER_FIXTURE_PROVIDER_URL: `http://127.0.0.1:${provider.address().port}/v1`, PI_BROWSER_IMAGE_CAPABLE: process.env.PI_BROWSER_IMAGE_CAPABLE || "1", PI_BROWSER_FIXTURE_PREVIEW_VIEWER: previewViewer, PI_BROWSER_FIXTURE_PREVIEW_ROOT: previewRoot, PI_BROWSER_FIXTURE_PREVIEW_PROOF: previewProof, PI_BROWSER_FIXTURE_REWRITE: process.env.PI_BROWSER_FIXTURE_REWRITE || "", CHROMIUM_EXECUTABLE: process.env.CHROMIUM_EXECUTABLE || "/usr/bin/google-chrome" }, stdio: ["pipe", "pipe", "pipe"] });
 let stdout = "", stderr = "";
 child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8"); child.stdout.on("data", (part) => { stdout += part; }); child.stderr.on("data", (part) => { stderr += part; });
 const wait = async (match) => { const end = Date.now() + 12_000; while (!match()) { if (Date.now() > end) throw new Error(`timeout: ${stderr}`); await new Promise((resolve) => setTimeout(resolve, 20)); } };
@@ -99,6 +101,11 @@ try {
   const nextContextIndex = persisted.findIndex((entry, index) => index > persistedResultIndex && entry.type === "custom" && entry.customType === "anvil-browser-dispatch/v1" && entry.data?.hook === "context");
   const nextProviderIndex = persisted.findIndex((entry, index) => index > nextContextIndex && entry.type === "custom" && entry.customType === "anvil-browser-dispatch/v1" && entry.data?.hook === "before_provider_request");
   assert.ok(hookResultIndex < hookEndIndex && hookEndIndex < persistedResultIndex && persistedResultIndex < nextContextIndex && nextContextIndex < nextProviderIndex, "merged JSONL capture/provider order changed");
+  await rpc("preview-current", "prompt", { message: "/browser_fixture_preview" });
+  await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 1);
+  const preview = logged("PI_BROWSER_OWNER_PREVIEW")[0]; assert.deepEqual(preview, { schema: "browser-owner-adapter/v1", status: "ok", operation: "preview", binding: receipt.binding, result: { status: "shown" } });
+  const previewAttestation = JSON.parse(await readFile(previewProof, "utf8")); assert.match(previewAttestation.digest, /^[0-9a-f]{64}$/); assert.equal(previewAttestation.mode, 0o600);
+  assert.equal(providerCaptures.length, 2, "human preview made a provider request"); assert.doesNotMatch(JSON.stringify(preview), /iVBOR|data:image|file:|private_path/);
   await rpc("agent-negative", "prompt", { message: "[browser-negative]" });
   await wait(() => events.length < records().length && providerCaptures.length === 4);
   const negativeCall = records().find((event) => event.type === "message_end" && event.message?.role === "assistant" && event.message?.content?.some((part) => part.type === "toolCall" && part.name === "browser_resolve"));
@@ -138,6 +145,8 @@ try {
   assert.equal(callbacks.stale, "unknown_observation");
   assert.equal(callbacks.cancelled, "cancelled");
   assert.equal(callbacks.widened, "invalid_request");
+  await rpc("preview-released", "prompt", { message: "/browser_fixture_preview" }); await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 2);
+  assert.deepEqual(logged("PI_BROWSER_OWNER_PREVIEW")[1], { schema: "browser-owner-adapter/v1", status: "refused", code: "unknown_observation" }); assert.equal(providerCaptures.length, 4, "refused preview made a provider request");
   const neutral = await createFixtureObservationAdapter({ piSessionId: "neutral-session" });
   try {
     const neutralCapture = await neutral.execute({ operation: "capture" }), neutralDisabled = neutralCapture.result.entities.find((entity) => entity.text === "Disabled capture");
@@ -155,6 +164,7 @@ try {
   await wait(() => logged("PI_BROWSER_OWNER_READY").length === 2 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "new"));
   const newReady = logged("PI_BROWSER_OWNER_READY")[1], newState = await rpc("state-new", "get_state");
   assert.equal(newReady.reason, "new"); assert.notEqual(newReady.session_id, ready.session_id); assert.equal(newState.data.sessionId, newReady.session_id);
+  await rpc("preview-new", "prompt", { message: "/browser_fixture_preview" }); await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 3); assert.equal(logged("PI_BROWSER_OWNER_PREVIEW")[2].code, "unknown_observation");
   await rpc("proof-new", "prompt", { message: `/browser_fixture_proof ${liveStart.capture.observation_id}` });
   await wait(() => logged("PI_BROWSER_OWNER_CALLBACKS").length === 3);
   const afterNew = logged("PI_BROWSER_OWNER_CALLBACKS")[2];
@@ -168,6 +178,7 @@ try {
   await wait(() => logged("PI_BROWSER_OWNER_READY").length === 3 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "fork"));
   const forkReady = logged("PI_BROWSER_OWNER_READY")[2], forkState = await rpc("state-fork", "get_state");
   assert.equal(forkReady.reason, "fork"); assert.notEqual(forkReady.session_id, newReady.session_id); assert.equal(forkState.data.sessionId, forkReady.session_id);
+  await rpc("preview-fork", "prompt", { message: "/browser_fixture_preview" }); await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 4); assert.equal(logged("PI_BROWSER_OWNER_PREVIEW")[3].code, "unknown_observation");
   await rpc("proof-fork", "prompt", { message: `/browser_fixture_proof ${liveNew.capture.observation_id}` });
   await wait(() => logged("PI_BROWSER_OWNER_CALLBACKS").length === 5);
   const afterFork = logged("PI_BROWSER_OWNER_CALLBACKS")[4];
@@ -178,6 +189,7 @@ try {
   await rpc("reload", "prompt", { message: "/browser_fixture_reload" });
   await wait(() => logged("PI_BROWSER_OWNER_READY").length === 4 && logged("PI_BROWSER_OWNER_CLOSED").some((entry) => entry.reason === "reload"));
   const reloadReady = logged("PI_BROWSER_OWNER_READY")[3]; assert.equal(reloadReady.reason, "reload"); assert.equal(reloadReady.session_id, forkReady.session_id);
+  await rpc("preview-reload", "prompt", { message: "/browser_fixture_preview" }); await wait(() => logged("PI_BROWSER_OWNER_PREVIEW").length === 5); assert.equal(logged("PI_BROWSER_OWNER_PREVIEW")[4].code, "unknown_observation");
   await rpc("proof-reload", "prompt", { message: `/browser_fixture_proof ${liveFork.capture.observation_id}` });
   await wait(() => logged("PI_BROWSER_OWNER_CALLBACKS").length === 7);
   const afterReload = logged("PI_BROWSER_OWNER_CALLBACKS")[6];
