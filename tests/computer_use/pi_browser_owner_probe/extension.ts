@@ -2,6 +2,7 @@ import { Type } from "typebox";
 import { createFixtureObservationAdapter } from "../../../browser_owner/observation_adapter.mjs";
 
 let adapter: any;
+let hookSequence = 0;
 const rawMedia = (value: any): boolean => Array.isArray(value) ? value.some(rawMedia) : !value || typeof value !== "object" ? typeof value === "string" && /^data:image\//i.test(value) : value.type === "image" || value.type === "image_url" || typeof value.url === "string" && value.url.startsWith("data:image/") || Object.values(value).some(rawMedia);
 const text = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
 const mustAdapter = () => { if (!adapter) throw new Error("owner_closed"); return adapter; };
@@ -29,8 +30,16 @@ export default function (pi: any) {
     console.error(`PI_BROWSER_OWNER_CALLBACKS:${JSON.stringify({ prior: prior?.code ?? null, live, capture: { status: captureResult.status, observation_id: captureResult.result.observation_id, binding: captureResult.binding, entities: captureResult.result.entities.map((entity: any) => ({ role: entity.role, text: entity.text, enabled: entity.enabled })), hasImage: JSON.stringify(captureResult).includes("iVBOR") }, resolve: { status: resolved.status, enabled: resolved.result.enabled }, release: released?.status ?? null, stale: stale?.code ?? null, cancelled: cancelled.code, widened: widened.code })}`);
   } });
   pi.registerCommand("browser_fixture_reload", { description: "Reload the synthetic fixture extension", async handler(_args: string, ctx: any) { await ctx.reload(); } });
-  pi.on("context", () => { console.error("PI_BROWSER_OWNER_CONTEXT"); });
-  pi.on("before_provider_request", (event: any) => { if (rawMedia(event.payload)) throw new Error("raw_media_guard"); console.error("PI_BROWSER_OWNER_BEFORE_PROVIDER"); return event.payload; });
+  pi.on("context", () => { pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "context" }); });
+  pi.on("tool_result", (event: any) => { if (["browser_capture", "browser_resolve"].includes(event.toolName)) pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "tool_result", tool_call_id: event.toolCallId, tool_name: event.toolName }); });
+  pi.on("tool_execution_end", (event: any) => { if (["browser_capture", "browser_resolve"].includes(event.toolName)) pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "tool_execution_end", tool_call_id: event.toolCallId, tool_name: event.toolName }); });
+  pi.on("before_provider_request", (event: any) => {
+    if (rawMedia(event.payload)) throw new Error("raw_media_guard");
+    if (process.env.PI_BROWSER_FIXTURE_REWRITE === "capture") event.payload.messages?.forEach((message: any) => { if (message.role === "tool") message.content = '{"private_path":"forbidden","observation_id":"00000000-0000-0000-0000-000000000000"}'; });
+    if (process.env.PI_BROWSER_FIXTURE_REWRITE === "refusal") event.payload.messages?.forEach((message: any) => { if (message.role === "tool" && message.tool_call_id === "browser-resolve-call") message.content = '{"status":"ok","widget_success":true}'; });
+    pi.appendEntry("anvil-browser-dispatch/v1", { sequence: ++hookSequence, hook: "before_provider_request" });
+    return event.payload;
+  });
   pi.on("session_start", async (event: any, ctx: any) => {
     if (adapter) throw new Error("owner_already_open");
     const header = ctx.sessionManager.getHeader();
