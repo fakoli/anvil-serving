@@ -178,7 +178,9 @@
         "visible_tokens": 37029,
         "finish_reason": "stop",
         "structural_marker_pass_rate": 1.0,
-        "full_coding_correctness": "not established"
+        "full_coding_correctness": "not established",
+        "chapter_headings_emitted": 24,
+        "chapters_below_requested_prose_minimum": 2
       },
       "strict_capacity": {
         "attempted": 16,
@@ -290,7 +292,8 @@
         "eight_images": "native/qwen-r2-eight-images.json",
         "context": "native/qwen-r2-long-context-tools.json",
         "long_64k": "native/qwen-r2-long-output-64k.json",
-        "strict_capacity": "native/qwen-r2-capacity-c4-strict128.json"
+        "strict_capacity": "native/qwen-r2-capacity-c4-strict128.json",
+        "extended_context": "native/qwen-r2-context-extended.json"
       },
       "limitations": [
         "These results do not qualify the separately tested medium request profile.",
@@ -320,13 +323,24 @@
         "visible_tokens": 23150,
         "finish_reason": "stop",
         "structural_marker_pass_rate": 1.0,
-        "full_coding_correctness": "not established"
+        "full_coding_correctness": "not established",
+        "chapter_headings_emitted": 24,
+        "chapters_below_requested_prose_minimum": 23
       },
       "strict_capacity": {
         "attempted": 16,
         "passed": 0,
         "failed": 16,
         "performance_eligible": false
+      },
+      "extended_context": {
+        "passed": true,
+        "prompt_tokens": 412589,
+        "completion_tokens": 74,
+        "seconds": 60.741,
+        "configured_window": 524288,
+        "remaining_window_before_completion": 111699,
+        "limitation": "Single-request retrieval with 74 total completion tokens; no 65K output or full-window coding/concurrency qualification."
       }
     }
   },
