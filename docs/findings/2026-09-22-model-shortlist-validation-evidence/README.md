@@ -49,7 +49,8 @@ campaign but cannot authorize a promotion.
 
 ## Final privacy review
 
-Retained loopback URLs and startup listener ports use `<redacted-port>`.
+Retained loopback URLs and startup listener ports use `<redacted-port>`;
+worker PIDs use `REDACTED_PROCESS_ID`.
 `mode-restored.json` preserves the recorded mode, TP size and unresolved list
 but replaces the private blocked-workload catalog, exclusive owner and GPU
 role/owner mappings with `REDACTED_ACTIVE_TOPOLOGY`. Public restoration
