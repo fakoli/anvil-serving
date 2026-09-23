@@ -113,7 +113,28 @@ def test_planning_scores_step_order_not_incidental_substrings(answer, passed):
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "5"
+    assert result["oracle_revision"] == "6"
+
+
+def test_fixture_prompts_disclose_scored_format_result_and_tool_boundaries():
+    planning, _ = build_agentic_scenario("planning")
+    assert "three separate step headings" in planning["messages"][0]["content"]
+    assert "inspect -> patch -> test" in planning["messages"][0]["content"]
+    for case, requirement in (
+        ("tool-sequence", "exact marker"),
+        ("dependent-result", "exact status string"),
+        ("tool-recovery", "exact marker"),
+    ):
+        scenario, _ = build_agentic_scenario(case)
+        assert requirement in scenario["messages"][0]["content"]
+    debug, expected = build_agentic_scenario("debug-loop")
+    prompt = debug["messages"][0]["content"]
+    assert "sum of its inputs a and b" in prompt
+    assert "exactly those four tool calls in that order" in prompt
+    assert "do not call extra tools" in prompt
+    trace = passing_trace(expected)
+    trace["tool_calls"] = [*trace["tool_calls"], {"name": "read_file", "arguments": {"path": "calc.py"}}]
+    assert score_agentic_trace(debug, expected, trace)["failure_class"] == "protocol_failure"
 
 
 def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():

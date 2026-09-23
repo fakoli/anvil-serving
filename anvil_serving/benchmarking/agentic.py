@@ -13,7 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "5"
+AGENTIC_ORACLE_REVISION = "6"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -92,7 +92,10 @@ def build_agentic_scenario(
     if scenario_type == "planning":
         scenario["messages"] = [{
             "role": "user",
-            "content": "Return only the safe three-step workflow for changing code: inspect, patch, test.",
+            "content": (
+                "Return only the safe three-step workflow for changing code: inspect, patch, test. "
+                "Use three separate step headings in that order, or exactly: inspect -> patch -> test."
+            ),
         }]
         expected["final"] = "inspect -> patch -> test"
         expected["final_kind"] = "ordered_terms"
@@ -112,7 +115,10 @@ def build_agentic_scenario(
         expected["final_kind"] = "exact_json"
     elif scenario_type == "tool-sequence":
         scenario["messages"] = [{
-            "role": "user", "content": "Read ticket T-17, then read the file named by the ticket."
+            "role": "user", "content": (
+                "Read ticket T-17, then read the file named by the ticket. "
+                "Include the file result's exact marker in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("read_ticket", ["id"]), _tool("read_file", ["path"])]
         scenario["injected_results"] = [
@@ -150,7 +156,10 @@ def build_agentic_scenario(
         })
     elif scenario_type == "dependent-result":
         scenario["messages"] = [{
-            "role": "user", "content": "Look up user Ada, then update that exact user to active."
+            "role": "user", "content": (
+                "Look up user Ada, then update that exact user to active. "
+                "Include the update result's exact status string in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("lookup_user", ["name"]), _tool("update_user", ["id", "state"])]
         scenario["injected_results"] = [
@@ -171,7 +180,10 @@ def build_agentic_scenario(
         scenario["scenario_id"] = f"tool-recovery-{recovery_result}"
         expected["scenario_id"] = scenario["scenario_id"]
         scenario["messages"] = [{
-            "role": "user", "content": "Fetch build B-9. If the result is unusable, retry once safely."
+            "role": "user", "content": (
+                "Fetch build B-9. If the result is unusable, retry once safely. "
+                "Include the successful result's exact marker in your final answer."
+            )
         }]
         scenario["tools"] = [_tool("fetch_build", ["id", "attempt"])]
         fixtures = {
@@ -200,7 +212,12 @@ def build_agentic_scenario(
     elif scenario_type == "debug-loop":
         scenario["messages"] = [{
             "role": "user",
-            "content": "Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests.",
+            "content": (
+                "This deterministic fixture's function must return the sum of its inputs a and b. "
+                "Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests. "
+                "Make exactly those four tool calls in that order, one per turn; do not call extra tools "
+                "or inspect other files. After the second test result, report whether the tests pass."
+            ),
         }]
         scenario["tools"] = [
             _tool("run_tests", ["scope"]),
