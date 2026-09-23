@@ -1071,3 +1071,22 @@ def test_finalizer_rechecks_closed_inventory_at_write_boundary(tmp_path, monkeyp
     with pytest.raises(ValueError, match="undeclared artifact: rogue.txt"):
         module.finalize(source)
     assert not (tmp_path / "artifact-manifest.json").exists()
+
+
+def test_finalizer_rejects_oversized_artifact_before_read(tmp_path, monkeypatch):
+    artifact = tmp_path / "large.txt"
+    with artifact.open("wb") as handle:
+        handle.truncate(1024 * 1024)
+    source = _write_finalizer_source(tmp_path, _manifest_source(
+        files=[artifact.name], bundle_size_policy_verified=True,
+        size_policy="each retained public artifact is under 1 MiB",
+    ))
+    original = Path.open
+
+    def guarded_open(path, *args, **kwargs):
+        assert path != artifact, "oversized artifact was opened for reading"
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+    with pytest.raises(ValueError, match="violates size_policy"):
+        _finalizer_module().finalize(source)
