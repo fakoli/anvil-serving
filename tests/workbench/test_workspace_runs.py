@@ -162,14 +162,40 @@ def test_pi_startup_backfill_includes_stopped_legacy_sessions_and_repairs_option
 
 
 @pytest.mark.skipif(not _POSIX_METADATA or not hasattr(os, "mkfifo"), reason="requires safe POSIX metadata descriptors")
-def test_pi_metadata_io_worker_is_reaped_at_its_deadline(tmp_path):
+def test_pi_metadata_rejects_fifo_without_blocking(tmp_path):
     pi = PiSessionStore(tmp_path / "pi")
     path = pi._metadata_index_path("alice", "alpha")
     os.mkfifo(path)
     started = time.monotonic()
-    page = pi.run_metadata_page("alice", frozenset({"alpha"}), deadline_seconds=0.2)
+    page = pi.run_metadata_page("alice", frozenset({"alpha"}))
     assert page["items"] == () and page["partial"] is True
+    assert time.monotonic() - started < 3.0
+
+
+@pytest.mark.skipif(not _POSIX_METADATA, reason="requires safe POSIX metadata descriptors")
+def test_pi_metadata_io_worker_is_reaped_at_its_deadline(tmp_path, monkeypatch):
+    from anvil_serving.workbench_app import pi_sessions
+
+    pi = PiSessionStore(tmp_path / "pi")
+    context = pi_sessions.multiprocessing.get_context("spawn")
+    workers, results = [], []
+
+    def delayed_worker(**kwargs):
+        # Force deadline expiry independently of machine/process-startup speed.
+        worker = context.Process(target=time.sleep, args=(10,), daemon=kwargs["daemon"])
+        workers.append(worker)
+        results.append(kwargs["args"][0])
+        return worker
+
+    monkeypatch.setattr(pi_sessions.multiprocessing, "get_context", lambda _method: SimpleNamespace(Process=delayed_worker))
+    started = time.monotonic()
+    with pytest.raises(PiSessionError, match="exceeded its read deadline"):
+        pi.run_metadata_page("alice", frozenset({"alpha"}), deadline_seconds=0.2)
     assert time.monotonic() - started < 1.0
+    assert not pi._metadata_slot.locked() and pi._metadata_poisoned is False
+    assert len(workers) == 1 and not os.path.exists(results[0])
+    with pytest.raises(ValueError, match="process object is closed"):
+        workers[0].is_alive()
 
 
 def test_pi_metadata_setup_failure_releases_the_source_slot(tmp_path, monkeypatch):
