@@ -80,7 +80,8 @@ SHA-256 and byte counts with:
 python skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py PATH/artifact-manifest-source.json
 ```
 
-Run the finalizer twice and require byte-identical output. The source is a
+Stop artifact producers before finalization and keep the bundle unchanged
+until publication. Run the finalizer twice and require byte-identical output. The source is a
 reproducibility input, not a substitute for the canonical
 `artifact-manifest.json`.
 

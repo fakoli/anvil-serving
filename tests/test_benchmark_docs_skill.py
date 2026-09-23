@@ -1036,3 +1036,38 @@ def test_finalizer_rejects_changes_between_read_and_manifest_write(tmp_path, mon
     with pytest.raises(ValueError, match="changed during finalization"):
         module.finalize(source)
     assert not (tmp_path / "artifact-manifest.json").exists()
+
+
+def test_finalizer_preserves_previous_manifest_on_partial_write_failure(tmp_path, monkeypatch):
+    (tmp_path / "evidence.txt").write_text("retained")
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+    module = _finalizer_module()
+    output, _ = module.finalize(source)
+    previous = output.read_bytes()
+    before = set(tmp_path.iterdir())
+
+    def partial_write(_value, handle, **_kwargs):
+        handle.write('{"partial":')
+        raise OSError("disk full")
+
+    monkeypatch.setattr(module.json, "dump", partial_write)
+    with pytest.raises(OSError, match="disk full"):
+        module.finalize(source)
+    assert output.read_bytes() == previous
+    assert set(tmp_path.iterdir()) == before
+
+
+def test_finalizer_rechecks_closed_inventory_at_write_boundary(tmp_path, monkeypatch):
+    (tmp_path / "evidence.txt").write_text("retained")
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+    module = _finalizer_module()
+    original = module._assert_output_target
+
+    def add_rogue(path):
+        original(path)
+        (tmp_path / "rogue.txt").write_text("late producer")
+
+    monkeypatch.setattr(module, "_assert_output_target", add_rogue)
+    with pytest.raises(ValueError, match="undeclared artifact: rogue.txt"):
+        module.finalize(source)
+    assert not (tmp_path / "artifact-manifest.json").exists()

@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 import re
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
@@ -282,12 +284,6 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
     if not legacy_plaintext.issubset(declared_files):
         missing = ", ".join(sorted(legacy_plaintext - declared_files))
         raise ValueError(f"legacy plaintext file is not retained: {missing}")
-    _assert_closed_inventory(
-        base,
-        source_path=source_path,
-        output_path=output_path,
-        declared=declared_files,
-    )
     _assert_output_target(output_path)
 
     output = {
@@ -305,11 +301,27 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
             after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns
         ):
             raise ValueError(f"artifact changed during finalization: {path.name}")
-    output_path.write_text(
-        json.dumps(output, indent=2, sort_keys=False) + "\n",
-        encoding="utf-8",
-        newline="\n",
+    _assert_closed_inventory(
+        base,
+        source_path=source_path,
+        output_path=output_path,
+        declared=declared_files,
     )
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", newline="\n", dir=output_path.parent,
+            prefix=f".{output_path.name}.", suffix=".tmp", delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            json.dump(output, handle, indent=2, sort_keys=False, allow_nan=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(output_path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return output_path, output
 
 
