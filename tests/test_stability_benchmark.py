@@ -161,6 +161,17 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             summary = summarize_artifact(tmp_path / (selected + ".json"))
             assert summary["validation_errors"] == []
             from anvil_serving.benchmark_evidence import summarize_payload
+            sanitized = copy.deepcopy(observed)
+            for row in sanitized["identity_observations"]:
+                row["container_id"] = "redacted:sha256:" + "b" * 64
+            public_summary = summarize_payload(sanitized, "public.json")
+            assert public_summary["validation_errors"] == []
+            assert public_summary["container_identity_provenance"] == "sanitized"
+            assert any("private source receipt" in warning for warning in public_summary["warnings"])
+            assert compare_summaries([public_summary, summary])["comparable"] is False
+            for invalid_id in ("redacted:sha256:short", "redacted:" + "b" * 64, "a" * 64):
+                sanitized["identity_observations"][-1]["container_id"] = invalid_id
+                assert summarize_payload(sanitized, "invalid.json")["validation_errors"]
             for changes in ({"promoted": True}, {"performance_eligible": True},
                             {"scheduler_overlap": "measured"}, {"identity_observations": []},
                             {"configuration_identity": "unverified"}):
@@ -197,13 +208,14 @@ def test_malformed_scenario_cli_fails_without_creating_artifact(tmp_path, conten
     assert not output.exists()
 
 
-def test_identity_change_stops_before_requests(tmp_path):
+@pytest.mark.parametrize("replacement", ["b" * 64, "redacted:sha256:" + "b" * 64])
+def test_identity_change_stops_before_requests(tmp_path, replacement):
     count = [0]
     def changing(config):
         row = identity(config)
         count[0] += 1
         if count[0] == 2:
-            row["container_id"] = "b" * 64
+            row["container_id"] = replacement
         return row
     observed = stability.run(scenario(), tmp_path / "changed.json", identity=changing,
                              metadata=metadata, stream=lambda *a, **k: pytest.fail("wrong identity requested"))

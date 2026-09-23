@@ -84,6 +84,14 @@ partial failure evidence, and per-round coverage/retrieval/runtime results.
 Generated visible text is capped at 8192 characters; full-output coherence and
 repetition claims require a separate complete-output capture and oracle.
 
+For public copies, replace each container ID consistently with
+`redacted:sha256:<SHA-256 of the original ID>`, and retain private-to-public
+file receipts. The read-only evidence inspector accepts this explicit token,
+reports sanitized provenance and warns that replay needs the private receipt.
+Live identity checks still require the original managed container ID. Redact
+operator paths, GPU identities and endpoints as well; recompute the scenario
+hash after redaction and retain both original and public file hashes.
+
 The artifact is checkpointed before requests and after their completion; an
 interrupted process may leave `running` evidence. Never count it as completed.
 The CLI runs an isolated client process with a hard total deadline, terminating

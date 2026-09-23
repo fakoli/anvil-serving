@@ -353,6 +353,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         except ValueError as exc:
             errors.append(str(exc))
         rounds = _list(raw.get("rounds"))
+        identities = _list(raw.get("identity_observations"))
+        identity_redacted = any(str(_mapping(row).get("container_id", "")).startswith("redacted:")
+                                for row in identities)
         if (raw.get("promoted") is not False or raw.get("performance_eligible") is not False
                 or raw.get("scheduler_overlap") != "not_measured"):
             errors.append("stability evidence cannot claim promotion, performance eligibility or scheduler proof")
@@ -362,12 +365,12 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                        for gate in ("runtime_passed", "coverage_passed", "retrieval_passed"))):
             errors.append("completed claim lacks all requested rounds and gates")
         if raw.get("status") == "completed" and not errors:
-            identities = _list(raw.get("identity_observations"))
             phases = ["start"] + [f"round_{i}_{phase}" for i in range(len(rounds)) for phase in ("before", "after")]
             expected = expected_identity(scenario)
             container_id = _mapping(identities[0]).get("container_id") if identities else None
             if (raw.get("configuration_identity") != "managed_container_observed_labels_matched"
-                    or not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{64}", container_id)
+                    or not isinstance(container_id, str)
+                    or not re.fullmatch(r"redacted:sha256:[0-9a-f]{64}" if identity_redacted else r"[0-9a-f]{64}", container_id)
                     or [_mapping(row).get("phase") for row in identities] != phases
                     or any(_mapping(row).get("container_id") != container_id
                            or any(_mapping(row).get(k) != v for k, v in expected.items()) for row in identities)):
@@ -399,8 +402,11 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                           **{gate: _bool(raw.get(gate)) for gate in
                              ("runtime_passed", "coverage_passed", "retrieval_passed")}},
             "performance_eligible": False, "promotion_authorized": False,
+            "container_identity_provenance": "sanitized" if identity_redacted else "recorded",
             "validation_errors": errors,
-            "warnings": ["diagnostic exposure only; no throughput ranking or scheduler-overlap proof"],
+            "warnings": ["diagnostic exposure only; no throughput ranking or scheduler-overlap proof"]
+                        + (["container identity is redacted; consult the private source receipt before replay"]
+                           if identity_redacted else []),
         }
 
     if kind in {"campaign", "external_prior"}:
