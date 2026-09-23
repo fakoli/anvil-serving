@@ -164,24 +164,61 @@ def _redact_private_networks(text: str) -> str:
 
 
 def sanitize_publishable_evidence(value: Any) -> Any:
-    """Return a deep redacted copy suitable for public evidence validation."""
+    """Return a deep redacted copy suitable for public evidence validation.
+
+    A collision after redacting dictionary keys would silently discard evidence,
+    so reject it rather than selecting one of the colliding values.
+    """
+    def sanitize_text(text: str, *, parse_serialized: bool = True) -> str:
+        if parse_serialized and text.lstrip().startswith(("{", "[")):
+            duplicates: list[str] = []
+
+            def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+                result: dict[str, Any] = {}
+                for key, child in pairs:
+                    if key in result:
+                        duplicates.append(key)
+                    result[key] = child
+                return result
+
+            try:
+                decoded = json.loads(text, object_pairs_hook=object_pairs)
+            except json.JSONDecodeError:
+                decoded = None
+            if duplicates:
+                raise BenchmarkArtifactError(
+                    "unsafe_serialized_json",
+                    "serialized JSON contains duplicate keys",
+                )
+            if isinstance(decoded, (dict, list)):
+                sanitized = sanitize(decoded)
+                if sanitized != decoded:
+                    return json.dumps(sanitized, separators=(",", ":"), ensure_ascii=True)
+                return text
+        return _redact_private_networks(_SECRET_VALUE_RE.sub("[REDACTED]", text))
+
     def sanitize(item: Any, *, parent: str = "") -> Any:
         if isinstance(item, dict):
             result = {}
             for key, child in item.items():
                 key_text = str(key)
+                public_key = sanitize_text(key_text, parse_serialized=False)
+                if public_key in result:
+                    raise BenchmarkArtifactError(
+                        "redaction_key_collision",
+                        "redaction would merge distinct dictionary keys",
+                    )
                 if _SECRET_KEY_RE.search(key_text):
-                    result[key_text] = "[REDACTED]"
+                    result[public_key] = "[REDACTED]"
                 elif parent.lower() in {"env", "environment_values", "headers"}:
-                    result[key_text] = "[REDACTED]"
+                    result[public_key] = "[REDACTED]"
                 else:
-                    result[key_text] = sanitize(child, parent=key_text)
+                    result[public_key] = sanitize(child, parent=key_text)
             return result
         if isinstance(item, list):
             return [sanitize(child, parent=parent) for child in item]
         if isinstance(item, str):
-            redacted = _SECRET_VALUE_RE.sub("[REDACTED]", item)
-            return _redact_private_networks(redacted)
+            return sanitize_text(item)
         return copy.deepcopy(item)
 
     return sanitize(value)

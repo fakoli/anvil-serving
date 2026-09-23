@@ -1,6 +1,11 @@
 import csv
+import importlib.util
 import json
+import os
+import shutil
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +71,156 @@ RETAINED_128_EVIDENCE = (
     / "findings"
     / "2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence"
 )
+FINALIZER_PATH = (
+    ROOT / "skills" / "anvil-serving-benchmark-docs" / "scripts" / "finalize_artifact_set.py"
+)
+
+
+def _finalizer_module():
+    spec = importlib.util.spec_from_file_location("benchmark_finalizer", FINALIZER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _manifest_source(*, files: list[str], **extra: object) -> dict:
+    roles = [
+        {
+            "role": role,
+            "status": "retained" if index == 0 else "missing",
+            "files": files if index == 0 else [],
+            "reason": "" if index == 0 else "not retained for focused fixture",
+        }
+        for index, role in enumerate(
+            (
+                "evidence-index",
+                "source-registry",
+                "workload-manifest",
+                "run-plan",
+                "configuration-and-identity",
+                "raw-run-evidence",
+                "failures-and-friction",
+                "restoration",
+                "decision-summary",
+                "publication-summary",
+            )
+        )
+    ]
+    return {
+        "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+        "output": "artifact-manifest.json",
+        "campaign": {"promotion_authorized": False},
+        "native_evidence_schemas": [],
+        "artifact_roles": roles,
+        **extra,
+    }
+
+
+def _write_finalizer_source(tmp_path: Path, source: dict) -> Path:
+    path = tmp_path / "artifact-manifest-source.json"
+    path.write_text(json.dumps(source), encoding="utf-8")
+    return path
+
+
+def test_finalizer_rejects_undeclared_nested_artifact(tmp_path: Path):
+    (tmp_path / "evidence.txt").write_text("retained", encoding="utf-8")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "undeclared.txt").write_text("rogue", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="undeclared artifact: nested/undeclared.txt"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+        )
+
+
+def test_finalizer_rejects_symlink_and_duplicate_serialized_json_keys(tmp_path: Path):
+    target = tmp_path / "target.txt"
+    target.write_text("retained", encoding="utf-8")
+    os.symlink(target, tmp_path / "evidence.txt")
+    with pytest.raises(ValueError, match="symlink"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+        )
+
+    (tmp_path / "evidence.txt").unlink()
+    (tmp_path / "evidence.json").write_text(
+        '{"content": "{\\"metric\\": 1, \\"metric\\": 2}"}', encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="duplicate JSON keys"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.json"]))
+        )
+
+
+def test_finalizer_requires_explicit_plaintext_json_compatibility(tmp_path: Path):
+    (tmp_path / "legacy.json").write_text("legacy host command output\\n", encoding="utf-8")
+    source = _manifest_source(
+        files=["legacy.json"],
+        legacy_plaintext_files=[
+            {"path": "legacy.json", "reason": "Historical command output"}
+        ],
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert manifest["artifact_roles"][0]["files"][0]["path"] == "legacy.json"
+    first_bytes = output.read_bytes()
+    _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+    assert output.read_bytes() == first_bytes
+
+
+def test_finalizer_requires_per_file_plaintext_compatibility_reason(tmp_path: Path):
+    (tmp_path / "gpus-final.json").write_text(
+        "legacy GPU command output\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="legacy plaintext compatibility exception"):
+        _finalizer_module().finalize(
+            _write_finalizer_source(tmp_path, _manifest_source(files=["gpus-final.json"]))
+        )
+
+    source = _manifest_source(
+        files=["gpus-final.json"],
+        legacy_plaintext_files=[
+            {"path": "gpus-final.json", "reason": "Historical public command output"}
+        ],
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert manifest["artifact_roles"][0]["files"][0]["path"] == "gpus-final.json"
+
+
+def test_finalizer_rejects_duplicate_source_keys_and_allows_cross_role_references(tmp_path: Path):
+    (tmp_path / "evidence.txt").write_text("retained", encoding="utf-8")
+    source_path = tmp_path / "artifact-manifest-source.json"
+    source_path.write_text(
+        '{"schema":"anvil-serving.benchmark-artifact-set-source/v1",'
+        '"schema":"anvil-serving.benchmark-artifact-set-source/v1"}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate JSON keys: schema"):
+        _finalizer_module().finalize(source_path)
+
+    source = _manifest_source(files=["evidence.txt"])
+    source["artifact_roles"][1].update(
+        {"status": "retained", "files": ["evidence.txt"], "reason": ""}
+    )
+    output, manifest = _finalizer_module().finalize(
+        _write_finalizer_source(tmp_path, source)
+    )
+    assert output.exists()
+    assert [role["files"][0]["path"] for role in manifest["artifact_roles"][:2]] == [
+        "evidence.txt",
+        "evidence.txt",
+    ]
+
+    source["artifact_roles"][0]["files"].append("evidence.txt")
+    with pytest.raises(ValueError, match="more than once in role evidence-index"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
 
 
 def _section(text: str, heading: str) -> str:
@@ -837,3 +992,82 @@ def test_benchmark_producing_skills_delegate_publication_ready_format():
     stt = skill_paths[1].read_text(encoding="utf-8")
     assert "protected/co-resident topology" in stt
     assert "non-promotion decision" in stt
+
+
+@pytest.mark.parametrize("retain_controls", [True, False])
+def test_documented_template_bundle_finalizes_after_control_selection(tmp_path, retain_controls):
+    bundle = tmp_path / "public"
+    shutil.copytree(ARTIFACT_SET_TEMPLATES, bundle)
+    controls = ["campaign-state.json", "dispatch-packet.md", "coverage-and-gaps.md"]
+    if not retain_controls:
+        for name in controls:
+            shutil.move(bundle / name, tmp_path / name)
+        index = bundle / "README.md"
+        text = index.read_text()
+        start = text.index("## Working campaign controls")
+        end = text.index("## Workload and plan")
+        index.write_text(text[:start] + text[end:])
+    files = sorted(p.name for p in bundle.iterdir() if p.name != "artifact-manifest.json")
+    source = _write_finalizer_source(bundle, _manifest_source(files=files))
+    output, manifest = _finalizer_module().finalize(source)
+    first = output.read_bytes()
+    _finalizer_module().finalize(source)
+    assert output.read_bytes() == first
+    retained = {item["path"] for item in manifest["artifact_roles"][0]["files"]}
+    assert set(controls).issubset(retained) is retain_controls
+
+
+@pytest.mark.parametrize("mutate", ["artifact", "source"])
+def test_finalizer_rejects_changes_between_read_and_manifest_write(tmp_path, monkeypatch, mutate):
+    artifact = tmp_path / "evidence.json"
+    artifact.write_text('{"metric":1}')
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=[artifact.name]))
+    module = _finalizer_module()
+    validate = module._validate_artifact_payload
+
+    def validate_then_replace(payload, path, relative, legacy):
+        validate(payload, path, relative, legacy)
+        target = artifact if mutate == "artifact" else source
+        replacement = tmp_path / "replacement"
+        replacement.write_bytes(b'{"metric":1,"metric":2}')
+        replacement.replace(target)
+
+    monkeypatch.setattr(module, "_validate_artifact_payload", validate_then_replace)
+    with pytest.raises(ValueError, match="changed during finalization"):
+        module.finalize(source)
+    assert not (tmp_path / "artifact-manifest.json").exists()
+
+
+def test_finalizer_preserves_previous_manifest_on_partial_write_failure(tmp_path, monkeypatch):
+    (tmp_path / "evidence.txt").write_text("retained")
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+    module = _finalizer_module()
+    output, _ = module.finalize(source)
+    previous = output.read_bytes()
+    before = set(tmp_path.iterdir())
+
+    def partial_write(_value, handle, **_kwargs):
+        handle.write('{"partial":')
+        raise OSError("disk full")
+
+    monkeypatch.setattr(module.json, "dump", partial_write)
+    with pytest.raises(OSError, match="disk full"):
+        module.finalize(source)
+    assert output.read_bytes() == previous
+    assert set(tmp_path.iterdir()) == before
+
+
+def test_finalizer_rechecks_closed_inventory_at_write_boundary(tmp_path, monkeypatch):
+    (tmp_path / "evidence.txt").write_text("retained")
+    source = _write_finalizer_source(tmp_path, _manifest_source(files=["evidence.txt"]))
+    module = _finalizer_module()
+    original = module._assert_output_target
+
+    def add_rogue(path):
+        original(path)
+        (tmp_path / "rogue.txt").write_text("late producer")
+
+    monkeypatch.setattr(module, "_assert_output_target", add_rogue)
+    with pytest.raises(ValueError, match="undeclared artifact: rogue.txt"):
+        module.finalize(source)
+    assert not (tmp_path / "artifact-manifest.json").exists()

@@ -6,7 +6,7 @@ containment-passed
 2026-09-22 07:04:49  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:130): TileLang begins to compile kernel `kernel` with `out_idx=None`
 2026-09-22 07:04:51  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:138): TileLang completes to compile kernel `kernel`
 [2026-09-22 07:05:03] INFO:     PRIVATE_ADDRESS_REDACTED:53196 - "GET /health HTTP/1.1" 503 Service Unavailable
-[2026-09-22 07:05:04] INFO:     127.0.0.1:52432 - "GET /model_info HTTP/1.1" 200 OK
+[2026-09-22 07:05:04] INFO:     127.0.0.1:<redacted-port> - "GET /model_info HTTP/1.1" 200 OK
 [2026-09-22 07:05:05] INFO:     PRIVATE_ADDRESS_REDACTED:53208 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 07:05:07] INFO:     PRIVATE_ADDRESS_REDACTED:53222 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 07:05:10] INFO:     PRIVATE_ADDRESS_REDACTED:53230 - "GET /health HTTP/1.1" 503 Service Unavailable
@@ -16,8 +16,8 @@ containment-passed
 [2026-09-22 07:05:16] INFO:     PRIVATE_ADDRESS_REDACTED:51306 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 07:05:18] INFO:     PRIVATE_ADDRESS_REDACTED:51308 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 07:05:20] INFO:     PRIVATE_ADDRESS_REDACTED:51316 - "GET /health HTTP/1.1" 503 Service Unavailable
-[2026-09-22 07:05:20] INFO:     127.0.0.1:52446 - "POST /v1/chat/completions HTTP/1.1" 200 OK
-[2026-09-22 07:05:20] INFO:     127.0.0.1:55564 - "POST /freeze_gc HTTP/1.1" 200 OK
+[2026-09-22 07:05:20] INFO:     127.0.0.1:<redacted-port> - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-09-22 07:05:20] INFO:     127.0.0.1:<redacted-port> - "POST /freeze_gc HTTP/1.1" 200 OK
 [2026-09-22 07:05:23] INFO:     PRIVATE_ADDRESS_REDACTED:51326 - "GET /health HTTP/1.1" 200 OK
 [2026-09-22 07:05:29] INFO:     PRIVATE_ADDRESS_REDACTED:51828 - "GET /health HTTP/1.1" 200 OK
 [2026-09-22 07:05:45] INFO:     PRIVATE_ADDRESS_REDACTED:44772 - "POST /v1/chat/completions HTTP/1.1" 200 OK

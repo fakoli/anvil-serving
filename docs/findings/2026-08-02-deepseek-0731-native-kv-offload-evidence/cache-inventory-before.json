@@ -587,7 +587,7 @@
     ],
     "containers": [
       {
-        "container_id": "3bdf6b3612430300b0ef2b0f2c24ccf2ad7f23c0a31e7a217f8ac515ff4bc1a3",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-08-01 20:16:23 -0700 PDT",
         "image_id": null,
         "image_reference": "vllm/vllm-openai@sha256:907377dddef392f6b679d9c071e1c33c3935b4dc993b61d0352e391a5319ff3e",
@@ -596,7 +596,7 @@
         "status": "Up About an hour"
       },
       {
-        "container_id": "bf2258866848ee5228eabdb2dde65fbc9f5fd69e0aa1fd5ef066af0d87261947",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-30 01:07:27 -0700 PDT",
         "image_id": null,
         "image_reference": "anvil-serving-controller:0.18.0",
@@ -605,7 +605,7 @@
         "status": "Up 19 hours (healthy)"
       },
       {
-        "container_id": "4e14d4acb94930509f39cc1d23705f2dd6e9cc663d8f02a2d5a45d22af7b1120",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-28 10:52:02 -0700 PDT",
         "image_id": null,
         "image_reference": "anvil-serving:0.16.0",
@@ -614,7 +614,7 @@
         "status": "Exited (137) 21 hours ago"
       },
       {
-        "container_id": "124b7cfe173885987f8e43882549f00782e96eefb9edf9139518fcbcf5447a2f",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-27 17:19:23 -0700 PDT",
         "image_id": null,
         "image_reference": "anvil-workbench:local",
@@ -623,7 +623,7 @@
         "status": "Exited (0) 5 days ago"
       },
       {
-        "container_id": "310cf9baf8c5e56fdbc2ab1bf9ba81b2ddffbe760585bb6b977a516b5f5d3950",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-27 17:19:22 -0700 PDT",
         "image_id": null,
         "image_reference": "postgres:17-alpine",
@@ -632,7 +632,7 @@
         "status": "Exited (0) 5 days ago"
       },
       {
-        "container_id": "aa48182ce44d73be880268738625d3baae2b0cb6c6415ec2861b52474a755bdb",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-27 17:19:22 -0700 PDT",
         "image_id": null,
         "image_reference": "neo4j:2026.01",
@@ -641,7 +641,7 @@
         "status": "Exited (137) 5 days ago"
       },
       {
-        "container_id": "9534f0c6a740872879dcc78ca4852967fdc366974985b815a6bb8e11820023aa",
+        "container_id": "<redacted-container-id>",
         "created_at": "2026-07-24 02:01:53 -0700 PDT",
         "image_id": null,
         "image_reference": "docker/desktop-docker-debug-service:0.0.47",

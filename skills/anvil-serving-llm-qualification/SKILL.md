@@ -19,8 +19,9 @@ before starting. The latter owns failure investigation and candidate stopping
 rules; preserve failed configurations while testing supported successors.
 Apply the shared `session-improvement-loop:research-synthesis` policy through its Anvil
 bindings without requiring the
-user to ask for fusion: reuse evidence first, use three independent answers
-for unresolved material decisions, and budget one synthesis.
+user to ask for fusion: use one initial researcher and shared source registry,
+then independent answers only for a named unresolved material decision.
+Budget one synthesis and keep local-only questions on retained local evidence.
 
 ## Workflow
 
@@ -28,6 +29,16 @@ for unresolved material decisions, and budget one synthesis.
    model/runtime revisions, GPU identity, and cache inventory.
 2. Work in an isolated `codex/` worktree. Preserve unrelated and untracked
    files.
+   Before downloading or loading a candidate, validate the offline harness:
+
+   ```text
+   python scripts/run_tests.py tests/test_agentic_benchmark.py tests/test_benchmark_suite_runner.py -q
+   ```
+
+   Stop on a failed fixture/oracle check. Strict tool protocol, fixture state,
+   final-answer formatting and independent coding quality remain separate
+   evidence. Record the oracle revision; never rewrite historical scores as
+   if they had used a newer scorer.
 3. Gate storage with `models cache inventory`. For any removal, use an exact
    revision dry-run and explicit confirmation. Never broad-prune Docker or
    delete volumes.
@@ -89,13 +100,15 @@ for unresolved material decisions, and budget one synthesis.
     idempotent final dry-run. If live client mutation/restart authority is not
     present, report the qualification as client-convergence-pending rather than
     complete or deployed.
-17. Restore the exact starting serve/router state. Re-run focused and full
-    repository gates, then delegate publication to
+17. Restore the exact starting serve/router state. Freeze the final candidate
+    source, run focused and full repository gates once, then delegate publication to
     `skills/anvil-serving-benchmark-docs/SKILL.md`. Apply its
     `references/artifact-set-contract.md` and
     `anvil-serving.benchmark-artifact-set/v1` template around the native raw
     artifacts, dated finding, precision/modality decision table, and required
-    publication-ready result card and publication summary. For a format-only
+    publication-ready result card. Add a publication summary only when compact
+    public communication is requested; otherwise mark that role
+    `not-applicable` with a reason. For a format-only
     refresh backed by complete retained artifacts, reconcile the published
     values without restarting the serve or rerunning the benchmark.
 

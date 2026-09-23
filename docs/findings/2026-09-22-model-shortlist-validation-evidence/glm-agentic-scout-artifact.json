@@ -4,7 +4,7 @@
   "partial": false,
   "provenance": {
     "endpoint": {
-      "base_url": "http://127.0.0.1:39126/v1",
+      "base_url": "http://127.0.0.1:<redacted-port>/v1",
       "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec"
     },
     "finished_at": "2026-09-22T07:18:42.108627Z",

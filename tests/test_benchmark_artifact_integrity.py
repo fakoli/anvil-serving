@@ -154,6 +154,31 @@ def test_publication_redacts_secrets_and_real_private_topology(tmp_path):
     validate_cross_suite_evidence(redacted, artifact_root=str(tmp_path), publishable=True)
 
 
+@pytest.mark.parametrize(
+    "value",
+    (
+        {
+            "nested": {
+                "http://10.0.0.1:8000": "first",
+                "http://10.0.0.2:8000": "second",
+            }
+        },
+        {
+            "payload": json.dumps(
+                {
+                    "http://10.0.0.1:8000": "first",
+                    "http://10.0.0.2:8000": "second",
+                }
+            )
+        },
+    ),
+)
+def test_publication_redaction_rejects_nested_and_serialized_key_collisions(value):
+    with pytest.raises(BenchmarkArtifactError) as exc:
+        sanitize_publishable_evidence(value)
+    assert exc.value.code == "redaction_key_collision"
+
+
 def test_promotion_disclaimer_is_mandatory(tmp_path):
     value = measured(tmp_path)
     value["promotion"]["authorized"] = True

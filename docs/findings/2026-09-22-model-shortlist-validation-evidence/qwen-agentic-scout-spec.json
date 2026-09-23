@@ -5,7 +5,7 @@
   "suite": "agentic",
   "profile": "scout",
   "endpoint": {
-    "base_url": "http://127.0.0.1:39132/v1",
+    "base_url": "http://127.0.0.1:<redacted-port>/v1",
     "model": "qwen38-flash-next-nvfp4-sglang-tp2-c4-256k-v1"
   },
   "worker": {

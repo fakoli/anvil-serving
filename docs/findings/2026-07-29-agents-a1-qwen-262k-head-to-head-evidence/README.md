@@ -18,3 +18,10 @@ Start with [comparison.json](comparison.json), then inspect the paired
 lowest actionable failures, including Qwen's first GPU-UUID parser failure and
 the NGC image's missing H.264 decoder. `serve-state-before.json` and
 `serve-state-after.json` prove exact restoration.
+
+## Container identity redaction
+
+On 2026-09-22, literal container IDs in retained state and cache captures
+were replaced with `<redacted-container-id>`. Measurements, model revisions,
+image digests, and historical outcomes are unchanged. A redacted container
+field no longer proves instance identity.

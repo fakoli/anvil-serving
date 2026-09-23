@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from typing import Any, Mapping
 
 from .jobs import BenchmarkJobError
@@ -12,6 +13,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
+AGENTIC_ORACLE_REVISION = "3"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -280,6 +282,10 @@ def score_agentic_trace(
             _tool_call_matches(item, wanted)
             for item, wanted in zip(tool_calls, expected_calls, strict=True)
         )
+    failure = trace.get("failure")
+    failure_code = failure.get("code") if isinstance(failure, Mapping) else None
+    if failure_code == "tool_batch_mismatch":
+        protocol_passed = False
     final = trace.get("final_answer")
     final_passed = False
     markers = expected.get("result_markers", [])
@@ -301,12 +307,25 @@ def score_agentic_trace(
         final_passed = bool(terms) and all(term in normalized_final for term in terms)
     elif expected.get("final_kind") == "ordered_terms":
         terms = expected.get("final_terms", [])
-        positions = [normalized_final.find(term) for term in terms]
-        final_passed = (
-            bool(terms)
-            and all(position >= 0 for position in positions)
-            and positions == sorted(positions)
-        )
+        if terms:
+            labels = "|".join(re.escape(term) for term in terms)
+            # Prefer step headings over incidental words inside their descriptions.
+            answer = final if isinstance(final, str) else ""
+            headings = []
+            for prefix in (r"(?:\d+[.)]|\#{1,6})[ \t]+", r"(?:[-*+][ \t]+)?"):
+                matches = re.findall(
+                    rf"(?im)^([ \t]*){prefix}(?:\*\*|__|`)?({labels})\b",
+                    answer,
+                )
+                if matches:
+                    depth = min(len(indent.expandtabs()) for indent, _ in matches)
+                    headings = [label for indent, label in matches if len(indent.expandtabs()) == depth]
+                if len(headings) > 1:
+                    break
+            observed = headings if len(headings) > 1 else re.findall(
+                rf"\b({labels})\b", normalized_final
+            )
+            final_passed = [item.casefold() for item in observed] == terms
     elif isinstance(final, str) and isinstance(expected.get("final"), str):
         final_passed = _normalize(final) == _normalize(expected["final"])
     result_passed = isinstance(final, str) and all(marker in final for marker in markers)
@@ -352,8 +371,6 @@ def score_agentic_trace(
             history_passed = history_passed and all(
                 earlier < later for earlier, later in zip(growth, growth[1:])
             )
-    failure = trace.get("failure")
-    failure_code = failure.get("code") if isinstance(failure, Mapping) else None
     if failure_code == "reasoning_budget_exhausted":
         classification = "reasoning_budget_exhausted"
     elif failure_code in {"infrastructure_error", "endpoint_error", "timeout"}:
@@ -380,6 +397,7 @@ def score_agentic_trace(
     }
     return {
         "schema": AGENTIC_OBSERVATION_SCHEMA,
+        "oracle_revision": AGENTIC_ORACLE_REVISION,
         "scenario_id": scenario["scenario_id"],
         "passed": classification is None and all(item["passed"] for item in stages.values()),
         "failure_class": classification,

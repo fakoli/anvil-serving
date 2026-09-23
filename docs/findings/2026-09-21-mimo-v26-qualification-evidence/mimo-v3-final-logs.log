@@ -1,12 +1,12 @@
 containment-passed
 [TensorRT-LLM][INFO] Set logger level to INFO
 [TensorRT-LLM][INFO] Set logger level to INFO
-[2026-09-22 02:54:39] INFO:     127.0.0.1:44600 - "GET /model_info HTTP/1.1" 200 OK
+[2026-09-22 02:54:39] INFO:     127.0.0.1:<redacted-port> - "GET /model_info HTTP/1.1" 200 OK
 [2026-09-22 02:54:40] INFO:     PRIVATE_ADDRESS_REDACTED:42226 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 02:54:42] INFO:     PRIVATE_ADDRESS_REDACTED:42238 - "GET /health HTTP/1.1" 503 Service Unavailable
 [2026-09-22 02:54:44] INFO:     PRIVATE_ADDRESS_REDACTED:35598 - "GET /health HTTP/1.1" 503 Service Unavailable
-[2026-09-22 02:54:45] INFO:     127.0.0.1:44606 - "POST /v1/chat/completions HTTP/1.1" 200 OK
-[2026-09-22 02:54:45] INFO:     127.0.0.1:57074 - "POST /freeze_gc HTTP/1.1" 200 OK
+[2026-09-22 02:54:45] INFO:     127.0.0.1:<redacted-port> - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[2026-09-22 02:54:45] INFO:     127.0.0.1:<redacted-port> - "POST /freeze_gc HTTP/1.1" 200 OK
 [2026-09-22 02:54:47] INFO:     PRIVATE_ADDRESS_REDACTED:35610 - "GET /health HTTP/1.1" 200 OK
 [2026-09-22 02:55:24] INFO:     PRIVATE_ADDRESS_REDACTED:49228 - "GET /v1/models HTTP/1.1" 200 OK
 [2026-09-22 02:56:25] INFO:     PRIVATE_ADDRESS_REDACTED:48662 - "POST /v1/chat/completions HTTP/1.1" 200 OK

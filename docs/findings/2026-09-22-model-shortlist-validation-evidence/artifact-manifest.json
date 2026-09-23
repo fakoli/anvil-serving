@@ -31,8 +31,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "3291359098d2b99af84b44adaa303ea91da1175d5133e899bc670dbf37423dd1",
-          "bytes": 3004
+          "sha256": "5dae57655c59c1c5db01a3165e939264361510033ab2da096f8471a2d7e12188",
+          "bytes": 3482
         }
       ],
       "reason": ""
@@ -55,13 +55,13 @@
       "files": [
         {
           "path": "qwen-agentic-scout-spec.json",
-          "sha256": "d7cd43f38dc6f3d05def4231b23d07dcf8f4cd4d599ffb975ed01d225900cc82",
-          "bytes": 1313
+          "sha256": "cdb4bf57ab115ebf3fd3f903ab20c93574b9ac121f15ec4e846bc7cbd7c4223e",
+          "bytes": 1323
         },
         {
           "path": "qwen-agentic-scout-native-sampling-spec.json",
-          "sha256": "e504769edda9584ba20d61adb445320e434695d0f95a94f90c11cd8c78f55f80",
-          "bytes": 1339
+          "sha256": "11bfb32b7689ee85d77e23b84d3cd01590379b0871c2768dd0f46c6b580272cb",
+          "bytes": 1349
         }
       ],
       "reason": ""
@@ -129,8 +129,8 @@
         },
         {
           "path": "mode-restored.json",
-          "sha256": "521233c356be1559a6f3ee4ed55c46b5f63332a6c2a774cccc7850fe87903020",
-          "bytes": 2585
+          "sha256": "3058bd9ababc38b4a4e722d0247b3b3ddc649c6ae93a1f951033870ad14cfba4",
+          "bytes": 793
         },
         {
           "path": "shared-memory-restored.txt",
@@ -146,8 +146,8 @@
       "files": [
         {
           "path": "qwen-startup-complete.txt",
-          "sha256": "f8530366208837fa4ed6fbe9f1ef48802a5e30d78c1d33d800c0f690406f0f7f",
-          "bytes": 54473
+          "sha256": "3c510c60003f9d8bef178cc6359b2e93073e4344aee4a17ff57915c425df4d33",
+          "bytes": 54503
         },
         {
           "path": "qwen-ready-status.json",
@@ -161,13 +161,13 @@
         },
         {
           "path": "qwen-preflight-basic.json",
-          "sha256": "9eba7343af5fb029b923a58a2b0921519d1693a49589a6302979953411fe9e45",
-          "bytes": 2783
+          "sha256": "18fafc82945433ddd394cb465c0219d4a1b15bf94e896ff1b2e76c3f1e176711",
+          "bytes": 2793
         },
         {
           "path": "qwen-preflight-tools.json",
-          "sha256": "156d6585127c012478e60bbe0d1fd267dea55d14fcdfc140a26af055aaec7182",
-          "bytes": 6254
+          "sha256": "a5de49b9c12b45aa5c31b55e9e1dc20e8840b1df70c3efa23f9c7bd3a9620262",
+          "bytes": 6264
         },
         {
           "path": "qwen-agentic-scout-native.json",
@@ -181,8 +181,8 @@
         },
         {
           "path": "qwen-agentic-native-sampling-submit.json",
-          "sha256": "83b7d9ea5c520630b744c7c551c1f34c05825618f148ed0ac183d15626fa5759",
-          "bytes": 3657
+          "sha256": "828438023c84e01f852f65a120d6ccf8809e87dc9552b3d988b813b7265adbda",
+          "bytes": 3677
         },
         {
           "path": "glm-agentic-scout-native.json",
@@ -191,18 +191,18 @@
         },
         {
           "path": "glm-agentic-scout-artifact.json",
-          "sha256": "78cebe51f546f9d366207b944fa1523fdad6c8e841ab15a86316e08525d5097d",
-          "bytes": 4073
+          "sha256": "e42d696943cf1889472451005b9562ebd389e0db0072fdd11e58322ae2987fc6",
+          "bytes": 4083
         },
         {
           "path": "glm-restored-direct-preflight.json",
-          "sha256": "5a5d84d8db9cafb36da886ebf81542b9c5b27da7548d2ccf61442454e164a194",
-          "bytes": 3351
+          "sha256": "a36d290a1330d2f67401b258fdab06747ecab6be7a606eb26dcf8fa0750d2186",
+          "bytes": 3361
         },
         {
           "path": "glm-restored-router-preflight.json",
-          "sha256": "35fdd3d13d152fc1213f8f4564e064511cdaab097646614dc0e2feac00921bd3",
-          "bytes": 3335
+          "sha256": "80f79b23c5a5d4568959525ab635bc87795fa628961d8bdef342b08e25dca300",
+          "bytes": 3346
         }
       ],
       "reason": ""
@@ -235,13 +235,13 @@
         },
         {
           "path": "glm-restored-direct-preflight.json",
-          "sha256": "5a5d84d8db9cafb36da886ebf81542b9c5b27da7548d2ccf61442454e164a194",
-          "bytes": 3351
+          "sha256": "a36d290a1330d2f67401b258fdab06747ecab6be7a606eb26dcf8fa0750d2186",
+          "bytes": 3361
         },
         {
           "path": "glm-restored-router-preflight.json",
-          "sha256": "35fdd3d13d152fc1213f8f4564e064511cdaab097646614dc0e2feac00921bd3",
-          "bytes": 3335
+          "sha256": "80f79b23c5a5d4568959525ab635bc87795fa628961d8bdef342b08e25dca300",
+          "bytes": 3346
         },
         {
           "path": "router-final-status.json",
@@ -260,8 +260,8 @@
         },
         {
           "path": "mode-restored.json",
-          "sha256": "521233c356be1559a6f3ee4ed55c46b5f63332a6c2a774cccc7850fe87903020",
-          "bytes": 2585
+          "sha256": "3058bd9ababc38b4a4e722d0247b3b3ddc649c6ae93a1f951033870ad14cfba4",
+          "bytes": 793
         },
         {
           "path": "shared-memory-restored.txt",

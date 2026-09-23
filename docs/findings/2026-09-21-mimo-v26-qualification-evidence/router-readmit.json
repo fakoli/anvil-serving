@@ -4,23 +4,6 @@
   "result": {
     "readmitted": true,
     "reason": "readiness_passed",
-    "status": {
-      "tiers": [
-        {
-          "active_requests": 0,
-          "draining": false,
-          "expected_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
-          "metadata_source": "configured",
-          "observed_context_limit": null,
-          "observed_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-c4-327k-r10-vision8-apc-nospec",
-          "readiness_reason": "identity_passed",
-          "readiness_state": "ready",
-          "ready": true,
-          "reason": "admitting",
-          "state": "admitting",
-          "tier_id": "primary-local"
-        }
-      ]
-    }
+    "status": "REDACTED_ACTIVE_ROUTER_STATE"
   }
 }

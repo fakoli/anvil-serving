@@ -1,5 +1,5 @@
 {
-  "base_url": "http://127.0.0.1:8000/v1",
+  "base_url": "http://127.0.0.1:<redacted-port>/v1",
   "budget": {
     "max_completion_tokens": 9216,
     "reasoning_headroom_tokens": 8192,

@@ -39,8 +39,8 @@
         },
         {
           "path": "redaction-provenance.md",
-          "sha256": "ed856be9aa92ac475509990fefeba1e706e4565262c93e1d7e76b8b4d1ccbf86",
-          "bytes": 2138
+          "sha256": "33147e64d00919e4d944b1f72fea41058e46c075b5ed27f980e32a6bdcf07297",
+          "bytes": 2500
         }
       ],
       "reason": ""
@@ -132,8 +132,8 @@
         },
         {
           "path": "router-final-readmit.json",
-          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
-          "bytes": 741
+          "sha256": "43cb37e60dd7f8263e743b4a946b96df9ba0de26f15ca5c80a33bf4d3745a3e6",
+          "bytes": 167
         },
         {
           "path": "gpus-final.json",
@@ -229,8 +229,8 @@
         },
         {
           "path": "mimo-v3-startup.log",
-          "sha256": "c59fc4f87fb580f67f463fea7c7b3e9e7b3c2bcac70e1c0403ba37deaa2ade29",
-          "bytes": 60468
+          "sha256": "a11e240236a6230651ea515add7ed2612e8c20dbefc77a929bee57df0641c1b1",
+          "bytes": 60498
         },
         {
           "path": "mimo-v3-status.json",
@@ -254,8 +254,8 @@
         },
         {
           "path": "mimo-v3-final-logs.log",
-          "sha256": "4c1f25288d30846dd8d66cf70c2c73a5311d84d3ffa9d80afcb3610d21c41aad",
-          "bytes": 188642
+          "sha256": "820624e1c810c3b34b2a83577987d317f0b967a61eaaaa60ee144b4851926013",
+          "bytes": 188672
         },
         {
           "path": "mimo-v3-final-status.log",
@@ -269,13 +269,13 @@
         },
         {
           "path": "swe-preflight-declared.json",
-          "sha256": "8306f3cd8fe0c11e67abf30041e3e737b133049fda68c0c803ca0b9f3bd509ca",
-          "bytes": 1650
+          "sha256": "ce10ceb205ae80f3d73d39c5656f4bcf07319a2b3cba7ada7f813a3083183be7",
+          "bytes": 1660
         },
         {
           "path": "glm-swe-native.json",
-          "sha256": "dfcf8786e5559ef85575e3e1b5bc6112b6c68e3d243aa3c76bff188909383895",
-          "bytes": 14525
+          "sha256": "1452c74df37f907829901bbe2f5ec1c75ac41dcd34e6b4ec60b1f6d15acf0909",
+          "bytes": 14486
         },
         {
           "path": "glm-swe-official-report.json",
@@ -294,8 +294,8 @@
         },
         {
           "path": "glm-restored-router-smoke.json",
-          "sha256": "1b7d53a01b4b6192e28dca0b56948d2f215bb9c784f9ca01502f9d571f02fbaa",
-          "bytes": 914
+          "sha256": "6a59708f2c72954de36ed35c42234a70dd0c25405713fed5da5018e0babd3ba7",
+          "bytes": 925
         }
       ],
       "reason": "Native GLM results, MiMo startup/correctness failures, and bounded confounded SWE evidence retained; no MiMo capacity result exists."
@@ -333,8 +333,8 @@
         },
         {
           "path": "glm-final-router-smoke.json",
-          "sha256": "a7be5d64b19133a7fe332aba4d20278f00041b95b76edd4938230f2891c7093c",
-          "bytes": 2097
+          "sha256": "59835ab171982adf8d7699935bf1b7f3144decc9c02fe3569721ffa098dbd69b",
+          "bytes": 2108
         },
         {
           "path": "glm-final-status.json",
@@ -343,8 +343,8 @@
         },
         {
           "path": "router-final-readmit.json",
-          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
-          "bytes": 741
+          "sha256": "43cb37e60dd7f8263e743b4a946b96df9ba0de26f15ca5c80a33bf4d3745a3e6",
+          "bytes": 167
         },
         {
           "path": "router-final-status.json",
@@ -363,8 +363,8 @@
         },
         {
           "path": "glm-restored-router-smoke-correct-alias.json",
-          "sha256": "cc1f00010b73e90a250ebcdce477638e60516e83f7ce1475205821a76e637a0d",
-          "bytes": 2216
+          "sha256": "fd5070184b347c34bf5c53f7b174770be3c328595ded7dd9646e3925b0b28627",
+          "bytes": 2227
         },
         {
           "path": "glm-restored-status.json",
@@ -373,13 +373,13 @@
         },
         {
           "path": "router-readmit.json",
-          "sha256": "453806c184dd63615784068972c7119fc71d5a2e17ca6f6a27e774ef73b8e71a",
-          "bytes": 741
+          "sha256": "43cb37e60dd7f8263e743b4a946b96df9ba0de26f15ca5c80a33bf4d3745a3e6",
+          "bytes": 167
         },
         {
           "path": "router-restored-status.json",
-          "sha256": "163c4b8fb7ac53ec347662064da6a41fb42cd127b8b2991d405c478b190ee3af",
-          "bytes": 537
+          "sha256": "1d31945d9ff94f9ba4f269443a55b8d7c50e40a05d3aa57f7592a6bc9d014635",
+          "bytes": 46
         }
       ],
       "reason": "Exact final GLM restoration, direct preflight, and authenticated routed smoke retained."

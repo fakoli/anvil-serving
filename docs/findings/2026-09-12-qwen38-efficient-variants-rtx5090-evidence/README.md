@@ -90,3 +90,10 @@ no raw result was rewritten to manufacture a pass.
 This does not remove the separate general lifecycle release hold.
 The [independent evidence review](evidence-review.json) accepts the bounded
 decision, subject to exact final manifest integrity.
+
+## Container identity redaction
+
+On 2026-09-22, literal container IDs in retained state and cache captures
+were replaced with `<redacted-container-id>`. Measurements, model revisions,
+image digests, and historical outcomes are unchanged. A redacted container
+field no longer proves instance identity.

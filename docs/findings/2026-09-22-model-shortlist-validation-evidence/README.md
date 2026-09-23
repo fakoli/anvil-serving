@@ -46,3 +46,12 @@ campaign but cannot authorize a promotion.
 | Direct functional checks | [basic](qwen-preflight-basic.json), [tools](qwen-preflight-tools.json) |
 | Agentic gate | [greedy scout](qwen-agentic-scout-native.json), [native-sampling scout](qwen-agentic-native-sampling-native.json) |
 | Campaign controls | [coverage and gaps](coverage-and-gaps.md), [friction log](friction-log.md), [summary](summary.json) |
+
+## Final privacy review
+
+Retained loopback URLs and startup listener ports use `<redacted-port>`.
+`mode-restored.json` preserves the recorded mode, TP size and unresolved list
+but replaces the private blocked-workload catalog, exclusive owner and GPU
+role/owner mappings with `REDACTED_ACTIVE_TOPOLOGY`. Public restoration
+claims use the retained configuration hash comparisons and independent probes;
+redacted status fields do not prove private topology or route assignments.
