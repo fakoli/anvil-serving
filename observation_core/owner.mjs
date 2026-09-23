@@ -51,11 +51,11 @@ function open(options, reopening) {
   }
   for (const file of Object.values(FILES)) if (fs.existsSync(filePath(config, file))) fail("budget_state_unavailable");
   const state = emptyState(config);
+  let ledger;
+  try { ledger = createMediationLedger(ledgerOptions(config)); } catch { fail("budget_state_unavailable"); }
   writeNew(config, FILES.metadata, state.metadata);
   writeNew(config, FILES.receipts, state.receipts);
   writeNew(config, FILES.tombstones, state.tombstones);
-  let ledger;
-  try { ledger = createMediationLedger(ledgerOptions(config)); } catch { fail("budget_state_unavailable"); }
   return new ObservationOwner(config, ledger, state);
 }
 
@@ -68,6 +68,7 @@ class ObservationOwner {
   #poisoned = false;
   #active = null;
   #abort = null;
+  #closeError = null;
 
   constructor(config, ledger, state) { this.#config = config; this.#ledger = ledger; this.#state = state; Object.freeze(this); }
 
@@ -118,11 +119,20 @@ class ObservationOwner {
   }
 
   async close() {
-    if (this.#closed) return;
+    if (this.#closed) {
+      if (this.#closeError !== null) fail(this.#closeError);
+      return;
+    }
     this.#closed = true;
     this.#abort?.abort();
     await this.#active?.catch(() => {});
-    try { this.#ledger.close(); } catch { this.#poisoned = true; }
+    try {
+      this.#ledger.close();
+    } catch {
+      this.#poisoned = true;
+      this.#closeError = "budget_state_unavailable";
+      fail(this.#closeError);
+    }
   }
 
   async #inspect(request, signal, followUp) {

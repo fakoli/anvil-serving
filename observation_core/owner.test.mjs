@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
-import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import fs, { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -20,8 +21,31 @@ function fixture({ inspector = async () => ({ inspection_status: "observed", fac
 
 const bind = (owner, entryId = "entry-1", sourceImage = image()) => owner.bind({ entryId, imagePart: 0, image: sourceImage });
 
+async function withFailingLedgerRename(stateDirectory, action) {
+  const originalRename = fs.renameSync;
+  let failed = false;
+  const ledgerPath = path.join(stateDirectory, "mediation-inspection-ledger.json");
+  fs.renameSync = (source, target) => {
+    if (!failed && target === ledgerPath) {
+      failed = true;
+      const error = new Error("ledger_rename_failure");
+      error.code = "EIO";
+      throw error;
+    }
+    return originalRename(source, target);
+  };
+  syncBuiltinESMExports();
+  try {
+    return await action();
+  } finally {
+    fs.renameSync = originalRename;
+    syncBuiltinESMExports();
+    assert.equal(failed, true);
+  }
+}
+
 test("binds one MIME-checked PNG privately and requires an explicit question", async (t) => {
-  let received; const setup = fixture({ inspector: async (request) => { received = request; return { inspection_status: "observed", facts: [fact], reason: "" }; } }); t.after(setup.cleanup); const owner = setup.create(); t.after(() => owner.close());
+  let received; const setup = fixture({ inspector: async (request) => { received = request; return { inspection_status: "observed", facts: [fact], reason: "" }; } }); const owner = setup.create(); t.after(async () => { try { await owner.close(); } finally { setup.cleanup(); } });
   assert.equal(bind(owner, "entry-bad", { ...image(), mimeType: "image/jpeg" }).error, "invalid_image");
   assert.equal(bind(owner, "entry-bad", { mimeType: "image/png", data: "bad" }).error, "invalid_image");
   const pending = bind(owner); assert.equal(pending.status, "question_required"); assert.equal(pending.inspection_request_id, null);
@@ -57,16 +81,37 @@ test("canonical inconclusive output may carry an empty bounded reason", async (t
 });
 
 test("cancellation ignores a late inspector result and clean close permits exact rebind on reopen", async (t) => {
-  let release; const late = new Promise((resolve) => { release = resolve; }); const setup = fixture({ inspector: async () => late }); t.after(setup.cleanup);
+  let release; const late = new Promise((resolve) => { release = resolve; }); const setup = fixture({ inspector: async () => late });
   const owner = setup.create(), pending = bind(owner), controller = new AbortController(); const work = owner.inspect({ observationId: pending.observation_id, question: "read this" }, { signal: controller.signal }); controller.abort();
   assert.equal((await work).error, "cancelled"); release({ inspection_status: "observed", facts: [fact], reason: "" }); await owner.close();
-  const reopened = setup.reopen(); t.after(() => reopened.close()); const rebound = bind(reopened); assert.equal(rebound.observation_id, pending.observation_id);
+  const reopened = setup.reopen(); t.after(async () => { try { await reopened.close(); } finally { setup.cleanup(); } }); const rebound = bind(reopened); assert.equal(rebound.observation_id, pending.observation_id);
 });
 
 test("close revokes an admitted inspector immediately before clean ledger release", async (t) => {
-  let started; const held = new Promise((resolve) => { started = resolve; }); const setup = fixture({ inspector: async () => held }); t.after(setup.cleanup);
+  let started; const held = new Promise((resolve) => { started = resolve; }); const setup = fixture({ inspector: async () => held });
   const owner = setup.create(), pending = bind(owner); const work = owner.inspect({ observationId: pending.observation_id, question: "read this" }); await new Promise((resolve) => setTimeout(resolve, 0)); await owner.close();
-  assert.equal((await work).error, "cancelled"); started({ inspection_status: "observed", facts: [fact], reason: "" }); const reopened = setup.reopen(); t.after(() => reopened.close()); assert.equal(bind(reopened).observation_id, pending.observation_id);
+  assert.equal((await work).error, "cancelled"); started({ inspection_status: "observed", facts: [fact], reason: "" }); const reopened = setup.reopen(); t.after(async () => { try { await reopened.close(); } finally { setup.cleanup(); } }); assert.equal(bind(reopened).observation_id, pending.observation_id);
+});
+
+test("invalid ledger limits leave corrected first initialization available", async (t) => {
+  const setup = fixture({ ledgerLimits: { maxAttempts: 33 } }); t.after(setup.cleanup);
+  assert.throws(setup.create, { code: "budget_state_unavailable" });
+  assert.deepEqual(readdirSync(setup.stateDirectory), []);
+  const corrected = createObservationOwner({ ...setup.common, ledgerLimits: undefined, priorSession: false });
+  await corrected.close();
+});
+
+test("failed ledger release rejects close and leaves the lease active", async (t) => {
+  const setup = fixture(); t.after(setup.cleanup);
+  const owner = setup.create();
+  await assert.rejects(
+    () => withFailingLedgerRename(setup.stateDirectory, () => owner.close()),
+    { code: "budget_state_unavailable" },
+  );
+  assert.equal(bind(owner).error, "budget_state_unavailable");
+  await assert.rejects(owner.close(), { code: "budget_state_unavailable" });
+  assert.notEqual(JSON.parse(readFileSync(path.join(setup.stateDirectory, "mediation-inspection-ledger.json"), "utf8")).lease, null);
+  assert.throws(setup.reopen, { code: "budget_state_unavailable" });
 });
 
 test("enforces budget exhaustion, session binding, and fail-closed reopened state", async (t) => {
