@@ -582,7 +582,7 @@ def scan_signature_snapshot(root: Path) -> dict[str, object]:
     if len(pins) != 1:
         raise ValueError("expected one immutable Gitleaks image in the committed workflow")
     with tempfile.TemporaryDirectory(prefix="anvil-public-snapshot-") as temporary:
-        snapshot = Path(temporary) / "candidate"
+        snapshot = (Path(temporary) / "candidate").resolve()
         snapshot.mkdir()
         archive = run_git(root, "archive", "--format=tar", head)
         with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
