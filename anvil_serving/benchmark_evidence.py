@@ -356,6 +356,10 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         identities = _list(raw.get("identity_observations"))
         identity_redacted = any(str(_mapping(row).get("container_id", "")).startswith("redacted:")
                                 for row in identities)
+        identity_recorded = (bool(identities)
+                             and raw.get("configuration_identity") == "managed_container_observed_labels_matched"
+                             and all(re.fullmatch(r"[0-9a-f]{64}", str(_mapping(row).get("container_id", "")))
+                                     for row in identities))
         if (raw.get("promoted") is not False or raw.get("performance_eligible") is not False
                 or raw.get("scheduler_overlap") != "not_measured"):
             errors.append("stability evidence cannot claim promotion, performance eligibility or scheduler proof")
@@ -402,7 +406,8 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                           **{gate: _bool(raw.get(gate)) for gate in
                              ("runtime_passed", "coverage_passed", "retrieval_passed")}},
             "performance_eligible": False, "promotion_authorized": False,
-            "container_identity_provenance": "sanitized" if identity_redacted else "recorded",
+            "container_identity_provenance": ("sanitized" if identity_redacted else
+                                              "recorded" if identity_recorded else "unverified"),
             "validation_errors": errors,
             "warnings": ["diagnostic exposure only; no throughput ranking or scheduler-overlap proof"]
                         + (["container identity is redacted; consult the private source receipt before replay"]

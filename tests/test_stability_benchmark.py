@@ -161,6 +161,9 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             summary = summarize_artifact(tmp_path / (selected + ".json"))
             assert summary["validation_errors"] == []
             from anvil_serving.benchmark_evidence import summarize_payload
+            incomplete = copy.deepcopy(observed)
+            incomplete.update(status="incomplete", identity_observations=[], configuration_identity="unverified")
+            assert summarize_payload(incomplete, "missing.json")["container_identity_provenance"] == "unverified"
             sanitized = copy.deepcopy(observed)
             for row in sanitized["identity_observations"]:
                 row["container_id"] = "redacted:sha256:" + "b" * 64
