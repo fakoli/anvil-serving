@@ -257,8 +257,12 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
                 )
             role_files.add(normalized_relative)
             declared_files.add(normalized_relative)
-            snapshots.setdefault(path, path.stat())
-            payload = path.read_bytes()
+            metadata = path.stat()
+            if max_artifact_bytes is not None and metadata.st_size >= max_artifact_bytes:
+                raise ValueError(f"retained artifact violates size_policy: {normalized_relative}")
+            snapshots.setdefault(path, metadata)
+            with path.open("rb") as handle:
+                payload = handle.read(max_artifact_bytes + 1 if max_artifact_bytes is not None else -1)
             _validate_artifact_payload(payload, path, normalized_relative, legacy_plaintext)
             if max_artifact_bytes is not None and len(payload) >= max_artifact_bytes:
                 raise ValueError(

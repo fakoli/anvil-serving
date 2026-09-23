@@ -81,7 +81,10 @@ python skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py PATH
 ```
 
 Stop artifact producers before finalization and keep the bundle unchanged
-until publication. Run the finalizer twice and require byte-identical output. The source is a
+until publication. This offline helper expects a reviewed local bundle, not
+untrusted uploads. A verified size policy bounds each artifact read; without
+one, no artifact byte limit is imposed. Source JSON and file-count limits are
+not enforced. Run the finalizer twice and require byte-identical output. The source is a
 reproducibility input, not a substitute for the canonical
 `artifact-manifest.json`.
 
