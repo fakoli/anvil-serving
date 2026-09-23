@@ -15,6 +15,10 @@ independent correctness checks, and the smallest useful comparison. Bind each
 attempt to the scenario and recipe hashes. Keep runtime reliability, workload
 coverage, semantic correctness, formatting, and performance eligibility as
 separate results. Unknown is not passing.
+Mechanically compare parent and candidate scenario fields before traffic and
+retain the normalized diff, including both output caps and reasoning policy.
+Retain accidental mismatches as separate
+failed or non-comparable attempts; correct the scenario under a new identity.
 
 Resolve the operation contract and resource owner through the existing
 candidate-operations workflow. If structured wrappers are unavailable, retain
