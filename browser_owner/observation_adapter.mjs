@@ -70,6 +70,6 @@ export async function createFixtureObservationAdapter({ piSessionId = "fixture-s
     const execute = (request, options = {}) => {
       const pending = serial.then(() => run(request, options)); serial = pending.catch(() => {}); return pending;
     };
-    return Object.freeze({ execute, async close() { if (closed) return; closed = true; await serial; await owner.close(); await fixture.close(); } });
+    return Object.freeze({ execute, async close() { if (closed) return; closed = true; await owner.close(); await serial; await fixture.close(); } });
   } catch (error) { await owner?.close().catch(() => {}); await fixture.close(); throw error; }
 }
