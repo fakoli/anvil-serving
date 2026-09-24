@@ -1,0 +1,96 @@
+{
+  "schema": "anvil-serving.secondary-client-convergence-summary/v1",
+  "observed_at": "2026-09-24",
+  "router_contract": {
+    "alias": "llm.secondary",
+    "served_identity": "thinkingcap-awq-5090",
+    "description": "ThinkingCap Qwen3.8 27B AWQ",
+    "context_limit_tokens": 131072,
+    "max_output_tokens": 10240,
+    "images": 2,
+    "concurrency": 1,
+    "thinking_supported": true,
+    "supported_reasoning_efforts": [
+      "low",
+      "medium",
+      "xhigh"
+    ],
+    "semantic_config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee"
+  },
+  "managed_display_name": "ThinkingCap Qwen3.8 27B AWQ (llm.secondary)",
+  "pi_thinking_level_map": {
+    "off": null,
+    "minimal": "low",
+    "low": "low",
+    "medium": "medium",
+    "high": "xhigh",
+    "xhigh": "xhigh",
+    "max": "xhigh"
+  },
+  "convergence": [
+    {
+      "host": "Companion Node",
+      "clients": [
+        "OpenClaw",
+        "Hermes",
+        "Pi"
+      ],
+      "catalog": "final semantic contract f5b1 applied and durable scheduled reconciliation approved; scheduled preview and idempotence changed=[]",
+      "secondary_row": "Pi and OpenClaw label plus declared efforts updated",
+      "smoke": "prior Mini OpenClaw and Hermes C1 smoke passed"
+    },
+    {
+      "host": "Evaluation Node",
+      "clients": [
+        "OpenClaw",
+        "Pi"
+      ],
+      "catalog": "final semantic contract f5b1 applied through the installed managed Anvil runtime; idempotent preview changed=[]",
+      "secondary_row": "Pi and OpenClaw label plus declared efforts updated",
+      "smoke": "prior OpenClaw r3 passed; prior r1 PATH failure and r2 marker failure retained"
+    },
+    {
+      "host": "Dark",
+      "clients": [
+        "Pi"
+      ],
+      "catalog": "managed Pi catalog applied at final semantic contract",
+      "secondary_row": "label and effort map updated",
+      "smoke": "normal Pi high/tool-result r3 passed: one tool call, marker present, agent settled, 24.205 seconds"
+    },
+    {
+      "host": "Primary Node",
+      "clients": [
+        "Pi"
+      ],
+      "catalog": "Final authenticated native TLS snapshot, reviewed managed apply and idempotent preview at f5b1; changed=[]",
+      "secondary_row": "Pi label and effort map updated",
+      "smoke": "Normal native Windows Pi high/read-tool/result pass with exact independent fixture check, 26.549 seconds",
+      "artifacts": [
+        "windows-authenticated-catalog-reasoning.json",
+        "windows-pi-sync-reasoning.json",
+        "windows-pi-high-acceptance.json"
+      ]
+    }
+  ],
+  "artifacts": [
+    "dark-pi-smoke-10240-timeout.json",
+    "dark-pi-smoke-high-timeout.json",
+    "dark-pi-smoke-high-r2.jsonl",
+    "dark-pi-smoke-high-r2-wrapper.json",
+    "dark-pi-smoke-high-normal.jsonl",
+    "dark-pi-smoke-high-normal-wrapper.json",
+    "dark-pi-high-r2-router-diagnosis.json",
+    "mini-smoke-c1-r2.json",
+    "evaluation-node-smoke-10240-r3.json",
+    "windows-authenticated-catalog-reasoning.json",
+    "windows-pi-sync-reasoning.json"
+  ],
+  "limitations": [
+    "The two earlier Dark timeout artifacts were caused by inherited SSH stdin remaining open, so Pi never submitted a model request.",
+    "The normal Dark Pi smoke is functional acceptance evidence, not a latency SLO."
+  ],
+  "router_promoted": true,
+  "client_catalogs_converged": true,
+  "existing_pi_session_refresh": "Run /reload to refresh model registry without resetting the conversation."
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "thinkingcap-feasibility-preparation/v1",
+  "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "source": "Pinned model config and tensor index; managed host inventory",
+  "selected_hardware": "One NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "vram_mib": 97887,
+  "recipe_allocation_fraction": 0.9,
+  "cached_artifact_bytes": 23447947228,
+  "weight_residency_bytes": "unknown until engine load; disk size is not runtime allocation",
+  "context_tokens": 49152,
+  "max_num_seqs": 8,
+  "full_attention_layers": 16,
+  "kv_heads": 4,
+  "head_dim": 256,
+  "kv_element_bytes": 2,
+  "dense_kv_bytes_per_token": 65536,
+  "dense_kv_bytes_per_full_sequence": 3221225472,
+  "dense_kv_bytes_eight_full_sequences": 25769803776,
+  "linear_attention_layers": 48,
+  "linear_state_allocator_bytes": "unknown; runtime blocks and speculative state require measurement",
+  "vision_workspace_bytes": "unknown; two-image limit retained",
+  "cuda_graph_and_runtime_bytes": "unknown until engine load",
+  "classification": "benchmark-survivor; not a fit guarantee",
+  "physical_rejections": [],
+  "required_next_evidence": [
+    "Engine startup memory profile",
+    "Vision preflight",
+    "Measured concurrency and context limits"
+  ],
+  "selected_runtime": {
+    "version": "vLLM 0.29.0",
+    "platform": "linux/amd64",
+    "digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "source": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.29.0",
+    "observed_at": "2026-09-24T00:23:49.441721+00:00"
+  },
+  "recipe": "../../../configs/thinkingcap-awq-vllm029-49k-nospec.toml",
+  "recipe_semantic_sha256": "6c573584666c81642c1b462c632533491521d709b257513597f1acc47a044b33",
+  "recipe_preview_passed": true,
+  "superseded": true,
+  "superseded_reason": "Wrong target; user explicitly requires RTX 5090. This PRO 6000 preparation is not an evaluation result or current fit assessment."
+}

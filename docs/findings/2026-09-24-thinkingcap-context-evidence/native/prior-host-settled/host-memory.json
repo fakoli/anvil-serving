@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-09-24T04:52:08.1078455Z",
+  "windows_kib": {
+    "TotalVisibleMemorySize": 32413020,
+    "FreePhysicalMemory": 12361180,
+    "TotalVirtualMemorySize": 84841820,
+    "FreeVirtualMemory": 13485664
+  },
+  "wsl_free_bytes": "              total        used        free      shared  buff/cache   available\nMem:    20976054272  6127280128 12286701568  1502593024  2562072576 12974178304\nSwap:    4294967296   191369216  4103598080",
+  "note": "Settled idle sample after guarded page-cache reclaim; no restart or memory configuration change."
+}

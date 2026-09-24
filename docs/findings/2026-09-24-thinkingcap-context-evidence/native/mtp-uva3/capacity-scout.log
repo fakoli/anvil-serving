@@ -1,0 +1,14 @@
+BENCH http://127.0.0.1:39283/v1 model=thinkingcap-awq-5090  n=4 concurrency=1 mixed max_tokens=512 cache=unique canaries=True response_words=32 max_model_len=131072(ctx<=129536) thinking=disabled
+------------------------------------------------------------
+completed:        4/4 in 15.3s
+TTFT  mean/p50/p95/p99 (descriptive only; N<100): 2.98s / 2.97s / 3.01s / 3.01s
+E2E   mean/p50/p95/p99 (descriptive only; N<100): 3.83s / 3.81s / 3.86s / 3.86s
+GEN   p50/p95:    0.85s / 0.85s
+prefill mean/p50/p95/p99: 1212 / 1203 / 1227 / 1227 effective input tok/s
+decode mean/p50/p95/p99: 52.0 / 52.0 / 52.0 / 52.0 tok/s per request
+completion tokens mean/p50/p95/p99: 45.0 / 45 / 45 / 45
+throughput:       12 output tok/s (aggregate)
+prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: PRIVATE_OPERATOR_HOME\operator-evidence\evidence\2026-09-24-thinkingcap-context-5090\mtp-uva3-capacity-scout.json

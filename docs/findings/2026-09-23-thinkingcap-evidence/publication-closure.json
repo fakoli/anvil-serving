@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.publication-closure/v1",
+  "closed_at": "2026-09-24T03:50:53.925785+00:00",
+  "independent_review": "final-independent-review.json",
+  "review_dispositions": {
+    "F1": "Remains open: unrelated Windows Pi repository gate; no release or clean full-suite claim.",
+    "F2": "Closed: all ten artifact roles retained, exact hashes and byte counts verified, two finalizer runs byte-identical. The ledger includes the independent review and this closure; final canonical regeneration repeats after writing this record.",
+    "F3": "Disclosed: full-recipe comparison only; no isolated MTP speedup.",
+    "F4": "Disclosed: C1, actual measured context, limited quality and synthetic tool scope."
+  },
+  "artifact_ledger": "artifact-manifest.json",
+  "bounded_model_campaign": "complete",
+  "documentation_gate": "passed",
+  "full_repository_gate": "failed",
+  "release_readiness": "not claimed",
+  "route_promotion": false,
+  "retained_serve": "thinkingcap-awq-5090; RTX5090;32K/C1;vision enabled;MTP3;BF16 KV",
+  "latest_health_evidence": "native/final/http-recheck.json"
+}

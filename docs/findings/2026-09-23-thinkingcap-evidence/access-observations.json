@@ -1,0 +1,104 @@
+{
+  "observed_at": "2026-09-23T22:57:14.753679+00:00",
+  "inference_requests": 0,
+  "live_mutations": 0,
+  "artifact_access": {
+    "repository": "bottlecapai/ThinkingCap-Qwen3.8-27B",
+    "revision": "52361b720e30f8835af8e401d876ec3077b4a823",
+    "file": "config.json",
+    "http_status": 401,
+    "error_code": "GatedRepo",
+    "authentication": "unauthenticated"
+  },
+  "credentials": {
+    "HF_TOKEN_exported": false,
+    "default_dotenv_exists": false,
+    "default_hf_token_file_exists": false,
+    "scope": "local session and standard user locations only; remote credentials unknown"
+  },
+  "host_inventory": {
+    "observed_local_gpu": "NVIDIA GeForce RTX 5090",
+    "remote_ssh": "host-key verification failed for configured DNS and IP",
+    "recipe_inventory": "refused: model-serve has zero declared owners in saved local topology",
+    "controller_inventory": "refused: supplied command host absent from selected saved topology"
+  },
+  "source_versions": {
+    "original_dirty_checkout": "1.2.1",
+    "isolated_checkout": "1.0.0",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332"
+  },
+  "selected_nvfp4_artifact_access": {
+    "repository": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4",
+    "revision": "f0d598e043266b9c935a2fd6316a31c26831778a",
+    "file": "config.json",
+    "http_status": 401,
+    "error_code": "GatedRepo",
+    "authentication": "unauthenticated"
+  },
+  "selected_awq_artifact_access": {
+    "http_status": 401,
+    "error_code": "GatedRepo",
+    "repository": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "file": "config.json",
+    "authentication": "unauthenticated",
+    "observed_at": "2026-09-23T23:06:08.955096+00:00"
+  },
+  "remote_access_recovery": {
+    "transport": "Existing trusted companion-host SSH connection to model host; strict host-key checking retained",
+    "observed_gpus": [
+      "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+    ],
+    "gpu_occupancy": "Both GPUs owned by an existing running GLM recipe",
+    "candidate_topology": "Separate private campaign copy adds model-catalog and model-cache declarations; validated; deployed topology untouched"
+  },
+  "authenticated_awq_pull_history": [
+    {
+      "observed_at": "2026-09-23T23:54:51.788456+00:00",
+      "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+      "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+      "credential_source": "HF_TOKEN loaded by Anvil from the model-host user home .env",
+      "credential_value_retained": false,
+      "launcher_version": "1.2.1",
+      "downloader_image": "sha256:254eebf919e8b7b0d530d97fccc606c36f380ff6724d64bc190951bec1aee838",
+      "space_gate": "passed",
+      "expected_bytes": 23447943412,
+      "free_bytes": 1328148705280,
+      "exit_code": 1,
+      "error": "Access denied. This repository requires approval.",
+      "classification": "repository-authorization",
+      "download_complete": false,
+      "gpu_serves_changed": false
+    }
+  ],
+  "authenticated_awq_pull": {
+    "observed_at": "2026-09-24T00:23:49.441721+00:00",
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "credential_source": "HF_TOKEN loaded by Anvil from model-host user home .env",
+    "credential_value_retained": false,
+    "launcher_version": "1.2.1",
+    "exit_code": 0,
+    "download_complete": true,
+    "snapshot_verified": true,
+    "cached_bytes": 23447947228,
+    "gpu_serves_changed": false
+  },
+  "weight_audit": {
+    "vision_tensor_count": 333,
+    "vision_tensor_shard": "model-00003-of-00003.safetensors",
+    "vision_dtype": "bfloat16",
+    "mtp_tensor_count": 15,
+    "language_model_only": false,
+    "inference_vision_acceptance": "not-started"
+  },
+  "runtime_cache_verification": {
+    "version": "vLLM 0.29.0",
+    "platform": "linux/amd64",
+    "image_digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "method": "Managed models pull through pinned runtime image, exact snapshot verification repeated",
+    "exit_code": 0,
+    "complete_cache": true
+  }
+}

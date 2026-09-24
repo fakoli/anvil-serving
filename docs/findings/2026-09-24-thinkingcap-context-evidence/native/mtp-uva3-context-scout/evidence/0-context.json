@@ -1,0 +1,192 @@
+{
+  "calibration": {
+    "chars_per_token": 3.8284660910061126,
+    "method": "endpoint-usage-filler-ratio/v2",
+    "request_id": null,
+    "sample_chars": 39460,
+    "sample_prompt_tokens": 10307
+  },
+  "curve": {
+    "advertised_context": 131072,
+    "attempted_buckets": [
+      32768,
+      125952
+    ],
+    "buckets": [
+      {
+        "completed_count": 1,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 31835.750400001416,
+          "observations": [
+            31835.750400001416
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 1,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 32768,
+        "sample_count": 1,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-32768-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 31835.750400001416,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 32658,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 2.1987859284132623,
+            "token_measurement": "usage",
+            "visible_answer": "\n\nK557508437185"
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 2.1987859284132623,
+          "observations": [
+            2.1987859284132623
+          ]
+        }
+      },
+      {
+        "completed_count": 1,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 157638.44620002783,
+          "observations": [
+            157638.44620002783
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 1,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 125952,
+        "sample_count": 1,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-125952-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 157638.44620002783,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 125838,
+            "requested_tokens": 125952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.6597375355250212,
+            "token_measurement": "usage",
+            "visible_answer": "\n\nK557508437185"
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 0.6597375355250212,
+          "observations": [
+            0.6597375355250212
+          ]
+        }
+      }
+    ],
+    "effective_context": 125952,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 32768,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.2,
+      "pass_rate_floor": 0.8
+    }
+  },
+  "observations": [
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-32768-0.500-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 31835.750400001416,
+      "passed": true,
+      "position": 0.5,
+      "prompt_tokens": 32658,
+      "requested_tokens": 32768,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 2.1987859284132623,
+      "token_measurement": "usage",
+      "visible_answer": "\n\nK557508437185"
+    },
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-125952-0.500-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 157638.44620002783,
+      "passed": true,
+      "position": 0.5,
+      "prompt_tokens": 125838,
+      "requested_tokens": 125952,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 0.6597375355250212,
+      "token_measurement": "usage",
+      "visible_answer": "\n\nK557508437185"
+    }
+  ],
+  "passed": true,
+  "request_ids": [],
+  "schema": "anvil-serving.context-suite-run/v1",
+  "selection": {
+    "case_ids": [
+      "native-needle"
+    ],
+    "output_headroom_tokens": 4096,
+    "positions": [
+      0.5
+    ],
+    "repetitions": 1,
+    "token_buckets": [
+      32768,
+      125952
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.client-smoke/v1",
+  "host": "Dark",
+  "client": "Pi",
+  "alias": "llm.secondary",
+  "display_name": "ThinkingCap Qwen3.8 27B AWQ (llm.secondary)",
+  "contract": {
+    "context_limit_tokens": 131072,
+    "max_output_tokens": 10240
+  },
+  "request_options": {
+    "thinking": "high",
+    "tools": [
+      "bash"
+    ],
+    "session": "none",
+    "mode": "json"
+  },
+  "attempted": true,
+  "passed": false,
+  "failure_class": "client-request-timeout-before-response",
+  "failure": "After the per-model high-to-xhigh mapping was applied, the bounded Pi process produced zero result and stderr bytes before its 180-second watchdog terminated it. The wrapper exited before copying its empty remote result; the local temporary files were retained for inspection.",
+  "promoted": false
+}

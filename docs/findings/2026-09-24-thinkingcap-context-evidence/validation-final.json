@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-validation/v1",
+  "observed_at": "2026-09-24T07:28:35.710613+00:00",
+  "model_gates": "All declared gates passed; see summary.json and native artifacts.",
+  "checks": [
+    {
+      "name": "benchmark documentation tests",
+      "passed": true,
+      "count": 19,
+      "source": "validation/benchmark-docs.log",
+      "note": "Run once earlier in this extension; relevant helper/test source has not changed."
+    },
+    {
+      "name": "tracked Markdown relative links",
+      "passed": true,
+      "tracked_markdown_files": 691,
+      "source": "validation/links-final-accepted.log"
+    },
+    {
+      "name": "strict MkDocs build",
+      "passed": true,
+      "source": "validation/mkdocs-final-accepted.log"
+    },
+    {
+      "name": "full CLI reference audit update and check",
+      "passed": true,
+      "files": 1175,
+      "violations": 0,
+      "source": "validation/cli-audit-final-accepted.log"
+    },
+    {
+      "name": "graph output determinism",
+      "passed": true,
+      "source": "graph-validation.json"
+    },
+    {
+      "name": "operational source identity",
+      "passed": true,
+      "files": 329,
+      "source": "operational-source-final-check.json"
+    },
+    {
+      "name": "authoring runtime/test source diff",
+      "passed": true,
+      "result": "git diff HEAD --name-only -- anvil_serving tests was empty"
+    },
+    {
+      "name": "authoring whitespace",
+      "passed": true,
+      "note": "git diff --check HEAD passed with CR-at-EOL permitted and raw native/validation logs excluded; removed Markdown hard-break trailing spaces from the new mixed-vision ticket and its public copy."
+    }
+  ],
+  "resolved_validation_failures": [
+    {
+      "issue": "An evidence link targeted a sanitized public filename matched by *.private.json ignore policy",
+      "source": "validation/links-final.log",
+      "fix": "Renamed the seven public exports without the private suffix, updated references and ledger paths, staged them, and reran the links and strict build successfully."
+    },
+    {
+      "issue": "Review found Docker bridge client addresses in two public logs",
+      "fix": "Replaced with reserved generic 100.64.0.10; refreshed public hashes, retained original private hashes; full B2 IPv4 scan contains only loopback, bind-all and reserved generic/documentation addresses."
+    }
+  ],
+  "inherited_repository_gate": {
+    "rerun": false,
+    "passed": false,
+    "result": "7923 passed, 417 skipped, one unrelated Windows Pi RPC smoke failed in the prior campaign",
+    "source": "../2026-09-23-thinkingcap-evidence/validation-final.json",
+    "note": "No runtime/test change remains and no clean full-suite or release-readiness claim is made."
+  },
+  "independent_review": "final-review.json",
+  "artifact_closure": "The exact ten-role manifest was generated twice with byte-identical output; all retained artifact hashes and sizes and the unchanged sealed prior bundle were verified."
+}

@@ -339,10 +339,13 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
             candidate["definition_sha256"] = digest(candidate["definition"])
         elif candidate.get("manager") == "docker":
             adapters["docker"].verify_context()
-            matches = [item for item in adapters["docker"].discover() if item["container"] == candidate["container"]]
-            if len(matches) != 1:
-                raise ServiceError("owner_missing", "adoption requires one discovered Anvil-owned container")
-            candidate.update({key: matches[0][key] for key in ("image_id", "identity_labels")})
+            if candidate.get("external_compose") is True:
+                candidate.update(adapters["docker"].adopt_external_compose(candidate))
+            else:
+                matches = [item for item in adapters["docker"].discover() if item["container"] == candidate["container"]]
+                if len(matches) != 1:
+                    raise ServiceError("owner_missing", "adoption requires one discovered Anvil-owned container")
+                candidate.update({key: matches[0][key] for key in ("image_id", "identity_labels")})
         candidate = validate({"schema": "anvil-services/v1", "service": [candidate]}, path.parent)[service]
         if service in bindings and bindings[service] != candidate:
             raise ServiceError("already_bound", "service id is already bound; refusing replacement")
@@ -426,6 +429,13 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
         commands = [] if action == "adopt" else adapters[row["manager"]].plan(row, action, before)
         plans.append({"id": name, "before": before, "steps": commands})
     receipt = {"action": action, "applied": False, "services": plans}
+    if action == "adopt" and bindings[service].get("external_compose") is True:
+        row = bindings[service]
+        receipt["external_compose_identity"] = {
+            "container": row["container"], "image_id": row["image_id"],
+            "compose_project": row["compose_project"], "compose_service": row["compose_service"],
+            "config_mount": {"source": row["compose_config_source"], "target": row["compose_config_target"], "read_only": True},
+        }
     if dry_run or not confirm:
         return _safe(receipt)
     with _lock(path):

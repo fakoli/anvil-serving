@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.mtp3-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "profile": "16K graph-enabled V2 MTP3 candidate",
+  "evidence_root": "native/candidate/mtp3",
+  "startup": {
+    "model_memory_gib": 22.14,
+    "available_kv_cache_gib": 4.71,
+    "gpu_kv_cache_tokens": 44683
+  },
+  "functional_gates": {
+    "functional_passed": 15,
+    "reasoning_passed": 8,
+    "vision_passed": 18,
+    "vision_attempts": 18
+  },
+  "quality_diagnostic": {
+    "suite": "hf-mmlu-pro-10-repeated",
+    "passed_attempts": 27,
+    "attempts": 30,
+    "failed_eval_id": "mmlu-pro-30-computer-science",
+    "failed_attempts": 3,
+    "failure_class": "deterministic_check_failed",
+    "finish_reason_counts": {
+      "stop": 30
+    },
+    "qualification_boundary": "small repeated diagnostic only; not a full MMLU-Pro score or promotion comparison"
+  },
+  "capacity": {
+    "workload": "strict 32-word, 4096-context, C1, unique cache, request canaries",
+    "attempted_requests": 100,
+    "strict_passes": 99,
+    "strict_failures": 1,
+    "failed_request_index": 89,
+    "failure": "emitted 34 code words where 32 were required",
+    "aggregate_throughput_eligible": false,
+    "classification": "not a clean finalist; do not graph or claim a clean speedup"
+  },
+  "backend_interpretation": {
+    "nested_drafter_triton_requested": true,
+    "effective_drafter_triton_proven": false,
+    "finding": "The pinned standard V2 MTP path inherits the target FLASH attention path; the nested speculative attention_backend request does not prove a Triton drafter.",
+    "independent_review": {
+      "path": "fp8-v2-review.json",
+      "sha256": "857b05104429a6ee7ad2246d4910f3bf64f156d96f47cd4b9929143dbbaf19ba"
+    }
+  },
+  "comparison_boundary": {
+    "clean_matched_series": [
+      "eager",
+      "graphs"
+    ],
+    "mtp3_included_as_clean_series": false,
+    "promoted": false
+  },
+  "redaction_ledger": "native/candidate/mtp3/redactions.json"
+}

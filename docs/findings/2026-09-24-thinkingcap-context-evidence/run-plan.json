@@ -1,0 +1,108 @@
+{
+  "schema": "anvil-serving.context-expansion-plan/v1",
+  "created_at": "2026-09-24T04:12:05.848923+00:00",
+  "request": "The user judged 32K too small and requested at least 128K. Continue the authorized autonomous suitability and optimization work on the local RTX 5090 while preserving vision and complete weights.",
+  "hardware": "One local RTX 5090, 32,607 MiB reported VRAM",
+  "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+  "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "runtime_image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+  "branches": [
+    {
+      "id": "64k-mtp3-bf16",
+      "context": 65536,
+      "memory_fraction": 0.9,
+      "minimum_sampled_free_mib": 2048,
+      "other_controls": "same targetTRITON/BF16/MTP3/C1/two-image/graphs as32K",
+      "status": "superseded by explicit minimum128K requirement"
+    },
+    {
+      "id": "96k-mtp3-bf16",
+      "context": 98304,
+      "memory_fraction_max": 0.93,
+      "minimum_sampled_free_mib": 1024,
+      "conditional": "Only if64K fit/correctness and recalculated capacity support this branch",
+      "status": "superseded by explicit minimum128K requirement"
+    },
+    {
+      "id": "larger-nospec-bf16",
+      "conditional": "Consider only if model context fit can improve materially; compare measured speed and all hard gates. No FP8 cache reuse after prior failed quality.",
+      "status": "superseded by explicit minimum128K requirement"
+    }
+  ],
+  "reserve_policy": {
+    "previous_default_mib": 4096,
+    "previous_measured_32k_minimum_mib": 3342,
+    "64k_effective_mib": 2048,
+    "conditional96k_effective_mib": 1024,
+    "scope": "One local candidate only. Preserve desktop and all other processes; launch no other GPU work. The campaign may lower its policy reserve under the feasibility skill, but the candidate must meet the declared sampled floor without OOM, CUDA error, restart or request loss."
+  },
+  "qualification": {
+    "first": "nativehealth + identity then thinking-off functional",
+    "intermediate": "bounded near-limit context scout and image check",
+    "finalist": "Functional 27, thinking-enabled controls, vision 18, ten quality questions x3, strict short-output capacity 100, context five cases x two buckets x three positions x two repetitions, and two synthetic agentic cases",
+    "context_output_reserve": 4096,
+    "context_max_bucket_rule": "Configured total maximum minus 4,096 output tokens and a 1,024-token prompt calibration margin",
+    "performance": "C1, nominal 4K input, 32 code words plus canary, 45 completion tokens, cap 512, unique prompts, thinking off; the same short-output contract as the prior campaign",
+    "thinking": "Context runner uses model-default thinking; no unsupported override claim",
+    "observed_reasoning_count_note": "The original estimate was eight checks. The native run contains nine observations because the tool-result flow makes two requests."
+  },
+  "stop_conditions": [
+    "OOM, CUDA error, crash/restart, or failed deterministic assertion",
+    "Sampled free GPU memory below the declared profile floor",
+    "Do not infer a physical context ceiling from the cache capacity of a lower-context startup"
+  ],
+  "rollback": {
+    "recipe_sha256": "fe43362857973f7368b5cbd1694ee974dbb8b06bbdeacf36740ba3bd6637082b",
+    "model": "thinkingcap-awq-5090",
+    "context": 32768,
+    "native32kqualification": "../2026-09-23-thinkingcap-evidence/README.md",
+    "action": "Restore the exact qualified 32K profile if no expansion passes. Otherwise retain the suitable qualified 128K profile at the direct endpoint under the existing authorization."
+  },
+  "route_changes": false,
+  "promoted": false,
+  "user_minimum_context": 131072,
+  "updated_at": "2026-09-24T04:59:52.094376+00:00",
+  "superseding_directive": "Can get to at least 128k?",
+  "64k_status": "prepared and previewed only; not loaded; defer to128K minimum",
+  "current_branch": {
+    "id": "128k-mtp3-generic-uva3",
+    "context": 131072,
+    "memory_fraction": 0.93,
+    "cpu_offload_gib": 3,
+    "offload_backend": "uva",
+    "selectors": [],
+    "attention": "TRITON target and draft",
+    "kv": "BF16",
+    "SSM": "default FP32",
+    "MTP": 3,
+    "minimum_sampled_free_mib": 1024,
+    "quality_scout": "The same ten-item diagnostic, one repetition, unchanged 2,048 visible plus 8,192 reasoning-token allowance, and a predeclared 900-second timeout for the slower CPU offload path",
+    "full_quality": "same ten items three repetitions; only after scout passes",
+    "host_reclaim": "Use guarded idle page-cache reclaim after load when needed, under the existing autonomous optimization authority. Preview then confirm; no force, restart or settings change. Capture delayed Windows and WSL memory recovery."
+  },
+  "attempts": [
+    {
+      "id": "128k-gpu-only-095",
+      "status": "failed-startup-reserve-beforeweights",
+      "error": "CUDA free 30.2 / 31.82 GiB was below the requested 0.95 fraction (30.23 GiB)",
+      "capacity_interpretation": "not a model/KV-fit result"
+    },
+    {
+      "id": "128k-nospec-vision-uva1",
+      "status": "rejected-quality",
+      "passed": [
+        "functional27",
+        "vision18",
+        "reasoning9",
+        "contextscout2"
+      ],
+      "quality": "27/30: the same computer-science question returned wrong FINAL=D in all three repetitions, with normal stop and 8,650 completion tokens; this was not budget exhaustion.",
+      "not_run": [
+        "capacity",
+        "fullcontext",
+        "agentic"
+      ]
+    }
+  ],
+  "prepared_only_nonselective_offload": "The generic 1 GiB offload recipe was prepared and previewed but not loaded; the first loaded offload branch instead selected visual parameters."
+}

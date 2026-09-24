@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "27 native disabled-thinking observations have no reasoning; all 9 enabled-thinking observations carry reasoning. Deterministic behavior and finish policies passed.",
+  "observed_at": "2026-09-24T05:07:13.509288+00:00",
+  "model": "thinkingcap-awq-5090",
+  "recipe_digest": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+  "proofs": [
+    {
+      "path": "mtp-uva3-functional.json",
+      "sha256": "cf70132c512de90f377519612b1c57152b07bc8117da19d51bc18e65296b94cf",
+      "observation_count": 27
+    },
+    {
+      "path": "mtp-uva3-reasoning.json",
+      "sha256": "854f10007365b77e0a34a804c622589c953afdc37c1bbb8e9fd0b0162fe0c889",
+      "observation_count": 9
+    }
+  ]
+}

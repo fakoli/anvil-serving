@@ -11,6 +11,20 @@ def commands() -> CommandNode:
         "router",
         "Manage the deployed router and its lifecycle.",
         children=(
+            _resource_node(
+                "export-config",
+                "Export the verified, secret-free configuration mounted by the running router.",
+                "anvil_serving.router_config_export",
+                role="router",
+                argv_prefix=(),
+                handler_attribute="dispatch",
+                execution_runtime_roles=("native",),
+                options=(
+                    _option("--container", summary="Exact running router container.", value_name="NAME"),
+                    _option("--expected-sha256", summary="Required exact source and mounted-file SHA-256.", value_name="SHA256"),
+                ),
+                docs_anchor="docs/cli/router.md#export-installed-configuration",
+            ),
             _node(
                 "workloads",
                 "Read a bounded canonical workload snapshot from one router.",

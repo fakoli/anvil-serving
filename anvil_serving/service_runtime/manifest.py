@@ -15,7 +15,9 @@ from .contracts import ENGINES, MAX_BYTES, ServiceError, identifier
 FIELDS = frozenset({"id", "resource", "manager", "engine", "support", "dependencies",
     "endpoint", "model", "definition", "source_definition", "definition_sha256", "label", "owner_uid",
     "container", "image_id", "identity_labels", "startup_policy", "api_key_env",
-    "health_path", "models_path", "serve", "serve_manifest", "feature", "memory_mib"})
+    "health_path", "models_path", "serve", "serve_manifest", "feature", "memory_mib",
+    "external_compose", "compose_project", "compose_service", "compose_config_source",
+    "compose_config_target", "expected_image_id"})
 
 
 def _read(path: Path) -> bytes:
@@ -51,6 +53,10 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
             raise ServiceError("bad_config", "duplicate service id")
         if item["manager"] not in {"launchd", "docker"}:
             raise ServiceError("bad_config", "manager must be launchd or docker")
+        if item["manager"] != "docker" and any(key in item for key in (
+                "external_compose", "compose_project", "compose_service", "compose_config_source",
+                "compose_config_target", "expected_image_id")):
+            raise ServiceError("bad_config", "Compose identity fields require the Docker manager")
         if item["engine"] not in ENGINES:
             raise ServiceError("bad_config", "unknown engine adapter")
         if item.get("support", "supported") not in {"supported", "legacy"}:
@@ -81,6 +87,24 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
                 for k, v in labels.items()
             ):
                 raise ServiceError("bad_config", "Docker identity_labels must be pinned")
+            external = item.get("external_compose", False)
+            if type(external) is not bool:
+                raise ServiceError("bad_config", "external_compose must be a boolean")
+            compose_fields = ("compose_project", "compose_service", "compose_config_source", "compose_config_target")
+            if external:
+                if not re.fullmatch(r"sha256:[a-f0-9]{64}", str(item.get("expected_image_id", ""))):
+                    raise ServiceError("bad_config", "external Compose adoption requires expected_image_id")
+                if item["image_id"] != item["expected_image_id"]:
+                    raise ServiceError("bad_config", "external Compose image must match expected_image_id")
+                for key in ("compose_project", "compose_service"):
+                    identifier(item.get(key), key)
+                for key in ("compose_config_source", "compose_config_target"):
+                    value = item.get(key)
+                    if (not isinstance(value, str) or len(value) > 4096 or not value.startswith("/")
+                            or any(ord(char) < 32 for char in value)):
+                        raise ServiceError("bad_config", f"invalid {key}")
+            elif any(key in item for key in compose_fields + ("expected_image_id",)):
+                raise ServiceError("bad_config", "Compose identity fields require external_compose")
             identity = ("docker", item["container"])
         if identity in identities:
             raise ServiceError("bad_config", "duplicate supervisor identity")

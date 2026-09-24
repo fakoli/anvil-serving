@@ -1,0 +1,62 @@
+[
+  {
+    "path": "graph-preflight.json",
+    "original_sha256": "cbe8393f9d190685ba0cd922303bff2c570cffb519af253d9557362fb44e6bfd",
+    "published_sha256": "d8f94237059f864d18c11dd9d21c4fd85989b899abf24ee93e8a75131b418815",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-reasoning-preflight.json",
+    "original_sha256": "70731b381f316c014d612803d1224aae83a6c90399ab78dc4338170e46c97aa6",
+    "published_sha256": "3bc10637c7b4da43d31b8b0f34b81956485c6f4c2b169b3c8d4526ea7d00bf11",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-thinking-control.json",
+    "original_sha256": "c9d53ebdd82ea8e2500f2aba25659fa5cc5ec8a817e1f3c53965e2ffa772b91d",
+    "published_sha256": "c9d53ebdd82ea8e2500f2aba25659fa5cc5ec8a817e1f3c53965e2ffa772b91d",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-multimodal.json",
+    "original_sha256": "1ce2187bbdc5be1873dca496ea176fc0f93b4957e194f14c768617f573bfb0c2",
+    "published_sha256": "e5c8743c6fbb163685f2d1ddb35140287afc0321042fe907b2f4d91ea75b3966",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-short32-n100-r1.json",
+    "original_sha256": "b023983fad416c768cafaf4869f0b088abad373a9a3ac802699f1a056a9f6bb4",
+    "published_sha256": "4ebaa9cfc926fb76750eea5c9e7281fb0bb45ba571c20ba726c4770be9e7eaa4",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-models.json",
+    "original_sha256": "71811b85d07725d0dbb0134a5fd4825fbba1dec52350a9049b68e9589d28fc66",
+    "published_sha256": "a5979112ee4b3ade746310e85936c720aa293265f053f126e0045ba7e228f2f1",
+    "redaction_policy": "operator paths and identities only; native metrics and schema preserved"
+  },
+  {
+    "path": "graph-mmlu10-thinking.json",
+    "original_sha256": "1eace2cd4ceec65d3f725170c36c8e9bf3a619d7a2561747f63b41d27274e119",
+    "published_sha256": "0315e97cdeb3e9663869666d7a8195289bdb2d35360ad3bf44a4ee1f20f6aa0e",
+    "redaction_policy": "Operator paths, GPU UUID, host and private network identities only; native schemas, metrics, outcomes and hashes preserved"
+  },
+  {
+    "path": "graph-startup.log",
+    "original_sha256": "17b925b7bc44cce96ca8fab916f4a7196c10f285a74c4f6920d3aa9e7bd962c4",
+    "published_sha256": "cc97cd3ef7e88f04e791edcca6b455205cb37863e142b67c43b8421606b55268",
+    "redaction_policy": "Operator paths, GPU UUID, host and private network identities only; native schemas, metrics, outcomes and hashes preserved"
+  },
+  {
+    "path": "graph-final-engine.log",
+    "original_sha256": "2d4b9bc0bd1aa3b1b8badd44862fe06228711514fc8438b84846cd7a7159e39c",
+    "published_sha256": "745351e2d675b0c93fa61bfab2e1a8a7d2a46466f8d18816a614f88a31294a47",
+    "redaction_policy": "Operator paths, GPU UUID, host and private network identities only; native schemas, metrics, outcomes and hashes preserved"
+  },
+  {
+    "path": "graph-unload.json",
+    "original_sha256": "1d7f46953facd6b3805142a516be70432277931ecb063dfcab6c26cf4f951ee4",
+    "published_sha256": "3ba798b50ec0005d27095b8f5877809842de0c1245ce21fb0bb80a71061d32f9",
+    "redaction_policy": "Operator paths, GPU UUID, host and private network identities only; native schemas, metrics, outcomes and hashes preserved"
+  }
+]

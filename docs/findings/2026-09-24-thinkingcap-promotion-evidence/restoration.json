@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.restoration/v1",
+  "restored": false,
+  "reason": "User explicitly requested promotion; retain qualified 128K container and new secondary contract.",
+  "primary_and_audio_unchanged": true,
+  "router_both_tiers_ready": true,
+  "rollback": "Exact previous router bytes and edge mapping retained privately. Earlier qualified 32K model recipe remains sealed.",
+  "post_state": "Promoted exact qualified model retained; discovered managed client catalogs converged; Dark and Windows Pi high/tool-result checks pass; Grafana/Prometheus and Open WebUI provider verified; browser chat untested.",
+  "router_config_private_source_sha256": "e23dce8dfb840f5d365f306781cccf849a25e23f82584fce485320f373f92259"
+}

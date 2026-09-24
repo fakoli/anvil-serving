@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.context-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "evidence_root": "native/context/full",
+  "configured_max_model_len": 32768,
+  "input_scope": "The configured 32K context was not itself a 32,768-token input observation.",
+  "workload": {
+    "samples": 60,
+    "case_matrix": "5 cases x 2 requested-input buckets x 3 positions x 2 repetitions",
+    "reasoning_mode": "model default reasoning",
+    "total_completion_cap": 2048
+  },
+  "results": {
+    "passed": 60,
+    "completed": 60,
+    "finish_reason_counts": {
+      "stop": 60
+    },
+    "actual_prompt_token_ranges": {
+      "8192": {
+        "minimum": 8198,
+        "maximum": 8229,
+        "samples": 30
+      },
+      "29696": {
+        "minimum": 29578,
+        "maximum": 29629,
+        "samples": 30
+      }
+    }
+  },
+  "timing_interpretation": "CPU documentation checks overlapped this run; any latency values are diagnostic only and are not performance evidence.",
+  "promoted": false,
+  "redaction_ledger": "native/context/full/redactions.json"
+}

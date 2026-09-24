@@ -1,0 +1,27 @@
+{
+  "command": "router install-config",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "  validate capability meta-router config: validated snapshot\n{\"applied\": true, \"config_sha256\": \"6c6d00607da212dc36e5bc1243ad5e9b9b9cec50f1523154c3c601e4c86aeeab\", \"current_tiers\": [\"primary-local\", \"secondary-node\"], \"desired_tiers\": [\"primary-local\", \"secondary-node\"], \"drain_timeout\": 120.0, \"dry_run\": false, \"readmitted_tiers\": [\"primary-local\", \"secondary-node\"], \"tier_status\": [{\"active_requests\": 0, \"draining\": false, \"expected_model\": \"glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec\", \"metadata_source\": \"configured\", \"observed_context_limit\": null, \"observed_model\": \"glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec\", \"readiness_reason\": \"identity_passed\", \"readiness_state\": \"ready\", \"ready\": true, \"reason\": \"admitting\", \"state\": \"admitting\", \"tier_id\": \"primary-local\"}, {\"active_requests\": 0, \"draining\": false, \"expected_model\": \"thinkingcap-awq-5090\", \"metadata_source\": \"configured\", \"observed_context_limit\": null, \"observed_model\": \"thinkingcap-awq-5090\", \"readiness_reason\": \"identity_passed\", \"readiness_state\": \"ready\", \"ready\": true, \"reason\": \"admitting\", \"state\": \"admitting\", \"tier_id\": \"secondary-node\"}], \"unavailable_tiers\": []}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

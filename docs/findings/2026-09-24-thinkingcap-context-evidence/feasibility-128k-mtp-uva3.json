@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-screen/v1",
+  "recorded_at": "2026-09-24T04:55:18.847858+00:00",
+  "classification": "benchmark-survivor, not fit proof",
+  "model_and_numerics": "same exact checkpoint/runtime; BF16 KV and default FP32 SSM; MTP3 restored",
+  "context": 131072,
+  "concurrency": 1,
+  "memory_fraction": 0.93,
+  "cpu_offload": "generic UVA3GiB; selector absent",
+  "source_values": {
+    "gpu_capacity_gib": 31.82,
+    "measured_prior_32k_mtp_fraction": 0.87,
+    "measured_prior_32k_mtp_kv_gib": 4.73,
+    "estimated_fixed_residency_gib": 22.9534,
+    "planned_budget_gib": 29.5926,
+    "optimistic_pool_gib": 9.639200000000002,
+    "reviewer_128k_mtp_pool_requirement_approx_gib": 9.13
+  },
+  "unknowns": [
+    "128K activation/graph residency",
+    "actual tensor-rounded offload",
+    "packed-weight UVA kernel compatibility",
+    "PCIe throughput cost"
+  ],
+  "authority": "Existing autonomous model optimization and managed candidate lifecycle request; no route/client promotion",
+  "gates": [
+    "native health and exact identity/cache >=131072",
+    "sampled GPU free>=1024MiB and healthy host RAM",
+    "functional and vision",
+    "quality scout then full unchanged30-attempt suite",
+    "strict capacity scout then100 if qualified",
+    "context/agentic if all preceding gates pass"
+  ],
+  "stop_on": [
+    "engine compatibility error",
+    "insufficient cache capacity",
+    "OOM/CUDA error/restart",
+    "failed quality gate"
+  ],
+  "evidence": [
+    "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log",
+    "context-plan-review.json",
+    "native/candidate/quality.json"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "agentic-summary/v1",
+  "cases": 2,
+  "passed": 2,
+  "turns": 6,
+  "tool_calls": 4,
+  "finish_reasons": {
+    "tool_calls": 4,
+    "stop": 2
+  },
+  "scope": "synthetic; not SWE or repository execution",
+  "promoted": false,
+  "run_id": "thinkingcap-5090-agentic-bf16-128k-mtp-uva3-v1",
+  "evidence_path": "native/mtp-uva3-agentic",
+  "started_at": null,
+  "finished_at": null
+}

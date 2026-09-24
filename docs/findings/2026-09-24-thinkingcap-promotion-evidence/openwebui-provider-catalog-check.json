@@ -1,0 +1,18 @@
+{
+  "base_urls": [
+    "https://router-node.example.ts.net/v1"
+  ],
+  "enabled": true,
+  "default_params": {},
+  "default_metadata": {},
+  "router_secondary": {
+    "id": "llm.secondary",
+    "object": "model",
+    "name": "llm.secondary",
+    "description": "Configured serving capability",
+    "owned_by": "anvil-serving",
+    "created": 1700000000,
+    "context_window": 131072,
+    "max_output_tokens": 10240
+  }
+}

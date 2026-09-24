@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.agentic-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "evidence_root": "native/agentic",
+  "scope": "bounded synthetic agentic diagnostic; not SWE-bench or real repository execution",
+  "execution_topology": "co-resident C1",
+  "results": {
+    "synthetic_cases": 2,
+    "passed_cases": 2,
+    "api_turns": 6,
+    "tool_calls": 4,
+    "finish_reason_counts": {
+      "tool_calls": 4,
+      "stop": 2
+    },
+    "reasoning_disabled_observed_zero": true,
+    "safe_error_retry": "passed"
+  },
+  "timing_interpretation": "No latency or software-engineering performance claim is made from this diagnostic.",
+  "promoted": false,
+  "redaction_ledger": "native/agentic/redactions.json"
+}

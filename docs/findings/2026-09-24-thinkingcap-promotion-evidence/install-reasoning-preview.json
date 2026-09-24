@@ -1,0 +1,27 @@
+{
+  "command": "router install-config",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\"applied\": false, \"config_sha256\": \"e23dce8dfb840f5d365f306781cccf849a25e23f82584fce485320f373f92259\", \"current_tiers\": [\"primary-local\", \"secondary-node\"], \"desired_tiers\": [\"primary-local\", \"secondary-node\"], \"drain_timeout\": 120.0, \"dry_run\": true}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

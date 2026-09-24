@@ -1,0 +1,99 @@
+{
+  "command": "router diagnose",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": {
+    "current_router": {
+      "metadata": {
+        "config_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+        "package_version": "1.2.1",
+        "uptime_seconds": 1171
+      },
+      "status": "available"
+    },
+    "limitations": [
+      "terminal_records_only",
+      "buffer_eviction_and_restart_can_remove_records",
+      "current_router_metadata_is_not_request_time_identity",
+      "first_content_is_not_universal_ttft",
+      "timing_does_not_identify_engine_root_cause"
+    ],
+    "request": {
+      "active": {
+        "cache_read_input_tokens": null,
+        "context_limit_tokens": null,
+        "created_at": null,
+        "elapsed_ms": null,
+        "estimated_input_tokens": null,
+        "input_tokens": null,
+        "last_activity_ms": null,
+        "output_tokens": null,
+        "phase": null,
+        "state": null
+      },
+      "admission_wait_ms": 0,
+      "cache_read_input_tokens": null,
+      "client_id": "_legacy",
+      "delivery_outcome": "error",
+      "finish_reason": null,
+      "gateway_request_id": "req_8679dddc2bf74ae9a1c2406ab83e71c8",
+      "next_checks": [
+        "inspect_selected_upstream_logs_using_request_id"
+      ],
+      "observations": [
+        "request_failed"
+      ],
+      "outcome": "error",
+      "output_limit": {
+        "applied": 10240,
+        "clamped": false,
+        "requested": 10240
+      },
+      "request_id": "req_8679dddc2bf74ae9a1c2406ab83e71c8",
+      "request_router": {
+        "config_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+        "version": "1.2.1"
+      },
+      "requested_tier": "secondary-node",
+      "route": "llm.secondary",
+      "served_tier": null,
+      "session_id": "01a0d296-4a29-713a-b8b5-c548157300c7",
+      "timing": {
+        "latency_ms": 57,
+        "readiness_check_ms": 29,
+        "time_to_first_content_ms": null,
+        "upstream_duration_ms": 27
+      },
+      "upstream_outcome": "failed",
+      "usage": {
+        "completion_source": "unknown",
+        "completion_tokens": 0,
+        "prompt_source": "estimated",
+        "prompt_tokens": 20051
+      }
+    },
+    "schema": "anvil-router-diagnosis/v1",
+    "scope": "current_decision_log_buffer"
+  },
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

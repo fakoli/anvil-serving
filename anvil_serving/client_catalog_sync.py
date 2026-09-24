@@ -63,6 +63,56 @@ PI_ANVIL_COMPAT = {
     "supportsUsageInStreaming": True,
     "thinkingFormat": "openai",
 }
+_PI_REASONING_EFFORTS = ("minimal", "low", "medium", "high", "xhigh", "max")
+_PI_THINKING_MAP_LEVELS = ("off", "minimal", "low", "medium", "high", "xhigh", "max")
+
+
+def _supported_reasoning_efforts(model: Mapping) -> tuple[str, ...]:
+    """Return the router-declared effort set in its published order.
+
+    The capability payload is deliberately permissive about future effort names.
+    Clients retain that published declaration in their model ``compat`` block;
+    Pi's narrower map is derived separately below.
+    """
+    compat = model.get("compat")
+    if not isinstance(compat, Mapping) or "supportedReasoningEfforts" not in compat:
+        return ()
+    efforts = compat["supportedReasoningEfforts"]
+    if (
+        not efforts
+        or any(
+            not isinstance(effort, str) or effort not in _PI_REASONING_EFFORTS
+            for effort in efforts
+        )
+        or len(set(efforts)) != len(efforts)
+    ):
+        raise ClientCatalogError(
+            "router supportedReasoningEfforts must be a unique non-empty Pi level list"
+        )
+    return tuple(efforts)
+
+
+def _pi_thinking_level_map(model: Mapping) -> dict[str, str | None]:
+    """Map Pi's named levels to only router-declared reasoning efforts.
+
+    Pi has user-facing ``minimal``, ``high``, and ``max`` levels while the
+    routed model can declare a smaller OpenAI-compatible effort set.  This is
+    a capability translation, not a model- or engine-specific policy.
+    """
+    supported = set(_supported_reasoning_efforts(model))
+    mapping: dict[str, str | None] = {"off": None}
+    for level in _PI_THINKING_MAP_LEVELS[1:]:
+        if level in supported:
+            mapping[level] = level
+        elif level == "minimal" and "low" in supported:
+            mapping[level] = "low"
+        elif level in {"high", "max"} and "xhigh" in supported:
+            mapping[level] = "xhigh"
+        elif level == "xhigh" and "max" in supported:
+            mapping[level] = "max"
+        else:
+            mapping[level] = None
+    return mapping
 
 
 class ClientCatalogError(ValueError):
@@ -285,6 +335,11 @@ def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str
         "contextWindow": model["context_window"],
         "maxTokens": model["max_output_tokens"],
     })
+    efforts = _supported_reasoning_efforts(model)
+    if efforts:
+        compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
+        compat["supportedReasoningEfforts"] = list(efforts)
+        result["compat"] = compat
     return result
 
 
@@ -535,6 +590,9 @@ def _render_pi_documents(
     rendered_rows = []
     for alias in pi_aliases:
         row = _managed_model(old_pi_models.get(alias), models[alias], name_prefix="Anvil")
+        efforts = _supported_reasoning_efforts(models[alias])
+        if efforts:
+            row["thinkingLevelMap"] = _pi_thinking_level_map(models[alias])
         row.setdefault("api", "openai-completions")
         row.setdefault("cost", {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0})
         rendered_rows.append(row)

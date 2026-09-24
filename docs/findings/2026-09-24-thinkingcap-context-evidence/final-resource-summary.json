@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.resource-and-ending-identity-summary/v1",
+  "observed_at": "2026-09-24T07:16:14.999399+00:00",
+  "sources": {
+    "mtp-uva3-final-status.private.json": "native/final/status.json",
+    "mtp-uva3-final-http.private.json": "native/final/http.json",
+    "mtp-uva3-final-engine.private.log": "native/final/engine.log",
+    "mtp-uva3-host-memory-final.json": "native/final/host-memory.json",
+    "gpu-context.csv": "native/final/gpu-context.csv",
+    "gpu-final.csv": "native/final/gpu-final.csv",
+    "mtp-uva3-context-running-status.private.json": "native/final/context-running-status.json"
+  },
+  "gpu_sampling": {
+    "interval_seconds": 5,
+    "timezone": "America/Los_Angeles (UTC-07:00 for this run)",
+    "profile_ready_at_utc": "2026-09-24T05:01:36Z",
+    "retained_samples": 1561,
+    "first_sample_local": "2026/09/23 22:01:36.096",
+    "last_sample_local": "2026/09/24 00:11:49.634",
+    "minimum_free_mib": 1440.0,
+    "maximum_temperature_c": 61.0,
+    "maximum_power_w": 431.89,
+    "policy_floor_mib": 1024,
+    "floor_passed": true,
+    "excluded_incomplete_csv_lines": [
+      2064
+    ],
+    "limitation": "Buffered CSV ends at 07:11:49 UTC, covering the full context matrix but not continuous sampling of the later brief agentic gate. A separate final GPU observation follows all model gates. No continuous-minimum, energy-per-token or soak claim."
+  },
+  "final_gpu": {
+    "timestamp": "2026/09/24 00:14:52.370",
+    " name": " NVIDIA GeForce RTX 5090",
+    " memory.total [MiB]": " 32607 MiB",
+    " memory.used [MiB]": " 30748 MiB",
+    " memory.free [MiB]": " 1440 MiB",
+    " utilization.gpu [%]": " 0 %",
+    " power.draw [W]": " 13.31 W",
+    " temperature.gpu": " 34"
+  },
+  "host_memory": {
+    "observed_at": "2026-09-24T07:14:04.4615336Z",
+    "windows_kib": {
+      "FreePhysicalMemory": 7355076,
+      "FreeVirtualMemory": 9474568,
+      "TotalVisibleMemorySize": 32413020,
+      "TotalVirtualMemorySize": 84841820
+    },
+    "wsl_free_bytes": "              total        used        free      shared  buff/cache   available\nMem:    20976054272  6281691136  8581705728  4967120896  6112657408  9355239424\nSwap:    4294967296   191369216  4103598080",
+    "note": "After all declared model qualification gates completed; no inference active."
+  },
+  "ending_identity": {
+    "container_id": "container-redacted-2",
+    "same_container_as_midrun": true,
+    "running": true,
+    "state": "running",
+    "recipe_digest": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+    "registry_digest": "98d19789e52066c5fef7f8886f3752b31a2cd83202818f9268531ec08728cddd",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "image_digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "served_identity": "thinkingcap-awq-5090",
+    "http_health": 200,
+    "max_model_len": 131072
+  },
+  "engine_log_review": {
+    "lines": 972,
+    "error_signatures": [],
+    "launch_configuration_occurrences": 1,
+    "engine_core_pids": [
+      "115"
+    ],
+    "restart_evidence": "No repeated launch configuration or engine PID change in the retained current-container log. Managed status exposes no RestartCount field."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "thinkingcap-context-runner-boundaries/v1",
+  "source": "anvil_serving/benchmarking/suite_runner.py:185",
+  "context_thinking_control": "run_context_suite does not forward thinking_mode or reasoning_effort; model default applies, unlike run_agentic_suite which supports explicit controls",
+  "completion_budget": "output_headroom_tokens is the total API completion cap; it is not an enforced visible-only allocation",
+  "calibration": "One max_tokens=1 endpoint calibration call precedes scored cases; its termination is not a scored context check",
+  "scoring": "Require every scored observation and curve acceptance plus actual usage counts. Completed job alone is insufficient.",
+  "near_limit_multimodal": "Existing multimodal corpus parser caps prompt characters; separate long text and vision results do not prove combined near-limit multimodal requests"
+}

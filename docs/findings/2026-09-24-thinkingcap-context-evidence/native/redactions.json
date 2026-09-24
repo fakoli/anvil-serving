@@ -1,0 +1,211 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "transformations": [
+    "Operator home, host, GPU UUID and private-network identities normalized; numeric measurements and native schemas preserved.",
+    "Normalized legacy operator runtime/host role labels to generic operator identifiers; original private hashes remain unchanged."
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "128k-nospec-startup.raw.log",
+      "public_path": "native/failed-gpu-reserve/startup.log",
+      "private_sha256": "1f69aa9537ee9000a3a80818c1eee6e3d99ec02e432e08fb661a4614163697f4",
+      "public_sha256": "1f69aa9537ee9000a3a80818c1eee6e3d99ec02e432e08fb661a4614163697f4",
+      "public_bytes": 10625
+    },
+    {
+      "private_source_name": "128k-nospec-status.private.json",
+      "public_path": "native/failed-gpu-reserve/status.json",
+      "private_sha256": "b46d6ff7f8068b603dabcb9fd4c508a181a416ad37a7d56e924da450a2d80f37",
+      "public_sha256": "1706eb77b60b63e514491274859cc7b41a646acf82b80cc8d8d8d0039944a4fa",
+      "public_bytes": 1580
+    },
+    {
+      "private_source_name": "128k-startup.raw.log",
+      "public_path": "native/candidate/startup.log",
+      "private_sha256": "dfeb3d4ff75c8d1cba2e2ee0c88bb41a61b21d404a234a580f4241ff1015f54d",
+      "public_sha256": "cf17efbdfb42d2f3d3440bc2d8b001a193301ad05f0758d715c23ca4b76770e6",
+      "public_bytes": 18702
+    },
+    {
+      "private_source_name": "128k-startup-status.private.json",
+      "public_path": "native/candidate/startup-status.json",
+      "private_sha256": "0403b016686e89facd842dd72beea2547b3820e9713a7a1f1b5c8e9ff18207f5",
+      "public_sha256": "19e5505c67881a84ced7c9cc2880d14394fc1eccfb885841a3915b6065e2c121",
+      "public_bytes": 1588
+    },
+    {
+      "private_source_name": "128k-health.private.json",
+      "public_path": "native/candidate/startup-health.json",
+      "private_sha256": "7f5b4dc5637759f2098db7531999a6eabc22db6faebcd324fc8581fdc9e031df",
+      "public_sha256": "7f5b4dc5637759f2098db7531999a6eabc22db6faebcd324fc8581fdc9e031df",
+      "public_bytes": 825
+    },
+    {
+      "private_source_name": "128k-startup-gpu.csv",
+      "public_path": "native/candidate/startup-gpu.csv",
+      "private_sha256": "c01017c51a14ce64a62d0e9ff3dc4e2d3ce7170e78c61ad30c41bae86b8e9044",
+      "public_sha256": "c01017c51a14ce64a62d0e9ff3dc4e2d3ce7170e78c61ad30c41bae86b8e9044",
+      "public_bytes": 198
+    },
+    {
+      "private_source_name": "host-memory-start.json",
+      "public_path": "native/candidate/host-memory-start.json",
+      "private_sha256": "9ecc62ab5bea7f265a8e51c92fa5742cb66b0b5623b41e11bb91e7e27f880d43",
+      "public_sha256": "9ecc62ab5bea7f265a8e51c92fa5742cb66b0b5623b41e11bb91e7e27f880d43",
+      "public_bytes": 470
+    },
+    {
+      "private_source_name": "128k-functional.json",
+      "public_path": "native/candidate/functional.json",
+      "private_sha256": "7b1a0da716151e9c18d822ee8f991c0416e6422b084d8f316a9878f290059457",
+      "public_sha256": "7b1a0da716151e9c18d822ee8f991c0416e6422b084d8f316a9878f290059457",
+      "public_bytes": 21703
+    },
+    {
+      "private_source_name": "128k-vision.json",
+      "public_path": "native/candidate/vision.json",
+      "private_sha256": "4554b6e827eefffa9a9a0a2bb18c80d1550938a890862f521e17064851ac2efc",
+      "public_sha256": "d193eceda1bce75cfe425cb3d13169ff93a1697cda567062d3d9fc0160620e50",
+      "public_bytes": 34071
+    },
+    {
+      "private_source_name": "128k-functional-dispatch-failure.log",
+      "public_path": "native/friction/evaluation-owner-failure.log",
+      "private_sha256": "8b40951585533e8d197e07b9891d8b9fe0fa8329ac384fc060d3ab0ba624e359",
+      "public_sha256": "8b40951585533e8d197e07b9891d8b9fe0fa8329ac384fc060d3ab0ba624e359",
+      "public_bytes": 65
+    },
+    {
+      "private_source_name": "128k-reasoning.json",
+      "public_path": "native/candidate/reasoning.json",
+      "private_sha256": "6732bfab7a1f582a22aee0f6c13b3ac362093b09225f7885939994543aa3649f",
+      "public_sha256": "6732bfab7a1f582a22aee0f6c13b3ac362093b09225f7885939994543aa3649f",
+      "public_bytes": 8885
+    },
+    {
+      "private_source_name": "128k-thinking-control.json",
+      "public_path": "native/candidate/thinking-control.json",
+      "private_sha256": "a97fa5d4cf16369ee2441696008408063dedace363e15793aff5449e7e6b0192",
+      "public_sha256": "a97fa5d4cf16369ee2441696008408063dedace363e15793aff5449e7e6b0192",
+      "public_bytes": 843
+    },
+    {
+      "private_source_name": "128k-visionoffload-load-preview.private.json",
+      "public_path": "native/candidate/load-preview.json",
+      "private_sha256": "bb87e63381dc1b3e73405b80f7d90a6b099342ed275cfcde2ecd10542a9df3bd",
+      "public_sha256": "889675df9f09053635da4448639545395ca7d9d78c0f4ad94b966e4a52d0fa30",
+      "public_bytes": 4163,
+      "transformed": true
+    },
+    {
+      "private_source_name": "artifact.json",
+      "public_path": "native/context-scout/artifact.json",
+      "private_sha256": "82fefeb9dd7d07c487b50cd867668a5a50b1673da71f3188ad69f1aca1e2ee4b",
+      "public_sha256": "7b5b3fb49df772420b774723fb2642eb09ca9c32d26a625e562860c21fe03fbc",
+      "public_bytes": 8154
+    },
+    {
+      "private_source_name": "assets.json",
+      "public_path": "native/context-scout/assets.json",
+      "private_sha256": "4212f0cd925caa59535d46619a1793c29659e55130828890ddc2290e29e8820c",
+      "public_sha256": "4212f0cd925caa59535d46619a1793c29659e55130828890ddc2290e29e8820c",
+      "public_bytes": 564
+    },
+    {
+      "private_source_name": "worker.json",
+      "public_path": "native/context-scout/worker.json",
+      "private_sha256": "53a6aaf4ea1683d61035e97e6c305ba0e64a150b20c7194c4bead614b40d952a",
+      "public_sha256": "53a6aaf4ea1683d61035e97e6c305ba0e64a150b20c7194c4bead614b40d952a",
+      "public_bytes": 126
+    },
+    {
+      "private_source_name": "0-assets.json",
+      "public_path": "native/context-scout/evidence/0-assets.json",
+      "private_sha256": "4212f0cd925caa59535d46619a1793c29659e55130828890ddc2290e29e8820c",
+      "public_sha256": "4212f0cd925caa59535d46619a1793c29659e55130828890ddc2290e29e8820c",
+      "public_bytes": 564
+    },
+    {
+      "private_source_name": "0-context.json",
+      "public_path": "native/context-scout/evidence/0-context.json",
+      "private_sha256": "36dac48cf7327d336676404672cfbf558f904ae327414848192551f9c9ddfabe",
+      "public_sha256": "36dac48cf7327d336676404672cfbf558f904ae327414848192551f9c9ddfabe",
+      "public_bytes": 5613
+    },
+    {
+      "private_source_name": "0-preflight.json",
+      "public_path": "native/context-scout/evidence/0-preflight.json",
+      "private_sha256": "4a422dea8704e25a629f059839d571ac02d08e7e6e82b9047b784d780ebeea51",
+      "public_sha256": "329857d19fd0f0d9f60f9be8cfa24f90638b80622c01ec9e8b076730c4a8c024",
+      "public_bytes": 1986
+    },
+    {
+      "private_source_name": "128k-quality.json",
+      "public_path": "native/candidate/quality.json",
+      "private_sha256": "987f8b0b3c8df98c92b6e5cf8692d7c853f5d8b6fa153c961464986930c1c2e9",
+      "public_sha256": "2a678b47b09467be266ecaf502638b524f19bc01b88db76be4a8665e44a20983",
+      "public_bytes": 67553
+    },
+    {
+      "private_source_name": "128k-nospec-final-engine.log",
+      "public_path": "native/candidate/final-engine.log",
+      "private_sha256": "eee158553421246543607552b28e394d2ecc0f380dcc8b46cf399e348f302fb1",
+      "public_sha256": "0604e41ae0d8099c28eb49ef97c6c23c97325f5bf4e70b3c29ee153d214bf4cb",
+      "public_bytes": 45266
+    },
+    {
+      "private_source_name": "host-memory-quality.json",
+      "public_path": "native/candidate/host-memory-quality.json",
+      "private_sha256": "9cfc6361424fe86b23067050ecd8ee6ae45142e688f28427afc117bd0d0e2512",
+      "public_sha256": "9cfc6361424fe86b23067050ecd8ee6ae45142e688f28427afc117bd0d0e2512",
+      "public_bytes": 463
+    },
+    {
+      "private_source_name": "host-memory-idle.json",
+      "public_path": "native/candidate/host-memory-idle.json",
+      "private_sha256": "218d0d22172e55d062049e9a6af9bda34ef1a84f9cb415d4d3117117f2bdca8f",
+      "public_sha256": "218d0d22172e55d062049e9a6af9bda34ef1a84f9cb415d4d3117117f2bdca8f",
+      "public_bytes": 463
+    },
+    {
+      "private_source_name": "host-memory-after-reclaim.json",
+      "public_path": "native/candidate/host-memory-after-reclaim.json",
+      "private_sha256": "7b6ac3f0da4fac98d27c39ac643352fc8656dc651f02c2215b6b2750282daedc",
+      "public_sha256": "7b6ac3f0da4fac98d27c39ac643352fc8656dc651f02c2215b6b2750282daedc",
+      "public_bytes": 463
+    },
+    {
+      "private_source_name": "cache-reclaim-preview.private.json",
+      "public_path": "native/host/cache-reclaim-preview.json",
+      "private_sha256": "7a6b5c9718b930bd190e02794801d120da7b2506f4eadc683534f8cebdd7c70f",
+      "public_sha256": "67adb549af65e78e2fda6b552c684257485a07017857a96530a07df7108f7460",
+      "public_bytes": 844,
+      "transformed": true
+    },
+    {
+      "private_source_name": "cache-reclaim-apply.private.json",
+      "public_path": "native/host/cache-reclaim-apply.json",
+      "private_sha256": "5e78b8e7899c6c1b319ad470043054dd2584f9efc270f64d6f1b607649a5e1a9",
+      "public_sha256": "052ab2021fc13487eb57ebbb2ed83ab8d5fce99f2b890a0abe85744b12f05446",
+      "public_bytes": 781,
+      "transformed": true
+    },
+    {
+      "private_source_name": "context-scout-cross-suite-evidence.json",
+      "public_path": "native/context-scout/cross-suite-evidence.json",
+      "private_sha256": "cab371932de8f842129e891c840dd6cd3b851f7ebc50dd4e3e14a1d40e2d59da",
+      "public_sha256": "d50f60c54fca53b7914d20f7af9d55a4443e2fa06caec28cad0232e868d58f05",
+      "public_bytes": 6451
+    },
+    {
+      "private_source_name": "context-scout-evidence-inspection.json",
+      "public_path": "native/context-scout/evidence-inspection.json",
+      "private_sha256": "2cedfa76d26d549a0add1d3446853c684c79ab569aa45e6e9bef0a1f4e18a1aa",
+      "public_sha256": "ae0dc1be09df15ba5c3342649f132e98efdb9110554a920ae2140a42d9568211",
+      "public_bytes": 2107
+    }
+  ],
+  "notes": [
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

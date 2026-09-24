@@ -1,0 +1,2 @@
+(APIServer pid=1) ERROR 09-24 08:44:53 [hf.py:793] jinja2.exceptions.TemplateError: Unexpected reasoning effort high. Supported types are xhigh (default), medium, and low.
+(APIServer pid=1) INFO:     100.64.0.11:53610 - "POST /v1/chat/completions HTTP/1.1" 400 Bad Request

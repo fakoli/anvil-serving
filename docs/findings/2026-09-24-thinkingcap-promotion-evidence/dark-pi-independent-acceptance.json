@@ -1,0 +1,38 @@
+{
+  "schema": "anvil-serving.client-acceptance/v1",
+  "client": "Pi",
+  "host": "Dark",
+  "thinking_level": "high",
+  "provider_effort": "xhigh",
+  "checks": [
+    {
+      "artifact": "dark-pi-smoke-high-r2.jsonl",
+      "checks": {
+        "exactly_one_bash_tool": true,
+        "tool_succeeded": true,
+        "final_matches_tool_result": true,
+        "normal_stop": true,
+        "secondary_identity": true
+      },
+      "fixture_result": "PI-SECONDARY-HIGH-MARKER",
+      "session_id": "01a0d2a3-e759-75f3-b9f6-95942aaa8ca1",
+      "passed": true,
+      "environment": "minimal isolated Pi"
+    },
+    {
+      "artifact": "dark-pi-smoke-high-normal.jsonl",
+      "checks": {
+        "exactly_one_bash_tool": true,
+        "tool_succeeded": true,
+        "final_matches_tool_result": true,
+        "normal_stop": true,
+        "secondary_identity": true
+      },
+      "fixture_result": "PI-SECONDARY-HIGH-NORMAL-MARKER",
+      "session_id": "01a0d2a5-9fa3-72ad-b4d0-4761b0e7de7b",
+      "passed": true,
+      "environment": "normal installed Pi environment"
+    }
+  ],
+  "verification": "Independent deterministic event/result checks plus router request-ledger correlation; model self-assessment unused."
+}

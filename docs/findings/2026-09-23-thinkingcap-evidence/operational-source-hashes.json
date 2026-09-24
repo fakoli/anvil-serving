@@ -1,0 +1,1657 @@
+{
+  "schema": "benchmark-launcher-source-identity/v1",
+  "invocation": "python -m anvil_serving.cli",
+  "version": "1.2.1",
+  "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+  "working_tree": "dirty; source changes outside this campaign preserved",
+  "module_source": "anvil_serving/cli.py",
+  "source_ledger_sha256": "c80c042230aebe3d4ff29e8bb21e6e19a696dbc3fb29c2b459f0d05a378e9ca0",
+  "files": [
+    {
+      "path": "anvil_serving/__init__.py",
+      "sha256": "421261738b433b1674d73c68bbe80e8db76336022a150cbd23ccb83b6bc9811d",
+      "bytes": 114
+    },
+    {
+      "path": "anvil_serving/_aggregate_usage.py",
+      "sha256": "cf79c17ac029be8ecea8b543a0576677fd910b009d85a16525c09bc86b135705",
+      "bytes": 10028
+    },
+    {
+      "path": "anvil_serving/_media_workflows/__init__.py",
+      "sha256": "2323314ebfe9497855625b4fd7a39f36caecea03c64d72943959dbc210bfd888",
+      "bytes": 49
+    },
+    {
+      "path": "anvil_serving/_node/__init__.py",
+      "sha256": "924244eca9f24f77c0c4ddc5a9cd450f78ada4336ca5355f00e335e00a10e6c9",
+      "bytes": 70
+    },
+    {
+      "path": "anvil_serving/_role_split.py",
+      "sha256": "df0347394d1c9c3c0b45461da9d6626701bf118ecd182df280ed4c8308e6dda4",
+      "bytes": 4269
+    },
+    {
+      "path": "anvil_serving/_sync.py",
+      "sha256": "f8096a51f2ed9c48762c5e55864c51d77a8e01c290c224035f6db55a1a39f635",
+      "bytes": 19718
+    },
+    {
+      "path": "anvil_serving/a2a/__init__.py",
+      "sha256": "eb15fbff3cd8594ae38e88c8a55bc01e7e89b74c5125d71c893d667a07866e00",
+      "bytes": 302
+    },
+    {
+      "path": "anvil_serving/a2a/agent_card.py",
+      "sha256": "59a54f2b76bf4c66aa68201c932443b82d06c02dfa103420eac4737b66caa07a",
+      "bytes": 4550
+    },
+    {
+      "path": "anvil_serving/a2a/http.py",
+      "sha256": "ec7b88c13a54ceb2701468483c24d1cc7bedda3e5c9906620796fcea1e1f53b4",
+      "bytes": 5988
+    },
+    {
+      "path": "anvil_serving/a2a/protocol.py",
+      "sha256": "caef152912fb9205bba81dc20405f9237dd6241e1f0738e7bd3cb7bc92cd0411",
+      "bytes": 2370
+    },
+    {
+      "path": "anvil_serving/a2a/tasks.py",
+      "sha256": "3e550a3a6ba3eed6a580e6a42012b728879654942c838b94155a01fc92ac6e0c",
+      "bytes": 14970
+    },
+    {
+      "path": "anvil_serving/benchmark.py",
+      "sha256": "ab26084e8ff3103f033192d8c9e718a45b52c91fafe184073c0a2c4e25b0d039",
+      "bytes": 895
+    },
+    {
+      "path": "anvil_serving/benchmark_evidence.py",
+      "sha256": "7e4e4f46cea4d0bd0b3806fadf8c94f4d9824046756731ff6653071f8a8a9bd4",
+      "bytes": 40152
+    },
+    {
+      "path": "anvil_serving/benchmarking/__init__.py",
+      "sha256": "0a5c11d866bed09ce2b690de3c7118258de8c13784dfd79428e8abadda3e501b",
+      "bytes": 64
+    },
+    {
+      "path": "anvil_serving/benchmarking/agentic.py",
+      "sha256": "8aff3b4a5f8b1ee3ea1505ae4b5a704967638115db4fc4978b26f76535d55edc",
+      "bytes": 17427
+    },
+    {
+      "path": "anvil_serving/benchmarking/artifacts.py",
+      "sha256": "7c68bb2725b102c4c248ca4c3e9a0640ed187967dfe3afb90a2f096f085569a1",
+      "bytes": 25161
+    },
+    {
+      "path": "anvil_serving/benchmarking/cli.py",
+      "sha256": "d120d55f269c316df3b4cd880a52174efb11d87ffdecf224b3670ad505359734",
+      "bytes": 48671
+    },
+    {
+      "path": "anvil_serving/benchmarking/context.py",
+      "sha256": "4ff7790f6ed7e8c9d619f0d1891f3788d34f841d4b466cdd6709866c9e7287e7",
+      "bytes": 18449
+    },
+    {
+      "path": "anvil_serving/benchmarking/evaluation.py",
+      "sha256": "170d1b743381fd019a6f694cde69df6bac5d32f24f4b3ce6bbf74c1db238f153",
+      "bytes": 6143
+    },
+    {
+      "path": "anvil_serving/benchmarking/evidence_reader.py",
+      "sha256": "b14eb6a4889a9217c8b8df0a861d1887e55a755cd70645fe8855d99195db0bdc",
+      "bytes": 2937
+    },
+    {
+      "path": "anvil_serving/benchmarking/harnesses.py",
+      "sha256": "f503e09af714212308a87ee01245ad16ba81576c99381b37db15128d0f484d02",
+      "bytes": 21327
+    },
+    {
+      "path": "anvil_serving/benchmarking/jobs.py",
+      "sha256": "788a6f1b80241755e125aceb2b4f148a4594117e6200f030ef32d40570672899",
+      "bytes": 18249
+    },
+    {
+      "path": "anvil_serving/benchmarking/jobs_cli.py",
+      "sha256": "c1d72512c9a4a6a076e048e5950b87ca32d1055b34401781a541f3ae6412ee4e",
+      "bytes": 9226
+    },
+    {
+      "path": "anvil_serving/benchmarking/limits.py",
+      "sha256": "9ea11eda2c902044586b163c9ca9eab7c8441277358b1e436790e77c1bf84f5e",
+      "bytes": 844
+    },
+    {
+      "path": "anvil_serving/benchmarking/multimodal.py",
+      "sha256": "edbed9bb24f8a2e3e0cc6120718f1efd306658bd2ed7c7c9063bb9bb0d673ffc",
+      "bytes": 26458
+    },
+    {
+      "path": "anvil_serving/benchmarking/preflight.py",
+      "sha256": "9981a1de47188beab380fe67842bc337f6bcc3c466d7fdcddff92c97c05c70b8",
+      "bytes": 15530
+    },
+    {
+      "path": "anvil_serving/benchmarking/profiles.py",
+      "sha256": "2ff68765f08f7bb5a4810af88de3d9959244066512346cbdcc156f559033aa96",
+      "bytes": 9925
+    },
+    {
+      "path": "anvil_serving/benchmarking/recipes.py",
+      "sha256": "bcc852c19df6be56ad67c0fe49d01901a73e4e5f1961fde9245b295b1c3f587b",
+      "bytes": 3299
+    },
+    {
+      "path": "anvil_serving/benchmarking/report.py",
+      "sha256": "b7c0fd3ef7c1dfa5f68f7cacb71e43a3b63d38d2876ac8e9d4eefaeb06141689",
+      "bytes": 24993
+    },
+    {
+      "path": "anvil_serving/benchmarking/requests.py",
+      "sha256": "20d43653e9f2938194be7b0ea111bc5206827bd0db37d18d071601e9490ea9a0",
+      "bytes": 15655
+    },
+    {
+      "path": "anvil_serving/benchmarking/runner.py",
+      "sha256": "f9fbf37f1a048a0bd7b02d36b1631754ee2df96f4654a4684d4f3e0e134549b8",
+      "bytes": 42878
+    },
+    {
+      "path": "anvil_serving/benchmarking/specs.py",
+      "sha256": "82bc5e0bbd1e70ebd28d7a8977f207a9a33bd0e464e76c89b59d98fdcf5d4c62",
+      "bytes": 20174
+    },
+    {
+      "path": "anvil_serving/benchmarking/suite_runner.py",
+      "sha256": "90cad28c2b001add1b091376e7f79b4dc9c6892b197580fefcc750e056a2c1c8",
+      "bytes": 26384
+    },
+    {
+      "path": "anvil_serving/benchmarking/swe.py",
+      "sha256": "6aa434de30961fdb9227d66648179f525ec30d8266844efbb3f3b1bbdeedb65d",
+      "bytes": 31047
+    },
+    {
+      "path": "anvil_serving/benchmarking/worker.py",
+      "sha256": "4998c4e9e9bd3a57a5e034b7a4cc4d5c2a9eef2dda307eac2a9dc66aa66aa7d7",
+      "bytes": 16645
+    },
+    {
+      "path": "anvil_serving/cache_prune.py",
+      "sha256": "23f05ffbe9b462f823697af2f6479ccea851b9d0e5ecaef6f6466b743029cadb",
+      "bytes": 34892
+    },
+    {
+      "path": "anvil_serving/cli.py",
+      "sha256": "0920ab6b156b51a4589e66e17b4de9474982d8c617aa7743e05215cf5ac5a3e4",
+      "bytes": 72788
+    },
+    {
+      "path": "anvil_serving/client_catalog_sync.py",
+      "sha256": "4e3bce40f8229d00fa4a5f1de3e2b8b7b79d4af8b49fcdb164bb8b684a46e235",
+      "bytes": 75190
+    },
+    {
+      "path": "anvil_serving/collectors.py",
+      "sha256": "cc648eb13cc9086a4c5a2b782a4e5e78f1619f80b50b498480c776d1167a869d",
+      "bytes": 13238
+    },
+    {
+      "path": "anvil_serving/commands/__init__.py",
+      "sha256": "1a28077f6fa3fa49df3de10230ad08a6a2d490081d781b3650504705f84f409f",
+      "bytes": 904
+    },
+    {
+      "path": "anvil_serving/commands/common.py",
+      "sha256": "8c25b28e836052518b7534d7a53a4f2bfe290e319010fd8aee26e3833e6d038b",
+      "bytes": 279
+    },
+    {
+      "path": "anvil_serving/commands/connect.py",
+      "sha256": "5a207b1353629aaa7b4177322009943ec95c708b6150b9da42cbf9f5f90ec267",
+      "bytes": 6747
+    },
+    {
+      "path": "anvil_serving/commands/control_plane.py",
+      "sha256": "3965d30bb9f0d2c851a7925300a7f9083211b2c8a82b1f8fd15104f618b7b3da",
+      "bytes": 18141
+    },
+    {
+      "path": "anvil_serving/commands/eval.py",
+      "sha256": "ebc2f7e5b6c8e0a00823e6fad2cf088ccb374c89310e791e769af7e94a3f9946",
+      "bytes": 25066
+    },
+    {
+      "path": "anvil_serving/commands/family.py",
+      "sha256": "cef944c172ff505f600e67992910e7d7f2b7eae7ba4f0ed0dd4f7cd335b2e26d",
+      "bytes": 1040
+    },
+    {
+      "path": "anvil_serving/commands/fleet.py",
+      "sha256": "e28e3be1a99ec2de3d1fdeb48b6379491dc2d2bf797b9da1542ac54029f6e805",
+      "bytes": 3787
+    },
+    {
+      "path": "anvil_serving/commands/harness.py",
+      "sha256": "02c5e27ba306bccf6b524455c6d290689ed893259b25f9d3a1c37e856cce23f7",
+      "bytes": 5751
+    },
+    {
+      "path": "anvil_serving/commands/host.py",
+      "sha256": "12e450faec6d6ccec18ee68177a2e3af54c149c41107534047f2beef7343c24b",
+      "bytes": 20604
+    },
+    {
+      "path": "anvil_serving/commands/host_services.py",
+      "sha256": "c7d903b99f2401f63ef36cbd9954fa8bd644251b2a421f9ed8a2d4df1c41da2e",
+      "bytes": 5966
+    },
+    {
+      "path": "anvil_serving/commands/media.py",
+      "sha256": "a7aed303774188ab0f22f26fe8263fe9017b37014c768aa1c861d89f041e79c9",
+      "bytes": 11668
+    },
+    {
+      "path": "anvil_serving/commands/models.py",
+      "sha256": "3c87e92ba0ea04252357a2242ca78195a34320744c00cd829b2ee28f2d00014c",
+      "bytes": 8933
+    },
+    {
+      "path": "anvil_serving/commands/product.py",
+      "sha256": "b20c0023f059c97cca4c58f98b6e1f804547ba5647ea270dbe9e82645214c06c",
+      "bytes": 928
+    },
+    {
+      "path": "anvil_serving/commands/registry.py",
+      "sha256": "5b97a0876a5c3f16e1ef81ce1f4d4c322459e7306b344b4f02e4697822c1c260",
+      "bytes": 3139
+    },
+    {
+      "path": "anvil_serving/commands/router.py",
+      "sha256": "b22bcb9f24ae47f365549c692afc9489f88468950b6ddac6f3a035d2762f30b5",
+      "bytes": 14691
+    },
+    {
+      "path": "anvil_serving/commands/serves.py",
+      "sha256": "aa84a4a7c13d8ec23ebd66f54ae7695052e693280fdbf3e14cbc4cd511937fa0",
+      "bytes": 17741
+    },
+    {
+      "path": "anvil_serving/commands/spec.py",
+      "sha256": "5459497b35b6a60a0fc66ef53a799fe289b1686c30be6bcb9e96d3a51ff58876",
+      "bytes": 24416
+    },
+    {
+      "path": "anvil_serving/commands/voice.py",
+      "sha256": "018fb07b33476f53d3e1296f7ce3f76ac5bd5984ca1928aa9019210fc9660d42",
+      "bytes": 14943
+    },
+    {
+      "path": "anvil_serving/config.py",
+      "sha256": "e5c389223c25e71959fcfcb5f285d74f843b5006e8a4a6bd434478161de54a8b",
+      "bytes": 1368
+    },
+    {
+      "path": "anvil_serving/connect/__init__.py",
+      "sha256": "6e6e99a8597b1ef9c1c68b816c18b7ee4fb5efca5bd4aff87dea531579478832",
+      "bytes": 274
+    },
+    {
+      "path": "anvil_serving/connect/_qualification_supervisor.py",
+      "sha256": "1addca15bff76defcb45bdd0cfa9dfd7cd4c1787e9706b135a1370e66b75cfa9",
+      "bytes": 21568
+    },
+    {
+      "path": "anvil_serving/connect/_qualification_vm_download.py",
+      "sha256": "48ce704392504e22d2c31d9c2cfa4187cc63a499743ce67332da8e395bfaa56c",
+      "bytes": 2888
+    },
+    {
+      "path": "anvil_serving/connect/_qualification_vm_process.py",
+      "sha256": "e63d8ad69ef61c3bc3b5f9bf464c9d4d5d3c4c2271c023555247498db62460aa",
+      "bytes": 9903
+    },
+    {
+      "path": "anvil_serving/connect/cli.py",
+      "sha256": "2fcf3a7a06227f8bbdc2f498470a8c9e4f0933cbc209a58d8bc49f6052e87705",
+      "bytes": 13299
+    },
+    {
+      "path": "anvil_serving/connect/config.py",
+      "sha256": "2a13eb6d95683a5ffe13c2468e9b3d179622f284771a40c33fa567e0ca4a1052",
+      "bytes": 57843
+    },
+    {
+      "path": "anvil_serving/connect/edge.py",
+      "sha256": "f5d384428cd33c5e8c3f6f444e0a1e817fc34c3e9888a0417be9a4cecbd0010f",
+      "bytes": 21533
+    },
+    {
+      "path": "anvil_serving/connect/extend.py",
+      "sha256": "db51249a7f572d385078d8870580f4d4637cb15b485afb916055b62a10c1ce82",
+      "bytes": 21150
+    },
+    {
+      "path": "anvil_serving/connect/manage.py",
+      "sha256": "84e371d03fa88d989d741aab0c5595bdbbe1ed3f0921340ce0b2b4e8fb378404",
+      "bytes": 118842
+    },
+    {
+      "path": "anvil_serving/connect/migration.py",
+      "sha256": "31e6a7de5729f6936ddef64e1439e897375c28ef9345bbe10c4263e7992de4bd",
+      "bytes": 8842
+    },
+    {
+      "path": "anvil_serving/connect/qualification.py",
+      "sha256": "174817d3e72a17e2caf02821b045e88a4a862f4d043964a57ce63a85936ea3c0",
+      "bytes": 35763
+    },
+    {
+      "path": "anvil_serving/connect/qualification_container.py",
+      "sha256": "5f6e22d8f8a092da0e90af0117b9ef78e8ed00bf4666ab48aa380c90ca038a3c",
+      "bytes": 13830
+    },
+    {
+      "path": "anvil_serving/connect/qualification_container_run.py",
+      "sha256": "30871fe7cb057c49d9b62ff686eefa1f8fc4a4fc0c9d3743fa4f86575691d0e7",
+      "bytes": 17351
+    },
+    {
+      "path": "anvil_serving/connect/qualification_vm.py",
+      "sha256": "bdf69bf06813b911704e9a1c3edd09b34246125fd0d529d05c96d78474ab3ca0",
+      "bytes": 19215
+    },
+    {
+      "path": "anvil_serving/connect/qualification_vm_run.py",
+      "sha256": "5cac601c1fd375d39d81830da8a31459982ae36411937d705254a1c6ca0d3ac5",
+      "bytes": 43460
+    },
+    {
+      "path": "anvil_serving/connect/recovery.py",
+      "sha256": "ce1661c6fd3c4502755e8714947967ace56675a88759fc0292764d8c1210e61c",
+      "bytes": 8465
+    },
+    {
+      "path": "anvil_serving/connect/render.py",
+      "sha256": "b41128f36dfbc959a34206d166e65e593c8c919c1834e0697b2ec12a14f3af42",
+      "bytes": 28683
+    },
+    {
+      "path": "anvil_serving/connect/standalone.py",
+      "sha256": "18ee275dcb0325774fc790c527b8134c3bac17336b0ffdacc2b6ef6eec45075a",
+      "bytes": 504
+    },
+    {
+      "path": "anvil_serving/control_plane/__init__.py",
+      "sha256": "3a87c4a0c3850d48e1e2e503f3cf27a5946e15f96ca2a392fb085bab3321f904",
+      "bytes": 55
+    },
+    {
+      "path": "anvil_serving/control_plane/authorization.py",
+      "sha256": "63adfcd632930fd572dd2a1c9c11c6af7b6a918093515e6a1c6fceb78a7a3242",
+      "bytes": 14954
+    },
+    {
+      "path": "anvil_serving/control_plane/bootstrap_package.py",
+      "sha256": "6cd4987efcd033469c236c74ac0b3433dadbce6fd2a456f40b734d8de0bdd65a",
+      "bytes": 2870
+    },
+    {
+      "path": "anvil_serving/control_plane/bootstrap_shim.py",
+      "sha256": "0b5983c63f86fea9ca34de38b661d9ff0e8c665e92e6f84219d5c258160e4bdb",
+      "bytes": 36014
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/__init__.py",
+      "sha256": "e8903929abc8180d79dbf1e33cba850aa3eeea16afa9656dbb6a32c164dd7c60",
+      "bytes": 575
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/catalog.py",
+      "sha256": "8994ee3b87ac7bae91fe3166575ca30b8cce49bbf987e151d805fbaadf3cb664",
+      "bytes": 2785
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/cli.py",
+      "sha256": "bdd1cde088eaf76cc7114118610de3e4543d8d026436f402a0af0c89da7c4aac",
+      "bytes": 11351
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/errors.py",
+      "sha256": "55e95b2d77955ba622454cab7e00b0a701e33d604f8bad7edc0ad0149f526b09",
+      "bytes": 591
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/http.py",
+      "sha256": "cc9da66aafa89b6cb98e8631f96f0250b2b311cb07ab19d19e5d0a20de1b07b9",
+      "bytes": 62852
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/operation_context.py",
+      "sha256": "079354e202b1b8b1dbb1d2bf35409895f943a1a57f561c7409e5e25c1c086cbe",
+      "bytes": 1556
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/security.py",
+      "sha256": "118f42fcab016b36ef615a8b6eec4d47e55fd89a144d3b08a3531362fd9340a7",
+      "bytes": 11707
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/server.py",
+      "sha256": "0e7721d20016015ee67db3ad5fb7bed7865762c488aa995fbb8dd8d063125869",
+      "bytes": 10753
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/store.py",
+      "sha256": "7a9cb94f24761b02dacb57ac27c8422c5e47db723446601ed289cb11a2895fe4",
+      "bytes": 60246
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/tool_names.py",
+      "sha256": "f0c8cbafc51e47e78f60b3380b34399cc2e6a9d6805e001100e4c6a6c574e67d",
+      "bytes": 244
+    },
+    {
+      "path": "anvil_serving/control_plane/controller/workload_sources.py",
+      "sha256": "eeb415537e5d5f83b6209e706b3ae86b00cdff424cba55c44a73a1dfa59e2ec5",
+      "bytes": 8459
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/__init__.py",
+      "sha256": "256f84d71ae0e759bf8214d7761981537d160c1833e033bfc603a276b5d6f2c0",
+      "bytes": 274
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/arguments.py",
+      "sha256": "a508579c2174c51a996a0f011ed388fcec93f552257b8a692b201739cfb7f810",
+      "bytes": 15443
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/catalog.py",
+      "sha256": "0557122771394d6693a59723077afe4017048d5bf585bfca4be9be4ddeac9de9",
+      "bytes": 8000
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/controller_client.py",
+      "sha256": "d9e646774f0e44bb1a2bc2188476a3ce7fea6a188b1f17d18bdc1c343e73f8c8",
+      "bytes": 11013
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/errors.py",
+      "sha256": "b30992aeae0c2f204ea5540a6b2d474638c434c52868622903b66439018261ea",
+      "bytes": 1074
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/evidence.py",
+      "sha256": "2d864e250372fa07f644bfa8c49275a97b50317ae77383072b91ddb3ee254afa",
+      "bytes": 923
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/node_bridge.py",
+      "sha256": "7f04be65b4bc983b56911f1f3175c9b5109d5ce5e2338d23ed1984d8fcb42309",
+      "bytes": 2329
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/protocol.py",
+      "sha256": "2b6053949e684e5609d5151545d9cdbdabd74a3dd860171fe77cf2f79163a436",
+      "bytes": 11555
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/runtime.py",
+      "sha256": "37ed555b21e3f58b855a20d69396339c2b2fa228feefcbeaa28af9afb83e5c50",
+      "bytes": 5819
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/security.py",
+      "sha256": "bbfbd54923c15d437fd294d2d37b2dc70b6660b726b5a1e51625b4e113476383",
+      "bytes": 8356
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/stdio.py",
+      "sha256": "bc761f58cd88080d8089c2c620c22467ead6fa110788f1432385c7c272ebabb9",
+      "bytes": 5195
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/__init__.py",
+      "sha256": "04ef2b3be939e3844aa09128350972b57e370cc4675cac013d93fe8ca3b99ce5",
+      "bytes": 1115
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/benchmarks.py",
+      "sha256": "d28eba1f471ec2ef6c395fc9201632e424b7a3ac07e0b2808cf3c7da5a7ff5b0",
+      "bytes": 32802
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/external_benchmarks.py",
+      "sha256": "6a3c64390d5d0196db71858f2681eae99ab666e2861d08be9986c51fbe29b8e6",
+      "bytes": 9754
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/host.py",
+      "sha256": "6673183d26472ac72ebdf388a71b562b80e63e9938ff62867e208b6b5b69c8b2",
+      "bytes": 11331
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/media.py",
+      "sha256": "f43dff012c73d7043ecb883edc96e98fbfaa27f986743fcf90db4da2636bf5f9",
+      "bytes": 11436
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/media_worker.py",
+      "sha256": "6296dd8b13b1bd3e38b047935c7cde398e66ef70b767d5d762349fe363d8644d",
+      "bytes": 12069
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/models.py",
+      "sha256": "5f1a77bc738f1418475fb90572ac3b743838d2d090b65062f2596e206cfc71e0",
+      "bytes": 25354
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/openclaw.py",
+      "sha256": "40dcec4e00118fcf44f880dbb99b375589cd9bda13925e0f45edaf0c072f2569",
+      "bytes": 28945
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/operations.py",
+      "sha256": "525be66a68a611e71292c83f209c6b809dfdb07286021d1445970607fc708bd0",
+      "bytes": 4024
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/router.py",
+      "sha256": "882bbb5cdc2028aaa3f01a9aeb11ea224a581d6042e94c6c44f944c482a4813d",
+      "bytes": 32731
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/runtime_experiment.py",
+      "sha256": "388a07e841f8dbfade51f14e540495f155c9c790014d0cb7f7d600d41725ef38",
+      "bytes": 26332
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/serves.py",
+      "sha256": "76ca8f344f8435c9ac1e9ec986587d426a037a6f9154c23f25478325b4c0cf7b",
+      "bytes": 34058
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/services.py",
+      "sha256": "9b6f2161066cb0995a4ee6f873cc3fa56537c86b3cdf2f578058f805ca3ed2e4",
+      "bytes": 11678
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/voice.py",
+      "sha256": "39ff655e8f104e95e80e4f46d7991e426b38735ffc962bd84910efaa9160d13b",
+      "bytes": 19698
+    },
+    {
+      "path": "anvil_serving/control_plane/mcp/tools/workflow.py",
+      "sha256": "077b1d44460e723ec5ebbc155a54de54991f29ee2af6c349fdfada4d9f79eb54",
+      "bytes": 16455
+    },
+    {
+      "path": "anvil_serving/controller.py",
+      "sha256": "522d7a56cf5c39f2dc932f765be8a0dd2f7adc2e9a554536c4eda259a0649635",
+      "bytes": 1731
+    },
+    {
+      "path": "anvil_serving/controller_diagnostics.py",
+      "sha256": "642c4870c2076c9e690727e2cf7effa4c43c4b06e43bd1e675403330710fde6c",
+      "bytes": 39148
+    },
+    {
+      "path": "anvil_serving/deploy.py",
+      "sha256": "286a4ab87f68fc0c40f956456d534246ce32712cd349c20b3010a5752eeac019",
+      "bytes": 26071
+    },
+    {
+      "path": "anvil_serving/docker_disk.py",
+      "sha256": "3e29abc3f7d76683727333c5aef0acac54405be2d1d35f998f545c6800eab859",
+      "bytes": 14088
+    },
+    {
+      "path": "anvil_serving/docker_images.py",
+      "sha256": "594f9ce04472f343eccfe460fb39c3b2f793eb3697e001b7e6eb5eaeea5c9aa4",
+      "bytes": 18289
+    },
+    {
+      "path": "anvil_serving/doctor.py",
+      "sha256": "07c5af910f4db3f2457205be3bdb1ccbf14faf95637fa19aec5c1471a142c074",
+      "bytes": 9043
+    },
+    {
+      "path": "anvil_serving/edge.py",
+      "sha256": "596626e806654b77b1da2f09efd89427b9ee2bce75b86f20a8518ca298c88412",
+      "bytes": 24003
+    },
+    {
+      "path": "anvil_serving/edge_bundle.py",
+      "sha256": "9be3869292a469326ccb1fa96cbf219daee472af80d409c152432ba61ce68d04",
+      "bytes": 21260
+    },
+    {
+      "path": "anvil_serving/envfile.py",
+      "sha256": "7e463849e63aed217a5ecccc9395434f35c86681e29a43b413558bdb83867f0b",
+      "bytes": 3034
+    },
+    {
+      "path": "anvil_serving/eval.py",
+      "sha256": "3aca5db23b9f4377536e79255e780b43c5986d6ed181e25c16e7615620b2f9e2",
+      "bytes": 9432
+    },
+    {
+      "path": "anvil_serving/events.py",
+      "sha256": "069b44494dcc660bd7e6dd49167eb107ccbaaee6c060680f97fe9de90fe5f9ef",
+      "bytes": 5802
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/__init__.py",
+      "sha256": "a68d2eafc92fcc61430c2dcc04ab141e173b15443917b15e0b795a3c8786dae5",
+      "bytes": 240
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/cli.py",
+      "sha256": "a43c1346129a9b98285bce52c6b102917989d5b493bb501cfabc99fe9d39acfe",
+      "bytes": 16178
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/compare.py",
+      "sha256": "5e7c0d7a65815bef27c4ca1282f6db688eaf27e60eb041a9dafc0be602111979",
+      "bytes": 14134
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/normalize.py",
+      "sha256": "eca3257c96183c7bfb118ec889e92253f51a3d04aeb3dadd60b923e997b74303",
+      "bytes": 9732
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/notebook.py",
+      "sha256": "14be82220c3507ec17d18cd68b0c7cd7ee59562fd27fcbe5bbf8418fdf591a2c",
+      "bytes": 12991
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/schema.py",
+      "sha256": "6e8364f7a018fcaa0485f5b143046d130ac8c3f12519b413448bb568670a1ed9",
+      "bytes": 5246
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/__init__.py",
+      "sha256": "5b33b71de40fcb94999f5e21c2d22c07de19e3847a70ad6a6e8a8ebc6a784071",
+      "bytes": 525
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/base.py",
+      "sha256": "ddadf2d6b7548769e7e311915991cc38f53f7f08c5a05a5ae8e699308f1e91e5",
+      "bytes": 696
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/llmrequirements.py",
+      "sha256": "0c68e6838b3986c35fb1288f26fced8d986e60f9c3b0cab3f3cd3204af428a9e",
+      "bytes": 9002
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/manual.py",
+      "sha256": "d52c19e77ac180491e6def46556f532595c4ad225d2420bb7a2159a25ca072a9",
+      "bytes": 254
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/millstone.py",
+      "sha256": "f939d3807cb08b1250c663a28de70c7eb31e2f45fe8ba1a81197abd2889cb3fa",
+      "bytes": 7848
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/sources/rtx6kpro.py",
+      "sha256": "51dcb2994909baedbe98099b8aa089b258ee7e94c051352d0cc8e5759e049a95",
+      "bytes": 12628
+    },
+    {
+      "path": "anvil_serving/external_benchmarks/store.py",
+      "sha256": "c1dd2cc97bf6087c172350f2b524933d9e7abe125d9fdf356397edc2c6577fd0",
+      "bytes": 21038
+    },
+    {
+      "path": "anvil_serving/fleet.py",
+      "sha256": "e527c2f4605cf277e1baccb652b8a04ec97f53765f125a74af0c1e1c502be46a",
+      "bytes": 23889
+    },
+    {
+      "path": "anvil_serving/fleet_bootstrap.py",
+      "sha256": "a88ebc10dfbf9b28dc9f8b8b67152ac2b91a00c96bdd722157efb1d3d6dc33d9",
+      "bytes": 114458
+    },
+    {
+      "path": "anvil_serving/gpu_sharing.py",
+      "sha256": "0f5e6319a12e001757aa79149a78c79b378b799bdccdf2e9af4e4154e9f62aaa",
+      "bytes": 32244
+    },
+    {
+      "path": "anvil_serving/gpus.py",
+      "sha256": "98e53a89dc377b22156ed016b5ba5af85e351561b418843aebe01c0278a1e82c",
+      "bytes": 10116
+    },
+    {
+      "path": "anvil_serving/graceful.py",
+      "sha256": "c9df54bd10fee997bc40e04db0c4aa525503551b2093f179850160c1f66be038",
+      "bytes": 4470
+    },
+    {
+      "path": "anvil_serving/guard.py",
+      "sha256": "9e6ea5ac674b180b92ce28e5ed9f1701eca1d9863fd75c2496058dd0ebb9790b",
+      "bytes": 12090
+    },
+    {
+      "path": "anvil_serving/harness.py",
+      "sha256": "52f157f5c518b457d74379e96aa94be7fd0bfe1548bb56f12f41052f92c46ccc",
+      "bytes": 35876
+    },
+    {
+      "path": "anvil_serving/host.py",
+      "sha256": "feeb30600942a941b02a1b477317c7793b06622dc70d33edf158e85175f6afe9",
+      "bytes": 68943
+    },
+    {
+      "path": "anvil_serving/image_identity.py",
+      "sha256": "2a507a191560058164872c81c2e0762f7009b7499dd517cc32166323eaa78837",
+      "bytes": 4578
+    },
+    {
+      "path": "anvil_serving/init.py",
+      "sha256": "4a207559637e90e1d3273cf925573cedb1c5d0e4f9c0388ac3cf23b9ef0d1f74",
+      "bytes": 41317
+    },
+    {
+      "path": "anvil_serving/manifest_workloads.py",
+      "sha256": "a45e85e0cac1a4a08f006d291335954e427c65f5cda0c1d03f0c79388ce7db92",
+      "bytes": 32787
+    },
+    {
+      "path": "anvil_serving/mcp.py",
+      "sha256": "92081a0c829a59e92a2885c7048acb2d8c90588bdd3543bd08b319280e647d6d",
+      "bytes": 8395
+    },
+    {
+      "path": "anvil_serving/media/__init__.py",
+      "sha256": "a0c9b2d54985688cdaade35527bd67423b4864e566b70b46571e25cd351b1b94",
+      "bytes": 1741
+    },
+    {
+      "path": "anvil_serving/media/admission.py",
+      "sha256": "f9ae4fb6bf5b8659d59c4245d5b8f178469c52cf66fcd352f5a5ad5fda628c74",
+      "bytes": 4324
+    },
+    {
+      "path": "anvil_serving/media/artifacts.py",
+      "sha256": "146bb9cb44e321e7be930eb6b0879c65fb412559e908c5610a84b58eb1fbc532",
+      "bytes": 10443
+    },
+    {
+      "path": "anvil_serving/media/backends.py",
+      "sha256": "1665b5b1842072b068b454dbb5194f28d5e79c319418fe8703c1ddea45c7684c",
+      "bytes": 722
+    },
+    {
+      "path": "anvil_serving/media/bundle.py",
+      "sha256": "46467f81a52824dfe5355eff0bd326ed640ad0bc89711ac6dbd05a9ec31641de",
+      "bytes": 18286
+    },
+    {
+      "path": "anvil_serving/media/cancellation.py",
+      "sha256": "9aaf875f62565d3b19815b39d8dc4fcb8d56dc9ff03ca6ab8ff7c001d3bc637a",
+      "bytes": 3131
+    },
+    {
+      "path": "anvil_serving/media/cli.py",
+      "sha256": "2cbd8edb7ca668e2851bf0afdac496c87d209a9c4352815f09af32d340124adf",
+      "bytes": 12968
+    },
+    {
+      "path": "anvil_serving/media/comfyui.py",
+      "sha256": "a53f0f84917d377ed1bb05899197aa49a826796d2ea324ed8fbee497993fa217",
+      "bytes": 22806
+    },
+    {
+      "path": "anvil_serving/media/contracts.py",
+      "sha256": "cf9027aab3ddf98c452bc8f1eaece1b1db4cb7669772b235fc79716d93ce955f",
+      "bytes": 25363
+    },
+    {
+      "path": "anvil_serving/media/errors.py",
+      "sha256": "90ec4f3a670c8dd1b8a34fccd989bb96649c99461a13316c4c4bc59e73714b45",
+      "bytes": 886
+    },
+    {
+      "path": "anvil_serving/media/jobs.py",
+      "sha256": "98eba05b97b14e7940b8c6b68f829260c8c8850527877b1f213a2a5580944dae",
+      "bytes": 31949
+    },
+    {
+      "path": "anvil_serving/media/lifecycle.py",
+      "sha256": "895b174cee3614167de38c97b8778eff2a223da754891d6889c24d47fd2a8732",
+      "bytes": 49050
+    },
+    {
+      "path": "anvil_serving/media/operations.py",
+      "sha256": "0e29ec0f92463ff5ced43d0e5a3755808a22853fc41241a282a8aacf2910b85b",
+      "bytes": 24328
+    },
+    {
+      "path": "anvil_serving/media/qualification.py",
+      "sha256": "d4d63fb6eee0d5e803c53d949e2c324f20b793ac733b3c14342149dd5c47ef08",
+      "bytes": 15888
+    },
+    {
+      "path": "anvil_serving/media/worker.py",
+      "sha256": "25ef946f42339d98fc8126b3a607ea36d257bb142d312a9e2eff1e7304c1baaf",
+      "bytes": 12255
+    },
+    {
+      "path": "anvil_serving/media/workflows.py",
+      "sha256": "14a56a7a05ade0c10b6b72d83fafcb2fcfac0f218b614deebd71a24963537f68",
+      "bytes": 11851
+    },
+    {
+      "path": "anvil_serving/model_controls.py",
+      "sha256": "a861bbe7f01a61bb4d242c00f17b063d4641f9c5d26a9b9c9adac3f9be46919b",
+      "bytes": 2047
+    },
+    {
+      "path": "anvil_serving/models.py",
+      "sha256": "adec9920d5e11dfe3ea3b7e8cdf393ed684ec36e9c4448ff2ba8f6e0f95ca713",
+      "bytes": 115122
+    },
+    {
+      "path": "anvil_serving/multiplexer.py",
+      "sha256": "c5c0f04d442ce708ddba0bb9960d73493eb2b051ab3e4a72f28b3fe033ce5827",
+      "bytes": 51953
+    },
+    {
+      "path": "anvil_serving/nccl_probe.py",
+      "sha256": "76de483ee1b2a13e3384b8e61d365d7e55a345a984ef68fa9df1e1263f466b7c",
+      "bytes": 15666
+    },
+    {
+      "path": "anvil_serving/observability/__init__.py",
+      "sha256": "3fc13a88441169e5d55b39e42a677e782c1ba6c5d3e5c62f9c58fe72251db4b0",
+      "bytes": 355
+    },
+    {
+      "path": "anvil_serving/observability/api.py",
+      "sha256": "c566f4f192647b798b91eb17079d6abf7341257526721a683cc014af81fff813",
+      "bytes": 19873
+    },
+    {
+      "path": "anvil_serving/observability/benchmark/__init__.py",
+      "sha256": "6229c32f02348f7efe64be0229e13192d8fd00b18d94c3be3f9876e357dd74ca",
+      "bytes": 44
+    },
+    {
+      "path": "anvil_serving/observability/benchmark/artifact.py",
+      "sha256": "bd32ebe3d9de12258e7eddeb7afed6358856fcc48cecc65ae5b2cca317d0f69c",
+      "bytes": 8853
+    },
+    {
+      "path": "anvil_serving/observability/benchmark/overhead.py",
+      "sha256": "aaa85272b184d311cb95d69517b532b63346396e2d0d87e31f13fa2e6537386c",
+      "bytes": 13694
+    },
+    {
+      "path": "anvil_serving/observability/benchmark/session.py",
+      "sha256": "d6d1b1a48b8b9eadb88c02b31fc0a530b9b847fe35b951f0caccb4022b9356b9",
+      "bytes": 6171
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/__init__.py",
+      "sha256": "7d4d14417fd38bd76023f14490dd81de54e7bbdfac4265eb6a6c47da0cf3dede",
+      "bytes": 51
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/access.py",
+      "sha256": "ea741db306dd5ce2a611fb32e82ea26fca0c92c680f359ce13555318ee5560d0",
+      "bytes": 21561
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/app.py",
+      "sha256": "8185e094c223a6eaa75f83336c469c74c90dca3c6470061a19518da91ed6baa9",
+      "bytes": 12529
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/console.py",
+      "sha256": "d6342a6a87ebe2f20d54eb881f3776b59916d3a78b4182ec7b9ad65dfddeee32",
+      "bytes": 41076
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/contracts.py",
+      "sha256": "abf4b502d35ff998c90a015181367a32eac52434712018b8873198ec829dfd5a",
+      "bytes": 5690
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/controller_adapter.py",
+      "sha256": "22fc3aff1b858190feabad3aab10209cc83fbc661623e1292c7a5db77f31569d",
+      "bytes": 82402
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/history.py",
+      "sha256": "dce1a1ad57d8da5d2ce537fad7223bfa403b7d7dda500df0f9951a7715765edc",
+      "bytes": 6153
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/indicators.py",
+      "sha256": "f2745e72fe0d3e40706fecff3f228e19ff82d3a943b13b8401f1d3e1379d611b",
+      "bytes": 6459
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/intents.py",
+      "sha256": "9dc067b1c11d7cb7f9d2df48e1145386f6a986a64b00017620c19b59fbae2e3d",
+      "bytes": 13638
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/logs_client.py",
+      "sha256": "1f939e8b66f51b427cd72791632a8d66d0786f33c5cbe9b6606e1ec8c03d1165",
+      "bytes": 10155
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/metrics_client.py",
+      "sha256": "f79a5dbb24dcd1abc179054786cfcba2c616612872cd15a421188b06ec6efe3b",
+      "bytes": 33253
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/runtime_candidates.py",
+      "sha256": "90707cb7e056b74f2a5df8a0e0750ead538802795c8117392368228280a87a62",
+      "bytes": 4873
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/static/__init__.py",
+      "sha256": "91df7371c710c1edb29168be70d6e1aa2c806f19fdb5b449bfdf5b5800bc5b78",
+      "bytes": 34
+    },
+    {
+      "path": "anvil_serving/observability/dashboard/timeseries.py",
+      "sha256": "68015231e33e97d98b2f73e8680b3459e496514fd28dd34bcefcaca08ca23a9f",
+      "bytes": 4539
+    },
+    {
+      "path": "anvil_serving/observability/fleet_workload_collection.py",
+      "sha256": "3b770a2c835f189676d257af3b419f6bf79fc00cdb3af3748e1ec3e2361b6b91",
+      "bytes": 11676
+    },
+    {
+      "path": "anvil_serving/observability/fleet_workload_collector.py",
+      "sha256": "9dcdfe57cdf007e27ea24bdb38e047325ed50210706031be586cce8d8aa69e8d",
+      "bytes": 16058
+    },
+    {
+      "path": "anvil_serving/observability/fleet_workload_sources.py",
+      "sha256": "8699faf824afeec0e8efd39ce2b52e5038c610f1248a92765f0c7c92fb22e683",
+      "bytes": 7842
+    },
+    {
+      "path": "anvil_serving/observability/macos_primitives.py",
+      "sha256": "dd06705e4f126feb75c76953888a18bfaa528ccd9518584c0a4f32ec1217be66",
+      "bytes": 5371
+    },
+    {
+      "path": "anvil_serving/observability/node_workload_collector.py",
+      "sha256": "456ca7c31bb60ea6f76c8980f6c57f37425ce96fdc93ad01e6e6c58a428e9d54",
+      "bytes": 11149
+    },
+    {
+      "path": "anvil_serving/observability/probes/__init__.py",
+      "sha256": "6d7be7a4c9b2d8aa688344eeeb1e054879afebd36979ceec4c093ab1822efd58",
+      "bytes": 52
+    },
+    {
+      "path": "anvil_serving/observability/probes/containers.py",
+      "sha256": "a63e2d3cceda4db61262d6f7a9f3a8719be2a95907395a6ef3f95ea1307a0b4e",
+      "bytes": 13557
+    },
+    {
+      "path": "anvil_serving/observability/probes/controller_workloads.py",
+      "sha256": "ed8feb60e4a2499fc7a5f843844187490b8efa4190b4e011a246529c85af1698",
+      "bytes": 15299
+    },
+    {
+      "path": "anvil_serving/observability/probes/gpu_nvidia.py",
+      "sha256": "5100dc727b3fd1c745c23ff44133230b813038b8d60a15d2af293aa3e5ba116f",
+      "bytes": 8930
+    },
+    {
+      "path": "anvil_serving/observability/probes/gpu_shared_memory.py",
+      "sha256": "9a024a61e8ed49e2f46fc8df31b6eb35aef9f1d49f96b5f3cf7adc99bb41cb76",
+      "bytes": 6492
+    },
+    {
+      "path": "anvil_serving/observability/probes/macos_host.py",
+      "sha256": "b4e6b15b638cac666287a321e435fdcc74ed3d87c68b1ffacd83fdc99806c62d",
+      "bytes": 15479
+    },
+    {
+      "path": "anvil_serving/observability/probes/remote_controller.py",
+      "sha256": "577c6e1b4eb29036f2e833f0b10bb319afb364220c6a7cfa61f397631a448dd6",
+      "bytes": 6013
+    },
+    {
+      "path": "anvil_serving/observability/probes/router_workloads.py",
+      "sha256": "9b2b1bbfbe757dc749fc77d4dcb1ab9f15b7228ef86d27805facdbb7ffe932f8",
+      "bytes": 9620
+    },
+    {
+      "path": "anvil_serving/observability/probes/service_health.py",
+      "sha256": "f93f77e693e6b81d0e4fa14a758b3b074bfb6b2d94ffd9cae181d63a5ffe01b2",
+      "bytes": 8103
+    },
+    {
+      "path": "anvil_serving/observability/probes/windows_host.py",
+      "sha256": "19c0d821f3db2925d60f1e11b94846ece2157f38c94c93c0ed5b4feacc47e6c1",
+      "bytes": 7789
+    },
+    {
+      "path": "anvil_serving/observability/probes/wsl_docker.py",
+      "sha256": "db9b0ccc0f1513eba0bfcd8edece6c71fe4468e2d66f412d3b71986aa6c5d3e1",
+      "bytes": 11543
+    },
+    {
+      "path": "anvil_serving/observability/redaction.py",
+      "sha256": "998377bcbe3fc9f010d434ad50566c8d78241369576cfe980ca805b7bcdc96d4",
+      "bytes": 1996
+    },
+    {
+      "path": "anvil_serving/observability/retention.py",
+      "sha256": "02ba351cee906b5c12dff876cf01506d98b900b6cdf674be53c2fa343df5c121",
+      "bytes": 11852
+    },
+    {
+      "path": "anvil_serving/observability/schema.py",
+      "sha256": "fa8275f7940639a69b8f952e1b10952267632b6d917b3a49b1c6e14f64e899d1",
+      "bytes": 13114
+    },
+    {
+      "path": "anvil_serving/observability/status.py",
+      "sha256": "e29f34b359d42f8bd780516fc0352385c9b86402748b0aec9a53a15c0505774f",
+      "bytes": 2034
+    },
+    {
+      "path": "anvil_serving/observability/workload_collection.py",
+      "sha256": "e0fc0e16ddc54bc6871b6755e158e08f500d113911e20e92fea646fa7ef66b29",
+      "bytes": 12801
+    },
+    {
+      "path": "anvil_serving/observability/workload_http.py",
+      "sha256": "6cb7d7799af8286e66567a1eef28ee33cb9b6a2d532ef5b4f481bef1428f9cef",
+      "bytes": 6807
+    },
+    {
+      "path": "anvil_serving/observability/workload_tools.py",
+      "sha256": "b230fb8f575d395365abae17d4eb4acff5fa1202ac84ab8ebc916b19692d39f7",
+      "bytes": 4410
+    },
+    {
+      "path": "anvil_serving/observability/workloads.py",
+      "sha256": "b934f3de57146b3878de1eb569fdafc62d7bda461f14aa4f27dafaaa6656947e",
+      "bytes": 50239
+    },
+    {
+      "path": "anvil_serving/operator_config.py",
+      "sha256": "f5da960ae3dc17f3994ad276e38a53dea122093f09bc97853935643af9459d85",
+      "bytes": 79903
+    },
+    {
+      "path": "anvil_serving/operator_output.py",
+      "sha256": "d607b4f0729b22f21eaa3a2d58b429b933e997a9e16e640427f6364bdb0fa387",
+      "bytes": 15767
+    },
+    {
+      "path": "anvil_serving/paths.py",
+      "sha256": "bfd846666e662cb2485c87384543e1fb3ee15edcd25faf27b348da359a3a5ec7",
+      "bytes": 2551
+    },
+    {
+      "path": "anvil_serving/preflight.py",
+      "sha256": "b1977117a3b49b1b57771c7e028f6283ff830f210d7011fddfdb6555b72ba7d1",
+      "bytes": 46241
+    },
+    {
+      "path": "anvil_serving/product.py",
+      "sha256": "e2b8afbebb8e5a5d59da49162130124a74ddbe1061418301ce4074929c041345",
+      "bytes": 3425
+    },
+    {
+      "path": "anvil_serving/product_families.py",
+      "sha256": "5b3ee88bbe1c286adcfb5d9e6027388653f377294e88fa803c2aaa95b50324a8",
+      "bytes": 19502
+    },
+    {
+      "path": "anvil_serving/profile.py",
+      "sha256": "78badbc006f7add8879cdd6ec0dd04f48c731553e69615dc5e3ce3b75d2ec5a7",
+      "bytes": 6232
+    },
+    {
+      "path": "anvil_serving/reservations.py",
+      "sha256": "d536cd764366ae91938e12524dc94dd9d06477fa8232e8fd6f115e5915bf9db6",
+      "bytes": 24413
+    },
+    {
+      "path": "anvil_serving/routed_eval.py",
+      "sha256": "597477592ec999df7262c218c723d8bbc470cb5cf31b6ec9a99a943196e6081a",
+      "bytes": 34906
+    },
+    {
+      "path": "anvil_serving/router/__init__.py",
+      "sha256": "4631fef17f15034d34f315edf2e981c297c5049fffade149dc0388d3976e12bc",
+      "bytes": 747
+    },
+    {
+      "path": "anvil_serving/router/admission.py",
+      "sha256": "ef6d178ab7bfeb1ea31c98b2e63d4c873754fa8afbf76dc8392e06adeb229f5c",
+      "bytes": 26155
+    },
+    {
+      "path": "anvil_serving/router/audio.py",
+      "sha256": "e84d1632092f3bf24b498e6c10e4431734393d1b05ccaeb0cdd1ed286e95509e",
+      "bytes": 30893
+    },
+    {
+      "path": "anvil_serving/router/availability.py",
+      "sha256": "c2a68f6105eb86827278132a2dbcce70aff052b6b011bc3ef9182d1f4cbc817a",
+      "bytes": 28672
+    },
+    {
+      "path": "anvil_serving/router/backends/__init__.py",
+      "sha256": "db667b3b88ee91976d57421fd32d9abd400e6c8a118b2fd1c44fc4f4bd4397de",
+      "bytes": 308
+    },
+    {
+      "path": "anvil_serving/router/backends/relay.py",
+      "sha256": "838ec0989966e2972174a4fb11593b82f0f2482057c19f88b259defcac2b4125",
+      "bytes": 62193
+    },
+    {
+      "path": "anvil_serving/router/backends/sse.py",
+      "sha256": "a4e7c80a5bc4c625380d8c754fbb87450c2024f884f86653ac2a6d97e0e49688",
+      "bytes": 14177
+    },
+    {
+      "path": "anvil_serving/router/config.py",
+      "sha256": "15bbb55ad1ef7b042b5005828e8f516211ccade891ece3ede28ba45283cf880b",
+      "bytes": 74988
+    },
+    {
+      "path": "anvil_serving/router/decision_log.py",
+      "sha256": "d83b62a33cae4bb4885a6d98b46fcad29d9cc829f9d62dedf879574a92572c8b",
+      "bytes": 39947
+    },
+    {
+      "path": "anvil_serving/router/dialects/__init__.py",
+      "sha256": "73653b04834727a05a9f23b0cb22b3f6f9a9ebf98fdb74db55ed7928c1bd4296",
+      "bytes": 2130
+    },
+    {
+      "path": "anvil_serving/router/dialects/anthropic.py",
+      "sha256": "b867789bd899f044fbee11966cbcf5694d83f73d3a503a859c481c0e7d92ad0f",
+      "bytes": 12660
+    },
+    {
+      "path": "anvil_serving/router/dialects/embeddings.py",
+      "sha256": "32da0748cd1dc26b972128ef28ef09cfad020f1f8b829526b4220640895e3640",
+      "bytes": 3852
+    },
+    {
+      "path": "anvil_serving/router/dialects/openai.py",
+      "sha256": "ba57f0b93cf4f89ed6b673487edbd65dfcb15ff0f8013d798ea0d5e5bff8554f",
+      "bytes": 15643
+    },
+    {
+      "path": "anvil_serving/router/dialects/responses.py",
+      "sha256": "57a5537cf9364d83bda96817227b35dfc23f1cbf01356cc295c80b729a0eaaf6",
+      "bytes": 23372
+    },
+    {
+      "path": "anvil_serving/router/dialects/translate.py",
+      "sha256": "d0a04da38bf4504bb659f68faf5bfba6c757bd097056d12ec1e86cde423c842b",
+      "bytes": 12973
+    },
+    {
+      "path": "anvil_serving/router/discovery.py",
+      "sha256": "09720bee69d4a38485757b6d8fcc176a7ee227ab23b3e092c8ac6ef9425dd015",
+      "bytes": 3234
+    },
+    {
+      "path": "anvil_serving/router/front_door.py",
+      "sha256": "ed3750a1a079622b76ac18fd5c7e9b35b04c0f338c506b686831099871de40f7",
+      "bytes": 118967
+    },
+    {
+      "path": "anvil_serving/router/front_door_runtime.py",
+      "sha256": "1dfe6827915c5ca6400a20e53adb2fb89796fe08ba96a0ab8b0e2977ebaabf43",
+      "bytes": 3213
+    },
+    {
+      "path": "anvil_serving/router/gateway.py",
+      "sha256": "b349125c01420a02d05464a55d1a61e22cd725c83feab760bafc23059b6826bd",
+      "bytes": 5046
+    },
+    {
+      "path": "anvil_serving/router/internal.py",
+      "sha256": "b2deee8ae430354dfe307efffbdc1c3f1dad932347bdd80416eef597dd47e335",
+      "bytes": 9991
+    },
+    {
+      "path": "anvil_serving/router/media_admission.py",
+      "sha256": "ea97d1d6d35f5fac85ffa39e40c1932c810e8f4fe5d584d107ede2e043b7b975",
+      "bytes": 4282
+    },
+    {
+      "path": "anvil_serving/router/model_capacity.py",
+      "sha256": "5fc70a83836013a90b952442a7f5101832ebe4efe6563fbaa0ad6c50d5084c57",
+      "bytes": 51204
+    },
+    {
+      "path": "anvil_serving/router/model_metadata.py",
+      "sha256": "b95c8a2fa4ee850ee2eade39d20b3750a1c2fd7defd8c3f8f1cd1e3c3bdc4a11",
+      "bytes": 14276
+    },
+    {
+      "path": "anvil_serving/router/purpose.py",
+      "sha256": "3bf99183bb5a7135d44c33134f8409a8103335c7d56c90a949b42ed1ee3d5feb",
+      "bytes": 13180
+    },
+    {
+      "path": "anvil_serving/router/replica_scheduler.py",
+      "sha256": "757faefad23d7431ad17a388716ea1b523fc3f8c9017804083d1229d5763b1e9",
+      "bytes": 10540
+    },
+    {
+      "path": "anvil_serving/router/request_control.py",
+      "sha256": "597f7bbf0ae53520ee84587c310a73b485ecf244216a6e1c0a0d7d10efc6f1fa",
+      "bytes": 11000
+    },
+    {
+      "path": "anvil_serving/router/router_telemetry.py",
+      "sha256": "d57a7c20e2a7f5dca4789d87b99170b097de4c042d8171cf0204ee95633465ed",
+      "bytes": 26187
+    },
+    {
+      "path": "anvil_serving/router/serve.py",
+      "sha256": "99c99db269d52fa8070bcac2edf4a37a42a73aa72b92c0173caed4c07f8884b5",
+      "bytes": 91549
+    },
+    {
+      "path": "anvil_serving/router/tier_health.py",
+      "sha256": "1bbd6b70a239a202f153d9ac48b8288445ff5059268f5b3a3228e1157b9fface",
+      "bytes": 6257
+    },
+    {
+      "path": "anvil_serving/router/topology_validation.py",
+      "sha256": "585b21a3bbcb5d549bbd911e884208d7fad580df23f65b75d589ffd1db7c734a",
+      "bytes": 8460
+    },
+    {
+      "path": "anvil_serving/router/trace_export.py",
+      "sha256": "2919fea243d2b386dd1414a0529f040e848d49d699569662803e805be5e94119",
+      "bytes": 8179
+    },
+    {
+      "path": "anvil_serving/router/workloads.py",
+      "sha256": "14c0d256f2c7e64564ddf211391e0ac926e1307875342a6b0f43eacd2ab377a1",
+      "bytes": 25658
+    },
+    {
+      "path": "anvil_serving/router_diagnostics.py",
+      "sha256": "2b5e049b57f02551021d02b9a50ebfbe161b14e2196b40cc888bbfb9c7fcf5dd",
+      "bytes": 26242
+    },
+    {
+      "path": "anvil_serving/router_endpoint.py",
+      "sha256": "05ee7ea0e3238ece30226654f3620e86c5aef410adfbd5f574d9c957055bf38e",
+      "bytes": 8152
+    },
+    {
+      "path": "anvil_serving/router_manage.py",
+      "sha256": "b669e23258e38b7293dcc8e14d77f346354ccb0b855d0e335b66a47941c8cd89",
+      "bytes": 48970
+    },
+    {
+      "path": "anvil_serving/score.py",
+      "sha256": "813603c8c08ea66273b7c7e55bc8ec201324cf8d01610b36338ab0e6394d4bc2",
+      "bytes": 31092
+    },
+    {
+      "path": "anvil_serving/serve_recipes.py",
+      "sha256": "7fa08392ce5215486c4649f907dea2fbef00ba365b423863aca2b637747bfbeb",
+      "bytes": 75920
+    },
+    {
+      "path": "anvil_serving/serves.py",
+      "sha256": "900e9a41390fd854b21da607fd5fe862fda45a21f8ad68abd695b0adf27d1126",
+      "bytes": 314209
+    },
+    {
+      "path": "anvil_serving/service_runtime/__init__.py",
+      "sha256": "853fdfb24a3c93495d50f4e324e69489375a782cbff8524f97a6e2b504e052af",
+      "bytes": 80
+    },
+    {
+      "path": "anvil_serving/service_runtime/cli.py",
+      "sha256": "ae2c564871e0c5c04a7d3bd2c5c1748ebc268db67f0e6c6e8d9f22d276ccfa68",
+      "bytes": 5590
+    },
+    {
+      "path": "anvil_serving/service_runtime/contracts.py",
+      "sha256": "189ec6095b5ddf65512da6e5a496cdbc26470e543675a4b88d7c2a503f4d2cd0",
+      "bytes": 2443
+    },
+    {
+      "path": "anvil_serving/service_runtime/docker.py",
+      "sha256": "714a3fc6bd2f4595186187626bbcf90a002789b6cc182ca38d1a30c978cebd31",
+      "bytes": 19018
+    },
+    {
+      "path": "anvil_serving/service_runtime/engine.py",
+      "sha256": "8ef796fddd67bc8b926f8fcfdaa279d621a58ecf45b7b1c5599d6209781fe7ce",
+      "bytes": 4768
+    },
+    {
+      "path": "anvil_serving/service_runtime/launchd.py",
+      "sha256": "11d5aba45cd1c1df6ace1196f0e4f0553590813fd6313781447c178dfa6f444b",
+      "bytes": 22553
+    },
+    {
+      "path": "anvil_serving/service_runtime/manifest.py",
+      "sha256": "9e0692454598d6c77965b089a93eaccc8ca91ef989c987f06d653fef03b742ae",
+      "bytes": 9023
+    },
+    {
+      "path": "anvil_serving/service_runtime/operations.py",
+      "sha256": "ecd555d8c442fce0b6a890f7cef991dca7b4d66b1c218bd019ea2a267b8e3053",
+      "bytes": 27461
+    },
+    {
+      "path": "anvil_serving/targets.py",
+      "sha256": "6890531c6b3b846fed91629d1b474925c4b6ec9e60f151ac4efc53512637d04c",
+      "bytes": 39495
+    },
+    {
+      "path": "anvil_serving/topology.py",
+      "sha256": "0422914773e4199053207b7d804fd9ce3f1d01126004c3eb3edda2edd8bbadbd",
+      "bytes": 80110
+    },
+    {
+      "path": "anvil_serving/topology_cli.py",
+      "sha256": "fdd785c34130f207c658d4edee5227430c4571f76338461a8d8b590e03155e0b",
+      "bytes": 12424
+    },
+    {
+      "path": "anvil_serving/transports.py",
+      "sha256": "917eb98c0cd1dd7b1a487f807b69b105d3b21fe0d7e5ed326e2e9b9998c912e0",
+      "bytes": 65814
+    },
+    {
+      "path": "anvil_serving/upgrade.py",
+      "sha256": "8e9bfcf4838df287c49a33353cb93d90355f92567b015c09f0ce991739510146",
+      "bytes": 10669
+    },
+    {
+      "path": "anvil_serving/usage_logs.py",
+      "sha256": "5c058eddd76d30575c5fa049aac5d319ea01a188ac1a99f3d9a7045ab06df44f",
+      "bytes": 2743
+    },
+    {
+      "path": "anvil_serving/voice/__init__.py",
+      "sha256": "0bbd3d951337931aa603261dcd31485a5a47d45fd627ccfdab186b6b17f61ac0",
+      "bytes": 845
+    },
+    {
+      "path": "anvil_serving/voice/benchmark.py",
+      "sha256": "856e7ba744773f5d79e0c83870eaaf077066245150e0f2b8b8637d13835d98ce",
+      "bytes": 24790
+    },
+    {
+      "path": "anvil_serving/voice/bridge.py",
+      "sha256": "8ad2dc3731941a314e4838f4b72a77ab3dcd21815fadd01824ebe391ec495106",
+      "bytes": 12267
+    },
+    {
+      "path": "anvil_serving/voice/cancel_scope.py",
+      "sha256": "5ff6115e1165ecffa1721ab23629e7f4a6a2f905f351cede9144574a1ae7ba69",
+      "bytes": 3690
+    },
+    {
+      "path": "anvil_serving/voice/cli.py",
+      "sha256": "8db528ada3299a124437ce8da44e26289cf27e6cd77d24f4296644075eb89323",
+      "bytes": 97470
+    },
+    {
+      "path": "anvil_serving/voice/config.py",
+      "sha256": "7191ed65eac9ce4e6e785cddff672d17e337014b63fee5a30087ba5c2a366237",
+      "bytes": 39744
+    },
+    {
+      "path": "anvil_serving/voice/connections/__init__.py",
+      "sha256": "5a99a93e169d5f6f4e1969c81cddcfa4d9ae45878fb5a8090fc008ccf5b6529d",
+      "bytes": 620
+    },
+    {
+      "path": "anvil_serving/voice/connections/local_audio.py",
+      "sha256": "11e763deefbb039689b3f6d5a7099ca4fa69f5679aada036f16ada6c7f3a6955",
+      "bytes": 9421
+    },
+    {
+      "path": "anvil_serving/voice/corpus.py",
+      "sha256": "bd86e51315a7c119cca23711324c790c8335f2ab25a495b7b035588b67aa2897",
+      "bytes": 20428
+    },
+    {
+      "path": "anvil_serving/voice/messages.py",
+      "sha256": "57c5ce42ec4f5fa83674dd3413e0bb01fce3c86743895417e3d02ebdc4125dfe",
+      "bytes": 4822
+    },
+    {
+      "path": "anvil_serving/voice/pipeline.py",
+      "sha256": "3880542e97d3086cbd566aada29261dee535212f670dae861c2d98a974cbf4cf",
+      "bytes": 17869
+    },
+    {
+      "path": "anvil_serving/voice/realtime/__init__.py",
+      "sha256": "e8f55114457ed5b89913cd7bb86bfec93d3a0e94d8466eeb55c425988aeb6832",
+      "bytes": 2161
+    },
+    {
+      "path": "anvil_serving/voice/realtime/app.py",
+      "sha256": "f6c63809b275dfb1fe803f3ed3bd33fc290548a1156e4e9dae72dff9755d8ef2",
+      "bytes": 8074
+    },
+    {
+      "path": "anvil_serving/voice/realtime/events.py",
+      "sha256": "3de8b29637e7cb9fbad77af08166610db6503d71a17aacd1ae14b41d95d86916",
+      "bytes": 21786
+    },
+    {
+      "path": "anvil_serving/voice/realtime/pool.py",
+      "sha256": "14b6785f77cebe4360130f5de8a282913aa4872a336eb094efa0b476382fc552",
+      "bytes": 12664
+    },
+    {
+      "path": "anvil_serving/voice/realtime/service.py",
+      "sha256": "b63206c7eb450be5abd65a065d701d53a7d7720f0b17e0c243ab0aa2c535891e",
+      "bytes": 38797
+    },
+    {
+      "path": "anvil_serving/voice/realtime/ws.py",
+      "sha256": "538e6adbfca8c853db69fe9d7c55404bf1cbd83ddb94d480f5828a9f9f30b74c",
+      "bytes": 35189
+    },
+    {
+      "path": "anvil_serving/voice/realtime_service.py",
+      "sha256": "d50557d05c0c745d33f5cb29f2549e32be1398bc4ab50e73843055372d481ab3",
+      "bytes": 7520
+    },
+    {
+      "path": "anvil_serving/voice/serves/__init__.py",
+      "sha256": "a4c210c1eec6224b1cdcb43edfef18e52a3b3bc41f29c1e7a3a14f8f607bc984",
+      "bytes": 1206
+    },
+    {
+      "path": "anvil_serving/voice/serves/_common.py",
+      "sha256": "c7a5538d32770d6098570fcb11718b0c228d3e53324b898ee276460d23d1d2a0",
+      "bytes": 7591
+    },
+    {
+      "path": "anvil_serving/voice/serves/native.py",
+      "sha256": "a8764d6b8723ba5784a49d5c6498f7d274955c08a6a30bb2b3ecd7c0ebe1aaa3",
+      "bytes": 18385
+    },
+    {
+      "path": "anvil_serving/voice/serves/proxy.py",
+      "sha256": "df0e107d5a027d13e55b80efbb5f0ecfad97e91047ebf13e55d207d512c585c6",
+      "bytes": 4279
+    },
+    {
+      "path": "anvil_serving/voice/serves/stt.py",
+      "sha256": "5df95f71aa5c0c8e68611e13285f349a935477bb7a4f20a76fa5fbab90e3eeee",
+      "bytes": 3457
+    },
+    {
+      "path": "anvil_serving/voice/serves/tts.py",
+      "sha256": "b17d040b11b4075d6d8b3c6dbd743ef5b07901143d5fe4eda0bebb284cb90af2",
+      "bytes": 3431
+    },
+    {
+      "path": "anvil_serving/voice/stages/__init__.py",
+      "sha256": "4745872450bd9573d3b23f194712f8911fb3e7aa2977397d6a38cbad263f3aec",
+      "bytes": 148
+    },
+    {
+      "path": "anvil_serving/voice/stages/base.py",
+      "sha256": "68c6bba5747b6cb5ae90b255fa66b0e7f967b3026ed645fe548cb2817ca17a29",
+      "bytes": 10477
+    },
+    {
+      "path": "anvil_serving/voice/stages/llm.py",
+      "sha256": "bfd3d5a6e75d221efe2349816ab5c6c9e9b58b79b32ac21a808cecb522aaafd4",
+      "bytes": 42209
+    },
+    {
+      "path": "anvil_serving/voice/stages/stt.py",
+      "sha256": "dc830bb2b5d779e97f75871e5be073b6d07f2f61265f620f8b4269604a49641a",
+      "bytes": 14181
+    },
+    {
+      "path": "anvil_serving/voice/stages/tts.py",
+      "sha256": "4f7467eee7d0343fe4b81bd7c3a8ab7261952dcce5ed06190e2f27e4fcd265c4",
+      "bytes": 21926
+    },
+    {
+      "path": "anvil_serving/voice/stages/vad.py",
+      "sha256": "640f011f20029f5490e4e8e4c272acb01ea3f75804fab1225db08866723d4548",
+      "bytes": 10162
+    },
+    {
+      "path": "anvil_serving/voice/stt_benchmark.py",
+      "sha256": "1b604d850ea132d6598934de58c3c5ffecf4a3cdf512179672fc63a47b05c124",
+      "bytes": 15238
+    },
+    {
+      "path": "anvil_serving/voice_sidecar.py",
+      "sha256": "7d6afd288c8ebd60f0b35ab72363dfacad5192bb3c516d3ce45a0f3a7219d379",
+      "bytes": 14679
+    },
+    {
+      "path": "anvil_serving/workbench.py",
+      "sha256": "589dbd3a357e041f530a911b5b02692ca0a6aa0cd1e031604fab84dbe879ce1e",
+      "bytes": 14284
+    },
+    {
+      "path": "anvil_serving/workbench_app/__init__.py",
+      "sha256": "554690c82e0b3f1f0562b09c38e3257b1412285ae232474887887122947571bc",
+      "bytes": 81
+    },
+    {
+      "path": "anvil_serving/workbench_app/config.py",
+      "sha256": "6886399f9e77cea30579e16e7f1e79916e0b925b4bdf81899501234a176d0170",
+      "bytes": 9742
+    },
+    {
+      "path": "anvil_serving/workbench_app/container_exec.py",
+      "sha256": "d2ee27e2bf2eab7ae2899b417486dfb958fdd7f24546ce8f67444466d8ba4ff9",
+      "bytes": 8689
+    },
+    {
+      "path": "anvil_serving/workbench_app/credentials.py",
+      "sha256": "79360df9e7769d60c5c77d2fe7465db98ef81340848e8eea2cfe5fb4bc8939fb",
+      "bytes": 1233
+    },
+    {
+      "path": "anvil_serving/workbench_app/evidence_jobs.py",
+      "sha256": "632dbcc86a0245b5e52aa7120dbc73b4091142b0f439263294e693acc4d836e6",
+      "bytes": 4038
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_egress.py",
+      "sha256": "455399c2822e4f8d765812cc194866a0d5d50e0897fb97d9461bd1761b3487e6",
+      "bytes": 20483
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_rpc.py",
+      "sha256": "5fc0b1e6c82e5524646044190e30d27087f70fe0542e6ba396a63b0959a45e27",
+      "bytes": 12838
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_runner.py",
+      "sha256": "c266e2d8fc150fc26810e705efbef19441d9b710dc3cce21df8b3f101339efe1",
+      "bytes": 13525
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_sessions.py",
+      "sha256": "ee47f869af881e172965e7263df0c5708ae1a1dbc574119ffb26085b775ecd55",
+      "bytes": 36639
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_storage.py",
+      "sha256": "53b6b1221196b324b6d79d7ac42d1dd8bf90335b02fd5b6e494f9730637d7645",
+      "bytes": 22415
+    },
+    {
+      "path": "anvil_serving/workbench_app/pi_web.py",
+      "sha256": "6f19174fc25b6ce299e78821394c6596ba5a30e74c813b4de1b8fbb29e002709",
+      "bytes": 24651
+    },
+    {
+      "path": "anvil_serving/workbench_app/playground.py",
+      "sha256": "df0029013ec9f406cad9144cbe5e5626fd4c6cc93469927f80574232cd1724d0",
+      "bytes": 12798
+    },
+    {
+      "path": "anvil_serving/workbench_app/projects.py",
+      "sha256": "4d63624113806747716171e3798a76c550f91dcc2f54e5c19e9d8a1a2ab602e2",
+      "bytes": 23329
+    },
+    {
+      "path": "anvil_serving/workbench_app/recipe_admission.py",
+      "sha256": "a67a9a85ac328165fac8db668ea3cc126f85dbc5f6a970578f1c50b19f4d1cf5",
+      "bytes": 4823
+    },
+    {
+      "path": "anvil_serving/workbench_app/service.py",
+      "sha256": "1aa81cc31ae0149c3e110c767eda024f54e1276517dc7da682896689d649ea46",
+      "bytes": 29084
+    },
+    {
+      "path": "anvil_serving/workbench_app/store.py",
+      "sha256": "5d219fdbb14fae760f45d71bf441b41d8c84b3cb152c387396d5c4d5d87068f9",
+      "bytes": 4953
+    },
+    {
+      "path": "anvil_serving/workbench_app/task_artifacts.py",
+      "sha256": "b01ddccef88c58aca115f59760dcc7f92185cccc406dac1131d212397b22575b",
+      "bytes": 15301
+    },
+    {
+      "path": "anvil_serving/workbench_app/task_sandbox.py",
+      "sha256": "27391ab7a96212bea6fda0e8f90ad4c050fb866c0a78c2b1fe883023f163dd99",
+      "bytes": 22177
+    }
+  ],
+  "limitation": "Source hashes bind the observed uncommitted launcher but do not publish or claim a clean reproducible repository revision."
+}

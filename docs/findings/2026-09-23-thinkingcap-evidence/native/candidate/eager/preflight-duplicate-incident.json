@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.evaluation-incident/v1",
+  "incident": "duplicate_preflight_artifact_overwrite",
+  "target": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "thinkingcap-awq-5090"
+  },
+  "cause": "The initial preflight command exceeded the harness's first wait interval. Before proving whether that command had completed, a second preflight was submitted with the same JSON artifact path.",
+  "first_run": {
+    "artifact_path": "candidate-preflight-16k.json",
+    "raw_artifact_retained": false,
+    "known_observations": {
+      "smoke_seconds": 0.929,
+      "general_image_seconds": 30.377,
+      "ocr_seconds": 2.08,
+      "observation_count": 27
+    },
+    "source": "independent operator read before overwrite"
+  },
+  "second_run": {
+    "artifact_path": "candidate-preflight-16k.json",
+    "log_path": "candidate-preflight-16k.log",
+    "functional_result": "passed",
+    "latency_interpretation": "functional-only; queued behind the first run and unsuitable for latency claims"
+  },
+  "disposition": {
+    "candidate_preflight": "functional pass retained",
+    "performance_claims_from_second_run": false,
+    "future_execution": "use a unique artifact filename, retain the process session identifier, and poll that session after a harness timeout; do not resubmit until completion is proven"
+  }
+}

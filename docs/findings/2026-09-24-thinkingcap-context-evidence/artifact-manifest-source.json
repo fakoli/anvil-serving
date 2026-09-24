@@ -1,0 +1,270 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-09-24-thinkingcap-context",
+    "capability": "text-and-multimodal",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "Operational CLI 1.2.1 from the original dirty checkout; isolated CLI 1.0.0 worktree authors public documentation only.",
+    "evidence_labels": [
+      "external-prior",
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "status": "complete; qualified direct 131072-token C1 candidate retained",
+    "started_at": "2026-09-24T04:12:05.848923+00:00",
+    "completed_at": "2026-09-24T07:29:30.048956+00:00"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.evidence-redaction-ledger/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.native-evidence-inspection/v1",
+    "anvil-serving.native-redactions/v1",
+    "anvil-serving.redaction-ledger/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Entry point and exact retained evidence links."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Date-aware primary sources, local evidence and advisory priors."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Pinned workloads, controls, fixture provenance and limits."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "campaign-state.json",
+        "context-plan-review.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md",
+        "feasibility-128k-input.json",
+        "feasibility-128k-mtp-uva3.json",
+        "feasibility-128k-result.json",
+        "feasibility-input.json",
+        "feasibility-result.json",
+        "run-plan.json"
+      ],
+      "reason": "Predeclared expansion branches, feasibility, handoffs and closed campaign state."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "baseline-provenance.json",
+        "calibration-mtp-uva3.json",
+        "calibration.json",
+        "configurations/thinkingcap-awq-vllm029-5090-128k-bf16-vision-offload1.toml",
+        "configurations/thinkingcap-awq-vllm029-5090-128k-mtp3-bf16-uva3.toml",
+        "configurations/thinkingcap-awq-vllm029-5090-128k-nospec-bf16-offload1.toml",
+        "configurations/thinkingcap-awq-vllm029-5090-128k-nospec-triton-bf16.toml",
+        "configurations/thinkingcap-awq-vllm029-5090-64k-mtp3-triton-bf16.toml",
+        "identity-mtp-uva3.json",
+        "identity-nospec.json",
+        "identity.json",
+        "operational-source-check.json",
+        "operational-source-final-check.json",
+        "redaction-addendum.json"
+      ],
+      "reason": "Exact recipe snapshots, identities and unchanged operational source hashes."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg",
+        "graph-manifest.json",
+        "graph-validation.json",
+        "native/baseline32k/capacity.json",
+        "native/candidate/final-engine.log",
+        "native/candidate/functional.json",
+        "native/candidate/host-memory-after-reclaim.json",
+        "native/candidate/host-memory-idle.json",
+        "native/candidate/host-memory-quality.json",
+        "native/candidate/host-memory-start.json",
+        "native/candidate/load-preview.json",
+        "native/candidate/quality.json",
+        "native/candidate/reasoning.json",
+        "native/candidate/startup-gpu.csv",
+        "native/candidate/startup-health.json",
+        "native/candidate/startup-status.json",
+        "native/candidate/startup.log",
+        "native/candidate/thinking-control.json",
+        "native/candidate/vision.json",
+        "native/context-scout/artifact.json",
+        "native/context-scout/assets.json",
+        "native/context-scout/cross-suite-evidence.json",
+        "native/context-scout/evidence-inspection.json",
+        "native/context-scout/evidence/0-assets.json",
+        "native/context-scout/evidence/0-context.json",
+        "native/context-scout/evidence/0-preflight.json",
+        "native/context-scout/worker.json",
+        "native/failed-gpu-reserve/startup.log",
+        "native/failed-gpu-reserve/status.json",
+        "native/final/context-running-status.json",
+        "native/final/engine.log",
+        "native/final/gpu-context.csv",
+        "native/final/gpu-final.csv",
+        "native/final/host-memory.json",
+        "native/final/http.json",
+        "native/final/redactions.json",
+        "native/final/status.json",
+        "native/friction/evaluation-owner-failure.log",
+        "native/host/cache-reclaim-apply.json",
+        "native/host/cache-reclaim-preview.json",
+        "native/mtp-uva3-agentic/artifact.json",
+        "native/mtp-uva3-agentic/assets.json",
+        "native/mtp-uva3-agentic/cross-suite-evidence.json",
+        "native/mtp-uva3-agentic/evidence/0-agentic.json",
+        "native/mtp-uva3-agentic/evidence/0-assets.json",
+        "native/mtp-uva3-agentic/evidence/0-preflight.json",
+        "native/mtp-uva3-agentic/native-evidence-inspection.json",
+        "native/mtp-uva3-agentic/redactions.json",
+        "native/mtp-uva3-agentic/worker.json",
+        "native/mtp-uva3-context-full/artifact.json",
+        "native/mtp-uva3-context-full/assets.json",
+        "native/mtp-uva3-context-full/cross-suite-evidence.json",
+        "native/mtp-uva3-context-full/evidence/0-assets.json",
+        "native/mtp-uva3-context-full/evidence/0-context.json",
+        "native/mtp-uva3-context-full/evidence/0-preflight.json",
+        "native/mtp-uva3-context-full/native-evidence-inspection.json",
+        "native/mtp-uva3-context-full/redactions.json",
+        "native/mtp-uva3-context-full/worker.json",
+        "native/mtp-uva3-context-scout/artifact.json",
+        "native/mtp-uva3-context-scout/assets.json",
+        "native/mtp-uva3-context-scout/cross-suite-evidence.json",
+        "native/mtp-uva3-context-scout/evidence/0-assets.json",
+        "native/mtp-uva3-context-scout/evidence/0-context.json",
+        "native/mtp-uva3-context-scout/evidence/0-preflight.json",
+        "native/mtp-uva3-context-scout/native-evidence-inspection.json",
+        "native/mtp-uva3-context-scout/native-preflight.log",
+        "native/mtp-uva3-context-scout/redactions.json",
+        "native/mtp-uva3-context-scout/submit.log",
+        "native/mtp-uva3-context-scout/worker.json",
+        "native/mtp-uva3/capacity-scout.json",
+        "native/mtp-uva3/capacity-scout.log",
+        "native/mtp-uva3/capacity.json",
+        "native/mtp-uva3/capacity.log",
+        "native/mtp-uva3/create-preview.json",
+        "native/mtp-uva3/create.json",
+        "native/mtp-uva3/functional.json",
+        "native/mtp-uva3/functional.log",
+        "native/mtp-uva3/health.json",
+        "native/mtp-uva3/host-memory-after-reclaim.json",
+        "native/mtp-uva3/host-memory-context-active.json",
+        "native/mtp-uva3/host-memory-start.json",
+        "native/mtp-uva3/load-preview.json",
+        "native/mtp-uva3/load.log",
+        "native/mtp-uva3/quality-gpu.csv",
+        "native/mtp-uva3/quality-scout.json",
+        "native/mtp-uva3/quality-scout.log",
+        "native/mtp-uva3/quality.json",
+        "native/mtp-uva3/quality.log",
+        "native/mtp-uva3/reasoning.json",
+        "native/mtp-uva3/reasoning.log",
+        "native/mtp-uva3/reclaim-preview.json",
+        "native/mtp-uva3/reclaim.json",
+        "native/mtp-uva3/redactions.json",
+        "native/mtp-uva3/startup.json",
+        "native/mtp-uva3/startup.log",
+        "native/mtp-uva3/thinking-control.json",
+        "native/mtp-uva3/vision.json",
+        "native/mtp-uva3/vision.log",
+        "native/prior-host-settled/host-memory.json",
+        "native/prior-host-settled/redactions.json",
+        "native/redactions.json",
+        "validation/cli-audit-final-accepted.log",
+        "validation/cli-audit-final.log",
+        "validation/cli-audit-update-final.log",
+        "validation/links-final-accepted.log",
+        "validation/links-final.log",
+        "validation/mkdocs-final-accepted.log",
+        "validation/mkdocs-final.log"
+      ],
+      "reason": "Native success and failure artifacts, sanitized logs, telemetry, canonical companions, independent inspections and byte-mapped redaction ledgers."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "final-review.json",
+        "friction-log.md",
+        "pre-final-review.json",
+        "product-gaps/2026-09-24-benchmark-evidence-job-wrapper.md",
+        "product-gaps/2026-09-24-mixed-context-vision-gate.md",
+        "validation-final.json",
+        "validation/benchmark-docs.log",
+        "validation/links-progress.log",
+        "validation/mkdocs-progress.log",
+        "validation/redactions.json",
+        "merge-publication-redaction.json"
+      ],
+      "reason": "Rejected branches, tooling gaps, independent reviews, declared limitations and final validation."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Verified authorized direct candidate retention with exact rollback preserved."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "agentic-summary.json",
+        "capacity-summary.json",
+        "context-full-summary.json",
+        "context-scout-summary.json",
+        "final-resource-summary.json",
+        "quality-summary.json",
+        "summary.json"
+      ],
+      "reason": "Measured scope, capacity, quality, context, agentic and resource conclusions."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Prepared user-facing copy and claim-to-evidence mapping; no message was posted."
+    }
+  ]
+}

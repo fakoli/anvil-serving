@@ -1,0 +1,158 @@
+{
+  "client_overrides": {
+    "hermes": {
+      "expected_observed_provider": "custom",
+      "model": "llm.secondary",
+      "provider_selector": "anvil"
+    },
+    "openclaw": {
+      "model": "anvil/llm.secondary",
+      "provider": "anvil"
+    }
+  },
+  "clients": [
+    "openclaw"
+  ],
+  "clients_skipped": [],
+  "credentials": {
+    "api_key_env": "ANVIL_ROUTER_TOKEN",
+    "available": true
+  },
+  "dry_run": false,
+  "finished_at": "2026-09-24T08:36:08.342570Z",
+  "harness_reconciliation": {
+    "backup_root": "~/.anvil-serving/backups/client-catalog",
+    "enabled": false,
+    "openclaw_config": "~/.openclaw/openclaw.json",
+    "pi_models": "~/.pi/agent/models.json",
+    "pi_settings": "~/.pi/agent/settings.json",
+    "restart_openclaw_on_router_change": false,
+    "state_path": "~/.anvil-serving/state/client-catalog.json"
+  },
+  "harness_sync": {
+    "checks": {},
+    "enabled": false,
+    "failure": null,
+    "passed": true,
+    "receipt": null
+  },
+  "output": "/home/operator/.anvil-serving/evidence/thinkingcap-secondary-evaluation-node-10240-r3.json",
+  "passed": true,
+  "persistent_changes": false,
+  "results": [
+    {
+      "checks": {
+        "context_exact": true,
+        "fallback_forbidden": true,
+        "json_valid": true,
+        "marker_exact": true,
+        "model_exact": true,
+        "output_bounded": true,
+        "process_succeeded": true,
+        "provider_exact": true,
+        "status_ok": true,
+        "winner_model_exact": true,
+        "winner_provider_exact": true
+      },
+      "client": "openclaw",
+      "command": {
+        "model": "anvil/llm.secondary",
+        "provider": "anvil",
+        "thinking": "off",
+        "tool_probe": "exec/read-temporary-nonce"
+      },
+      "failure": null,
+      "observed": {
+        "context_tokens": 131072,
+        "fallback_used": false,
+        "latency_ms": 157673,
+        "model": "llm.secondary",
+        "payload_count": 1,
+        "provider": "anvil",
+        "response_chars": 59,
+        "returncode": 0,
+        "stop_reason": "stop",
+        "winner_model": "llm.secondary",
+        "winner_provider": "anvil"
+      },
+      "passed": true
+    }
+  ],
+  "router": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "thinkingcap-vllm029-awq-128k-c1-mtp3-triton-bf16kv-uva3-mm2-c81bf6a3",
+      "config_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+      "configured_max_concurrency": 1,
+      "context_limit_tokens": 131072,
+      "discovery_context_window": 131072,
+      "engine": {
+        "name": "vllm",
+        "quantization": "nvfp4-awq-w4a4-bf16-vision-mtp3-bf16-kv-uva3"
+      },
+      "package_version": "1.2.1",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "thinkingcap-awq-5090",
+      "tier_id": "secondary-node"
+    },
+    "passed": true
+  },
+  "router_before_sync": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "thinkingcap-vllm029-awq-128k-c1-mtp3-triton-bf16kv-uva3-mm2-c81bf6a3",
+      "config_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+      "configured_max_concurrency": 1,
+      "context_limit_tokens": 131072,
+      "discovery_context_window": 131072,
+      "engine": {
+        "name": "vllm",
+        "quantization": "nvfp4-awq-w4a4-bf16-vision-mtp3-bf16-kv-uva3"
+      },
+      "package_version": "1.2.1",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "thinkingcap-awq-5090",
+      "tier_id": "secondary-node"
+    },
+    "passed": true
+  },
+  "run_id": "thinkingcap-secondary-evaluation-node-10240-r3",
+  "schema": "routed-client-eval/v2",
+  "started_at": "2026-09-24T08:33:30.445959Z",
+  "target": {
+    "alias": "llm.secondary",
+    "base_url": "https://router-node.example.ts.net/v1",
+    "expected_config_fingerprint": "thinkingcap-vllm029-awq-128k-c1-mtp3-triton-bf16kv-uva3-mm2-c81bf6a3",
+    "expected_router_config_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+    "expected_served_model": "thinkingcap-awq-5090",
+    "min_context_tokens": 131072
+  }
+}

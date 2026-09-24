@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "Independent native preflight off/on: disabled observations have no reasoning text; all eight enabled observations have positive reasoning tokens; accepted finish reasons and behavior checks passed; functional timing overlapped CPU test suite and is not latency evidence",
+  "observed_at": "2026-09-24T03:07:02.4940025Z",
+  "model": "thinkingcap-awq-5090",
+  "recipe_digest": "56cbe79dcd1c3eb2ddba162a866c6d712f8614705047aa5cb753c4a0f638100f",
+  "proofs": [
+    {
+      "sha256": "fee4d3da4f8b84ce795701f3e0042024af0f0262e7a2ba68e7473cf27d8c3260",
+      "path": "triton-bf16-32k-preflight.json"
+    },
+    {
+      "sha256": "2f9af91b1dbc8a359e39f38eee023ed9913da644acf363b378f029343585de59",
+      "path": "triton-bf16-32k-reasoning-preflight.json"
+    }
+  ]
+}

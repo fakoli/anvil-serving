@@ -1,0 +1,4 @@
+{
+  "status": 200,
+  "body": "{\"object\":\"list\",\"data\":[{\"id\":\"thinkingcap-awq-5090\",\"object\":\"model\",\"created\":1790218023,\"owned_by\":\"vllm\",\"root\":\"PRIVATE_MODEL_CACHE/hub/models--bottlecapai--ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/snapshots/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11\",\"parent\":null,\"max_model_len\":16384,\"permission\":[{\"id\":\"modelperm-a6e488b51cd3e302\",\"object\":\"model_permission\",\"created\":1790218023,\"allow_create_engine\":false,\"allow_sampling\":true,\"allow_logprobs\":true,\"allow_search_indices\":false,\"allow_view\":true,\"allow_fine_tuning\":false,\"organization\":\"*\",\"group\":null,\"is_blocking\":false}]}]}"
+}

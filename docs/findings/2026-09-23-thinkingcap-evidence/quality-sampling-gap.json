@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.quality-sampling-gap/v1",
+  "status": "open",
+  "scope": "source and parser inspection only; no inference request was sent for this record",
+  "operation": "eval benchmark quality",
+  "source_identity": {
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "operational_and_isolated_sources_match": true,
+    "files": {
+      "anvil_serving/benchmarking/cli.py": "d120d55f269c316df3b4cd880a52174efb11d87ffdecf224b3670ad505359734",
+      "anvil_serving/benchmarking/requests.py": "20d43653e9f2938194be7b0ea111bc5206827bd0db37d18d071601e9490ea9a0",
+      "anvil_serving/benchmarking/runner.py": "f9fbf37f1a048a0bd7b02d36b1631754ee2df96f4654a4684d4f3e0e134549b8"
+    }
+  },
+  "controls": {
+    "temperature": {
+      "cli_status": "rejected_unrecognized_argument",
+      "quality_request_body": "fixed_to_0.0",
+      "source": "anvil_serving/benchmarking/requests.py:243"
+    },
+    "top_p": {
+      "cli_status": "rejected_unrecognized_argument",
+      "quality_request_body": "absent",
+      "source": "quality parser has no --top-p argument; requests.py post_chat body has no top_p field"
+    },
+    "top_k": {
+      "cli_status": "rejected_unrecognized_argument",
+      "quality_request_body": "absent",
+      "source": "quality parser has no --top-k argument; requests.py post_chat body has no top_k field"
+    }
+  },
+  "parser_only_checks": [
+    "quality --temperature 1 --dry-run",
+    "quality --top-p .95 --dry-run",
+    "quality --top-k 20 --dry-run"
+  ],
+  "result_interpretation": {
+    "causal_claim": "none",
+    "real_graph_mmlu_result": {
+      "passed_attempts": 27,
+      "attempts": 30,
+      "failed_eval_id": "mmlu-pro-30-computer-science",
+      "failure_class": "reasoning_budget_exhausted",
+      "finish_reason": "length"
+    },
+    "non_measurement_placeholders": [
+      "not_run built-in suite sections",
+      "null or zero capacity-style timing.chat fields for an external-suite-only quality run"
+    ],
+    "separate_validation_only_record": "quality-launch-friction.json: incompatible control-evidence schema and legacy --bakeoff rejection, explicitly zero inference requests"
+  },
+  "required_resolution": [
+    "Forward every accepted sampling control unchanged through both request builders and retain request-level effective-body evidence.",
+    "Reject unsupported controls before inference; never silently substitute another value.",
+    "Keep top_k rejected until the selected endpoint contract supports it.",
+    "Add focused parser and request-body tests."
+  ],
+  "promoted": false
+}

@@ -1,0 +1,15 @@
+{
+
+  "reader_finished": true,
+
+  "line": "{\"id\":\"probe-get-state\",\"type\":\"response\",\"command\":\"get_state\",\"success\":true,\"data\":{\"model\":{\"id\":\"fixture-a\",\"name\":\"fixture-a\",\"api\":\"openai-completions\",\"provider\":\"local-fixture\",\"baseUrl\":\"http://127.0.0.1:9/v1\",\"reasoning\":true,\"input\":[\"text\"],\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0},\"contextWindow\":32768,\"maxTokens\":1024},\"thinkingLevel\":\"low\",\"isStreaming\":false,\"isCompacting\":false,\"steeringMode\":\"one-at-a-time\",\"followUpMode\":\"one-at-a-time\",\"sessionFile\":\"PRIVATE_OPERATOR_HOME\\\\AppData\\\\Local\\\\Temp\\\\anvil-pi-reader-ixzdnxo6\\\\sessions\\\\2026-09-24T03-16-59-749Z_d4b60ffb-e7f3-41dc-ad02-845e3b1da90b.jsonl\",\"sessionId\":\"d4b60ffb-e7f3-41dc-ad02-845e3b1da90b\",\"autoCompactionEnabled\":true,\"messageCount\":0,\"pendingMessageCount\":0}}\n",
+
+  "read_error": null,
+
+  "process_alive_before_cleanup": true,
+
+  "returncode_after_cleanup": 1,
+
+  "stderr": "Warning: No project session found with id 'd4b60ffb-e7f3-41dc-ad02-845e3b1da90b'; creating a new session with that id.\n"
+
+}

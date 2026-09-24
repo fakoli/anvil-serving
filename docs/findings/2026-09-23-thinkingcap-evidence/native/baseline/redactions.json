@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.evidence-redactions/v1",
+  "scope": "native/baseline",
+  "source_boundary": "Private operator evidence was inspected locally; only the six listed sanitized native JSON artifacts were retained.",
+  "redactions": [
+    {
+      "artifact": "baseline-multimodal.json",
+      "field": "corpus.path",
+      "original_class": "personal absolute working-tree path",
+      "replacement": "tests/fixtures/eval-data/agents-a1-v1/qwen38-image-ab.json",
+      "reason": "Public repository-relative fixture identity preserves reproducibility without publishing an operator home path."
+    }
+  ],
+  "not_retained": [
+    "private status, registry, topology, cache, recipe-preview, authorization, and runtime-identity files",
+    "media bytes; retained multimodal evidence contains only fixture-relative media metadata, byte counts, and SHA-256 values"
+  ],
+  "synthetic_identifiers": {
+    "command_host": "Primary Node",
+    "gpu_profile": "RTX 5090 / rtx5090"
+  }
+}

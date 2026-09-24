@@ -1,0 +1,51 @@
+{
+  "schema": "thinkingcap-optimization-expansion-plan/v1",
+  "declared_at": "2026-09-24T02:23:07.800274+00:00",
+  "trigger": "MTP3 BF16 profile reports only44,683 cache tokens at0.87 GPU fraction;64K does not fit that measured envelope. Matched100 short32 MTP cell failed1/100 exact output.",
+  "unchanged": [
+    "pinned model/revision/image/engine",
+    "RTX5090/TP1",
+    "16384 comparison context/C1",
+    "prefill chunk1024",
+    "memory fraction0.87",
+    "MTP3",
+    "vision admission2 images",
+    "graph execution",
+    "unique cache/canaries/seed0",
+    "32 output words/max512/nominal4096 prompt/100requests"
+  ],
+  "arms": [
+    {
+      "id": "triton-bf16",
+      "target_attention": "TRITON_ATTN",
+      "kv": "bfloat16",
+      "draft_kv": "inherited",
+      "state": "prepared; startup in progress"
+    },
+    {
+      "id": "triton-fp8",
+      "target_attention": "TRITON_ATTN",
+      "kv": "fp8_per_token_head",
+      "draft_kv": "inherited",
+      "state": "prepared; unmeasured"
+    }
+  ],
+  "gates": [
+    "native health/model identity",
+    "text/JSON/tools/streaming/continuation and reasoning on/off",
+    "same18-attempt vision corpus",
+    "strict4-request capacity scout then100requests ifcorrect",
+    "same30-attempt MMLU-Pro10 diagnostic at10240 completion cap; preserve failures and inspect additional regression",
+    "expand surviving configuration toward65536 only after measured cache fit; near-limit text job and vision under exact final recipe",
+    "bounded deterministic agentic job and final direct smoke"
+  ],
+  "quality_boundary": "MMLU suite remains failed at27/30 on existing controls. Matching that diagnostic does not turn it into a passed quality gate. Any additional misses are a regression concern. No publisher-score reproduction or universal ranking.",
+  "fallbacks": [
+    "validated graph/noMTP with64K as physically feasible survivor pending context tests",
+    "32K MTP BF16 if useful and separately qualified; current strict100 failure blocks a clean finalist claim"
+  ],
+  "physical_classification": "64K MTP BF16 is infeasible within the current0.87 allocation envelope; not a universal mathematical rejection across other precision/backend/memory settings.",
+  "fp8_admission": "Source-admitted candidate only; exact model/hardware/vision combination requires live tests. No static uncalibrated1.0 scales; no legacy calculate-scales flag.",
+  "source": "fp8-v2-review.json",
+  "promotion_authorized": false
+}

@@ -1,0 +1,287 @@
+{
+  "schema": "anvil-serving.native-redactions/v1",
+  "scope": "Completed MTP-UVA3 artifacts only; context and agentic evidence remain excluded while separately running.",
+  "transformations": [
+    "Replaced operator home and worktree paths with PRIVATE_OPERATOR_HOME or PUBLIC_REPOSITORY.",
+    "Replaced real host identifiers with Primary Node and the GPU UUID with GPU-RTX5090-SYNTHETIC.",
+    "Replaced RFC1918 addresses with the TEST-NET placeholder 192.0.2.10.",
+    "Replaced container cache paths and the user-profile token with generic placeholders.",
+    "Preserved native schemas and numeric values; no secrets or media bytes were exported.",
+    "Normalized legacy operator runtime/host role labels to generic operator identifiers; original private hashes remain unchanged."
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "mtp-uva3-create-preview.private.json",
+      "public_path": "native/mtp-uva3/create-preview.json",
+      "private_sha256": "afc82f1e6768f364c9d00e9bd785a6b511a7dffd113020f1097389c48d739971",
+      "private_bytes": 5784,
+      "public_sha256": "6e93fd185e4579670a2a834c4ffab26f690a5ba2949dae42a1ce69bcea37a91b",
+      "public_bytes": 5573,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-create.private.json",
+      "public_path": "native/mtp-uva3/create.json",
+      "private_sha256": "dfdff1c2b638105674adad3efd7bf08f0ee602e10df995186bef93d4ab6a96ef",
+      "private_bytes": 1325,
+      "public_sha256": "ba817455f2a5c921f93c8fcc05d3c369439dc3aaf6bfc7ec3a3ff695e7cd0486",
+      "public_bytes": 1179,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-load-preview.private.json",
+      "public_path": "native/mtp-uva3/load-preview.json",
+      "private_sha256": "3fe758d927ec774d8157263feb701c3c183627d14f239b999707fcd531b889f4",
+      "private_bytes": 4337,
+      "public_sha256": "1d86ba0e8efac6264a705ea2c1f3f69b26614e86714835dcbd5d411da0f972f2",
+      "public_bytes": 4182,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-load.private.log",
+      "public_path": "native/mtp-uva3/load.log",
+      "private_sha256": "124827230343c3912bf097b230349638e6353d632a040d90677dc197b9cbfd3e",
+      "private_bytes": 3508,
+      "public_sha256": "ff8c58de12dd1bc2c75ac6244c04462565489bc4e1b42f2e4a73abbd18eee33e",
+      "public_bytes": 3406,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-startup.private.json",
+      "public_path": "native/mtp-uva3/startup.json",
+      "private_sha256": "0baf3a2a68e862d1084bb0064ea82675ead2009faca7f470874f2d58970e7bec",
+      "private_bytes": 33452,
+      "public_sha256": "2f608ccf0a5b0c500e666cdc268f46c4f22052596ee5bd6dd61f1ab2e10ebcdd",
+      "public_bytes": 33439,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-startup.log",
+      "public_path": "native/mtp-uva3/startup.log",
+      "private_sha256": "9a01aab3edf4682b213ac6cd7b34366f203f8d468e4eddc30d46e8b011c3515e",
+      "private_bytes": 22197,
+      "public_sha256": "1413c30b901572177e3ee0e0738098cf482c5eddc9185e3ddffb66c46465a6c1",
+      "public_bytes": 22113,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-health.json",
+      "public_path": "native/mtp-uva3/health.json",
+      "private_sha256": "2c9ac1958dd2edeb93400084f4dc807e0a9dce8cc1ef4b7c71318c74e61c0758",
+      "private_bytes": 1026,
+      "public_sha256": "b47ed660c1b16d8148f1890ed431e7cd7594633542d55644243a4d592196e140",
+      "public_bytes": 996,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-host-memory-start.json",
+      "public_path": "native/mtp-uva3/host-memory-start.json",
+      "private_sha256": "7c76e62ae56913ca97186886e8f8c2dcc9085f06d989b6a1528c5ee5c0602190",
+      "private_bytes": 463,
+      "public_sha256": "86a4460ca7a3c7bfdf09444cee63a9395d808c8d3fd5de033e0aa1f89ce30425",
+      "public_bytes": 453,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-reclaim-preview.private.json",
+      "public_path": "native/mtp-uva3/reclaim-preview.json",
+      "private_sha256": "7a6b5c9718b930bd190e02794801d120da7b2506f4eadc683534f8cebdd7c70f",
+      "private_bytes": 846,
+      "public_sha256": "7be54b98678b889c8a2cd2e04561160e1e982011d635d8150790c5b74562f6a4",
+      "public_bytes": 825,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-reclaim.private.json",
+      "public_path": "native/mtp-uva3/reclaim.json",
+      "private_sha256": "d05888de65bd6272f22f61a6179697459371e13caf9cb2609ab343d0eba4dd57",
+      "private_bytes": 783,
+      "public_sha256": "e3dbe0691c7ebab5c16e4b20e196c214d537dd0f96b63f9edde22d15d76bc98d",
+      "public_bytes": 762,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-functional.json",
+      "public_path": "native/mtp-uva3/functional.json",
+      "private_sha256": "cf70132c512de90f377519612b1c57152b07bc8117da19d51bc18e65296b94cf",
+      "private_bytes": 22577,
+      "public_sha256": "cf70132c512de90f377519612b1c57152b07bc8117da19d51bc18e65296b94cf",
+      "public_bytes": 22577,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-functional.log",
+      "public_path": "native/mtp-uva3/functional.log",
+      "private_sha256": "3f698e1e771c1c765a7f6450b64aa5f6e70d5de6ee156abc22b0a5893e3699cd",
+      "private_bytes": 1300,
+      "public_sha256": "c0d75f6f3e1e90be721220289e368de577534e18620a9d0315aab2612bdc9d20",
+      "public_bytes": 1289,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-vision.json",
+      "public_path": "native/mtp-uva3/vision.json",
+      "private_sha256": "92f30d17caa0f5cadc66adf490397a25f6a238e2b88f8ca3abddb5f3eba3819d",
+      "private_bytes": 35642,
+      "public_sha256": "92145e05966893632fac4521811d43c1badd20ae97c0635629f6b926381023b2",
+      "public_bytes": 35615,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-vision.log",
+      "public_path": "native/mtp-uva3/vision.log",
+      "private_sha256": "7346c931302d5a2a988b564d7c710ef7e8e679e722cbf6eca9b88e096b0f0a8c",
+      "private_bytes": 154,
+      "public_sha256": "cf1b7a75ea451de89fc4478545594a09a85ccb75cf5e5d631140915409f8e0fd",
+      "public_bytes": 140,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-reasoning.json",
+      "public_path": "native/mtp-uva3/reasoning.json",
+      "private_sha256": "854f10007365b77e0a34a804c622589c953afdc37c1bbb8e9fd0b0162fe0c889",
+      "private_bytes": 8834,
+      "public_sha256": "854f10007365b77e0a34a804c622589c953afdc37c1bbb8e9fd0b0162fe0c889",
+      "public_bytes": 8834,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-reasoning.log",
+      "public_path": "native/mtp-uva3/reasoning.log",
+      "private_sha256": "334a138ae867e4335578ce3f18c93ed385b8d798004d0d07e3281567abb7dc2d",
+      "private_bytes": 893,
+      "public_sha256": "87c62e18495a21c670f75370261773814c3c55357ed786fde0ef45c6559fefb7",
+      "public_bytes": 885,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-thinking-control.json",
+      "public_path": "native/mtp-uva3/thinking-control.json",
+      "private_sha256": "06cb980c215569a70da8fc0ae8ec89fbe591a73e5fcd4f05cc8bebd5047b6978",
+      "private_bytes": 831,
+      "public_sha256": "06cb980c215569a70da8fc0ae8ec89fbe591a73e5fcd4f05cc8bebd5047b6978",
+      "public_bytes": 831,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-quality-scout.json",
+      "public_path": "native/mtp-uva3/quality-scout.json",
+      "private_sha256": "3e27d2367ba1d044099dc22788b3a997b38cd2989e50f3dcad60e89315572195",
+      "private_bytes": 46413,
+      "public_sha256": "08be41cde04a87253cbf673ba08c4fddc7affe71683e540f761b6a5c79ea51ce",
+      "public_bytes": 46373,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-quality-scout.log",
+      "public_path": "native/mtp-uva3/quality-scout.log",
+      "private_sha256": "8cf6d270d04ccc12e85e78c495ac4d51ffaa9738c7e810cf2f704d47925044a5",
+      "private_bytes": 151,
+      "public_sha256": "aa7822c6d57a2b44bfadef410942cdece07b5e50e52afd22ae6f4b9ae62f7334",
+      "public_bytes": 137,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-host-memory-after-reclaim.json",
+      "public_path": "native/mtp-uva3/host-memory-after-reclaim.json",
+      "private_sha256": "d761c8b1337ee23948473670b8e690c805adec775cae45f92e190d0fb7e5e3b5",
+      "private_bytes": 558,
+      "public_sha256": "0bdd57ae631ee1e62026ec8dc4782f67a576ba5d06790d215e375665b29e185c",
+      "public_bytes": 547,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-quality-gpu.csv",
+      "public_path": "native/mtp-uva3/quality-gpu.csv",
+      "private_sha256": "bebcd522ec4a8a74adf9eab7e3837aced368c88807c815749aa27f86c7e9af30",
+      "private_bytes": 232,
+      "public_sha256": "c89eacb022d3f055c7c59af77d11b180c56e3be485d0a99d313e3409dca98bc1",
+      "public_bytes": 230,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-quality.json",
+      "public_path": "native/mtp-uva3/quality.json",
+      "private_sha256": "778f1c1df72d72a119a4107198e2123ff4afb1beb06a7625c3dee8e4374bf4ac",
+      "private_bytes": 67360,
+      "public_sha256": "3d12107be6aa69d226aedd5bcff97b9da548676900d0f7f3aba09dc49ec17c71",
+      "public_bytes": 67320,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-quality.log",
+      "public_path": "native/mtp-uva3/quality.log",
+      "private_sha256": "96a742d24f390a9a1d2849a7e7016edfaa7c32359902332f4136b12527a3348b",
+      "private_bytes": 145,
+      "public_sha256": "46cdcfa856d17db30e298665b9a750e5957b2c521ed615a5e94ed20d7e1932bf",
+      "public_bytes": 131,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-capacity-scout.json",
+      "public_path": "native/mtp-uva3/capacity-scout.json",
+      "private_sha256": "45221d807b2fb1b000e3c4512a5b6873833d545fabd0ef2f959d2a2ac8cc9378",
+      "private_bytes": 16217,
+      "public_sha256": "45221d807b2fb1b000e3c4512a5b6873833d545fabd0ef2f959d2a2ac8cc9378",
+      "public_bytes": 16217,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-capacity-scout.log",
+      "public_path": "native/mtp-uva3/capacity-scout.log",
+      "private_sha256": "fabb62ec3767156124fc59bdb83731e8c5415f7df7f91712866dce4f52bba7cb",
+      "private_bytes": 1134,
+      "public_sha256": "f2cd6e02cbaae80f706ec23b34cd2fd4cc936cf39b24112b88a22fedfca06d34",
+      "public_bytes": 1107,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-capacity.json",
+      "public_path": "native/mtp-uva3/capacity.json",
+      "private_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+      "private_bytes": 133670,
+      "public_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+      "public_bytes": 133670,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-capacity.log",
+      "public_path": "native/mtp-uva3/capacity.log",
+      "private_sha256": "d627739b4f8a2aaa27d2caf952e33cddaa95a6d9444055486bf899f1d7d6e4f8",
+      "private_bytes": 1131,
+      "public_sha256": "b94a06b423cb7b5addc622e2f12126f68e502d1388ffa99e17d5674823366efa",
+      "public_bytes": 1118,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-host-memory-context-active.json",
+      "public_path": "native/mtp-uva3/host-memory-context-active.json",
+      "private_sha256": "91af900f5a1e9f03941ada1ee7b93ecd0b19d45576436345260840dab24bf3b0",
+      "private_bytes": 189,
+      "public_sha256": "91af900f5a1e9f03941ada1ee7b93ecd0b19d45576436345260840dab24bf3b0",
+      "public_bytes": 189,
+      "transformed": false
+    }
+  ],
+  "excluded": [
+    {
+      "private_source_name": "mtp-uva3-context-scout.json",
+      "reason": "owned by the benchmark agent while running; not retained here"
+    },
+    {
+      "private_source_name": "mtp-uva3-context-full.json",
+      "reason": "owned by the benchmark agent while running; not retained here"
+    },
+    {
+      "private_source_name": "mtp-uva3-agentic.json",
+      "reason": "owned by the benchmark agent while running; not retained here"
+    },
+    {
+      "private_source_name": "mtp-uva3-qualification-commands.private.json",
+      "reason": "planned and running commands rather than completed result evidence"
+    }
+  ],
+  "notes": [
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

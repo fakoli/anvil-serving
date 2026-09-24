@@ -1,0 +1,31 @@
+{
+  "schema": "context-summary/v1",
+  "passed": 60,
+  "completed": 60,
+  "finish_reasons": {
+    "stop": 60
+  },
+  "actual_prompt_ranges": {
+    "32768": [
+      32658,
+      32689
+    ],
+    "125952": [
+      125838,
+      125869
+    ]
+  },
+  "promoted": false,
+  "run_id": "thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1",
+  "evidence_path": "native/mtp-uva3-context-full",
+  "bucket_samples": {
+    "32768": 30,
+    "125952": 30
+  },
+  "output_allowance_tokens": 4096,
+  "max_actual_plus_allowance": 129965,
+  "configured_context": 131072,
+  "completion_token_count": "unavailable; not inferred",
+  "started_at": null,
+  "finished_at": null
+}

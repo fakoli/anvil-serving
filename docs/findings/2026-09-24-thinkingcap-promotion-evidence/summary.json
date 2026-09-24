@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.promotion-summary/v1",
+  "date": "2026-09-24",
+  "decision": "current",
+  "promotion_authorized": true,
+  "router_promoted": true,
+  "fleet_complete": true,
+  "alias": "llm.secondary",
+  "served_identity": "thinkingcap-awq-5090",
+  "context_limit_tokens": 131072,
+  "max_output_tokens": 10240,
+  "max_concurrency": 1,
+  "images_per_request": 2,
+  "video_per_request": 0,
+  "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "image_digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+  "recipe_semantic_sha256": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+  "router_config_private_source_sha256": "e23dce8dfb840f5d365f306781cccf849a25e23f82584fce485320f373f92259",
+  "pressure_case": {
+    "concurrency": 20,
+    "success": 6,
+    "admission_timeouts": 14,
+    "qualified": false
+  },
+  "limits": [
+    "C1 only",
+    "No new comparative performance measurement",
+    "Near-limit text and small-image qualification remain separate",
+    "Intermittent routed image/OCR relay failures remain unresolved despite passing retries",
+    "Open WebUI authenticated browser chat untested; configured provider discovery verified",
+    "Prior Companion OpenClaw/Hermes smoke preceded final reasoning metadata update; latest catalogs and scheduled reconciliation verified"
+  ],
+  "router_semantic_config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+  "supported_reasoning_efforts": [
+    "low",
+    "medium",
+    "xhigh"
+  ],
+  "routed_functional_gates_passed_initial_output_4096": 7,
+  "routed_reasoning_gates_passed_initial_output_4096": 2,
+  "final_output_10240_gates": {
+    "text_and_tools_passed": 5,
+    "multimodal_first_attempt_failed": 2,
+    "direct_multimodal_passed": 2,
+    "routed_multimodal_retry_passed": 2,
+    "intermittent_relay_cause": "unresolved"
+  },
+  "pi_user_incident": {
+    "status": 400,
+    "cause": "Unsupported reasoning_effort=high",
+    "resolution": "Per-model high-to-xhigh map verified in normal Dark Pi and native Windows Pi tool/result conversations"
+  },
+  "fleet_complete_scope": "Discovered managed client catalogs and companion scheduled reconciliation; observed real-client smokes recorded separately.",
+  "observability_verified": true,
+  "openwebui_provider_verified": true,
+  "openwebui_browser_chat_verified": false
+}

@@ -1,0 +1,13 @@
+# Promotion friction
+
+- Installed router configuration export was blocked by an unrelated secret-file symlink in whole-home inventory. A bounded `router export-config` tool validates exact mounted bytes against the deployed parser and narrowly permits the numeric reasoning budget. Focused tests: 155 passed, one skipped. Existing whole-home guard remains intact.
+- Initial routed preflight inherited a 20-request tool burst. Router logs identify 14 admission timeouts at 30 seconds; six requests succeeded. Explicit C1 rerun passes all seven gates. The C20 result is outside qualification and does not justify raising concurrency.
+- Windows Python controller TLS trust-chain validation failed; native trusted SSH fallback was used. No TLS or SSH verification was disabled.
+- Native managed install parser rejects dispatcher `--transport local`; native default dispatch succeeds.
+- The initial router output cap was 4,096, below three successful sealed quality responses. Corrected to the already-qualified 10,240 allowance with an independent audit; near-limit tests retain their original 4,096 reserve.
+- Two final-budget routed image/OCR calls failed with generic relay errors. Direct checks and routed retries passed without mutation. Root cause remains open; a product ticket requests secret-safe phase/status diagnostics. Successful retry is not a root-cause fix.
+- Real Pi `high` effort reached the correct upstream but was unsupported by the pinned template. The router now declares low/medium/xhigh; explicit client mappings and real-client acceptance are tracked separately. Preserve this original failure.
+- External Compose monitoring services lacked a managed adoption binding. A reviewed bounded adapter now validates project, service, image, immutable container identity, and exact read-only configuration mount before managed lifecycle. The pinned tool is isolated; no general controller/runtime upgrade is claimed.
+- Prometheus initially targeted a host bridge address whose router port refused connections. Corrected to the existing authenticated private HTTPS edge. Native metric queries subsequently returned scrape up=1 and the expected secondary limits. The managed restart health waiter reported failure despite later healthy plaintext readiness; retain this tooling discrepancy.
+- Grafana 13 stores dashboards in its resource table; its legacy dashboard table was empty. Read-only persisted-resource inspection verified the expected alias panels after provisioning. Administrator Basic API authentication was unavailable; no authentication settings were changed.
+- Open WebUI configured-provider discovery passed inside its container. Interactive browser chat is untested because sign-in was not completed.

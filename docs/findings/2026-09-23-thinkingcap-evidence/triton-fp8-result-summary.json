@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.triton-fp8-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "profile": "16K C1 graph-enabled V2 MTP3 with target TRITON_ATTN and fp8_per_token_head KV",
+  "evidence_root": "native/candidate/triton-fp8",
+  "recipe_semantic_digest": "1070ad321a7b346a0e9ce1227f3cb6c53c27142b66d17bd8150dde690a8952e8",
+  "startup": {
+    "model_memory_gib": 22.14,
+    "available_kv_cache_gib": 4.73,
+    "gpu_kv_cache_tokens": 64111,
+    "target_attention_backend": "TRITON_ATTN",
+    "target_kv_cache_dtype": "fp8_per_token_head",
+    "draft_kv_cache_dtype": "fp8_per_token_head via standard V2 MTP inheritance"
+  },
+  "functional_gates": {
+    "functional_observations_passed": 27,
+    "reasoning_observations_passed": 8,
+    "vision_attempts_passed": 18,
+    "vision_attempts": 18
+  },
+  "capacity": {
+    "workload": "nominal 4096 context, 32 exact code words, request canary, 45 completion tokens, C1, unique cache",
+    "attempted_requests": 100,
+    "strict_passes": 100,
+    "strict_failures": 0,
+    "aggregate_throughput_eligible": true,
+    "ttft_p50_ms": 494.9528999859467,
+    "decode_tok_s_p50": 137.99137867361082,
+    "throughput_tok_s": 55.17134253052424,
+    "interpretation": "descriptive capacity evidence only because the required quality gate failed"
+  },
+  "quality_diagnostic": {
+    "suite": "hf-mmlu-pro-10-repeated",
+    "passed_attempts": 27,
+    "attempts": 30,
+    "passed_checks": 9,
+    "checks": 10,
+    "finish_reason_counts": {
+      "stop": 27,
+      "length": 3
+    },
+    "failed_eval_id": "mmlu-pro-30-computer-science",
+    "failed_attempts": 3,
+    "failure_class": "reasoning_budget_exhausted",
+    "failure_detail": "all three attempts exhausted the 10240-token reasoning budget without visible answer",
+    "wall_seconds": 465.822,
+    "status": "failed"
+  },
+  "qualification": {
+    "status": "failed_quality_gate",
+    "promotion_authorized": false,
+    "reason": "The required 30/30 quality diagnostic did not pass. Retain the capacity and functional evidence as diagnostic only."
+  },
+  "independent_source_review": {
+    "path": "fp8-v2-review.json",
+    "sha256": "857b05104429a6ee7ad2246d4910f3bf64f156d96f47cd4b9929143dbbaf19ba"
+  },
+  "redaction_ledger": "native/candidate/triton-fp8/redactions.json"
+}

@@ -1,0 +1,119 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "model_capacity",
+      "id": "primary-local",
+      "aliases": [
+        "llm.auxiliary",
+        "llm.primary",
+        "llm.voice",
+        "vision.general",
+        "vision.ocr"
+      ],
+      "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "loaded": true,
+      "readiness": {
+        "state": "ready",
+        "reason": "identity_passed"
+      },
+      "engine": {
+        "name": "vllm-glm53-exl3-b12x-v84-fp8-control",
+        "quantization": "exl3-4bpw-fp8-ds-mla-kv"
+      },
+      "gpu": {
+        "role": null,
+        "name": null,
+        "memory_total_mib": 195774
+      },
+      "capacity": {
+        "context_limit_tokens": 327680,
+        "kv_cache_capacity_tokens": null,
+        "full_context_concurrency": null,
+        "configured_max_concurrency": 4,
+        "scheduler_max_num_seqs": 4,
+        "model_memory_gib": null
+      },
+      "multimodal": {
+        "admission_enabled": true,
+        "image_limit": 8,
+        "video_limit": 0,
+        "image_tokens_estimate": 8192,
+        "video_tokens_estimate": 0
+      },
+      "live": {
+        "status": "available",
+        "reason": null,
+        "requests_running": 1.0,
+        "requests_waiting": 0.0,
+        "kv_cache_usage_fraction": 0.022140221402214055,
+        "kv_cache_used_tokens_estimate": null,
+        "kv_cache_remaining_tokens_estimate": null,
+        "preemptions_total": 0.0,
+        "multimodal_cache_queries_total": 48.0,
+        "multimodal_cache_hits_total": 46.0,
+        "generation_tokens_total": 372990.0,
+        "generation_throughput_tokens_per_second": null,
+        "prefix_cache_queries_total": 58777875.0,
+        "prefix_cache_hits_total": 56446208.0,
+        "prefix_cache_hit_rate": null
+      },
+      "scenario": null
+    },
+    {
+      "object": "model_capacity",
+      "id": "secondary-node",
+      "aliases": [
+        "llm.secondary"
+      ],
+      "model": "thinkingcap-awq-5090",
+      "loaded": true,
+      "readiness": {
+        "state": "ready",
+        "reason": "identity_passed"
+      },
+      "engine": {
+        "name": "vllm",
+        "quantization": "nvfp4-awq-w4a4-bf16-vision-mtp3-bf16-kv-uva3"
+      },
+      "gpu": {
+        "role": "secondary-compute",
+        "name": "NVIDIA GeForce RTX 5090",
+        "memory_total_mib": 32607
+      },
+      "capacity": {
+        "context_limit_tokens": 131072,
+        "kv_cache_capacity_tokens": 138519,
+        "full_context_concurrency": 1.057,
+        "configured_max_concurrency": 1,
+        "scheduler_max_num_seqs": 1,
+        "model_memory_gib": null
+      },
+      "multimodal": {
+        "admission_enabled": true,
+        "image_limit": 2,
+        "video_limit": 0,
+        "image_tokens_estimate": 3072,
+        "video_tokens_estimate": 0
+      },
+      "live": {
+        "status": "available",
+        "reason": null,
+        "requests_running": 0.0,
+        "requests_waiting": 0.0,
+        "kv_cache_usage_fraction": 0.0,
+        "kv_cache_used_tokens_estimate": 0,
+        "kv_cache_remaining_tokens_estimate": 138519,
+        "preemptions_total": 0.0,
+        "multimodal_cache_queries_total": 30.0,
+        "multimodal_cache_hits_total": 23.0,
+        "generation_tokens_total": 58586.0,
+        "generation_throughput_tokens_per_second": null,
+        "prefix_cache_queries_total": 0.0,
+        "prefix_cache_hits_total": 0.0,
+        "prefix_cache_hit_rate": null
+      },
+      "scenario": null
+    }
+  ]
+}

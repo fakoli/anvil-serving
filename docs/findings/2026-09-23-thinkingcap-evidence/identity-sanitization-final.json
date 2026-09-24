@@ -1,0 +1,89 @@
+{
+  "schema": "anvil-serving.identity-sanitization/v1",
+  "observed_at": "2026-09-24T03:09:16.386751+00:00",
+  "transformations": [
+    "real runtime labels replaced with primary runtime labels",
+    "synthetic Windows home prefixes replaced with PRIVATE_OPERATOR_HOME",
+    "private container gateway replaced with PRIVATE_CONTAINER_GATEWAY"
+  ],
+  "files": [
+    {
+      "path": "native/candidate/eager/candidate-load-16k-wsl.log",
+      "before_public_sha256": "339b902b4df7fc36ec3c2963920c075f04112174b0e7ca191c95e7b804f6d845",
+      "after_public_sha256": "6b17297f6102e76abecb4e184ed8911b654a79bfe67efcb7b838ffa04d1bc7c3",
+      "bytes": 3088,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/graphs/graph-startup.log",
+      "before_public_sha256": "db3b19ed8021ce283bd1981c03a9cdd732c065dc0da7bf7b6742eaf606b14fbc",
+      "after_public_sha256": "cc97cd3ef7e88f04e791edcca6b455205cb37863e142b67c43b8421606b55268",
+      "bytes": 26843,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/graphs/graph-unload.json",
+      "before_public_sha256": "1f172e683971130d336f9fd78983ccf0210935eff7a0826b3242ea8b75c7b03c",
+      "after_public_sha256": "3ba798b50ec0005d27095b8f5877809842de0c1245ce21fb0bb80a71061d32f9",
+      "bytes": 890,
+      "numeric_json_values_unchanged": true
+    },
+    {
+      "path": "native/candidate/mtp3/mtp3-load.log",
+      "before_public_sha256": "cd8d1456518f0ef1bb683453049066c0e19567c628f72f52361d22f88ba3e0e8",
+      "after_public_sha256": "9e8a4091ce0b148e06c781a045eef2e97b560d3011e1eff6578388128c476979",
+      "bytes": 3318,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/mtp3/mtp3-multimodal.json",
+      "before_public_sha256": "0a04afc3a2ac6affa9760df729272d3a03556bf1ee202153b987b6d5bb3af131",
+      "after_public_sha256": "26960c925bfa2848c56226f182abc652c2bff95f79d024d5811768dcc8fe4432",
+      "bytes": 34946,
+      "numeric_json_values_unchanged": true
+    },
+    {
+      "path": "native/candidate/triton-bf16/triton-bf16-load.log",
+      "before_public_sha256": "c4a4fda87e895aabf4e032ef40625d9f705e2a3ff2353e42ceec903e53db523f",
+      "after_public_sha256": "109a30166e6d4fb90640b5056cb657430454d310d861488423d507255cd23e50",
+      "bytes": 3361,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/triton-bf16/triton-bf16-multimodal.json",
+      "before_public_sha256": "3367a35b08bbeec0fc823c2e90d853c5e92310b0cd905d59f3ef8c13ae24f768",
+      "after_public_sha256": "e73b4ec60b377764aa2920f135d79925527a3d6f76ee1aa7493956f55272955b",
+      "bytes": 34838,
+      "numeric_json_values_unchanged": true
+    },
+    {
+      "path": "native/candidate/triton-fp8/triton-fp8-load.log",
+      "before_public_sha256": "cb37df27ed44db0b519c8d7c4d8df01b698892a2847cdc31da20d76fceb1c917",
+      "after_public_sha256": "17809a40797ab3dc903b8a1a116055d640e7288a59e15a810377695e7d341ec2",
+      "bytes": 3370,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/triton-fp8/triton-fp8-multimodal.json",
+      "before_public_sha256": "aee468ef126fa2da218a205a3f4b23a7021eb81d7a9da66dd5b75a2699e84fdf",
+      "after_public_sha256": "a0992268891875cd2073a25744019f33af32d91b781144867953a19fe9606144",
+      "bytes": 34705,
+      "numeric_json_values_unchanged": true
+    },
+    {
+      "path": "native/startup/startup-16k-wsl.log",
+      "before_public_sha256": "09c5a23046450872f879ca95b1ed99bb5b3cde3b075a7879e9fd0c2567cba431",
+      "after_public_sha256": "8364803cd2cbe0052b3b7ee52d1846faf0f24f020a6cc95edb515c7adfa81477",
+      "bytes": 25858,
+      "numeric_json_values_unchanged": "literal identity replacements only"
+    },
+    {
+      "path": "native/candidate/graphs/graph-multimodal.json",
+      "before_public_sha256": "d7db4bce1d47a52fa0a3f81f26c6dea2a6a6c5f7fb8437e956a90059129579e1",
+      "after_public_sha256": "e5c8743c6fbb163685f2d1ddb35140287afc0321042fe907b2f4d91ea75b3966",
+      "bytes": 36428,
+      "numeric_json_values_unchanged": true
+    }
+  ],
+  "boundary": "No prompt, answer, numeric metric, schema, or finish state changed. Per-file source ledgers preserve original private hashes; final artifact ledger binds current public bytes."
+}

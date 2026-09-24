@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.client-smoke-result/v1",
+  "argv_shape": [
+    "pi",
+    "--provider",
+    "anvil",
+    "--model",
+    "llm.secondary",
+    "--thinking",
+    "high",
+    "--tools",
+    "bash",
+    "--no-session",
+    "--mode",
+    "json",
+    "--no-extensions",
+    "--no-skills",
+    "--no-context-files"
+  ],
+  "exit_code": 0,
+  "timed_out": false,
+  "stdout_bytes": 17324,
+  "stderr_bytes": 0,
+  "result_path": "/home/operator/.anvil-serving/evidence/thinkingcap-secondary-dark-pi-high-r2.json",
+  "stderr_path": "/home/operator/.anvil-serving/evidence/thinkingcap-secondary-dark-pi-high-r2.stderr.txt"
+}

@@ -1,0 +1,75 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "transformations": [
+    "Replace operator home, machine role and GPU UUID with synthetic labels; container model-cache prefix normalized; preserve original private hashes and all measured values.",
+    "Raw telemetry retains its incomplete terminal row; derived statistics exclude it."
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "mtp-uva3-final-status.private.json",
+      "public_path": "native/final/status.json",
+      "private_sha256": "37d58ef3cea762c0f24d11c18243a7e7a11a48bc4079df7dafbc4a87a1d37fa2",
+      "private_bytes": 1841,
+      "public_sha256": "5269ae07980185ae5ed161bac008623bf0a2ddc7f1d5c4bccedddf0cdf1767cd",
+      "public_bytes": 1778,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-final-http.private.json",
+      "public_path": "native/final/http.json",
+      "private_sha256": "32f49ec4e09797433f44156f09e8ba9874e5ea07d5031b0806d13ddd97ba7e7f",
+      "private_bytes": 1026,
+      "public_sha256": "31c8d7bc4137ae86fefb276b1c47fbd10123a4897fc2916d65a2e26a2f882ac6",
+      "public_bytes": 1030,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-final-engine.private.log",
+      "public_path": "native/final/engine.log",
+      "private_sha256": "38496042f2d785c0a7215164127ed93734859d9ca1377de30eb14757bd4c2e47",
+      "private_bytes": 208049,
+      "public_sha256": "bf4ac437f3d67bb265397d53f4decc7b86a66a7e0cc701d8a9906ea1a2107227",
+      "public_bytes": 208346,
+      "transformed": true
+    },
+    {
+      "private_source_name": "mtp-uva3-host-memory-final.json",
+      "public_path": "native/final/host-memory.json",
+      "private_sha256": "213cacac93a43a75a833ff11c0b6ba94bf6aa8e0a53cbae20b51d99109d2c638",
+      "private_bytes": 554,
+      "public_sha256": "213cacac93a43a75a833ff11c0b6ba94bf6aa8e0a53cbae20b51d99109d2c638",
+      "public_bytes": 554,
+      "transformed": false
+    },
+    {
+      "private_source_name": "gpu-context.csv",
+      "public_path": "native/final/gpu-context.csv",
+      "private_sha256": "ba6cec8f09bbe19d736c3120010feb7ebc3347c01019e9ff26b58c17eb1358a8",
+      "private_bytes": 210959,
+      "public_sha256": "ba6cec8f09bbe19d736c3120010feb7ebc3347c01019e9ff26b58c17eb1358a8",
+      "public_bytes": 210959,
+      "transformed": false
+    },
+    {
+      "private_source_name": "gpu-final.csv",
+      "public_path": "native/final/gpu-final.csv",
+      "private_sha256": "ffd4c89172879e4bb6036ccae83b1ea7b099e0228a924262a52531c7b54afb8b",
+      "private_bytes": 229,
+      "public_sha256": "ffd4c89172879e4bb6036ccae83b1ea7b099e0228a924262a52531c7b54afb8b",
+      "public_bytes": 229,
+      "transformed": false
+    },
+    {
+      "private_source_name": "mtp-uva3-context-running-status.private.json",
+      "public_path": "native/final/context-running-status.json",
+      "private_sha256": "37d58ef3cea762c0f24d11c18243a7e7a11a48bc4079df7dafbc4a87a1d37fa2",
+      "private_bytes": 1841,
+      "public_sha256": "5269ae07980185ae5ed161bac008623bf0a2ddc7f1d5c4bccedddf0cdf1767cd",
+      "public_bytes": 1778,
+      "transformed": true
+    }
+  ],
+  "notes": [
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

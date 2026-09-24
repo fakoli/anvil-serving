@@ -1,0 +1,312 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "thinkingcap-awq-rtx5090-initial-memory-scout",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 16384,
+    "max": 16384
+  },
+  "physical_available_bytes": {
+    "min": 34190917632,
+    "max": 34190917632
+  },
+  "policy_available_bytes": {
+    "min": 29895950336,
+    "max": 29895950336
+  },
+  "candidates": [
+    {
+      "id": "awq-vllm029-5090-16k-c1-eager-nospec",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 16384,
+        "max": 16384
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 34190917632,
+        "max": 34190917632
+      },
+      "policy_available_bytes": {
+        "min": 29895950336,
+        "max": 29895950336
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[0].resident_components.target_and_vision",
+        "candidates[0].resident_components.runtime_and_multimodal_workspace",
+        "candidates[0].per_sequence_components.hybrid_recurrent_state"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.concurrency",
+        "requirements.vram_reserves.driver_desktop.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].resident_components.cuda_graph",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "tracked_variables.checkpoint_bytes",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 23447947228,
+      "max": 23447947228,
+      "source": "Complete exact-revision managed cache verification on previous host",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "tracked_variables.wsl_memory_limit",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 21474836480,
+      "max": 21474836480,
+      "source": "Local .wslconfig",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "tracked_variables.system_ram_peak",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measure model loading and representative inference"
+    },
+    {
+      "path": "tracked_variables.post_unload_gpu_allocation",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measure desktop/driver allocations after authorized incumbent unload"
+    },
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "Initial text/media scout budget",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "Initial reasoning and visible answer budget",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "Single-request initial scout",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "Local nvidia-smi RTX 5090 inventory",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.driver_desktop.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 4294967296,
+      "max": 4294967296,
+      "source": "Existing RTX 5090 topology reserve; refine after incumbent unload",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 16384,
+      "max": 16384,
+      "source": "Proposed initial calibration cap",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.target_and_vision",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Disk checkpoint is not GPU allocation; measure full vision-preserving model load"
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_and_multimodal_workspace",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measure startup and image peak; no guessed zero"
+    },
+    {
+      "path": "candidates[0].resident_components.cuda_graph",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 0,
+      "max": 0,
+      "source": "Initial enforce-eager recipe explicitly disables graph capture",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_sequence_components.hybrid_recurrent_state",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Measure vLLM hybrid cache allocator on exact GPU/runtime"
+    },
+    {
+      "path": "candidates[0].per_token_components.full_attention_bf16_kv",
+      "status": "confirmed",
+      "unit": "bytes/token",
+      "min": 65536,
+      "max": 65536,
+      "source": "16 full-attention layers * K/V * 4 heads * 256 dim * 2 bytes",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "One independent request",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "All deterministic acceptance gates must pass",
+      "observed_at": "2026-09-23",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_warm_e2e_gain",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.05,
+      "max": 0.05,
+      "source": "Minimum repeated optimization benefit",
+      "observed_at": "2026-09-23",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "tracked_variables.system_ram_peak",
+    "tracked_variables.post_unload_gpu_allocation",
+    "candidates[0].resident_components.target_and_vision",
+    "candidates[0].resident_components.runtime_and_multimodal_workspace",
+    "candidates[0].per_sequence_components.hybrid_recurrent_state"
+  ],
+  "promotion_authority": false
+}

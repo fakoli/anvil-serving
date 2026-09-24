@@ -1,0 +1,1435 @@
+{
+  "context": {
+    "cap_tokens": 119808,
+    "max_model_len": 131072,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 8192,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 2048
+  },
+  "failures": [
+    {
+      "error": "answer",
+      "eval_id": "mmlu-pro-30-computer-science",
+      "failure_classes": [
+        "deterministic_check_failed"
+      ],
+      "pass_rate": 0.0,
+      "suite": "hf-mmlu-pro-10-repeated"
+    }
+  ],
+  "identity": {
+    "base_url": "http://127.0.0.1:39283/v1",
+    "candidate_id": "thinkingcap-awq-5090",
+    "config_id": "128k-triton-bf16-visionoffload1-nospec",
+    "engine": "vllm",
+    "gpu": "rtx5090",
+    "model": "thinkingcap-awq-5090",
+    "started_at": "2026-09-24T04:37:55Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260924T043755Z",
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "hf-mmlu-pro-10-repeated": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "content_chars": 120,
+              "content_excerpt": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1695.3750999819022,
+              "reasoning_chars": 318,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish with FINAL=<letter>. Question: body cavity containing pituitary gland. Pituitary gland in sella turcica of sphenoid bone",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 70,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 104,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 70
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": null,
+                "total_tokens": 241
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "content_chars": 120,
+              "content_excerpt": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1571.8438000185415,
+              "reasoning_chars": 318,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish with FINAL=<letter>. Question: body cavity containing pituitary gland. Pituitary gland in sella turcica of sphenoid bone",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 70,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 104,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 70
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": null,
+                "total_tokens": 241
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "content_chars": 120,
+              "content_excerpt": "\n\nThe pituitary gland is located in the cranial cavity, specifically in the sella turcica of the sphenoid bone.\n\nFINAL=J",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1562.6737000129651,
+              "reasoning_chars": 318,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish with FINAL=<letter>. Question: body cavity containing pituitary gland. Pituitary gland in sella turcica of sphenoid bone",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 70,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 104,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 70
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": null,
+                "total_tokens": 241
+              }
+            }
+          ],
+          "id": "mmlu-pro-5-health",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2 = 100\u00b2 = 10,000\n\nFINAL=E",
+              "content_chars": 225,
+              "content_excerpt": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2412.758100021165,
+              "reasoning_chars": 257,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Pupil diameter 5 mm = 0.5 cm. Telescope aperture 50 cm. Light gathering proportional to area \u221d diameter^2. Ratio = (50/0.5)^2 = 100^2 = 10000. Optio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 83,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 163,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 83
+                },
+                "prompt_tokens": 197,
+                "prompt_tokens_details": null,
+                "total_tokens": 360
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2 = 100\u00b2 = 10,000\n\nFINAL=E",
+              "content_chars": 225,
+              "content_excerpt": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2405.91279999353,
+              "reasoning_chars": 257,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Pupil diameter 5 mm = 0.5 cm. Telescope aperture 50 cm. Light gathering proportional to area \u221d diameter^2. Ratio = (50/0.5)^2 = 100^2 = 10000. Optio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 83,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 163,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 83
+                },
+                "prompt_tokens": 197,
+                "prompt_tokens_details": null,
+                "total_tokens": 360
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2 = 100\u00b2 = 10,000\n\nFINAL=E",
+              "content_chars": 225,
+              "content_excerpt": "\n\nThe light-gathering power is proportional to the area of the aperture, so it scales with the square of the diameter.\n\nPupil diameter: 5 mm = 0.5 cm  \nTelescope aperture: 50 cm  \n\nRatio = (50 / 0.5)\u00b2",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2409.794700011844,
+              "reasoning_chars": 257,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Pupil diameter 5 mm = 0.5 cm. Telescope aperture 50 cm. Light gathering proportional to area \u221d diameter^2. Ratio = (50/0.5)^2 = 100^2 = 10000. Optio",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 83,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 163,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 83
+                },
+                "prompt_tokens": 197,
+                "prompt_tokens_details": null,
+                "total_tokens": 360
+              }
+            }
+          ],
+          "id": "mmlu-pro-10-physics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social media, has amplified such campaigns and can help companies achieve **increased sales**.\n\nFINAL=F",
+              "content_chars": 297,
+              "content_excerpt": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3822.6355999941006,
+              "reasoning_chars": 899,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Sentence: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the u",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 202,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 261,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 202
+                },
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "total_tokens": 531
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social media, has amplified such campaigns and can help companies achieve **increased sales**.\n\nFINAL=F",
+              "content_chars": 297,
+              "content_excerpt": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3812.798800005112,
+              "reasoning_chars": 899,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Sentence: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the u",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 202,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 261,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 202
+                },
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "total_tokens": 531
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social media, has amplified such campaigns and can help companies achieve **increased sales**.\n\nFINAL=F",
+              "content_chars": 297,
+              "content_excerpt": "\n\nThe correct contrast is between **boycotts** (which punish companies for unfavorable behavior) and **buycotts** (which reward companies for favorable behavior). Digital technology, especially social",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3812.47980002081,
+              "reasoning_chars": 899,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Sentence: \"In contrast to _______, _______ aim to reward favourable behaviour by companies. The success of such campaigns has been heightened through the u",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 202,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 261,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 202
+                },
+                "prompt_tokens": 270,
+                "prompt_tokens_details": null,
+                "total_tokens": 531
+              }
+            }
+          ],
+          "id": "mmlu-pro-15-business",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "content_chars": 136,
+              "content_excerpt": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2254.3920000025537,
+              "reasoning_chars": 463,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Options A-D real, E-J N/A. Need choose accurate statement concerning arthropods.\nA exoskeleton peptidogl",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 113,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 152,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 113
+                },
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 330
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "content_chars": 136,
+              "content_excerpt": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2251.745099987602,
+              "reasoning_chars": 463,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Options A-D real, E-J N/A. Need choose accurate statement concerning arthropods.\nA exoskeleton peptidogl",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 113,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 152,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 113
+                },
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 330
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "content_chars": 136,
+              "content_excerpt": "\n\nArthropods have an open circulatory system with a dorsal heart, while their exoskeleton is made of chitin, not peptidoglycan.\n\nFINAL=B",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2248.1596000143327,
+              "reasoning_chars": 463,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Options A-D real, E-J N/A. Need choose accurate statement concerning arthropods.\nA exoskeleton peptidogl",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 113,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 152,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 113
+                },
+                "prompt_tokens": 178,
+                "prompt_tokens_details": null,
+                "total_tokens": 330
+              }
+            }
+          ],
+          "id": "mmlu-pro-20-biology",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), giving a quartet, \\(4\\) lines.\n\nWith no overlap, total lines = \\(2 \\times 4 = 8\\).\n\nFINAL=B",
+              "content_chars": 290,
+              "content_excerpt": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), g",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4732.7407999837305,
+              "reasoning_chars": 760,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: Predict number of lines in EPR spectrum of solution of 13C-labelled methyl radical (13CH3 radical), assuming lines do not overlap.\n\nWe need deter",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 215,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 325,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 215
+                },
+                "prompt_tokens": 157,
+                "prompt_tokens_details": null,
+                "total_tokens": 482
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), giving a quartet, \\(4\\) lines.\n\nWith no overlap, total lines = \\(2 \\times 4 = 8\\).\n\nFINAL=B",
+              "content_chars": 290,
+              "content_excerpt": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), g",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4723.2474999909755,
+              "reasoning_chars": 760,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: Predict number of lines in EPR spectrum of solution of 13C-labelled methyl radical (13CH3 radical), assuming lines do not overlap.\n\nWe need deter",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 215,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 325,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 215
+                },
+                "prompt_tokens": 157,
+                "prompt_tokens_details": null,
+                "total_tokens": 482
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), giving a quartet, \\(4\\) lines.\n\nWith no overlap, total lines = \\(2 \\times 4 = 8\\).\n\nFINAL=B",
+              "content_chars": 290,
+              "content_excerpt": "\n\nThe methyl radical has one unpaired electron coupled to:\n\n- \\(^{13}\\text{C}\\): \\(I = \\tfrac{1}{2}\\), giving \\(2I+1 = 2\\) lines.\n- Three equivalent \\(^1\\text{H}\\) nuclei: each \\(I = \\tfrac{1}{2}\\), g",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4729.870799987111,
+              "reasoning_chars": 760,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: Predict number of lines in EPR spectrum of solution of 13C-labelled methyl radical (13CH3 radical), assuming lines do not overlap.\n\nWe need deter",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 215,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 325,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 215
+                },
+                "prompt_tokens": 157,
+                "prompt_tokens_details": null,
+                "total_tokens": 482
+              }
+            }
+          ],
+          "id": "mmlu-pro-25-chemistry",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\((A+B)C\\)  \n4. `R6 = R5 + R4`  \u2192 final result  \n\nCycles:\n\n- Op 1: 1 cycle (its result is not used by the immediately next op)\n- Op 2: 1 cycle (its result is not used by the immediately next op)\n- Op 3: 2 cycles (its result is used by the immediately next op)\n- Op 4: 1 cycle\n\nTotal = \\(1+1+2+1 = 5\\) cycles.\n\nFINAL=D",
+              "content_chars": 516,
+              "content_excerpt": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 126694.86070002313,
+              "reasoning_chars": 28637,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Problem: pipelined RISC machine registers R0-R7, supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. Operation normally takes one cycle; however, an operation ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 8438,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 8650,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 8438
+                },
+                "prompt_tokens": 220,
+                "prompt_tokens_details": null,
+                "total_tokens": 8870
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\((A+B)C\\)  \n4. `R6 = R5 + R4`  \u2192 final result  \n\nCycles:\n\n- Op 1: 1 cycle (its result is not used by the immediately next op)\n- Op 2: 1 cycle (its result is not used by the immediately next op)\n- Op 3: 2 cycles (its result is used by the immediately next op)\n- Op 4: 1 cycle\n\nTotal = \\(1+1+2+1 = 5\\) cycles.\n\nFINAL=D",
+              "content_chars": 516,
+              "content_excerpt": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 126702.97079999,
+              "reasoning_chars": 28637,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Problem: pipelined RISC machine registers R0-R7, supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. Operation normally takes one cycle; however, an operation ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 8438,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 8650,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 8438
+                },
+                "prompt_tokens": 220,
+                "prompt_tokens_details": null,
+                "total_tokens": 8870
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\((A+B)C\\)  \n4. `R6 = R5 + R4`  \u2192 final result  \n\nCycles:\n\n- Op 1: 1 cycle (its result is not used by the immediately next op)\n- Op 2: 1 cycle (its result is not used by the immediately next op)\n- Op 3: 2 cycles (its result is used by the immediately next op)\n- Op 4: 1 cycle\n\nTotal = \\(1+1+2+1 = 5\\) cycles.\n\nFINAL=D",
+              "content_chars": 516,
+              "content_excerpt": "\n\nThe expression can be factored as:\n\n\\[\nAB + ABC + BC = AB + C(A+B)\n\\]\n\nUse temporary registers (R0\u2013R2 unchanged):\n\n1. `R3 = R0 + R1`  \u2192 \\(A+B\\)  \n2. `R4 = R0 * R1`  \u2192 \\(AB\\)  \n3. `R5 = R3 * R2`  \u2192 \\",
+              "error": "answer",
+              "failure_class": "deterministic_check_failed",
+              "finish_reason": "stop",
+              "latency_ms": 126735.34620000282,
+              "reasoning_chars": 28637,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Problem: pipelined RISC machine registers R0-R7, supports ADD Rs1, Rs2, Rd and MUL Rs1, Rs2, Rd. Operation normally takes one cycle; however, an operation ",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 8438,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 8650,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 8438
+                },
+                "prompt_tokens": 220,
+                "prompt_tokens_details": null,
+                "total_tokens": 8870
+              }
+            }
+          ],
+          "error": "answer",
+          "id": "mmlu-pro-30-computer-science",
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "content_chars": 123,
+              "content_excerpt": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 991.2117999920156,
+              "reasoning_chars": 164,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Stationary AR process shocks: impulse response decays to zero, eventually die away. Answer F. Need final with FINAL=F.\n",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 36,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 64,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 36
+                },
+                "prompt_tokens": 150,
+                "prompt_tokens_details": null,
+                "total_tokens": 214
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "content_chars": 123,
+              "content_excerpt": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 990.4950000054669,
+              "reasoning_chars": 164,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Stationary AR process shocks: impulse response decays to zero, eventually die away. Answer F. Need final with FINAL=F.\n",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 36,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 64,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 36
+                },
+                "prompt_tokens": 150,
+                "prompt_tokens_details": null,
+                "total_tokens": 214
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "content_chars": 123,
+              "content_excerpt": "\n\nIn a stationary autoregressive process, the effect of a shock decays over time and does not persist permanently.\n\nFINAL=F",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 994.0710999944713,
+              "reasoning_chars": 164,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Stationary AR process shocks: impulse response decays to zero, eventually die away. Answer F. Need final with FINAL=F.\n",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 36,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 64,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 36
+                },
+                "prompt_tokens": 150,
+                "prompt_tokens_details": null,
+                "total_tokens": 214
+              }
+            }
+          ],
+          "id": "mmlu-pro-35-economics",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0.1\\text{ m}\\):\n\n\\[\nF=\\frac{(4\\pi\\times10^{-4})(6\\pi\\times10^{-4})}{4\\pi(4\\pi\\times10^{-7})(0.1)^2}\n=15\\text{ N}\n\\]\n\nFINAL=C",
+              "content_chars": 323,
+              "content_excerpt": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 21196.829299995443,
+              "reasoning_chars": 2805,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Problem: point pole strength m1 = 4\u03c0 \u00d7 10^-4 Wb? second pole m2 = 4\u03c0 \u00d7 1.5 \u00d7 10^-4 Wb, distance 10 cm = 0.1 m. Force between magnetic poles in air/v",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 1287,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1469,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1287
+                },
+                "prompt_tokens": 191,
+                "prompt_tokens_details": null,
+                "total_tokens": 1660
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0.1\\text{ m}\\):\n\n\\[\nF=\\frac{(4\\pi\\times10^{-4})(6\\pi\\times10^{-4})}{4\\pi(4\\pi\\times10^{-7})(0.1)^2}\n=15\\text{ N}\n\\]\n\nFINAL=C",
+              "content_chars": 323,
+              "content_excerpt": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 21193.44150001416,
+              "reasoning_chars": 2805,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Problem: point pole strength m1 = 4\u03c0 \u00d7 10^-4 Wb? second pole m2 = 4\u03c0 \u00d7 1.5 \u00d7 10^-4 Wb, distance 10 cm = 0.1 m. Force between magnetic poles in air/v",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 1287,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1469,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1287
+                },
+                "prompt_tokens": 191,
+                "prompt_tokens_details": null,
+                "total_tokens": 1660
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0.1\\text{ m}\\):\n\n\\[\nF=\\frac{(4\\pi\\times10^{-4})(6\\pi\\times10^{-4})}{4\\pi(4\\pi\\times10^{-7})(0.1)^2}\n=15\\text{ N}\n\\]\n\nFINAL=C",
+              "content_chars": 323,
+              "content_excerpt": "\n\nUsing the pole-force relation:\n\n\\[\nF=\\frac{m_1m_2}{4\\pi\\mu_0 r^2}\n\\]\n\nwith  \n\\(m_1=4\\pi\\times10^{-4}\\),  \n\\(m_2=4\\pi\\times1.5\\times10^{-4}=6\\pi\\times10^{-4}\\),  \n\\(\\mu_0=4\\pi\\times10^{-7}\\),  \n\\(r=0",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 21196.36969998828,
+              "reasoning_chars": 2805,
+              "reasoning_excerpt": "We need answer user's multiple choice. Need reason. Problem: point pole strength m1 = 4\u03c0 \u00d7 10^-4 Wb? second pole m2 = 4\u03c0 \u00d7 1.5 \u00d7 10^-4 Wb, distance 10 cm = 0.1 m. Force between magnetic poles in air/v",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 1287,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1469,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1287
+                },
+                "prompt_tokens": 191,
+                "prompt_tokens_details": null,
+                "total_tokens": 1660
+              }
+            }
+          ],
+          "id": "mmlu-pro-40-engineering",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo the sentence becomes: (L and H) or I.\n\nFINAL=B",
+              "content_chars": 245,
+              "content_excerpt": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo t",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5863.202200009255,
+              "reasoning_chars": 1245,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Need choose best formula. Sentence: \"Turtles live long lives and are happy creatures, unless they are in",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 325,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 404,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 325
+                },
+                "prompt_tokens": 162,
+                "prompt_tokens_details": null,
+                "total_tokens": 566
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo the sentence becomes: (L and H) or I.\n\nFINAL=B",
+              "content_chars": 245,
+              "content_excerpt": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo t",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5862.275999999838,
+              "reasoning_chars": 1245,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Need choose best formula. Sentence: \"Turtles live long lives and are happy creatures, unless they are in",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 325,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 404,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 325
+                },
+                "prompt_tokens": 162,
+                "prompt_tokens_details": null,
+                "total_tokens": 566
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo the sentence becomes: (L and H) or I.\n\nFINAL=B",
+              "content_chars": 245,
+              "content_excerpt": "\n\nThe phrase \u201cP unless Q\u201d is best symbolized as \u201cP or Q\u201d (equivalently, if not Q then P). Here, P is \u201cturtles live long lives and are happy creatures\u201d = L and H, and Q is \u201cthey are injured\u201d = I.\n\nSo t",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5863.194200006546,
+              "reasoning_chars": 1245,
+              "reasoning_excerpt": "We need answer user's question. Need reason through ten-option question, finish FINAL=<letter>. Need choose best formula. Sentence: \"Turtles live long lives and are happy creatures, unless they are in",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 325,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 404,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 325
+                },
+                "prompt_tokens": 162,
+                "prompt_tokens_details": null,
+                "total_tokens": 566
+              }
+            }
+          ],
+          "id": "mmlu-pro-45-philosophy",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "content_chars": 148,
+              "content_excerpt": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1533.936200023163,
+              "reasoning_chars": 252,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: What is the judge ad hoc? Options. ICJ Statute Article 31: if party has no national on bench, may choose person to sit as judge ad hoc for that c",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 64,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 102,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 64
+                },
+                "prompt_tokens": 203,
+                "prompt_tokens_details": null,
+                "total_tokens": 305
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "content_chars": 148,
+              "content_excerpt": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1534.0694999904372,
+              "reasoning_chars": 252,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: What is the judge ad hoc? Options. ICJ Statute Article 31: if party has no national on bench, may choose person to sit as judge ad hoc for that c",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 64,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 102,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 64
+                },
+                "prompt_tokens": 203,
+                "prompt_tokens_details": null,
+                "total_tokens": 305
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 10240,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 2048
+              },
+              "content": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "content_chars": 148,
+              "content_excerpt": "\n\nA judge ad hoc is appointed for a specific case when a party to the dispute does not have a national sitting as a judge on the ICJ bench.\n\nFINAL=I",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 1533.8363999908324,
+              "reasoning_chars": 252,
+              "reasoning_excerpt": "We need answer multiple choice. Need reason. Question: What is the judge ad hoc? Options. ICJ Statute Article 31: if party has no national on bench, may choose person to sit as judge ad hoc for that c",
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": 64,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "answer",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 102,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 64
+                },
+                "prompt_tokens": 203,
+                "prompt_tokens_details": null,
+                "total_tokens": 305
+              }
+            }
+          ],
+          "id": "mmlu-pro-65-law",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-07-12",
+      "evidence_use": "diagnostic",
+      "source": "PRIVATE_OPERATOR_HOME\\code\\anvil-serving\\tests\\fixtures\\eval-data\\hf-mmlu-pro-10-repeated.suite.json",
+      "source_sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "independent-multidomain-reasoning-sanity"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_evidence": "PRIVATE_OPERATOR_HOME/code/anvil-serving-ops-private/evidence/2026-09-24-thinkingcap-context-5090/128k-thinking-control.json",
+    "control_evidence_sha256": "a97fa5d4cf16369ee2441696008408063dedace363e15793aff5449e7e6b0192",
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "verified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 513335.634499992
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-23-thinkingcap",
+  "updated_at": "2026-09-24T03:50:10.093850+00:00",
+  "status": "completed",
+  "current_stage": "completed",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true,
+    "role": "isolated authoring checkout; not operational launcher"
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "completed",
+      "evidence": [
+        "model-identities.json",
+        "access-observations.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "completed",
+      "evidence": [
+        "calibration-5090.json"
+      ],
+      "failures": [
+        "Default WSL UVA startup failure preserved; explicit pin-memory recipe passed"
+      ]
+    },
+    {
+      "id": "scout",
+      "status": "completed",
+      "evidence": [
+        "native/candidate/eager/candidate-capacity-scout-16k.json",
+        "native/candidate/eager/eager-short32-scout.json"
+      ],
+      "failures": [
+        "Strict256word workload failed; short32 protocol change declared before comparisons"
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "completed",
+      "evidence": [
+        "native/candidate/eager/eager-short32-n100.json",
+        "native/candidate/graphs/graph-short32-n100-r1.json",
+        "triton-bf16-32k-result-summary.json"
+      ],
+      "failures": [
+        "Flash MTP strict population 99/100 is aggregate-ineligible"
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "completed",
+      "evidence": [
+        "triton-bf16-32k-result-summary.json",
+        "context-result-summary.json",
+        "agentic-result-summary.json"
+      ],
+      "failures": [
+        "FP8 cache quality 27/30 rejected; retained BF16 32K quality 30/30"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "completed",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": [],
+      "disposition": "authorized direct candidate retention verified"
+    },
+    {
+      "id": "publication",
+      "status": "completed",
+      "evidence": [
+        "publication-summary.md",
+        "validation-final.json",
+        "final-independent-review.json"
+      ],
+      "failures": [
+        "Full repository Python gate failed at unrelated Windows Pi smoke; tracked deferral"
+      ],
+      "disposition": "Model qualification accepted; documentation gates passed; full repository Pi failure remains explicitly deferred"
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "incumbent text preflight passed",
+    "incumbent image corpus18/18 passed",
+    "incumbent capacity256wordscout failed4/4 exactoutput",
+    "incumbent MMLU-Pro10 repeated diagnostic24/30;6lengthfailures",
+    "eager and graphs: vision18/18 each",
+    "eager and graphs: strict short32 capacity100/100 each",
+    "graphs: clean functional27/27 and reasoning8/8",
+    "MTP BF16:15functional,8reasoning,18vision passed; MMLU27/30 with one wrong item; strictN10099/100 failed",
+    "Target-Triton BF16:27functional,8reasoning,18vision passed; strictN100100/100 passed",
+    "Triton BF16 32K: functional27/27,reasoning8/8,vision18/18,strict100/100,quality30/30",
+    "32K context:60/60, actual near-limit input29578-29629 tokens",
+    "Bounded synthetic agentic:2/2 cases,6 turns,4 tool calls",
+    "Final managed status and native HTTP health passed; selected candidate retained"
+  ],
+  "next_actions": [],
+  "promotion_authorized": false,
+  "selected_model": {
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "precision": "NVFP4 W4A4 AWQ",
+    "selection": "explicit user instruction",
+    "vision_required": true,
+    "complete_local_weights_required": true
+  },
+  "required_capabilities": [
+    "local complete model weights",
+    "image understanding",
+    "OCR",
+    "screenshots and charts",
+    "multi-image"
+  ],
+  "vision_disable_allowed": false,
+  "execution_launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.2.1",
+    "module_source": "original campaign checkout/anvil_serving/cli.py",
+    "verified": true,
+    "source_commit": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "working_tree": "dirty; unrelated changes preserved"
+  },
+  "evaluation_target": {
+    "hardware": "NVIDIA GeForce RTX 5090",
+    "vram_mib": 32607,
+    "runtime": "Local Windows Docker Desktop Linux runtime",
+    "selection": "Explicit user correction; RTX PRO 6000 preparation was the wrong target"
+  },
+  "historical_wrong_target_resource_conflict": {
+    "observed_at": "2026-09-24T00:29:40.948828+00:00",
+    "owner": "Independent GLM DCP1 optimization campaign",
+    "evidence": "Managed recipe inventory changed from B4096 candidate to B8192 candidate during preparation",
+    "candidate_started": false,
+    "resolution": "Wrong-target preparation superseded by explicit local RTX 5090 evaluation; no ThinkingCap serve started on that host"
+  },
+  "resource_conflict": {
+    "scope": "RTX 5090 only",
+    "incumbent": "Exact Qwen Huihui NInfer NVFP4 MTP3 160K recipe captured and stopped through managed lifecycle",
+    "candidate_started": true,
+    "action": "Selected Triton MTP3 BF16 32K candidate retained; no active benchmark clients"
+  },
+  "lifecycle_authorization": {
+    "stop_incumbent": true,
+    "load_candidate": true,
+    "run_benchmarks_and_optimize": true,
+    "user_instruction": "Run autonomously on this particular RTX 5090 system; current Qwen may be brought down"
+  }
+}

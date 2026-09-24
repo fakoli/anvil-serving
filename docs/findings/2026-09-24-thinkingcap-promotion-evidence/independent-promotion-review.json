@@ -1,0 +1,146 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent adversarial review of installed-config export and llm.secondary promotion",
+    "reviewed_at": "2026-09-24T08:19:10.0900219Z",
+    "implementing_model": "GPT-6 Astra, high reasoning",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ@f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "independence": "The reviewer is independent from the implementing model and the evaluated model. The retained qualification used deterministic harness checks and fixed expected answers rather than model self-grading."
+  },
+  "gate_state": {
+    "human_promotion_authorization": "passed: the user explicitly approved all-fleet secondary promotion",
+    "baseline_export": "passed: exact installed source SHA-256 2041bbe013d12a2a2e52d403ff5bf097095123d7699ea34a7093b7e9f1926322",
+    "candidate_config": "passed: SHA-256 f4d97adc8414edd353adcecd27c8a64c6b7d1990c7ebd35df14ab53f79cc444b",
+    "secondary_only_diff": "passed",
+    "managed_install": "passed: exact corrected candidate applied and both tiers returned ready/identity_passed",
+    "post_install_contract": "passed: llm.secondary advertises 131072 total context, 4096 output, C1, two images, no video, and measured KV capacity 138519",
+    "routed_c1_preflight": "passed: smoke, JSON, one tool request, streaming tools, tool-result continuation, image, and OCR",
+    "qualified_identity": "passed",
+    "fleet_client_convergence": "outside this packet; inventory and separate managed convergence work remain authoritative"
+  },
+  "targets": [
+    {
+      "id": "llm.secondary",
+      "tier": "secondary-node",
+      "served_model": "thinkingcap-awq-5090",
+      "context_limit_tokens": 131072,
+      "max_output_tokens": 4096,
+      "max_concurrency": 1,
+      "image_limit": 2,
+      "video_limit": 0,
+      "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+      "engine_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+      "image_digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+      "recipe_semantic_digest": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+      "configuration": "vLLM 0.29.0, NVFP4/AWQ W4A4, target and MTP3 TRITON_ATTN, BF16 KV, model-default FP32 recurrent state, generic UVA 3 GiB offload, C1"
+    }
+  ],
+  "tools_used": [
+    "read-only source and test inspection",
+    "git diff/status inspection",
+    "TOML semantic comparison",
+    "SHA-256 verification",
+    "retained managed install, router endpoint, and routed-preflight output review"
+  ],
+  "artifacts": {
+    "reviewed": [
+      "router-installed-export-before.json",
+      "router-before.toml",
+      "router-thinkingcap.toml",
+      "router-promotion.diff",
+      "install-capacity-dry-run.json",
+      "install-capacity-confirm.json",
+      "router-models-after.json",
+      "router-capabilities-after.json",
+      "router-capacity-after.json",
+      "router-fingerprints-after.json",
+      "routed-preflight.json",
+      "routed-preflight-c1.json",
+      "convergence-inventory.json",
+      "../2026-09-24-thinkingcap-context-5090 qualification evidence",
+      "public sealed 2026-09-24-thinkingcap-context-evidence bundle"
+    ],
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "low",
+        "classification": "confirmed limitation",
+        "finding": "The accidental 20-request routed tool batch exceeded the qualified C1 contract: 6 completed and 14 returned admission_timeout 503 after 30 seconds.",
+        "concrete_input_or_state": "Twenty concurrent tool requests were sent through llm.secondary while the promoted tier declares max_concurrency=1 and scheduler_max_num_seqs=1.",
+        "wrong_result_if_ignored": "The promotion could be misrepresented as C20-capable, or expected admission timeouts could be mislabeled as a model or OOM failure.",
+        "disposition": "Retain the failure evidence as an out-of-contract pressure probe. Authoritative router logs and the healthy engine response showed no OOM; the explicit C1 routed preflight passed. Do not raise the advertised concurrency."
+      },
+      {
+        "id": "F2",
+        "severity": "low",
+        "classification": "confirmed scope boundary",
+        "finding": "The 131072 claim is total prompt-plus-output context with separate near-limit text and small-image vision evidence; it is not a combined near-limit two-image qualification.",
+        "concrete_input_or_state": "The largest retained text prompt plus its 4096-token allowance totaled 129965. Vision qualification included the declared two-image behavior separately.",
+        "wrong_result_if_ignored": "Operators could infer exact-limit, one-over-limit, or combined maximum-context multimodal coverage that was not run.",
+        "disposition": "The staged contract and promotion wording remain within the qualified C1/two-image scope; preserve the existing composite-vision limitation."
+      }
+    ],
+    "verified_changes": {
+      "unchanged": [
+        "server configuration",
+        "primary-local tier",
+        "model_routes and the existing llm.secondary alias",
+        "audio routes"
+      ],
+      "changed_only": "secondary-node identity, context/output policy, engine and quantization metadata, measured KV capacity, image count, thinking capability, and exact fingerprint fields",
+      "measured_kv_cache_capacity_tokens": 138519,
+      "conservative_image_tokens_estimate": 3072
+    },
+    "export_tool_review": {
+      "result": "accepted",
+      "basis": "The command requires an expected SHA-256, a running Compose-owned router container, a single read-only fixed-path bind, bounded nofollow source reads, exact deployed-runtime validation through pinned-container stdin, narrow numeric handling only for router.tiers[*].extra_body.thinking_token_budget, secret/dependency checks, installed-file digest comparison, and final container/mount/source rechecks.",
+      "verification_reviewed": "38 focused tests passed as reported, including malformed server/router input, exact stdin identity, source and mount drift, ownership, symlink, injection, fixed refusal, and reasoning-budget boundaries. Broader reported validation passed apart from the known unrelated Windows Pi RPC smoke failure."
+    }
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail-closed behavior when state or tools are unreadable",
+      "concrete_input_or_state": "Docker inspect/exec fails, the source is unreadable or linked, the expected digest is stale, or deployed-runtime validation rejects the bytes.",
+      "wrong_result": "Unverified or secret-bearing configuration is returned as the baseline.",
+      "classification": "refuted",
+      "result": "The export returns a fixed typed refusal without Docker/parser detail or config bytes."
+    },
+    {
+      "axis": "malformed and boundary input, including CRLF and command/path metacharacters",
+      "concrete_input_or_state": "Malformed TOML/server shape, invalid container or digest argument, secret-like strings, dependency paths, CRLF content, or non-integer/off-path thinking_token_budget.",
+      "wrong_result": "Parser drift, argument injection, secret leakage, or an overbroad exception permits unsafe export.",
+      "classification": "refuted",
+      "result": "Arguments are regex-bounded, exact UTF-8 bytes are hash-matched through stdin, only the exact direct numeric inference-budget field is projected, and all other fields retain existing guards."
+    },
+    {
+      "axis": "resource exhaustion or missing bounds/timeouts",
+      "concrete_input_or_state": "Oversized source/runtime output, a hung Docker call, or concurrent demand above C1.",
+      "wrong_result": "The export blocks or allocates without bounds, or the promoted route is overclaimed for concurrency.",
+      "classification": "partly refuted and partly confirmed",
+      "result": "Export input is capped at 1 MiB, captured stdout at 128 KiB, and subprocess calls at 30 seconds. The C20 pressure probe confirmed admission timeouts above the declared C1 envelope; the explicit C1 preflight passed."
+    },
+    {
+      "axis": "state drift across CLI, process, config reload, and route seams",
+      "concrete_input_or_state": "The mounted baseline changes during export, a foreign container replaces the router, the install applies a different candidate hash, or post-reload endpoints retain stale capacity/identity.",
+      "wrong_result": "Evidence and traffic are attributed to different configurations or models.",
+      "classification": "refuted for the reviewed router promotion",
+      "result": "The baseline was bound to 2041bbe0..., the corrected candidate to f4d97adc..., the managed apply reports the same candidate hash and both tiers ready, and recaptured models/capabilities/capacity/fingerprint endpoints expose thinkingcap-awq-5090 with 131072/4096/C1/two images, measured KV capacity 138519, and the qualified pins."
+    }
+  ],
+  "advisory_priors": [
+    "The qualified model bundle passed functional 27/27, reasoning controls 9/9, vision 18/18, repeated quality 30/30, strict capacity 100/100, context 60/60, and agentic 2/2 under the exact retained identity.",
+    "The context claim remains configured-total rather than literal exact-limit or one-over admission proof.",
+    "The all-fleet client and observability convergence workflow is separate from this router promotion review and must not be inferred from router readiness alone.",
+    "The inherited full-repository Windows Pi RPC smoke failure remains unrelated to this bounded model and router evidence; do not claim a clean package-release gate."
+  ],
+  "recommendation": {
+    "router_promotion": "accept",
+    "scope": "retain ThinkingCap as the existing llm.secondary alias under the declared 131072-total-token, 4096-output, C1, up-to-two-image contract",
+    "route_or_identity_blockers": "none",
+    "remaining_actions": "Preserve the C20 admission-timeout evidence and complete separately scoped managed fleet-client/observability convergence without broadening the model contract."
+  },
+  "human_gate_required": false,
+  "human_gate_note": "The required promotion gate was explicitly satisfied by the user before the managed preview and confirmed apply; no additional permission is required for this reviewed promotion.",
+  "promoted": true
+}

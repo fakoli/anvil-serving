@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.publication-redaction/v1",
+  "date": "2026-09-24",
+  "prior_manifest_sha256": "9fb3e9983675b9f0b10c0dd450cb522a13d0f0e32197995d074770f956b1a957",
+  "scope": "Merge-time privacy correction. Replace only operator container IDs with stable synthetic labels. Measurements, model pins, outcomes and original campaign decisions are unchanged. Original sealed bundle retained privately. Earlier embedded provenance hashes refer to their original snapshots; this ledger records the additional publication transform.",
+  "files": [
+    {
+      "path": "native/final/status.json",
+      "original_sha256": "0d04c27e263c0fc63f3ca03f36d95a2eb12a6dfa0e9baffaa0341e2c480c1d81",
+      "published_sha256": "2236b0472e185f5e7f5ab01e3c185e693b8bb665e248f1db47f417bca4676768",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/candidate/triton-bf16-32k/triton-bf16-32k-load.log",
+      "original_sha256": "6363ddc8479b1a29583640864f50ddc39ee375cfafbf26628dc93c3d9a0f5289",
+      "published_sha256": "6a08ab9eea79d9176282141c7d1059619312f7dc3ad1912cb41042430b5824a5",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    }
+  ]
+}

@@ -59,7 +59,7 @@ The prior GLM-5.3-Flash TR3/EXL3 4 bpw 262K/524K qualification remains
 historical. That runtime's adaptive MTP remains rejected for tool corruption.
 The separately qualified SGLang 245,760/C1 profile remains a conservative
 verified fallback; the 499,712-token envelopes remain rejected or unverified.
-Gemma 4 and ThinkingCap remain historical controls. The PRO measurements used two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
+Gemma 4 and the earlier Qwen3.6 ThinkingCap remain historical controls. The PRO measurements used two equal RTX PRO 6000 cards. Nemotron 3.5 ASR and Qwen3-ASR were historically measured on the
 now-removed RTX 5090 while the PRO 6000 was protected. Older sections below
 preserve what was concluded at their dates.
 
@@ -67,7 +67,7 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The 160K context measurements use one RTX 5090 with no co-resident media-generation workload. They do not establish concurrent model/media capacity. The separate model vision gate passed 18/18.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-19**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-24**.
 
 ## GLM mixed 3.5-bpw startup failure (2026-09-17)
 
@@ -80,6 +80,20 @@ and loader diagnosis; this run establishes no quality or speed comparison.
 ## GLM Flash EXL3 r7 no-spec selected text lane (2026-09-14)
 
 The retained [intelligence and context finding](findings/2026-09-13-intelligence-context-scout.md) selected the 4-bpw EXL3 no-spec lane for text. It passed 90/100 one-pass MMLU-Pro, 30/30 native agentic, 4/5 frozen official SWE, 120/120 strict C4 requests, and nine production context cases. The 9/9 cases used 255,647–255,672 actual prompt tokens plus a 65,536-token output reserve. One matched C4 population measured 38.908 tok/s median decode. This is a bounded local decision, not an exhaustive cross-model intelligence result or a full-window concurrency/soak result; fresh boot-start and reboot tests remain unrun.
+
+## ThinkingCap 128K secondary promotion (2026-09-24)
+
+A subsequent human-authorized [promotion](findings/2026-09-24-thinkingcap-secondary-promotion.md) selected the exact qualified AWQ 128K/C1 profile for the secondary contract, with 10240 output tokens and two-image admission. Initial routed gates passed 7/7 and reasoning 2/2; final-budget multimodal retries passed after two retained relay failures. The dated qualification records below preserve their original no-promotion state; deployment and fleet acceptance are separate evidence.
+
+## ThinkingCap Qwen3.8 27B AWQ RTX 5090 128K candidate evidence (2026-09-24)
+
+At the close of direct qualification, the user-selected vision-capable ThinkingCap AWQ candidate was a `challenger` with `no-promotion`; the subsequent deployment decision is recorded above. Its configured 131072-total-token C1 MTP3/BF16-KV/default-FP32-SSM generic-UVA3 profile completed 27 functional checks, 9 enabled-thinking checks, 18/18 separate 640×360 vision attempts, and the limited repeated 30/30 diagnostic. Strict short-output capacity passed 100/100 with inputs 3609–3687 and 45 output tokens: 51.885477 tok/s median decode, 3003.0448 ms median TTFT, 3852.9263 ms median E2E, and 11.678388 output tok/s aggregate.
+
+The text-only context scout passed 2/2 at 32658 and 125838 actual inputs with a 4096-token cap. The full 60-case text context matrix passed with all `stop` results at 32658–32689 and 125838–125869 actual inputs, retaining its 4096-token reserve. Synthetic agentic passed 2/2 across six API turns and four tool calls. This is a bounded direct 128K qualification, not a mixed text-plus-image qualification: exact-limit and one-over admission, C2, SWE, video, and soak remain untested. The earlier 32K Triton + MTP3 BF16-KV lane remains a qualified faster fallback at 158.3552 tok/s and 455.4 ms TTFT. The 128K result compares whole recipes and does not establish a causal MTP or offload speedup. No route, alias, promotion, C2, SWE, soak, video, or endurance claim follows. See the [finding](findings/2026-09-24-thinkingcap-context-5090.md) and [model dossier](benchmarks/models/thinkingcap-qwen38-27b.md).
+
+### Earlier 32K qualification retained as a faster alternative
+
+The earlier 32K/C1 Triton + MTP3 BF16-KV lane remains a separately qualified configuration: 27 functional, 8 thinking, 18/18 images, 30/30 on the limited repeated diagnostic, 60/60 context at actual 8,198-8,229 and 29,578-29,629 input tokens, and 2/2 synthetic agentic cases. Its strict n=100 short-output population measured 455.4421 ms median TTFT, 158.355179 tok/s median decode, and 61.14585 tok/s aggregate throughput. This does not establish unrestricted quality or maximum-context behavior. The [earlier finding and sealed evidence](findings/2026-09-23-thinkingcap-5090.md) preserve that run and its rejected configurations.
 
 ## GLM-5.3-Flash ormandj v0.4.2 runtime qualification (2026-09-09)
 

@@ -1,0 +1,73 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "model_fingerprint",
+      "id": "primary-local",
+      "aliases": [
+        "llm.auxiliary",
+        "llm.primary",
+        "llm.voice",
+        "vision.general",
+        "vision.ocr"
+      ],
+      "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "fingerprint": {
+        "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "engine_version": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+        "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+        "config_fingerprint": "glm53-r11-dcp1-vision8-apc-nospec-v84-fp8kv-tp2-c4-thinking49152"
+      },
+      "served_identity": {
+        "expected": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+        "observed": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+      },
+      "served_configuration": {
+        "metadata_source": "configured",
+        "context_limit_tokens": 327680,
+        "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+        "quantization": "exl3-4bpw-fp8-ds-mla-kv",
+        "engine_version": null,
+        "max_concurrency": 4,
+        "modalities": []
+      },
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      }
+    },
+    {
+      "object": "model_fingerprint",
+      "id": "secondary-node",
+      "aliases": [
+        "llm.secondary"
+      ],
+      "model": "thinkingcap-awq-5090",
+      "fingerprint": {
+        "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+        "engine_version": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+        "image_digest": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+        "config_fingerprint": "thinkingcap-vllm029-awq-128k-c1-mtp3-triton-bf16kv-uva3-mm2-c81bf6a3"
+      },
+      "served_identity": {
+        "expected": "thinkingcap-awq-5090",
+        "observed": "thinkingcap-awq-5090"
+      },
+      "served_configuration": {
+        "metadata_source": "configured",
+        "context_limit_tokens": 131072,
+        "engine": "vllm",
+        "quantization": "nvfp4-awq-w4a4-bf16-vision-mtp3-bf16-kv-uva3",
+        "engine_version": null,
+        "max_concurrency": 1,
+        "modalities": []
+      },
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      }
+    }
+  ]
+}

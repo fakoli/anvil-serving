@@ -1,0 +1,193 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent adversarial pre-publication review",
+    "scope": "Review completed MTP3/UVA3 identity, quality, strict-capacity, graph, redaction, and provisional publication evidence while the full context gate remains in progress; no endpoint, GPU, lifecycle, route, or promotion action",
+    "reviewed_at": "2026-09-24",
+    "implementing_model": "GPT-6 Astra, high reasoning",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ@f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "independence": "The reviewer is independent from the implementing model and evaluated model and did not generate or grade the candidate outputs."
+  },
+  "gate_state": "not_required",
+  "targets": {
+    "profile": "128K MTP3, target and draft TRITON_ATTN, BF16 KV, model-default FP32 recurrent state, generic UVA 3 GiB, C1",
+    "configured_context_tokens": 131072,
+    "served_model": "thinkingcap-awq-5090",
+    "promotion_scope": "No route or client promotion; promoted remains false"
+  },
+  "tools_used": [
+    {
+      "name": "read-only repository and artifact inspection",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "docs/findings/2026-09-24-thinkingcap-context-evidence",
+      "error": null
+    },
+    {
+      "name": "SHA-256 and byte-count verification",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "27 current MTP-UVA3 redaction records and graph source artifacts",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "findings-summary",
+      "reviewed": [
+        "identity-mtp-uva3.json",
+        "calibration-mtp-uva3.json",
+        "source-registry.json",
+        "quality-summary.json",
+        "capacity-summary.json",
+        "native/mtp-uva3/quality.json",
+        "native/mtp-uva3/capacity.json",
+        "native/mtp-uva3/redactions.json",
+        "graph-manifest.json",
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg",
+        "graph-validation.json",
+        "../2026-09-24-thinkingcap-context-5090.md",
+        ".tickets/2026-09-24-mixed-context-vision-gate.md"
+      ],
+      "findings": [
+        {
+          "id": "PF1",
+          "severity": "high",
+          "classification": "confirmed claim boundary",
+          "finding": "A final recommendation may describe a configured 131072-token total context and a bounded near-limit qualification, but it must not say that a 131072-token input, an exact-total request, or a one-token-over rejection was tested.",
+          "concrete_input_or_state": "The endpoint and recipe advertise max_model_len=131072 and startup reports 138519 group-aware cache tokens. The retained scout reached 125838 observed prompt tokens with a 4096-token completion cap, for a bounded total request envelope of 129934 tokens. Exact-total and one-over-limit requests were not run.",
+          "wrong_result_if_ignored": "Readers could interpret configured capacity as an observed 131072-token prompt or an independently verified admission boundary.",
+          "references": [
+            "identity-mtp-uva3.json:22",
+            "native/mtp-uva3/startup.log:70",
+            "workload-manifest.json:64",
+            "workload-manifest.json:68",
+            "../2026-09-24-thinkingcap-context-5090.md:15",
+            "../2026-09-24-thinkingcap-context-5090.md:39"
+          ],
+          "disposition": "Use wording such as: configured for 131072 total prompt plus output tokens; near-limit text retrieval tested at 125838 observed input tokens with a 4096-token output cap. This supports a bounded 128K-configured C1 profile if the full context gate passes."
+        },
+        {
+          "id": "PF2",
+          "severity": "high",
+          "classification": "confirmed practical-resource condition",
+          "finding": "The retained 128K profile depends on 3.02 GiB of UVA parameter offload into page-locked WSL memory and is substantially slower than the sealed 32K profile; final suitability requires explicit host-memory and speed tradeoff wording plus post-context workload telemetry.",
+          "concrete_input_or_state": "Startup warns that CPU offload with CUDA graphs on WSL2 uses pinned memory subject to a system-wide WDDM cap. The completed matched short-output population measured 51.8855 tok/s decode, 3003.0448 ms p50 TTFT, and 3852.9263 ms p50 E2E versus 158.3552 tok/s, 455.4421 ms, and 733.4116 ms for the whole 32K recipe. The available host snapshot was taken during the quality scout after a managed reclaim, before the full 60-case context workload.",
+          "wrong_result_if_ignored": "A memory-fitting profile could be recommended as generally practical without disclosing its pinned-system-memory dependency, approximately threefold lower short-output decode rate, or the absence of a post-long-context host-reserve observation.",
+          "references": [
+            "native/mtp-uva3/startup.log:19",
+            "native/mtp-uva3/startup.log:37",
+            "native/mtp-uva3/host-memory-after-reclaim.json",
+            "capacity-summary.json:56",
+            "capacity-summary.json:70",
+            "capacity-summary.json:75",
+            "capacity-summary.json:82",
+            "../2026-09-24-thinkingcap-context-5090.md:29",
+            "../2026-09-24-thinkingcap-context-5090.md:53"
+          ],
+          "disposition": "Retain the profile only if the full context workload preserves the declared GPU floor and bounded host physical, virtual, WSL available, and swap state. Present 32K as the faster alternative and the 128K recipe as a context-for-speed-and-system-RAM tradeoff."
+        },
+        {
+          "id": "PF3",
+          "severity": "medium",
+          "classification": "confirmed coverage limit",
+          "finding": "Vision and long-context evidence are separate. The 18/18 vision gate includes a two-image case, but its fixed images are small and no managed surface currently combines calibrated near-limit text with one or two hashed images.",
+          "concrete_input_or_state": "The vision corpus uses fixed 640 by 360 assets and ordinary short prompts. The context suite sends calibrated text-only messages. The public mixed-context-vision ticket records the missing composite surface.",
+          "wrong_result_if_ignored": "The phrase up to two images could be read as proof that two maximum-size images fit and remain correct at the 128K boundary.",
+          "references": [
+            "native/mtp-uva3/vision.json:845",
+            ".tickets/2026-09-24-mixed-context-vision-gate.md:7",
+            ".tickets/2026-09-24-mixed-context-vision-gate.md:15",
+            "../2026-09-24-thinkingcap-context-5090.md:39"
+          ],
+          "disposition": "State that small-image vision, including a two-image comparison, and long-text context passed separate gates. Do not claim combined near-limit vision or maximum-size two-image qualification."
+        },
+        {
+          "id": "PF4",
+          "severity": "medium",
+          "classification": "confirmed stale derivative",
+          "finding": "Two derivative status strings lag the completed capacity gate.",
+          "concrete_input_or_state": "calibration-mtp-uva3.json still says full capacity is running, and identity-mtp-uva3.json lists only startup, functional, vision, reasoning, and the ten-item scout, while capacity-summary.json and native capacity evidence show 100/100 complete.",
+          "wrong_result_if_ignored": "Cross-view publication would disagree about whether strict capacity completed.",
+          "references": [
+            "calibration-mtp-uva3.json:20",
+            "identity-mtp-uva3.json:52",
+            "capacity-summary.json:12",
+            "workload-manifest.json:52"
+          ],
+          "disposition": "Refresh these status strings after the remaining gates finish; do not append a second conflicting status block."
+        },
+        {
+          "id": "PF5",
+          "severity": "low",
+          "classification": "refuted causal-risk probe",
+          "finding": "The graph and capacity summary correctly compare complete recipes and do not attribute the observed speed difference to MTP, context, or offload in isolation.",
+          "concrete_input_or_state": "The graph subtitle and metric semantics state that configured context, memory fraction, and weight placement differ and prohibit an isolated speedup claim. All eight graph artifact hashes match the two raw capacity files, and deterministic graph validation hashes match the current SVG and JSON.",
+          "wrong_result_if_ignored": "No wrong result is present in the reviewed graph; preserve the current whole-recipe language in every derivative.",
+          "references": [
+            "graph-manifest.json:4",
+            "graph-manifest.json:10",
+            "capacity-summary.json:85",
+            "graph-validation.json"
+          ],
+          "disposition": "Accepted as written."
+        }
+      ],
+      "positive_checks": [
+        "Repeated quality summary agrees with native evidence: 30/30 attempts passed and every finish reason was stop.",
+        "Strict capacity summary agrees with native evidence: 100/100 requests passed, zero excluded, and the complete population is performance eligible.",
+        "Graph values and source hashes match the sealed 32K and current 128K capacity artifacts; graph generation was byte-deterministic twice.",
+        "All 27 current MTP-UVA3 redaction records match public SHA-256 and byte counts.",
+        "Focused privacy scan found no operator home, personal token, real GPU UUID, non-127 loopback URL, RFC1918 address, or tailnet identity in reviewed public artifacts.",
+        "Identity evidence paths exist and the root/public recipe copies remain digest-bound through identity-mtp-uva3.json.",
+        "The evaluated model did not grade itself; quality uses independent deterministic expected-answer checks."
+      ],
+      "breakage_probes": [
+        {
+          "axis": "fail-closed behavior when evidence or tools are unreadable",
+          "concrete_input_or_state": "A final context artifact, agentic artifact, redaction map, or manifest entry is missing, unreadable, stale, or hash-mismatched.",
+          "wrong_result": "The configured profile is published as qualified from startup and short-output evidence alone.",
+          "classification": "plausible until final closure",
+          "result": "Final recommendation remains needs_more_data until the planned context and agentic artifacts are readable, identity-bound, redacted, and included in the final manifest."
+        },
+        {
+          "axis": "malformed and boundary input including CRLF and command/path metacharacters",
+          "concrete_input_or_state": "A nominal 131072 prompt is treated as equivalent to a 131072 total request, or an exact-limit/one-over probe is inferred from a calibrated bucket that intentionally reserves output tokens.",
+          "wrong_result": "The publication claims an admission boundary that the managed suite did not exercise.",
+          "classification": "confirmed wording risk; prior exact-total requirement revised",
+          "result": "The managed context profile enforces token_buckets <= advertised_context - output_headroom, and the direct benchmark builder further reserves max_tokens plus margin. Exact-total and one-over admission are not part of this bounded qualification surface. They are optional separate boundary diagnostics, not blockers when the publication states configured and observed limits precisely. Preserve native bytes and final redaction hashes to cover CRLF/path transformations."
+        },
+        {
+          "axis": "resource exhaustion and missing bounds or timeouts",
+          "concrete_input_or_state": "The 60-case near-limit workload drives GPU free memory below 1024 MiB, depletes Windows/WSL host reserve or swap, encounters a CUDA error/restart, or exceeds the job's bounded request timeout.",
+          "wrong_result": "A startup-fit profile is retained despite failing representative long-context operation or workstation stability.",
+          "classification": "confirmed risk",
+          "result": "Apply the declared stop conditions and retain post-workload GPU and host-memory evidence. C1 only; do not infer C2."
+        },
+        {
+          "axis": "state drift across CLI, process, worktree, recipe, and publication seams",
+          "concrete_input_or_state": "Results from the rejected no-MTP branch, sealed 32K baseline, or current MTP-UVA3 branch are attributed to another recipe or process.",
+          "wrong_result": "Quality, speed, or context evidence is inherited across materially different profiles.",
+          "classification": "refuted for completed artifacts",
+          "result": "Current identity digest, runtime flags, model revision, served context, run ids, and graph source hashes agree. Recheck the same bindings for the final context and agentic exports."
+        }
+      ]
+    }
+  ],
+  "advisory_priors": [
+    "The sealed 32K MTP3/BF16 profile is the faster rollback and remains separately qualified.",
+    "The rejected no-MTP 128K branch's 27/30 quality result does not transfer to the current MTP-UVA3 branch, and the current 30/30 result does not isolate which configuration change altered the answer.",
+    "The completed 100-request graph is a matched workload comparison between whole recipes, not a causal estimate of offload or context overhead.",
+    "The exact-total and one-over checks in the earlier plan review were adversarial admission probes. Source inspection shows the managed context qualification surface intentionally preserves output headroom, so those probes are not mandatory for a precisely bounded configured-context recommendation."
+  ],
+  "recommendation": "needs_more_data",
+  "recommendation_detail": "Completed identity, quality, strict-capacity, graph, redaction, and privacy evidence is internally consistent. Hold the final 128K-configured C1 recommendation for the already-running full context matrix, agentic result, representative post-workload GPU and host-memory evidence, refreshed derivative status, and final manifest closure. If those pass, recommend only the precisely bounded profile: 131072 configured total context, C1, near-limit text evidence with reserved output, and separately qualified small-image vision.",
+  "human_gate_required": false,
+  "promoted": false
+}

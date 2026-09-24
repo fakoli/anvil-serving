@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-09-24T05:10:17.8468061Z",
+  "windows_kib": {
+    "TotalVisibleMemorySize": 32413020,
+    "FreePhysicalMemory": 8417472,
+    "TotalVirtualMemorySize": 84841820,
+    "FreeVirtualMemory": 10163116
+  },
+  "wsl_free_bytes": "              total        used        free      shared  buff/cache   available\nMem:    20976054272  6103691264  8800112640  4965019648  6072250368  9535340544\nSwap:    4294967296   191631360  4103335936",
+  "note": "Settled after managed idle cache reclaim; current bounded quality scout active."
+}

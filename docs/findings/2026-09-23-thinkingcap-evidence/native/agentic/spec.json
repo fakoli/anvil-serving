@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "run_id": "thinkingcap-5090-agentic-bf16-32k-v1",
+  "ownership_id": "thinkingcap-5090",
+  "suite": "agentic",
+  "profile": "smoke",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39283/v1",
+    "model": "thinkingcap-awq-5090"
+  },
+  "worker": {
+    "id": "Primary Node"
+  },
+  "submitted_at": "2026-09-24T03:26:03.726093+00:00",
+  "timeout_s": 180,
+  "parameters": {
+    "model_host_id": "Primary Node",
+    "client_topology": "co-resident",
+    "thinking_mode": "disabled",
+    "identities": {
+      "model": {
+        "id": "thinkingcap-awq-5090",
+        "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+      },
+      "runtime": {
+        "engine": "vllm",
+        "revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+        "image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b"
+      },
+      "hardware": {
+        "id": "rtx5090"
+      },
+      "topology": {
+        "kind": "co-resident-benchmark-client",
+        "worker_id": "Primary Node",
+        "model_host_id": "Primary Node"
+      },
+      "recipe": {
+        "semantic_digest": "56cbe79dcd1c3eb2ddba162a866c6d712f8614705047aa5cb753c4a0f638100f",
+        "context_tokens": 32768,
+        "max_num_seqs": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-23-thinkingcap",
+  "status": "not-applicable",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "ending_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "differences": [
+    "Independent GLM campaign changed its own container; no ThinkingCap lifecycle mutation"
+  ],
+  "post_run_checks": [],
+  "verified": false,
+  "not_applicable_reason": "No serving or routing lifecycle changed. Complete model snapshot downloaded and verified. Candidate recipe and private topology prepared without replacing deployed configuration.",
+  "baseline_provenance": {
+    "original_registry_sha256": "66a86b9d2c17099780df4a1a71e1b7fc15431513457315ab4cf2b193a75a9365",
+    "original_recipe_sha256": "5a283115a7c7090a12b53507f2ad15163c5c0c8778e423add73a83c6c016fdf6",
+    "hash_match": true,
+    "source": "Private owning-campaign registry found on the model host",
+    "stale": true,
+    "reason": "Independent campaign changed the candidate to B8192 during preparation; refresh baseline after ownership transfer"
+  }
+}

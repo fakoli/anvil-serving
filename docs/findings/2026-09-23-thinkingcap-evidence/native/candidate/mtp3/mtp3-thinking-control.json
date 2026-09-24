@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "Independent native preflight off/on: disabled has no reasoning text; all eight enabled observations have positive reasoning tokens; accepted finish reasons and behavior checks passed",
+  "observed_at": "2026-09-24T02:14:19.211631+00:00",
+  "model": "thinkingcap-awq-5090",
+  "recipe_digest": "1477293f0dd407e41f3fd7955b3df7a41d427a04deaa5d8852305077f60aa6b1",
+  "proofs": [
+    {
+      "path": "mtp3-preflight.json",
+      "sha256": "20e794d64578b3efa54d0651a743dd9c12f74bd5ba616bd88ea1d62d679ece15"
+    },
+    {
+      "path": "mtp3-reasoning-preflight.json",
+      "sha256": "9922da650659a14cda9426ab9d00a425d2f2ff528bf8cdce08a3dc0594f73c42"
+    }
+  ]
+}

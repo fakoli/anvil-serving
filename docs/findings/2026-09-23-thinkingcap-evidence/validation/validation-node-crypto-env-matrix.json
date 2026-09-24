@@ -1,0 +1,52 @@
+[
+  {
+    "variant": "minimal",
+    "returncode": 134,
+    "stdout": "",
+    "stderr_first": [
+      "#  pi[18760]: class std::shared_ptr<class node::InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const class std::vector<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >,class std::allocator<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > > > &,enum node::ProcessInitializationFlags::Flags) at c:\\ws\\src\\node.cc:1266",
+      "  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)",
+      ""
+    ]
+  },
+  {
+    "variant": "systemroot",
+    "returncode": 0,
+    "stdout": "ok",
+    "stderr_first": []
+  },
+  {
+    "variant": "windir",
+    "returncode": 134,
+    "stdout": "",
+    "stderr_first": [
+      "#  pi[38492]: class std::shared_ptr<class node::InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const class std::vector<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >,class std::allocator<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > > > &,enum node::ProcessInitializationFlags::Flags) at c:\\ws\\src\\node.cc:1266",
+      "  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)",
+      ""
+    ]
+  },
+  {
+    "variant": "both",
+    "returncode": 0,
+    "stdout": "ok",
+    "stderr_first": []
+  },
+  {
+    "variant": "temp",
+    "returncode": 0,
+    "stdout": "ok",
+    "stderr_first": []
+  },
+  {
+    "variant": "comspec",
+    "returncode": 0,
+    "stdout": "ok",
+    "stderr_first": []
+  },
+  {
+    "variant": "userprofile",
+    "returncode": 0,
+    "stdout": "ok",
+    "stderr_first": []
+  }
+]

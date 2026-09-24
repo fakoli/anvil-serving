@@ -324,6 +324,7 @@ def _catalog(
     config_sha=CONFIG_SHA,
     primary_context=1_048_576,
     include_vision=True,
+    secondary_efforts=None,
 ):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
@@ -342,6 +343,9 @@ def _catalog(
     aliases = []
     for tier, routed, context, modalities, reasoning in models:
         aliases.extend(routed)
+        compat = {"supportsUsageInStreaming": True}
+        if tier == "secondary" and secondary_efforts is not None:
+            compat["supportedReasoningEfforts"] = secondary_efforts
         rows.append({
             "object": "model_capabilities",
             "id": tier,
@@ -349,7 +353,7 @@ def _catalog(
             "context_limit_tokens": context,
             "modalities": modalities,
             "thinking": {"supported": reasoning},
-            "compat": {"supportsUsageInStreaming": True},
+            "compat": compat,
             "limits": {"max_output_tokens": None if missing_output else 8192},
         })
     return (
@@ -933,6 +937,123 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     by_id = {row["id"]: row for row in provider["models"]}
     assert by_id["llm.primary"]["contextWindow"] == 262_144
     assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
+def test_reasoning_effort_metadata_renders_openclaw_and_pi_maps(tmp_path):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    efforts = ["low", "medium", "xhigh"]
+
+    result = _run(
+        tmp_path,
+        opener=_Opener(*_catalog(secondary_efforts=efforts)),
+        confirm=True,
+        dry_run=False,
+    )
+
+    assert result["changed"] == ["openclaw", "openclaw_env", "pi_models", "pi_settings"]
+    openclaw = json.loads(openclaw_path.read_text())
+    openclaw_secondary = next(
+        row for row in openclaw["models"]["providers"]["anvil"]["models"]
+        if row["id"] == "llm.secondary"
+    )
+    assert openclaw_secondary["compat"]["supportedReasoningEfforts"] == efforts
+
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_secondary = next(
+        row for row in pi_models["providers"]["anvil"]["models"]
+        if row["id"] == "llm.secondary"
+    )
+    assert pi_secondary["compat"]["supportedReasoningEfforts"] == efforts
+    assert pi_secondary["thinkingLevelMap"] == {
+        "off": None,
+        "minimal": "low",
+        "low": "low",
+        "medium": "medium",
+        "high": "xhigh",
+        "xhigh": "xhigh",
+        "max": "xhigh",
+    }
+
+    second = _run(
+        tmp_path,
+        opener=_Opener(*_catalog(secondary_efforts=efforts)),
+        confirm=True,
+        dry_run=False,
+    )
+    assert second["changed"] == []
+
+
+def test_reasoning_effort_metadata_prefers_an_explicit_high_level(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(secondary_efforts=["low", "high", "xhigh"])),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    secondary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.secondary"
+    )
+    assert secondary["thinkingLevelMap"]["high"] == "high"
+
+
+def test_reasoning_effort_metadata_rejects_unknown_or_duplicate_levels(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    before = pi_models_path.read_bytes()
+    with pytest.raises(ClientCatalogError, match="supportedReasoningEfforts"):
+        _run(
+            tmp_path,
+            clients="pi",
+            opener=_Opener(*_catalog(secondary_efforts=["low", "unknown"])),
+            confirm=True,
+            dry_run=False,
+        )
+    assert pi_models_path.read_bytes() == before
+
+    with pytest.raises(ClientCatalogError, match="supportedReasoningEfforts"):
+        _run(
+            tmp_path,
+            clients="pi",
+            opener=_Opener(*_catalog(secondary_efforts="low")),
+            confirm=True,
+            dry_run=False,
+        )
+    with pytest.raises(ClientCatalogError, match="supportedReasoningEfforts"):
+        _run(
+            tmp_path,
+            clients="pi",
+            opener=_Opener(*_catalog(secondary_efforts=["low", "low"])),
+            confirm=True,
+            dry_run=False,
+        )
+
+
+def test_reasoning_effort_metadata_maps_max_only_capabilities_for_pi(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(secondary_efforts=["max"])),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    secondary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.secondary"
+    )
+    assert secondary["thinkingLevelMap"] == {
+        "off": None,
+        "minimal": None,
+        "low": None,
+        "medium": None,
+        "high": None,
+        "xhigh": "max",
+        "max": "max",
+    }
 
 
 def test_pi_sync_enables_session_affinity_only_for_managed_anvil_provider(tmp_path):

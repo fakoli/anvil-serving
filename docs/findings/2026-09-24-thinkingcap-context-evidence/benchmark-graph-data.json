@@ -1,0 +1,137 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "32K: MTP3, GPU vision",
+          "points": [
+            {
+              "artifact": "native/baseline32k/capacity.json",
+              "artifact_sha256": "5c3c50c33c09d1f6bcdbb2a3ade96b83f2629c4948385dfef5efc69c3ba7a8c4",
+              "value": 455.44210000662133,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        },
+        {
+          "label": "128K: MTP3, generic UVA3",
+          "points": [
+            {
+              "artifact": "native/mtp-uva3/capacity.json",
+              "artifact_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+              "value": 3003.0448000179604,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        }
+      ],
+      "title": "Median TTFT",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 TTFT (ms)"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "32K: MTP3, GPU vision",
+          "points": [
+            {
+              "artifact": "native/baseline32k/capacity.json",
+              "artifact_sha256": "5c3c50c33c09d1f6bcdbb2a3ade96b83f2629c4948385dfef5efc69c3ba7a8c4",
+              "value": 158.3551791480093,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        },
+        {
+          "label": "128K: MTP3, generic UVA3",
+          "points": [
+            {
+              "artifact": "native/mtp-uva3/capacity.json",
+              "artifact_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+              "value": 51.88547695919587,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        }
+      ],
+      "title": "Median decode rate",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 decode (tok/s)"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "32K: MTP3, GPU vision",
+          "points": [
+            {
+              "artifact": "native/baseline32k/capacity.json",
+              "artifact_sha256": "5c3c50c33c09d1f6bcdbb2a3ade96b83f2629c4948385dfef5efc69c3ba7a8c4",
+              "value": 733.4115999983624,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        },
+        {
+          "label": "128K: MTP3, generic UVA3",
+          "points": [
+            {
+              "artifact": "native/mtp-uva3/capacity.json",
+              "artifact_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+              "value": 3852.9262999945786,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        }
+      ],
+      "title": "Median end-to-end time",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 E2E (ms)"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "32K: MTP3, GPU vision",
+          "points": [
+            {
+              "artifact": "native/baseline32k/capacity.json",
+              "artifact_sha256": "5c3c50c33c09d1f6bcdbb2a3ade96b83f2629c4948385dfef5efc69c3ba7a8c4",
+              "value": 61.14585265214693,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        },
+        {
+          "label": "128K: MTP3, generic UVA3",
+          "points": [
+            {
+              "artifact": "native/mtp-uva3/capacity.json",
+              "artifact_sha256": "d8df3da523647b18e11721e4173d6258d0f49a840a467915ef10e1d714d4124d",
+              "value": 11.678387852350253,
+              "x": "4K / C1 / 45 output tokens"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate throughput",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "eligible throughput (tok/s)"
+    }
+  ],
+  "metric_semantics": {
+    "decode": "Client-observed generation decode rate using usage completion tokens after the first token; plotted as p50 tokens per second.",
+    "e2e": "Client-observed end-to-end request duration; plotted as p50 milliseconds.",
+    "matching": "100 strict requests per whole recipe; nominal 4K/C1, 32 code words plus canary, 45 output tokens, thinking off, unique cache. Both use MTP3 and BF16 KV; configured context, weight placement and memory fraction differ. No isolated offload/context speedup claim.",
+    "p99": "n=100 p99 values are order statistics and must not be presented as a stable SLA; p99 is not plotted in this matrix.",
+    "population": "Each point is a complete, zero-failure, performance-eligible population of 100 requests.",
+    "scope": "Short controlled output only: 32 requested lowercase code words with a 512-token cap; do not generalize to long output, long context, reasoning, multimodal, or production concurrency.",
+    "throughput": "Aggregate performance-eligible completion-token throughput in tokens per second.",
+    "ttft": "Client-observed request start to first non-empty visible content delta; plotted as p50 milliseconds."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "100 strict requests per whole recipe; nominal 4K/C1, 32 code words plus canary, 45 output tokens, thinking off, unique cache. Both use MTP3 and BF16 KV; configured context, weight placement and memory fraction differ. No isolated offload/context speedup claim.",
+  "title": "ThinkingCap RTX 5090: 32K and 128K complete recipes"
+}

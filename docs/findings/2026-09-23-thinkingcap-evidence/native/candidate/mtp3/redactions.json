@@ -1,0 +1,114 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "scope": "MTP3 candidate evidence copied from a private operator evidence root",
+  "source_metrics_and_schemas": "unchanged; only strings containing operator or container identity were normalized",
+  "transformations": [
+    {
+      "match": "operator home paths and account labels",
+      "replacement": "PRIVATE_OPERATOR_HOME or Primary Node"
+    },
+    {
+      "match": "container home, model-cache, and runtime-cache paths",
+      "replacement": "PRIVATE_CONTAINER_HOME, PRIVATE_MODEL_CACHE, or PRIVATE_RUNTIME_CACHE"
+    },
+    {
+      "match": "real GPU UUID",
+      "replacement": "GPU-RTX5090-SYNTHETIC"
+    },
+    {
+      "match": "private container gateway address",
+      "replacement": "PRIVATE_CONTAINER_GATEWAY"
+    }
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "mtp3-preflight.json",
+      "public_path": "native/candidate/mtp3/mtp3-preflight.json",
+      "private_source_sha256": "20e794d64578b3efa54d0651a743dd9c12f74bd5ba616bd88ea1d62d679ece15",
+      "public_sha256": "20e794d64578b3efa54d0651a743dd9c12f74bd5ba616bd88ea1d62d679ece15",
+      "source_bytes": 13731,
+      "public_bytes": 13731
+    },
+    {
+      "private_source_name": "mtp3-reasoning-preflight.json",
+      "public_path": "native/candidate/mtp3/mtp3-reasoning-preflight.json",
+      "private_source_sha256": "9922da650659a14cda9426ab9d00a425d2f2ff528bf8cdce08a3dc0594f73c42",
+      "public_sha256": "9922da650659a14cda9426ab9d00a425d2f2ff528bf8cdce08a3dc0594f73c42",
+      "source_bytes": 8036,
+      "public_bytes": 8036
+    },
+    {
+      "private_source_name": "mtp3-thinking-control.json",
+      "public_path": "native/candidate/mtp3/mtp3-thinking-control.json",
+      "private_source_sha256": "06d54caafc65504670da81feb504b2e298dab8881fc9ed63f7766e3e17289f9e",
+      "public_sha256": "06d54caafc65504670da81feb504b2e298dab8881fc9ed63f7766e3e17289f9e",
+      "source_bytes": 809,
+      "public_bytes": 809
+    },
+    {
+      "private_source_name": "mtp3-multimodal.json",
+      "public_path": "native/candidate/mtp3/mtp3-multimodal.json",
+      "private_source_sha256": "bc1f824a7f83989571407bbbe64d14f4fb412ca77f94ad5d6649ccb78c43d0e0",
+      "public_sha256": "26960c925bfa2848c56226f182abc652c2bff95f79d024d5811768dcc8fe4432",
+      "source_bytes": 34948,
+      "public_bytes": 34946
+    },
+    {
+      "private_source_name": "mtp3-mmlu10-thinking.json",
+      "public_path": "native/candidate/mtp3/mtp3-mmlu10-thinking.json",
+      "private_source_sha256": "f2a3f9bfd25ce50a901e3ea5ce4abf50df312a28412ab869caadd7246b5f92cf",
+      "public_sha256": "ea3edfa1682b89c2a4a261139f84d8d6e0c07bd7d294b576ede8efc8c529540a",
+      "source_bytes": 67011,
+      "public_bytes": 67011
+    },
+    {
+      "private_source_name": "mtp3-short32-scout.json",
+      "public_path": "native/candidate/mtp3/mtp3-short32-scout.json",
+      "private_source_sha256": "0b9a31e055b74cd4e4b60ad6b1f468e56b323db706156fe1d286e2a42b1f8820",
+      "public_sha256": "0b9a31e055b74cd4e4b60ad6b1f468e56b323db706156fe1d286e2a42b1f8820",
+      "source_bytes": 16164,
+      "public_bytes": 16164
+    },
+    {
+      "private_source_name": "mtp3-short32-n100-r1.json",
+      "public_path": "native/candidate/mtp3/mtp3-short32-n100-r1.json",
+      "private_source_sha256": "2b31ea114eb1dd85ff9f724cff2cb93b590bab03e143d090cbf7a80088e1f4b5",
+      "public_sha256": "2b31ea114eb1dd85ff9f724cff2cb93b590bab03e143d090cbf7a80088e1f4b5",
+      "source_bytes": 134875,
+      "public_bytes": 134875
+    },
+    {
+      "private_source_name": "mtp3-health.private.json",
+      "public_path": "native/candidate/mtp3/mtp3-health.json",
+      "private_source_sha256": "f2fd54c8484062ef995e0af909ef7c5c1ee967f650ef207034923d88696c4ae8",
+      "public_sha256": "f2fd54c8484062ef995e0af909ef7c5c1ee967f650ef207034923d88696c4ae8",
+      "source_bytes": 81,
+      "public_bytes": 81
+    },
+    {
+      "private_source_name": "mtp3-models.private.json",
+      "public_path": "native/candidate/mtp3/mtp3-models.json",
+      "private_source_sha256": "17cc985a240c6129631ee44092dc45b02cbea21db01b48667c64b06ec9c5e157",
+      "public_sha256": "4a94d46c80d295377c625b59d97dafa175045dfe378bc16d41edc84cf1c4d482",
+      "source_bytes": 1013,
+      "public_bytes": 1008
+    },
+    {
+      "private_source_name": "mtp3-load.private.log",
+      "public_path": "native/candidate/mtp3/mtp3-load.log",
+      "private_source_sha256": "466f78770d71b2a534003b5a61298c2fd18f85c9020801adfaebe8f9537d67a9",
+      "public_sha256": "9e8a4091ce0b148e06c781a045eef2e97b560d3011e1eff6578388128c476979",
+      "source_bytes": 3412,
+      "public_bytes": 3318
+    },
+    {
+      "private_source_name": "mtp3-final-engine.private.log",
+      "public_path": "native/candidate/mtp3/mtp3-final-engine.log",
+      "private_source_sha256": "86b772258ffa7cdabab25e096e52f683392627388f8b553b60b0cd3f2d088ffd",
+      "public_sha256": "d6a51d4318f8d433ebffe3a6a8e8f8f1a96c4d61bc38ca67b70380ebe9d4a067",
+      "source_bytes": 68649,
+      "public_bytes": 71333
+    }
+  ],
+  "additional_identity_pass": "identity-sanitization-final.json at the evidence bundle root; original source hashes preserved"
+}

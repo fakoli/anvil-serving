@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-09-24T07:14:04.4615336Z",
+  "windows_kib": {
+    "FreePhysicalMemory": 7355076,
+    "FreeVirtualMemory": 9474568,
+    "TotalVisibleMemorySize": 32413020,
+    "TotalVirtualMemorySize": 84841820
+  },
+  "wsl_free_bytes": "              total        used        free      shared  buff/cache   available\nMem:    20976054272  6281691136  8581705728  4967120896  6112657408  9355239424\nSwap:    4294967296   191369216  4103598080",
+  "note": "After all declared model qualification gates completed; no inference active."
+}

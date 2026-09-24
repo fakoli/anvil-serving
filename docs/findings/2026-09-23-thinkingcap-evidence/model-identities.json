@@ -1,0 +1,221 @@
+[
+  {
+    "id": "bottlecapai/ThinkingCap-Qwen3.8-27B",
+    "sha": "52361b720e30f8835af8e401d876ec3077b4a823",
+    "lastModified": "2026-09-23T18:05:44.000Z",
+    "gated": "auto",
+    "safetensors": {
+      "parameters": {
+        "BF16": 27781427952
+      },
+      "total": 27781427952
+    },
+    "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B",
+    "observed_at": "2026-09-23T22:53:56.689085+00:00",
+    "files": [
+      {
+        "name": "model-00001-of-00018.safetensors",
+        "bytes": 3966730552
+      },
+      {
+        "name": "model-00002-of-00018.safetensors",
+        "bytes": 3043080328
+      },
+      {
+        "name": "model-00003-of-00018.safetensors",
+        "bytes": 2542796952
+      },
+      {
+        "name": "model-00004-of-00018.safetensors",
+        "bytes": 3988973152
+      },
+      {
+        "name": "model-00005-of-00018.safetensors",
+        "bytes": 2099339864
+      },
+      {
+        "name": "model-00006-of-00018.safetensors",
+        "bytes": 3979553696
+      },
+      {
+        "name": "model-00007-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00008-of-00018.safetensors",
+        "bytes": 3979553696
+      },
+      {
+        "name": "model-00009-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00010-of-00018.safetensors",
+        "bytes": 3979553696
+      },
+      {
+        "name": "model-00011-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00012-of-00018.safetensors",
+        "bytes": 3979553696
+      },
+      {
+        "name": "model-00013-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00014-of-00018.safetensors",
+        "bytes": 3979553696
+      },
+      {
+        "name": "model-00015-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00016-of-00018.safetensors",
+        "bytes": 3979564040
+      },
+      {
+        "name": "model-00017-of-00018.safetensors",
+        "bytes": 2108759344
+      },
+      {
+        "name": "model-00018-of-00018.safetensors",
+        "bytes": 3392197344
+      }
+    ]
+  },
+  {
+    "id": "bottlecapai/ThinkingCap-Qwen3.8-27B-FP8",
+    "sha": "e55ba7f6678f02501f5310297d7f5de7c9a243ee",
+    "lastModified": "2026-09-23T16:26:31.000Z",
+    "gated": "auto",
+    "safetensors": {
+      "parameters": {
+        "BF16": 3454464752,
+        "F8_E4M3": 24326963200
+      },
+      "total": 27781427952
+    },
+    "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-FP8",
+    "observed_at": "2026-09-23T22:53:56.813600+00:00",
+    "files": [
+      {
+        "name": "model-00001-of-00004.safetensors",
+        "bytes": 9997313960
+      },
+      {
+        "name": "model-00002-of-00004.safetensors",
+        "bytes": 9946831272
+      },
+      {
+        "name": "model-00003-of-00004.safetensors",
+        "bytes": 7902724824
+      },
+      {
+        "name": "model-00004-of-00004.safetensors",
+        "bytes": 3392197344
+      }
+    ]
+  },
+  {
+    "id": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4",
+    "sha": "f0d598e043266b9c935a2fd6316a31c26831778a",
+    "lastModified": "2026-09-23T16:26:33.000Z",
+    "gated": "auto",
+    "safetensors": {
+      "parameters": {
+        "BF16": 3454464752,
+        "U8": 24326963200
+      },
+      "total": 16713682560
+    },
+    "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4",
+    "observed_at": "2026-09-23T22:53:56.924833+00:00",
+    "files": [
+      {
+        "name": "model-00001-of-00002.safetensors",
+        "bytes": 9977262252
+      },
+      {
+        "name": "model-00002-of-00002.safetensors",
+        "bytes": 9766442148
+      },
+      {
+        "name": "model-base-aux.safetensors",
+        "bytes": 849400424
+      }
+    ]
+  },
+  {
+    "id": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "sha": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "lastModified": "2026-09-23T16:18:25.000Z",
+    "gated": "auto",
+    "safetensors": {
+      "parameters": {
+        "BF16": 2183066352,
+        "F8_E4M3": 10624696320,
+        "U8": 7486832640
+      },
+      "total": 20294595312
+    },
+    "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "observed_at": "2026-09-23T22:53:57.027033+00:00",
+    "files": [
+      {
+        "name": "model-00001-of-00003.safetensors",
+        "bytes": 9995459904
+      },
+      {
+        "name": "model-00002-of-00003.safetensors",
+        "bytes": 9932931760
+      },
+      {
+        "name": "model-00003-of-00003.safetensors",
+        "bytes": 2639792720
+      },
+      {
+        "name": "model-base-aux.safetensors",
+        "bytes": 849400424
+      }
+    ]
+  },
+  {
+    "id": "bottlecapai/ThinkingCap-Qwen3.8-27B-GGUF",
+    "sha": "3ddb2f6b6a47d17ea10aa99fce0de9369b2240dd",
+    "lastModified": "2026-09-23T16:18:16.000Z",
+    "gated": "auto",
+    "safetensors": null,
+    "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-GGUF",
+    "observed_at": "2026-09-23T22:53:57.143198+00:00",
+    "files": [
+      {
+        "name": "ThinkingCap-Qwen3.8-27B-IQ4_XS.gguf",
+        "bytes": 15475951712
+      },
+      {
+        "name": "ThinkingCap-Qwen3.8-27B-Q4_K_M.gguf",
+        "bytes": 17442400352
+      },
+      {
+        "name": "ThinkingCap-Qwen3.8-27B-Q6_K.gguf",
+        "bytes": 23860566112
+      },
+      {
+        "name": "ThinkingCap-Qwen3.8-27B-Q8_0.gguf",
+        "bytes": 29047085152
+      },
+      {
+        "name": "ThinkingCap-Qwen3.8-27B-f16.gguf",
+        "bytes": 54657734368
+      },
+      {
+        "name": "mmproj-ThinkingCap-Qwen3.8-27B-f16.gguf",
+        "bytes": 931146272
+      }
+    ]
+  }
+]

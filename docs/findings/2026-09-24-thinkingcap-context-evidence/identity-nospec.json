@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.qualification-identity/v1",
+  "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+  "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "served_model": "thinkingcap-awq-5090",
+  "runtime_image": "vllm/vllm-openai:v0.29.0@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+  "engine_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+  "recipe_semantic_digest": "e08a265257fc6172f6a41e3d499933598926eb826351f58670ec226fa5c9a638",
+  "private_registry_sha256": "739ca60bda233e7375046787a63d5d8b239fb6166e10a9fd360108cefc42a23e",
+  "public_recipe": "configurations/thinkingcap-awq-vllm029-5090-128k-bf16-vision-offload1.toml",
+  "public_recipe_sha256": "739ca60bda233e7375046787a63d5d8b239fb6166e10a9fd360108cefc42a23e",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "reported_memory_mib": 32607,
+    "count": 1,
+    "architecture": "sm_120",
+    "driver": "616.92",
+    "host": "Operator Node",
+    "runtime": "Windows / Docker Desktop Linux / WSL2"
+  },
+  "measurement_path": "direct loopback online endpoint; warm process after managed startup; prefix cache disabled",
+  "context_tokens": 131072,
+  "concurrency": 1,
+  "attention": "TRITON_ATTN",
+  "kv_dtype": "bfloat16",
+  "ssm_dtype": "model-default float32",
+  "speculation": false,
+  "vision": {
+    "maximum_images": 2,
+    "maximum_pixels_per_image": 1048576,
+    "video": 0,
+    "weight_offload_backend": "uva",
+    "weight_offload_parameter_selector": "visual",
+    "weight_offload_cap_gib": 1,
+    "observed_offloaded_gib": 0.86
+  },
+  "cache_completeness": "Exact local complete revision verified by managed load precondition. MTP files retained in snapshot but unused by no-speculation serve.",
+  "source_evidence": [
+    "native/candidate/load-preview.json",
+    "native/candidate/startup.log",
+    "native/candidate/startup-status.json",
+    "native/candidate/startup-health.json",
+    "operational-source-check.json"
+  ],
+  "promotion_authorized": false,
+  "branch_status": "Rejected after repeated quality 27/30; diagnostic earlier no-MTP branch, not current selection"
+}

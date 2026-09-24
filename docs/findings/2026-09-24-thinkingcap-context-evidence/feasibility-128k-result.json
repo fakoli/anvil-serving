@@ -1,0 +1,254 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "128K minimum BF16 target-only scout",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 131072,
+    "max": 131072
+  },
+  "physical_available_bytes": {
+    "min": 34190917632,
+    "max": 34190917632
+  },
+  "policy_available_bytes": {
+    "min": 33117175808,
+    "max": 33117175808
+  },
+  "candidates": [
+    {
+      "id": "128k-nospec-bf16-095",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "pass",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 131072,
+        "max": 131072
+      },
+      "demand_bytes": {
+        "min": 32357209866,
+        "max": 35374424391
+      },
+      "physical_available_bytes": {
+        "min": 34190917632,
+        "max": 34190917632
+      },
+      "policy_available_bytes": {
+        "min": 33117175808,
+        "max": 33117175808
+      },
+      "physical_margin_bytes": {
+        "min": -1183506759,
+        "max": 1833707766
+      },
+      "policy_margin_bytes": {
+        "min": -2257248583,
+        "max": 759965942
+      },
+      "estimated_max_tokens_physical": {
+        "min": 116624,
+        "max": 159052
+      },
+      "estimated_max_tokens_policy": {
+        "min": 103517,
+        "max": 142668
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.protocol_margin",
+        "requirements.concurrency",
+        "requirements.vram_reserves.free_headroom.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].resident_components.runtime_workspace_and_recurrent",
+        "candidates[0].per_token_components.draft_and_padding",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 125952,
+      "max": 125952,
+      "source": "64K request plan",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 4096,
+      "max": 4096,
+      "source": "reasoning and visible output reserve",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.protocol_margin",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 1024,
+      "max": 1024,
+      "source": "token calibration margin",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "single candidate C1",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 34190917632,
+      "max": 34190917632,
+      "source": "prior local inventory and current GPU identity",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.free_headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 1073741824,
+      "max": 1073741824,
+      "source": "128K retainedprofile minimum1GiB, lowerGPUfraction plusweightoffloadifneeded",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 131072,
+      "max": 131072,
+      "source": "candidateAPIcap",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_workspace_and_recurrent",
+      "status": "estimated",
+      "unit": "bytes",
+      "min": 858993459,
+      "max": 1717986918,
+      "source": "prior.87VRAMtarget minus22.14weights minus4.73KV ~.83GiB, widened for contextlayout",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.target_vision",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 22908281815,
+      "max": 22919019233,
+      "source": "Prior no-spec weights21.34GiB, completevision; MTPdisabled",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_token_components.target_full_attention",
+      "status": "confirmed",
+      "unit": "bytes/token",
+      "min": 65536,
+      "max": 65536,
+      "source": "16fullattention*K/V*4heads*256dim*2bytes",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].per_token_components.draft_and_padding",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 0,
+      "max": 16384,
+      "source": "NoMTP; context-dependenthybridrecurrent/page overhead, boundedscout estimate anchored by earliernoMTP5.61GiB/79872tokens",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "C1",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "allhardgates",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [],
+  "promotion_authority": false
+}

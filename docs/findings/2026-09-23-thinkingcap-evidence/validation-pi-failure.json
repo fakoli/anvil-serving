@@ -1,0 +1,105 @@
+{
+  "schema": "anvil-serving.validation-failure-review/v1",
+  "reviewed_at": "2026-09-24",
+  "scope": "Independent investigation of the only failure in the required full Python test gate; no GPU request, serve lifecycle, endpoint call, or product source edit.",
+  "full_gate": {
+    "command_surface": "repository test wrapper",
+    "status": "failed",
+    "passed": 7923,
+    "failed": 1,
+    "skipped": 417,
+    "duration_seconds": 384.36,
+    "failing_test": "tests/workbench/test_pi_official_smoke.py::test_official_pi_native_history_fork_resume_and_model_controls",
+    "failure_boundary": "initial get_state before any fixture-provider request",
+    "observed_exception": "PiProcessExited: Pi runner exited with status 134"
+  },
+  "bounded_rerun": {
+    "scope": "only the failed test",
+    "status": "failed",
+    "duration_seconds": 0.91,
+    "observed_exception": "PiProcessExited: Pi runner exited with status 134",
+    "classification": "deterministic under the current test environment"
+  },
+  "independent_fix_review": {
+    "patch_review": {
+      "scope": "three-line Windows-only change in the official Pi smoke fixture",
+      "change": "Copy SystemRoot from the parent environment into the explicit child environment when os.name is nt.",
+      "assessment": "Correct and minimal for the confirmed Node CSPRNG abort; no non-Windows behavior changes."
+    },
+    "single_test_command_surface": "repository test wrapper, exact official Pi smoke test only",
+    "result": "failed",
+    "duration_seconds": 15.73,
+    "progression": "The Node status-134 abort is resolved. The Pi process remains alive, but PiRpcClient never returns the initial get_state response and the test reaches its bounded 15-second timeout.",
+    "new_earliest_actionable_cause": {
+      "classification": "confirmed",
+      "layer": "PiRpcClient Windows stdout transport",
+      "cause": "_default_read_chunk calls select.select on the Pi anonymous stdout pipe. On this Windows host that raises WinError 10093. The helper catches the error and returns an empty byte string, so every poll silently observes no RPC records.",
+      "independent_proof": [
+        "With SystemRoot present and the same Pi arguments, a direct bounded reader receives a valid successful get_state JSONL response immediately while the Pi process remains alive.",
+        "A focused anonymous-pipe probe shows select.select raises WinError 10093 even though a blocking read returns the already-written line.",
+        "The source helper catches OSError and returns no bytes, matching the observed 15-second timeout."
+      ],
+      "source_references": [
+        "anvil_serving/workbench_app/pi_rpc.py:117",
+        "anvil_serving/workbench_app/pi_rpc.py:120",
+        "anvil_serving/workbench_app/pi_rpc.py:121",
+        "anvil_serving/workbench_app/pi_rpc.py:122",
+        "anvil_serving/workbench_app/pi_rpc.py:277",
+        "tests/workbench/test_pi_official_smoke.py:67",
+        "tests/workbench/test_pi_official_smoke.py:76"
+      ]
+    },
+    "required_followup": "Implement a bounded Windows-compatible anonymous-pipe readiness/read path in PiRpcClient, retain the existing POSIX select path, add a transport regression that exercises the platform branch, and rerun the one real-Pi smoke before the full wrapper.",
+    "source_changed_by_reviewer": false
+  },
+  "earliest_actionable_cause": {
+    "classification": "confirmed",
+    "layer": "Windows child-process environment for the pinned Node runtime",
+    "stderr": "Node 22.23.2 aborts in node::InitializeOncePerProcessInternal at an ncrypto::CSPRNG(nullptr, 0) assertion before Pi emits stdout.",
+    "test_mechanism": "The smoke test replaces the complete child environment with PATH, HOME, PI_CODING_AGENT_DIR, and the fixture token. It omits SystemRoot.",
+    "isolation_proof": [
+      "A direct Node crypto probe under the same four-variable environment exits 134 with the identical CSPRNG assertion.",
+      "Adding only SystemRoot to that environment makes the crypto probe exit 0.",
+      "Adding only WINDIR does not fix the abort.",
+      "The ordinary pinned Pi version check under the inherited environment exits successfully."
+    ],
+    "source_references": [
+      "tests/workbench/test_pi_official_smoke.py:24",
+      "tests/workbench/test_pi_official_smoke.py:52",
+      "tests/workbench/test_pi_official_smoke.py:59",
+      "anvil_serving/workbench_app/pi_rpc.py:106",
+      "anvil_serving/workbench_app/pi_rpc.py:111",
+      "anvil_serving/workbench_app/pi_rpc.py:317"
+    ]
+  },
+  "change_relationship": {
+    "benchmark_docs_or_recipe_related": false,
+    "reason": "The abort occurs during Node cryptographic initialization before Pi reads the RPC command, contacts the loopback fixture provider, or exercises any ThinkingCap documentation or recipe.",
+    "preexisting_claim": "not_made",
+    "evidence_boundary": "The defect is reproducible in the current checkout and is proven unrelated to the files changed by this campaign; repository history was not used to claim when it was introduced."
+  },
+  "fix_disposition": {
+    "fixable_in_test_environment": true,
+    "minimal_fix": "On Windows, preserve SystemRoot in the explicit Pi child environment used by the official smoke test.",
+    "minimal_fix_result": "The patch resolves the native status-134 abort but does not make the smoke test pass because the Windows anonymous-pipe reader is also broken.",
+    "additional_hardening": "Retain bounded child stderr on unexpected Pi exit so future native startup failures expose their earliest actionable cause instead of only status 134.",
+    "source_changed_in_this_review": false,
+    "verification_needed_after_fix": "Run only the official Pi smoke test first; then rerun the required full wrapper gate after the benchmark workload is no longer competing for CPU."
+  },
+  "private_evidence": [
+    "validation-full-pytest.log",
+    "validation-pi-single-rerun.log",
+    "validation-pi-initial-stderr.log",
+    "validation-pi-initial-stdout.log",
+    "validation-node-crypto-env-matrix.json",
+    "validation-pi-single-after-systemroot-fix.log",
+    "validation-pi-windows-reader-probe.json",
+    "validation-windows-pipe-select-probe.json"
+  ],
+  "resource_state": {
+    "owned_test_processes_remaining": false,
+    "cpu_test_activity_closed": true
+  },
+  "recommendation": "Treat the required full Python gate as failed, not passed. The SystemRoot fixture patch is correct but independently insufficient: it exposes a confirmed PiRpcClient Windows anonymous-pipe transport defect. Fix and independently verify that bounded reader path with the one real-Pi smoke before claiming a clean full-suite gate. Both failures remain unrelated to the ThinkingCap benchmark docs/config.",
+  "promoted": false
+}

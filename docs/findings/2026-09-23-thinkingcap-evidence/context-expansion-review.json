@@ -1,0 +1,246 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "action": "independent adversarial review of the C1 context-expansion plans and final public evidence gates",
+    "implementing_model": "GPT-6 Astra with high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "reviewer": "GPT-5.6 Sol with high reasoning",
+    "scope": "read-only plan, runner-control, and publication review; no endpoint, GPU, serve lifecycle, route, or promotion action"
+  },
+  "gate_state": "context_plans_valid_for_c1_execution; final_fp8_selection_and_publication_on_hold",
+  "targets": [
+    "FP8 KV, target Triton, MTP3, 57344-token configured context, C1",
+    "BF16 KV, target Triton, MTP3, 32768-token fallback context, C1",
+    "public ThinkingCap RTX 5090 evidence bundle"
+  ],
+  "tools_used": [
+    "read-only file inspection",
+    "git diff and status review",
+    "native validate_job_spec",
+    "native context-selection validator",
+    "read-only runner and preflight source inspection"
+  ],
+  "artifacts": {
+    "review_file": "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-review.json",
+    "reviewed_plans": [
+      "private operator evidence/context-fp8-56k-plan.private.json",
+      "private operator evidence/context-fp8-56k-scout.private.json",
+      "private operator evidence/context-bf16-32k-plan.private.json",
+      "private operator evidence/context-bf16-32k-scout.private.json",
+      "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json"
+    ],
+    "parameter_validation": {
+      "fp8": {
+        "advertised_context": 57344,
+        "measured_cache_tokens": 64111,
+        "cache_headroom_tokens": 6767,
+        "token_buckets": [
+          8192,
+          54272
+        ],
+        "near_limit_accounting": "54272 prompt target + 2048 output reserve + 1024 template/transport margin = 57344",
+        "full_observations": 60,
+        "scout_observations": 2,
+        "validator_result": "accepted"
+      },
+      "bf16": {
+        "advertised_context": 32768,
+        "measured_cache_tokens": 45180,
+        "cache_headroom_tokens": 12412,
+        "token_buckets": [
+          8192,
+          29696
+        ],
+        "near_limit_accounting": "29696 prompt target + 2048 output reserve + 1024 template/transport margin = 32768",
+        "full_observations": 60,
+        "scout_observations": 2,
+        "validator_result": "accepted"
+      },
+      "case_matrix": "5 native deterministic cases x 2 buckets x 3 positions x 2 repetitions",
+      "qualification_boundary": "Adequate for the declared C1 synthetic-retrieval claim only when every observation is correct, completed without a retained failure, has an acceptable finish reason, and the retained prompt-token evidence reaches the intended near-limit bucket. It is not long-document reasoning, combined near-limit multimodal, concurrency, or endurance evidence."
+    },
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "blocking",
+        "classification": "confirmed",
+        "finding": "The canonical artifact ledger is still the preparation-era ledger and contradicts the measured public bundle. It labels only external-prior evidence, marks workload and raw-run evidence missing, and says the publication summary is not applicable because no inference or public performance claim exists.",
+        "concrete_state_and_wrong_result": "Publishing the current bundle would present performance claims beside a canonical manifest that says those claims and native artifacts do not exist.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/artifact-manifest-source.json:7",
+          "docs/findings/2026-09-23-thinkingcap-evidence/artifact-manifest-source.json:10",
+          "docs/findings/2026-09-23-thinkingcap-evidence/artifact-manifest-source.json:37",
+          "docs/findings/2026-09-23-thinkingcap-evidence/artifact-manifest-source.json:63",
+          "docs/findings/2026-09-23-thinkingcap-evidence/artifact-manifest-source.json:94",
+          "docs/findings/2026-09-23-thinkingcap-evidence/README.md:16"
+        ],
+        "required_resolution": "After all final artifacts are fixed, update every artifact role, evidence and decision label, completion state, and retained native schema; then run the repository finalizer twice and require byte-identical artifact-manifest.json output."
+      },
+      {
+        "id": "F2",
+        "severity": "blocking",
+        "classification": "confirmed",
+        "finding": "The public derivative views do not consistently identify the Triton + MTP3 BF16 result or its evidence. The short post assigns 67.8676 tok/s to that lane while the canonical result is 158.4959 tok/s, and the claim ledger and model dossier link graph artifacts for Triton measurements. Several summaries also say the generic MTP population failed even though the failed population was specifically the earlier Flash-target MTP arm and the Triton MTP arm completed 100/100.",
+        "concrete_state_and_wrong_result": "A reader can follow the claimed Triton result to a different graph artifact or conclude that the same MTP lane both passed 100/100 and failed 1/100.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/publication-summary.md:14",
+          "docs/findings/2026-09-23-thinkingcap-evidence/publication-summary.md:17",
+          "docs/findings/2026-09-23-thinkingcap-evidence/publication-summary.md:24",
+          "docs/findings/2026-09-23-thinkingcap-evidence/publication-summary.md:55",
+          "docs/benchmarks/models/thinkingcap-qwen38-27b.md:53",
+          "docs/benchmarks/models/thinkingcap-qwen38-27b.md:55",
+          "docs/benchmarks/models/thinkingcap-qwen38-27b.md:60",
+          "docs/benchmarks/models/thinkingcap-qwen38-27b.md:62",
+          "docs/findings/2026-09-23-thinkingcap-5090.md:35",
+          "docs/benchmarks/index.md:22"
+        ],
+        "required_resolution": "Reconcile every headline, short post, claim-ledger link, dossier evidence link, and failure label to the exact Triton artifact or the exact Flash-MTP artifact. Use full-recipe comparison language and do not imply an isolated speculation gain or a matched no-speculation control."
+      },
+      {
+        "id": "F3",
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "The FP8 56K lane is not yet selectable under its own predeclared gate. The supplied update reports 27 functional, 8 reasoning, 18 vision, and 100 strict-capacity passes, while the 30 repeated quality observations remain in progress. The 56K-config fresh functional/vision check, two-observation scout, 60-observation context run, bounded agentic smoke, and final managed health/status evidence also remain required for the final practical profile.",
+        "concrete_state_and_wrong_result": "Selecting or publishing FP8 56K now would convert a healthy load, a clean strict-capacity population, and partial correctness evidence into a completed context and quality qualification.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:5",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:14",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:18",
+          "docs/findings/2026-09-23-thinkingcap-evidence/campaign-state.json:3",
+          "docs/findings/2026-09-23-thinkingcap-evidence/coverage-and-gaps.md:10"
+        ],
+        "required_resolution": "Finish only the predeclared gates for the selected lane, retain the failures if any gate misses, and fall back to the BF16 32K plan when the FP8 quality or strict-adherence gate fails."
+      },
+      {
+        "id": "F4",
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "The job timeout is not a whole-job deadline. The context runner converts timeout_s into a per-request cap of at most 900 seconds, and the detached worker has no aggregate deadline enforcement. A 60-observation job can therefore run far beyond the declared 7200 seconds when requests stall.",
+        "concrete_state_and_wrong_result": "With repeated 900-second request stalls, the nominal two-hour full job can continue for roughly fifteen hours before accounting for setup and calibration.",
+        "references": [
+          "anvil_serving/benchmarking/suite_runner.py:189",
+          "anvil_serving/benchmarking/suite_runner.py:203",
+          "anvil_serving/benchmarking/worker.py:174",
+          "anvil_serving/benchmarking/worker.py:301"
+        ],
+        "required_resolution": "For these runs, predeclare and enforce an operator-side 7200-second wall-clock stop through the existing managed job status/cancel surface, while retaining partial evidence and the timeout disposition. Track aggregate-deadline enforcement as a product gap rather than describing timeout_s as a job deadline."
+      },
+      {
+        "id": "F5",
+        "severity": "medium",
+        "classification": "confirmed",
+        "finding": "The context evidence builder copies declared model, runtime, image, and hardware identities into the final evidence. Preflight verifies the served alias and configured context, but it does not independently observe the checkpoint revision, runtime commit, or image digest.",
+        "concrete_state_and_wrong_result": "If the managed serve drifts after plan creation, the context artifact can retain the old declared identities while requests hit a different process behind the same alias.",
+        "references": [
+          "anvil_serving/benchmarking/preflight.py:323",
+          "anvil_serving/benchmarking/preflight.py:349",
+          "anvil_serving/benchmarking/worker.py:58",
+          "anvil_serving/benchmarking/worker.py:81"
+        ],
+        "required_resolution": "Bind each retained context result to same-window managed recipe status/startup evidence and final status that independently show the exact model revision, runtime image/commit, recipe hash, configured context, KV format, and attention/speculation settings."
+      },
+      {
+        "id": "F6",
+        "severity": "informational",
+        "classification": "refuted",
+        "finding": "The proposed C1 context arithmetic is not overcommitted. FP8 56K leaves 6767 measured cache tokens, and BF16 32K leaves 12412. Both near-limit buckets exactly preserve the declared output and template margins, and all four specifications pass native schema and context-selection validation.",
+        "concrete_state_and_wrong_result": "No recipe or plan correction is required for the selected C1 token buckets.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:7",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:19",
+          "anvil_serving/benchmarking/suite_runner.py:78"
+        ]
+      },
+      {
+        "id": "F7",
+        "severity": "informational",
+        "classification": "refuted",
+        "finding": "An explicitly C1 practical recommendation remains honest without a C2 measurement. The runner is sequential and the public plan already limits the claim to one active request. C2 becomes mandatory only for a concurrency, admission, or best-throughput claim.",
+        "concrete_state_and_wrong_result": "No C2 sweep is required to complete the bounded C1 selection. Near-limit text plus image, SWE, and a long-duration soak remain optional gaps when they are stated as unmeasured.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:31",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:33",
+          "anvil_serving/benchmarking/suite_runner.py:203"
+        ]
+      },
+      {
+        "id": "F8",
+        "severity": "informational",
+        "classification": "refuted",
+        "finding": "The native context runner's 2048-token completion cap is sufficient for this bounded short exact-answer retrieval diagnostic. It is the total completion budget under the model's default reasoning behavior, because the context runner does not forward an explicit thinking or reasoning override. A passing observation therefore proves exact retrieval within that budget; it does not prove unrestricted reasoning or a visible 2048-token answer allowance.",
+        "concrete_state_and_wrong_result": "No larger completion budget or extra sweep is required for this campaign. If an observation ends by length or has no exact visible answer, retain it as a failed bounded diagnostic and distinguish completion-budget exhaustion from demonstrated retrieval error when the retained response permits that classification.",
+        "references": [
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:20",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-expansion-plan.json:29",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-runner-boundaries.json:4",
+          "docs/findings/2026-09-23-thinkingcap-evidence/context-runner-boundaries.json:5",
+          "anvil_serving/benchmarking/suite_runner.py:219",
+          "anvil_serving/benchmarking/suite_runner.py:224"
+        ]
+      }
+    ],
+    "breakage_probes": [
+      {
+        "axis": "fail-closed unreadable state or tools",
+        "input_or_state": "missing benchmark profile",
+        "expected": "reject before execution",
+        "observed": "profile_not_found",
+        "classification": "refuted"
+      },
+      {
+        "axis": "malformed and boundary input",
+        "input_or_state": "run_id containing CRLF, semicolon, path traversal, and command-substitution metacharacters",
+        "expected": "reject before path or process use",
+        "observed": "bad_identifier",
+        "classification": "refuted"
+      },
+      {
+        "axis": "resource exhaustion and bounds",
+        "input_or_state": "repetitions=21 and token bucket plus output headroom above advertised context",
+        "expected": "reject before execution",
+        "observed": "bad_context_repetitions and context_capacity_exceeded",
+        "classification": "refuted"
+      },
+      {
+        "axis": "resource exhaustion and bounds",
+        "input_or_state": "60 sequential requests with timeout_s=7200 and repeated request stalls",
+        "expected": "whole job stops at 7200 seconds",
+        "observed": "timeout is capped per request at 900 seconds; no aggregate deadline was found",
+        "classification": "confirmed"
+      },
+      {
+        "axis": "state drift across CLI, worker, process, and config seams",
+        "input_or_state": "same served alias points to a different runtime image or checkpoint between plan creation and execution",
+        "expected": "independent identity mismatch blocks evidence",
+        "observed": "preflight checks alias/context while final identities are copied from declarations",
+        "classification": "confirmed"
+      }
+    ],
+    "mandatory_final_gates": [
+      "Finish the chosen lane's predeclared strict-capacity and repeated-quality gates before selecting it.",
+      "Run fresh functional and full-vision checks under the selected expanded-context configuration.",
+      "Require both scout observations and all 60 full context observations to be correct, complete, failure-free, and acceptable-finish, with actual prompt-token evidence at the near-limit target.",
+      "Describe 57344 or 32768 as the configured and advertised context of the selected recipe, and state that context requests use the model template's default reasoning within one total 2048-token completion cap.",
+      "Run the already-declared bounded two-case agentic smoke if the final profile is described as suitable for agentic use.",
+      "Capture same-window managed identity, final health/status, and telemetry evidence, including any timeout or cancellation.",
+      "Correct cross-document metrics, lane names, evidence links, and comparison language.",
+      "Finalize the complete artifact ledger twice with byte-identical output, then run the benchmark-doc JSON, link, and strict documentation gates."
+    ],
+    "optional_followups": [
+      "C2 is optional unless a concurrency, admission, or best-throughput claim is added.",
+      "A combined near-limit text-plus-image case is optional; without it, keep text-context and vision-under-the-same-configuration as separate claims.",
+      "SWE and long-duration soak evidence are optional for this bounded C1 recommendation and must remain explicit limitations."
+    ]
+  },
+  "advisory_priors": [
+    "The implementing model is Astra and the independent reviewer is Sol; the evaluated model is ThinkingCap Qwen3.8, so reviewer independence is satisfied.",
+    "The supplied physical observations report 64111 FP8 cache tokens and 45180 BF16 cache tokens at the stated recipes; this review did not call the endpoint or GPU.",
+    "The supplied update reports that the FP8 strict 100-request population passed at approximately 138 decode tok/s versus approximately 158 tok/s for BF16; the repeated MMLU diagnostic was still running when this review closed.",
+    "Read-only TOML comparison confirms that each expanded-context recipe changes only context_tokens and --max-model-len in executable serve settings relative to its 16K precision-matched parent; descriptive note and rationale text also change.",
+    "The user authorization covers local candidate lifecycle, testing, optimization, and direct retention. It does not authorize a route or promotion change.",
+    "workflow_packet_validate and operation_contracts were not available in this reviewer session; native source validators were used for plan shape and parameter selection only."
+  ],
+  "recommendation": "accept_the_two_c1_context_plans_for_bounded_execution; hold_fp8_selection_and_publication_until_F1_through_F5_and_the_mandatory_final_gates_are_resolved",
+  "human_gate_required": false,
+  "promoted": false
+}

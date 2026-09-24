@@ -46,6 +46,29 @@ def inspection(*, status="running", running=True, restart="unless-stopped", imag
     }
 
 
+def external_compose_binding(**changes):
+    result = binding(
+        external_compose=True,
+        compose_project="observability",
+        compose_service="prometheus",
+        compose_config_source="/operator/observability/prometheus",
+        compose_config_target="/etc/prometheus",
+        expected_image_id=IMAGE_ID,
+    )
+    result.update(changes)
+    return result
+
+
+def external_compose_inspection(**changes):
+    result = inspection(labels={
+        "com.docker.compose.project": "observability",
+        "com.docker.compose.service": "prometheus",
+    })
+    result["Mounts"] = [{"Type": "bind", "Source": "/operator/observability/prometheus", "Destination": "/etc/prometheus", "RW": False}]
+    result.update(changes)
+    return result
+
+
 class FakeRun:
     """The Docker CLI boundary: every response is independently supplied."""
 
@@ -61,6 +84,45 @@ class FakeRun:
                     raise response
                 return response
         raise AssertionError("unexpected Docker command: %r" % (argv,))
+
+
+def test_external_compose_adoption_pins_project_service_and_config_mount():
+    from anvil_serving.service_runtime.docker import Adapter
+
+    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([external_compose_inspection()])) )])
+    adopted = Adapter(run=runner).adopt_external_compose(external_compose_binding())
+    assert adopted == {"image_id": IMAGE_ID, "identity_labels": {
+        "com.docker.compose.project": "observability", "com.docker.compose.service": "prometheus"}}
+
+
+def test_external_compose_adoption_rejects_wrong_config_mount():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    row = external_compose_inspection()
+    row["Mounts"] = []
+    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([row])) )])
+    with pytest.raises(ServiceError, match="configuration target"):
+        Adapter(run=runner).adopt_external_compose(external_compose_binding())
+
+
+@pytest.mark.parametrize("changes", [
+    {"Image": "sha256:" + "c" * 64},
+    {"Config": {"Labels": {"com.docker.compose.project": "other", "com.docker.compose.service": "prometheus"}}},
+    {"Mounts": [{"Type": "bind", "Source": "/operator/observability/prometheus", "Destination": "/etc/prometheus", "RW": True}]},
+    {"Mounts": [
+        {"Type": "bind", "Source": "/operator/observability/prometheus", "Destination": "/etc/prometheus", "RW": False},
+        {"Type": "bind", "Source": "/other", "Destination": "/etc/prometheus", "RW": False},
+    ]},
+])
+def test_external_compose_adoption_rejects_identity_drift(changes):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    row = external_compose_inspection(**changes)
+    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([row])) )])
+    with pytest.raises(ServiceError, match="image|Compose|mount"):
+        Adapter(run=runner).adopt_external_compose(external_compose_binding())
 
 
 def completed(stdout="", stderr="", returncode=0):

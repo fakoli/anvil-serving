@@ -1,0 +1,247 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-23-thinkingcap",
+  "observed_at": "2026-09-23T22:57:14.753679+00:00",
+  "sources": [
+    {
+      "id": "official-0",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B",
+      "published_or_observed": "2026-09-23T18:05:44.000Z",
+      "observed_at": "2026-09-23T22:57:14.753679+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Artifact identity, precision and checkpoint bytes; runtime allocation unmeasured",
+      "decision_impact": "Pin exact variant before managed pull; gated access required"
+    },
+    {
+      "id": "official-1",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-FP8",
+      "published_or_observed": "2026-09-23T16:26:31.000Z",
+      "observed_at": "2026-09-23T22:57:14.753679+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Artifact identity, precision and checkpoint bytes; runtime allocation unmeasured",
+      "decision_impact": "Pin exact variant before managed pull; gated access required"
+    },
+    {
+      "id": "official-2",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4",
+      "published_or_observed": "2026-09-23T16:26:33.000Z",
+      "observed_at": "2026-09-23T22:57:14.753679+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Artifact identity, precision and checkpoint bytes; runtime allocation unmeasured",
+      "decision_impact": "Pin exact variant before managed pull; gated access required"
+    },
+    {
+      "id": "official-3",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+      "published_or_observed": "2026-09-23T16:18:25.000Z",
+      "observed_at": "2026-09-23T22:57:14.753679+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Artifact identity, precision and checkpoint bytes; runtime allocation unmeasured",
+      "decision_impact": "Pin exact variant before managed pull; gated access required"
+    },
+    {
+      "id": "official-4",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-GGUF",
+      "published_or_observed": "2026-09-23T16:18:16.000Z",
+      "observed_at": "2026-09-23T22:57:14.753679+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Artifact identity, precision and checkpoint bytes; runtime allocation unmeasured",
+      "decision_impact": "Pin exact variant before managed pull; gated access required"
+    },
+    {
+      "id": "vllm-029-image",
+      "url": "https://hub.docker.com/v2/repositories/vllm/vllm-openai/tags/v0.29.0",
+      "published_or_observed": "2026-09-24T00:31:04.305583+00:00",
+      "observed_at": "2026-09-24T00:31:04.305583+00:00",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "linux/amd64 runtime recommended by pinned model card; Blackwell execution unmeasured",
+      "decision_impact": "Pin platform digest sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b; bare canonical-digest inspection succeeded. The tag-plus-digest inspector false mismatch is tracked in .tickets/2026-09-23-image-tag-digest-canonicalization.md."
+    },
+    {
+      "id": "vllm-wsl2-uva-env-98dff2a",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/envs.py",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T01:06:20Z",
+      "age_class": "current",
+      "evidence_type": "official-source-code",
+      "hardware_runtime_relevance": "Pinned vLLM source states that VLLM_WSL2_ENABLE_PIN_MEMORY=1 enables required pinned memory/UVA for a compatible WSL2 kernel and the V2 model runner.",
+      "decision_impact": "After the retained pre-weight UvaBuffer failure, add only VLLM_WSL2_ENABLE_PIN_MEMORY=1 to the managed recipe retry; this source is operational diagnosis, not promotion-quality performance or quality evidence."
+    },
+    {
+      "id": "vllm-029-kv-source-0",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/cache.py",
+      "published_or_observed": "2026-09-24T01:34:31.670270+00:00",
+      "observed_at": "2026-09-24T01:34:31.670270+00:00",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "sm120 vLLM0.29 target backend and FP8 cache precision compatibility",
+      "decision_impact": "Do not enable drop-in FP8 on FLASH_ATTN/SM120 or nonexistent calculate-kv-scales; separate Triton control needed"
+    },
+    {
+      "id": "vllm-029-kv-source-1",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/flash_attn.py",
+      "published_or_observed": "2026-09-24T01:34:31.670270+00:00",
+      "observed_at": "2026-09-24T01:34:31.670270+00:00",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "sm120 vLLM0.29 target backend and FP8 cache precision compatibility",
+      "decision_impact": "Do not enable drop-in FP8 on FLASH_ATTN/SM120 or nonexistent calculate-kv-scales; separate Triton control needed"
+    },
+    {
+      "id": "vllm-029-kv-source-2",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/fa_utils.py",
+      "published_or_observed": "2026-09-24T01:34:31.670270+00:00",
+      "observed_at": "2026-09-24T01:34:31.670270+00:00",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "sm120 vLLM0.29 target backend and FP8 cache precision compatibility",
+      "decision_impact": "Do not enable drop-in FP8 on FLASH_ATTN/SM120 or nonexistent calculate-kv-scales; separate Triton control needed"
+    },
+    {
+      "id": "vllm-029-kv-source-3",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/docs/features/quantization/quantized_kvcache.md",
+      "published_or_observed": "2026-09-24T01:34:31.670270+00:00",
+      "observed_at": "2026-09-24T01:34:31.670270+00:00",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "sm120 vLLM0.29 target backend and FP8 cache precision compatibility",
+      "decision_impact": "Do not enable drop-in FP8 on FLASH_ATTN/SM120 or nonexistent calculate-kv-scales; separate Triton control needed"
+    },
+    {
+      "id": "vllm-029-kv-source-4",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/speculative.py",
+      "published_or_observed": "2026-09-24T01:34:31.670270+00:00",
+      "observed_at": "2026-09-24T01:34:31.670270+00:00",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "sm120 vLLM0.29 target backend and FP8 cache precision compatibility",
+      "decision_impact": "Do not enable drop-in FP8 on FLASH_ATTN/SM120 or nonexistent calculate-kv-scales; separate Triton control needed"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-0",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/tests/quantization/test_per_token_kv_cache.py#L149-L257",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-1",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/speculative.py#L385-L391",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-2",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/vllm.py#L2349-L2415",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-3",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/engine/arg_utils.py#L962-L970",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-4",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/quantization/kv_cache.py#L66-L84",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-5",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/triton_attn.py#L248-L342",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-6",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/triton_attn.py#L439-L452",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-7",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/ops/triton_reshape_and_cache_flash.py#L253-L335",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-8",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py#L284-L295",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-9",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/eagle/utils.py#L33-L49",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-10",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/mtp/speculator.py#L11-L33",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    },
+    {
+      "id": "vllm-029-v2-mtp-source-11",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/speculator.py#L206-L225",
+      "published_or_observed": "2026-09-24",
+      "observed_at": "2026-09-24T02:22:00Z",
+      "age_class": "current pinned engine revision",
+      "evidence_type": "official source; external-prior",
+      "hardware_runtime_relevance": "V2 standard MTP and explicit target-Triton dynamic FP8 on sm120; source-level admission, no exact integration proof",
+      "decision_impact": "Correct nested drafter-backend assumption; qualify matched explicit target-Triton BF16 and dynamic FP8 arms with inherited draft KV"
+    }
+  ]
+}

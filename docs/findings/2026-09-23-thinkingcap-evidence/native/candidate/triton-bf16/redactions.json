@@ -1,0 +1,162 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "scope": "Target-Triton BF16 MTP3 candidate evidence copied from a private operator evidence root",
+  "source_metrics_and_schemas": "unchanged; only strings containing operator or container identity were normalized",
+  "transformations": [
+    {
+      "match": "operator home paths and account labels",
+      "replacement": "PRIVATE_OPERATOR_HOME or Primary Node"
+    },
+    {
+      "match": "container home, model-cache, and runtime-cache paths",
+      "replacement": "PRIVATE_CONTAINER_HOME, PRIVATE_MODEL_CACHE, or PRIVATE_RUNTIME_CACHE"
+    },
+    {
+      "match": "real GPU UUID",
+      "replacement": "GPU-RTX5090-SYNTHETIC"
+    },
+    {
+      "match": "private container gateway address",
+      "replacement": "PRIVATE_CONTAINER_GATEWAY"
+    }
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "triton-bf16-preflight.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-preflight.json",
+      "private_source_sha256": "ca5529540a0b431d305abecf6c9e86b90307e00e41f7b5e919878af671168e9d",
+      "public_sha256": "ca5529540a0b431d305abecf6c9e86b90307e00e41f7b5e919878af671168e9d",
+      "source_bytes": 22420,
+      "public_bytes": 22420
+    },
+    {
+      "private_source_name": "triton-bf16-reasoning-preflight.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-reasoning-preflight.json",
+      "private_source_sha256": "2cdd8283e8f777ecf17855f9858d88d97cfa903d05fdcf148cdb428e7a145bf3",
+      "public_sha256": "2cdd8283e8f777ecf17855f9858d88d97cfa903d05fdcf148cdb428e7a145bf3",
+      "source_bytes": 8024,
+      "public_bytes": 8024
+    },
+    {
+      "private_source_name": "triton-bf16-thinking-control.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-thinking-control.json",
+      "private_source_sha256": "57d8544d26426fa4b1d5ccb9bc05f92cf642e9e99e550b2f69057ecc6d37539e",
+      "public_sha256": "57d8544d26426fa4b1d5ccb9bc05f92cf642e9e99e550b2f69057ecc6d37539e",
+      "source_bytes": 833,
+      "public_bytes": 833
+    },
+    {
+      "private_source_name": "triton-bf16-multimodal.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-multimodal.json",
+      "private_source_sha256": "e7f486619dacc80300e732c41076b4d10cc6907bb40167fb695685ee6df74698",
+      "public_sha256": "e73b4ec60b377764aa2920f135d79925527a3d6f76ee1aa7493956f55272955b",
+      "source_bytes": 34840,
+      "public_bytes": 34838
+    },
+    {
+      "private_source_name": "triton-bf16-short32-scout.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-short32-scout.json",
+      "private_source_sha256": "1ee0f4574da28fe1939298b5e205f950494ad844a0cf809773525e3b111ef727",
+      "public_sha256": "1ee0f4574da28fe1939298b5e205f950494ad844a0cf809773525e3b111ef727",
+      "source_bytes": 16179,
+      "public_bytes": 16179
+    },
+    {
+      "private_source_name": "triton-bf16-short32-n100-r1.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json",
+      "private_source_sha256": "ee4801c5cd7d41d09c78c51e2e687e3dde938117783e067acc1fd20076ee8472",
+      "public_sha256": "ee4801c5cd7d41d09c78c51e2e687e3dde938117783e067acc1fd20076ee8472",
+      "source_bytes": 133470,
+      "public_bytes": 133470
+    },
+    {
+      "private_source_name": "triton-bf16-mmlu10-thinking.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-mmlu10-thinking.json",
+      "private_source_sha256": "dfd6295aeb05dd44c86610ae64a5e28e77a809c4218d517ca67741a93198d7e7",
+      "public_sha256": "be19de5386a02396e708a72f35ce3d16be1cdfd7851e64ecd62a135c0bb99a83",
+      "source_bytes": 67356,
+      "public_bytes": 67356
+    },
+    {
+      "private_source_name": "triton-bf16-preflight.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-preflight.log",
+      "private_source_sha256": "9c504c4c579509c8c5a47cf9881fd380210b044b41f2abae1d1c1cfba8d9751c",
+      "public_sha256": "9c504c4c579509c8c5a47cf9881fd380210b044b41f2abae1d1c1cfba8d9751c",
+      "source_bytes": 1299,
+      "public_bytes": 1299
+    },
+    {
+      "private_source_name": "triton-bf16-reasoning-preflight.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-reasoning-preflight.log",
+      "private_source_sha256": "9a7f6cca6049f4afb556b43bb0faa40c593eedb89cf5693c263ba88aee558239",
+      "public_sha256": "9a7f6cca6049f4afb556b43bb0faa40c593eedb89cf5693c263ba88aee558239",
+      "source_bytes": 893,
+      "public_bytes": 893
+    },
+    {
+      "private_source_name": "triton-bf16-multimodal.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-multimodal.log",
+      "private_source_sha256": "df915618d274711ac7f23448e2c71e893b4e5f50f3fb704877833ad22f14ae8a",
+      "public_sha256": "e502b39ddb630f4f7fd63c97c15d185ff5c2b06e824a99d19cb2d284a525d950",
+      "source_bytes": 153,
+      "public_bytes": 153
+    },
+    {
+      "private_source_name": "triton-bf16-short32-scout.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-short32-scout.log",
+      "private_source_sha256": "1cc9fc76e08cd3e3e80c25c96fb79753a649cbd8dc9fd4c6637e5c5436480410",
+      "public_sha256": "0af8a0a7a3517a599964929cca163ee1dc9f4e619b6a55d9a949a54b98e308c8",
+      "source_bytes": 1129,
+      "public_bytes": 1129
+    },
+    {
+      "private_source_name": "triton-bf16-short32-n100-r1.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.log",
+      "private_source_sha256": "f61dbb20ccba184e0b1862cb32591a348b3e355afa6f04f9ee9ea1d52e936934",
+      "public_sha256": "f19a150d8ff82338ba54de3c08cd49f2f0adde4f6405c0e1b12fa1694c99c69f",
+      "source_bytes": 1134,
+      "public_bytes": 1134
+    },
+    {
+      "private_source_name": "triton-bf16-mmlu10-thinking.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-mmlu10-thinking.log",
+      "private_source_sha256": "1e271d443b17422a1a4f928d1f160b94ea35aab8e0583396405e6d68ca1c6634",
+      "public_sha256": "63e0c653ffad2d58d23e7c0ad335d1e0cad8d17a9cbaf0c19182b52c2216f95c",
+      "source_bytes": 148,
+      "public_bytes": 148
+    },
+    {
+      "private_source_name": "triton-bf16-health.private.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-health.json",
+      "private_source_sha256": "f2fd54c8484062ef995e0af909ef7c5c1ee967f650ef207034923d88696c4ae8",
+      "public_sha256": "f2fd54c8484062ef995e0af909ef7c5c1ee967f650ef207034923d88696c4ae8",
+      "source_bytes": 81,
+      "public_bytes": 81
+    },
+    {
+      "private_source_name": "triton-bf16-models.private.json",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-models.json",
+      "private_source_sha256": "ffaace1f2ce95f56ac3ed443f313472a9b8dd9d93c69b74f230daf33a0e19dd7",
+      "public_sha256": "668f58367faf180cb552d6bcd9235409ffc91a233f0a14cff2f26f4eadd64d0f",
+      "source_bytes": 1013,
+      "public_bytes": 1008
+    },
+    {
+      "private_source_name": "triton-bf16-load.private.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-load.log",
+      "private_source_sha256": "32bfe82122c4af032f4059dab019f2c1d0ff860e8de36d3288a859499da7d1c4",
+      "public_sha256": "109a30166e6d4fb90640b5056cb657430454d310d861488423d507255cd23e50",
+      "source_bytes": 3455,
+      "public_bytes": 3361
+    },
+    {
+      "private_source_name": "triton-bf16-final-engine.private.log",
+      "public_path": "native/candidate/triton-bf16/triton-bf16-final-engine.log",
+      "private_source_sha256": "af9a1094d9e38e056a0eb40c6fffdff8d8c3ae1b4f342732fde45185816ec80d",
+      "public_sha256": "a5be51aadc3d3c6792bfa84021ebc5394d6bd8d1ab5163ea2a9a6cf44f1e7c2c",
+      "source_bytes": 77459,
+      "public_bytes": 80323
+    }
+  ],
+  "additional_identity_pass": "identity-sanitization-final.json at the evidence bundle root; original source hashes preserved"
+}

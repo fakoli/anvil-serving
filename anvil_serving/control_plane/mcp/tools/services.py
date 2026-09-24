@@ -32,6 +32,17 @@ def _reject_private_inputs(args: dict) -> None:
 
 
 def _binding(args: dict, action: str, service: str) -> dict | None:
+    external_compose = _arg_bool(args.get("external_compose"), False, name="external_compose")
+    compose_identity = any(key in args for key in (
+        "compose_project", "compose_service", "compose_config_source",
+        "compose_config_target", "expected_image_id",
+    ))
+    if (external_compose or compose_identity) and (
+        action != "adopt" or args.get("manager") != "docker" or not external_compose
+    ):
+        raise ToolError(
+            "bad_argument", "Compose identity options require Docker adoption with external_compose=true"
+        )
     if action != "adopt":
         return None
     manager = _str_arg(args, "manager", required=True)
@@ -62,6 +73,11 @@ def _binding(args: dict, action: str, service: str) -> dict | None:
         )
     else:
         binding["container"] = _str_arg(args, "container", required=True)
+        if external_compose:
+            binding["external_compose"] = True
+            for name in ("compose_project", "compose_service", "compose_config_source", "compose_config_target"):
+                binding[name] = _str_arg(args, name, required=True)
+            binding["expected_image_id"] = _str_arg(args, "expected_image_id", required=True)
     for name in ("endpoint", "model", "health_path", "models_path", "feature", "startup_policy"):
         value = _str_arg(args, name, "")
         if name == "startup_policy" and value not in {"", "always", "unless-stopped"}:
@@ -109,7 +125,7 @@ def _execute(args: dict, action: str, *, service_required: bool = False) -> dict
             confirm=confirm,
             tail=tail,
             timeout_seconds=timeout_seconds,
-            binding=_binding(args, action, service) if action == "adopt" else None,
+            binding=_binding(args, action, service),
             remote=True,
         )
     except ServiceError as exc:
@@ -200,6 +216,12 @@ _ADOPT_PROPERTIES = {
     "engine": {"type": "string", "minLength": 1, "maxLength": 128},
     "support": {"type": "string", "enum": ["supported", "legacy"]},
     "container": {"type": "string", "minLength": 1, "maxLength": 128},
+    "external_compose": {"type": "boolean"},
+    "compose_project": {"type": "string", "minLength": 1, "maxLength": 128},
+    "compose_service": {"type": "string", "minLength": 1, "maxLength": 128},
+    "compose_config_source": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "compose_config_target": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "expected_image_id": {"type": "string", "minLength": 71, "maxLength": 71},
     "endpoint": {"type": "string", "minLength": 1, "maxLength": 2048},
     "model": {"type": "string", "minLength": 1, "maxLength": 2048},
     "health_path": {"type": "string", "minLength": 1, "maxLength": 2048},

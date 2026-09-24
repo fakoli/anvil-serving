@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.independent-review/v1",
+  "reviewer": "GPT-5.6 Sol",
+  "implementer": "GPT-5.6 Terra",
+  "decision": "accepted",
+  "scope": [
+    "anvil_serving/client_catalog_sync.py",
+    "tests/test_client_catalog_sync.py"
+  ],
+  "source_sha256": {
+    "anvil_serving/client_catalog_sync.py": "07478e137c748397afc25916885f87587dd430d304141d83bec5141632ee085b",
+    "tests/test_client_catalog_sync.py": "e96308fc0ef4b8dc4b623e9b47bc914c0a794ed949b705ca5bd2d14a230e0f96"
+  },
+  "verification": {
+    "focused_tests_passed": 34,
+    "ruff": "passed",
+    "reviewed_contract": "Installed Pi 0.85.1 source"
+  },
+  "findings": [],
+  "accepted_behavior": [
+    "Pi high maps to xhigh only when needed; exact supported high preserved",
+    "Pi max is a valid key; declared max-only profiles expose xhigh/max mapped to max",
+    "Unsupported levels are hidden with null",
+    "OpenAI-format off is hidden where omission would select provider default thinking",
+    "Validated router metadata retained; no engine/model-name special cases",
+    "Unrelated client defaults preserved; idempotence checked"
+  ],
+  "residual_risks": [
+    "An explicitly non-iterable scalar effort value can raise TypeError rather than ClientCatalogError, before writes",
+    "Absent declarations preserve unmanaged existing maps"
+  ],
+  "promotion_decision": "User-authorized; code review itself does not promote"
+}

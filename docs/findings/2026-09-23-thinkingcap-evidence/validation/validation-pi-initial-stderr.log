@@ -1,0 +1,15 @@
+
+  #  C:\WINDOWS\system32\cmd.exe [37368]: class std::shared_ptr<class node::InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const class std::vector<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >,class std::allocator<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > > > &,enum node::ProcessInitializationFlags::Flags) at c:\ws\src\node.cc:1266
+  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)
+
+----- Native stack trace -----
+
+ 1: 00007FF7A4774BB7 node::SetCppgcReference+21127
+ 2: 00007FF7A46D2371 EVP_MD_meth_get_input_blocksize+92129
+ 3: 00007FF7A471D351 node::InitializeOncePerProcess+2881
+ 4: 00007FF7A471F2DB node::Start+3723
+ 5: 00007FF7A471E46E node::Start+30
+ 6: 00007FF7A447B1EC AES_cbc_encrypt+152028
+ 7: 00007FF7A603D5E4 inflateValidate+40756
+ 8: 00007FFC41BECDF7 BaseThreadInitThunk+23
+ 9: 00007FFC43B3EE4C RtlUserThreadStart+44
