@@ -4,9 +4,9 @@
 
 The exact DCP1 batch-2,048/C4/0.97 r11 recipe is selected and deployed after
 accepted direct, production-routed, and native-client checks. The final solver
-review, client/control-plane review, and dashboard receipt are retained. Public
-post merge and deployed readback remain pending. The exact r10 recipe remains
-the rollback.
+review, client/control-plane review, dashboard receipt, successful Pages run,
+and public HTTP/browser readback are retained. The exact r10 recipe remains the
+rollback.
 
 ## Canonical facts
 
@@ -19,7 +19,7 @@ the rollback.
   responses returned fenced JSON; Mac OpenClaw also added explanatory text
   before correct JSON. Semantic paths passed, but strict-format compliance did
   not. Pi Web's message-count metadata was zero despite a retained successful transcript.
-- **Decision boundary:** deployed publication pending. This is a mitigation,
+- **Decision boundary:** publication verified. This is a mitigation,
   not a root-cause fix, crash-rate study, or speed winner.
 - **Evidence:** [finding](../2026-09-23-glm-dcp1-qualification.md) ·
   [evidence index](README.md) · [artifact manifest](artifact-manifest.json).
@@ -30,10 +30,10 @@ the rollback.
 | --- | --- | --- |
 | r11 direct and production-routed function passed | 28 checks each, fixed protocol | `r11-direct-preflight.json`; `r11-production-routed-preflight.json` |
 | Fleet client semantics passed | 13 native paths, exact nonce/card oracle; strict format failed on retained paths | `client-acceptance-summary.json` |
-| Client/control-plane review accepted with caveats | fleet changed=0 and seven read-only mounts; publication readback remains pending | `client-control-plane-independent-review.json` |
+| Client/control-plane review accepted with caveats | fleet changed=0 and seven read-only mounts | `client-control-plane-independent-review.json` |
 | Dashboard imports verified | nine source-matched runs, 99 metrics, nine authenticated cards, repeat imports byte-identical | `promotion-publication-receipt.json` |
 | Full-window C4 capacity is bounded | 825,268 KV; no four full 327K windows | `final-qualification-independent-review.json` |
 | DCP1 is not a speed or root-cause claim | performance-ineligible/limited evidence retained | `routed-admission-capacity.json`; `final-qualification-independent-review.json` |
 
-The public post is still pending PR merge and deployed readback. This receipt
-does not claim a public HTTP 200 response.
+The [publication closure receipt](publication-closure-receipt.json) records the
+merged public page's HTTP 200, Chrome readback, and successful Pages run.

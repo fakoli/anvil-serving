@@ -3,8 +3,9 @@
 The selected DCP1 batch-2,048/C4/0.97 r11 recipe is deployed after accepted
 direct, production-routed, and native-client checks for the pinned
 GLM-5.3-Flash EXL3 checkpoint on two RTX PRO 6000 Blackwell Max-Q cards. The
-public packet is `deployed_publication_pending`: only the public-post merge and
-deployed readback remain pending. This qualification tests the single
+public packet is publication-verified: the merged Pages publication returned
+HTTP 200 and a Chrome readback confirmed its title and core published facts.
+This qualification tests the single
 DCP2-to-DCP1 change after the retained DCP2 mixed-load fault; it does not
 establish a root cause, crash rate, or general hardware maximum.
 
@@ -45,9 +46,10 @@ establish a root cause, crash rate, or general hardware maximum.
   pass. Its 825,268 KV tokens are 41.73% below retained DCP2's 1,416,244, so
   four full 327K windows are unsupported. This remains a
   mitigation, not a root-cause fix, crash-rate finding, or speed claim.
-- Dashboard publication inputs are verified (nine source-matched runs, 99
-  metrics, and nine authenticated cards), but the public post remains pending
-  merge and deployed readback.
+- Dashboard publication is verified: nine source-matched runs, 99 metrics, and
+  nine authenticated cards imported with byte-identical repeats. The merged
+  Pages publication returned HTTP 200, and Chrome confirmed the title, DCP1,
+  825,268 KV, 18,016 visible-token, SWE-caveat, and evidence-index content.
 - The batch-4,096 cells were strict-correct but did not produce a comparable
   estimator; batch 8,192 started below the campaign's conservative C2 reserve
   and received no dependent requests. Batch 2,048 remains selected for this
@@ -59,10 +61,10 @@ establish a root cause, crash rate, or general hardware maximum.
 
 ## Decision boundary
 
-The exact r11 recipe is selected and deployed; accepted native-client evidence
-and restoration evidence are retained in the packet. The exact r10 recipe
-remains the rollback. The only campaign-closure gate is a public-post merge and
-deployed readback; this finding does not claim that post returned HTTP 200.
+The exact r11 recipe is selected and deployed; accepted native-client,
+restoration, and publication-readback evidence are retained in the packet. The
+exact r10 recipe remains the rollback. The public packet was merged, its Pages
+run succeeded, and the deployed page returned HTTP 200 with Chrome readback.
 Historical pre-deployment reviews and gates that record `promoted=false` remain
 unaltered as dated evidence.
 

@@ -2,8 +2,8 @@
   "schema": "anvil-serving.benchmark-artifact-set-source/v1",
   "campaign": {
     "id": "2026-09-23-glm-dcp1-qualification",
-    "state": "deployed_publication_pending",
-    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public-post merge and deployed readback pending",
+    "state": "publication_verified",
+    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public post HTTP and browser readback verified",
     "rollback": "exact r10"
   },
   "native_evidence_schemas": [
@@ -21,7 +21,7 @@
       "files": [
         "README.md"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "source-registry",
@@ -29,7 +29,7 @@
       "files": [
         "source-registry.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "workload-manifest",
@@ -38,7 +38,7 @@
         "graph-manifest.json",
         "production-r11-scenario-binding.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "run-plan",
@@ -46,7 +46,7 @@
       "files": [
         "graph-manifest.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "configuration-and-identity",
@@ -57,7 +57,7 @@
         "qualification-final-candidate-status.json",
         "controller-mount-live-verification.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "raw-run-evidence",
@@ -114,7 +114,7 @@
         "swe-final-gate.json",
         "swe-native.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "failures-and-friction",
@@ -127,7 +127,7 @@
         "long-output-64k.json",
         "overlap-201k-unique.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "restoration",
@@ -136,7 +136,7 @@
         "restoration.json",
         "controller-mount-live-verification.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "decision-summary",
@@ -145,15 +145,17 @@
         "summary.json",
         "final-qualification-independent-review.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "publication-summary",
       "status": "retained",
       "files": [
-        "publication-summary.md"
+        "publication-summary.md",
+        "promotion-publication-receipt.json",
+        "publication-closure-receipt.json"
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     }
   ]
 }

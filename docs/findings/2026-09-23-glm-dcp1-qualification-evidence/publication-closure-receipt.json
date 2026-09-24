@@ -1,0 +1,53 @@
+{
+  "schema": "anvil-serving.publication-closure-readback/v1",
+  "status": "publication_verified",
+  "observed_at": "2026-09-24T03:33:49.772790+00:00",
+  "public_url": "https://fakoli.github.io/anvil-serving/findings/2026-09-23-glm-dcp1-qualification/",
+  "source_merges": {
+    "public_packet": "414d11026a8e0d066a197a8d5656931503d65d7c",
+    "observability": "290589105c9224bb0c5524eac08aa246dfe6b563"
+  },
+  "pages_run": {
+    "id": "35951854576",
+    "status": "success"
+  },
+  "http_readback": {
+    "status": 200,
+    "body_sha256": "98ad66fd0a565eb0b9fc12e3ab4adb5343cd0c67be3970eb115e7a98161498d3",
+    "content_checks": {
+      "DCP1": true,
+      "825,268": true,
+      "18,016": true,
+      "batch": true,
+      "r11": true
+    }
+  },
+  "browser_readback": {
+    "browser": "Chrome",
+    "title": "GLM-5.3-Flash DCP1 r11 qualification - Anvil Serving",
+    "observed_content": [
+      "selected DCP1 batch2048/C4/.97 r11 deployed",
+      "825268 logicalKV tokens",
+      "18016 visible tokens",
+      "SWE4/5 absolute gate and paired comparison limitation",
+      "DCP1 mitigation not root cause/crashrate/general hardwaremaximum",
+      "evidence index link"
+    ]
+  },
+  "dashboard_publication": {
+    "runs": 9,
+    "source_matched_metrics": 99,
+    "authenticated_workbench_cards": 9,
+    "repeat_imports_byte_identical": true,
+    "model_readiness": 1
+  },
+  "source_receipts": {
+    "public-post-http-readback.json": "0cb16eccbad1fcfdc91a127b6c4c2607c13c9d1378b5a76a5d1a3feb0ca7c87a",
+    "public-post-browser-readback.json": "7ce0aba5e83537fa78f3e0e4023ec5eba8ae22c83e073685ca6d89432c4db726",
+    "promotion-publication-receipt.json": "db950bf635ad21910583b1a1c1339e8913c85620ed172f3f504abd551097fdfe"
+  },
+  "limitations": [
+    "This closes publication readback only.",
+    "DCP1 remains a mitigation, not a root-cause, crash-rate, speed, C8, or four-full-327K claim."
+  ]
+}

@@ -272,6 +272,16 @@
       "private_sha256": "86969b47c37d4e5c4b529a392f287071d4e1936c6d8970c8fa2d3416b800ed9a",
       "public_sha256": "f23fb7b752624dcf49cbc181b24b005ea1199c50c4549c687db015a9cfb31f5e",
       "note": "Public-post URL, dashboard/host metadata, Workbench URL, and evidence IDs sanitized; source-matched counts and repeat hashes retained."
+    },
+    {
+      "path": "publication-closure-receipt.json",
+      "private_source_sha256s": {
+        "public-post-http-readback.json": "0cb16eccbad1fcfdc91a127b6c4c2607c13c9d1378b5a76a5d1a3feb0ca7c87a",
+        "public-post-browser-readback.json": "7ce0aba5e83537fa78f3e0e4023ec5eba8ae22c83e073685ca6d89432c4db726",
+        "promotion-publication-receipt.json": "db950bf635ad21910583b1a1c1339e8913c85620ed172f3f504abd551097fdfe"
+      },
+      "public_sha256": "7c5ea46cdc1d747ccb93b0613d056628dce87113cba56a5a4479b6242199c409",
+      "note": "Compact derived closure receipt: private endpoint, host, exporter labels, and Workbench identifiers removed; public Pages URL, HTTP/browser readback, source merge revisions, and aggregate dashboard counts retained."
     }
   ]
 }
