@@ -81,7 +81,7 @@ tests\workbench\test_pi_official_smoke.py:92:
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 client = <anvil_serving.workbench_app.pi_rpc.PiRpcClient object at 0x0000020BF9F696A0>
-key = '7b00577cecf84b77a3ff1936fd0cf829'
+key = '<redacted-rpc-command-id>'
 
     def response(client, key):
         deadline = time.monotonic() + 15

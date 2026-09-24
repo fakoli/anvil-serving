@@ -11,7 +11,7 @@ This extends the previously qualified 32K profile after the user required at lea
 - [Coverage](coverage-and-gaps.md), [final resource and ending identity](final-resource-summary.json), [campaign state](campaign-state.json), [ending state](restoration.json), [decision summary](summary.json), and [artifact ledger](artifact-manifest.json).
 - [Publication summary](publication-summary.md) and [independent pre-final review](pre-final-review.json).
 
-Only the local RTX 5090 is measured. No route, client alias or deployed topology is changed. Native evidence remains authoritative; redaction ledgers preserve original and public hashes while normalizing operator identities. The prior 32K evidence bundle remains sealed.
+Only the local RTX 5090 is measured. No route, client alias or deployed topology is changed. Native evidence remains authoritative; redaction ledgers preserve original and public hashes while normalizing operator identities. The prior 32K measurements and decisions remain unchanged; its public bundle was privacy-resealed as recorded in its additional redaction ledger.
 
 Recipe files preserve their launch-time candidate annotations and exact bytes; subsequent qualification belongs to the decision and native result records. Embedded native proof paths and hashes refer to original inputs. The applicable redaction ledger maps those names and original hashes to each public path, hash and byte count; do not treat a redacted file as byte-identical to its private source.
 
@@ -19,4 +19,4 @@ Durable job exports retain both the native `benchmark-result/v1` outer artifact 
 
 ## Publication privacy correction
 
-Before merge on 2026-09-24, remaining operator container IDs were replaced with stable synthetic labels. The [additional redaction ledger](merge-publication-redaction.json) records the prior sealed-manifest hash and exact per-file hash transition. Measurements and campaign decisions are unchanged; the manifest now binds the sanitized publication bytes.
+Before merge on 2026-09-24, remaining operator container IDs were replaced with stable synthetic labels. The [additional redaction ledger](merge-publication-redaction.json) records the prior sealed-manifest hash and exact per-file hash transition. Measurements and campaign decisions are unchanged; the manifest now binds the sanitized publication bytes. The seal checks in `validation-final.json` describe the original campaign snapshot, before this publication correction.

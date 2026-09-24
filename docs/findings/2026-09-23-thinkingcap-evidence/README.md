@@ -31,4 +31,4 @@ The required full Python repository gate failed in an unrelated Windows Pi smoke
 
 ## Publication privacy correction
 
-Before merge on 2026-09-24, remaining operator container IDs were replaced with stable synthetic labels. The [additional redaction ledger](merge-publication-redaction.json) records the prior sealed-manifest hash and exact per-file hash transition. Measurements and campaign decisions are unchanged; the manifest now binds the sanitized publication bytes.
+Before merge on 2026-09-24, remaining operator container IDs were replaced with stable synthetic labels, and a generated non-secret RPC command ID in a historical test-failure log was redacted. The [additional redaction ledger](merge-publication-redaction.json) records the prior sealed-manifest hash and exact per-file hash transition. Measurements and campaign decisions are unchanged; the manifest now binds the sanitized publication bytes.

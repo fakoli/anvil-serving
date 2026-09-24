@@ -2,7 +2,7 @@
   "schema": "anvil-serving.publication-redaction/v1",
   "date": "2026-09-24",
   "prior_manifest_sha256": "9fb3e9983675b9f0b10c0dd450cb522a13d0f0e32197995d074770f956b1a957",
-  "scope": "Merge-time privacy correction. Replace only operator container IDs with stable synthetic labels. Measurements, model pins, outcomes and original campaign decisions are unchanged. Original sealed bundle retained privately. Earlier embedded provenance hashes refer to their original snapshots; this ledger records the additional publication transform.",
+  "scope": "Merge-time privacy correction. Replace only operator container IDs with stable synthetic labels. Measurements, model pins, outcomes and original campaign decisions are unchanged. Original sealed bundle retained privately. Earlier embedded provenance hashes refer to their original snapshots; this ledger records the additional publication transform. One generated non-secret UUID4 RPC command correlation ID in a historical pytest failure log is also redacted after a signature-scanner false positive; source producer is PiRpcClient.send and the fixture uses no live credential.",
   "files": [
     {
       "path": "native/final/status.json",
@@ -17,6 +17,13 @@
       "published_sha256": "6a08ab9eea79d9176282141c7d1059619312f7dc3ad1912cb41042430b5824a5",
       "replacements": 1,
       "kind": "operator-container-id"
+    },
+    {
+      "path": "validation/validation-pi-single-after-systemroot-fix.log",
+      "original_sha256": "4a683d452d8276ed26d1e6d3f8bc902eb87cd7d4a726eaf96b84b9112e675197",
+      "published_sha256": "9d819c6842da182fe93ff6087315532ef87362cf846b4d2a7ed083925c239c57",
+      "replacements": 1,
+      "kind": "non-secret-rpc-command-id"
     }
   ]
 }

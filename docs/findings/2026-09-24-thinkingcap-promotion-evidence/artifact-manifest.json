@@ -14,11 +14,11 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "ca85a223d02412e70151d1b67b1021c38060ecf52dc262887e422c6740d15cf6",
-          "bytes": 2013
+          "sha256": "33b4ff841df141291944bd35b7f88fd632b04458b6949ab6fcf59944fc7b0f6a",
+          "bytes": 2509
         }
       ],
-      "reason": "Separate promotion packet; sealed qualification remains unchanged."
+      "reason": "Separate promotion packet; qualification measurements, decisions and recipes unchanged, with public bundles privacy-resealed under explicit ledgers."
     },
     {
       "role": "source-registry",

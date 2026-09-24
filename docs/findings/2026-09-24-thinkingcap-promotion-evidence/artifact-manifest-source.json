@@ -15,7 +15,7 @@
       "files": [
         "README.md"
       ],
-      "reason": "Separate promotion packet; sealed qualification remains unchanged."
+      "reason": "Separate promotion packet; qualification measurements, decisions and recipes unchanged, with public bundles privacy-resealed under explicit ledgers."
     },
     {
       "role": "source-registry",

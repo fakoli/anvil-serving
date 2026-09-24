@@ -1,6 +1,6 @@
 # ThinkingCap 128K promotion evidence
 
-This separate dated deployment packet records the user-authorized promotion through `llm.secondary`. The earlier 32K and 128K qualification bundles remain unchanged.
+This separate dated deployment packet records the user-authorized promotion through `llm.secondary`. The earlier 32K and 128K qualification measurements, decisions and recipes remain unchanged. Their public bundles were privacy-resealed before merge after container-ID redaction; the [32K](../2026-09-23-thinkingcap-evidence/merge-publication-redaction.json) and [128K](../2026-09-24-thinkingcap-context-evidence/merge-publication-redaction.json) ledgers record those transforms, and original seals are archived privately. This packet's native promotion evidence is unchanged; its manifest was regenerated for this publication clarification.
 
 - `summary.json`: bounded current decision and convergence status.
 - `install-capacity-*.json`: historical 4,096-output installation, before the budget correction.
