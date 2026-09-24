@@ -1,6 +1,6 @@
 # Benchmark results
 
-**2026-09-23 DCP1 r11 deployed-publication-pending:** the [GLM DCP1 qualification](findings/2026-09-23-glm-dcp1-qualification.md) records selected and deployed r11 after 28/28 direct and production-routed checks plus 13 native-client semantic paths. Independent reviews and dashboard receipt are retained; only public-post merge and deployed readback remain pending. DCP1 is a mitigation, not a root-cause or speed claim; its 825,268 KV pool is 41.73% below DCP2's 1,416,244, so four full 327K windows are unsupported. Exact r10 remains the rollback.
+**2026-09-23 DCP1 r11 publication verified:** the [GLM DCP1 qualification](findings/2026-09-23-glm-dcp1-qualification.md) records selected and deployed r11 after 28/28 direct and production-routed checks plus 13 native-client semantic paths. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. DCP1 is a mitigation, not a root-cause or speed claim; its 825,268 KV pool is 41.73% below DCP2's 1,416,244, so four full 327K windows are unsupported. Exact r10 remains the rollback.
 
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
 an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K

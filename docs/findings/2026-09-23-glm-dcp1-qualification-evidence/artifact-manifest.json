@@ -2,8 +2,8 @@
   "schema": "anvil-serving.benchmark-artifact-set/v1",
   "campaign": {
     "id": "2026-09-23-glm-dcp1-qualification",
-    "state": "deployed_publication_pending",
-    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public-post merge and deployed readback pending",
+    "state": "publication_verified",
+    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public post HTTP and browser readback verified",
     "rollback": "exact r10"
   },
   "native_evidence_schemas": [
@@ -19,11 +19,11 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "7630c3eb672792577333f6100723e8be065c666204d7db8c7eba38349e88503f",
-          "bytes": 11175
+          "sha256": "208c4ef2106a678bcf7d1be1b98f6ca7aa45e15d2d2356df5ecaf6881ad0e4fc",
+          "bytes": 11332
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "source-registry",
@@ -35,7 +35,7 @@
           "bytes": 292
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "workload-manifest",
@@ -52,7 +52,7 @@
           "bytes": 973
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "run-plan",
@@ -64,7 +64,7 @@
           "bytes": 4543
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "configuration-and-identity",
@@ -91,7 +91,7 @@
           "bytes": 2359
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "raw-run-evidence",
@@ -314,8 +314,8 @@
         },
         {
           "path": "sanitization-receipts.json",
-          "sha256": "e2a421170aad48711cee56d56f17f7a7fdac967ff023032105444b2196dca2e4",
-          "bytes": 15370
+          "sha256": "105545e418de6d4b0f6e6f45d19cb0f2f5291821ea4f0ad00c9f5ca3b3c5cbea",
+          "bytes": 16134
         },
         {
           "path": "search-closure.json",
@@ -348,7 +348,7 @@
           "bytes": 7014
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "failures-and-friction",
@@ -361,8 +361,8 @@
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "b4a3312d80c547f245997ed6232cb082ba5d0206834f811c0f420fe2ac6b7cdd",
-          "bytes": 1741
+          "sha256": "cab913a7ea7e7295a9eec45f31662d4752de82fe6a86019e706b767210dab67a",
+          "bytes": 1747
         },
         {
           "path": "routed-admission-router-errors.txt",
@@ -385,7 +385,7 @@
           "bytes": 50474
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "restoration",
@@ -393,8 +393,8 @@
       "files": [
         {
           "path": "restoration.json",
-          "sha256": "77ded6d5da21993bd3db6a7447159dffe1ab7932f1b2f32d9c6c3b599b52c7b1",
-          "bytes": 588
+          "sha256": "cf12e2724fc1f405a78ce955123873ad3c5e7f0f4f90732cccd749f69866d695",
+          "bytes": 577
         },
         {
           "path": "controller-mount-live-verification.json",
@@ -402,7 +402,7 @@
           "bytes": 2359
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "decision-summary",
@@ -410,8 +410,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "a885de156e15148af7927390fb6a038fe5f726cd988db32a0f00b05d8bb6a5c0",
-          "bytes": 2892
+          "sha256": "ce7d550272fd284f08b8dc5bdf3b3fda621896218b45658d353a5f3d18b01dfa",
+          "bytes": 2999
         },
         {
           "path": "final-qualification-independent-review.json",
@@ -419,7 +419,7 @@
           "bytes": 14812
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     },
     {
       "role": "publication-summary",
@@ -427,11 +427,21 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "c6ca5a548742d92e2f52d305e837bd8acaad8b62cebb09033b763dc881a52c40",
-          "bytes": 2527
+          "sha256": "fcedde3ec7392661c009716d0d7439ef00e9c069a3d93f535c324b9651f1dd58",
+          "bytes": 2510
+        },
+        {
+          "path": "promotion-publication-receipt.json",
+          "sha256": "f23fb7b752624dcf49cbc181b24b005ea1199c50c4549c687db015a9cfb31f5e",
+          "bytes": 2217
+        },
+        {
+          "path": "publication-closure-receipt.json",
+          "sha256": "7c5ea46cdc1d747ccb93b0613d056628dce87113cba56a5a4479b6242199c409",
+          "bytes": 1895
         }
       ],
-      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+      "reason": "Retained sanitized public evidence for the publication-verified campaign."
     }
   ],
   "bundle_size_policy_verified": false,

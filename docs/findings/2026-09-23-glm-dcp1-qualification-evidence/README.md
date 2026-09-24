@@ -1,18 +1,17 @@
 # GLM-5.3-Flash DCP1 r11 qualification evidence
 
 **Campaign:** `2026-09-23-glm-dcp1-qualification`
-**State:** `deployed_publication_pending`
+**State:** `publication_verified`
 **Decision:** exact DCP1 batch-2,048/C4/0.97 r11 selected and deployed after
-accepted direct, production-routed, and native-client checks; public-post merge
-and deployed readback remain pending.
+accepted direct, production-routed, and native-client checks. The merged Pages
+publication returned HTTP 200 and Chrome readback verified the published page.
 
-This is a public-safe deployed-publication-pending evidence selection. Native
+This is a public-safe publication-verified evidence selection. Native
 result schemas remain native. Local endpoints, paths, and runtime identifiers
 were removed; reviewed synthetic benchmark output remains where it is needed to
 audit a claim. The [artifact manifest](artifact-manifest.json) has ten retained
-roles. The final solver review, client/control-plane review, and dashboard
-publication receipt are retained. Only public-post merge and deployed readback
-remain pending.
+roles. The final solver review, client/control-plane review, dashboard
+publication receipt, and public HTTP/browser readback are retained.
 
 ## Retained interim evidence
 
@@ -96,14 +95,16 @@ remain pending.
   user-completed login, calculate-tool, and exact `1591` check. The [independent
   control-plane review](client-control-plane-independent-review.json) accepts
   semantic client and controller convergence with those format, correlation,
-  Pi Web metadata, and OpenClaw reserve caveats. Public-post merge and deployed
-  readback remain required for campaign closure.
+  Pi Web metadata, and OpenClaw reserve caveats. The later public HTTP/browser
+  readback closes publication verification.
 - The [publication receipt](promotion-publication-receipt.json) verifies nine
   imported dashboard runs against 99 source-matched metrics, nine authenticated
   Workbench evidence cards, byte-identical repeat imports, and model readiness
-  of one. The public post remains pending PR merge and deployed readback. The
-  observability repair did not restart inference or the router and made no new
-  benchmark request.
+  of one. The earlier receipt is retained as the pre-readback snapshot. The
+  [publication closure receipt](publication-closure-receipt.json) records the
+  merged public page's HTTP 200 and Chrome readback, plus the successful Pages
+  run. The observability repair did not restart inference or the router and
+  made no new benchmark request.
 - [Native SWE result](swe-native.json): all five fixed tasks were submitted and
   officially graded, with four resolved. The [absolute-gate disposition](swe-final-disposition-v2.json),
   [environment comparison](swe-environment-comparison.json), and [independent
@@ -147,7 +148,7 @@ remain pending.
 | Restoration | complete | r11 deployment and exact r10 rollback are retained. |
 | Native-client acceptance | complete with format caveats | All 13 semantic paths passed; strict-format failures remain explicit. |
 | Deployment review | complete | The historical recommendation and pre-deployment `promoted=false` record are retained; r11 was subsequently selected and deployed. |
-| Public post/readback | pending | Dashboard and Workbench imports are verified; public-post merge and deployed readback have not yet been recorded. |
+| Public post/readback | complete | Pages run succeeded; the merged public page returned HTTP 200 and Chrome confirmed its title and core published facts. |
 
 The shareable sanitized managed recipe is
 [candidate-dcp1.public.toml](candidate-dcp1.public.toml). It preserves the
