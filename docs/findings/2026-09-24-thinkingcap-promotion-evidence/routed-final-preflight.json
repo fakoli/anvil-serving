@@ -1,0 +1,221 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 10240,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "llm.secondary",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "\n\n```python\nsum(xs)\n```",
+      "content_chars": 23,
+      "content_excerpt": "\n\n```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 133,
+      "reasoning_excerpt": "We need answer user: \"Write a Python one-liner that returns the sum of a list `xs`.\" Simple. Need final concise. Could be `sum(xs)`.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 37,
+      "seconds": 1.12,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 48,
+        "completion_tokens_details": {
+          "reasoning_tokens": 37
+        },
+        "prompt_tokens": 68,
+        "total_tokens": 116
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 33,
+      "content_excerpt": "\n\n{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 143,
+      "reasoning_excerpt": "We need respond to user: \"Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.\" Need final only JSON object. Ensure no prose.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 36,
+      "seconds": 1.055,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 48,
+        "completion_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "prompt_tokens": 70,
+        "total_tokens": 118
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 142,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland and is requesting to use a tool. I should call the get_weather tool with city set to \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 33,
+      "request_index": 0,
+      "seconds": 5.912,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 62,
+        "completion_tokens_details": {
+          "reasoning_tokens": 33
+        },
+        "prompt_tokens": 5517,
+        "total_tokens": 5579
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 11,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 78,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and wants me to use the tool.\n",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 1.169,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 47,
+        "completion_tokens_details": {
+          "reasoning_tokens": 18
+        },
+        "prompt_tokens": 317,
+        "total_tokens": 364
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 78,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and wants me to use the tool.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 18,
+      "seconds": 1.169,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 47,
+        "completion_tokens_details": {
+          "reasoning_tokens": 18
+        },
+        "prompt_tokens": 317,
+        "total_tokens": 364
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "\n\nOAKLAND 72F",
+      "content_chars": 13,
+      "content_excerpt": "\n\nOAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 182,
+      "reasoning_excerpt": "The user wants me to reply exactly \"OAKLAND 72F\" based on the tool result. The tool returned temperature_f: 72 and condition: sunny for Oakland. I should reply exactly as requested.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 46,
+      "seconds": 1.379,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 56,
+        "completion_tokens_details": {
+          "reasoning_tokens": 46
+        },
+        "prompt_tokens": 143,
+        "total_tokens": 199
+      },
+      "validation_detail": "tool result retained"
+    }
+  ],
+  "ocr_expect": [
+    "42917"
+  ],
+  "passed": false,
+  "results": [
+    {
+      "detail": "1.1s got='```python\\nsum(xs)\\n```' finish='stop' visible=23 reasoning_chars=133 reasoning_tokens=37",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=33 reasoning_chars=143 reasoning_tokens=36",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "1/1 clean (sample: 5.9s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=142 reasoning_tokens=33)",
+      "name": "shared-prefix tool batch x1",
+      "passed": true
+    },
+    {
+      "detail": "1.2s done=True events=11 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "2.5s tool result retained finish='stop' visible=13 reasoning_chars=182 reasoning_tokens=46",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "error: HTTP 500: {\"error\": {\"type\": \"internal_error\", \"message\": \"internal error\"}}",
+      "name": "general image understanding",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 500: {\"error\": {\"type\": \"internal_error\", \"message\": \"internal error\"}}",
+      "name": "verbatim image OCR",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

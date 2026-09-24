@@ -1,0 +1,5 @@
+{
+  "select_ready": false,
+  "select_error": "OSError: [WinError 10093] Either the application has not called WSAStartup, or WSAStartup failed",
+  "blocking_line": "ready"
+}

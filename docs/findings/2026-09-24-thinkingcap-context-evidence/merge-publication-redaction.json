@@ -1,0 +1,50 @@
+{
+  "schema": "anvil-serving.publication-redaction/v1",
+  "date": "2026-09-24",
+  "prior_manifest_sha256": "1e4b6111afbd133ddc1738a8f618085b8336fa592a917531b0a67ff40f88f862",
+  "scope": "Merge-time privacy correction. Replace only operator container IDs with stable synthetic labels. Measurements, model pins, outcomes and original campaign decisions are unchanged. Original sealed bundle retained privately. Earlier embedded provenance hashes refer to their original snapshots; this ledger records the additional publication transform.",
+  "files": [
+    {
+      "path": "final-resource-summary.json",
+      "original_sha256": "3c89b303806b0f252d4f3e68aa138f941f14b30af1ab0510a931bf96684b4861",
+      "published_sha256": "651b7f21717f117da38d1f6a41c0a5c95baa2784ab34f57ceecb7ce058f7af86",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/candidate/startup-status.json",
+      "original_sha256": "19e5505c67881a84ced7c9cc2880d14394fc1eccfb885841a3915b6065e2c121",
+      "published_sha256": "cc0fd7b37185fc0c5d9f556726d995b5d80c489ada9fa073e9f75e5a75f04a53",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/failed-gpu-reserve/status.json",
+      "original_sha256": "1706eb77b60b63e514491274859cc7b41a646acf82b80cc8d8d8d0039944a4fa",
+      "published_sha256": "6df7b9be5f55a09e26cf6c45e4d495c39a8b90771349a72d2813bf2e9e42e193",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/final/context-running-status.json",
+      "original_sha256": "5269ae07980185ae5ed161bac008623bf0a2ddc7f1d5c4bccedddf0cdf1767cd",
+      "published_sha256": "feb3d7d0941da1b18480885211b521e90f8c82b7e66bf46a4e983d1809d890a1",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/final/status.json",
+      "original_sha256": "5269ae07980185ae5ed161bac008623bf0a2ddc7f1d5c4bccedddf0cdf1767cd",
+      "published_sha256": "feb3d7d0941da1b18480885211b521e90f8c82b7e66bf46a4e983d1809d890a1",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    },
+    {
+      "path": "native/mtp-uva3/load.log",
+      "original_sha256": "ff8c58de12dd1bc2c75ac6244c04462565489bc4e1b42f2e4a73abbd18eee33e",
+      "published_sha256": "98a7525efcdb51cd1dabf75e1a43730ab74004b0d9d7fcdf002a4a5cbcc45487",
+      "replacements": 1,
+      "kind": "operator-container-id"
+    }
+  ]
+}

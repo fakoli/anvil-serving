@@ -1,0 +1,195 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "ThinkingCap RTX 5090: matched short-output capacity control",
+  "subtitle": "100 requests per lane; strict 32-word output, 512-token cap, nominal 4K context, C1, unique cache, request canaries, thinking disabled. Lanes are full-recipe comparisons; configured context differs for the selected 32K lane. Limited short-output scope only.",
+  "output": "benchmark-matrix.svg",
+  "data_output": "benchmark-graph-data.json",
+  "metric_semantics": {
+    "population": "Each point is a complete, zero-failure, performance-eligible population of 100 requests.",
+    "scope": "Short controlled output only: 32 requested lowercase code words with a 512-token cap; do not generalize to long output, long context, reasoning, multimodal, or production concurrency.",
+    "matching": "All plotted lanes use nominal 4096 context, C1, unique cache, request canaries, thinking disabled, and the same strict controlled-output workload. They are full-recipe comparisons; graph removes --enforce-eager, and Triton/MTP/KV and configured context can differ. Do not treat them as isolated MTP speedups.",
+    "ttft": "Client-observed request start to first non-empty visible content delta; plotted as p50 milliseconds.",
+    "decode": "Client-observed generation decode rate using usage completion tokens after the first token; plotted as p50 tokens per second.",
+    "e2e": "Client-observed end-to-end request duration; plotted as p50 milliseconds.",
+    "throughput": "Aggregate performance-eligible completion-token throughput in tokens per second.",
+    "p99": "n=100 p99 values are order statistics and must not be presented as a stable SLA; p99 is not plotted in this matrix."
+  },
+  "charts": [
+    {
+      "title": "Median TTFT",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 TTFT (ms)",
+      "series": [
+        {
+          "label": "Eager",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/eager/eager-short32-n100.json"
+            }
+          ]
+        },
+        {
+          "label": "Graphs",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/graphs/graph-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "Triton + MTP3, BF16 KV",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "32K Triton + MTP3 BF16 KV (selected)",
+          "points": [
+            {
+              "x": "32 words / 4K / C1 / 32K config",
+              "artifact": "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Median decode rate",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 decode (tok/s)",
+      "series": [
+        {
+          "label": "Eager",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/eager/eager-short32-n100.json"
+            }
+          ]
+        },
+        {
+          "label": "Graphs",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/graphs/graph-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "Triton + MTP3, BF16 KV",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "32K Triton + MTP3 BF16 KV (selected)",
+          "points": [
+            {
+              "x": "32 words / 4K / C1 / 32K config",
+              "artifact": "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Median end-to-end time",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "p50 E2E (ms)",
+      "series": [
+        {
+          "label": "Eager",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/eager/eager-short32-n100.json"
+            }
+          ]
+        },
+        {
+          "label": "Graphs",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/graphs/graph-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "Triton + MTP3, BF16 KV",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "32K Triton + MTP3 BF16 KV (selected)",
+          "points": [
+            {
+              "x": "32 words / 4K / C1 / 32K config",
+              "artifact": "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "matched 100-request short-output population",
+      "y_label": "eligible throughput (tok/s)",
+      "series": [
+        {
+          "label": "Eager",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/eager/eager-short32-n100.json"
+            }
+          ]
+        },
+        {
+          "label": "Graphs",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/graphs/graph-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "Triton + MTP3, BF16 KV",
+          "points": [
+            {
+              "x": "32 words / 4K / C1",
+              "artifact": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json"
+            }
+          ]
+        },
+        {
+          "label": "32K Triton + MTP3 BF16 KV (selected)",
+          "points": [
+            {
+              "x": "32 words / 4K / C1 / 32K config",
+              "artifact": "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent adversarial review of bounded external Compose service adoption",
+    "reviewed_at": "2026-09-24T08:29:06.5547825Z",
+    "implementing_agent": "/root/baseline_5090_benchmark under the Astra-led promotion task",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "not applicable; deterministic service-runtime code was reviewed",
+    "scope": "service-runtime Docker identity, manifest validation, adoption preview/apply, CLI command registration, MCP transport, generated CLI docs, and focused regressions"
+  },
+  "gate_state": {
+    "code_review": "passed",
+    "user_authorization": "present for the Grafana configuration apply; no additional permission requested",
+    "live_adoption": "not performed by this reviewer",
+    "verification": "60 service-runtime tests passed with 1 skipped; 44 focused command-tree and MCP tests passed; Ruff and generated CLI documentation audit passed, as reported by the implementer"
+  },
+  "targets": [
+    "anvil_serving/service_runtime/docker.py",
+    "anvil_serving/service_runtime/manifest.py",
+    "anvil_serving/service_runtime/operations.py",
+    "anvil_serving/service_runtime/cli.py",
+    "anvil_serving/commands/host_services.py",
+    "anvil_serving/control_plane/mcp/tools/services.py",
+    "tests/service_runtime/test_docker.py",
+    "tests/service_runtime/test_cli_mcp.py"
+  ],
+  "tools_used": [
+    "read-only git diff and status inspection",
+    "read-only source and test inspection",
+    "read-only implementer verification-output review",
+    "manual CLI/MCP transport parity review"
+  ],
+  "artifacts": {
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "high",
+        "classification": "confirmed, fixed, and independently re-reviewed",
+        "finding": "The first revision allowed a different image to be adopted in a later confirmed invocation than the image observed during preview.",
+        "resolution": "External adoption now requires an explicit immutable expected_image_id, compares it to Docker inspect, persists equal image_id and expected_image_id, rechecks the image on ordinary inspection, and exposes the exact image and Compose identity in the preview receipt.",
+        "references": [
+          "anvil_serving/service_runtime/docker.py:160",
+          "anvil_serving/service_runtime/manifest.py:94",
+          "anvil_serving/service_runtime/operations.py:432"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "medium",
+        "classification": "confirmed, fixed, and independently re-reviewed",
+        "finding": "The first revision did not bind mount write mode and accepted an ambiguous any-match mount.",
+        "resolution": "The adapter now requires exactly one mount at the declared target, exact bind source, bind type, and RW=false; project, service, container name, and image remain exact checks.",
+        "references": [
+          "anvil_serving/service_runtime/docker.py:358"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "medium",
+        "classification": "confirmed coverage gap, closed for the bounded path",
+        "finding": "The first revision lacked transport and key drift regressions.",
+        "resolution": "Tests now cover image, Compose label, writable mount, duplicate-target drift, and identical CLI/MCP forwarding. Manifest validation also rejects Compose and expected-image fields outside external Docker adoption.",
+        "references": [
+          "tests/service_runtime/test_docker.py:89",
+          "tests/service_runtime/test_cli_mcp.py:139",
+          "anvil_serving/service_runtime/manifest.py:56"
+        ]
+      }
+    ],
+    "accepted_properties": [
+      "External adoption is opt-in; existing Anvil-labelled discovery is unchanged.",
+      "Docker context is local-only, subprocess arguments are structured, and execution time and output are bounded.",
+      "The manifest update remains compare-and-swap and the container is re-inspected immediately before persistence.",
+      "The adapter reads no mounted configuration content and returns no secrets."
+    ],
+    "residual_risk": [
+      "The adapter proves lifecycle identity and a read-only bind relationship; it does not validate or apply the mounted configuration contents.",
+      "A container can change after the final inspection and manifest save, but the pinned image, labels, name, and mount make later status or lifecycle operations fail closed rather than act on a replacement."
+    ]
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail-closed behavior when state or tools are unreadable",
+      "concrete_input_or_state": "Docker context or inspect is unavailable, malformed, oversized, or returns zero or multiple rows.",
+      "wrong_result": "An unverified external service is persisted.",
+      "classification": "refuted by bounded Docker helpers and single-inspection validation"
+    },
+    {
+      "axis": "malformed and boundary input",
+      "concrete_input_or_state": "Option-like names, invalid image IDs, control characters or CRLF in paths, relative paths, stray external fields, writable binds, or duplicate target mounts.",
+      "wrong_result": "Argument injection or an ambiguous identity is persisted.",
+      "classification": "refuted by structured argv, manifest validation, exact image checks, and exact read-only mount checks"
+    },
+    {
+      "axis": "resource exhaustion or missing bounds",
+      "concrete_input_or_state": "Docker inspect blocks or emits excessive output.",
+      "wrong_result": "Adoption blocks or allocates without a bound.",
+      "classification": "refuted by the 15-second adapter timeout, enclosing operation deadline, and 1 MiB output limit"
+    },
+    {
+      "axis": "state drift across CLI, MCP, process, manifest, and Compose seams",
+      "concrete_input_or_state": "Change the image, Compose owner, name, or configuration mount between review and apply, or during apply.",
+      "wrong_result": "The confirmed operation records a different identity than the reviewed declaration.",
+      "classification": "refuted by mandatory expected_image_id, identical CLI/MCP bindings, pre-save reinspection, and manifest compare-and-swap"
+    }
+  ],
+  "advisory_priors": [
+    "This acceptance covers external Compose adoption only. Configuration-content review and Grafana apply evidence remain separate gates.",
+    "workflow_packet_validate and operation_contracts were unavailable in this reviewer environment."
+  ],
+  "recommendation": {
+    "decision": "accept",
+    "reason": "The revised adapter binds the reviewed immutable image, exact Compose owner, exact read-only configuration bind, local Docker context, preview disclosure, and pre-save reinspection. The reported focused gates pass.",
+    "live_apply": "may proceed through the existing managed preview and confirmed apply under the user authorization already recorded"
+  },
+  "human_gate_required": false,
+  "human_gate_note": "The user already authorized the Grafana configuration apply; this review adds no new permission requirement.",
+  "promoted": false
+}

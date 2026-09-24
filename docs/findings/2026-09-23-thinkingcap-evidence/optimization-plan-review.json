@@ -1,0 +1,19 @@
+{
+  "schema": "operator-workflow/v1",
+  "reviewer": "independent anvil-adversarial-reviewer",
+  "scope": "Graph-only then graph-plus-MTP3 comparison plan",
+  "findings": [],
+  "accepted_controls": [
+    "Graph arm removes enforce-eager only",
+    "Target FLASH_ATTN remains matched; speculative attention_backend TRITON_ATTN controls only newly added drafter",
+    "Observe target and drafter backends at startup",
+    "Expand context only after post-optimization KV capacity measurement"
+  ],
+  "corrected_review": "Earlier proposed target attention-backend confound withdrawn after confirming nested drafter configuration",
+  "limitations": [
+    "Short-output candidate benchmark cannot rank incumbent with failed unmatched 256-word workload",
+    "No live benchmark or quality acceptance implied"
+  ],
+  "human_gate_required": false,
+  "promoted": false
+}

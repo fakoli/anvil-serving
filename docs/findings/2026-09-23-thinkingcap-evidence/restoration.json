@@ -1,0 +1,84 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-23-thinkingcap",
+  "status": "verified-authorized-candidate-retained",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "hardware": "local RTX5090",
+    "model": "lyf/Qwen3.8-27B-Huihui-NInfer-NVFP4-MTP3-160K-Baked",
+    "served_model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+    "image": "anvil-ninfer@sha256:22fa89d51912535dfb0ebc6cf035e33a99a06b6a27b592dfef1f112d5e349b43",
+    "context_tokens": 163840,
+    "concurrency": 1,
+    "registry_byte_sha256": "42ba8bc57238fade704124bfdc9669103770ba50f892e2f82e29feac43314515",
+    "recipe_semantic_sha256": "7c08abdfd57bfcb112ebb5a866e3612df2070b5846c15fd34181bc6b1716e071",
+    "restoration_preview": "Exact original registry copied and managed load preview verified in protected operator evidence before authorized unload",
+    "evidence": [
+      "baseline-summary.json",
+      "native/baseline/baseline-multimodal.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-09-24T03:28:20Z",
+    "hardware": "localRTX5090",
+    "container": "thinkingcap-5090-candidate",
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "served_model": "thinkingcap-awq-5090",
+    "base_url": "http://127.0.0.1:39283/v1",
+    "context_tokens": 32768,
+    "concurrency": 1,
+    "recipe_semantic_sha256": "56cbe79dcd1c3eb2ddba162a866c6d712f8614705047aa5cb753c4a0f638100f",
+    "registry_byte_sha256": "fe43362857973f7368b5cbd1694ee974dbb8b06bbdeacf36740ba3bd6637082b",
+    "runtime_image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "configuration": "targetTriton,MTP3,BF16KV,graphs,.87memoryfraction,twoimages~1MP,novideo",
+    "intent": "Suitable qualified direct candidate retained under explicit autonomous replacement authorization; exact incumbent restoration is available but not performed"
+  },
+  "differences": [
+    "Incumbent stopped through managed recipe lifecycle under explicit user authorization",
+    "Candidate profiles run on the local RTX5090 only",
+    "No deployed topology, router alias or client catalog changed; private candidate topology is separate",
+    "Complete model cache and persistent engine cache retained",
+    "A separate private evaluation topology adds the local benchmark-client resource; neither deployed topology nor the original candidate topology was edited"
+  ],
+  "post_run_checks": [
+    {
+      "check": "managedcontainerstatus",
+      "passed": true,
+      "source": "native/final/status.json"
+    },
+    {
+      "check": "HTTPhealth200andmodelidentity32768",
+      "passed": true,
+      "source": "native/final/http.json"
+    },
+    {
+      "check": "functional27,reasoning8,vision18,strictcapacity100,MMLUdiagnostic30",
+      "passed": true,
+      "source": "triton-bf16-32k-result-summary.json"
+    },
+    {
+      "check": "context60observationsallcorrectandstop",
+      "passed": true,
+      "source": "context-result-summary.json"
+    },
+    {
+      "check": "agentic2syntheticcases",
+      "passed": true,
+      "source": "agentic-result-summary.json"
+    },
+    {
+      "check": "operationalPythonfilesunchanged",
+      "passed": true,
+      "source": "operational-source-final-check.json"
+    }
+  ],
+  "verified": true,
+  "restoration_performed": false,
+  "direct_candidate_retention_authorized": true,
+  "route_promotion_authorized": false,
+  "superseded_preparation": "restoration-initial-superseded.json describes wrong-target preparation only; it is not the RTX5090 starting state",
+  "completed_at": "2026-09-24T03:31:33.113458+00:00"
+}

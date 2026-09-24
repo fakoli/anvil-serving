@@ -136,6 +136,33 @@ def test_cli_adoption_rejects_disabled_startup_policy(monkeypatch):
     assert raised.value.code == 2
 
 
+def test_cli_and_mcp_forward_external_compose_identity(monkeypatch):
+    cli = _cli_module()
+    services = _service_tools_module()
+    seen = []
+
+    def execute(*_args, **kwargs):
+        seen.append(kwargs["binding"])
+        return {"applied": False}
+
+    monkeypatch.setattr(cli, "execute", execute)
+    assert cli.main([
+        "adopt", "metrics", "--manager", "docker", "--resource", "metrics", "--engine", "external",
+        "--container", "metrics", "--external-compose", "--compose-project", "obs",
+        "--compose-service", "prometheus", "--compose-config-source", "/ops/prometheus",
+        "--compose-config-target", "/etc/prometheus", "--expected-image-id", "sha256:" + "a" * 64,
+    ]) == 0
+    monkeypatch.setattr(services, "execute", execute)
+    services.tool_host_services_manage({
+        "action": "adopt", "service": "metrics", "manager": "docker", "resource": "metrics",
+        "engine": "external", "container": "metrics", "external_compose": True,
+        "compose_project": "obs", "compose_service": "prometheus",
+        "compose_config_source": "/ops/prometheus", "compose_config_target": "/etc/prometheus",
+        "expected_image_id": "sha256:" + "a" * 64,
+    })
+    assert seen[0] == seen[1]
+
+
 def test_mcp_status_uses_owner_manifest_and_the_shared_remote_executor(monkeypatch):
     services = _service_tools_module()
     seen = {}
@@ -167,6 +194,64 @@ def test_mcp_status_uses_owner_manifest_and_the_shared_remote_executor(monkeypat
         "binding": None,
         "remote": True,
     }
+
+
+@pytest.mark.parametrize("manager", ["docker", "launchd"])
+@pytest.mark.parametrize("field,value", [
+    ("compose_project", "obs"), ("compose_service", "prometheus"),
+    ("compose_config_source", "/ops/prometheus"),
+    ("compose_config_target", "/etc/prometheus"),
+    ("expected_image_id", "sha256:" + "a" * 64),
+])
+def test_compose_identity_without_mode_is_rejected_before_execution(
+    monkeypatch, manager, field, value,
+):
+    cli = _cli_module()
+    services = _service_tools_module()
+    errors = importlib.import_module("anvil_serving.control_plane.mcp.errors")
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("contradictory adoption options reached execution")
+
+    monkeypatch.setattr(cli, "execute", forbidden)
+    monkeypatch.setattr(services, "execute", forbidden)
+    result = cli.run([
+        "adopt", "metrics", "--manager", manager, "--resource", "metrics",
+        "--engine", "external", "--container", "metrics",
+        "--" + field.replace("_", "-"), value,
+    ])
+    assert result.error.code == "bad_argument"
+    with pytest.raises(errors.ToolError) as raised:
+        services.tool_host_services_manage({
+            "action": "adopt", "service": "metrics", "manager": manager,
+            "resource": "metrics", "engine": "external", "container": "metrics",
+            field: value,
+        })
+    assert raised.value.code == "bad_argument"
+
+
+@pytest.mark.parametrize("action,manager", [("adopt", "launchd"), ("up", "docker")])
+def test_external_compose_mode_rejects_wrong_action_or_manager(monkeypatch, action, manager):
+    cli = _cli_module()
+    services = _service_tools_module()
+    errors = importlib.import_module("anvil_serving.control_plane.mcp.errors")
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("invalid external Compose mode reached execution")
+
+    monkeypatch.setattr(cli, "execute", forbidden)
+    monkeypatch.setattr(services, "execute", forbidden)
+    result = cli.run([
+        action, "metrics", "--manager", manager, "--resource", "metrics",
+        "--engine", "external", "--external-compose",
+    ])
+    assert result.error.code == "bad_argument"
+    with pytest.raises(errors.ToolError) as raised:
+        services.tool_host_services_manage({
+            "action": action, "service": "metrics", "manager": manager,
+            "resource": "metrics", "engine": "external", "external_compose": True,
+        })
+    assert raised.value.code == "bad_argument"
 
 
 def test_mcp_manage_rejects_raw_process_arguments_before_execution(monkeypatch):

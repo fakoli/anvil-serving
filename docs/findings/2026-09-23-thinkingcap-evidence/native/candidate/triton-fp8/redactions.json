@@ -1,0 +1,170 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "scope": "Target-Triton FP8 MTP3 candidate evidence copied from a private operator evidence root",
+  "source_metrics_and_schemas": "unchanged; only strings containing operator or container identity were normalized",
+  "transformations": [
+    {
+      "match": "operator home paths and account labels",
+      "replacement": "PRIVATE_OPERATOR_HOME or Primary Node"
+    },
+    {
+      "match": "container home, model-cache, and runtime-cache paths",
+      "replacement": "PRIVATE_CONTAINER_HOME, PRIVATE_MODEL_CACHE, or PRIVATE_RUNTIME_CACHE"
+    },
+    {
+      "match": "real GPU UUID",
+      "replacement": "GPU-RTX5090-SYNTHETIC"
+    },
+    {
+      "match": "private container gateway address",
+      "replacement": "PRIVATE_CONTAINER_GATEWAY"
+    }
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "triton-fp8-preflight.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-preflight.json",
+      "private_source_sha256": "f52cc06fd99645edf67243c4dd56aea55655603d5be16ca9f6bbb641b584a6c5",
+      "public_sha256": "f52cc06fd99645edf67243c4dd56aea55655603d5be16ca9f6bbb641b584a6c5",
+      "source_bytes": 21452,
+      "public_bytes": 21452
+    },
+    {
+      "private_source_name": "triton-fp8-reasoning-preflight.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-reasoning-preflight.json",
+      "private_source_sha256": "072097f5d1006bbcb202e7a7d135d251bb989adcfe99c60ea60782c175c10cec",
+      "public_sha256": "072097f5d1006bbcb202e7a7d135d251bb989adcfe99c60ea60782c175c10cec",
+      "source_bytes": 8057,
+      "public_bytes": 8057
+    },
+    {
+      "private_source_name": "triton-fp8-thinking-control.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-thinking-control.json",
+      "private_source_sha256": "0e083f3ad18c3d0f1e0cd62b186ee28344debe87acb2b7a31276188e91c1b113",
+      "public_sha256": "0e083f3ad18c3d0f1e0cd62b186ee28344debe87acb2b7a31276188e91c1b113",
+      "source_bytes": 831,
+      "public_bytes": 831
+    },
+    {
+      "private_source_name": "triton-fp8-multimodal.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-multimodal.json",
+      "private_source_sha256": "059d0bfab6bfd5ba397f47781163914dfcfa2d2469d3cf154f57cf472674c176",
+      "public_sha256": "a0992268891875cd2073a25744019f33af32d91b781144867953a19fe9606144",
+      "source_bytes": 34707,
+      "public_bytes": 34705
+    },
+    {
+      "private_source_name": "triton-fp8-short32-scout.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-short32-scout.json",
+      "private_source_sha256": "a0f637349059d19b443de1abae2c63ae48c542772fec8439a47d48ef993702de",
+      "public_sha256": "a0f637349059d19b443de1abae2c63ae48c542772fec8439a47d48ef993702de",
+      "source_bytes": 16166,
+      "public_bytes": 16166
+    },
+    {
+      "private_source_name": "triton-fp8-short32-n100-r1.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-short32-n100-r1.json",
+      "private_source_sha256": "0a5ab4dbb0f16d8e5e1702ea72ac535f81cb30ae658d48f61707cbf633781f47",
+      "public_sha256": "0a5ab4dbb0f16d8e5e1702ea72ac535f81cb30ae658d48f61707cbf633781f47",
+      "source_bytes": 133464,
+      "public_bytes": 133464
+    },
+    {
+      "private_source_name": "triton-fp8-mmlu10-thinking.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-mmlu10-thinking.json",
+      "private_source_sha256": "5a1e586c4c1423c1abdd745a7b51b9f1dabb55e0761e11e9b284db5c158e84c9",
+      "public_sha256": "0675b8d440ca07b137e1b6054ebdd2459250ed5fb18d25f539b691bd63596fd9",
+      "source_bytes": 63789,
+      "public_bytes": 63789
+    },
+    {
+      "private_source_name": "triton-fp8-preflight.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-preflight.log",
+      "private_source_sha256": "f1fb6da482b945fd10f3218bd1e0dc2c7ee37e83b8330411ce27f701ef40ff83",
+      "public_sha256": "f1fb6da482b945fd10f3218bd1e0dc2c7ee37e83b8330411ce27f701ef40ff83",
+      "source_bytes": 1298,
+      "public_bytes": 1298
+    },
+    {
+      "private_source_name": "triton-fp8-reasoning-preflight.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-reasoning-preflight.log",
+      "private_source_sha256": "826fac1ba9992ce89536845c38df70c1b1a3233f6d68ed1e34831a6adec53641",
+      "public_sha256": "826fac1ba9992ce89536845c38df70c1b1a3233f6d68ed1e34831a6adec53641",
+      "source_bytes": 878,
+      "public_bytes": 878
+    },
+    {
+      "private_source_name": "triton-fp8-multimodal.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-multimodal.log",
+      "private_source_sha256": "2e85532d6a503c20255ec53c750ae58cb2a05896683352595684460d64afd727",
+      "public_sha256": "324a84011ea7b5d92debeb2a20674c29c72935469704371898fe39879b2f04d9",
+      "source_bytes": 152,
+      "public_bytes": 152
+    },
+    {
+      "private_source_name": "triton-fp8-short32-scout.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-short32-scout.log",
+      "private_source_sha256": "3a1c18143b3b0cbc19c4fd907a2aa9518109f06350b5b2966f52effd41b7f858",
+      "public_sha256": "d178c95c67d04a94c12d284955c2688bc74040801fd42c2bb7dc940c46b0bd3f",
+      "source_bytes": 1128,
+      "public_bytes": 1128
+    },
+    {
+      "private_source_name": "triton-fp8-short32-n100-r1.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-short32-n100-r1.log",
+      "private_source_sha256": "a7dd1ed6a813a8cef1309094e1392a258de4618021ea607a596bc57034ab2425",
+      "public_sha256": "7f0380dfbc93b9cdafbe7497ef4d1b19e1349096c27ae3cb8a9933af737742c7",
+      "source_bytes": 1133,
+      "public_bytes": 1133
+    },
+    {
+      "private_source_name": "triton-fp8-mmlu10-thinking.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-mmlu10-thinking.log",
+      "private_source_sha256": "1a1fe749d0344e260f8458fb7c976f7865fb135b7aeab4ea52643943ae3fc3d5",
+      "public_sha256": "0ebdd27beccf212b033d28d168f530b59bea41a893a5c27b391f5cabffcda31a",
+      "source_bytes": 147,
+      "public_bytes": 147
+    },
+    {
+      "private_source_name": "triton-fp8-health.private.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-health.json",
+      "private_source_sha256": "e1dad0dcf8cf059f871b9bf35495d36b6a056d567ad06d2a263364ed0c4a0551",
+      "public_sha256": "e1dad0dcf8cf059f871b9bf35495d36b6a056d567ad06d2a263364ed0c4a0551",
+      "source_bytes": 36,
+      "public_bytes": 36
+    },
+    {
+      "private_source_name": "triton-fp8-models.private.json",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-models.json",
+      "private_source_sha256": "645d6196ec9728fbf9e1ae9c99fb3f69467345b36338907aef9c136c2771bb75",
+      "public_sha256": "72f7eb7212c50de2cd8349141e3f8589bd3b0cc4791ef61fb15b38d9f905b7e1",
+      "source_bytes": 687,
+      "public_bytes": 682
+    },
+    {
+      "private_source_name": "triton-fp8-load.private.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-load.log",
+      "private_source_sha256": "bd722b31f05304621d27bbde44003c0cd05d54a60bd434eff79979d7e4bfea02",
+      "public_sha256": "17809a40797ab3dc903b8a1a116055d640e7288a59e15a810377695e7d341ec2",
+      "source_bytes": 3464,
+      "public_bytes": 3370
+    },
+    {
+      "private_source_name": "triton-fp8-startup.private.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-startup.log",
+      "private_source_sha256": "21c16a96648105f4e3359fb9408a79a2cc25d67f43a59861ae5a72ee6a4ae258",
+      "public_sha256": "12d5b68ff29666cb8ec8c14ddebf37d4ae4dedf8c1aae9794218cc01e480b558",
+      "source_bytes": 29107,
+      "public_bytes": 29121
+    },
+    {
+      "private_source_name": "triton-fp8-final-engine.private.log",
+      "public_path": "native/candidate/triton-fp8/triton-fp8-final-engine.log",
+      "private_source_sha256": "a3aeb2165124ccabb323d1d4b112376e6992c5bcf6429b41133e0284857d71de",
+      "public_sha256": "06cd1fea828af508be64de557e877067338f8a83902b2ca574bfe1e9fd162dc1",
+      "source_bytes": 84984,
+      "public_bytes": 87848
+    }
+  ],
+  "additional_identity_pass": "identity-sanitization-final.json at the evidence bundle root; original source hashes preserved"
+}

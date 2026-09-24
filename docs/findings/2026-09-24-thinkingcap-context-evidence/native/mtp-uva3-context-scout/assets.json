@@ -1,0 +1,16 @@
+{
+  "architecture": "amd64",
+  "assets": {},
+  "cache_identity": "1725dd0d9125733460e4a33f89ee17c986c4b809c324c3ae29f2db3c5f483927",
+  "command_logs": [],
+  "created_at": "2026-09-24T05:30:21.727934Z",
+  "offline": false,
+  "ownership_id": "thinkingcap-5090",
+  "platform": "windows",
+  "profile": "smoke",
+  "profile_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586",
+  "python_environment": null,
+  "run_id": "thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1",
+  "schema": "anvil-serving.benchmark-harness-assets/v1",
+  "suite": "context"
+}

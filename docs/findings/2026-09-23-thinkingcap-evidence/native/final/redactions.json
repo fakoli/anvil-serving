@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "identity_only": true,
+  "artifacts": [
+    {
+      "path": "status.json",
+      "private_source_sha256": "8cda8f7f05e381fd9846c5a5eb4a866082e7d2ba414c0f48ca82b9a707dcf04f",
+      "public_sha256": "0d04c27e263c0fc63f3ca03f36d95a2eb12a6dfa0e9baffaa0341e2c480c1d81",
+      "source_bytes": 1627,
+      "public_bytes": 1596
+    },
+    {
+      "path": "http.json",
+      "private_source_sha256": "84605f8ab664770b9bf377da66192d8357abab54c715a02efeec7fbd04b2ac14",
+      "public_sha256": "84605f8ab664770b9bf377da66192d8357abab54c715a02efeec7fbd04b2ac14",
+      "source_bytes": 825,
+      "public_bytes": 825
+    },
+    {
+      "path": "engine.log",
+      "private_source_sha256": "a60800d5413c884a229fe68f4b03ec6c0b986a9a9ba1509ef028fe3572aaadd0",
+      "public_sha256": "81fb65947b22360ce115e07e11f3ef188edf281b319a542626c7c0f9d4f65164",
+      "source_bytes": 103819,
+      "public_bytes": 107839
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "schema": "anvil-serving.native-evidence-inspection/v1",
+  "canonical_companion": "cross-suite-evidence.json",
+  "evidence_show_exit": 0,
+  "validation_errors": []
+}

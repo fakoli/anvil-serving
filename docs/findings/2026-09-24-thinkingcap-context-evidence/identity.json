@@ -1,0 +1,54 @@
+{
+  "schema": "anvil-serving.qualification-identity/v1",
+  "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+  "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "served_model": "thinkingcap-awq-5090",
+  "runtime_image": "vllm/vllm-openai:v0.29.0@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+  "engine_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+  "recipe_semantic_digest": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+  "private_registry_sha256": "98d19789e52066c5fef7f8886f3752b31a2cd83202818f9268531ec08728cddd",
+  "public_recipe": "configurations/thinkingcap-awq-vllm029-5090-128k-mtp3-bf16-uva3.toml",
+  "public_recipe_sha256": "98d19789e52066c5fef7f8886f3752b31a2cd83202818f9268531ec08728cddd",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "reported_memory_mib": 32607,
+    "count": 1,
+    "architecture": "sm_120",
+    "driver": "616.92",
+    "host": "Operator Node",
+    "runtime": "Windows / Docker Desktop Linux / WSL2"
+  },
+  "measurement_path": "direct loopback online endpoint; warm process after managed startup; prefix cache disabled",
+  "context_tokens": 131072,
+  "concurrency": 1,
+  "attention": "TRITON_ATTN",
+  "kv_dtype": "bfloat16",
+  "ssm_dtype": "model-default float32",
+  "speculation": {
+    "method": "mtp",
+    "num_speculative_tokens": 3,
+    "attention_backend": "TRITON_ATTN"
+  },
+  "vision": {
+    "maximum_images": 2,
+    "maximum_pixels_per_image": 1048576,
+    "video": 0,
+    "weight_offload_backend": "uva",
+    "weight_offload_parameter_selector": null,
+    "weight_offload_cap_gib": 3,
+    "observed_offloaded_gib": 3.02,
+    "observed_visual_offload_gib": 0.86,
+    "scope": "Generic offload includes visual and language parameters; vision remains enabled"
+  },
+  "cache_completeness": "The exact complete local checkpoint was verified by managed load. This branch actively uses MTP3; vision and MTP weights remain in the cached snapshot.",
+  "source_evidence": [
+    "native/mtp-uva3/load-preview.json",
+    "native/mtp-uva3/startup.log",
+    "native/mtp-uva3/health.json",
+    "operational-source-check.json"
+  ],
+  "promotion_authorized": false,
+  "branch": "128k-mtp3-generic-uva3",
+  "qualification_state": "All declared model gates passed: functional 27/27, thinking controls 9/9, vision 18/18, repeated quality 30/30, strict capacity 100/100, context 60/60 all stop, and synthetic agentic 2/2. Final identity and HTTP health verified; direct candidate retained.",
+  "ending_evidence": "restoration.json"
+}

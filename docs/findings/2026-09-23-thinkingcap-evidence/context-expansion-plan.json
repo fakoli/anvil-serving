@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.context-expansion-plan/v1",
+  "declared_at": "2026-09-24T02:49:21.680209+00:00",
+  "status": "predeclared-before-expanded-context-requests",
+  "gpu": "RTX 5090",
+  "selection": {
+    "fp8_requires": "27 functional,8 reasoning,18 vision,100 strict capacity,30 repeated quality observations all pass",
+    "fp8_context": 57344,
+    "fp8_measured_cache_tokens": 64111,
+    "fp8_cache_bytes_gib": 4.73,
+    "bf16_fallback_context": 32768,
+    "bf16_measured_cache_tokens": 45180,
+    "memory_fraction": 0.87,
+    "concurrency": 1
+  },
+  "rationale": "Do not request 65536 from 64111 measured cache tokens. Retain approximately 6.7K cache-token headroom at 57344 without raising the GPU memory fraction. FP8 is a context/precision tradeoff and need not win short-output speed. Use the already qualified BF16 arm if FP8 quality or strict adherence regresses.",
+  "sequence": [
+    "same managed recipe with only configured max context changed",
+    "health/model identity and fresh functional/vision preflight",
+    "two-request context scout at 8K and near limit, needle at midpoint",
+    "full context: 5 cases x 2 buckets x 3 positions x 2 repetitions = 60",
+    "bounded two-case agentic smoke",
+    "final health, managed status and telemetry"
+  ],
+  "context_controls": {
+    "output_headroom_tokens": 2048,
+    "implicit_template_margin_tokens": 1024,
+    "near_limit_input_tokens": "selected_context - 3072",
+    "thinking": "runner uses model template default; no explicit thinking override is forwarded",
+    "quality_gate": "all scored observations correct and normal finish; inspect actual prompt-token coverage",
+    "limitations": [
+      "single active request",
+      "synthetic retrieval, not full long-document reasoning",
+      "separate vision gate does not prove near-limit text-plus-image requests",
+      "no isolated SWE worker",
+      "no long-duration soak"
+    ]
+  },
+  "wall_clock_guard": {
+    "reviewed_at": "2026-09-24T02:57:21.869729+00:00",
+    "request_timeout_seconds": 180,
+    "scout_wall_clock_budget_seconds": 600,
+    "full_job_wall_clock_budget_seconds": 7200,
+    "mechanism": "Root records submit time and uses managed context cancel if wall-clock budget expires; retain partial evidence. Never treat timeout_s as aggregate wall-time enforcement."
+  },
+  "post_load_observation": "cache-capacity-boundary.json corrects any interpretation of the parent16K cache count as a universal physical upper bound. This predeclared selection was conservative; FP8 was rejected on quality before context expansion."
+}

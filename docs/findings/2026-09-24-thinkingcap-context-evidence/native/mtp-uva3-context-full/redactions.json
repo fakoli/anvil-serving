@@ -1,0 +1,58 @@
+{
+  "schema": "anvil-serving.redaction-ledger/v1",
+  "artifacts": [
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/artifact.json",
+      "original_sha256": "ffbb8fa4bf63bee918127bd236e67b30eddf4a9f2ecc8b2d4723e95feaa2924f",
+      "public_sha256": "cb83a7fa49dd4f0a568ed152a6b308c8cac187f8f03a7fde9177fd58faff08bf",
+      "public_path": "native/mtp-uva3-context-full/artifact.json",
+      "original_bytes": 66199,
+      "public_bytes": 67716
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/assets.json",
+      "original_sha256": "2836a109bf8871dd1c0e15b44d5702297fdd21de76f2c6e2ce2e0191116207d7",
+      "public_sha256": "7c50bcd6d4714732ab6be7695ba058b12a5e571a6a202d979044fbe78e39c36a",
+      "public_path": "native/mtp-uva3-context-full/assets.json",
+      "original_bytes": 572,
+      "public_bytes": 588
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/worker.json",
+      "original_sha256": "c8119054f74990a5b9bf25f988b4b89bfd56f2d406375a830de5b7e8db3cadc2",
+      "public_sha256": "ed957b0b0293814eb53de62f07011c591ef20d9ac98ccc2664e5b3586a78f36e",
+      "public_path": "native/mtp-uva3-context-full/worker.json",
+      "original_bytes": 134,
+      "public_bytes": 139
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/evidence/0-assets.json",
+      "original_sha256": "2836a109bf8871dd1c0e15b44d5702297fdd21de76f2c6e2ce2e0191116207d7",
+      "public_sha256": "7c50bcd6d4714732ab6be7695ba058b12a5e571a6a202d979044fbe78e39c36a",
+      "public_path": "native/mtp-uva3-context-full/evidence/0-assets.json",
+      "original_bytes": 572,
+      "public_bytes": 588
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/evidence/0-context.json",
+      "original_sha256": "fe5c1ecb6bbc0e539b0421e6267757e20defc52f89bea30cecbeba6f18478cc6",
+      "public_sha256": "3ef0a595a4968b7bb2ca2cd3746d9bd61d82b3d22ad01d8f243c410634a72083",
+      "public_path": "native/mtp-uva3-context-full/evidence/0-context.json",
+      "original_bytes": 100950,
+      "public_bytes": 103584
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-full-v1/evidence/0-preflight.json",
+      "original_sha256": "ebbf50e8d90cf5ef6b90612c7eda9aa1a24b47835ca554783547a75acfcd08be",
+      "public_sha256": "915dd3a81caecc8a896ceaa630709efafac651418c30aa616550d39e8a4fa184",
+      "public_path": "native/mtp-uva3-context-full/evidence/0-preflight.json",
+      "original_bytes": 1996,
+      "public_bytes": 2068
+    }
+  ],
+  "notes": [
+    "Private original_sha256 values hash exact file bytes. Durable job status artifact.sha256 is a canonical compact JSON digest and can differ from the pretty-printed file byte hash.",
+    "cross-suite-evidence.json is extracted without semantic changes from the sanitized public outer artifact; native-evidence-inspection.json records the supported CLI inspection of that canonical companion.",
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "status": "completed",
+  "completed_ns": 1790240891189068000,
+  "contract_sha256": "1e1d209c79a0221bfc6d5385c504b662db48fb04588b8f882e0bc6f830ea8579",
+  "router_config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+  "runtime_sha256": "578f0657546d255d3b14efe7665603e46dbc3f92aba12ff3a7927942d557270c",
+  "clients": "openclaw,hermes,pi"
+}

@@ -1,0 +1,178 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "action": "independent pinned-source review of V2 MTP3 with Triton attention and dynamic FP8 KV",
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "hardware": "RTX 5090 (sm120)",
+    "execution_scope": "source review and candidate instructions only; no endpoint, GPU, lifecycle, route, or promotion action"
+  },
+  "gate_state": "not_required",
+  "targets": [
+    "configs/thinkingcap-awq-vllm029-5090-16k-mtp3-triton-bf16.toml",
+    "configs/thinkingcap-awq-vllm029-5090-16k-mtp3-triton-fp8.toml"
+  ],
+  "tools_used": [
+    "read-only inspection of the exact pinned upstream vLLM revision",
+    "read-only review of retained, sanitized campaign evidence"
+  ],
+  "artifacts": {
+    "review_independence": {
+      "implementing_model": "GPT-6 Astra",
+      "reviewer_model": "GPT-5.6 Sol",
+      "evaluated_model": "ThinkingCap Qwen3.8 27B",
+      "independent": true
+    },
+    "pinned_runtime": {
+      "vllm_version": "0.29.0",
+      "vllm_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+      "source_inspected_on": "2026-09-23",
+      "source_urls": [
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/vllm.py#L2349-L2415",
+          "purpose": "V2 model-runner feature gate explicitly admits MTP"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/speculative.py#L385-L391",
+          "purpose": "declared draft attention-backend and KV-dtype fields, including target-KV inheritance when the draft KV dtype is unset"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/mtp/speculator.py#L11-L33",
+          "purpose": "standard MTP loads through load_eagle_model"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/eagle/utils.py#L33-L49",
+          "purpose": "pinned standard MTP/EAGLE loader does not apply speculative_config.attention_backend and only replaces cache dtype when an explicit draft override is present"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/speculator.py#L206-L225",
+          "purpose": "standard draft attention metadata builders use the target VllmConfig"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py#L284-L295",
+          "purpose": "draft prefill reuses target attention metadata and slot mappings under an identical-layout assumption"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/triton_attn.py#L248-L342",
+          "purpose": "Triton advertises fp8_per_token_head, multimodal-prefix support, and sm120-compatible capability support"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/triton_attn.py#L439-L452",
+          "purpose": "Triton requires SM89 or newer for FP8 KV; sm120 satisfies the source gate"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/quantization/kv_cache.py#L66-L84",
+          "purpose": "per-token/head KV scales are computed dynamically rather than loaded from checkpoint scalars"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/ops/triton_reshape_and_cache_flash.py#L253-L335",
+          "purpose": "dynamic per-token/head FP8 quantization and scale-cache writes"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/engine/arg_utils.py#L962-L970",
+          "purpose": "v0.29 target-backend CLI accepts --attention-backend"
+        },
+        {
+          "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/tests/quantization/test_per_token_kv_cache.py#L149-L257",
+          "purpose": "generic upstream kernel coverage; not proof of the exact model, hybrid-cache, MTP3, sm120, or image combination"
+        }
+      ]
+    },
+    "observed_prior_mtp_gate": {
+      "scope": "the prior 16K MTP3 candidate before the target-Triton BF16/FP8 comparison",
+      "mmlu_pro_diagnostic": {
+        "correct_attempts": 27,
+        "attempts": 30,
+        "finish_reason_counts": {
+          "stop": 30
+        },
+        "failure": "three incorrect attempts on the computer-science item",
+        "qualification_boundary": "small repeated diagnostic gate; not a full MMLU-Pro score or promotion comparison"
+      },
+      "vision": {
+        "passed_attempts": 18,
+        "attempts": 18
+      },
+      "interpretation": "This proves that the prior MTP3 candidate cleared its retained functional gates. It does not prove that the nested speculative attention_backend selected Triton, and it does not validate dynamic FP8 KV."
+    },
+    "candidate_instructions": {
+      "control": {
+        "config": "configs/thinkingcap-awq-vllm029-5090-16k-mtp3-triton-bf16.toml",
+        "target_attention_backend": "TRITON_ATTN",
+        "target_kv_cache_dtype": "bfloat16",
+        "draft_kv_cache_dtype": "unset; inherit target"
+      },
+      "dynamic_fp8": {
+        "config": "configs/thinkingcap-awq-vllm029-5090-16k-mtp3-triton-fp8.toml",
+        "target_attention_backend": "TRITON_ATTN",
+        "target_kv_cache_dtype": "fp8_per_token_head",
+        "draft_kv_cache_dtype": "unset; inherit target",
+        "scale_calculation": "automatic per token and head in the Triton cache-write kernel; no calculate-kv-scales flag"
+      },
+      "comparison_contract": [
+        "Run the BF16 Triton control before the FP8 candidate.",
+        "Keep model revision, runtime image, 16K context, C1, graph mode, MTP3, multimodal limits, prompts, and measurement controls identical.",
+        "Change only the KV cache dtype between the two target-Triton arms.",
+        "Leave speculative_config.kv_cache_dtype unset in both arms. An explicit BF16 draft override would create a mixed target/draft cache layout and reduce the capacity benefit.",
+        "Capture resolved startup backend and cache dtype evidence. Do not attribute draft Triton selection to the nested key.",
+        "Require text, reasoning, tools, vision, cache-capacity, and near-limit context evidence before retaining an FP8 recommendation."
+      ]
+    },
+    "findings_summary": [
+      {
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "The existing nested speculative attention_backend requests TRITON_ATTN, but the exact pinned standard MTP path does not apply that field through load_eagle_model. Prior successful MTP startup and quality gates therefore do not prove a Triton drafter."
+      },
+      {
+        "severity": "medium",
+        "classification": "confirmed",
+        "finding": "An explicit top-level --attention-backend TRITON_ATTN selects Triton for the target and, through the pinned standard MTP inheritance path, for the MTP head. This is the supported basis for the matched BF16 and FP8 candidates."
+      },
+      {
+        "severity": "medium",
+        "classification": "plausible",
+        "finding": "TRITON_ATTN with fp8_per_token_head is a viable source-admitted candidate on sm120, but no pinned upstream integration test proves the exact Qwen3.5 hybrid, MTP3, graph, multimodal combination. Local startup, correctness, quality, and capacity evidence remain mandatory."
+      }
+    ],
+    "breakage_probes": [
+      {
+        "axis": "fail-closed behavior when state or tools are unreadable",
+        "input_or_state": "startup evidence lacks a model-tag or layer-specific resolved draft-backend record",
+        "wrong_result": "claiming the nested key proved a Triton drafter",
+        "classification": "confirmed"
+      },
+      {
+        "axis": "malformed and boundary input",
+        "input_or_state": "invalid KV dtype or FP8 KV on a pre-SM89 device",
+        "wrong_result": "silent acceptance or fallback",
+        "classification": "refuted",
+        "evidence": "the pinned config constrains CacheDType and Triton raises below SM89"
+      },
+      {
+        "axis": "resource exhaustion or missing bounds",
+        "input_or_state": "assuming dynamic FP8 guarantees a larger qualified context from source-level byte savings alone",
+        "wrong_result": "advertising a context that hybrid Mamba state, graph memory, or runtime workspace prevents",
+        "classification": "plausible"
+      },
+      {
+        "axis": "state drift across config and runtime seams",
+        "input_or_state": "target remains automatically selected FlashAttention while the recipe labels only the nested MTP backend as Triton",
+        "wrong_result": "recorded recipe identity differs from the pinned effective runtime path",
+        "classification": "confirmed"
+      }
+    ],
+    "missing_tests": [
+      "No pinned upstream integration test covers Qwen3.5 hybrid plus MTP3 plus fp8_per_token_head plus sm120.",
+      "No pinned upstream integration test covers an image request under that exact combination.",
+      "The generic per-token/head kernel tests cover component behavior but cannot establish model-level correctness or quality."
+    ]
+  },
+  "advisory_priors": [
+    "The prior MTP3 candidate passed 27/30 repeated MMLU-Pro diagnostic attempts with all 30 ending in stop; the three incorrect attempts were the computer-science item.",
+    "The prior MTP3 candidate passed 18/18 retained vision attempts.",
+    "These observations justify a bounded target-Triton comparison but do not qualify the FP8 candidate or authorize promotion."
+  ],
+  "recommendation": "Run the prepared 16K target-Triton BF16 control, then the otherwise matched fp8_per_token_head candidate with draft KV inheritance. Retain FP8 only if startup identity, functional and vision gates, quality diagnostics, measured cache capacity, and bounded performance evidence pass.",
+  "human_gate_required": false,
+  "promoted": false
+}

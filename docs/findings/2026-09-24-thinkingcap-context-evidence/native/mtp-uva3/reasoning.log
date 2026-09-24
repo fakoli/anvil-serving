@@ -1,0 +1,8 @@
+PRE-FLIGHT  http://127.0.0.1:39283/v1  model=thinkingcap-awq-5090  thinking=enabled visible=512 reasoning_headroom=8192 max_tokens=8704
+------------------------------------------------------------
+[PASS] smoke (short coding)                   1.0s got='```python\nsum(xs)\n```' finish='stop' visible=23 reasoning_chars=133 reasoning_tokens=37
+[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=33 reasoning_chars=143 reasoning_tokens=36
+[PASS] shared-prefix tool batch x5            5/5 clean (sample: 5.9s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=142 reasoning_tokens=33)
+[PASS] tool-result continuation               2.5s tool result retained finish='stop' visible=13 reasoning_chars=182 reasoning_tokens=46
+------------------------------------------------------------
+RESULT: ALL PASS

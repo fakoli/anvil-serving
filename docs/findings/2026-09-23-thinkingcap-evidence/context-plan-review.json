@@ -1,0 +1,100 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "action": "review corrected C1 64K context qualification plan",
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "hardware": "RTX 5090",
+    "execution_scope": "planning and source-only validation; no endpoint, GPU, lifecycle, route, or promotion action"
+  },
+  "gate_state": "ready_for_authorized_preflight_and_submit",
+  "targets": [
+    "C1 64K BF16-KV text-context qualification",
+    "full-vision qualification under the same 64K serve configuration"
+  ],
+  "tools_used": [
+    "native benchmark job-spec validator",
+    "native context selection validator",
+    "read-only source inspection"
+  ],
+  "artifacts": {
+    "private_job_spec": "private operator evidence/context-64k-plan.private.json",
+    "parameter_validation": {
+      "profile": "smoke",
+      "advertised_context": 65536,
+      "token_buckets": [
+        8192,
+        62464
+      ],
+      "output_headroom_tokens": 2048,
+      "template_and_transport_margin_tokens": 1024,
+      "near_limit_accounting": "62464 prompt target + 2048 output reserve + 1024 margin = 65536",
+      "case_ids": [
+        "native-needle",
+        "native-order",
+        "native-distractor",
+        "native-identifiers",
+        "native-crosslink"
+      ],
+      "positions": [
+        0.1,
+        0.5,
+        0.9
+      ],
+      "repetitions": 2,
+      "planned_observations": 60,
+      "timeout_s": 7200
+    },
+    "source_provenance": [
+      {
+        "path": "anvil_serving/benchmarking/jobs.py",
+        "purpose": "portable job-spec schema and bounded JSON validation"
+      },
+      {
+        "path": "anvil_serving/benchmarking/suite_runner.py",
+        "purpose": "supported context parameter names, capacity check, request execution, and result scoring"
+      },
+      {
+        "path": "anvil_serving/benchmarking/context.py",
+        "purpose": "native deterministic context cases and exact-answer scoring"
+      },
+      {
+        "path": "anvil_serving/benchmarking/requests.py",
+        "purpose": "1024-token default context safety margin"
+      },
+      {
+        "path": "anvil_serving/_benchmark_profiles/smoke.json",
+        "purpose": "content-addressed smoke profile and scoring policy"
+      }
+    ],
+    "findings_summary": [
+      {
+        "severity": "blocking",
+        "classification": "confirmed",
+        "finding": "The preserved earlier smoke specification uses unsupported advisory parameter names and therefore selects only the profile-default 8192- and 32768-token buckets. It cannot support a 64K claim."
+      },
+      {
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "A completed job is insufficient. Qualification requires every one of the 60 context observations to pass, observed prompt-token evidence near the 62464 target, allowed finish reasons, and a passing degradation curve."
+      },
+      {
+        "severity": "medium",
+        "classification": "confirmed",
+        "finding": "The existing multimodal runner can separately prove image, OCR, chart, screenshot, spatial, and two-image correctness under the 64K configuration."
+      },
+      {
+        "severity": "medium",
+        "classification": "confirmed",
+        "finding": "The existing multimodal runner limits manifest prompts to 8192 characters, so it cannot prove a combined near-limit text-plus-image request. Any claim must distinguish near-limit text context from full vision under the same configuration."
+      }
+    ]
+  },
+  "advisory_priors": [
+    "The existing user authorization covers candidate lifecycle, testing, and optimization on the local RTX 5090.",
+    "This planning record does not authorize promotion or route changes.",
+    "No context or multimodal qualification result exists until the managed jobs run and their retained evidence passes independent review."
+  ],
+  "recommendation": "Use the corrected private job specification for managed preflight and submit. Retain the earlier smoke specification as superseded evidence. Publish only separate near-limit text and full-vision-under-64K claims unless a future managed harness supports combined long-context multimodal cases.",
+  "human_gate_required": true,
+  "promoted": false
+}

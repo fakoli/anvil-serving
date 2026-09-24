@@ -36,6 +36,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| ThinkingCap Qwen3.8 27B AWQ | 128K/C1; vision 18/18, limited quality 30/30, context 60/60, strict capacity 100/100 | `current` after authorized secondary promotion; mixed near-limit vision and soak untested | 2026-09-24 | [ThinkingCap Qwen3.8](thinkingcap-qwen38-27b.md) |
 | FLUX.2 Klein 4B | 6/8 bounded visual reviews pass | workflow `available=true`, not promoted | 2026-08-28 | [FLUX.2 Klein](flux2-klein.md) |
 | Wan2.2 TI2V 5B | Functional/decode and Hermes acceptance | unavailable, `no-promotion` | 2026-09-15 | [Wan2.2](wan22.md) |
 | Qwen3.8 27B GGUF / NVFP4 | 50.9 ms warm TTFT target-only and 137.7 tok/s 64K speculative arm | challengers and incumbent retained; `no-promotion` | 2026-09-03 | [Qwen3.8 27B](qwen38-27b.md) |

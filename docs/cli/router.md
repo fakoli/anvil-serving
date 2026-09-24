@@ -31,6 +31,7 @@ owning documentation link.
 | `router reload` | Reload router configuration. |
 | `router install-config` | Atomically install a validated capability meta-router config, including tier-set migrations. |
 | `router status` | Show bounded router status. |
+| `router export-config` | Export one verified secret-free installed router configuration. |
 | `router logs` | Read bounded router logs or explicitly follow new output. |
 
 ### Safe tier transitions
@@ -98,6 +99,22 @@ anvil-serving router token --reveal --confirm
 
 Only the second form prints the local token value. Avoid using it in automation or
 captured logs.
+
+## Export installed configuration
+
+On the router host, capture an exact promotion baseline with
+`anvil-serving router export-config --expected-sha256 SHA256 --json`.
+The expected digest is the file-byte SHA-256, not the public semantic digest
+returned by `/v1/router/status`. The command verifies the running container,
+its read-only `/etc/anvil/config.toml` bind from a regular `router.toml`, source
+and installed hashes, bounded UTF-8 TOML, and the existing export secret checks.
+It rejects links in the selected file's path and config dependency bundles.
+Unrelated operator-home files are never enumerated or read. Whole-home
+`host config inventory/export` guards remain unchanged. Output contains private
+topology and belongs in private operator evidence. No service is changed.
+The direct tier `extra_body.thinking_token_budget` setting is recognized as a numeric
+inference limit only for integers from 0 through 1,048,576. Strings, booleans,
+nested occurrences, and other credential-shaped fields retain the secret guard.
 
 ## Workloads
 

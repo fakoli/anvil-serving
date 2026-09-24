@@ -1,0 +1,176 @@
+{
+  "observations": [
+    {
+      "answer_sha256": "75f9e2a1d9da09a63b56f093f4af195b9fee4b81d6376af6503822f021362e51",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        389,
+        473,
+        542
+      ],
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-sequence",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "id": "T-17"
+          },
+          "name": "read_ticket"
+        },
+        {
+          "arguments": {
+            "path": "src/app.py"
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 61,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1559.3971000052989,
+          "prompt_tokens": 389,
+          "reasoning_chars": 119,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 46,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1145.9796999988612,
+          "prompt_tokens": 473,
+          "reasoning_chars": 57,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 45,
+          "finish_reason": "stop",
+          "latency_ms": 1333.3185000228696,
+          "prompt_tokens": 542,
+          "reasoning_chars": 73,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "\n\nTicket T-17 points to `src/app.py`, and that file contains the marker: `FILE-READY`."
+    },
+    {
+      "answer_sha256": "11a9fabd9c404916c3368479233a3adf2ec18cc7813f3a3ea05ced3fb3459154",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        340,
+        440,
+        559
+      ],
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-recovery-error",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "attempt": "1",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        },
+        {
+          "arguments": {
+            "attempt": "2",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 79,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1707.1781999839004,
+          "prompt_tokens": 340,
+          "reasoning_chars": 130,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 90,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2077.1484000142664,
+          "prompt_tokens": 440,
+          "reasoning_chars": 117,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 63,
+          "finish_reason": "stop",
+          "latency_ms": 1817.2322000027634,
+          "prompt_tokens": 559,
+          "reasoning_chars": 68,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "\n\nBuild B-9 fetched successfully on the retry:\n\n- **Status:** passed\n- **Marker:** BUILD-OK\n\nThe first attempt hit a temporary error, but the single safe retry succeeded."
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": null,
+    "thinking_mode": "default"
+  },
+  "request_ids": [],
+  "schema": "anvil-serving.agentic-suite-run/v1",
+  "summary": {
+    "attempted": 2,
+    "pass_rate": 1.0,
+    "passed": 2,
+    "required_pass_rate": 0.8
+  }
+}

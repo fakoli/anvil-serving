@@ -1,0 +1,144 @@
+{
+  "command": "router diagnose",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": {
+    "active": false,
+    "limitations": [
+      "metadata_only",
+      "history_is_bounded_to_managed_jsonl_generations",
+      "terminal_records_only"
+    ],
+    "requests": [
+      {
+        "active": {
+          "cache_read_input_tokens": null,
+          "context_limit_tokens": null,
+          "created_at": null,
+          "elapsed_ms": null,
+          "estimated_input_tokens": null,
+          "input_tokens": null,
+          "last_activity_ms": null,
+          "output_tokens": null,
+          "phase": null,
+          "state": null
+        },
+        "admission_wait_ms": 0,
+        "cache_read_input_tokens": null,
+        "client_id": "_legacy",
+        "delivery_outcome": "success",
+        "finish_reason": "stop",
+        "gateway_request_id": "req_df52ac298292491f8c0559fa5c805b4c",
+        "next_checks": [],
+        "observations": [
+          "startup_dominated"
+        ],
+        "outcome": "success",
+        "output_limit": {
+          "applied": 10240,
+          "clamped": false,
+          "requested": 10240
+        },
+        "request_id": "req_df52ac298292491f8c0559fa5c805b4c",
+        "request_router": {
+          "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+          "version": "1.2.1"
+        },
+        "requested_tier": "secondary-node",
+        "route": "llm.secondary",
+        "served_tier": "secondary-node",
+        "session_id": "01a0d2a5-9fa3-72ad-b4d0-4761b0e7de7b",
+        "timing": {
+          "latency_ms": 10905,
+          "readiness_check_ms": 0,
+          "time_to_first_content_ms": 10672,
+          "upstream_duration_ms": 10904
+        },
+        "upstream_outcome": "succeeded",
+        "usage": {
+          "completion_source": "upstream",
+          "completion_tokens": 49,
+          "prompt_source": "upstream",
+          "prompt_tokens": 11353
+        }
+      },
+      {
+        "active": {
+          "cache_read_input_tokens": null,
+          "context_limit_tokens": null,
+          "created_at": null,
+          "elapsed_ms": null,
+          "estimated_input_tokens": null,
+          "input_tokens": null,
+          "last_activity_ms": null,
+          "output_tokens": null,
+          "phase": null,
+          "state": null
+        },
+        "admission_wait_ms": 0,
+        "cache_read_input_tokens": null,
+        "client_id": "_legacy",
+        "delivery_outcome": "success",
+        "finish_reason": "tool_calls",
+        "gateway_request_id": "req_3041e69b686442d1a3cc6d56aa62c2c1",
+        "next_checks": [],
+        "observations": [
+          "model_requested_tool_execution"
+        ],
+        "outcome": "success",
+        "output_limit": {
+          "applied": 10240,
+          "clamped": false,
+          "requested": 10240
+        },
+        "request_id": "req_3041e69b686442d1a3cc6d56aa62c2c1",
+        "request_router": {
+          "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+          "version": "1.2.1"
+        },
+        "requested_tier": "secondary-node",
+        "route": "llm.secondary",
+        "served_tier": "secondary-node",
+        "session_id": "01a0d2a5-9fa3-72ad-b4d0-4761b0e7de7b",
+        "timing": {
+          "latency_ms": 11594,
+          "readiness_check_ms": 0,
+          "time_to_first_content_ms": null,
+          "upstream_duration_ms": 11593
+        },
+        "upstream_outcome": "succeeded",
+        "usage": {
+          "completion_source": "upstream",
+          "completion_tokens": 94,
+          "prompt_source": "upstream",
+          "prompt_tokens": 11233
+        }
+      }
+    ],
+    "schema": "anvil-router-diagnosis/v1",
+    "scope": "decision_log_jsonl",
+    "session_id": "01a0d2a5-9fa3-72ad-b4d0-4761b0e7de7b",
+    "truncated": true
+  },
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

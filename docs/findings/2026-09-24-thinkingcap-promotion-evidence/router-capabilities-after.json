@@ -1,0 +1,73 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "model_capabilities",
+      "id": "primary-local",
+      "aliases": [
+        "llm.auxiliary",
+        "llm.primary",
+        "llm.voice",
+        "vision.general",
+        "vision.ocr"
+      ],
+      "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "context_limit_tokens": 327680,
+      "tools": {
+        "supported": true
+      },
+      "modalities": [
+        "image",
+        "text"
+      ],
+      "thinking": {
+        "supported": true,
+        "default": "enabled",
+        "caller_override": false
+      },
+      "compat": null,
+      "limits": {
+        "max_output_tokens": 65536,
+        "images_per_request": 8,
+        "video_per_request": 0
+      },
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      }
+    },
+    {
+      "object": "model_capabilities",
+      "id": "secondary-node",
+      "aliases": [
+        "llm.secondary"
+      ],
+      "model": "thinkingcap-awq-5090",
+      "context_limit_tokens": 131072,
+      "tools": {
+        "supported": true
+      },
+      "modalities": [
+        "image",
+        "text"
+      ],
+      "thinking": {
+        "supported": true,
+        "default": "enabled",
+        "caller_override": true
+      },
+      "compat": null,
+      "limits": {
+        "max_output_tokens": 4096,
+        "images_per_request": 2,
+        "video_per_request": 0
+      },
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+{
+  "schema": "anvil-serving.workload-manifest/v1",
+  "campaign": "ThinkingCap RTX 5090 128K context qualification",
+  "identity": {
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "runtime_image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b"
+  },
+  "selected_plan": {
+    "context_tokens": 131072,
+    "C": 1,
+    "attention": "TRITON",
+    "kv": "BF16",
+    "ssm": "default FP32",
+    "mtp": 3,
+    "memory_fraction": 0.93,
+    "offload_backend": "uva",
+    "cpu_offload_gb": 3,
+    "cpu_offload_params": "generic parameters"
+  },
+  "fixtures": {
+    "image_suite": {
+      "path": "tests/fixtures/eval-data/agents-a1-v1/qwen38-image-ab.json",
+      "sha256": "ac06eb4c295e1fbd91d582bb1330ea55a70ea775f291e2c323fd4fc4f00c45db",
+      "provenance": {
+        "source": "agents-a1-v1 synthetic image corpus subset",
+        "license": "CC0-1.0",
+        "observed_date": "2026-08-15"
+      },
+      "assets": [
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "path": "tests/fixtures/eval-data/agents-a1-v1/compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ]
+    },
+    "text_quality_suite": {
+      "path": "tests/fixtures/eval-data/hf-mmlu-pro-10-repeated.suite.json",
+      "sha256": "f6112c6f592c5285f8dae86808285f328161d3b4ae30ef660440d173d47b0636",
+      "dataset": "TIGER-Lab/MMLU-Pro",
+      "dataset_revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+      "config": "default",
+      "split": "validation",
+      "rows": [
+        5,
+        10,
+        15,
+        20,
+        25,
+        30,
+        35,
+        40,
+        45,
+        65
+      ],
+      "license": "not recorded in retained local fixture",
+      "selection": "Existing fixed July 12 fixture selection; it was not chosen from this campaign\u2019s results."
+    },
+    "media_bytes_retained": false,
+    "asset_policy": "Fixture paths and hashes are retained; media bytes are not copied into this evidence bundle."
+  },
+  "controls": {
+    "functional": {
+      "planned_observations": 27,
+      "completed": "27/27 passed",
+      "native": "native/mtp-uva3/functional.json"
+    },
+    "reasoning": {
+      "planned_observations": 9,
+      "completed": "9/9 passed; thinking enabled and reasoning channel observed",
+      "native": "native/mtp-uva3/reasoning.json"
+    },
+    "vision": {
+      "planned_attempts": 18,
+      "completed": "18/18 passed",
+      "native": "native/mtp-uva3/vision.json"
+    },
+    "quality": {
+      "workload": "10 checks x 3 repetitions; temperature 0; 2048 visible plus 8192 reasoning",
+      "completed": "30/30 passed; all finish reasons stop",
+      "native": "native/mtp-uva3/quality.json",
+      "evidence_scope": "repeated deterministic-marker diagnostic; not a broad quality ranking"
+    },
+    "capacity": {
+      "workload": "100 requests, nominal 4K, C1, 32 code words, canary, 45 output tokens, thinking disabled",
+      "completed": "100/100 strict passed; zero errors; all requests performance eligible",
+      "metrics": {
+        "decode_tok_s_p50": 51.88547695919587,
+        "ttft_p50_ms": 3003.0448000179604,
+        "e2e_p50_ms": 3852.9262999945786,
+        "aggregate_output_tok_s": 11.678387852350253,
+        "completion_tokens_p50": 45.0
+      },
+      "native": "native/mtp-uva3/capacity.json",
+      "scope": "Matched short-output C1 population; no full-context claim."
+    },
+    "context": {
+      "workload": "5 cases x 2 buckets (32768, 125952) x 3 positions x 2 repetitions = 60; 4096 total-completion reserve",
+      "completed": "60/60 passed; all finish reasons stop; actual inputs 32658\u201332689 and 125838\u2013125869",
+      "summary": "context-full-summary.json",
+      "native": "native/mtp-uva3-context-full/artifact.json",
+      "scope": "Text-only C1 matrix; exact-limit and one-over admission, C2, and mixed text-plus-image qualification were not run."
+    },
+    "context_scout": {
+      "completed": "2/2 passed; tokenizer-observed inputs 32658 and 125838; finish reason stop",
+      "native": "native/mtp-uva3-context-scout/artifact.json",
+      "summary": "context-scout-summary.json",
+      "scope": "Two-request text-only diagnostic scout at 32K and near-limit input; not the full matrix, an admission-boundary test, C2, or mixed text-plus-image qualification."
+    },
+    "agentic": {
+      "workload": "2 synthetic cases",
+      "completed": "2/2 passed; six API turns and four tool calls; finish reasons tool_calls=4 and stop=2",
+      "summary": "agentic-summary.json",
+      "native": "native/mtp-uva3-agentic/artifact.json",
+      "scope": "Synthetic tool workflow only; not SWE or repository execution."
+    }
+  },
+  "status": "MTP-UVA3 current branch completed bounded direct 128K gates; no route/client/deployment promotion and no mixed-context, C2, SWE, video, or soak claim.",
+  "current_branch_observation": {
+    "gpu_weights_gib": 19.11,
+    "generic_uva_offload_gib": 3.02,
+    "included_visual_offload_gib": 0.86,
+    "kv_cache_gib": 9.7,
+    "reported_kv_capacity_tokens": 138519,
+    "identity_binding": "identity-mtp-uva3.json plus native/mtp-uva3/startup.log and health.json; native source_recipe remains null"
+  },
+  "prior_no_mtp_branch": {
+    "status": "failed repeated quality gate 27/30",
+    "native": "native/candidate/quality.json",
+    "note": "Historical negative case; not combined with the current MTP branch."
+  },
+  "product_gaps": [
+    "product-gaps/2026-09-24-benchmark-evidence-job-wrapper.md",
+    "product-gaps/2026-09-24-mixed-context-vision-gate.md"
+  ],
+  "prior_no_mtp_startup_observation": {
+    "health_and_identity": "passed",
+    "reported_kv_capacity_tokens": 134138,
+    "gpu_weights_gib": 20.49,
+    "actual_offloaded_visual_weights_gib": 0.86,
+    "evidence": [
+      "calibration.json",
+      "native/candidate/startup.log",
+      "native/candidate/startup-health.json",
+      "native/candidate/startup-status.json"
+    ],
+    "branch": "prior rejected no-MTP visual-only UVA branch",
+    "interpretation": "Historical startup observation only; it does not describe the current MTP-UVA3 configuration."
+  },
+  "prior_no_mtp_host_observation": {
+    "guard": "idle-only after the model was loaded; no force, restart, or settings change",
+    "operation": "managed host cache reclaim",
+    "page_cache_gib": "12.9 -> 2.1",
+    "settled_at": "2026-09-24T04:51:31Z",
+    "windows_free_memory_kib": {
+      "physical": 12362204,
+      "virtual": 13567872
+    },
+    "evidence": [
+      "native/host/cache-reclaim-preview.json",
+      "native/host/cache-reclaim-apply.json"
+    ],
+    "settled_memory_export": "native/prior-host-settled/host-memory.json",
+    "interpretation": "Prior clean file-cache reclaim only; it did not delete model weights and does not establish current MTP headroom.",
+    "branch": "prior rejected no-MTP visual-only UVA branch"
+  },
+  "current_mtp_host_observation": {
+    "branch": "current MTP-UVA3 generic-UVA branch",
+    "operation": "managed guarded idle cache reclaim",
+    "settled_at": "2026-09-24T05:10:17Z",
+    "windows_free_memory_kib": {
+      "physical": 8417472,
+      "virtual": 10163116
+    },
+    "native": "native/mtp-uva3/host-memory-after-reclaim.json",
+    "interpretation": "Current branch observation after reclaim; it does not assert a full-context memory reserve."
+  }
+}

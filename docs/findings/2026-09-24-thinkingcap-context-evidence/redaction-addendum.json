@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.public-redaction-addendum/v1",
+  "scope": "Additional genericization of operator runtime/host labels within this new, unsealed bundle; prior sealed bundle unchanged",
+  "changed_public_files": [
+    "native/candidate/load-preview.json",
+    "native/host/cache-reclaim-apply.json",
+    "native/host/cache-reclaim-preview.json",
+    "native/mtp-uva3/create-preview.json",
+    "native/mtp-uva3/create.json",
+    "native/mtp-uva3/load-preview.json",
+    "native/mtp-uva3/load.log",
+    "native/mtp-uva3/reclaim-preview.json",
+    "native/mtp-uva3/reclaim.json",
+    "native/mtp-uva3/startup.json"
+  ],
+  "ledger_rows_updated": 10,
+  "preserved": "Model, runtime, recipe digests and numeric benchmark results unchanged",
+  "final_public_filename_mapping": {
+    "native/mtp-uva3/create-preview.private.json": "native/mtp-uva3/create-preview.json",
+    "native/mtp-uva3/create.private.json": "native/mtp-uva3/create.json",
+    "native/mtp-uva3/load-preview.private.json": "native/mtp-uva3/load-preview.json",
+    "native/mtp-uva3/load.private.log": "native/mtp-uva3/load.log",
+    "native/mtp-uva3/reclaim-preview.private.json": "native/mtp-uva3/reclaim-preview.json",
+    "native/mtp-uva3/reclaim.private.json": "native/mtp-uva3/reclaim.json",
+    "native/mtp-uva3/startup.private.json": "native/mtp-uva3/startup.json"
+  },
+  "docker_bridge_redaction": "Docker bridge client address replaced with generic 100.64.0.10 in public native engine logs"
+}

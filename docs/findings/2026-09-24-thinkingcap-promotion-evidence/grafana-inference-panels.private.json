@@ -1,0 +1,39 @@
+{
+  "title": "operator \u00b7 Model detail",
+  "uid": "operator-inference",
+  "panels": [
+    {
+      "id": 27,
+      "title": "LLM.secondary - ThinkingCap Qwen3.8 27B AWQ",
+      "expression": null,
+      "datasource": null
+    },
+    {
+      "id": 28,
+      "title": "llm.secondary - context limit",
+      "expression": "anvil_router_model_context_limit_tokens{model=\"llm.secondary\"}",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "operator-prometheus"
+      }
+    },
+    {
+      "id": 29,
+      "title": "llm.secondary - loaded",
+      "expression": "anvil_router_model_loaded{model=\"llm.secondary\"}",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "operator-prometheus"
+      }
+    },
+    {
+      "id": 30,
+      "title": "llm.secondary - image limit",
+      "expression": "anvil_router_model_image_limit{model=\"llm.secondary\"}",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "operator-prometheus"
+      }
+    }
+  ]
+}

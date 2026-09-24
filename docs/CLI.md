@@ -176,6 +176,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
 | `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Inspect active requests or retained request/session evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--session-id`<br>`--active`<br>`--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
@@ -322,7 +323,7 @@ required operands, choices, and defaults.
 | `host services discover` | Discover eligible unmanaged local services. | `read` / `bounded` | - |
 | `host services capabilities` | Show the owning runtime's supported service operations. | `read` / `bounded` | - |
 | `host services logs` | Read a bounded declared-service log tail. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--timeout-seconds` |
-| `host services adopt` | Preview or adopt an exact existing launchd or Docker service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--manager`<br>`--service-label`<br>`--resource`<br>`--engine`<br>`--support`<br>`--container`<br>`--endpoint`<br>`--model`<br>`--health-path`<br>`--models-path`<br>`--feature`<br>`--startup-policy`<br>`--memory-mib`<br>`--serve`<br>`--serve-manifest` |
+| `host services adopt` | Preview or adopt an exact existing launchd or Docker service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--manager`<br>`--service-label`<br>`--resource`<br>`--engine`<br>`--support`<br>`--container`<br>`--external-compose`<br>`--compose-project`<br>`--compose-service`<br>`--compose-config-source`<br>`--compose-config-target`<br>`--expected-image-id`<br>`--endpoint`<br>`--model`<br>`--health-path`<br>`--models-path`<br>`--feature`<br>`--startup-policy`<br>`--memory-mib`<br>`--serve`<br>`--serve-manifest` |
 | `host services install` | Render a declared service supervisor definition without starting it. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services up` | Start one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services down` | Stop one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |

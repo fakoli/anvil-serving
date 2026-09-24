@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.quality-result-summary/v1",
+  "evidence": "native/mtp-uva3/quality.json",
+  "status": "passed",
+  "questions": 10,
+  "repetitions": 3,
+  "attempts": 30,
+  "passed": 30,
+  "finish_reasons": [
+    "stop"
+  ],
+  "failures": [],
+  "protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 8192,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 2048
+  },
+  "identity_binding": "identity-mtp-uva3.json",
+  "scope": "Small ten-question repeated diagnostic; not full MMLU-Pro, independent samples, a broad quality ranking, or proof that MTP caused the different result."
+}

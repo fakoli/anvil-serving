@@ -1,0 +1,146 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "thinkingcap-awq-rtx5090-initial-memory-scout",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Initial text/media scout budget",
+        "observed_at": "2026-09-23"
+      },
+      "output_reserve": {
+        "value": 8192,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Initial reasoning and visible answer budget",
+        "observed_at": "2026-09-23"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "Single-request initial scout",
+      "observed_at": "2026-09-23"
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "Local nvidia-smi RTX 5090 inventory",
+      "observed_at": "2026-09-23"
+    },
+    "vram_reserves": {
+      "driver_desktop": {
+        "kind": "policy",
+        "variable": {
+          "value": 4294967296,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Existing RTX 5090 topology reserve; refine after incumbent unload",
+          "observed_at": "2026-09-23"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "All deterministic acceptance gates must pass",
+        "observed_at": "2026-09-23"
+      },
+      "min_warm_e2e_gain": {
+        "value": 0.05,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "Minimum repeated optimization benefit",
+        "observed_at": "2026-09-23"
+      }
+    }
+  },
+  "tracked_variables": {
+    "checkpoint_bytes": {
+      "value": 23447947228,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Complete exact-revision managed cache verification on previous host",
+      "observed_at": "2026-09-23"
+    },
+    "wsl_memory_limit": {
+      "value": 21474836480,
+      "unit": "bytes",
+      "status": "confirmed",
+      "source": "Local .wslconfig",
+      "observed_at": "2026-09-23"
+    },
+    "system_ram_peak": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Measure model loading and representative inference"
+    },
+    "post_unload_gpu_allocation": {
+      "status": "unknown",
+      "unit": "bytes",
+      "notes": "Measure desktop/driver allocations after authorized incumbent unload"
+    }
+  },
+  "candidates": [
+    {
+      "id": "awq-vllm029-5090-16k-c1-eager-nospec",
+      "runtime_context_limit_tokens": {
+        "value": 16384,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "Proposed initial calibration cap",
+        "observed_at": "2026-09-23"
+      },
+      "resident_components": {
+        "target_and_vision": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Disk checkpoint is not GPU allocation; measure full vision-preserving model load"
+        },
+        "runtime_and_multimodal_workspace": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Measure startup and image peak; no guessed zero"
+        },
+        "cuda_graph": {
+          "value": 0,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "Initial enforce-eager recipe explicitly disables graph capture",
+          "observed_at": "2026-09-23"
+        }
+      },
+      "per_sequence_components": {
+        "hybrid_recurrent_state": {
+          "status": "unknown",
+          "unit": "bytes",
+          "notes": "Measure vLLM hybrid cache allocator on exact GPU/runtime"
+        }
+      },
+      "per_token_components": {
+        "full_attention_bf16_kv": {
+          "value": 65536,
+          "unit": "bytes/token",
+          "status": "confirmed",
+          "source": "16 full-attention layers * K/V * 4 heads * 256 dim * 2 bytes",
+          "observed_at": "2026-09-23"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "One independent request",
+        "observed_at": "2026-09-23"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ]
+}

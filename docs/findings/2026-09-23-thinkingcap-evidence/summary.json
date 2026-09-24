@@ -1,0 +1,258 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-23-thinkingcap",
+  "complete": true,
+  "updated_at": "2026-09-24T03:37:44.165805+00:00",
+  "identity": {
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "runtime_image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "engine": "vLLM0.29.0",
+    "engine_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+    "weights": "NVFP4 W4A4 AWQ mixed FP8/BF16; complete BF16 vision/MTP retained",
+    "hardware": "one RTX5090,32607MiB,sm120,driver616.92",
+    "host_runtime": "Windows with Docker Desktop Linux/WSL2",
+    "selection": "explicit user instruction"
+  },
+  "workload": {
+    "plan": "run-plan.md",
+    "manifest": "workload-manifest-5090.json",
+    "comparison": "100 strict short-output requests per configuration; unique cache and canaries",
+    "quality": "Pinned ten-question MMLU-Pro diagnostic,three repetitions,deterministic temperature0,2048 visible+8192 reasoning accounting cap10240",
+    "vision": "Six synthetic image cases,three repetitions,C1,two-image admission"
+  },
+  "measurement": {
+    "path": "direct online loopback endpoint",
+    "warm_cold_state": "warm serving process; first measured request retained; prefix caching disabled; no startup-time performance claim",
+    "statistics": [
+      "median and native per-request percentile distributions",
+      "n=100 p99 is one observed tail order statistic,not a stable service SLA"
+    ],
+    "operational_source": "operational-source-hashes.json"
+  },
+  "gates": [
+    {
+      "name": "complete local snapshot",
+      "status": "passed",
+      "files": 26,
+      "bytes": 23447947228
+    },
+    {
+      "name": "selected 32K Triton BF16 functional",
+      "status": "passed",
+      "observations": 27
+    },
+    {
+      "name": "selected 32K Triton BF16 thinking control",
+      "status": "passed",
+      "observations": 8
+    },
+    {
+      "name": "selected 32K Triton BF16 image corpus",
+      "status": "passed",
+      "observations": 18
+    },
+    {
+      "name": "selected 32K Triton BF16 strict capacity",
+      "status": "passed",
+      "observations": 100
+    },
+    {
+      "name": "selected 32K Triton BF16 MMLU diagnostic",
+      "status": "passed",
+      "attempts": 30,
+      "items": 10
+    },
+    {
+      "name": "long context",
+      "status": "passed",
+      "observations": 60,
+      "evidence": "context-result-summary.json"
+    },
+    {
+      "name": "bounded synthetic agentic",
+      "status": "passed",
+      "cases": 2,
+      "evidence": "agentic-result-summary.json"
+    },
+    {
+      "name": "ending direct serve health",
+      "status": "passed",
+      "evidence": "restoration.json"
+    },
+    {
+      "name": "full repository Python suite",
+      "status": "failed",
+      "passed": 7923,
+      "failed": 1,
+      "skipped": 417,
+      "scope": "unrelated Windows Pi smoke, deferred with ticket"
+    }
+  ],
+  "headline_results": [
+    {
+      "configuration": "eager",
+      "evidence": "native/candidate/eager/eager-short32-n100.json",
+      "attempted": 100,
+      "completed": 100,
+      "failed": 0,
+      "aggregate_eligible": true,
+      "median_decode_tokens_per_second": 15.673049361660688,
+      "median_ttft_ms": 482.38480000873096,
+      "median_e2e_ms": 3290.0751999986824,
+      "aggregate_tokens_per_second": 13.630349996162131,
+      "claim_boundary": "Nominal4K input, strict32-word output with canary, C1, unique cache. Failed population is excluded from clean comparison; valid-request medians remain descriptive."
+    },
+    {
+      "configuration": "graphs",
+      "evidence": "native/candidate/graphs/graph-short32-n100-r1.json",
+      "attempted": 100,
+      "completed": 100,
+      "failed": 0,
+      "aggregate_eligible": true,
+      "median_decode_tokens_per_second": 67.86759402722755,
+      "median_ttft_ms": 397.1048000094015,
+      "median_e2e_ms": 1045.5440999940038,
+      "aggregate_tokens_per_second": 42.96751096543126,
+      "claim_boundary": "Nominal4K input, strict32-word output with canary, C1, unique cache. Failed population is excluded from clean comparison; valid-request medians remain descriptive."
+    },
+    {
+      "configuration": "mtp_flash",
+      "evidence": "native/candidate/mtp3/mtp3-short32-n100-r1.json",
+      "attempted": 100,
+      "completed": 99,
+      "failed": 1,
+      "aggregate_eligible": false,
+      "median_decode_tokens_per_second": 152.92534012186695,
+      "median_ttft_ms": 433.57300001662225,
+      "median_e2e_ms": 721.3507000124082,
+      "aggregate_tokens_per_second": null,
+      "claim_boundary": "Nominal4K input, strict32-word output with canary, C1, unique cache. Failed population is excluded from clean comparison; valid-request medians remain descriptive."
+    },
+    {
+      "configuration": "mtp_triton_bf16",
+      "evidence": "native/candidate/triton-bf16/triton-bf16-short32-n100-r1.json",
+      "attempted": 100,
+      "completed": 100,
+      "failed": 0,
+      "aggregate_eligible": true,
+      "median_decode_tokens_per_second": 158.49590269115166,
+      "median_ttft_ms": 453.6534999788273,
+      "median_e2e_ms": 731.3178999756929,
+      "aggregate_tokens_per_second": 61.419572061303256,
+      "claim_boundary": "Nominal4K input, strict32-word output with canary, C1, unique cache. Failed population is excluded from clean comparison; valid-request medians remain descriptive."
+    },
+    {
+      "configuration": "mtp_triton_fp8",
+      "evidence": "native/candidate/triton-fp8/triton-fp8-short32-n100-r1.json",
+      "attempted": 100,
+      "completed": 100,
+      "failed": 0,
+      "aggregate_eligible": true,
+      "median_decode_tokens_per_second": 137.99137867361082,
+      "median_ttft_ms": 494.9528999859467,
+      "aggregate_tokens_per_second": 55.17134253052424,
+      "quality_gate_passed": false,
+      "claim_boundary": "Capacity protocol passed but recommendation rejected:27/30 quality,3 reasoning-budget exhaustions. Diagnostic only."
+    },
+    {
+      "configuration": "selected_mtp_triton_bf16_32k",
+      "evidence": "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json",
+      "configured_max_context": 32768,
+      "attempted": 100,
+      "completed": 100,
+      "failed": 0,
+      "aggregate_eligible": true,
+      "median_decode_tokens_per_second": 158.3551791480093,
+      "median_ttft_ms": 455.44210000662133,
+      "median_e2e_ms": 733.4115999983624,
+      "aggregate_tokens_per_second": 61.14585265214693,
+      "quality_gate_passed": true,
+      "claim_boundary": "Nominal4K input, actual3609-3687 tokens; 32 code words plus unique canary,45 completion tokens,C1,thinking disabled. Controlled short output does not estimate general-chat performance."
+    }
+  ],
+  "failures": [
+    "Initial WSL UVA startup failure resolved with explicit pin-memory recipe",
+    "Incumbent and eager256-word scouts failed exact-output contracts",
+    "Initial eager preflight duplicate overwrote first artifact; retained preflight is functional-only",
+    "Graph MMLU27/30: computer-science budget exhaustion; Flash-MTP MMLU27/30: computer-science wrong answer",
+    "Flash-MTP strict100 cell failed one request(34 versus32 words) and is aggregate-ineligible",
+    "Triton FP8 quality27/30: computer-science reasoning budget exhausted in all3 repeats; not advanced to larger context"
+  ],
+  "limitations": [
+    "This is a bounded local campaign,not full public benchmark scores or a universal model ranking",
+    "No matched BF16-weight reference or direct quantization-quality comparison",
+    "Quality runner fixes temperature0; publisher sampling protocol is not reproduced",
+    "No SWE isolated worker,video evaluation or long-duration endurance claim",
+    "Native capacity distributions describe short controlled output,not general-chat throughput",
+    "32K is the configured limit; actual near-limit inputs tested29578-29629 tokens with2048 total completion cap. Larger context and C2 remain unmeasured.",
+    "No matched Triton no-speculation control; whole-recipe comparison is not isolated speculative-decoding speedup.",
+    "Required full repository Python gate failed in unrelated Windows Pi smoke; source fix deferred, no clean full-suite claim.",
+    "Selected-profile minimum sampled GPU headroom3342MiB; initial4GiB reserve assumption was not maintained. Five-second samples may miss peaks."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only",
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "challenger",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "best_completed_configuration": "32K,C1,explicit TRITON_ATTN,MTP3,BF16 KV; two-image admission",
+    "next_gate": null,
+    "disposition": "selected direct candidate retained under explicit user authorization; no route/client alias changes"
+  },
+  "evidence": [
+    "triton-bf16-result-summary.json",
+    "mtp3-result-summary.json",
+    "baseline-summary.json",
+    "benchmark-graph-data.json",
+    "restoration.json",
+    "triton-fp8-result-summary.json",
+    "cache-capacity-boundary.json",
+    "triton-bf16-32k-result-summary.json",
+    "context-result-summary.json",
+    "agentic-result-summary.json",
+    "telemetry-summary.json",
+    "validation-final.json",
+    "final-independent-review.json"
+  ],
+  "model_work_complete": true,
+  "context_results": {
+    "passed": 60,
+    "completed": 60,
+    "finish_reason_counts": {
+      "stop": 60
+    },
+    "actual_prompt_token_ranges": {
+      "8192": {
+        "minimum": 8198,
+        "maximum": 8229,
+        "samples": 30
+      },
+      "29696": {
+        "minimum": 29578,
+        "maximum": 29629,
+        "samples": 30
+      }
+    }
+  },
+  "agentic_results": {
+    "synthetic_cases": 2,
+    "passed_cases": 2,
+    "api_turns": 6,
+    "tool_calls": 4,
+    "finish_reason_counts": {
+      "tool_calls": 4,
+      "stop": 2
+    },
+    "reasoning_disabled_observed_zero": true,
+    "safe_error_retry": "passed"
+  },
+  "completed_at": "2026-09-24T03:50:10.093850+00:00",
+  "completion_scope": "Bounded RTX5090 direct model campaign; full repository gate failed and deferred separately"
+}

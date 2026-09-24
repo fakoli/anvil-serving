@@ -1,0 +1,90 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent bounded diagnosis of intermittent routed multimodal RelayBackendError",
+    "reviewed_at": "2026-09-24T08:34:00.1596773Z",
+    "implementing_agent": "/root using GPT-6 Astra",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "ThinkingCap qualification was generated and graded independently of this reviewer"
+  },
+  "gate_state": {
+    "model_configuration": "accepted; no deterministic configuration failure reproduced",
+    "incident_root_cause": "unresolved",
+    "live_calls": "none made by this reviewer",
+    "user_authorization": "existing promotion and validation authorization retained"
+  },
+  "targets": [
+    "anvil_serving/router/backends/relay.py",
+    "anvil_serving/router/front_door.py",
+    "failed routed image and OCR records",
+    "passing identical direct and routed retries"
+  ],
+  "tools_used": [
+    "read-only source inspection",
+    "read-only reported router diagnostic and engine-log evidence review"
+  ],
+  "artifacts": {
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "medium",
+        "classification": "confirmed observability gap",
+        "finding": "The managed router diagnostic and log surfaces can retain only RelayBackendError for several materially different upstream failures.",
+        "concrete_input_or_state": "A routed image request fails after 13.876 seconds and the next OCR request fails after 0.146 seconds, while engine logs show no model error; identical direct requests and later identical routed requests pass without a configuration or runtime mutation.",
+        "wrong_result": "Operators cannot determine whether the failure occurred during connect, header receipt, upstream status, body read, JSON parsing, response-size enforcement, or SSE completion.",
+        "references": [
+          "anvil_serving/router/backends/relay.py:242",
+          "anvil_serving/router/backends/relay.py:262",
+          "anvil_serving/router/backends/relay.py:1040",
+          "anvil_serving/router/backends/relay.py:1331",
+          "anvil_serving/router/front_door.py:552"
+        ],
+        "required_resolution": "Track this as a product ticket. Emit a bounded, secret-safe relay failure phase and sanitized upstream status or exception class keyed by gateway_request_id; never log request bodies, response bodies, URLs, or credentials."
+      }
+    ],
+    "observations": [
+      "The first routed thinking-enabled image and OCR pair failed with HTTP 500 and backend_error_RelayBackendError.",
+      "The same image and OCR requests passed directly with thinking enabled and a 10240 completion cap.",
+      "The identical routed image and OCR retry also passed with no intervening configuration or runtime mutation.",
+      "The two failures therefore do not establish a stable multimodal, reasoning, output-cap, or model incompatibility."
+    ]
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail-closed unreadable state",
+      "concrete_input_or_state": "Router cannot connect to or read a complete upstream response.",
+      "wrong_result": "A malformed result is returned as success.",
+      "classification": "refuted; the router fails closed with HTTP 500"
+    },
+    {
+      "axis": "malformed or boundary response",
+      "concrete_input_or_state": "Upstream returns non-JSON, malformed JSON shape, excessive response bytes, an SSE error, or an incomplete stream.",
+      "wrong_result": "The operator sees a falsely specific transport diagnosis.",
+      "classification": "plausible source classes, but the retained evidence cannot distinguish them"
+    },
+    {
+      "axis": "resource exhaustion or timeout",
+      "concrete_input_or_state": "C1 request stalls or the relay deadline interrupts connect, headers, or body read.",
+      "wrong_result": "The router remains blocked without a deadline.",
+      "classification": "refuted for unbounded blocking; cause classification remains unavailable"
+    },
+    {
+      "axis": "state drift across request and runtime seams",
+      "concrete_input_or_state": "Configuration or engine identity changes between failure and retry.",
+      "wrong_result": "A passing retry is attributed to a hidden mutation.",
+      "classification": "refuted by the reported unchanged configuration and runtime identity"
+    }
+  ],
+  "advisory_priors": [
+    "The existing bounded diagnostic sequence is router diagnose by gateway request ID, bounded router logs for the same time window, and managed engine logs. Those surfaces were used and expose no deeper retained cause here.",
+    "Do not change the model recipe, reasoning policy, media limits, or output cap based on this unreproduced incident."
+  ],
+  "recommendation": {
+    "decision": "accept_with_recorded_incident",
+    "reason": "Direct and routed retries pass the identical requests without mutation, so the failure is intermittent and does not overturn the qualified C1 model contract. Preserve both failures and passes, disclose that root cause is unresolved, and open the observability ticket.",
+    "bounded_remaining_action": "No additional live sweep is required for acceptance; retain normal health monitoring and use the improved diagnostic seam if the incident recurs."
+  },
+  "human_gate_required": false,
+  "human_gate_note": "No new operation or permission is requested by this read-only diagnosis.",
+  "promoted": false
+}

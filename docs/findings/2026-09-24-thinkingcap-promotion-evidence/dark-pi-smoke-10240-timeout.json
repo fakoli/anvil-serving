@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.client-smoke/v1",
+  "host": "Dark",
+  "client": "Pi",
+  "alias": "llm.secondary",
+  "contract": {
+    "context_limit_tokens": 131072,
+    "max_output_tokens": 10240
+  },
+  "attempted": true,
+  "passed": false,
+  "failure_class": "client-request-timeout",
+  "failure": "The owned no-session Pi tool-result request exceeded its 300-second bound with an empty result file and no active upstream request; it was terminated before a replacement request.",
+  "request_options": {
+    "thinking": "off",
+    "tools": [
+      "bash"
+    ],
+    "session": "none",
+    "mode": "json"
+  },
+  "promoted": false
+}

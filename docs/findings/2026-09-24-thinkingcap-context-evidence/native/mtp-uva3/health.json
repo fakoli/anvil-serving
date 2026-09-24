@@ -1,0 +1,34 @@
+{
+  "observed_at": "2026-09-24T05:02:09.366797+00:00",
+  "health": 200,
+  "models": {
+    "object": "list",
+    "data": [
+      {
+        "id": "thinkingcap-awq-5090",
+        "object": "model",
+        "created": 1790226129,
+        "owned_by": "vllm",
+        "root": "/container-cache/huggingface/hub/models--bottlecapai--ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/snapshots/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+        "parent": null,
+        "max_model_len": 131072,
+        "permission": [
+          {
+            "id": "modelperm-bd5de8d0522e38ac",
+            "object": "model_permission",
+            "created": 1790226129,
+            "allow_create_engine": false,
+            "allow_sampling": true,
+            "allow_logprobs": true,
+            "allow_search_indices": false,
+            "allow_view": true,
+            "allow_fine_tuning": false,
+            "organization": "*",
+            "group": null,
+            "is_blocking": false
+          }
+        ]
+      }
+    ]
+  }
+}

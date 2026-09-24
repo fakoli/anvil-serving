@@ -1,0 +1,9 @@
+{
+  "schema": "benchmark-launcher-final-source-check/v1",
+  "observed_at": "2026-09-24T03:26:58.800519+00:00",
+  "checked_files": 329,
+  "changes": [],
+  "passed": true,
+  "source_ledger": "operational-source-hashes.json",
+  "boundary": "Read-only recheck of previously recorded operational Python files; unrecorded files are not covered."
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "artifacts": [
+    {
+      "private_source_name": "validation-benchmark-docs.log",
+      "public_path": "validation/benchmark-docs.log",
+      "private_sha256": "228fa447c7aba06af148de39d2ba17f7a5d196984c9bc319005ce4c7e912d485",
+      "public_sha256": "228fa447c7aba06af148de39d2ba17f7a5d196984c9bc319005ce4c7e912d485",
+      "public_bytes": 99
+    },
+    {
+      "private_source_name": "validation-links-progress.log",
+      "public_path": "validation/links-progress.log",
+      "private_sha256": "9739c9706e6f36338271dbcb282debfe6e413a9556225a0b740fc003c0cb77e9",
+      "public_sha256": "9739c9706e6f36338271dbcb282debfe6e413a9556225a0b740fc003c0cb77e9",
+      "public_bytes": 54
+    },
+    {
+      "private_source_name": "validation-mkdocs-progress.log",
+      "public_path": "validation/mkdocs-progress.log",
+      "private_sha256": "a74a4e7fd0ddd43400d74238007bc7c94e0062a99c7d2fa800c4beaaa3a15d0d",
+      "public_sha256": "e9fa6e987a6e4dda19833df484163e769ba17d154282c005266c67cfd2c81d69",
+      "public_bytes": 25530
+    },
+    {
+      "private_source_name": "validation-cli-audit-final.log",
+      "public_path": "validation/cli-audit-final.log",
+      "private_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "private_bytes": 69,
+      "public_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "public_bytes": 69
+    },
+    {
+      "private_source_name": "validation-links-final.log",
+      "public_path": "validation/links-final.log",
+      "private_sha256": "0322d866c4e81dbe47609a81b5779d95ebdd022f022f3326864c7c2ed3ba91e1",
+      "private_bytes": 234,
+      "public_sha256": "0322d866c4e81dbe47609a81b5779d95ebdd022f022f3326864c7c2ed3ba91e1",
+      "public_bytes": 234
+    },
+    {
+      "private_source_name": "validation-mkdocs-final.log",
+      "public_path": "validation/mkdocs-final.log",
+      "private_sha256": "cf2e600b368b1d451a5650ef7a2971ae3fc5f44c8e875e0716f44e673000c345",
+      "private_bytes": 25872,
+      "public_sha256": "1e3e05851f9d6c13442364e2b8c25e886fed7ceab820c535043c2392930cf02c",
+      "public_bytes": 25805
+    },
+    {
+      "private_source_name": "validation-cli-audit-update-final.log",
+      "public_path": "validation/cli-audit-update-final.log",
+      "private_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "private_bytes": 69,
+      "public_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "public_bytes": 69
+    },
+    {
+      "private_source_name": "validation-cli-audit-final-accepted.log",
+      "public_path": "validation/cli-audit-final-accepted.log",
+      "private_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "private_bytes": 69,
+      "public_sha256": "d23fa8fde4e2af24f661da4b37d6ea3da2eb5187aedc387c129e715bd9925789",
+      "public_bytes": 69
+    },
+    {
+      "private_source_name": "validation-links-final-accepted.log",
+      "public_path": "validation/links-final-accepted.log",
+      "private_sha256": "5ada8ed8118653bd0102c47526c836d71a976f29b8db3acdd2cc8dbe3f510223",
+      "private_bytes": 55,
+      "public_sha256": "5ada8ed8118653bd0102c47526c836d71a976f29b8db3acdd2cc8dbe3f510223",
+      "public_bytes": 55
+    },
+    {
+      "private_source_name": "validation-mkdocs-final-accepted.log",
+      "public_path": "validation/mkdocs-final-accepted.log",
+      "private_sha256": "584e42367fd1ac1e655c4cfae40b7ab9a4295ef6e2d416e67a35d3571d86ccb7",
+      "private_bytes": 25872,
+      "public_sha256": "c95129d162135d5fcce9029a332de65b438bf87f8d90b190449aba445b3bbe08",
+      "public_bytes": 25805
+    }
+  ],
+  "notes": [
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

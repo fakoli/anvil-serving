@@ -1,0 +1,26 @@
+{
+  "recorded_at": "2026-09-24T01:20:27.138875+00:00",
+  "configuration_family": "thinkingcap-5090-vllm029",
+  "candidate_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+  "optimization_arms": [
+    "16k-eager",
+    "16k-graphs",
+    "16k-graphs-mtp3"
+  ],
+  "matched_controls": {
+    "context_tokens": 4096,
+    "concurrency": 1,
+    "requests": 100,
+    "seed": 0,
+    "response_words": 32,
+    "max_tokens": 512,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "thinking_mode": "disabled"
+  },
+  "activation_condition": "Only if original256word scout is ineligible due exact-count adherence; retain failure; all candidate arms receive same32word workload",
+  "claim_boundary": "Short-output ThinkingCap configuration comparison only; no incumbent speed win and no long-generation speed claim",
+  "reason": "Long repeated-word counting is a correctness limitation; bounded32word workload permits independently validated short-decode latency comparison",
+  "long_output_check": "Separate reasoning and long-answer quality probes must terminate correctly; no throughput extrapolation from32words"
+}

@@ -1,0 +1,148 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-24-thinkingcap-secondary-promotion",
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.promotion-summary/v1"
+  ],
+  "output": "artifact-manifest.json",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Separate promotion packet; qualification measurements, decisions and recipes unchanged, with public bundles privacy-resealed under explicit ledgers."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Local pinned qualification and deployment evidence; no new external performance prior."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.md"
+      ],
+      "reason": "Native preflight fixtures and bounded real-client acceptance; no new comparative benchmark."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": "Managed promotion, explicit C1 gates, fleet convergence, and incident follow-up."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "evaluation-node-client-catalog-state.json",
+        "install-capacity-confirm.json",
+        "install-capacity-dry-run.json",
+        "install-output-confirm.json",
+        "install-output-dry-run.json",
+        "install-reasoning-confirm.json",
+        "install-reasoning-preview.json",
+        "mini-automatic-sync-receipt.json",
+        "mini-client-catalog-state.json",
+        "mini-scheduled-contract-receipt.json",
+        "mini-scheduled-contract.private.json",
+        "router-capabilities-after.json",
+        "router-capabilities-reasoning-final.json",
+        "router-capacity-after.json",
+        "router-capacity-reasoning-final.json",
+        "router-fingerprints-after.json",
+        "router-fingerprints-reasoning-final.json",
+        "router-models-after.json",
+        "router-models-reasoning-final.json",
+        "router-status-reasoning-final.json",
+        "windows-authenticated-catalog-reasoning.json"
+      ],
+      "reason": "Authenticated metadata and managed installation receipts; historical stages retained alongside final reasoning metadata."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "dark-pi-high-normal-router-diagnosis.json",
+        "dark-pi-high-r2-router-diagnosis.json",
+        "dark-pi-smoke-high-normal-wrapper.json",
+        "dark-pi-smoke-high-normal.jsonl",
+        "dark-pi-smoke-high-r2-wrapper.json",
+        "dark-pi-smoke-high-r2.jsonl",
+        "direct-final-vision-diagnostic.json",
+        "evaluation-node-smoke-10240-r3.json",
+        "grafana-inference-panels.private.json",
+        "mini-smoke-c1-r2.json",
+        "openwebui-provider-catalog-check.json",
+        "prometheus-native-queries.private.json",
+        "routed-final-preflight.json",
+        "routed-final-vision-r2.json",
+        "routed-preflight-c1.json",
+        "routed-preflight.json",
+        "routed-reasoning.json",
+        "windows-pi-high-wrapper.json",
+        "windows-pi-high.jsonl",
+        "windows-pi-sync-reasoning.json"
+      ],
+      "reason": "Native passed and failed attempts, telemetry, and application-provider discovery."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md",
+        "dark-pi-smoke-10240-timeout.json",
+        "dark-pi-smoke-high-timeout.json",
+        "friction-log.md",
+        "pi-user-rejection-engine-log.txt",
+        "pi-user-rejection-incident.json",
+        "pi-user-rejection.json"
+      ],
+      "reason": "Known failures, root causes where known, and explicit untested boundaries."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Retain promoted deployment under explicit user authorization; private rollback bytes preserved."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "client-reasoning-map-review.json",
+        "convergence-summary.json",
+        "dark-pi-independent-acceptance.json",
+        "external-compose-adapter-review.json",
+        "independent-promotion-review.json",
+        "observability-final.private.json",
+        "output-budget-audit.json",
+        "output-cap-correction-review.json",
+        "routed-multimodal-transient-review.json",
+        "summary.json",
+        "windows-pi-high-acceptance.json"
+      ],
+      "reason": "Bounded decisions, independent reviews, and separate client/observability acceptance."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Deployment acceptance only; no new comparative performance claim or external social publication."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB"
+}

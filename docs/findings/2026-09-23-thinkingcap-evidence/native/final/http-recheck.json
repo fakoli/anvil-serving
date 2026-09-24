@@ -1,0 +1,16 @@
+{
+  "schema": "anvil-serving.final-http-recheck/v1",
+  "observed_at": "2026-09-24T03:44:07.597726+00:00",
+  "health": {
+    "status": 200
+  },
+  "models": {
+    "status": 200,
+    "models": [
+      {
+        "id": "thinkingcap-awq-5090",
+        "max_model_len": 32768
+      }
+    ]
+  }
+}

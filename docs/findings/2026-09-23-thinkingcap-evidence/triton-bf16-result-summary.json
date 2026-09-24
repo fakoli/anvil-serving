@@ -1,0 +1,54 @@
+{
+  "schema": "anvil-serving.triton-bf16-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "profile": "16K C1 graph-enabled V2 MTP3 with target TRITON_ATTN and bfloat16 KV",
+  "evidence_root": "native/candidate/triton-bf16",
+  "recipe_semantic_digest": "fdcebf9caf431c10edd5635c74b1fe820fa474e78e76210527300721c04ce6d0",
+  "startup": {
+    "model_memory_gib": 22.14,
+    "available_kv_cache_gib": 4.73,
+    "gpu_kv_cache_tokens": 45180,
+    "target_attention_backend": "TRITON_ATTN",
+    "target_kv_cache_dtype": "bfloat16",
+    "draft_kv_cache_dtype": "bfloat16 via standard V2 MTP inheritance",
+    "cuda_graph_pool_memory_gib_actual": 0.1,
+    "cuda_graph_pool_memory_gib_estimated": 0.14
+  },
+  "functional_gates": {
+    "functional_observations_passed": 27,
+    "reasoning_observations_passed": 8,
+    "vision_attempts_passed": 18,
+    "vision_attempts": 18
+  },
+  "capacity": {
+    "workload": "nominal 4096 context, 32 exact code words, request canary, 45 completion tokens, C1, unique cache",
+    "attempted_requests": 100,
+    "strict_passes": 100,
+    "strict_failures": 0,
+    "aggregate_throughput_eligible": true,
+    "ttft_p50_ms": 453.6534999788273,
+    "decode_tok_s_p50": 158.49590269115166,
+    "throughput_tok_s": 61.419572061303256
+  },
+  "quality_diagnostic": {
+    "suite": "hf-mmlu-pro-10-repeated",
+    "passed_attempts": 30,
+    "attempts": 30,
+    "finish_reason_counts": {
+      "stop": 30
+    },
+    "scope": "small repeated diagnostic; not a full MMLU-Pro score or promotion comparison"
+  },
+  "comparison_boundary": {
+    "publication_ready_for_chart_and_docs": true,
+    "promotion_authorized": false,
+    "limitations": [
+      "Measured at 16K/C1 only; no long-context, concurrency, or FP8 claim follows."
+    ]
+  },
+  "independent_source_review": {
+    "path": "fp8-v2-review.json",
+    "sha256": "857b05104429a6ee7ad2246d4910f3bf64f156d96f47cd4b9929143dbbaf19ba"
+  },
+  "redaction_ledger": "native/candidate/triton-bf16/redactions.json"
+}

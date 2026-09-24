@@ -1,0 +1,41 @@
+{
+  "schema": "anvil-serving.validation-evidence/v1",
+  "scope": "CPU-only publication validation; no endpoint or GPU calls",
+  "commands": [
+    {
+      "command": "python skill-creator/scripts/quick_validate.py skills/anvil-serving-benchmark-docs",
+      "result": "passed",
+      "detail": "Skill is valid."
+    },
+    {
+      "command": "parse skills/anvil-serving-benchmark-docs/templates/artifact-set/*.json",
+      "result": "passed",
+      "detail": "5 JSON templates parsed."
+    },
+    {
+      "command": "python -m pytest tests/test_benchmark_docs_skill.py -q",
+      "result": "failed",
+      "detail": "17 passed, 2 failed in 0.44s: ThinkingCap dossier lacks required ### Review narrative; RTX PRO 6000 audit lacks classifications for friction-log.md, README.md, and run-plan-initial-superseded.md."
+    },
+    {
+      "command": "python -m ruff check .",
+      "result": "passed",
+      "detail": "All checks passed."
+    },
+    {
+      "command": "python scripts/run_tests.py tests/ -x -q",
+      "result": "inconclusive",
+      "detail": "The wrapper and pytest child completed, but the terminal session yielded before its completion result could be retained. Do not infer a suite count or pass result. The pytest last-failed cache lists the same two benchmark-documentation tests from this validation."
+    }
+  ],
+  "not_run": [
+    "markdown link validation",
+    "mkdocs build",
+    "artifact finalizers",
+    "GPU or endpoint requests"
+  ],
+  "limitations": [
+    "The two focused-test failures were observed against concurrent publication edits; this record does not classify them as pre-existing.",
+    "Rerun the full suite after the documentation-contract corrections to obtain a definitive count."
+  ]
+}

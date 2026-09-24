@@ -1,0 +1,117 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 10240,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "llm.secondary",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "\n\nBased on the image provided, here is a description of the display:\n\n**General Description:**\nThe image shows a digital display screen with a dark background featuring three lines of text in different colors.\n\n**Key Labels, Values, and Status:**\n\n* **Status:** **ANVIL READY** (Displayed in bright green text at the top).\n* **Code:** **42917** (Displayed in white text in the middle).\n* **Temperature:** **42 C** (Displayed in light blue text at the bottom).",
+      "content_chars": 459,
+      "content_excerpt": "\n\nBased on the image provided, here is a description of the display:\n\n**General Description:**\nThe image shows a digital display screen with a dark background featuring three lines of text in differen",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 1125,
+      "reasoning_excerpt": "The user wants me to inspect the image and report on its contents, specifically focusing on labels, values, and status.\n\n1.  **Analyze the image:**\n    *   **Background:** Dark blue/black.\n    *   **T",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 332,
+      "seconds": 9.263,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 450,
+        "completion_tokens_details": {
+          "reasoning_tokens": 332
+        },
+        "prompt_tokens": 294,
+        "total_tokens": 744
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "\n\nANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 41,
+      "content_excerpt": "\n\nANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "42917"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 200,
+      "reasoning_excerpt": "The user wants a transcription of the text in the image. I need to read the text exactly as it appears, preserving the layout and content. The image contains three lines of text on a dark background.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 42,
+      "seconds": 1.501,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 65,
+        "completion_tokens_details": {
+          "reasoning_tokens": 42
+        },
+        "prompt_tokens": 295,
+        "total_tokens": 360
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "42917"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "9.3s all expected text present finish='stop' visible=459 reasoning_chars=1125 reasoning_tokens=332",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "1.5s all expected text present finish='stop' visible=41 reasoning_chars=200 reasoning_tokens=42",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

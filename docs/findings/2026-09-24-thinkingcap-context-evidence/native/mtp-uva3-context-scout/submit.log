@@ -1,0 +1,115 @@
+{
+  "data": {
+    "detached": true,
+    "disposition": "submitted",
+    "follow": false,
+    "job": {
+      "artifact": null,
+      "cancel_requested_at": null,
+      "failure": null,
+      "finished_at": null,
+      "logs": {
+        "entries": [],
+        "next_cursor": 0,
+        "retained_from": 0,
+        "truncated": false
+      },
+      "revision": 1,
+      "schema": "anvil-serving.benchmark-job/v1",
+      "spec": {
+        "endpoint": {
+          "base_url": "http://127.0.0.1:39283/v1",
+          "model": "thinkingcap-awq-5090"
+        },
+        "ownership_id": "thinkingcap-5090",
+        "parameters": {
+          "advertised_context": 131072,
+          "case_ids": [
+            "native-needle"
+          ],
+          "client_topology": "co-resident",
+          "execution_precondition": "Configuration is prepared only. Do not preflight or submit before managed 128K MTP3/UVA3 health, identity, quality, and capacity gates are granted.",
+          "identities": {
+            "hardware": {
+              "id": "rtx5090"
+            },
+            "model": {
+              "id": "thinkingcap-awq-5090",
+              "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+            },
+            "recipe": {
+              "cpu_offload_backend": "uva",
+              "cpu_offload_gb": 3,
+              "cpu_offload_params": "generic",
+              "draft_attention_backend": "TRITON_ATTN",
+              "full_vision_images_per_request": 2,
+              "gpu_memory_utilization": 0.93,
+              "kv_cache_dtype": "bfloat16",
+              "max_model_len": 131072,
+              "max_num_seqs": 1,
+              "measured_startup": {
+                "cpu_offload_gib": 3.02,
+                "cpu_offload_scope": "generic UVA; includes 0.86 GiB visual offload",
+                "gpu_kv_cache_gib": 9.7,
+                "gpu_kv_cache_tokens": 138519,
+                "gpu_weights_gib": 19.11,
+                "health_models_verified_at": "2026-09-24T05:02:09Z",
+                "health_status": 200,
+                "ready_at": "2026-09-24T05:01:36Z",
+                "served_max_model_len": 131072
+              },
+              "mtp_enabled": true,
+              "mtp_steps": 3,
+              "registry_digest": "98d19789e52066c5fef7f8886f3752b31a2cd83202818f9268531ec08728cddd",
+              "registry_path": "PRIVATE_OPERATOR_HOME\\code\\anvil-serving-ops-private\\evidence\\2026-09-24-thinkingcap-context-5090\\128k-mtp3-uva3-registry.toml",
+              "semantic_digest": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+              "ssm_cache_dtype": "float32",
+              "target_attention_backend": "TRITON_ATTN"
+            },
+            "runtime": {
+              "engine": "vllm",
+              "image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+              "revision": "98dff2a81d747d1dba01a47f939f48c3526d4206"
+            },
+            "topology": {
+              "kind": "co-resident-benchmark-client",
+              "model_host_id": "Primary Node",
+              "worker_id": "Primary Node"
+            }
+          },
+          "model_host_id": "Primary Node",
+          "output_headroom_tokens": 4096,
+          "positions": [
+            0.5
+          ],
+          "repetitions": 1,
+          "thinking_mode": "default",
+          "token_buckets": [
+            32768,
+            125952
+          ]
+        },
+        "profile": "smoke",
+        "run_id": "thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1",
+        "schema": "anvil-serving.benchmark-job-spec/v1",
+        "submitted_at": "2026-09-24T04:58:24.725917Z",
+        "suite": "context",
+        "timeout_s": 300,
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "spec_sha256": "0ed4f8ae00565f4195836a108989ebdf54cc6e3fda314203043122084eb1b867",
+      "started_at": null,
+      "state": "queued",
+      "submitted_at": "2026-09-24T04:58:24.725917Z",
+      "updated_at": "2026-09-24T04:58:24.725917Z"
+    },
+    "worker": {
+      "launched": true,
+      "pid": 15280,
+      "run_id": "thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1"
+    }
+  },
+  "ok": true
+}

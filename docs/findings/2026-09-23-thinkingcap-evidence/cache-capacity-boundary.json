@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.cache-capacity-boundary/v1",
+  "observed_at": "2026-09-24T03:06:39.197259+00:00",
+  "observations": [
+    {
+      "context_tokens": 16384,
+      "kv_dtype": "bfloat16",
+      "available_kv_gib": 4.73,
+      "reported_cache_tokens": 45180,
+      "source": "native/candidate/triton-bf16/triton-bf16-final-engine.log"
+    },
+    {
+      "context_tokens": 32768,
+      "kv_dtype": "bfloat16",
+      "available_kv_gib": 4.73,
+      "reported_cache_tokens": 56262,
+      "source": "native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log"
+    }
+  ],
+  "inference": "Runtime hybrid-cache planning changes with the configured context. A cache-token count measured at16K is not an unconditional upper bound on other configurations.",
+  "correction": "Earlier statements that64K cannot fit based only on the16K cache count are withdrawn. No64K ThinkingCap load or request was attempted.",
+  "decision": "FP8 remains rejected on repeated quality, not physical fit. Select32KBF16 as a practical C1 profile if its gates pass; higher-context fit/quality remain unmeasured, not proven impossible."
+}

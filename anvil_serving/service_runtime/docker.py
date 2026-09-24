@@ -157,6 +157,26 @@ class Adapter:
         lines = (result.stdout or "").splitlines() + (result.stderr or "").splitlines()
         return [str(redact(line)) for line in lines][-tail:]
 
+    def adopt_external_compose(self, binding: Mapping[str, Any]) -> dict[str, Any]:
+        """Pin one explicitly declared Compose container without broad discovery."""
+        container = _container(binding)
+        result = self._command(["docker", "inspect", container])
+        if result is None:
+            raise ServiceError("supervisor_unreachable", "Docker is unavailable for external Compose adoption")
+        if result.returncode:
+            raise ServiceError("owner_missing", "declared external Compose container was not found")
+        row = _single_inspection(result.stdout)
+        _verify_external_compose(binding, row)
+        image_id = row.get("Image")
+        if not isinstance(image_id, str) or not _IMAGE_ID.fullmatch(image_id):
+            raise ServiceError("malformed_response", "Docker inspect returned an invalid image identity")
+        if image_id != binding.get("expected_image_id"):
+            raise ServiceError("identity_mismatch", "Docker container image differs from the reviewed expected image")
+        return {"image_id": image_id, "identity_labels": {
+            "com.docker.compose.project": binding["compose_project"],
+            "com.docker.compose.service": binding["compose_service"],
+        }}
+
     def discover(self) -> list[dict[str, Any]]:
         """Read only containers that carry Anvil's ownership label."""
         result = self._command([
@@ -331,6 +351,31 @@ def _verify_identity(binding: Mapping[str, Any], row: Mapping[str, Any]) -> None
     for key, value in _identity_labels(binding).items():
         if labels.get(key) != value:
             raise ServiceError("identity_mismatch", "Docker container identity label does not match declaration")
+    if binding.get("external_compose") is True:
+        _verify_external_compose(binding, row)
+
+
+def _verify_external_compose(binding: Mapping[str, Any], row: Mapping[str, Any]) -> None:
+    """Require a declared Compose owner and one exact configuration bind mount."""
+    for key in ("compose_project", "compose_service", "compose_config_source", "compose_config_target"):
+        if not isinstance(binding.get(key), str):
+            raise ServiceError("invalid_binding", "external Compose binding is incomplete")
+    actual_name = row.get("Name")
+    if not isinstance(actual_name, str) or actual_name.lstrip("/") != _container(binding):
+        raise ServiceError("identity_mismatch", "Docker container name does not match the declared identity")
+    config = row.get("Config")
+    labels = config.get("Labels") if isinstance(config, Mapping) else None
+    if not isinstance(labels, Mapping) or labels.get("com.docker.compose.project") != binding["compose_project"] or labels.get("com.docker.compose.service") != binding["compose_service"]:
+        raise ServiceError("identity_mismatch", "Docker Compose project or service does not match declaration")
+    mounts = row.get("Mounts")
+    target = binding["compose_config_target"]
+    target_mounts = [mount for mount in mounts if isinstance(mount, Mapping) and mount.get("Destination") == target] if isinstance(mounts, list) else []
+    if len(target_mounts) != 1:
+        raise ServiceError("identity_mismatch", "Docker Compose configuration target must have exactly one mount")
+    mount = target_mounts[0]
+    if (mount.get("Type") != "bind" or mount.get("Source") != binding["compose_config_source"]
+            or mount.get("RW") is not False):
+        raise ServiceError("identity_mismatch", "Docker Compose configuration mount does not match declaration")
 
 
 def _restart_policy(row: Mapping[str, Any]) -> str:

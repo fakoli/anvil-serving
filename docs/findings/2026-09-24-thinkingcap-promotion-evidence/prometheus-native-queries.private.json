@@ -1,0 +1,131 @@
+{
+  "captured_at_epoch": 1790240130.7344816,
+  "queries": {
+    "context": {
+      "query": "anvil_router_model_context_limit_tokens{model=\"llm.secondary\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "anvil_router_model_context_limit_tokens",
+                "availability": "always_on",
+                "exporter": "router",
+                "host": "router-node",
+                "instance": "router-node.example.ts.net",
+                "job": "anvil-router-capacity",
+                "lab": "operator",
+                "maintenance": "none",
+                "model": "llm.secondary",
+                "os": "linux",
+                "service": "anvil-router",
+                "target_id": "router.capacity",
+                "tier": "secondary-node"
+              },
+              "value": [
+                1790240130.738,
+                "131072"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "loaded": {
+      "query": "anvil_router_model_loaded{model=\"llm.secondary\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "anvil_router_model_loaded",
+                "availability": "always_on",
+                "exporter": "router",
+                "host": "router-node",
+                "instance": "router-node.example.ts.net",
+                "job": "anvil-router-capacity",
+                "lab": "operator",
+                "maintenance": "none",
+                "model": "llm.secondary",
+                "os": "linux",
+                "service": "anvil-router",
+                "target_id": "router.capacity",
+                "tier": "secondary-node"
+              },
+              "value": [
+                1790240130.738,
+                "1"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "image_limit": {
+      "query": "anvil_router_model_image_limit{model=\"llm.secondary\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "anvil_router_model_image_limit",
+                "availability": "always_on",
+                "exporter": "router",
+                "host": "router-node",
+                "instance": "router-node.example.ts.net",
+                "job": "anvil-router-capacity",
+                "lab": "operator",
+                "maintenance": "none",
+                "model": "llm.secondary",
+                "os": "linux",
+                "service": "anvil-router",
+                "target_id": "router.capacity",
+                "tier": "secondary-node"
+              },
+              "value": [
+                1790240130.738,
+                "2"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "target_up": {
+      "query": "up{job=\"anvil-router-capacity\"}",
+      "response": {
+        "status": "success",
+        "data": {
+          "resultType": "vector",
+          "result": [
+            {
+              "metric": {
+                "__name__": "up",
+                "availability": "always_on",
+                "exporter": "router",
+                "host": "router-node",
+                "instance": "router-node.example.ts.net",
+                "job": "anvil-router-capacity",
+                "lab": "operator",
+                "maintenance": "none",
+                "os": "linux",
+                "service": "anvil-router",
+                "target_id": "router.capacity"
+              },
+              "value": [
+                1790240130.739,
+                "1"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

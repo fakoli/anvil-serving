@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.source-registry/v1",
+  "sources": [],
+  "local_sources": [
+    "Prior sealed 128K qualification bundle; this promotion adds routed functional checks and user-authorized deployment evidence."
+  ]
+}

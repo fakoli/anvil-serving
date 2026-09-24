@@ -1,0 +1,76 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-24-thinkingcap-context",
+  "status": "verified-authorized-candidate-retained",
+  "starting_state": {
+    "captured": true,
+    "served_model": "thinkingcap-awq-5090",
+    "context": 32768,
+    "configuration": "TRITON,MTP3,BF16KV,graphs,C1,vision2",
+    "registry_sha256": "fe43362857973f7368b5cbd1694ee974dbb8b06bbdeacf36740ba3bd6637082b",
+    "model_revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "rollback_preview": "managed preview verified before mutation",
+    "source": "../2026-09-23-thinkingcap-evidence/restoration.json"
+  },
+  "intent": "Retain a qualified profile with at least 131,072 total tokens under the existing autonomous authorization. If none passes, restore the exact qualified 32K recipe and report that the requested minimum was not met.",
+  "route_promotion_authorized": false,
+  "verified": true,
+  "restoration_performed": false,
+  "direct_candidate_retention_authorized": true,
+  "completed_at": "2026-09-24T07:18:25.443939+00:00",
+  "mutation_required": true,
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-09-24T07:16:14.999399+00:00",
+    "container": "thinkingcap-5090-candidate",
+    "served_model": "thinkingcap-awq-5090",
+    "base_url": "http://127.0.0.1:39283/v1",
+    "context_tokens": 131072,
+    "concurrency": 1,
+    "model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+    "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "recipe_semantic_sha256": "c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026",
+    "registry_byte_sha256": "98d19789e52066c5fef7f8886f3752b31a2cd83202818f9268531ec08728cddd",
+    "runtime_image": "vllm/vllm-openai:v0.29.0@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+    "configuration": "Triton target and draft, MTP3, BF16 KV, model-default FP32 SSM, graphs, .93 memory fraction, generic 3 GiB UVA offload, two configured images, no video",
+    "intent": "Retain the qualified direct 128K candidate under the existing autonomous replacement and optimization authorization; exact qualified 32K rollback remains available."
+  },
+  "post_run_checks": [
+    {
+      "check": "Same managed container, model revision, image and recipe",
+      "passed": true,
+      "source": "native/final/status.json"
+    },
+    {
+      "check": "HTTP health 200 and served 131072-token identity",
+      "passed": true,
+      "source": "native/final/http.json"
+    },
+    {
+      "check": "All 60 context cases correct, completed and stop",
+      "passed": true,
+      "source": "context-full-summary.json"
+    },
+    {
+      "check": "Both synthetic agentic cases pass",
+      "passed": true,
+      "source": "agentic-summary.json"
+    },
+    {
+      "check": "Sampled GPU floor and final host memory",
+      "passed": true,
+      "source": "final-resource-summary.json"
+    },
+    {
+      "check": "329 operational Python source hashes unchanged",
+      "passed": true,
+      "source": "operational-source-final-check.json"
+    }
+  ],
+  "differences": [
+    "Qualified 32K candidate replaced by qualified 128K candidate through managed recipe operations",
+    "Complete local checkpoint and vision/MTP weights retained",
+    "No route, client alias or deployed topology changed",
+    "Guarded idle page-cache reclaim used after loading; no WSL restart or settings change"
+  ]
+}

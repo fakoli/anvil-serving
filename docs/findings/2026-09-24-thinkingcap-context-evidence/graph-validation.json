@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.graph-validation/v1",
+  "deterministic_twice": true,
+  "sha256": {
+    "benchmark-matrix.svg": "cbc9749d587e2241f976d73d55c7cd08f4c008343a3043c6ddb18c0db414aaf9",
+    "benchmark-graph-data.json": "cdc2a9699481d989c697841833de9e3f3662e6c8c6e28c7fb38c80e3b3fd0498"
+  }
+}

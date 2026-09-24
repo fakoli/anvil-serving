@@ -22,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "327e53ad939ff00e277485612c242de6e1cc4e0b4acfbcd5bc1765eb7bf57566"
+    "a6df7ebf5b8306f112ccb8ea27b68d4fe32107e962e4f3cc779fe6c2413c506b"
 )
 HANDLER_MAP_SHA256 = (
     "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
@@ -181,6 +181,20 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     client_schema["properties"].pop("openclaw_exclude_aliases")
     client_schema["properties"].pop("openclaw_allow_aliases")
     client_schema["maxProperties"] -= 5
+    services_schema = next(
+        tool for tool in public_tools if tool["name"] == "host_services_manage"
+    )["inputSchema"]
+    compose_fields = {
+        "external_compose": {"type": "boolean"},
+        "compose_project": {"type": "string", "minLength": 1, "maxLength": 128},
+        "compose_service": {"type": "string", "minLength": 1, "maxLength": 128},
+        "compose_config_source": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "compose_config_target": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "expected_image_id": {"type": "string", "minLength": 71, "maxLength": 71},
+    }
+    for name, expected in compose_fields.items():
+        assert services_schema["properties"].pop(name) == expected
+    services_schema["maxProperties"] -= len(compose_fields)
     assert _canonical_sha256(public_tools) == (
         "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
     )

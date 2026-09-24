@@ -1,0 +1,47 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent review of the ThinkingCap secondary output-cap correction",
+    "reviewed_at": "2026-09-24T08:27:54.3821490Z",
+    "implementing_agent": "/root using GPT-6 Astra",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ; the reviewer did not generate or grade its qualification evidence"
+  },
+  "gate_state": {
+    "evidence_review": "passed",
+    "user_authorization": "present for the existing secondary promotion and necessary metadata correction",
+    "live_apply": "not performed by this reviewer"
+  },
+  "targets": [
+    "llm.secondary max_output_tokens metadata",
+    "2026-09-24-thinkingcap-context-5090/mtp-uva3-quality.json"
+  ],
+  "tools_used": [
+    "read-only evidence inspection",
+    "manual budget and token-count comparison"
+  ],
+  "artifacts": {
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "high",
+        "classification": "confirmed and resolved by the proposed correction",
+        "finding": "A 4096-token router output cap contradicts the retained passing quality protocol and would truncate three successful CS attempts.",
+        "evidence": "The quality artifact declares 8192 reasoning-headroom tokens plus 2048 visible-answer tokens, sends max_completion_tokens=10240 for every attempt, and records three normal-stop CS completions of 5217 tokens, including 5058 reasoning tokens.",
+        "resolution": "Advertise max_output_tokens=10240 while preserving the 131072 total-context contract."
+      }
+    ],
+    "claim_limit": "The 10240 value is the qualified maximum completion budget. The retained near-limit context suite used a 4096-token completion allowance, so it does not prove a 10240-token completion at the largest tested prompt. Total prompt plus completion remains bounded by 131072."
+  },
+  "advisory_priors": [
+    "The 8192 reasoning and 2048 visible values are one combined completion cap; the endpoint does not hard-partition the two channels.",
+    "C1 and the up-to-two-image capability are unchanged by this metadata correction."
+  ],
+  "recommendation": {
+    "decision": "accept",
+    "reason": "10240 exactly matches the retained qualification budget and avoids truncating known passing responses; 4096 is not evidence-consistent."
+  },
+  "human_gate_required": false,
+  "human_gate_note": "The existing user authorization covers this necessary correction to the already-approved secondary promotion.",
+  "promoted": false
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "benchmark-launch-friction/v1",
+  "scope": "local argument validation; zero inference requests",
+  "errors": [
+    {
+      "attempt": "native preflight supplied as control evidence",
+      "error": "control evidence schema must equal 'anvil-serving.control-evidence/v1'"
+    },
+    {
+      "attempt": "explicit legacy bakeoff flag with canonical quality action",
+      "error": "quality does not accept --bakeoff"
+    }
+  ],
+  "fix": "Formal control index links native off/on observations; canonical quality action implicitly selects bakeoff engine",
+  "verification": "Corrected invocation passed validation and began the pinned quality suite"
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "anvil-serving.redaction-ledger/v1",
+  "scope": "full context native export",
+  "artifacts": [
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/artifact.json",
+      "public_path": "artifact.json",
+      "original_sha256": "7122d79b428b401843f581eeaca4e01101ef6c9662333cdb38d901983c230272",
+      "public_sha256": "c4a4b86454b92e5b5b01a481199cbaaa300203fd919f0074982f436e4f3a298d",
+      "original_bytes": 65915,
+      "public_bytes": 67444
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/assets.json",
+      "public_path": "assets.json",
+      "original_sha256": "21d354caeac3d54f98e0db1b37f368e53b0825d0334bdfa53151fcd01d8ea2c3",
+      "public_sha256": "161ebe5ab56f7ceddc123056b6767c361a128adb8841e8235b783d6ce3f9fa21",
+      "original_bytes": 562,
+      "public_bytes": 578
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/evidence/0-assets.json",
+      "public_path": "evidence/0-assets.json",
+      "original_sha256": "21d354caeac3d54f98e0db1b37f368e53b0825d0334bdfa53151fcd01d8ea2c3",
+      "public_sha256": "161ebe5ab56f7ceddc123056b6767c361a128adb8841e8235b783d6ce3f9fa21",
+      "original_bytes": 562,
+      "public_bytes": 578
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/evidence/0-context.json",
+      "public_path": "evidence/0-context.json",
+      "original_sha256": "ce6ea4bf294830599a99abb6809d9e403a1af7baac8ade6d62b1dcaa00fe0d24",
+      "public_sha256": "7828ed42049387cb317b944000707f50afb448ca237f1adfbc4218a31cdaf544",
+      "original_bytes": 100464,
+      "public_bytes": 103098
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/evidence/0-preflight.json",
+      "public_path": "evidence/0-preflight.json",
+      "original_sha256": "59d0453d2e7ca0d00a246082269994130e44a7d9ecc7e318b0f58c5862c71d34",
+      "public_sha256": "71b5cdc37eb6a8064ceef4dd9476a01b09fd4b4d8fffd188b37c5987a5cba8a6",
+      "original_bytes": 1985,
+      "public_bytes": 2065
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-32k-full-v1/worker.json",
+      "public_path": "worker.json",
+      "original_sha256": "3311ca5aa953775b645fdbe1648d3c4ae8af4146cad89c61e8b8f5f557f3431d",
+      "public_sha256": "d79555013a00455e6572c4f94dc4c8bf383c8c57398bb3d2bba1e6ff9ff21787",
+      "original_bytes": 124,
+      "public_bytes": 129
+    },
+    {
+      "protected_source": "context-bf16-32k-plan.private.json",
+      "public_path": "spec.json",
+      "original_sha256": "d13f2539affe1adf53b17e689da0c8de873c415238ec265bfa0dc0d0229cfeb2",
+      "public_sha256": "ce6857f6f43e5edd7773cdcd382256e6d3a84cab3be463cfbea5375ac191ed1c",
+      "original_bytes": 1905,
+      "public_bytes": 1897
+    }
+  ],
+  "notes": [
+    "Native hash and digest fields are preserved from protected source artifacts; their public-file resolution is provided by this ledger.",
+    "Private operator identities, Windows home prefixes, and private network addresses were redacted."
+  ]
+}

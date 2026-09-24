@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-serving.native-evidence-inspection/v1",
+  "outer_artifact": "artifact.json",
+  "outer_schema": "anvil-serving.benchmark-result/v1",
+  "outer_evidence_show_exit": 2,
+  "outer_evidence_show_recognized": false,
+  "canonical_companion": "cross-suite-evidence.json",
+  "canonical_schema": "anvil-serving.benchmark-evidence/v1",
+  "canonical_evidence_show_exit": 0,
+  "canonical_evidence_show_recognized": true,
+  "note": "The outer durable job record is not a cross-suite evidence artifact. Its results.evidence was exported as the canonical companion for evidence inspection."
+}

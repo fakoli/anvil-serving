@@ -1,0 +1,63 @@
+{
+  "schema": "anvil-serving.triton-bf16-32k-result-summary/v1",
+  "candidate": "thinkingcap-awq-5090",
+  "profile": "32K C1 graph-enabled V2 MTP3 with target TRITON_ATTN and bfloat16 KV",
+  "evidence_root": "native/candidate/triton-bf16-32k",
+  "recipe_semantic_digest": "56cbe79dcd1c3eb2ddba162a866c6d712f8614705047aa5cb753c4a0f638100f",
+  "registry_digest": "fe43362857973f7368b5cbd1694ee974dbb8b06bbdeacf36740ba3bd6637082b",
+  "startup": {
+    "max_model_len": 32768,
+    "available_kv_cache_gib": 4.73,
+    "gpu_kv_cache_tokens": 56262,
+    "target_attention_backend": "TRITON_ATTN",
+    "target_kv_cache_dtype": "bfloat16",
+    "draft_kv_cache_dtype": "bfloat16 via standard V2 MTP inheritance",
+    "interpretation": "Runtime cache layout depends on max context; the 16K cache count is not a universal physical maximum."
+  },
+  "functional_gates": {
+    "functional_observations_passed": 27,
+    "reasoning_observations_passed": 8,
+    "vision_attempts_passed": 18,
+    "vision_attempts": 18,
+    "cpu_test_overlap": true,
+    "timing_interpretation": "functional and quality results are not latency evidence because they overlapped the CPU test suite"
+  },
+  "capacity": {
+    "workload": "nominal 4096 context, 32 exact code words, request canary, 45 completion tokens, C1, unique cache",
+    "attempted_requests": 100,
+    "strict_passes": 100,
+    "strict_failures": 0,
+    "aggregate_throughput_eligible": true,
+    "ttft_p50_ms": 455.44210000662133,
+    "decode_tok_s_p50": 158.3551791480093,
+    "throughput_tok_s": 61.14585265214693,
+    "execution_condition": "uncontended after CPU-test closure"
+  },
+  "quality_diagnostic": {
+    "suite": "hf-mmlu-pro-10-repeated",
+    "passed_attempts": 30,
+    "attempts": 30,
+    "passed_checks": 10,
+    "checks": 10,
+    "finish_reason_counts": {
+      "stop": 30
+    },
+    "status": "passed",
+    "scope": "small repeated diagnostic; not a full MMLU-Pro score or promotion comparison"
+  },
+  "context_boundary": {
+    "configured_max_model_len": 32768,
+    "capacity_input": "nominal 4096; actual 3609-3687 prompt tokens",
+    "near_limit_retrieval": "passed 60/60 across two buckets; actual near-limit inputs 29578-29629 tokens",
+    "higher_contexts": "unknown",
+    "promotion_authorized": false,
+    "evidence": "context-result-summary.json",
+    "completion_budget": 2048
+  },
+  "independent_source_review": {
+    "path": "fp8-v2-review.json",
+    "sha256": "857b05104429a6ee7ad2246d4910f3bf64f156d96f47cd4b9929143dbbaf19ba"
+  },
+  "redaction_ledger": "native/candidate/triton-bf16-32k/redactions.json",
+  "promoted": false
+}

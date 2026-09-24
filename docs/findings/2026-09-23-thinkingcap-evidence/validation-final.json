@@ -1,0 +1,126 @@
+{
+  "schema": "anvil-serving.validation-summary/v1",
+  "updated_at": "2026-09-24T03:47:57.464822+00:00",
+  "scope": "Public benchmark documentation/configuration change; independent model gates recorded separately. No retained runtime or test source change.",
+  "overall_repository_gate": "failed",
+  "documentation_gate": "passed",
+  "checks": [
+    {
+      "name": "skill quick_validate",
+      "status": "passed",
+      "evidence": "validation/validation-skill.log"
+    },
+    {
+      "name": "five artifact templates parse",
+      "status": "passed",
+      "evidence": "validation/validation-templates.log"
+    },
+    {
+      "name": "ruff",
+      "status": "passed",
+      "evidence": "validation/validation-ruff.log"
+    },
+    {
+      "name": "benchmark docs tests initial after fixes",
+      "status": "passed",
+      "passed": 19,
+      "evidence": "validation/validation-benchmark-docs.log"
+    },
+    {
+      "name": "full Python suite fail-fast",
+      "status": "failed",
+      "passed": 7923,
+      "failed": 1,
+      "skipped": 417,
+      "duration_seconds": 384.36,
+      "evidence": "validation/validation-full-pytest.log"
+    },
+    {
+      "name": "Pi smoke bounded reproduction",
+      "status": "failed",
+      "evidence": "validation-pi-failure.json"
+    },
+    {
+      "name": "MkDocs earlier attempts",
+      "status": "failed",
+      "causes": [
+        "outside-docs links",
+        "copied ticket relative link",
+        "CP1252 derivative documents"
+      ],
+      "evidence": [
+        "validation/validation-mkdocs.log",
+        "validation/validation-mkdocs-final.log",
+        "validation/validation-mkdocs-closed.log"
+      ]
+    },
+    {
+      "name": "final benchmark documentation tests",
+      "status": "passed",
+      "passed": 19,
+      "evidence": "validation/validation-docs-final.log"
+    },
+    {
+      "name": "final Markdown links",
+      "status": "passed",
+      "evidence": "validation/validation-links-final.log"
+    },
+    {
+      "name": "final strict MkDocs build",
+      "status": "passed",
+      "evidence": "validation/validation-mkdocs-final-accepted.log"
+    },
+    {
+      "name": "CLI reference audit update and check",
+      "status": "passed",
+      "evidence": [
+        "validation/validation-cli-audit-update-closure.log",
+        "validation/validation-cli-audit-check-closure.log"
+      ]
+    },
+    {
+      "name": "authoring whitespace check",
+      "status": "passed",
+      "command": "git -c core.whitespace=cr-at-eol diff --check HEAD -- . :(exclude)docs/findings/2026-09-23-thinkingcap-evidence/native :(exclude)docs/findings/2026-09-23-thinkingcap-evidence/validation",
+      "boundary": "Raw native and validation bytes preserved. Default broad diff --check reports CRLF as whitespace under the repository -text evidence rule; this is not a source-code failure."
+    },
+    {
+      "name": "chart rendered twice",
+      "status": "passed",
+      "byte_identical": true,
+      "svg_sha256": "ed895947abb1cb2f20c4319a51cc775cb6cd77380ea3740197333d5771d3f65f",
+      "data_sha256": "08d6651bfab8c1dfd992e180c070843216aae54ae8f2386526e673cbc09136f0"
+    },
+    {
+      "name": "redaction-ledger verification",
+      "status": "passed",
+      "records_checked": 114,
+      "mismatches": 0,
+      "scope": "Native and validation records before appending final documentation logs; final appended logs have exact source/public hashes"
+    },
+    {
+      "name": "changed-file privacy scan",
+      "status": "passed-with-reviewed-public-URL-exception",
+      "operator_home_hits": 0,
+      "private_ip_hits": 0,
+      "real_gpu_uuid_hits": 0,
+      "secret_shape_hits": 0,
+      "exception": "Two existing public GitHub issue URLs contain the repository owner name; accurate public source URLs retained, not operator configuration."
+    },
+    {
+      "name": "independent final review",
+      "status": "accepted-with-explicit-boundaries",
+      "evidence": "final-independent-review.json",
+      "boundary": "Accept bounded direct model qualification; full repository/release gate held. Artifact-ledger closure performed after this review."
+    }
+  ],
+  "pi_disposition": {
+    "ticket": "product-gaps/2026-09-23-windows-pi-rpc-validation.md",
+    "source_patch_retained": false,
+    "status": "deferred unrelated Windows integration defect",
+    "explanation": "SystemRoot omission triggers Node CSPRNG abort; exploratory fix exposes select on Windows anonymous pipe defect. Diagnostic fixture patch reverted. Full suite remains failed; no historical preexisting claim."
+  },
+  "operational_source_unchanged": "operational-source-final-check.json",
+  "model_gates": "triton-bf16-32k-result-summary.json",
+  "redaction_ledger": "validation/redactions.json"
+}

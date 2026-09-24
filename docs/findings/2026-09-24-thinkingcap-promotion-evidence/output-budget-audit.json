@@ -1,0 +1,225 @@
+{
+  "schema": "anvil-serving.output-budget-audit/v1",
+  "source_file": "../2026-09-24-thinkingcap-context-evidence/native/mtp-uva3/quality.json",
+  "source_sha256": "778f1c1df72d72a119a4107198e2123ff4afb1beb06a7625c3dee8e4374bf4ac",
+  "attempts": 30,
+  "maximum_observed_completion_tokens": 5217,
+  "exceeded_initial_router_4096": 3,
+  "qualified_max_completion_tokens": 10240,
+  "final_router_max_output_tokens": 10240,
+  "context_limit_tokens": 131072,
+  "long_context_allowance_remains": 4096,
+  "observations": [
+    {
+      "id": "mmlu-pro-5-health",
+      "attempt": 1,
+      "completion_tokens": 74,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-5-health",
+      "attempt": 2,
+      "completion_tokens": 74,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-5-health",
+      "attempt": 3,
+      "completion_tokens": 74,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-10-physics",
+      "attempt": 1,
+      "completion_tokens": 163,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-10-physics",
+      "attempt": 2,
+      "completion_tokens": 163,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-10-physics",
+      "attempt": 3,
+      "completion_tokens": 163,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-15-business",
+      "attempt": 1,
+      "completion_tokens": 187,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-15-business",
+      "attempt": 2,
+      "completion_tokens": 187,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-15-business",
+      "attempt": 3,
+      "completion_tokens": 187,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-20-biology",
+      "attempt": 1,
+      "completion_tokens": 160,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-20-biology",
+      "attempt": 2,
+      "completion_tokens": 160,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-20-biology",
+      "attempt": 3,
+      "completion_tokens": 160,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-25-chemistry",
+      "attempt": 1,
+      "completion_tokens": 456,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-25-chemistry",
+      "attempt": 2,
+      "completion_tokens": 456,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-25-chemistry",
+      "attempt": 3,
+      "completion_tokens": 456,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-30-computer-science",
+      "attempt": 1,
+      "completion_tokens": 5217,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-30-computer-science",
+      "attempt": 2,
+      "completion_tokens": 5217,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-30-computer-science",
+      "attempt": 3,
+      "completion_tokens": 5217,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-35-economics",
+      "attempt": 1,
+      "completion_tokens": 100,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-35-economics",
+      "attempt": 2,
+      "completion_tokens": 100,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-35-economics",
+      "attempt": 3,
+      "completion_tokens": 100,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-40-engineering",
+      "attempt": 1,
+      "completion_tokens": 1837,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-40-engineering",
+      "attempt": 2,
+      "completion_tokens": 1837,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-40-engineering",
+      "attempt": 3,
+      "completion_tokens": 1837,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-45-philosophy",
+      "attempt": 1,
+      "completion_tokens": 463,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-45-philosophy",
+      "attempt": 2,
+      "completion_tokens": 463,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-45-philosophy",
+      "attempt": 3,
+      "completion_tokens": 463,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-65-law",
+      "attempt": 1,
+      "completion_tokens": 104,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-65-law",
+      "attempt": 2,
+      "completion_tokens": 104,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    },
+    {
+      "id": "mmlu-pro-65-law",
+      "attempt": 3,
+      "completion_tokens": 104,
+      "max_completion_tokens": 10240,
+      "finish_reason": "stop"
+    }
+  ],
+  "source_sha256_note": "SHA-256 of private native source; linked sanitized source has its own sealed manifest hash."
+}

@@ -1,0 +1,6 @@
+{
+  "source": "docs/findings/2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json",
+  "sha256": "5c3c50c33c09d1f6bcdbb2a3ade96b83f2629c4948385dfef5efc69c3ba7a8c4",
+  "copy": "native/baseline32k/capacity.json",
+  "meaning": "Prior sealed 32K MTP3 whole-recipe comparison; unchanged native public bytes"
+}

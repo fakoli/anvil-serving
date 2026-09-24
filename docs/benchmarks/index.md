@@ -67,6 +67,8 @@ not a live status display or an automatic model-selection policy.
 
 </div>
 
+**2026-09-24 secondary promotion:** [ThinkingCap Qwen3.8 27B AWQ](models/thinkingcap-qwen38-27b.md) is `current` after the [human-authorized promotion](../findings/2026-09-24-thinkingcap-secondary-promotion.md) of its qualified RTX 5090 128K/C1 profile, with vision and complete local weights. The [direct qualification](../findings/2026-09-24-thinkingcap-context-5090.md) retains 27/27 functional, 9/9 thinking, 18/18 small-image, 30/30 limited quality, 100/100 strict short-output capacity, 60/60 text-context and 2/2 synthetic agentic passes. The selected recipe measured 3,003.045 ms median TTFT and 51.885 tok/s median decode on the controlled short-output workload; the faster qualified 32K alternative measured 455.442 ms and 158.355 tok/s. These compare whole recipes. The final routed contract is 131,072 total / 10,240 output / C1 / two images. Pi tool/result acceptance and managed catalog convergence passed; Open WebUI browser chat, detailed remote throughput monitoring and the intermittent image relay cause remain open. Mixed near-limit vision, C2, exact-limit/one-over, broad SWE and soak are unqualified.
+
 ## Choose by hardware and workload
 
 <div class="bench-paths" markdown="1">

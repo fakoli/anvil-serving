@@ -1,0 +1,138 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "transform": "Public-safe operator home, host, GPU and tailnet identity replacement; original failure text and test counts retained. UTF-8 encoding.",
+  "files": [
+    {
+      "path": "validation-skill.log",
+      "original_sha256": "6cf9e7f0d34ccd36dbd28f270cd28dd04277b2e1516bd4333ce7bb501d7b18d4",
+      "published_sha256": "512b05b7992d248276163e87928bc99fcebc76cc60159f089ce730f37ab7e685",
+      "published_bytes": 18
+    },
+    {
+      "path": "validation-templates.log",
+      "original_sha256": "837a9d623d055109d9bdd6d5da8387971ade4ced51734f2cbddece030915f486",
+      "published_sha256": "650b4aac23efc0791775430d9dbc082dbeadc733c37ea8d7ab11a0a3c62b6fc9",
+      "published_bytes": 52
+    },
+    {
+      "path": "validation-ruff.log",
+      "original_sha256": "a4443afdcfb6d7363adb285762515ccf7cf50473b1a05c20c1a50f6bed4d26b0",
+      "published_sha256": "d5f91725eac629baa9734afc51a0818c50b67e4135f9a8bc08675023f04ae3d9",
+      "published_bytes": 21
+    },
+    {
+      "path": "validation-benchmark-docs.log",
+      "original_sha256": "d913462a8a80ee4c8312976d14a817914f9a5fb0cf239ed9a01973fb4c41eee9",
+      "published_sha256": "50091a8ec023f7c7db49834522cbe5f11a19e0aa0757364c79c99c5c55a6c3ca",
+      "published_bytes": 103
+    },
+    {
+      "path": "validation-markdown-links.log",
+      "original_sha256": "cc00f3f88561fb36184bdb070088054d3fa17ce65b3838b4e005ff50fecacc51",
+      "published_sha256": "0ae3dcc37f8c19662cf433cbfe7555fc653fcaac8ad0e97008695f0e476d60e7",
+      "published_bytes": 56
+    },
+    {
+      "path": "validation-cli-audit-update.log",
+      "original_sha256": "cd5adb8e0b69bf62b41ab125852bc89d8d4bdf4443bfe9114e0d22304e5fed5d",
+      "published_sha256": "fc15b419265d141c22ffa016fa98fce7822c25e454ef9c650df11a6b9ed9e4f2",
+      "published_bytes": 70
+    },
+    {
+      "path": "validation-cli-audit-check.log",
+      "original_sha256": "cd5adb8e0b69bf62b41ab125852bc89d8d4bdf4443bfe9114e0d22304e5fed5d",
+      "published_sha256": "fc15b419265d141c22ffa016fa98fce7822c25e454ef9c650df11a6b9ed9e4f2",
+      "published_bytes": 70
+    },
+    {
+      "path": "validation-full-pytest.log",
+      "original_sha256": "68c36d57fa7d33ae55193fdc2b2dc7d650b46e0838268f92aca4a7be53bc7f34",
+      "published_sha256": "8e3ad555aed3f45a4933401971918db4c6cb9a6903f7b2c7a2e8c33ae5477575",
+      "published_bytes": 14984
+    },
+    {
+      "path": "validation-mkdocs.log",
+      "original_sha256": "bae5ada62b50b002f56072ecf464f27cafa2913be9c894f028e6a35307bbb82f",
+      "published_sha256": "73092499a94e60e44c45908b9531257e7de7a4dfa4af77c174010581f7fdd7db",
+      "published_bytes": 27153
+    },
+    {
+      "path": "validation-mkdocs-final.log",
+      "original_sha256": "12c66151171d8019cbe34cc939240ffc9a5452cba079c23d2193776719d0ce7b",
+      "published_sha256": "6b0577413f42a0274e6811e240e65dcd9cd17de68133aea247c9c341a649380e",
+      "published_bytes": 26216
+    },
+    {
+      "path": "validation-mkdocs-closed.log",
+      "original_sha256": "3cb5eb8e6ce979cf9b3c01b71f55264f3104df800bc855157b15f76be5f366f5",
+      "published_sha256": "a808bef35b685199a3e0dc39bb7985542ec95cd1a5578dbdc16cbbaece38b282",
+      "published_bytes": 25185
+    },
+    {
+      "path": "validation-pi-single-rerun.log",
+      "original_sha256": "891c716605b1855ed1969ebffd2f9838a8a740eb2d2727271eacb0320aea2ed1",
+      "published_sha256": "a3a030576e35d603bb52de446bea280362a56d96f4d6270683b792eabee83d14",
+      "published_bytes": 5453
+    },
+    {
+      "path": "validation-pi-initial-stderr.log",
+      "original_sha256": "c21835fa407db08555c2ff71545506f50f78dbb671d8bc011bb2f2bc6f2dfcc8",
+      "published_sha256": "9fbe10acdf0ec2fc856fc1f190c1a2a9f2ed1e4a3fd14f9e232c70890d24351f",
+      "published_bytes": 978
+    },
+    {
+      "path": "validation-node-crypto-env-matrix.json",
+      "original_sha256": "6c1503b1a462c1646029687a8fe60fbebeece118cb5f2b163c80464dd9221f35",
+      "published_sha256": "fe2238ac8b020722fc40f871d8ede2cab0c1c71ff58533119dbe6c3dda807b77",
+      "published_bytes": 1809
+    },
+    {
+      "path": "validation-pi-single-after-systemroot-fix.log",
+      "original_sha256": "231893ed70f578707cf1c53c1c55a860963dcd63faf43d9af2b02157bccd74b5",
+      "published_sha256": "4a683d452d8276ed26d1e6d3f8bc902eb87cd7d4a726eaf96b84b9112e675197",
+      "published_bytes": 5534
+    },
+    {
+      "path": "validation-pi-windows-reader-probe.json",
+      "original_sha256": "217452af83271e094c792f4f4c1a46913db45b32ce35d6829b79eae87bfc5945",
+      "published_sha256": "64b78289bea149b6d4d18197e27e57016ae9007b04bedd62196b470a963fc3c8",
+      "published_bytes": 1162
+    },
+    {
+      "path": "validation-windows-pipe-select-probe.json",
+      "original_sha256": "04f1de3721ea8e046f8636e1c18cd6f2c51b8cc7c57df1471b5082cfcb0b8fef",
+      "published_sha256": "6ebac5330c27a5448150fdbbb814c87b723fb82ed78c763f9355d41931517132",
+      "published_bytes": 181
+    },
+    {
+      "path": "validation-docs-final.log",
+      "original_sha256": "1f1c9953beb0b42cb0d8f9b781a22a9c4826e006a6a051c5e774b3e4683e823c",
+      "published_sha256": "3e898b2431f0d252f47219380fefaf6604d3a9844208abff1128f4cbfff694e8",
+      "published_bytes": 103
+    },
+    {
+      "path": "validation-links-final.log",
+      "original_sha256": "68e95e088186e313ebb8c07a9b39ece7918b7b8b259c2debaa6f99ab6e702b39",
+      "published_sha256": "a34f897a02117685b88750f2341f3d1ab3f9c4db269be56febd0dfdabf7c6ef7",
+      "published_bytes": 56
+    },
+    {
+      "path": "validation-mkdocs-final-accepted.log",
+      "original_sha256": "8ffc2f3ce58528f70fc2561665f9c36d076d0c67c485518cde028f2b0e187baf",
+      "published_sha256": "eabd68ddef274912882294d29547130242045e991378cd7816ec0e719b97c87c",
+      "published_bytes": 25676
+    },
+    {
+      "path": "validation-cli-audit-update-closure.log",
+      "original_sha256": "cd5adb8e0b69bf62b41ab125852bc89d8d4bdf4443bfe9114e0d22304e5fed5d",
+      "published_sha256": "fc15b419265d141c22ffa016fa98fce7822c25e454ef9c650df11a6b9ed9e4f2",
+      "published_bytes": 70
+    },
+    {
+      "path": "validation-cli-audit-check-closure.log",
+      "original_sha256": "cd5adb8e0b69bf62b41ab125852bc89d8d4bdf4443bfe9114e0d22304e5fed5d",
+      "published_sha256": "fc15b419265d141c22ffa016fa98fce7822c25e454ef9c650df11a6b9ed9e4f2",
+      "published_bytes": 70
+    }
+  ]
+}

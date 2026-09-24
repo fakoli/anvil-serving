@@ -1,0 +1,53 @@
+# ThinkingCap 27B 128K secondary promotion — 2026-09-24
+
+The user explicitly approved promotion of the qualified RTX 5090 ThinkingCap profile. The managed router install passed with the expected served identity, and the existing `llm.secondary` alias now advertises 131,072 total tokens, 10,240 maximum output tokens, one active request, and up to two images. Fleet-client and observability completion are tracked separately below.
+
+<!-- benchmark-result-card/v1 -->
+
+> **Local outcome:** user-authorized router promotion; independent review accepted the exact qualified recipe.
+>
+> **Setup:** one RTX 5090 (32,607 MiB), Windows/Docker Desktop/WSL2 model host, a separate native Linux router, vLLM 0.29.0, NVFP4A4 AWQ, BF16 KV, MTP3 and generic UVA3. Warm routed online requests; this is a deployment check, not a new performance benchmark.
+>
+> **Checks:** seven C1 functional gates and two enabled-reasoning gates passed at the initial output setting. At the final 10,240-token setting, five text/tool gates passed; two failed multimodal calls passed on direct diagnosis and routed retry without mutation. The measured startup KV allocation is 138,519 tokens, distinct from the 131,072-token context contract.
+>
+> **Limit:** a C20 burst produced six successful tool responses and fourteen 30-second admission timeouts. The qualified contract remains C1. Near-limit text and small images were qualified separately.
+>
+> [Evidence index](2026-09-24-thinkingcap-promotion-evidence/README.md) · [manifest](2026-09-24-thinkingcap-promotion-evidence/artifact-manifest.json) · [decision](2026-09-24-thinkingcap-promotion-evidence/summary.json)
+
+## Identity and scope
+
+The model is `bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ` at revision `f8fe157f207a13f977bc3d620ce10a3e9ba5ab11`, served as `thinkingcap-awq-5090`. The vLLM image digest is `sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b`, engine revision `98dff2a81d747d1dba01a47f939f48c3526d4206`, and exact recipe semantic digest `c81bf6a3c79e6062c99258243d50a1c6feaa0886c8ff6724f79b2cca8f46f026`.
+
+The [128K qualification measurements and decisions](2026-09-24-thinkingcap-context-5090.md) and [managed recipe reconstruction](2026-09-24-thinkingcap-context-evidence/configurations/thinkingcap-awq-vllm029-5090-128k-mtp3-bf16-uva3.toml) remain unchanged. Before publication, the public qualification bundles were resealed after container-ID redaction; their original seals are archived privately. The [32K](2026-09-23-thinkingcap-evidence/merge-publication-redaction.json) and [128K](2026-09-24-thinkingcap-context-evidence/merge-publication-redaction.json) ledgers record the exact transforms. This packet changes the dated decision from challenger to `current`; it does not rewrite prior no-promotion evidence. The earlier 32K recipe remains the faster qualified alternative. Only the RTX 5090 was measured; the router's separate model hardware was not benchmarked.
+
+## Router installation and verification
+
+The exact installed router configuration was captured before mutation. The secondary-only change preserves primary, audio and alias mappings. Managed preview and confirmed installation applied the reviewed bytes; both tiers returned ready with verified identities. The private edge now forwards the existing model path to the retained qualified container. No model weights or launch settings changed during promotion.
+
+The authenticated [capacity](2026-09-24-thinkingcap-promotion-evidence/router-capacity-reasoning-final.json), [capabilities](2026-09-24-thinkingcap-promotion-evidence/router-capabilities-reasoning-final.json), and [fingerprints](2026-09-24-thinkingcap-promotion-evidence/router-fingerprints-reasoning-final.json) distinguish configured contract, observed identity and live capacity. [Independent review](2026-09-24-thinkingcap-promotion-evidence/independent-promotion-review.json) accepted the exact pins and secondary-only scope. The [final managed install](2026-09-24-thinkingcap-promotion-evidence/install-reasoning-confirm.json) additionally declares the supported reasoning efforts: `low`, `medium`, and `xhigh`.
+
+The initial 4,096-token output cap was corrected to 10,240: the sealed 30/30 diagnostic used that allowance, and three successful attempts exceeded 4,096 completion tokens. The [budget audit](2026-09-24-thinkingcap-promotion-evidence/output-budget-audit.json) and [independent correction review](2026-09-24-thinkingcap-promotion-evidence/output-cap-correction-review.json) retain the reason. Context is the total input-plus-output budget; the earlier near-limit context matrix used a 4,096-token reserve and does not prove 10,240 output tokens after a 125K-token prompt.
+
+The explicit C1 [routed preflight](2026-09-24-thinkingcap-promotion-evidence/routed-preflight-c1.json) passes smoke, JSON, one shared-prefix tool request, streaming tools, tool-result continuation, image and OCR. The [enabled-reasoning check](2026-09-24-thinkingcap-promotion-evidence/routed-reasoning.json) passes both requested gates with reasoning-channel evidence.
+
+## Fleet and observability convergence
+
+Router promotion is complete. Client catalogs and scheduled reconciliation are tracked in the [convergence record](2026-09-24-thinkingcap-promotion-evidence/convergence-summary.json). A real Pi request exposed a reasoning compatibility gap described below. After an explicit per-model `high` to `xhigh` mapping, both an isolated Pi check and the normal installed Pi environment passed a shell-tool/result conversation. The [independent event checks](2026-09-24-thinkingcap-promotion-evidence/dark-pi-independent-acceptance.json) validate one successful tool execution and exact final fixture contents. The [normal-environment router trace](2026-09-24-thinkingcap-promotion-evidence/dark-pi-high-normal-router-diagnosis.json) independently records two successful requests to the secondary tier, ending in `tool_calls` and `stop`, with the final configuration identity and 10,240-token allowance.
+
+Discovered managed catalogs across the four operator hosts now carry the final limits. Pi and OpenClaw secondary display names identify ThinkingCap Qwen3.8 27B AWQ while retaining `llm.secondary` as the request alias. Companion scheduled reconciliation is approved for the final router contract and idempotent. Existing OpenClaw/Hermes acceptance is retained separately from final catalog refreshes. The Windows model host also passed [native Pi high-effort read-tool/result acceptance](2026-09-24-thinkingcap-promotion-evidence/windows-pi-high-acceptance.json). The durable catalog mapper passed 34 focused tests and [independent review](2026-09-24-thinkingcap-promotion-evidence/client-reasoning-map-review.json). Existing interactive Pi sessions can use `/reload` to refresh the model registry without resetting the conversation.
+
+Open WebUI's persistent provider already references the router. A [read using its configured provider credential from inside the application container](2026-09-24-thinkingcap-promotion-evidence/openwebui-provider-catalog-check.json) returned `llm.secondary` with 131,072 context and 10,240 output tokens. No global generation override or cached model list was configured. Browser chat acceptance remains untested because interactive sign-in was not completed.
+
+Prometheus now scrapes authenticated router metrics through the existing private HTTPS edge. [Native queries](2026-09-24-thinkingcap-promotion-evidence/prometheus-native-queries.private.json) returned context 131,072, loaded 1, image limit 2, and target up 1. Grafana's [persisted dashboard resource](2026-09-24-thinkingcap-promotion-evidence/grafana-inference-panels.private.json) contains the ThinkingCap 27B row and the three `llm.secondary` panels. This verifies router contract/readiness monitoring; the separate legacy observer does not yet provide the new remote engine's detailed throughput metrics.
+
+## Failures and limits
+
+The first routed preflight inherited a default 20-way tool burst. The router's authoritative logs identify admission-deadline exhaustion for fourteen requests at 30 seconds. The [failed native artifact](2026-09-24-thinkingcap-promotion-evidence/routed-preflight.json) is retained. An explicit one-request run passed. No C20 capacity or broad concurrency claim follows.
+
+At the final output cap, image and OCR requests returned HTTP 500 / `RelayBackendError`; the engine remained healthy. Both [direct diagnostic calls](2026-09-24-thinkingcap-promotion-evidence/direct-final-vision-diagnostic.json) and [routed retries](2026-09-24-thinkingcap-promotion-evidence/routed-final-vision-r2.json) passed without a model, route, or configuration change. The [failed run](2026-09-24-thinkingcap-promotion-evidence/routed-final-preflight.json) remains evidence of an unresolved intermittent relay incident, not a fully clean run. [Independent review](2026-09-24-thinkingcap-promotion-evidence/routed-multimodal-transient-review.json) accepted retaining the exact deployment with this incident recorded; missing upstream failure detail is an open product issue.
+
+A real Pi request reached the intended secondary engine but returned HTTP 400. The [metadata-only request trace](2026-09-24-thinkingcap-promotion-evidence/pi-user-rejection.json) and [engine error](2026-09-24-thinkingcap-promotion-evidence/pi-user-rejection-engine-log.txt) identify `reasoning_effort=high`, which the pinned template rejects. Its supported values are `low`, `medium`, and `xhigh`. This client compatibility failure was corrected with an explicit per-model map, preserving the user's preferred `high` selection. Two initial verification processes waited on inherited SSH standard input and timed out before submitting model requests; the corrected launcher closes standard input. Those launcher failures remain separate from model acceptance.
+
+A whole-home configuration export refused an unrelated secret-file symlink. A narrow installed-router export surface was added and independently reviewed; it validates exact read-only mounted bytes using the deployed parser and preserves the broader export guard. Its final focused regression set passed 155 tests with one skip. Separate service ownership and scheduled-contract gaps are tracked in the [friction log](2026-09-24-thinkingcap-promotion-evidence/friction-log.md).
+
+No new broad-quality, exact-limit/one-over, mixed near-limit vision, video, SWE or soak qualification is claimed. Previous direct speed measurements remain workload-specific. Private host names, addresses and paths are replaced by synthetic identifiers in this packet; exact private rollback state remains with the operator.

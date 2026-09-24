@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.evidence-redactions/v1",
+  "scope": "native/candidate/eager",
+  "retained_files": [
+    "candidate-load-16k-wsl.log",
+    "candidate-models-16k.json",
+    "candidate-preflight-16k.json",
+    "candidate-multimodal-16k.json",
+    "preflight-duplicate-incident.json"
+  ],
+  "replacements": [
+    {
+      "class": "operator home and private topology paths",
+      "replacement": "PRIVATE_OPERATOR_PATH or repository-relative fixture path"
+    },
+    {
+      "class": "command host",
+      "replacement": "Primary Node"
+    },
+    {
+      "class": "GPU UUID",
+      "replacement": "GPU-RTX5090-SYNTHETIC"
+    },
+    {
+      "class": "active loopback port",
+      "replacement": "127.0.0.1:30000"
+    }
+  ],
+  "retention_boundary": "No credentials or media bytes are retained. Native evidence schemas and failure/incident fields remain intact.",
+  "additional_identity_pass": "identity-sanitization-final.json at the evidence bundle root",
+  "loopback_port_boundary": "Some initial public artifacts substituted port30000 for the actual candidate port39283 as an explicit identity redaction. This does not describe a different live endpoint or modify metrics."
+}

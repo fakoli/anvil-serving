@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-observability-verification/v1",
+  "prometheus": {
+    "model": "llm.secondary",
+    "context_limit_tokens": 131072,
+    "loaded": 1,
+    "image_limit": 2,
+    "job": "anvil-router-capacity"
+  },
+  "grafana": {
+    "storage": "resource table",
+    "resource": "dashboard.grafana.app/dashboards/default/operator-inference",
+    "panel_ids": [
+      28,
+      29,
+      30
+    ],
+    "context_metric": "anvil_router_model_context_limit_tokens",
+    "persisted": true
+  },
+  "caveat": "Grafana API Basic auth could not be independently used because the mounted administrator secret was unreadable through the bounded diagnostic process."
+}

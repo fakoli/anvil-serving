@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.native-redactions/v1",
+  "scope": "Prior no-MTP guarded page-cache reclaim settled-memory observation only.",
+  "transformations": [
+    "UTF-8 LF normalization; no operator identifier, private path, host identity, GPU UUID, secret, or media bytes were present."
+  ],
+  "artifacts": [
+    {
+      "private_source_name": "host-memory-after-reclaim-settled.json",
+      "public_path": "native/prior-host-settled/host-memory.json",
+      "private_sha256": "20578342086ead681a6cf29324a5786c22cd3da3910b5bd7d3f6101e68f73e13",
+      "private_bytes": 576,
+      "public_sha256": "20578342086ead681a6cf29324a5786c22cd3da3910b5bd7d3f6101e68f73e13",
+      "public_bytes": 576,
+      "transformed": false
+    }
+  ],
+  "notes": [
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "thinkingcap-fp8-kv-research/v1",
+  "reviewer": "independent anvil-adversarial-reviewer",
+  "engine_revision": "98dff2a81d747d1dba01a47f939f48c3526d4206",
+  "status": "external-prior; no live FP8 test",
+  "findings": [
+    "FLASH_ATTN on sm120 selects FA2 and cannot use FP8 KV in this revision",
+    "Legacy calculate-kv-scales flag is absent",
+    "Standard FP8 without checkpoint scales defaults to1.0; not calibrated",
+    "fp8_per_token_head dynamically scales under TRITON_ATTN",
+    "MTP inherits target KV dtype unless speculative kv_cache_dtype overrides it"
+  ],
+  "disposition": "Finish BF16 graph/MTP and measured context first; FP8 requires separate target-Triton BF16 control and quality checks",
+  "sources": [
+    "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/cache.py",
+    "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/flash_attn.py",
+    "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/fa_utils.py",
+    "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/docs/features/quantization/quantized_kvcache.md",
+    "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/speculative.py"
+  ]
+}

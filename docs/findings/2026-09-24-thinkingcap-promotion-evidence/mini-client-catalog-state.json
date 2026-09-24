@@ -1,0 +1,21 @@
+{
+  "client_excluded_aliases": {
+    "openclaw": [],
+    "pi": []
+  },
+  "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+  "file_sha256": {
+    "hermes:anvil-primary": "116e38365ac9e793f3c00350fc41732ffc5cca9d3ecd84abeab8fa239b2507b5",
+    "hermes:anvil-secondary": "d6040057b0c71dc4ec5d3c247f98682f12bb8d23d7960af89f36023f18e44681",
+    "hermes:default": "26a4e083479eb47f30c5b4ab3b186696faeb07edd33b633ad276bf0ff0c32ce0",
+    "hermes:work-profile": "e6c61d75f0cc2ed44d698f89b07fa4272359b4dfdecc4c9a7ffe0e51fa947a33",
+    "openclaw": "5f5459956f4f354be872fc96fce8240991e0936312316c6d22bc4c143946c5a0",
+    "pi_models": "288742248f47f38b02d380d1c065a2e2d472cc2c260ea69a4235ab542ea2d9f4",
+    "pi_settings": "51272c7197558bd76754daeba0bf8cfe1f106f5dcff751b8d7bbe84516932398"
+  },
+  "openclaw_allowed_aliases": [
+    "llm.secondary"
+  ],
+  "openclaw_restarted_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+  "openclaw_service_restarted_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee"
+}

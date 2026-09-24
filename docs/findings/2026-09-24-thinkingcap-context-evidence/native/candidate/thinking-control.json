@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "Native preflight: all 27 disabled observations have no reasoning; all 9 enabled observations have positive reasoning text/tokens. Behavior assertions and accepted finish reasons pass.",
+  "observed_at": "2026-09-24T04:37:54.821513+00:00",
+  "model": "thinkingcap-awq-5090",
+  "recipe_digest": "e08a265257fc6172f6a41e3d499933598926eb826351f58670ec226fa5c9a638",
+  "proofs": [
+    {
+      "path": "128k-functional.json",
+      "sha256": "7b1a0da716151e9c18d822ee8f991c0416e6422b084d8f316a9878f290059457",
+      "observation_count": 27
+    },
+    {
+      "path": "128k-reasoning.json",
+      "sha256": "6732bfab7a1f582a22aee0f6c13b3ac362093b09225f7885939994543aa3649f",
+      "observation_count": 9
+    }
+  ]
+}

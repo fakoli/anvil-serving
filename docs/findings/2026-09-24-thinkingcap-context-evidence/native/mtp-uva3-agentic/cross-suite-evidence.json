@@ -1,0 +1,107 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-09-24T07:12:47.744379Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 131072,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "090745451099214af7c222f736769737911453fe9e9c5d14ffc04f5a4a3e4586"
+    },
+    "hardware": {
+      "id": "rtx5090"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "id": "thinkingcap-awq-5090",
+      "revision": "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+    },
+    "runtime": {
+      "engine": "vllm",
+      "image": "sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+      "revision": "98dff2a81d747d1dba01a47f939f48c3526d4206"
+    },
+    "served_model": {
+      "configured_context": 131072,
+      "id": "thinkingcap-awq-5090"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "model_host_id": "operator",
+      "worker_id": "operator"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "thinkingcap-5090",
+    "profile": "smoke",
+    "run_id": "thinkingcap-5090-agentic-bf16-128k-mtp-uva3-v1",
+    "spec_sha256": "32b33ac5b465091dd39c0efefcfe07f53114ee5571224de2a86f8ab8711b105b",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 567,
+          "path": "evidence/0-assets.json",
+          "sha256": "f3b81c4404e73151b371512eede16c8d74c9f6e3ac69049e8175fcc7c12c8679"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 1991,
+          "path": "evidence/0-preflight.json",
+          "sha256": "225cd99cdc7f55387e9994f0a517c6c97047d1bac42fb6c0e7c6e1727f5e7952"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 4431,
+          "path": "evidence/0-agentic.json",
+          "sha256": "486e312e2ba4e71a2d0628972bb5c57692230f80c8621b77f68b2ca7f1939d86"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 2,
+    "pass_rate": 1.0,
+    "passed": 2,
+    "required_pass_rate": 0.8
+  }
+}

@@ -1,0 +1,401 @@
+
+ \u2502  \u26a0  Warning from the Material for MkDocs team
+ \u2502
+ \u2502  MkDocs 2.0, the underlying framework of Material for MkDocs,
+ \u2502  will introduce backward-incompatible changes, including:
+ \u2502
+ \u2502  � All plugins will stop working � the plugin system has been removed
+ \u2502  � All theme overrides will break � the theming system has been rewritten
+ \u2502  � No migration path exists � existing projects cannot be upgraded
+ \u2502  � Closed contribution model � community members can't report bugs
+ \u2502  � Currently unlicensed � unsuitable for production use
+ \u2502
+ \u2502  Our full analysis:
+ \u2502
+ \u2502  https://squidfunk.github.io/mkdocs-material/blog/2026/02/18/mkdocs-2.0/
+
+INFO    -  MERMAID2  - Initialization arguments: {}
+INFO    -  MERMAID2  - Using javascript library (11.4.1):
+   https://unpkg.com/mermaid@11.4.1/dist/mermaid.esm.min.mjs
+INFO    -  Cleaning site directory
+INFO    -  Building documentation to directory: PRIVATE_OPERATOR_HOME\.codex\worktrees\think-qwen38-benchmark-20260923\anvil-serving\site
+INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:
+  - ANVIL-CONNECT-ACCESS.md
+  - ANVIL-CONNECT-DEVICE-LOGIN.md
+  - ANVIL-CONNECT-IDENTITY.md
+  - ANVIL-CONNECT-IMPLEMENTATION.md
+  - ANVIL-CONNECT-INSTALL.md
+  - ANVIL-CONNECT-MIGRATION.md
+  - ANVIL-CONNECT-TRANSPORT.md
+  - ROUTER-RELIABILITY.md
+  - adr\0001-cloud-cost-and-subscription-auth.md
+  - adr\0002-serves-are-compose-defined.md
+  - adr\0003-portable-defaults-and-generic-onboarding.md
+  - adr\0004-router-as-a-service-containerized-and-authed.md
+  - adr\0005-anvil-503-native-failover-unreliable.md
+  - adr\0006-multiplexer-swap-draining.md
+  - adr\0007-subscription-auth-cloud-tier.md
+  - adr\0008-heavy-tier-speculative-decoding.md
+  - adr\0009-profile-write-back-loop.md
+  - adr\0010-specialized-engine-tier.md
+  - adr\0011-two-mode-operation.md
+  - adr\0012-serve-and-router-management-verbs.md
+  - adr\0013-openclaw-layers-and-mcp-control-plane.md
+  - adr\0014-tailnet-controller-transport.md
+  - adr\0015-operator-skills-and-subagent-workflows.md
+  - adr\0016-runtime-tier-readiness.md
+  - adr\0017-gpu-residency-reservations.md
+  - adr\0018-router-transition-safety.md
+  - adr\0019-anvil-serving-owns-the-tailnet-edge.md
+  - adr\0020-init-defaults-to-home-scaffold-shipped-as-package-data.md
+  - adr\0021-cli-interaction-contract.md
+  - adr\0022-evaluation-evidence-protocol.md
+  - adr\0023-lifecycle-aware-wsl-cache-reclaim.md
+  - adr\0024-normalized-audio-gateway.md
+  - adr\0025-tts-authoritative-realtime-assistant-transcripts.md
+  - adr\0026-opt-in-transparent-response-model.md
+  - adr\0027-public-findings-are-durable-evidence.md
+  - adr\0028-serving-benchmarks-and-thin-capability-gateway.md
+  - adr\0029-modular-command-registry.md
+  - adr\0030-containerized-remote-controller-and-mcp-2026.md
+  - adr\0031-dual-era-typescript-mcp-bridge.md
+  - adr\0032-public-product-private-operator-state.md
+  - adr\0033-production-durability-and-plane-contract.md
+  - adr\0034-fleet-control-plane-and-node-runtime-classes.md
+  - adr\0035-fleet-configuration-reconciliation.md
+  - adr\0036-voice-relocation-and-qualification-host.md
+  - adr\0037-caller-side-prompt-lane-classification.md
+  - adr\0038-inference-owned-model-metadata.md
+  - adr\0039-capability-meta-router.md
+  - adr\0040-media-gateway-and-controller-authority.md
+  - adr\0041-initial-media-workflows-and-policy.md
+  - adr\0042-anvil-serving-product-family-boundary.md
+  - adr\0043-colocated-tunnel-fast-path.md
+  - adr\template.md
+  - benchmarks\gpt-oss-puzzle-88b-recipe.md
+  - benchmarks\qwen38-27b-rtx5090-quant-comparison.md
+  - benchmarks\repeatable-campaigns.md
+  - benchmarks\models\agents-a1.md
+  - benchmarks\models\deepseek-v4-flash.md
+  - benchmarks\models\flux2-klein.md
+  - benchmarks\models\gemma-4.md
+  - benchmarks\models\gemma4-e4b.md
+  - benchmarks\models\glm53-flash.md
+  - benchmarks\models\gpt-oss-120b.md
+  - benchmarks\models\gpt-oss-puzzle-88b.md
+  - benchmarks\models\inkling-small.md
+  - benchmarks\models\kokoro.md
+  - benchmarks\models\laguna-s-2.1.md
+  - benchmarks\models\minimax-m27-reap.md
+  - benchmarks\models\mistral-small-4.md
+  - benchmarks\models\nemotron-omni-30b.md
+  - benchmarks\models\nemotron-puzzle-75b.md
+  - benchmarks\models\nemotron3-super-120b.md
+  - benchmarks\models\nemotron35-asr.md
+  - benchmarks\models\ornith-35b.md
+  - benchmarks\models\parakeet.md
+  - benchmarks\models\qwen25-omni-3b.md
+  - benchmarks\models\qwen3-asr.md
+  - benchmarks\models\qwen35-122b.md
+  - benchmarks\models\qwen36-27b.md
+  - benchmarks\models\qwen38-27b.md
+  - benchmarks\models\qwen38-flash-next.md
+  - benchmarks\models\thinkingcap-qwen38-27b.md
+  - benchmarks\models\wan22.md
+  - design\workbench\CHECKPOINT.md
+  - design\workbench\DESIGN.md
+  - design\workbench\IMPLEMENTATION-CHECKPOINT.md
+  - design\workbench\IMPLEMENTATION-VALIDATION.md
+  - design\workbench\IMPLEMENTATION.md
+  - design\workbench\PI-REUSE.md
+  - design\workbench\REFLECTION.md
+  - design\workbench\RUNNER-CONTRACT.md
+  - design\workbench\VALIDATION.md
+  - design\workbench\validation\task-sandbox-smoke-2026-09-10.md
+  - findings\2026-06-28-anvil-integration-audit.md
+  - findings\2026-06-28-planning-capability-eval.md
+  - findings\2026-06-29-harness-intent-routing.md
+  - findings\2026-07-04-hf-speech-to-speech-review.md
+  - findings\2026-07-04-openclaw-keyless-failover.md
+  - findings\2026-07-04-voice-pipeline-v1-status.md
+  - findings\2026-07-06-openclaw-workbench-skill-smoke.md
+  - findings\2026-07-07-anvil-score-prd-scope-gap.md
+  - findings\2026-07-07-openclaw-colo-interaction-benchmark.md
+  - findings\2026-07-07-voice-latency-baseline.md
+  - findings\2026-07-07-voice-latency-model-shortlist.md
+  - findings\2026-07-08-fast-tier-llm-bakeoff.md
+  - findings\2026-07-08-fast-tier-promotion.md
+  - findings\2026-07-08-openclaw-talk-live-validation.md
+  - findings\2026-07-08-stt-model-benchmark.md
+  - findings\2026-07-08-voice-latency-ab-final-report.md
+  - findings\2026-07-08-voice-latency-candidate-matrix.md
+  - findings\2026-07-08-voice-latency-final-recommendation.md
+  - findings\2026-07-10-blackwell-local-model-bakeoff.md
+  - findings\2026-07-10-qwen35-122b-heavy-candidate.md
+  - findings\2026-07-11-system-observability-artifact-contract.md
+  - findings\2026-07-11-system-observability-overhead.md
+  - findings\2026-07-12-gpt-oss-120b-deterministic-recheck.md
+  - findings\2026-07-12-green-context-mps-capability.md
+  - findings\2026-07-12-heavy-intelligence-challengers.md
+  - findings\2026-07-12-nemotron-puzzle-recheck.md
+  - findings\2026-07-12-qwen35-122b-mxfp4-benchmark.md
+  - findings\2026-07-12-qwen36-27b-eval-baseline.md
+  - findings\2026-07-12-qwen36-27b-heavy-variation-bakeoff.md
+  - findings\2026-07-12-qwen36-protocol-v2-comparison.md
+  - findings\2026-07-12-rtx-pro-6000-heavy-eval-v2.md
+  - findings\2026-07-12-thinkingcap-heavy-promotion.md
+  - findings\2026-07-13-e4b-fast-router-promotion.md
+  - findings\2026-07-13-e4b-voice-consult-benchmark.md
+  - findings\2026-07-13-q36-pro6000-container-recipe.md
+  - findings\2026-07-13-t011-ocr-rebalance.md
+  - findings\2026-07-13-t013-vision.md
+  - findings\2026-07-13-t015-resident-set.md
+  - findings\2026-07-16-gemma4-chat-template-bakeoff.md
+  - findings\2026-07-16-gemma4-unsloth-nvfp4-follow-up.md
+  - findings\2026-07-16-gemma4-vllm0251-wsl2-c128.md
+  - findings\2026-07-17-gemma4-31b-optimization.md
+  - findings\2026-07-17-gpt-oss-puzzle-qualification.md
+  - findings\2026-07-18-gpt-oss-puzzle-heavy-promotion.md
+  - findings\2026-07-18-lifecycle-aware-wsl-cache-reclaim.md
+  - findings\2026-07-22-adr-0008-evidence-gap.md
+  - findings\2026-07-22-private-evidence-publication-audit.md
+  - findings\2026-07-26-laguna-s-heavy-qualification.md
+  - findings\2026-07-27-anvil-serving-release-readiness-sweep.md
+  - findings\2026-07-27-omni-stack-qualification.md
+  - findings\2026-07-27-omni-voice-stack-qualification.md
+  - findings\2026-07-28-agents-a1-multimodal-qualification.md
+  - findings\2026-07-28-nemotron35-asr-qualification.md
+  - findings\2026-07-28-qwen35-122b-primary-qualification.md
+  - findings\2026-07-29-agents-a1-primary-promotion.md
+  - findings\2026-07-29-agents-a1-qwen-262k-head-to-head.md
+  - findings\2026-07-openclaw-anvil-voice-option-live.md
+  - findings\2026-07-openclaw-anvil-voice-option.md
+  - findings\2026-07-voice-16gb-mini.md
+  - findings\2026-07-voice-independent-verification.md
+  - findings\2026-07-voice-local-loop-proof.md
+  - findings\2026-07-voice-realtime-proof.md
+  - findings\2026-07-voice-stt-ab.md
+  - findings\2026-07-voice-tts-ab.md
+  - findings\2026-08-01-deepseek-v4-flash-0731-r16-dspark-qualification.md
+  - findings\2026-08-01-deepseek-v4-flash-0731-research-update.md
+  - findings\2026-08-01-dual-pro-tp2-model-campaign.md
+  - findings\2026-08-02-deepseek-v4-flash-0731-650k-1m-pi-qualification.md
+  - findings\2026-08-02-deepseek-v4-flash-0731-native-kv-offload-256k.md
+  - findings\2026-08-02-deepseek-v4-flash-0731-primary-promotion.md
+  - findings\2026-08-03-deepseek-context-agentic-swe-smoke.md
+  - findings\2026-08-07-deepseek-0731-vision-nvfp4-recipe-intake.md
+  - findings\2026-08-07-deepseek-0731-vision-nvfp4-sglang-first-load.md
+  - findings\2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md
+  - findings\2026-08-10-deepseek-v4-flash-0731-r33-batch-token-ab.md
+  - findings\2026-08-10-deepseek-v4-flash-0731-r33-quality-control.md
+  - findings\2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md
+  - findings\2026-08-14-qwen38-27b-1m-context.md
+  - findings\2026-08-14-qwen38-27b-official-qualification.md
+  - findings\2026-08-14-qwen38-27b-split-promotion.md
+  - findings\2026-08-14-qwen38-27b-tp-mtp-context-matrix.md
+  - findings\2026-08-15-qwen38-27b-agentic-swe-scout.md
+  - findings\2026-08-15-qwen38-27b-external-recipe-refresh.md
+  - findings\2026-08-15-qwen38-27b-mtp-depth-qualification.md
+  - findings\2026-08-15-qwen38-27b-sglang-consolidation-ab.md
+  - findings\2026-08-15-qwen38-27b-sglang-fp8-single-promotion.md
+  - findings\2026-08-15-qwen38-27b-sglang-mtp-multimodal-qualification.md
+  - findings\2026-08-15-qwen38-27b-sglang-nvfp4-qualification.md
+  - findings\2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md
+  - findings\2026-08-16-qwen38-27b-video-router.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090.md
+  - findings\2026-08-20-qwen38-sharp-template-ab.md
+  - findings\2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md
+  - findings\2026-08-21-qwen38-27b-gguf-250k-rtx5090.md
+  - findings\2026-08-21-qwen38-27b-radixark-nvfp4-dflash2-rtx5090.md
+  - findings\2026-08-21-qwen38-27b-rtx5090-recipe-research.md
+  - findings\2026-08-22-anvil-serving-0.35.0-release-readiness.md
+  - findings\2026-08-24-anvil-serving-0.35.1-release-readiness.md
+  - findings\2026-08-26-qwen38-flash-next-promotion.md
+  - findings\2026-08-26-qwen38-flash-next-qsa-fast-mtp3-promotion.md
+  - findings\2026-08-26-qwen38-flash-next-vision-promotion.md
+  - findings\2026-08-28-comfyui-media-qualification.md
+  - findings\2026-08-28-hermes-image-quality-production.md
+  - findings\2026-08-28-media-gateway-live-validation.md
+  - findings\2026-08-28-media-gateway-release-readiness.md
+  - findings\2026-08-29-glm53-cardillo-purtell-qualification.md
+  - findings\2026-08-30-anvil-serving-1.0.0-release-readiness.md
+  - findings\2026-08-30-glm53-k3-dflash2-1m-optimization.md
+  - findings\2026-08-30-media-envelope-parsing-corrections.md
+  - findings\2026-08-31-glm53-xgrammar-524k-qualification.md
+  - findings\2026-09-02-glm53-sglang-sm120-393k-promotion.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification.md
+  - findings\2026-09-02-glm53-sglang-sm120-swe-smoke.md
+  - findings\2026-09-03-glm53-concurrency-capacity-interpretation.md
+  - findings\2026-09-03-qwen38-27b-rtx5090-quant-bakeoff.md
+  - findings\2026-09-03-qwen38-ninfer-nvfp4-rtx5090-feasibility.md
+  - findings\2026-09-03-qwen38-ninfer-nvfp4-rtx5090.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-plan.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison.md
+  - findings\2026-09-09-glm53-native-nccl-p2p.md
+  - findings\2026-09-09-glm53-ormandj-v042.md
+  - findings\2026-09-11-glm53-output-budget.md
+  - findings\2026-09-11-glm53-v043-native-linux-qualification.md
+  - findings\2026-09-23-thinkingcap-5090.md
+  - findings\blackwell-sm120-lab-notebook.md
+  - findings\2026-07-08-stt-model-benchmark-evidence\README.md
+  - findings\2026-07-10-blackwell-local-model-bakeoff-evidence\failures.md
+  - findings\2026-07-10-blackwell-local-model-bakeoff-evidence\preflight-transcripts.md
+  - findings\2026-07-10-blackwell-local-model-bakeoff-evidence\reproduction.md
+  - findings\2026-07-10-blackwell-local-model-bakeoff-evidence\runtime-restoration.md
+  - findings\2026-07-12-rtx-pro-6000-heavy-eval-v2-evidence\laguna-reproduction.md
+  - findings\2026-07-13-gemma4-e4b-fast-promotion-evidence\README.md
+  - findings\2026-07-13-q36-pro6000-container-recipe-evidence\reproduction.md
+  - findings\2026-07-27-omni-stack-evidence\README.md
+  - findings\2026-07-28-agents-a1-multimodal-qualification-evidence\README.md
+  - findings\2026-07-28-nemotron35-asr-qualification-evidence\README.md
+  - findings\2026-07-28-nemotron35-asr-qualification-evidence\friction-log.md
+  - findings\2026-07-28-qwen35-122b-primary-evidence\README.md
+  - findings\2026-07-29-agents-a1-primary-promotion-evidence\README.md
+  - findings\2026-07-29-agents-a1-qwen-262k-head-to-head-evidence\README.md
+  - findings\2026-08-01-dual-pro-tp2-campaign-evidence\compatibility-brief.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence\README.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-128k-evidence\publication-summary.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-evidence\README.md
+  - findings\2026-08-17-qwen38-27b-radixark-nvfp4-rtx5090-evidence\publication-summary.md
+  - findings\2026-08-26-qwen38-flash-next-inferact-vllm-262k-evidence\attempt-01-default-nccl.md
+  - findings\2026-08-26-qwen38-flash-next-inferact-vllm-262k-evidence\attempt-02-wsl2-nccl.md
+  - findings\2026-08-26-qwen38-flash-next-inferact-vllm-262k-evidence\attempt-03-wsl2-v1.md
+  - findings\2026-08-26-qwen38-flash-next-inferact-vllm-262k-evidence\feasibility-result-preload.md
+  - findings\2026-08-26-qwen38-flash-next-vision-promotion-evidence\README.md
+  - findings\2026-08-26-qwen38-flash-next-vision-promotion-evidence\publication-summary.md
+  - findings\2026-08-27-media-gateway-comfyui-evidence\feasibility-result.md
+  - findings\2026-08-28-comfyui-media-qualification-evidence\README.md
+  - findings\2026-08-28-comfyui-media-qualification-evidence\publication-summary.md
+  - findings\2026-08-28-hermes-image-quality-production-evidence\README.md
+  - findings\2026-08-28-hermes-image-quality-production-evidence\publication-summary.md
+  - findings\2026-08-28-media-gateway-live-validation-evidence\README.md
+  - findings\2026-08-28-media-gateway-live-validation-evidence\publication-summary.md
+  - findings\2026-08-29-glm53-cardillo-adaptive-mtp-evidence\README.md
+  - findings\2026-08-29-glm53-cardillo-adaptive-mtp-evidence\feasibility-result-v0.md
+  - findings\2026-08-29-glm53-cardillo-adaptive-mtp-evidence\publication-summary.md
+  - findings\2026-08-29-glm53-k3-dflash2-optimization-evidence\README.md
+  - findings\2026-08-29-glm53-k3-dflash2-optimization-evidence\feasibility-result-preload.md
+  - findings\2026-08-29-glm53-k3-dflash2-optimization-evidence\publication-summary.md
+  - findings\2026-08-31-glm53-xgrammar-524k-qualification-evidence\README.md
+  - findings\2026-08-31-glm53-xgrammar-524k-qualification-evidence\feasibility-result.md
+  - findings\2026-08-31-glm53-xgrammar-524k-qualification-evidence\publication-summary.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\README.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\friction-log.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\log-audit.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\nccl-cumem-probe.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\promotion-publication-summary.md
+  - findings\2026-09-02-glm53-sglang-sm120-qualification-evidence\publication-summary.md
+  - findings\2026-09-03-qwen38-27b-rtx5090-quant-bakeoff-evidence\README.md
+  - findings\2026-09-03-qwen38-27b-rtx5090-quant-bakeoff-evidence\feasibility-result-preload.md
+  - findings\2026-09-03-qwen38-27b-rtx5090-quant-bakeoff-evidence\friction-log.md
+  - findings\2026-09-03-qwen38-27b-rtx5090-quant-bakeoff-evidence\publication-summary.md
+  - findings\2026-09-03-qwen38-ninfer-nvfp4-rtx5090-evidence\README.md
+  - findings\2026-09-03-qwen38-ninfer-nvfp4-rtx5090-evidence\friction-log.md
+  - findings\2026-09-03-qwen38-ninfer-nvfp4-rtx5090-evidence\publication-summary.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\README.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\coverage-and-gaps.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\feasibility-result.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\friction-log.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\publication-summary.md
+  - findings\2026-09-04-qwen38-27b-pro6000-possibility-evidence\session-efficiency.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\README.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\coverage-and-gaps.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\dispatch-packet.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\friction-log.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\publication-summary.md
+  - findings\2026-09-08-glm53-linux-wsl-comparison-evidence\reproduction.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\README.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\coverage-and-gaps.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\friction-log.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\publication-dispatch.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\publication-summary.md
+  - findings\2026-09-09-glm53-native-nccl-p2p-evidence\candidate\nccl-transport-observation.md
+  - findings\2026-09-09-glm53-ormandj-v042-evidence\README.md
+  - findings\2026-09-09-glm53-ormandj-v042-evidence\coverage-and-gaps.md
+  - findings\2026-09-09-glm53-ormandj-v042-evidence\friction-log.md
+  - findings\2026-09-09-glm53-ormandj-v042-evidence\publication-summary.md
+  - findings\2026-09-11-glm53-output-budget-evidence\README.md
+  - findings\2026-09-11-glm53-output-budget-evidence\friction-log.md
+  - findings\2026-09-11-glm53-output-budget-evidence\publication-summary.md
+  - findings\2026-09-11-glm53-v043-native-linux-qualification-evidence\README.md
+  - findings\2026-09-11-glm53-v043-native-linux-qualification-evidence\friction-log.md
+  - findings\2026-09-11-glm53-v043-native-linux-qualification-evidence\publication-summary.md
+  - findings\2026-09-23-thinkingcap-evidence\README.md
+  - findings\2026-09-23-thinkingcap-evidence\coverage-and-gaps.md
+  - findings\2026-09-23-thinkingcap-evidence\dispatch-packet.md
+  - findings\2026-09-23-thinkingcap-evidence\friction-log.md
+  - findings\2026-09-23-thinkingcap-evidence\publication-summary.md
+  - findings\2026-09-23-thinkingcap-evidence\run-plan-initial-superseded.md
+  - findings\2026-09-23-thinkingcap-evidence\run-plan.md
+  - findings\2026-09-23-thinkingcap-evidence\product-gaps\2026-09-23-benchmark-submit-preview-help.md
+  - findings\2026-09-23-thinkingcap-evidence\product-gaps\2026-09-23-image-tag-digest-canonicalization.md
+  - findings\2026-09-23-thinkingcap-evidence\product-gaps\2026-09-23-quality-sampling-controls.md
+  - findings\2026-09-23-thinkingcap-evidence\product-gaps\2026-09-23-recipe-restoration-provenance.md
+  - findings\2026-09-23-thinkingcap-evidence\product-gaps\2026-09-23-windows-pi-rpc-validation.md
+  - findings\eval-data\2026-06-28-planning-capability\PUBLICATION.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdA-backlog__fast.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdA-backlog__frontier.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdA-backlog__heavy.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdB-multiprd__fast.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdB-multiprd__frontier.md
+  - findings\eval-data\2026-06-28-planning-capability\outputs\out_prdB-multiprd__heavy.md
+  - findings\fast-tier-bakeoff-evidence\load-failures.md
+  - findings\fast-tier-bakeoff-evidence\runtime-restoration.md
+  - observatory\README.md
+  - observatory\contracts.md
+  - observatory\controller-adapter.md
+  - observatory\runtime-candidates.md
+  - prds\benchmark-timeline.md
+  - prds\controller-diagnostics.md
+  - prds\fleet-node-enrollment.md
+  - prds\harbor-environment-evaluation.md
+  - prds\qualified-replica-sets.md
+  - prds\readiness-generation-fencing.md
+  - prds\replica-capacity-scheduler.md
+  - prds\session-protocol-corpus.md
+  - prds\workload-contract-repairs.md
+  - prds\workload-visibility.md
+  - superpowers\plans\2026-09-05-portable-service-lifecycle.md
+  - superpowers\specs\2026-09-05-portable-service-lifecycle-design.md
+ERROR   -  Encoding error reading file: benchmarks\models\thinkingcap-qwen38-27b.md
+ERROR   -  Error reading page 'benchmarks/models/thinkingcap-qwen38-27b.md': 'utf-8' codec can't decode byte 0xb7 in position 8172: invalid start byte
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\__main__.py", line 370, in <module>
+    cli()
+    ~~~^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\click\core.py", line 1569, in __call__
+    return self.main(*args, **kwargs)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\click\core.py", line 1490, in main
+    rv = self.invoke(ctx)
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\click\core.py", line 1970, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\click\core.py", line 1353, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\click\core.py", line 907, in invoke
+    return callback(*args, **kwargs)
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\__main__.py", line 288, in build_command
+    build.build(cfg, dirty=not clean)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\commands\build.py", line 310, in build
+    _populate_page(file.page, config, files, dirty)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\commands\build.py", line 159, in _populate_page
+    page.read_source(config)
+    ~~~~~~~~~~~~~~~~^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\structure\pages.py", line 212, in read_source
+    source = self.file.content_string
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\mkdocs\structure\files.py", line 462, in content_string
+    return f.read()
+           ~~~~~~^^
+  File "<frozen codecs>", line 325, in decode
+  File "PRIVATE_OPERATOR_HOME\AppData\Local\Python\pythoncore-3.14-64\Lib\encodings\utf_8_sig.py", line 69, in _buffer_decode
+    return codecs.utf_8_decode(input, errors, final)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb7 in position 8172: invalid start byte

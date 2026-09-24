@@ -1,0 +1,122 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "ThinkingCap BF16 larger-context scout",
+  "requirements": {
+    "tokens": {
+      "prompt": {
+        "value": 60416,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "64K request plan",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      },
+      "output_reserve": {
+        "value": 4096,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "reasoning and visible output reserve",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      },
+      "protocol_margin": {
+        "value": 1024,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "token calibration margin",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      }
+    },
+    "concurrency": {
+      "value": 1,
+      "unit": "sequences",
+      "status": "assumed",
+      "source": "single candidate C1",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00"
+    },
+    "physical_vram_bytes": {
+      "value": 34190917632,
+      "unit": "bytes",
+      "status": "measured",
+      "source": "prior local inventory and current GPU identity",
+      "observed_at": "2026-09-24T04:12:05.848923+00:00"
+    },
+    "vram_reserves": {
+      "free_headroom": {
+        "kind": "policy",
+        "variable": {
+          "value": 2147483648,
+          "unit": "bytes",
+          "status": "assumed",
+          "source": "explicit64K campaign reserve, validated by workload telemetry",
+          "observed_at": "2026-09-24T04:12:05.848923+00:00"
+        }
+      }
+    },
+    "thresholds": {
+      "min_deterministic_pass_rate": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "allhardgates",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      }
+    }
+  },
+  "candidates": [
+    {
+      "id": "64k-mtp3-bf16-090",
+      "runtime_context_limit_tokens": {
+        "value": 65536,
+        "unit": "tokens",
+        "status": "assumed",
+        "source": "candidateAPIcap",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      },
+      "resident_components": {
+        "target_vision_and_mtp": {
+          "min": 23767275274,
+          "max": 23778012692,
+          "unit": "bytes",
+          "status": "measured",
+          "source": "prior32Kstartup rounded22.14GiB",
+          "observed_at": "2026-09-24T04:12:05.848923+00:00"
+        },
+        "runtime_workspace_and_recurrent": {
+          "min": 858993459,
+          "max": 1717986918,
+          "unit": "bytes",
+          "status": "estimated",
+          "source": "prior.87VRAMtarget minus22.14weights minus4.73KV ~.83GiB, widened for contextlayout",
+          "observed_at": "2026-09-24T04:12:05.848923+00:00"
+        }
+      },
+      "per_sequence_components": {},
+      "per_token_components": {
+        "target_full_attention": {
+          "value": 65536,
+          "unit": "bytes/token",
+          "status": "confirmed",
+          "source": "16fullattention*K/V*4heads*256dim*2bytes",
+          "observed_at": "2026-09-24T04:12:05.848923+00:00"
+        },
+        "draft_and_padding": {
+          "min": 4096,
+          "max": 16384,
+          "unit": "bytes/token",
+          "status": "estimated",
+          "source": "oneMTPfullattention plus variable hybridblockpadding; widenedinterval, notlinearuniversalcapacity",
+          "observed_at": "2026-09-24T04:12:05.848923+00:00"
+        }
+      },
+      "kv_token_multiplier": {
+        "value": 1,
+        "unit": "ratio",
+        "status": "assumed",
+        "source": "C1",
+        "observed_at": "2026-09-24T04:12:05.848923+00:00"
+      },
+      "metrics": {},
+      "hard_failures": []
+    }
+  ],
+  "limits": "Planning interval is a physical screen only; exact runtime layout, allocated cache and free headroom require startup and requests. No extrapolated universal maximum."
+}

@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-09-24T04:26:15.146488+00:00",
+  "windows_kib": {
+    "TotalVisibleMemorySize": 32413020,
+    "FreePhysicalMemory": 1590484,
+    "TotalVirtualMemorySize": 84841820,
+    "FreeVirtualMemory": 10442084
+  },
+  "wsl_free_bytes": "              total        used        free      shared  buff/cache   available\nMem:    20976054272  5030711296   233250816  1502597120 15712092160 14070837248\nSwap:    4294967296   190844928  4104122368\n"
+}

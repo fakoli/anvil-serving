@@ -1,0 +1,86 @@
+{
+  "base_url": "http://127.0.0.1:8080/v1",
+  "budget": {
+    "max_completion_tokens": 512,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [],
+  "ocr_expect": [
+    "ANVIL READY"
+  ],
+  "passed": false,
+  "results": [
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "smoke (short coding)",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "structured JSON",
+      "passed": false
+    },
+    {
+      "detail": "0/20 clean (sample: error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}})",
+      "name": "shared-prefix tool batch x20",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "streaming tool call",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "tool-result continuation",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "general image understanding",
+      "passed": false
+    },
+    {
+      "detail": "error: HTTP 400: {\"error\":{\"code\":\"chat_template_option_not_supported\",\"message\":\"chat_template_kwargs.enable_thinking is not supported\",\"param\":\"chat_template_kwargs\",\"type\":\"invalid_request_error\"}}",
+      "name": "verbatim image OCR",
+      "passed": false
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

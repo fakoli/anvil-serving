@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.client-acceptance/v1",
+  "host": "Primary Node",
+  "client": "Pi",
+  "thinking_level": "high",
+  "provider_effort": "xhigh",
+  "checks": {
+    "one_read_tool": true,
+    "tool_success": true,
+    "exact_fixture_answer": true,
+    "secondary_identity": true,
+    "normal_stop": true,
+    "clean_stderr": true
+  },
+  "wrapper": {
+    "exit_code": 0,
+    "timed_out": false,
+    "elapsed_s": 26.548784732818604
+  },
+  "session_id": "01a0d2ab-89e3-7244-8ba4-607e76ccabcd",
+  "passed": true
+}

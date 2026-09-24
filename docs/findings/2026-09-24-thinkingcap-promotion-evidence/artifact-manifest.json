@@ -1,0 +1,404 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-24-thinkingcap-secondary-promotion",
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.promotion-summary/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "33b4ff841df141291944bd35b7f88fd632b04458b6949ab6fcf59944fc7b0f6a",
+          "bytes": 2509
+        }
+      ],
+      "reason": "Separate promotion packet; qualification measurements, decisions and recipes unchanged, with public bundles privacy-resealed under explicit ledgers."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "a04577109d91b110c2e22b5b8f910760930f67fc69ee539b9ddbfd24255baa19",
+          "bytes": 226
+        }
+      ],
+      "reason": "Local pinned qualification and deployment evidence; no new external performance prior."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.md",
+          "sha256": "65a982819ca92a2c7de2fe8918f49046ee8cceed8a0f1d1cff01806095d28480",
+          "bytes": 861
+        }
+      ],
+      "reason": "Native preflight fixtures and bounded real-client acceptance; no new comparative benchmark."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "efecbef0b52093c22732ca01ef4d89fa12706a86ac1eaede7081e46c10b3fa67",
+          "bytes": 1341
+        }
+      ],
+      "reason": "Managed promotion, explicit C1 gates, fleet convergence, and incident follow-up."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "evaluation-node-client-catalog-state.json",
+          "sha256": "8c46121f85060a36b3a024cafdedc80fc1bfaccc2a5f06d6a79c7dea6af3f213",
+          "bytes": 665
+        },
+        {
+          "path": "install-capacity-confirm.json",
+          "sha256": "b4d449fe13583908032ec66f022ab690a0e3df581db5c15ade7affe492c66bd9",
+          "bytes": 1789
+        },
+        {
+          "path": "install-capacity-dry-run.json",
+          "sha256": "bd06a26d43093d7f12901bd6948bb27870a2adf0b1ece543af00e0189172e4d3",
+          "bytes": 745
+        },
+        {
+          "path": "install-output-confirm.json",
+          "sha256": "4dd7d2cacb0de054e77c4d1e17023c609e0421a47573f6d7671374d48ec14497",
+          "bytes": 1925
+        },
+        {
+          "path": "install-output-dry-run.json",
+          "sha256": "2b9df58573bf91bee601ad7ea5efda85cc86aba8b3b276549c6f5908a29053e2",
+          "bytes": 881
+        },
+        {
+          "path": "install-reasoning-confirm.json",
+          "sha256": "4a92ad020ecb823d9e4fa4bb4eb3eebc75a44732d886720fc8e69e1955248ea2",
+          "bytes": 1925
+        },
+        {
+          "path": "install-reasoning-preview.json",
+          "sha256": "81c8ac12b3735bf3c736ac3ed861fbd0f799e383edc644c382db52ac0b3deb7c",
+          "bytes": 881
+        },
+        {
+          "path": "mini-automatic-sync-receipt.json",
+          "sha256": "31d5c1cd6acc8a636738979da827b50950f3e4e5656926bb20b5af8eaf684271",
+          "bytes": 3184
+        },
+        {
+          "path": "mini-client-catalog-state.json",
+          "sha256": "f23b5c721139ea68b73344120382f5929270aa46daa4e5109c02bb495a675200",
+          "bytes": 1080
+        },
+        {
+          "path": "mini-scheduled-contract-receipt.json",
+          "sha256": "afb324678c9be10c9eed27e656f28dc8fd9ee9094d72c8ea0f5b2e33f1269379",
+          "bytes": 373
+        },
+        {
+          "path": "mini-scheduled-contract.private.json",
+          "sha256": "71fbbd31c88e32ccd710e29130f92c450c114f74d2cb1900010722e897fdd1a8",
+          "bytes": 4512
+        },
+        {
+          "path": "router-capabilities-after.json",
+          "sha256": "603302d280bcb731fd1bbfda564c6094da2dee3a2cc7c04a529f654b71d85474",
+          "bytes": 1592
+        },
+        {
+          "path": "router-capabilities-reasoning-final.json",
+          "sha256": "29285c87df56e2a1d9eb66fb2e7087291ba0cce0482cf03e94e18c099343a41c",
+          "bytes": 1703
+        },
+        {
+          "path": "router-capacity-after.json",
+          "sha256": "51170203956b7ed053d5c1e0a2b70c288b5bd57a3023c5816f2aa02f99a6a4c6",
+          "bytes": 3494
+        },
+        {
+          "path": "router-capacity-reasoning-final.json",
+          "sha256": "fcefb82a9a0cd9082ebae84fe0f9dcf1acd8dd9c022a478c4c27c854becf489e",
+          "bytes": 3499
+        },
+        {
+          "path": "router-fingerprints-after.json",
+          "sha256": "fb58af8272769232ca9085699ab2dafa39b65c18523d10694950b9ae2d77c307",
+          "bytes": 2459
+        },
+        {
+          "path": "router-fingerprints-reasoning-final.json",
+          "sha256": "4e495b6551fca650fdfe84d53d8f489784ffa1924ee700d2f26026edf8673008",
+          "bytes": 2460
+        },
+        {
+          "path": "router-models-after.json",
+          "sha256": "dac219d52e61aaa141c81353e09fe1bf74cf859c1e2db75d58dc5e3672322a33",
+          "bytes": 1707
+        },
+        {
+          "path": "router-models-reasoning-final.json",
+          "sha256": "285e0acc68c668a98da773a901ad60ad5f694fba7f1db73e51a98d6da9fda5ad",
+          "bytes": 1709
+        },
+        {
+          "path": "router-status-reasoning-final.json",
+          "sha256": "75784954077edffc577ee8e18c78c6ccf89623af6924b6f265f5a9e03932b0b1",
+          "bytes": 425
+        },
+        {
+          "path": "windows-authenticated-catalog-reasoning.json",
+          "sha256": "3f5a844615eefd1f860577a7a1284e423f8444a3736f76a74a5cad4aada47c34",
+          "bytes": 2356
+        }
+      ],
+      "reason": "Authenticated metadata and managed installation receipts; historical stages retained alongside final reasoning metadata."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "dark-pi-high-normal-router-diagnosis.json",
+          "sha256": "ad27c9a95cdd46410eb9ecb74d2b9e55d9085b7721d05131596664e0b8c9a13e",
+          "bytes": 4329
+        },
+        {
+          "path": "dark-pi-high-r2-router-diagnosis.json",
+          "sha256": "6c34932bf3054aa84e468040926800e81d7d430ab7ad9ae307bddfdb8dc673d8",
+          "bytes": 4321
+        },
+        {
+          "path": "dark-pi-smoke-high-normal-wrapper.json",
+          "sha256": "604fe1cdfa6aa40e9bad90481f5319cb40598902b4c6df6d3552cff95ff2c875",
+          "bytes": 372
+        },
+        {
+          "path": "dark-pi-smoke-high-normal.jsonl",
+          "sha256": "abac570805e9d453301a7a8f485a8514c263205e26ae293c8d2069c0180e9722",
+          "bytes": 20456
+        },
+        {
+          "path": "dark-pi-smoke-high-r2-wrapper.json",
+          "sha256": "ae08ab4a0f30bcb008aaac421f35e9599c8b8ea310e5091a06344341f7f8910e",
+          "bytes": 621
+        },
+        {
+          "path": "dark-pi-smoke-high-r2.jsonl",
+          "sha256": "1af06c99feabd4003af7177c74f29d8cb53528898b79420ea975b7e05d11a76d",
+          "bytes": 18954
+        },
+        {
+          "path": "direct-final-vision-diagnostic.json",
+          "sha256": "25779782361e7e7472f34147667262b6ec995a69671a3cceaf832582a42b2933",
+          "bytes": 4118
+        },
+        {
+          "path": "evaluation-node-smoke-10240-r3.json",
+          "sha256": "999694b19c240fbe1da9f5d9ab816100d85b4fac77684f3c356011c1065811fe",
+          "bytes": 4863
+        },
+        {
+          "path": "grafana-inference-panels.private.json",
+          "sha256": "9e4993029a5b340e08480bdd2026f7a85a306112c060ffb3df5c1c08a461f9e6",
+          "bytes": 991
+        },
+        {
+          "path": "mini-smoke-c1-r2.json",
+          "sha256": "36639cd6025e0caac665e3b2f83bbd802fa84e9fa47aa3a63d173c2ba9c75075",
+          "bytes": 5758
+        },
+        {
+          "path": "openwebui-provider-catalog-check.json",
+          "sha256": "b3b9bfd066f94db6622883f429d8f11137ba973384a1fa55ca3d33dc17c1b9bd",
+          "bytes": 419
+        },
+        {
+          "path": "prometheus-native-queries.private.json",
+          "sha256": "9edec635a6d568d1fa332aea5b13b8d3bf64c1b0e77bb69edd5e8fb23155a50a",
+          "bytes": 3885
+        },
+        {
+          "path": "routed-final-preflight.json",
+          "sha256": "5d3d23dd9de8d29adfd1ecf8c837fae93b393f08a98907952c59a0cf5247ecf5",
+          "bytes": 6915
+        },
+        {
+          "path": "routed-final-vision-r2.json",
+          "sha256": "eb98fcdf7082331c85484991c3e3b2a6b2ee507fc383f6f727e9e4c3aa8c55d1",
+          "bytes": 4042
+        },
+        {
+          "path": "routed-preflight-c1.json",
+          "sha256": "080da2fbb169037e946d0c9fd01a8e90483f48076d0f35600c9b9a89751071a5",
+          "bytes": 9787
+        },
+        {
+          "path": "routed-preflight.json",
+          "sha256": "fcdcb63e6065d491160b58b86cfbb9b89dee99b918e58bd23df1c8506ed71887",
+          "bytes": 8501
+        },
+        {
+          "path": "routed-reasoning.json",
+          "sha256": "32d83d57eb7949851c75c63054b6b6a7ba7699d5cdaad5356512d083153643a8",
+          "bytes": 2693
+        },
+        {
+          "path": "windows-pi-high-wrapper.json",
+          "sha256": "5da5042f6938ffe11703881c84954af381e8a1ffeba8ff1b7762f8f5c796de26",
+          "bytes": 78
+        },
+        {
+          "path": "windows-pi-high.jsonl",
+          "sha256": "015da413cf9fee11514430f3b4657d3cbe76603480df6e5752647864a9dd2556",
+          "bytes": 21540
+        },
+        {
+          "path": "windows-pi-sync-reasoning.json",
+          "sha256": "d5963a5acf0b1d09b022fca1ddbe31d52f5041dc403a5a82f8c3f3745de75107",
+          "bytes": 3283
+        }
+      ],
+      "reason": "Native passed and failed attempts, telemetry, and application-provider discovery."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "42a00fc247b9bd901ccbd0914e9cb565e98c802450e95131d9833c0acf8f572d",
+          "bytes": 1715
+        },
+        {
+          "path": "dark-pi-smoke-10240-timeout.json",
+          "sha256": "023cd72d6d407258bf6410fa3e92ec400064b28e69fbdc39910f4ccace38daab",
+          "bytes": 630
+        },
+        {
+          "path": "dark-pi-smoke-high-timeout.json",
+          "sha256": "1509600acb38f7f77d68b48277795dcc1cc401b37934e8348b496fbbab8ccf0e",
+          "bytes": 809
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "92df1b6ea71abe07483626e9918d4c6d3293d53afe0eb2b1fcd7209cbb07e8f1",
+          "bytes": 2731
+        },
+        {
+          "path": "pi-user-rejection-engine-log.txt",
+          "sha256": "bab19470d8fc41a49a3321f62be95927f1760ee97795a106449c1bda50e3ae8e",
+          "bytes": 273
+        },
+        {
+          "path": "pi-user-rejection-incident.json",
+          "sha256": "f7cefd4477aca1a27836563ad98aafa91214f6690309da5c9a75d9f5915f6859",
+          "bytes": 876
+        },
+        {
+          "path": "pi-user-rejection.json",
+          "sha256": "24fdc525fb58c0550a2f2f08898d4734605e8ef115fde10f8be2c0253d7a01a9",
+          "bytes": 2834
+        }
+      ],
+      "reason": "Known failures, root causes where known, and explicit untested boundaries."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "3db07d1fcb62406fbf50a72d9b50ddca67a24c200dd90668e4ebd534e00fb1e1",
+          "bytes": 728
+        }
+      ],
+      "reason": "Retain promoted deployment under explicit user authorization; private rollback bytes preserved."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "client-reasoning-map-review.json",
+          "sha256": "e24ac3a7b33b8e7fff07157530b9877bcf9e03b6fb844d721694203e2ed6c6a8",
+          "bytes": 1401
+        },
+        {
+          "path": "convergence-summary.json",
+          "sha256": "5ac75b7f8e35fd4b889203e01181cb2a9f3b9e001c80e0eaa727634b01a8c883",
+          "bytes": 3452
+        },
+        {
+          "path": "dark-pi-independent-acceptance.json",
+          "sha256": "65228b468dfbb47f6b02e8228fede3f87fc190597ae1151a90cc4069f9fa3445",
+          "bytes": 1213
+        },
+        {
+          "path": "external-compose-adapter-review.json",
+          "sha256": "ff55f10b349bc3d2da50f22ad294cae7623796b2357632932cbc2f52b54543cd",
+          "bytes": 7151
+        },
+        {
+          "path": "independent-promotion-review.json",
+          "sha256": "ffdc4c289e5938dc673aee481a28b71286adb06f442578fec5ad67e4c7b336fc",
+          "bytes": 10416
+        },
+        {
+          "path": "observability-final.private.json",
+          "sha256": "0933a218defa2cf89e1422ab961409b840ef0072df7a0b8b07f38c22f29a8aed",
+          "bytes": 657
+        },
+        {
+          "path": "output-budget-audit.json",
+          "sha256": "038271cff3071d69a701c1ae9b6c989b816dc2bcd5edda4250e3ceeee583692b",
+          "bytes": 5729
+        },
+        {
+          "path": "output-cap-correction-review.json",
+          "sha256": "590cc77906d7982d7d7170920405842850187cda859c29df5e6fac34d2e807fd",
+          "bytes": 2568
+        },
+        {
+          "path": "routed-multimodal-transient-review.json",
+          "sha256": "ea34081a92f8013b540949caedd1fd32f59031b7b9b66d8fce5279f1e4e35fc2",
+          "bytes": 5434
+        },
+        {
+          "path": "summary.json",
+          "sha256": "0f340a4a728fb132322fef944e510ffb631421a1f69f0e37284bfffacbeb7d8c",
+          "bytes": 2384
+        },
+        {
+          "path": "windows-pi-high-acceptance.json",
+          "sha256": "93c0be6ee0f162daae575dc68791d3f278c4b134148082010d3e1bbf3f77b1cb",
+          "bytes": 517
+        }
+      ],
+      "reason": "Bounded decisions, independent reviews, and separate client/observability acceptance."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Deployment acceptance only; no new comparative performance claim or external social publication."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

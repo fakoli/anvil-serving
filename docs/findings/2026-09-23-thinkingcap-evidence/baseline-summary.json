@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.baseline-evidence-summary/v1",
+  "derived_from": [
+    "native/baseline/baseline-text-preflight.json",
+    "native/baseline/baseline-preflight-native.json",
+    "native/baseline/baseline-preflight.json",
+    "native/baseline/baseline-multimodal.json",
+    "native/baseline/baseline-quality.json",
+    "native/baseline/baseline-mmlu10.json",
+    "native/baseline/baseline-capacity-scout.json"
+  ],
+  "identity": {
+    "model": "qwen38-huihui-ninfer-schemafix-mtp3-160k",
+    "engine": "ninfer",
+    "command_host": "Primary Node",
+    "gpu_profile": "RTX 5090 / rtx5090"
+  },
+  "evidence": {
+    "text_preflight": {"status": "passed", "schema": "preflight/v2", "checks": ["smoke", "json", "tools", "streaming-tools", "tool-result"]},
+    "native_multimodal_preflight": {"status": "failed", "schema": "preflight/v2", "passed_checks": 7, "failure_boundary": "general image understanding reached expected text but finished with length"},
+    "thinking_control": {"status": "failed", "schema": "preflight/v2", "failure": "HTTP 400 chat_template_option_not_supported for chat_template_kwargs.enable_thinking", "interpretation": "endpoint rejected the requested thinking control"},
+    "multimodal": {"status": "passed", "schema": "multimodal-benchmark-evidence/v1", "image_attempts": 18, "image_passes": 18, "qualification_boundary": "functional image-suite evidence only; the earlier general-image preflight length finish prevents a universal image qualification claim"},
+    "quality": {"status": "limited", "schema": "anvil-serving.fast-tier-bakeoff/v1", "repetitions": 3, "result": "deterministic marker checks passed", "qualification_boundary": "not a standard benchmark score; reasoning mode/control was unsupported"},
+    "mmlu_pro_10_repeated": {"status": "failed", "schema": "anvil-serving.fast-tier-bakeoff/v1", "evidence_use": "diagnostic", "scope": "small 10-question MMLU-Pro subset with three attempts per question; not a full MMLU-Pro benchmark", "attempts": 30, "passed_attempts": 24, "score": "24/30 (80%)", "passed_questions": 8, "failed_questions": 2, "truncation": {"failure_class": "visible_answer_budget_exhausted", "affected_questions": ["mmlu-pro-30-computer-science", "mmlu-pro-40-engineering"], "affected_attempts": 6, "finish_reason": "length", "budget": {"visible_answer_tokens": 2048, "reasoning_headroom_tokens": 0}}, "qualification_boundary": "The suite exited nonzero because the two affected questions exhausted the visible-answer budget. It is incomplete diagnostic evidence and is not quality-ranking or promotion evidence."},
+    "capacity_scout": {"status": "failed", "schema": "anvil-serving.benchmark/v1", "requests": 4, "completed": 0, "failed": 4, "performance_eligible_requests": 0, "failure_class": "controlled_output_failed", "comparison_eligible": false, "qualification_boundary": "strict 256-word controlled-output requirement failed for every request; timing observations are retained but cannot support a speed comparison"}
+  },
+  "promotion": {"promoted": false, "human_gate_required": true, "human_approved_serve_promotion_result": null},
+  "missing_or_limited": [
+    "No performance-eligible capacity population or matched speed comparison.",
+    "No supported thinking-control or reasoning-channel evidence.",
+    "No standard quality benchmark score.",
+    "MMLU-Pro evidence is a failed, small diagnostic subset: 24/30 attempts passed, but six attempts across two questions exhausted the 2,048-token visible-answer budget.",
+    "No OpenClaw Talk or latency evidence; no Mini-local audio test was performed."
+  ]
+}

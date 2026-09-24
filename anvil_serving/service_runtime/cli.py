@@ -35,6 +35,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--engine")
     parser.add_argument("--support", choices=("supported", "legacy"), default="supported")
     parser.add_argument("--container")
+    parser.add_argument("--external-compose", action="store_true")
+    parser.add_argument("--compose-project")
+    parser.add_argument("--compose-service")
+    parser.add_argument("--compose-config-source")
+    parser.add_argument("--compose-config-target")
+    parser.add_argument("--expected-image-id")
     parser.add_argument("--endpoint")
     parser.add_argument("--model")
     parser.add_argument("--health-path")
@@ -48,6 +54,16 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _binding(args: argparse.Namespace) -> dict | None:
+    compose_identity = any(getattr(args, key) is not None for key in (
+        "compose_project", "compose_service", "compose_config_source",
+        "compose_config_target", "expected_image_id",
+    ))
+    if (args.external_compose or compose_identity) and (
+        args.action != "adopt" or args.manager != "docker" or not args.external_compose
+    ):
+        raise ServiceError(
+            "bad_argument", "Compose identity options require Docker adoption with --external-compose"
+        )
     if args.action != "adopt":
         return None
     if not args.service or not args.manager or not args.resource or not args.engine:
@@ -80,6 +96,16 @@ def _binding(args: argparse.Namespace) -> dict | None:
         if not args.container:
             raise ServiceError("bad_argument", "Docker adoption requires --container")
         binding["container"] = args.container
+        if args.external_compose:
+            binding["external_compose"] = True
+            for key in ("compose_project", "compose_service", "compose_config_source", "compose_config_target"):
+                value = getattr(args, key)
+                if not value:
+                    raise ServiceError("bad_argument", "external Compose adoption requires all Compose identity fields")
+                binding[key] = value
+            if not args.expected_image_id:
+                raise ServiceError("bad_argument", "external Compose adoption requires --expected-image-id")
+            binding["expected_image_id"] = args.expected_image_id
     for key in (
         "endpoint",
         "model",

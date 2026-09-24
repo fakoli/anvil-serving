@@ -242,3 +242,13 @@ qualification evidence).
 |---|---|---|
 | `docs/findings/2026-09-11-glm53-output-budget.md` | measured | Real Pi requests on the native Max-Q pair; bounded functional evidence. |
 | `docs/findings/2026-09-11-glm53-output-budget-evidence/publication-summary.md` | measured | Derivative of the same local evidence; no new hardware claim. |
+
+## 2026-09-24 RTX 5090 target correction
+
+| Path | Classification | Basis |
+|---|---|---|
+| `docs/findings/2026-09-23-thinkingcap-5090.md` | unrelated | ThinkingCap RTX 5090 is the corrected user-selected target. Earlier RTX PRO 6000 preparation was a wrong-target setup and produced no ThinkingCap inference or benchmark measurement. |
+| `docs/benchmarks/models/thinkingcap-qwen38-27b.md` | unrelated | Dossier records only the one-RTX-5090 local candidate lane; it makes no RTX PRO 6000 measurement claim. |
+| `docs/findings/2026-09-23-thinkingcap-evidence/README.md` | wrong-target preparation | Records the corrected RTX 5090 target and explains that prior PRO 6000 preparation did not run ThinkingCap inference or a benchmark. |
+| `docs/findings/2026-09-23-thinkingcap-evidence/run-plan-initial-superseded.md` | wrong-target preparation | Preserved superseded plan that identifies the earlier PRO 6000 work as a targeting mistake with no ThinkingCap measurement. |
+| `docs/findings/2026-09-23-thinkingcap-evidence/friction-log.md` | wrong-target preparation | Operational chronology only: it records the corrected RTX 5090 authorization and that the PRO 6000/GLM line was superseded, without a ThinkingCap measurement. |

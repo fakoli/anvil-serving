@@ -1,0 +1,142 @@
+{
+  "native_tls_catalog_source": "windows-authenticated-catalog-reasoning.json",
+  "preview": {
+    "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+    "package_version": "1.2.1",
+    "clients": [
+      "pi"
+    ],
+    "models": [
+      {
+        "id": "llm.auxiliary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.primary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.secondary",
+        "context_window": 131072,
+        "max_output_tokens": 10240
+      },
+      {
+        "id": "llm.voice",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.general",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.ocr",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      }
+    ],
+    "changed": [
+      "pi_models"
+    ],
+    "backup_created": false,
+    "openclaw_restarted": false,
+    "hermes_profiles": [],
+    "hermes_restarted": false,
+    "dry_run": true
+  },
+  "apply": {
+    "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+    "package_version": "1.2.1",
+    "clients": [
+      "pi"
+    ],
+    "models": [
+      {
+        "id": "llm.auxiliary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.primary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.secondary",
+        "context_window": 131072,
+        "max_output_tokens": 10240
+      },
+      {
+        "id": "llm.voice",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.general",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.ocr",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      }
+    ],
+    "changed": [
+      "pi_models"
+    ],
+    "backup_created": true,
+    "openclaw_restarted": false,
+    "hermes_profiles": [],
+    "hermes_restarted": false,
+    "dry_run": false
+  },
+  "idempotence": {
+    "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+    "package_version": "1.2.1",
+    "clients": [
+      "pi"
+    ],
+    "models": [
+      {
+        "id": "llm.auxiliary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.primary",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "llm.secondary",
+        "context_window": 131072,
+        "max_output_tokens": 10240
+      },
+      {
+        "id": "llm.voice",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.general",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      },
+      {
+        "id": "vision.ocr",
+        "context_window": 327680,
+        "max_output_tokens": 65536
+      }
+    ],
+    "changed": [],
+    "backup_created": false,
+    "openclaw_restarted": false,
+    "hermes_profiles": [],
+    "hermes_restarted": false,
+    "dry_run": true
+  }
+}

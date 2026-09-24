@@ -1,0 +1,297 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent adversarial feasibility review",
+    "scope": "A bounded 128K-or-larger context expansion plan for the ThinkingCap Qwen3.8 27B AWQ vision candidate on one RTX 5090; no lifecycle, endpoint, or promotion action",
+    "reviewed_at": "2026-09-24T04:22:00Z",
+    "implementing_model": "GPT-6 Astra, high reasoning",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ@f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "independence": "The reviewer is independent from the implementing model and the evaluated model. This packet reviews source and retained measurements only; it does not grade model output or run the candidate."
+  },
+  "gate_state": {
+    "identity": "passed from the sealed 32K campaign; the same model revision and runtime image are proposed",
+    "authorization": "passed for bounded autonomous candidate lifecycle and direct-profile replacement; no route or deployment promotion was authorized",
+    "128k_mtp3_bf16": "pruned as policy-infeasible from measured cache capacity and the exact pinned group-aware allocator",
+    "128k_no_spec_bf16_default_ssm": "the .95 load scout failed the initial device-fraction allocation before model weights loaded; this does not prove or refute group-aware 128K cache fit",
+    "128k_no_spec_bf16_default_ssm_uva": "conditional benchmark survivor at .93 with 1 GiB selective vision-tower UVA offload; source-supported but not integration-proven on this WSL, sm120, and multimodal profile",
+    "128k_no_spec_bf16_ssm": "conditional benchmark survivor; supported override, but a distinct numerical candidate requiring complete independent gates",
+    "headroom_policy": "corrected in the reviewed plan: retained profiles require at least 1024 MiB sampled free memory after representative workload",
+    "vision": "passed 18/18 on the selective-vision-UVA profile",
+    "near_limit_context": "the bounded scout passed 2/2 at an actual 125838-token prompt; the full retained context matrix remains pending",
+    "quality": "failed 27/30: the same computer-science item was wrong in all three attempts with stop finishes and without budget exhaustion",
+    "host_memory": "resolved for continued bounded assessment after an idle guarded page-cache reclaim: delayed WSL return restored about 11.79 GiB Windows free physical and 12.94 GiB free virtual memory; the candidate remained healthy",
+    "128k_mtp_recovery": "selective unquantized offload is insufficient, but one generic 3 GiB UVA, .93, MTP3 branch is paper-feasible with about 0.50 GiB modeled cache margin and requires local kernel, performance, quality, and host-memory proof",
+    "promotion": "not authorized"
+  },
+  "targets": [
+    {
+      "id": "128k-nospec-bf16-default-ssm",
+      "hardware": "one NVIDIA GeForce RTX 5090, 32607 MiB physical VRAM",
+      "runtime": "vLLM 0.29.0, pinned source 98dff2a81d747d1dba01a47f939f48c3526d4206",
+      "configuration": "131072 total context, C1, target TRITON_ATTN, no speculation, BF16 attention KV, model-default FP32 GDN recurrent state, CUDA graphs, full vision, gpu_memory_utilization=0.95",
+      "disposition": "attempted and failed the initial device-fraction allocation before model weights loaded; retain as a clean allocation failure, not evidence about KV fit"
+    },
+    {
+      "id": "128k-nospec-bf16-default-ssm-visual-uva",
+      "hardware": "one NVIDIA GeForce RTX 5090, 32607 MiB physical VRAM",
+      "runtime": "same exact pinned runtime and weights",
+      "configuration": "131072 total context, C1, target TRITON_ATTN, no speculation, BF16 attention KV, model-default FP32 GDN recurrent state, CUDA graphs, full vision, gpu_memory_utilization=0.93, explicit UVA backend, 1 GiB CPU offload limit restricted to parameter segment visual",
+      "disposition": "preferred second bounded load scout; require logs to prove UVA selection, actual offloaded bytes, reduced GPU weight residency, at least 131072 group-aware cache tokens, full-vision execution, host-memory bounds, and at least 1024 MiB sampled GPU free memory after representative workload"
+    },
+    {
+      "id": "128k-nospec-bf16-ssm",
+      "hardware": "one NVIDIA GeForce RTX 5090, 32607 MiB physical VRAM",
+      "runtime": "same exact pinned runtime and weights",
+      "configuration": "same as the first branch plus --mamba-ssm-cache-dtype bfloat16",
+      "disposition": "run only if the default-SSM branch fails cache fit; treat as a separate numerical candidate and rerun every required correctness, reasoning, vision, quality, capacity, context, and telemetry gate"
+    },
+    {
+      "id": "128k-mtp3-bf16-default-ssm-generic-uva3",
+      "hardware": "one NVIDIA GeForce RTX 5090, 32607 MiB physical VRAM",
+      "runtime": "same exact pinned runtime and weights",
+      "configuration": "131072 total context, C1, target TRITON_ATTN, MTP3, BF16 attention KV, model-default FP32 GDN recurrent state, CUDA graphs, full vision, gpu_memory_utilization=0.93, explicit UVA backend, generic 3 GiB CPU offload cap with no parameter selector",
+      "disposition": "the sole remaining paper-feasible scout; generic UVA may move hot compressed language tensors and is expected to trade substantial PCIe latency for fit, so startup, kernel correctness, host reserve, quality, and speed must all be measured"
+    }
+  ],
+  "tools_used": [
+    "anvil-serving-recipe-feasibility skill and feasibility contract",
+    "read-only inspection of proposed plans, recipes, and sealed startup logs",
+    "exact-revision upstream source inspection",
+    "bounded arithmetic from measured cache allocations and exact cache shapes",
+    "manual operator-workflow/v1 review; operation_contracts and workflow_packet_validate were not available",
+    "read-only comparison of retained Windows and docker-desktop WSL memory snapshots plus a bounded current process/memory snapshot",
+    "verified local CLI preview: python -m anvil_serving.cli host reclaim --distro docker-desktop --dry-run",
+    "no model endpoint, GPU lifecycle, serve, route, or promotion call"
+  ],
+  "artifacts": {
+    "reviewed": [
+      "run-plan.json",
+      "feasibility-input.json",
+      "feasibility-result.json",
+      "configurations/thinkingcap-awq-vllm029-5090-64k-mtp3-triton-bf16.toml",
+      "../2026-09-23-thinkingcap-evidence/native/candidate/graphs/graph-final-engine.log",
+      "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log",
+      "../2026-09-23-thinkingcap-evidence/fp8-v2-review.json",
+      "native/candidate/host-memory-start.json",
+      "native/candidate/startup.log",
+      "calibration.json"
+    ],
+    "primary_sources": [
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/cache.py#L69-L118",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/cache.py#L157-L183",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/cache.py#L216-L228",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/kv_cache_interface.py#L788-L840",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/core/kv_cache_utils.py#L955-L976",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/core/kv_cache_utils.py#L1878-L1937",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/attention/backends/utils.py#L216-L257",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/config.py#L725-L749",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/mamba/mamba_utils.py#L88-L118",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/mamba/mamba_utils.py#L236-L256",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/qwen3_5.py#L558-L588",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/offload.py#L16-L75",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/engine/arg_utils.py#L1330-L1359",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/offloader/uva.py#L21-L124",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/offloader/prefetch.py#L127-L240",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/offloader/prefetch.py#L317-L367",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/model_loader/utils.py#L97-L197",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/qwen3_5_mtp.py#L66-L141",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/qwen3_5_mtp.py#L215-L251",
+      "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/eagle/utils.py#L36-L101",
+      "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/blob/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11/config.json"
+    ],
+    "capacity_math": {
+      "default_ssm_observation": "The retained no-spec startup selected a 784-token attention block and padded each GDN page by 0.13%; 5.61 GiB produced 79872 reported tokens at max_model_len=16384.",
+      "default_ssm_structure": "The exact allocator result is consistent with 117 shared pool blocks and 24 blocks per maximum-length request: ceil(16384/784)=21 full-attention blocks plus three constant GDN groups. Pinned Mamba mode 'none' holds one recurrent state per request, rather than one state per token.",
+      "default_ssm_128k_demand": "(ceil(131072/784)+3) * 16 layers/group * 784 tokens/page * 4096 bytes/token/layer = 8786018304 bytes = 8.1826171875 GiB.",
+      "default_ssm_095_budget_proxy": "5.61 GiB + (0.95-0.87) * (32607/1024 GiB) = approximately 8.157421875 GiB, about 25.8 MiB below the point demand. The 5.61 GiB log value is rounded and the target backend/profile can shift fixed memory, so this is a knife-edge benchmark survivor, not a mathematical rejection or fit proof.",
+      "bf16_ssm_structure": "The model has 48 GDN layers and 16 full-attention layers. At TP1 without MTP, the exact GDN shapes are conv=(3,10240) and recurrent=(48,128,128). Keeping conv BF16 and overriding recurrent FP32 to BF16 yields 1634304 bytes per layer state/page; matching full attention uses a 399-token block.",
+      "bf16_ssm_128k_demand": "(ceil(131072/399)+3) * 16 * 1634304 = 8681422848 bytes = 8.085205078125 GiB, approximately 74 MiB below the .95 budget proxy. This is still a tight modeled fit and requires measured startup plus workload reserve.",
+      "mtp_prune": "The retained 32K MTP3 profile had only 56262 reported cache tokens at .87 and the engine's own full-device KV suggestion was about 7.004 GiB, corresponding to roughly 83315 tokens under that exact layout. A 131072-token MTP BF16 branch is therefore policy-infeasible on this envelope and should not consume another lifecycle branch."
+      ,"selective_uva_reclaim": "Moving from .95 to .93 reduces the nominal GPU allocation by about 0.6369 GiB. A measured 1 GiB offload therefore improves the cache envelope by only about 0.3631 GiB relative to .95 before secondary overheads. Restricting UVA to visual avoids the checkpoint's compressed language tensors because the exact quantization metadata excludes model.visual modules from compression. UVA applies its limit per parameter and can overshoot by the final matching tensor, so startup logs and host/GPU telemetry remain mandatory."
+    },
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "The earlier 512 MiB sampled-free floor has been corrected to a hard 1024 MiB retained-profile floor.",
+        "concrete_input_or_state": "run-plan.json current_branch now sets minimum_sampled_free_mib=1024 and identifies the same threshold for representative workload retention.",
+        "wrong_result_if_ignored": "Refuted by the current plan; execution evidence must still apply the threshold rather than treating it as advisory.",
+        "references": [
+          "run-plan.json:64",
+          "run-plan.json:66"
+        ],
+        "disposition": "Resolved in planning; verify enforcement in retained telemetry."
+      },
+      {
+        "id": "F2",
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "128K MTP3 BF16 is not a sensible branch on this GPU envelope; the plan should redirect directly to no-speculation for the user's minimum context.",
+        "concrete_input_or_state": "Measured MTP3 BF16 reported 56262 tokens at .87 and approximately 83315 tokens at the engine-calculated full-device KV amount, both far below 131072.",
+        "wrong_result_if_ignored": "The campaign would spend a destructive model swap on a branch already excluded by measured group-aware cache density and the required reserve.",
+        "references": [
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log:63",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log:66",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log:75"
+        ],
+        "disposition": "Prune 64K/96K/128K MTP from the minimum-128K path. Keep the qualified 32K MTP profile only as rollback."
+      },
+      {
+        "id": "F3",
+        "severity": "medium",
+        "classification": "plausible",
+        "finding": "The default-FP32-SSM 128K no-spec branch is within log rounding and profile drift of fitting, but its point estimate is about 25.8 MiB short at .95.",
+        "concrete_input_or_state": "The exact 784-token hybrid layout needs 8.182617 GiB for one 131072-token request; the measured .87 cache plus the nominal .08 VRAM increase predicts about 8.157422 GiB.",
+        "wrong_result_if_ignored": "A startup success could be assumed from raw 8 GiB attention KV math even though group padding and three constant recurrent groups consume additional blocks.",
+        "references": [
+          "../2026-09-23-thinkingcap-evidence/native/candidate/graphs/graph-final-engine.log:90",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/graphs/graph-final-engine.log:91",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/graphs/graph-final-engine.log:102",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/graphs/graph-final-engine.log:104"
+        ],
+        "disposition": "Proceed only as a bounded load scout. Accept fit only when the new startup reports at least 131072 group-aware cache tokens and workload telemetry stays at or above 1024 MiB free."
+      },
+      {
+        "id": "F4",
+        "severity": "medium",
+        "classification": "confirmed control requirement",
+        "finding": "BF16 GDN recurrent state is the only source-grounded small reclaim worth a second BF16 branch, but it overrides the model-declared FP32 recurrent state and cannot inherit the 32K quality evidence.",
+        "concrete_input_or_state": "Pinned vLLM resolves Qwen3.5 mamba_ssm_cache_dtype from the HF config and emits a warning when the user overrides it; the exact dtype and state-shape code supports BF16 and predicts roughly 99.7 MiB less 128K cache demand.",
+        "wrong_result_if_ignored": "A memory-fitting branch could be treated as numerically equivalent even if reduced recurrent-state precision changes long-context or ordinary output quality.",
+        "references": [
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/config.py#L725-L749",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/mamba/mamba_utils.py#L88-L118",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/layers/mamba/mamba_utils.py#L236-L256"
+        ],
+        "disposition": "Use only after default-SSM cache-fit failure and rerun the full functional, reasoning, vision, quality, strict-capacity, near-limit context, agentic, and telemetry gates."
+      },
+      {
+        "id": "F5",
+        "severity": "low",
+        "classification": "confirmed boundary",
+        "finding": "A 131072 configured limit is a total prompt-plus-output limit, so near-limit qualification must preserve the declared 4096-token output reserve and 1024-token calibration margin.",
+        "concrete_input_or_state": "The existing rule yields a maximum target prompt bucket of 125952 tokenizer-observed tokens for a 131072 profile, with full vision consuming tokens inside the same total limit.",
+        "wrong_result_if_ignored": "A nominal 128K prompt could be rejected or leave no generation room, while a short smoke could falsely qualify the advertised total context.",
+        "references": [
+          "run-plan.json:41"
+        ],
+        "disposition": "Retain the exact tokenizer-observed count, output usage, image token contribution, positions, repetitions, latency, and peak/minimum memory for near-limit multimodal evidence."
+      },
+      {
+        "id": "F6",
+        "severity": "medium",
+        "classification": "plausible",
+        "finding": "Small selective UVA offload is the least invasive source-grounded fallback, but packed NVFP4 language-weight execution through UVA is not proven for this exact integration.",
+        "concrete_input_or_state": "Pinned vLLM exposes --offload-backend, --cpu-offload-gb, and --cpu-offload-params; UVA supports tower offload and logs actual bytes. The checkpoint leaves model.visual unquantized, allowing a visual-only selector. Generic 1 GiB offload could instead stop midway through arbitrary compressed language parameters and their companion scales.",
+        "wrong_result_if_ignored": "A generic offload recipe could introduce an untested custom-kernel/UVA path, or reclaim a different amount than the requested cap, while being described as a memory-only change.",
+        "references": [
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/offload.py#L16-L75",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/offloader/uva.py#L21-L124",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/model_loader/utils.py#L97-L197"
+        ],
+        "disposition": "Use explicit UVA with cpu_offload_gb=1 and cpu_offload_params={visual} first. Treat the source as viability evidence only; prove actual offloaded bytes, vision behavior, host RAM, cache capacity, performance, and workload headroom locally."
+      },
+      {
+        "id": "F7",
+        "severity": "high",
+        "classification": "confirmed pressure, cause partly inferred",
+        "finding": "The selective UVA profile is not exhausting Linux memory, but Windows host headroom became too small to call the profile practically retained without a quiet post-run sample or managed page-cache reclaim.",
+        "concrete_input_or_state": "From 04:26 to 04:40, Windows free physical memory fell from 1590484 KiB to 1069112 KiB and free virtual memory fell from 10442084 KiB to 1814724 KiB. Over the same interval docker-desktop WSL available memory remained 12967862272 bytes, used memory rose about 1.03 GiB, buff/cache fell about 1.19 GiB, and swap changed by only 0.5 MiB. Startup proved 0.86 GiB of selectively offloaded visual parameters in page-locked host memory. A bounded later snapshot showed vmmemWSL as the dominant Windows working set at about 17.6 GiB while WSL still reported about 12.1 GiB available and 13.4 GiB buff/cache.",
+        "wrong_result_if_ignored": "Passing model requests could be published as a stable workstation profile while Windows is within roughly 1-2 GiB of physical or commit exhaustion. Conversely, attributing the whole decline to a fresh page-cache leak would be inaccurate because WSL buff/cache decreased during the measured interval.",
+        "references": [
+          "native/candidate/host-memory-start.json",
+          "native/candidate/startup.log:12",
+          "native/candidate/startup.log:21",
+          "native/candidate/startup.log:63",
+          "docs/cli/host.md:258",
+          "docs/cli/host.md:280",
+          "docs/adr/0023-lifecycle-aware-wsl-cache-reclaim.md:97"
+        ],
+        "disposition": "The lead previewed and applied the guarded local reclaim while inference was idle, without force, restart, or settings changes, under its interpretation of the user's existing autonomous system-optimization authorization. The delayed post-reclaim sample restored about 11.79 GiB Windows free physical and 12.94 GiB free virtual memory, and health remained successful. Whether that prior authorization covered the confirm-gated VM-wide mutation is an authorization-scope interpretation, not a measured technical fact; future uses must preserve the product preview/confirm gate and applicable human authority."
+      },
+      {
+        "id": "F8",
+        "severity": "high",
+        "classification": "confirmed lower bound with an explicit MTP1 unknown",
+        "finding": "A 128K MTP3 recovery does not fit using only selective unquantized offload, while one broader generic 3 GiB UVA branch remains paper-feasible rather than proven.",
+        "concrete_input_or_state": "The retained MTP3 BF16 layout uses an 800-token attention page, adds three padding layers, and reports 45180 tokens at 16K or 56262 at 32K from about 4.73 GiB. Those two observations are consistent with 91 shared pool blocks and require about 9.13 GiB for one 131072-token request. MTP raises measured model weight residency from 21.34 to 22.14 GiB. Visual UVA removes 0.86 GiB. Pinned Qwen3.5 MTP constructs the one draft decoder under prefix `mtp.layers.0`, making about 0.635 GiB of its unquantized attention and MLP selectively offloadable. Its separate BF16 `mtp.fc` is about 0.098 GiB, while target embedding and lm_head are shared into the draft after construction; these modules are outside the decoder-layer/tower wrap seam and are not a supported selective reclaim here. All target GDN in_proj_ba matrices together are only about 0.044 GiB.",
+        "wrong_result_if_ignored": "A selective-only load would be attempted based on raw target attention KV or the full 0.8 GiB MTP weight delta, even though the group-aware cache requires more memory and the offloader cannot selectively move all of that delta. Conversely, rejecting every CPU-offload branch would overstate the result: pinned generic UVA intentionally supports per-parameter offload, including quantized post-load processing.",
+        "references": [
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16/triton-bf16-final-engine.log:132",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16/triton-bf16-final-engine.log:134",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16/triton-bf16-final-engine.log:155",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16/triton-bf16-final-engine.log:158",
+          "../2026-09-23-thinkingcap-evidence/native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log:66",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/qwen3_5_mtp.py#L66-L141",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/models/qwen3_5_mtp.py#L215-L251",
+          "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/v1/worker/gpu/spec_decode/eagle/utils.py#L36-L101"
+        ],
+        "disposition": "Do not load the selective-only MTP3 or MTP1 branches. Permit exactly one generic UVA MTP3 branch with cpu_offload_gb=3 at .93: the matched measured envelope gives about 9.64 GiB modeled KV against about 9.13 GiB demand. It remains an integration and performance experiment because compressed-tensor kernels reading UVA-mapped packed weights have no retained proof on this exact stack."
+      }
+    ]
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail-closed when state, logs, or tools are unreadable",
+      "concrete_input_or_state": "Managed status, startup log, reported GPU KV token capacity, or telemetry is absent, truncated, stale, or names a different recipe/process.",
+      "wrong_result": "The branch advances from a successful HTTP smoke without proof that the intended context and reserve were active.",
+      "classification": "plausible until execution",
+      "result": "Fail the branch closed unless managed status, model identity, exact flags, group-aware cache capacity, and sampled memory are all readable and agree."
+    },
+    {
+      "axis": "malformed and boundary input, including CRLF and command/path metacharacters",
+      "concrete_input_or_state": "Nested JSON flags, Windows CRLF evidence, or a model/cache path containing spaces or shell metacharacters is parsed differently by TOML, CLI rendering, and the container entrypoint; a request totals 131072, 131073, or a calibrated 125952 prompt plus output.",
+      "wrong_result": "The recipe launches with altered flags, or boundary admission differs from the documented total-token contract.",
+      "classification": "plausible until the new recipe dry-run and boundary probes are retained",
+      "result": "Require managed create/load preview parity and explicit just-below, exact-total, and one-over-limit request evidence. Preserve raw CRLF evidence bytes."
+    },
+    {
+      "axis": "resource exhaustion and missing bounds",
+      "concrete_input_or_state": "A 131072-token C1 request with one and then two maximum-size images runs while workstation GPU usage drifts, or the .95 profile leaves less than 1024 MiB sampled free.",
+      "wrong_result": "Startup fit is mistaken for stable full-vision workload fit, followed by CUDA OOM, process restart, or desktop starvation.",
+      "classification": "confirmed risk",
+      "result": "Stop and restore 32K on any OOM/CUDA error/restart or sampled free memory below 1024 MiB. Keep C1 and bounded timeouts; do not claim C2."
+    },
+    {
+      "axis": "state drift across CLI, process, worktree, config reload, and route seams",
+      "concrete_input_or_state": "The prepared 64K recipe, retained 32K process, and new 128K recipe share a served-model name while the evidence collector reads a stale endpoint or derivative summary.",
+      "wrong_result": "32K or 64K output is attributed to the 128K branch, or an unauthorized route/promotion occurs.",
+      "classification": "plausible until execution",
+      "result": "Bind every retained artifact to unique run id, recipe hash, exact runtime args, process/container identity, and observed /v1/models max_model_len. Keep route changes and promoted=false."
+    }
+  ],
+  "advisory_priors": [
+    "The sealed 32K target-TRITON MTP3 BF16 profile remains the rollback; its qualification does not qualify a different cache layout or recurrent-state dtype.",
+    "The 16K no-speculation observation used FLASH attention rather than target TRITON. It is a useful memory-layout prior, not a matched speed or exact fixed-memory control.",
+    "The prior FP8-per-token-head MTP lane failed the required 30-attempt quality diagnostic at 27/30. That is adverse evidence for compressed cache, but it neither proves that MTP caused the failures nor qualifies a no-spec compressed-cache branch.",
+    "Pinned vLLM computes hybrid capacity from whole blocks across every cache group and logs a group-aware token capacity. Raw attention bytes alone are insufficient.",
+    "Pinned mamba mode 'none' already uses one recurrent state per request. Disabling the hybrid cache manager, forcing an unsupported KV layout, or enabling denser Mamba checkpoint modes cannot be claimed as memory reclamation.",
+    "Prefetch group_size=16, num_in_group=1, step=1 offloads four decoder layers but allocates one static GPU buffer slot. Net residency reduction is total offloaded storage minus the reusable slot, and the branch changes the language-forward transfer path. It is a later performance alternative, not the first small reclaim.",
+    "The candidate load preview reports automatic cache reclaim disabled. Manual page-cache reclaim is a local-only CLI operation in the command manifest; `host_manage` does not expose it. The supported path is therefore the verified checkout's `anvil-serving host reclaim --distro docker-desktop`, previewed first and separately confirm-gated.",
+    "If both BF16 branches fail, permit at most one separately validated no-speculation 8-bit KV branch before considering a different engine. It must pass the full independent gate set and cannot reuse the failed FP8 lane's quality result."
+  ],
+  "recommendation": {
+    "disposition": "do not qualify the current 128K profile; permit one generic-UVA 3 GiB MTP3 scout before restoring the qualified 32K rollback",
+    "branch_order": [
+      "Retain the .95 startup failure as device-fraction evidence only; do not infer KV fit.",
+      "128K no-speculation, target TRITON, BF16 attention KV, default FP32 GDN recurrent state, .93, explicit UVA, 1 GiB cap restricted to visual, hard 1024 MiB sampled-free floor",
+      "Record the selective-UVA 128K profile as an unqualified diagnostic because its hard quality gate failed 27/30.",
+      "Do not run selective-only MTP3 or MTP1: neither has a credible measured margin, and MTP1 would introduce an unqualified behavior change.",
+      "Run at most one 128K MTP3 branch with generic UVA cpu_offload_gb=3, .93, BF16 KV, default FP32 SSM, C1, and full vision. Require logged UVA selection and actual offload, at least 131072 group-aware cache tokens, at least 1024 MiB sampled GPU free, bounded host physical/virtual/WSL memory, and no CUDA, kernel, compile, or restart failure.",
+      "Advance from startup only through functional, 18-case vision, and reasoning controls, then a small predeclared quality scout. Run the full repeated suite, near-limit context matrix, and speed evidence only if those gates pass; otherwise restore the qualified 32K MTP3 profile."
+    ],
+    "success_condition": "The exact startup reports at least 131072 group-aware cache tokens, health and identity match, full vision passes, near-limit prompt plus reserved output stays within 131072, every deterministic/quality gate passes, and telemetry never falls below 1024 MiB free.",
+    "failure_condition": "Any startup capacity below 131072, OOM/CUDA error/restart, deterministic or quality failure, missing evidence, or sampled free memory below 1024 MiB restores the sealed 32K profile.",
+    "compressed_cache_fallback": "Only after both BF16 branches fail. Use one no-speculation 8-bit KV candidate with complete independent quality and long-context validation; do not claim equivalence from the prior failed FP8+MTP lane.",
+    "host_memory_condition": "The idle guarded reclaim was technically effective after delayed WSL return and preserved model health. Capture host RAM before and after any later CPU-offload candidate, but host RAM recovery does not repair the failed quality gate or GPU fit math.",
+    "host_reclaim_boundary": "`host reclaim` is a VM-wide bounded mutation with a product preview/confirm gate. The lead treated the existing autonomous optimization request as sufficient authority for this idle non-forced reclaim. This review records that interpretation as advisory rather than asserting an additional approval requirement. No raw Docker, WSL reset, host settings change, force override, or shared-memory reclaim belongs in this condition.",
+    "generic_uva_math": "Measured 32K MTP3 at .87 gives a fixed-memory proxy of .87*31.82-4.73 = 22.9534 GiB. At .93 with 3 GiB generic UVA reclaim, modeled KV is .93*31.82-22.9534+3 = 9.6392 GiB. The retained 800-token MTP3 hybrid layout requires about 9.13 GiB for one 131072-token request, leaving about 0.50 GiB modeled margin. The engine's per-parameter cap may overshoot by the last tensor, so actual offload and host pinned memory must be logged.",
+    "generic_uva_compatibility": "Pinned vLLM handles QuantizeMethodBase post-load processing in a device-loading context and restores UVA placement when tensors are replaced. UVA deliberately permits some parameters in a module to be offloaded while others remain resident. No explicit compressed-tensors NVFP4/FP8 rejection was found. This is implementation intent rather than exact sm120 integration proof; a kernel error, wrong output, unacceptable slowdown, or reserve failure rejects the branch.",
+    "promotion": "do not promote"
+  },
+  "human_gate_required": false,
+  "human_gate_scope": "No additional human gate is required for the bounded candidate lifecycle and direct-profile replacement because the user explicitly authorized autonomous optimization. Any route, client-alias, deployed-topology promotion, or destructive action outside that authorization still requires a separate human gate.",
+  "promoted": false
+}

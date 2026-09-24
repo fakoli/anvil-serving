@@ -1,0 +1,157 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-24-thinkingcap-128k",
+  "observed_at": "2026-09-24",
+  "sources": [
+    {
+      "id": "thinkingcap-awq",
+      "url": "https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ",
+      "published_or_observed": "2026-09-23",
+      "age_class": "current",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "Pinned complete vision-capable AWQ weights.",
+      "decision_impact": "Required candidate identity.",
+      "observed_at": "2026-09-23"
+    },
+    {
+      "id": "vllm-wsl-uva",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/envs.py",
+      "published_or_observed": "2026-09-24",
+      "age_class": "pinned",
+      "evidence_type": "official-source-code",
+      "hardware_runtime_relevance": "WSL V2 UVA pin-memory control.",
+      "decision_impact": "Managed recovery setting only.",
+      "observed_at": "2026-09-24"
+    },
+    {
+      "id": "vllm-offload",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/config/offload.py",
+      "published_or_observed": "2026-09-24",
+      "age_class": "pinned",
+      "evidence_type": "official-source-code",
+      "hardware_runtime_relevance": "Prior no-MTP visual-only UVA control.",
+      "decision_impact": "Prior selective visual-parameter offload evidence only.",
+      "observed_at": "2026-09-24"
+    },
+    {
+      "id": "vllm-uva-implementation",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/offloader/uva.py",
+      "published_or_observed": "2026-09-24",
+      "age_class": "pinned",
+      "evidence_type": "official-source-code",
+      "hardware_runtime_relevance": "Prior no-MTP visual-only parameter-selection and offload accounting.",
+      "decision_impact": "Does not characterize current generic-UVA MTP offload.",
+      "observed_at": "2026-09-24"
+    },
+    {
+      "id": "vllm-quantized-postload-reoffload",
+      "url": "https://github.com/vllm-project/vllm/blob/98dff2a81d747d1dba01a47f939f48c3526d4206/vllm/model_executor/model_loader/utils.py",
+      "published_or_observed": "2026-09-24",
+      "age_class": "pinned",
+      "evidence_type": "official-source-code",
+      "hardware_runtime_relevance": "Current MTP-UVA3 generic-UVA quantized post-load and reoffload path.",
+      "decision_impact": "Viability evidence only; local qualification remains required.",
+      "observed_at": "2026-09-24"
+    }
+  ],
+  "local_evidence": [
+    {
+      "id": "quality-128k-nospec",
+      "path": "native/candidate/quality.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Declared repeated quality gate failed at 27/30; retained failure, not a ranking result."
+    },
+    {
+      "id": "guarded-cache-reclaim",
+      "path": "native/host/cache-reclaim-apply.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-operational-observation",
+      "decision_impact": "Records guarded idle reclaim only; it does not establish model qualification."
+    },
+    {
+      "id": "context-scout-canonical-evidence-inspection",
+      "path": "native/context-scout/evidence-inspection.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-inspection",
+      "decision_impact": "Confirms the nested benchmark-evidence/v1 inspection passed with no validation errors."
+    },
+    {
+      "id": "mtp-uva3-startup",
+      "path": "native/mtp-uva3/startup.log",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Current MTP-UVA3 startup and identity binding; records 19.11 GiB GPU weights, 3.02 GiB generic UVA including 0.86 GiB visual, 9.7 GiB KV, and 138519 cache tokens."
+    },
+    {
+      "id": "mtp-uva3-quality-scout",
+      "path": "native/mtp-uva3/quality-scout.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "One-repetition 10/10 deterministic scout; insufficient for the full repeated quality gate."
+    },
+    {
+      "id": "mtp-uva3-identity-binding",
+      "path": "identity-mtp-uva3.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-binding",
+      "decision_impact": "Supplemental recipe-digest binding because native quality source_recipe fields remain null."
+    },
+    {
+      "id": "mtp-uva3-repeated-quality",
+      "path": "native/mtp-uva3/quality.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Repeated 30/30 quality diagnostic passed; quality scope remains bounded."
+    },
+    {
+      "id": "mtp-uva3-capacity-scout",
+      "path": "native/mtp-uva3/capacity-scout.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Four-request strict capacity scout passed; the active 100-request population is required for ranking."
+    },
+    {
+      "id": "mtp-uva3-capacity-n100",
+      "path": "native/mtp-uva3/capacity.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Strict 100-request short-output capacity population passed; its scope does not prove full context."
+    },
+    {
+      "id": "prior-no-mtp-settled-host-memory",
+      "path": "native/prior-host-settled/host-memory.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-operational-observation",
+      "decision_impact": "Prior rejected no-MTP branch cache-reclaim recovery; not current MTP headroom."
+    },
+    {
+      "id": "mtp-uva3-context-scout",
+      "path": "native/mtp-uva3-context-scout/artifact.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Two-request 32K and near-limit text context scout passed; it does not qualify the full matrix or mixed text-plus-image context."
+    },
+    {
+      "id": "mtp-uva3-context-full",
+      "path": "native/mtp-uva3-context-full/artifact.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "60-case text-only C1 context matrix passed; it does not prove exact-limit/one-over, C2, or mixed text-plus-image context."
+    },
+    {
+      "id": "mtp-uva3-agentic",
+      "path": "native/mtp-uva3-agentic/artifact.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-result",
+      "decision_impact": "Synthetic agentic tool workflow passed 2/2; it is not SWE or repository execution."
+    },
+    {
+      "id": "mtp-uva3-final-resource",
+      "path": "final-resource-summary.json",
+      "observed_at": "2026-09-24",
+      "evidence_type": "local-operational-observation",
+      "decision_impact": "Final retained identity and HTTP health observation; valid five-second GPU samples cover the full context matrix but not continuous later agentic sampling."
+    }
+  ]
+}

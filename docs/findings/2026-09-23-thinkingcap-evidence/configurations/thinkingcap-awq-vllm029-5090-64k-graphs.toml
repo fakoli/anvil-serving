@@ -1,0 +1,66 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ"
+status = "calibration-candidate"
+source = "2026-09-23 user-authorized RTX 5090 qualification; graph optimization arm after measured eager residency"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ"
+revision = "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120"
+vram_total_gb = 32
+vram_note = "64K C1 candidate; prior 16K graph control measured 21.34 GiB model and 5.61 GiB KV / 79,872 cache tokens."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.29.0@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--bottlecapai--ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/snapshots/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+quantization = "NVFP4 W4A4 AWQ mixed FP8/BF16; complete BF16 vision and MTP weights retained; no speculative decoding"
+context_tokens = 65536
+port = 39283
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "thinkingcap-awq-5090"
+ipc = "host"
+shm_size = "8gb"
+named_volumes = ["thinkingcap-vllm029-5090:/root/.cache/vllm"]
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "PYTHONHASHSEED=0", "MAX_JOBS=2", "VLLM_WSL2_ENABLE_PIN_MEMORY=1"]
+flags = [
+  "--served-model-name thinkingcap-awq-5090",
+  "--tensor-parallel-size 1",
+  "--max-model-len 65536",
+  "--max-num-seqs 1",
+  "--max-num-batched-tokens 1024",
+  "--gpu-memory-utilization 0.87",
+  "--kv-cache-dtype auto",
+  "--no-enable-prefix-caching",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--limit-mm-per-prompt '{\"image\":2,\"video\":0}'",
+  "--mm-processor-kwargs '{\"size\":{\"longest_edge\":1048576,\"shortest_edge\":65536}}'",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 39283",
+]
+note = "64K no-speculation context candidate. Prior 16K graph control measured 21.34 GiB model and 5.61 GiB KV / 79,872 cache tokens; full vision passed. This larger context still requires qualification. Configured for two images, approximately one megapixel each; loopback managed endpoint; no route change."
+
+[recipe.fit]
+suited = ["memory-calibration", "qualification-candidate"]
+not_suited = ["automatic-promotion", "unqualified-long-context", "video"]
+rationale = "Expand the graph-enabled no-speculation candidate to 64K; require near-limit context, full vision and functional acceptance."
+
+[recipe.sources]
+official = ["https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/tree/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"]
+community = []
+local = ["docs/findings/2026-09-23-thinkingcap-evidence/feasibility-5090-input.json"]

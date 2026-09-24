@@ -1,0 +1,11 @@
+{
+  "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee",
+  "file_sha256": {
+    "hermes:default": "8e30b7ed82f33feb5db5228eb5faffd99ff43c435cb52364a0104c56cd779c22",
+    "openclaw": "378680b70f124784e5751b6c88ead0590df9d72ad557ce33a9d6446937e7cfef",
+    "pi_models": "fa44076b087ab12ee6ac0ca50c38133872ad7690b69005bea7c8a044239732c4",
+    "pi_settings": "eb9f6c45f1c89dcdcae8bc9283f629f86705ec96ded4bcf824afd5ee72c7d7da"
+  },
+  "openclaw_restarted_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c",
+  "openclaw_service_restarted_sha256": "3f1945d4dec147277d4f9fdc2576ab21d8fc9b1424a8c7620d6c2c64a038759c"
+}

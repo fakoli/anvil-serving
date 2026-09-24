@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.control-evidence/v1",
+  "status": "verified",
+  "control_mechanism": "chat_template_kwargs",
+  "source": "Independent native preflight: disabled yields no reasoning text; enabled yields positive reasoning tokens for all eight text/tool observations; both suites passed",
+  "observed_at": "2026-09-24T01:51:06.337040+00:00",
+  "model": "thinkingcap-awq-5090",
+  "recipe_digest": "57e9b8d371a5cc03b3cd5525d3db6d225666bd0bbebb9fbcca9cf92292345f24",
+  "proofs": [
+    {
+      "path": "graph-preflight.json",
+      "sha256": "cbe8393f9d190685ba0cd922303bff2c570cffb519af253d9557362fb44e6bfd"
+    },
+    {
+      "path": "graph-reasoning-preflight.json",
+      "sha256": "70731b381f316c014d612803d1224aae83a6c90399ab78dc4338170e46c97aa6"
+    }
+  ]
+}

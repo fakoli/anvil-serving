@@ -1,0 +1,2 @@
+timestamp, name, memory.total [MiB], memory.used [MiB], memory.free [MiB], utilization.gpu [%], power.draw [W], temperature.gpu
+2026/09/23 20:28:20.237, NVIDIA GeForce RTX 5090, 32607 MiB, 28846 MiB, 3342 MiB, 0 %, 18.15 W, 33

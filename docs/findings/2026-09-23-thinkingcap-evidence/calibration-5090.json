@@ -1,0 +1,53 @@
+{
+  "schema": "thinkingcap-calibration-observation/v1",
+  "observed_at": "2026-09-24T03:37:44.165805+00:00",
+  "hardware": "one NVIDIA GeForce RTX 5090,32607MiB",
+  "lane": "16K,C1,eager,no speculation,auto BF16 KV,.87 GPU fraction",
+  "model_loading_gib": 21.34,
+  "available_kv_gib": 5.67,
+  "configured_context_tokens": 16384,
+  "runtime_reported_kv_tokens": 80554,
+  "vision": "BF16 tower loaded; two-image admission configured; deterministic18/18 corpus passed",
+  "sources": [
+    "native/startup/startup-16k-wsl.log",
+    "native/candidate/eager/candidate-models-16k.json",
+    "native/candidate/eager/candidate-multimodal-16k.json"
+  ],
+  "boundary": "Startup cache capacity is configuration-specific, not a universal hardware ceiling or proof of context quality. See cache-capacity-boundary.json.",
+  "result": "Selected 32K BF16 C1 passed functional, reasoning control, vision, strict capacity, repeated quality, long-context and bounded agentic gates; retained directly under user authorization.",
+  "graph_observation": {
+    "model_loading_gib": 21.34,
+    "available_kv_gib": 5.61,
+    "runtime_reported_kv_tokens": 79872,
+    "captured_graph_gib": 0.05,
+    "configured_context_tokens": 16384,
+    "warning": "Startup allocation does not prove long-context correctness or additional concurrency"
+  },
+  "triton_bf16_observation": {
+    "model_loading_gib": 22.14,
+    "available_kv_gib": 4.73,
+    "runtime_reported_kv_tokens": 45180,
+    "captured_graph_gib": 0.1,
+    "configured_context_tokens": 16384,
+    "source": "native/candidate/triton-bf16/triton-bf16-final-engine.log"
+  },
+  "triton_fp8_observation": {
+    "model_loading_gib": 22.14,
+    "available_kv_gib": 4.73,
+    "runtime_reported_kv_tokens": 64111,
+    "captured_graph_gib": 0.1,
+    "configured_context_tokens": 16384,
+    "source": "native/candidate/triton-fp8/triton-fp8-startup.log",
+    "selection": "rejected at repeated quality gate, not advanced to56K"
+  },
+  "triton_bf16_32k_observation": {
+    "model_loading_gib": 22.14,
+    "available_kv_gib": 4.73,
+    "runtime_reported_kv_tokens": 56262,
+    "configured_context_tokens": 32768,
+    "source": "native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log",
+    "status": "passed; direct serve retained",
+    "measured_minimum_free_gpu_mib": 3342,
+    "headroom_source": "telemetry-summary.json"
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "operation": "independent adversarial review",
+    "scope": "Completed ThinkingCap Qwen3.8 27B AWQ RTX 5090 benchmark evidence, selected 32K/C1 publication claims, ending state, telemetry, privacy, and validation boundaries",
+    "reviewed_at": "2026-09-24T03:47:22.1992872Z",
+    "implementing_model": "GPT-6 Astra, high reasoning",
+    "reviewer_model": "GPT-5.6 Sol, high reasoning",
+    "evaluated_model": "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ@f8fe157f207a13f977bc3d620ce10a3e9ba5ab11",
+    "independence": "The reviewer is independent from the implementing model and the evaluated model. Deterministic harness checks, not the evaluated model, scored the retained functional, context, capacity, quality, vision, and agentic observations. Earlier reviewer-authored advisory records were not used as acceptance evidence."
+  },
+  "gate_state": {
+    "model_identity": "passed",
+    "selected_recipe": "passed",
+    "functional": "passed: 27/27 observations",
+    "reasoning_control": "passed: 8/8 observations",
+    "vision": "passed: 18/18 attempts",
+    "limited_quality_diagnostic": "passed: 30/30 attempts across ten questions repeated three times",
+    "strict_capacity": "passed: 100/100 requests",
+    "context": "passed within bounded scope: 60/60 observations; actual prompt ranges 8198-8229 and 29578-29629 tokens; 2048-token total completion cap",
+    "agentic": "passed within bounded scope: 2/2 synthetic cases, six API turns, four tool calls",
+    "ending_state": "passed: authorized direct candidate retained; managed status and HTTP identity healthy; later HTTP recheck observed 200 and max_model_len 32768",
+    "privacy": "passed for the changed benchmark bundle: no credential, real GPU UUID, private IP, operator home, MagicDNS, or non-loopback local URL remained; public upstream repository issue URLs were preserved",
+    "documentation": "passed: 19 focused benchmark-document tests, Markdown links, strict MkDocs, CLI reference audit, scoped authoring whitespace, deterministic chart rendering, and changed-file privacy checks",
+    "full_repository": "failed: 7923 passed, 417 skipped, 1 failed in the Windows Pi RPC smoke",
+    "artifact_ledger": "pending final regeneration after this review artifact and final closure metadata",
+    "promotion": "not authorized"
+  },
+  "targets": [
+    {
+      "id": "thinkingcap-awq-5090",
+      "hardware": "one NVIDIA GeForce RTX 5090",
+      "runtime": "vLLM 0.29.0, image sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b",
+      "configuration": "32768 configured context, C1, target TRITON_ATTN, MTP3, BF16 KV, CUDA graphs, two images around 1 MP, video disabled",
+      "recipe_semantic_sha256": "56cbe79dcd1c3eb2ddba162a866c6d712f8614705047aa5cb753c4a0f638100f",
+      "registry_byte_sha256": "fe43362857973f7368b5cbd1694ee974dbb8b06bbdeacf36740ba3bd6637082b",
+      "disposition": "bounded direct qualification accepted; direct retention was explicitly authorized; no route, client alias, or deployed-topology promotion"
+    }
+  ],
+  "tools_used": [
+    "read-only file inspection",
+    "rg bounded claim, privacy, and stale-state scans",
+    "git status, diff, and object-hash inspection",
+    "Python JSON parsing, native-count recomputation, link resolution, and redaction-hash verification",
+    "manual operator-workflow/v1 shape review; operation_contracts and workflow_packet_validate were not available"
+  ],
+  "artifacts": {
+    "reviewed": [
+      "../2026-09-23-thinkingcap-5090.md",
+      "../../benchmarks/models/thinkingcap-qwen38-27b.md",
+      "publication-summary.md",
+      "triton-bf16-32k-result-summary.json",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-startup.log",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-preflight.json",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-reasoning-preflight.json",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-multimodal.json",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-short32-n100-r1.json",
+      "native/candidate/triton-bf16-32k/triton-bf16-32k-mmlu10-thinking.json",
+      "context-result-summary.json",
+      "native/context/full/artifact.json",
+      "native/context/full/evidence/0-context.json",
+      "agentic-result-summary.json",
+      "native/agentic/artifact.json",
+      "native/agentic/evidence/0-agentic.json",
+      "restoration.json",
+      "native/final/status.json",
+      "native/final/http.json",
+      "native/final/http-recheck.json",
+      "telemetry-summary.json",
+      "operational-source-final-check.json",
+      "validation-final.json",
+      "validation/validation-full-pytest.log",
+      "artifact-manifest-source.json",
+      "artifact-manifest.json"
+    ],
+    "findings_summary": [
+      {
+        "id": "F1",
+        "severity": "high",
+        "classification": "confirmed",
+        "finding": "The full repository gate is not clean. The required wrapper stopped at one Windows Pi RPC smoke failure after 7923 passes and 417 skips.",
+        "concrete_input_or_state": "tests/workbench/test_pi_official_smoke.py::test_official_pi_native_history_fork_resume_and_model_controls on Windows; PiRpcClient observed process exit 134 at initial get_state.",
+        "wrong_result_if_ignored": "The bundle would incorrectly claim repository-wide validation or package readiness.",
+        "references": [
+          "validation-final.json:5",
+          "validation-final.json:30",
+          "validation/validation-full-pytest.log:214",
+          "product-gaps/2026-09-23-windows-pi-rpc-validation.md:1"
+        ],
+        "disposition": "Does not invalidate the separately retained model-serving gates because no runtime or test source change remains, but it blocks any clean full-repository or release-readiness claim."
+      },
+      {
+        "id": "F2",
+        "severity": "medium",
+        "classification": "confirmed closure condition",
+        "finding": "The checked artifact manifest precedes the completed campaign and this independent review. It must be regenerated after all final files are stable.",
+        "concrete_input_or_state": "artifact-manifest.json still records completed_at=null and missing raw-run evidence while the final source manifest is being assembled.",
+        "wrong_result_if_ignored": "The published hash ledger would not bind the final native evidence and review bytes.",
+        "references": [
+          "artifact-manifest.json:9",
+          "artifact-manifest.json:95"
+        ],
+        "disposition": "Required publication-closure action after this file is written; it does not reopen or invalidate the model measurements."
+      },
+      {
+        "id": "F3",
+        "severity": "low",
+        "classification": "confirmed limitation",
+        "finding": "There is no matched target-Triton no-speculation control, so the selected timing population is a whole-recipe result and cannot isolate MTP speedup.",
+        "concrete_input_or_state": "The compared lanes vary attention backend, speculation, KV settings, graph behavior, and for the selected lane configured maximum context.",
+        "wrong_result_if_ignored": "A reader could attribute the measured decode difference to MTP alone.",
+        "references": [
+          "../2026-09-23-thinkingcap-5090.md:62",
+          "../../benchmarks/models/thinkingcap-qwen38-27b.md:43",
+          "graph-manifest.json:7"
+        ],
+        "disposition": "Adequately disclosed; no additional sweep is required for the bounded selected-profile claim."
+      },
+      {
+        "id": "F4",
+        "severity": "low",
+        "classification": "confirmed limitation",
+        "finding": "The qualification is C1 and bounded: it does not measure C2, a literal 32768-token input, SWE work, video, long-duration soak, or a general quality ranking.",
+        "concrete_input_or_state": "The largest observed prompts were 29578-29629 tokens with a 2048-token total completion cap; agentic evidence contains two synthetic cases; telemetry uses five-second sampling and observed 3342 MiB minimum free memory for the selected profile.",
+        "wrong_result_if_ignored": "The evidence could be generalized beyond the concurrency, context, workload, stability, and modality actually tested.",
+        "references": [
+          "context-result-summary.json:5",
+          "context-result-summary.json:14",
+          "agentic-result-summary.json:8",
+          "telemetry-summary.json:18",
+          "../2026-09-23-thinkingcap-5090.md:68",
+          "../2026-09-23-thinkingcap-5090.md:72"
+        ],
+        "disposition": "Adequately disclosed and acceptable for the stated 32K/C1 direct qualification."
+      }
+    ]
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail-closed when state or evidence is unreadable",
+      "concrete_input_or_state": "Remove or alter a selected native artifact after publication while leaving derivative claims intact.",
+      "wrong_result": "Publication remains apparently qualified without a matching hash-bound source artifact.",
+      "classification": "confirmed pre-closure risk",
+      "result": "Final artifact-manifest regeneration and hash verification are required after this review file; publication closure remains conditional until that succeeds."
+    },
+    {
+      "axis": "malformed and boundary input, including CRLF and command/path metacharacters",
+      "concrete_input_or_state": "TOML flags contain nested JSON and quoted speculative/MM processor values; evidence includes Windows paths and raw CRLF-bearing logs.",
+      "wrong_result": "Recipe parsing changes the intended flags, or authoring cleanup mutates retained native evidence bytes.",
+      "classification": "refuted for the reviewed configuration",
+      "result": "The public selected recipe and evidence snapshot are byte-identical, nested arguments are retained as intended, focused parsing/document checks passed, and raw evidence bytes are intentionally excluded from line-ending normalization."
+    },
+    {
+      "axis": "resource exhaustion or missing bounds/timeouts",
+      "concrete_input_or_state": "Run concurrent or larger-context work against the C1 profile, or infer a stable reserve from five-second telemetry.",
+      "wrong_result": "The selected profile is represented as C2-capable, full-32768-input qualified, or soak-safe without evidence.",
+      "classification": "confirmed scope boundary",
+      "result": "Claims are limited to C1, measured prompt ranges, bounded completion reserve, and sampled telemetry; C2 and endurance remain unqualified."
+    },
+    {
+      "axis": "state drift across CLI, process, worktree, config, and route seams",
+      "concrete_input_or_state": "The retained process serves a different model/context than the managed recipe, or benchmark diagnosis leaves runtime/test source changes or promotes a route.",
+      "wrong_result": "Evidence is attributed to the wrong live process or an unauthorized deployment state.",
+      "classification": "refuted within the observed window",
+      "result": "Managed status, HTTP model identity, recipe hashes, and the later HTTP recheck agree; operational Python files were unchanged, the exploratory test patch was reverted, and no route/client/deployed-topology promotion occurred. State after the final 2026-09-24T03:44:07Z recheck is outside the evidence window."
+    }
+  ],
+  "advisory_priors": [
+    "The selected 32K result is supported by native artifacts rather than derivative summaries alone.",
+    "The limited MMLU diagnostic is deterministic and repeated but is not a complete MMLU-Pro score or a general model ranking.",
+    "The FP8 lane is correctly rejected after its 27/30 required quality gate despite passing strict capacity.",
+    "The 56K FP8 lane was correctly not advanced after that failure.",
+    "Direct candidate replacement and retention were explicitly authorized; promotion was not."
+  ],
+  "recommendation": {
+    "model_qualification": "accept",
+    "scope": "bounded 32K/C1 direct candidate only",
+    "publication": "accept after F2 artifact-manifest closure is completed",
+    "repository_or_release_readiness": "hold because F1 remains unresolved",
+    "promotion": "do not promote",
+    "reason": "Native identity, configuration, functional, vision, limited quality, strict-capacity, near-limit context, bounded agentic, final-health, and telemetry evidence support the stated direct profile. The remaining issues are explicitly separated publication/repository boundaries rather than model-gate failures."
+  },
+  "human_gate_required": true,
+  "human_gate_scope": "Any future route, client-alias, deployed-topology promotion, or destructive lifecycle action requires a separate human gate. The direct replacement and retained candidate state reviewed here were already explicitly authorized.",
+  "promoted": false
+}

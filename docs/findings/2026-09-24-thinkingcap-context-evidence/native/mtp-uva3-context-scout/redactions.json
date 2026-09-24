@@ -1,0 +1,83 @@
+{
+  "schema": "anvil-serving.redaction-ledger/v1",
+  "scope": "MTP/UVA3 128K context scout native export",
+  "artifacts": [
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/artifact.json",
+      "public_path": "artifact.json",
+      "original_sha256": "00662fa3e5c96a8d9ea53f62389b58016f974040d1f208ac2076a6edf95a35ab",
+      "public_sha256": "ef9e16dfba0746c3956004188f4d37bd6b7ec89734a2a1e767023f58c7154074",
+      "original_bytes": 8184,
+      "public_bytes": 8437
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/assets.json",
+      "public_path": "assets.json",
+      "original_sha256": "391a4324022af9500514a7c2a3c1dacc931ce65061e279b21f252cc21176997a",
+      "public_sha256": "a50dc519293e825bbf448ca02a6ee007b7a3c2fe5a95893cb20871b462dcc546",
+      "original_bytes": 573,
+      "public_bytes": 589
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/evidence/0-assets.json",
+      "public_path": "evidence/0-assets.json",
+      "original_sha256": "391a4324022af9500514a7c2a3c1dacc931ce65061e279b21f252cc21176997a",
+      "public_sha256": "a50dc519293e825bbf448ca02a6ee007b7a3c2fe5a95893cb20871b462dcc546",
+      "original_bytes": 573,
+      "public_bytes": 589
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/evidence/0-context.json",
+      "public_path": "evidence/0-context.json",
+      "original_sha256": "529e7c9e413ac4fd97ba202ff8b0c8cd00abe61828eab04fec2696e33267fcf8",
+      "public_sha256": "b88d37efc97fbecc5dca1c31e8f9624250a8cc264b9ca6704cbcd2451b3a6ba6",
+      "original_bytes": 5625,
+      "public_bytes": 5817
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/evidence/0-preflight.json",
+      "public_path": "evidence/0-preflight.json",
+      "original_sha256": "9df8fd680b0ba3c293450bace6eb1a2ff45739bed6336beb4e7a5feb95ebf25c",
+      "public_sha256": "5d1d6114ba2145d2f15294f964702ddda8f2a84027af4de643ce31a267d382f2",
+      "original_bytes": 1997,
+      "public_bytes": 2077
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/worker.json",
+      "public_path": "worker.json",
+      "original_sha256": "ec15ede7a1b27087714b6197ca45269fc835a5e83376d088e2edc0d131622796",
+      "public_sha256": "a1c43a8763be89e006a0452709868e3af94eff93ea74e4af17fdcaf238172ce9",
+      "original_bytes": 135,
+      "public_bytes": 140
+    },
+    {
+      "protected_source": "context-bf16-128k-mtp-uva3-scout-preflight.private.log",
+      "public_path": "native-preflight.log",
+      "original_sha256": "bbd98b2b7bd96c5e1f615ed26beb6f424b46d872609bfc7ad858e1c64168cc4b",
+      "public_sha256": "de0d61d9667f8379eda45cdcb00ef46492c2348571400afa3f89581f861517a1",
+      "original_bytes": 1602,
+      "public_bytes": 2274
+    },
+    {
+      "protected_source": "context-bf16-128k-mtp-uva3-scout-submit.private.log",
+      "public_path": "submit.log",
+      "original_sha256": "8fb6e92225666a3f6bce3e2b1cb8006243764150d856802ecff15331f624fe06",
+      "public_sha256": "22025dd683a1940f97da909bdd4be5d4e6a80e4f54b498c1a917c6358efb5d1e",
+      "original_bytes": 2988,
+      "public_bytes": 4278
+    },
+    {
+      "protected_source": "benchmark-jobs/thinkingcap-5090/thinkingcap-5090-context-bf16-128k-mtp-uva3-scout-v1/artifact.json#results.evidence",
+      "public_path": "cross-suite-evidence.json",
+      "original_sha256": "c7b7354b99a110a9c8e37a82a4fa3a2387ad479f2e206a1737350b6b801628ca",
+      "public_sha256": "79b7ebe4540687d1893a457079e6fb58350e945aac1063c4e0ee4682bcfe27c7",
+      "note": "Canonical public companion equals the redacted public outer artifact results.evidence; source canonical hash is calculated over protected JSON canonical serialization.",
+      "public_bytes": 6698
+    }
+  ],
+  "notes": [
+    "Native hash and digest fields are preserved from protected source artifacts; public-file resolution is provided by this ledger.",
+    "Private identities, Windows home prefixes, and private network addresses were redacted.",
+    "Public filenames drop the private source suffix where present. Docker bridge client address is normalized to the reserved generic placeholder; original private hashes and names remain unchanged."
+  ]
+}

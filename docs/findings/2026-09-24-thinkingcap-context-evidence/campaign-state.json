@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-24-thinkingcap-context",
+  "updated_at": "2026-09-24T07:29:30.048956+00:00",
+  "status": "complete",
+  "current_stage": "Qualified 128K direct candidate retained; evidence sealed",
+  "minimum_context": 131072,
+  "execution_launcher": {
+    "version": "1.2.1",
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "source": "original dirtycheckout, sourceidentity retained in priorcampaign"
+  },
+  "active_assignments": [],
+  "promotion_authorized": false,
+  "completed_cells": [
+    "no-MTP startup/function/vision/reasoning/context scout passed; quality27/30 failed",
+    "MTP3 UVA3 startup, functional27,vision18,reasoning9 passed",
+    "MTP3 UVA3 ten-item one-pass quality scout10/10, allstop",
+    "MTP3 UVA3 unchanged repeated quality 30/30, all normal stop",
+    "MTP3 UVA3 strict capacity scout 4/4",
+    "MTP3 UVA3 strict capacity 100/100, zero failures",
+    "MTP3 UVA3 context scout 2/2 at actual 32,658 and 125,838 input tokens",
+    "Full context matrix 60/60 correct, completed and stop",
+    "Synthetic agentic 2/2, six turns and four tool calls",
+    "Ending HTTP health 200, same pinned identity, memory floor met and 329 source hashes unchanged"
+  ],
+  "next_actions": []
+}

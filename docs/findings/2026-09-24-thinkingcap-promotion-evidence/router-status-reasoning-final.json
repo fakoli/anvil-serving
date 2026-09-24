@@ -1,0 +1,19 @@
+{
+  "object": "router_status",
+  "package_version": "1.2.1",
+  "started_at": "2026-09-24T08:50:14.080641Z",
+  "uptime_seconds": 30,
+  "model_aliases": [
+    "llm.auxiliary",
+    "llm.primary",
+    "llm.secondary",
+    "llm.voice",
+    "vision.general",
+    "vision.ocr"
+  ],
+  "tier_counts": {
+    "configured": 2,
+    "enabled": 2
+  },
+  "config_sha256": "f5b1d1a06b9cebf680ee1cc65cc24e9314e222f5a6f0a5a94597eeceee3a89ee"
+}

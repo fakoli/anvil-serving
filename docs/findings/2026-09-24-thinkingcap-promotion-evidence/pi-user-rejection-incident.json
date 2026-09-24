@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-serving.client-incident/v1",
+  "observed_at": "2026-09-24",
+  "client": "Pi",
+  "host": "Dark",
+  "alias": "llm.secondary",
+  "request_id": "req_8679dddc2bf74ae9a1c2406ab83e71c8",
+  "status": 400,
+  "root_cause": "Unsupported caller reasoning_effort=high rejected by pinned upstream chat template",
+  "supported_efforts": [
+    "low",
+    "medium",
+    "xhigh"
+  ],
+  "default_effort": "xhigh",
+  "route_reached_expected_upstream": true,
+  "context_limit_tokens": 131072,
+  "applied_max_output_tokens": 10240,
+  "estimated_prompt_tokens": 20051,
+  "remediation_status": "live_dark_fix_verified",
+  "remediation": "Per-model Pi thinkingLevelMap maps high to xhigh; 128K total context and 10240 output retained.",
+  "acceptance_artifact": "dark-pi-independent-acceptance.json",
+  "router_correlation_artifact": "dark-pi-high-normal-router-diagnosis.json"
+}

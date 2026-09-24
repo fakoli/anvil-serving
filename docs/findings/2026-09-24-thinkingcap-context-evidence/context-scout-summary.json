@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.context-result-summary/v1",
+  "branch": "128k-mtp3-generic-uva3",
+  "status": "passed",
+  "scope": "two-request diagnostic scout, not full matrix",
+  "configured_total_tokens": 131072,
+  "completion_token_cap": 4096,
+  "observations": [
+    {
+      "case_id": "native-needle-32768-0.500-r0",
+      "case_type": "native-needle",
+      "position": 0.5,
+      "requested_tokens": 32768,
+      "prompt_tokens": 32658,
+      "token_measurement": "usage",
+      "finish_reason": "stop",
+      "completed": true,
+      "passed": true,
+      "latency_ms": 31835.750400001416,
+      "throughput_tps": 2.1987859284132623
+    },
+    {
+      "case_id": "native-needle-125952-0.500-r0",
+      "case_type": "native-needle",
+      "position": 0.5,
+      "requested_tokens": 125952,
+      "prompt_tokens": 125838,
+      "token_measurement": "usage",
+      "finish_reason": "stop",
+      "completed": true,
+      "passed": true,
+      "latency_ms": 157638.44620002783,
+      "throughput_tps": 0.6597375355250212
+    }
+  ],
+  "completion_token_counts": "Not retained as a separate field by the native context observation; throughput includes prompt processing and is not decode speed.",
+  "raw_evidence": "native/mtp-uva3-context-scout/artifact.json",
+  "native_suite": "native/mtp-uva3-context-scout/evidence/0-context.json",
+  "identity_binding": "identity-mtp-uva3.json",
+  "limitations": [
+    "No exact-total or one-over-limit admission test",
+    "No combined long text and images",
+    "No C2; durations diagnostic only"
+  ]
+}

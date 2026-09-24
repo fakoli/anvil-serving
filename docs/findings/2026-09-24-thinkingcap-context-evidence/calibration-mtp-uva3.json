@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.context-calibration/v1",
+  "branch": "128k-mtp3-generic-uva3",
+  "recorded_at": "2026-09-24T05:05:22.320573+00:00",
+  "configured_context": 131072,
+  "reported_kv_capacity_tokens": 138519,
+  "gpu_weights_gib": 19.11,
+  "actual_cpu_offload_gib": 3.02,
+  "visual_offload_gib": 0.86,
+  "kv_cache_gib": 9.7,
+  "cuda_graph_gib": 0.1,
+  "attention": "TRITON_ATTN target and draft",
+  "kv_dtype": "bfloat16",
+  "mamba_ssm_dtype": "model-default float32",
+  "speculative_tokens": 3,
+  "gpu_memory_fraction": 0.93,
+  "startup_free_mib": 1736,
+  "health": 200,
+  "served_name": "thinkingcap-awq-5090",
+  "qualification": "All declared model gates passed: functional 27/27, thinking controls 9/9, vision 18/18, repeated quality 30/30, strict capacity 100/100, context 60/60 all stop, and synthetic agentic 2/2. Final identity and HTTP health verified; direct candidate retained.",
+  "evidence": [
+    "native/mtp-uva3/startup.log",
+    "native/mtp-uva3/health.json",
+    "native/mtp-uva3/functional.json",
+    "native/mtp-uva3/vision.json",
+    "native/mtp-uva3/reasoning.json",
+    "native/mtp-uva3/quality.json",
+    "native/mtp-uva3/capacity-scout.json",
+    "context-full-summary.json",
+    "agentic-summary.json",
+    "final-resource-summary.json"
+  ]
+}
