@@ -5,10 +5,10 @@
   "identity": {
     "source_revision": "731309e499ade9ad0043afbe9024a108cc1285f2",
     "control": "candidate-dcp1.public.toml",
-    "finalist": null
+    "finalist": "r11 DCP1 batch2048/C4/0.97"
   },
   "measurement": {
-    "path": "direct online isolated endpoint; routed acceptance pending",
+    "path": "direct and production-routed r11 endpoint; native-client acceptance retained",
     "sample_count": 16,
     "statistics": ["C8 diagnostic only; failed population is performance-ineligible"]
   },
@@ -21,7 +21,7 @@
     "64K diagnostic reached its 65536 completion cap with 5921 visible tokens; review found coherent truncation but materially lower one-attempt visible yield than the matched incumbent",
     "isolated routed preflight passed 28 observations across eight functional families, including a 20-request tool batch",
     "routed offered-eight closed the configured C4 dispatch/admission boundary with six strict served responses and two admission-timeout 503s; the native performance result is ineligible and optional 8/8 completion failed",
-    "final independent review recommends the exact DCP1 batch2048/C4/0.97 recipe under retained authorization; r11 direct and production-routed preflights each passed 28/28 pending live native-client acceptance"
+    "the final independent review recommended the exact DCP1 batch2048/C4/0.97 recipe under retained authorization; r11 was subsequently selected and deployed after direct and production-routed preflights each passed 28/28 and native-client acceptance passed"
   ],
   "limitations": [
     "Original 201K/4K third-anchor no-visible-answer failure retained",
@@ -31,13 +31,13 @@
     "Routed capacity evidence supports only the configured C4 boundary; it does not qualify C8, sustained queueing, cancellation, or performance",
     "DCP1 has 825268 KV tokens versus DCP2 1416244 (-41.73%); four full 327K windows are unsupported",
     "DCP1 is a mitigation, not a root-cause fix, crash-rate result, or speed winner",
-    "Live native-client acceptance and transaction closure pending; promoted remains false"
+    "Public-post merge and deployed readback remain pending; historical pre-deployment review records with promoted=false are retained as dated evidence"
   ],
   "decision": {
     "evidence_labels": ["functional", "capacity", "quality"],
-    "decision_labels": ["challenger", "no-promotion"],
+    "decision_labels": ["selected", "deployed_publication_pending"],
     "promotion_authorized": true,
-    "promotion_performed": false,
-    "next_gate": "Complete the separately retained final qualification and restoration gates"
+    "promotion_performed": true,
+    "next_gate": "Record public-post merge and deployed readback"
   }
 }

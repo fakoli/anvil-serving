@@ -3,7 +3,7 @@
   "campaign": {
     "id": "2026-09-23-glm-dcp1-qualification",
     "state": "deployed_publication_pending",
-    "decision": "r11 live acceptance retained; final solver review and publication receipt pending",
+    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public-post merge and deployed readback pending",
     "rollback": "exact r10"
   },
   "native_evidence_schemas": [
@@ -19,8 +19,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "2b008b2b0f44e870e06e9d48c4b6eb9ad7ef533ef03892e6039743f7e29824a8",
-          "bytes": 10720
+          "sha256": "7630c3eb672792577333f6100723e8be065c666204d7db8c7eba38349e88503f",
+          "bytes": 11175
         }
       ],
       "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
@@ -72,8 +72,8 @@
       "files": [
         {
           "path": "candidate-dcp1.public.toml",
-          "sha256": "743a8e2f91b791de2c4aceae4f0c972da13303c22bd95586d3b691032c9b876c",
-          "bytes": 5113
+          "sha256": "5beeb35fd7854f21ac7bd0e56c6b96ace7948e529dfcd50f78a83cd136ab95b5",
+          "bytes": 5149
         },
         {
           "path": "r11-startup-gate.json",
@@ -361,8 +361,8 @@
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "5de57985e5b402bfa93f03fe1f99753b07c7a6ea745b1ac77fdbfd07216acb8d",
-          "bytes": 1595
+          "sha256": "b4a3312d80c547f245997ed6232cb082ba5d0206834f811c0f420fe2ac6b7cdd",
+          "bytes": 1741
         },
         {
           "path": "routed-admission-router-errors.txt",
@@ -393,8 +393,8 @@
       "files": [
         {
           "path": "restoration.json",
-          "sha256": "a10c8c846ff9484ff28c43310a6ee267d91dc6e310bc12d88dfcc85e42a6a85d",
-          "bytes": 526
+          "sha256": "77ded6d5da21993bd3db6a7447159dffe1ab7932f1b2f32d9c6c3b599b52c7b1",
+          "bytes": 588
         },
         {
           "path": "controller-mount-live-verification.json",
@@ -410,8 +410,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "02a7ef5f3edc2406bdba1c7f8c4af561431ce3a72cb08927b50ff6d2e8332e0c",
-          "bytes": 2755
+          "sha256": "a885de156e15148af7927390fb6a038fe5f726cd988db32a0f00b05d8bb6a5c0",
+          "bytes": 2892
         },
         {
           "path": "final-qualification-independent-review.json",
@@ -427,8 +427,8 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "9d1a079561ffd11c35067bb59e0542d14466045a5e2fd10552947737b3b5ca8f",
-          "bytes": 2406
+          "sha256": "c6ca5a548742d92e2f52d305e837bd8acaad8b62cebb09033b763dc881a52c40",
+          "bytes": 2527
         }
       ],
       "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."

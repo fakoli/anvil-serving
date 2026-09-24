@@ -1,15 +1,18 @@
-# GLM-5.3-Flash DCP1 active qualification evidence
+# GLM-5.3-Flash DCP1 r11 qualification evidence
 
 **Campaign:** `2026-09-23-glm-dcp1-qualification`
-**State:** active; live acceptance pending
-**Decision:** `no-promotion`; r11 preliminary checks are retained, but promotion
-has not been recorded.
+**State:** `deployed_publication_pending`
+**Decision:** exact DCP1 batch-2,048/C4/0.97 r11 selected and deployed after
+accepted direct, production-routed, and native-client checks; public-post merge
+and deployed readback remain pending.
 
 This is a public-safe deployed-publication-pending evidence selection. Native
 result schemas remain native. Local endpoints, paths, and runtime identifiers
 were removed; reviewed synthetic benchmark output remains where it is needed to
 audit a claim. The [artifact manifest](artifact-manifest.json) has ten retained
-roles. Final solver review and publication receipt remain pending.
+roles. The final solver review, client/control-plane review, and dashboard
+publication receipt are retained. Only public-post merge and deployed readback
+remain pending.
 
 ## Retained interim evidence
 
@@ -69,7 +72,7 @@ roles. Final solver review and publication receipt remain pending.
   OOM events; pressure remains a caveat, not an OOM or general reliability claim.
 - The [final independent qualification review](final-qualification-independent-review.json)
   recommends controlled promotion of the exact DCP1 batch-2,048/C4/0.97 recipe
-  under the retained user authorization. It remains a recommendation: DCP1 has
+  under the retained user authorization; r11 was subsequently deployed. DCP1 has
   825,268 KV tokens versus DCP2's 1,416,244 (a 41.73% reduction), so four full
   327K windows are unsupported. It is a mitigation, not a root-cause fix or
   crash-rate result, and it is not a speed winner.
@@ -77,8 +80,9 @@ roles. Final solver review and publication receipt remain pending.
   [direct preflight](r11-direct-preflight.json), and [production-routed
   preflight](r11-production-routed-preflight.json) retain the reviewed r11
   identity and 28/28 passed direct plus production-routed functional checks.
-  Live native-client acceptance remains pending; `promoted` stays false until
-  that receipt closes the transaction.
+  The subsequent native-client acceptance is retained below. The historical
+  pre-deployment review's `promoted=false` field remains dated evidence rather
+  than the current deployment state.
 - [Native client acceptance](client-acceptance-summary.json) records 13 passed
   semantic paths, not 13 strict-format passes. Five Pi paths and Pi Web returned
   fenced JSON, as did two secondary Hermes vision responses; Mac OpenClaw also
@@ -92,8 +96,8 @@ roles. Final solver review and publication receipt remain pending.
   user-completed login, calculate-tool, and exact `1591` check. The [independent
   control-plane review](client-control-plane-independent-review.json) accepts
   semantic client and controller convergence with those format, correlation,
-  Pi Web metadata, and OpenClaw reserve caveats; publication/readback remains
-  required for campaign closure.
+  Pi Web metadata, and OpenClaw reserve caveats. Public-post merge and deployed
+  readback remain required for campaign closure.
 - The [publication receipt](promotion-publication-receipt.json) verifies nine
   imported dashboard runs against 99 source-matched metrics, nine authenticated
   Workbench evidence cards, byte-identical repeat imports, and model readiness
@@ -140,9 +144,10 @@ roles. Final solver review and publication receipt remain pending.
 | Frozen SWE | complete | Absolute 4/5 passes at-least-3/5; paired 4/5 versus 3/5 comparison is ineligible. |
 | 64K diagnostic | complete, bounded | The native completion-budget failure remains; coherent truncation satisfies the separate diagnostic rule. One-attempt visible yield regressed versus the matched incumbent. |
 | Routed dispatch-cap C4 and real client | C4 boundary complete | 28 routed preflight observations passed; the offered-eight diagnostic preserves two bounded admission timeouts and no C8 claim. |
-| Restoration | pending | The active candidate has not reached campaign close. |
-| Native-client acceptance | pending | r11 direct and production-routed preflights passed; live client receipt is still required. |
-| Promotion review | recommendation retained | Promotion is authorized and recommended for the exact reviewed recipe; it has not been performed. |
+| Restoration | complete | r11 deployment and exact r10 rollback are retained. |
+| Native-client acceptance | complete with format caveats | All 13 semantic paths passed; strict-format failures remain explicit. |
+| Deployment review | complete | The historical recommendation and pre-deployment `promoted=false` record are retained; r11 was subsequently selected and deployed. |
+| Public post/readback | pending | Dashboard and Workbench imports are verified; public-post merge and deployed readback have not yet been recorded. |
 
 The shareable sanitized managed recipe is
 [candidate-dcp1.public.toml](candidate-dcp1.public.toml). It preserves the

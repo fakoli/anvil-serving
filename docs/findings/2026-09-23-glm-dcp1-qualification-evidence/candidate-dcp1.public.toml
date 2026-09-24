@@ -92,7 +92,7 @@ total_params_b = 320
     "--enable-auto-tool-choice",
     "--disable-custom-all-reduce",
   ]
-  note = "Single compute delta DCP2 to DCP1 against r10. Image tag retains its publisher DCP2 name; startup must prove effective DCP1. Port/name isolate the trial. Preserve 52 GiB RAM, 1 MiB swap and 12 GiB host reserve. No promotion."
+  note = "Single compute delta DCP2 to DCP1 against r10. Image tag retains its publisher DCP2 name; startup must prove effective DCP1. Port/name isolate the trial. Preserve 52 GiB RAM, 1 MiB swap and 12 GiB host reserve. This recipe never authorizes automatic promotion."
 
   [recipe.fit]
   suited = [

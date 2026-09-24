@@ -12,9 +12,10 @@ attribution and broader qualification remain open. See the
 retains bounded 201K and 310K direct observations, quality 12/12, agentic
 18/18, and absolute SWE 4/5. The SWE baseline pair is environment-ineligible,
 so it supports no causal score claim. An offered-C8 strict/canary diagnostic
-failed 1/16, so C8 stopped. This is `no-promotion`; 64K, routed/client,
-had direct/routed and native-client acceptance retained; final solver review and
-publication receipt remain pending. DCP1's KV pool is 41.73% below retained DCP2,
+failed 1/16, so C8 stopped. r11 is selected and deployed after retained
+direct/routed and native-client acceptance; independent reviews and dashboard
+receipt are retained, while public-post merge and deployed readback remain
+pending. DCP1's KV pool is 41.73% below retained DCP2,
 so four full 327K windows are unsupported. See the
 [working finding](../../findings/2026-09-23-glm-dcp1-qualification.md).
 

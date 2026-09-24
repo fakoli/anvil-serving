@@ -8,9 +8,10 @@ experimental mitigation; the exact baseline was restored. First-fault
 attribution and broader qualification remain open. See the
 [dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
 
-**2026-09-23 DCP1 r11:** direct/routed preflights and native-client acceptance
-are retained for the exact batch-2,048/C4/0.97 recipe. Final solver review and
-publication receipt remain pending. The 825,268-KV pool is 41.73% below retained
+**2026-09-23 DCP1 r11:** the exact batch-2,048/C4/0.97 recipe is selected and
+deployed after retained direct/routed preflights and native-client acceptance.
+Independent reviews and dashboard receipt are retained; public-post merge and
+deployed readback remain pending. The 825,268-KV pool is 41.73% below retained
 DCP2's 1,416,244, so four full 327K windows are unsupported. It makes no
 general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findings/2026-09-23-glm-dcp1-qualification.md).
 

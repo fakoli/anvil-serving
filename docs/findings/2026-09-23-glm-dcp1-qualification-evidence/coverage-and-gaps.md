@@ -10,6 +10,6 @@
 | 64K diagnostic | native failure, visible output, identity binding, and independent review retained | coherent truncation under the diagnostic rule; material one-attempt visible-yield regression vs matched incumbent |
 | Routed functional preflight | 28 passed observations across eight families, including 20 tool-batch observations | retained, bounded |
 | Routed C4 admission boundary | six strict served responses, two admitted-timeout 503s, 75 phase samples, and exact terminal join | C4 boundary complete; native performance ineligible and optional 8/8 completion failed |
-| r11 direct and production-routed preflight | 28/28 passed in each retained native artifact | live native-client acceptance pending |
+| r11 direct and production-routed preflight | 28/28 passed in each retained native artifact | accepted and deployed with native-client evidence retained |
 | Capacity and reliability limits | 825,268 KV versus 1,416,244 retained DCP2 KV; no crash-rate study | four full 327K windows unsupported; mitigation only |
-| Transaction closure | no native-client acceptance or final disposition yet | pending; promoted remains false |
+| Transaction closure | native-client acceptance, independent reviews, dashboard imports, and r11 deployment retained | public-post merge and deployed readback pending; historical pre-deployment `promoted=false` records remain retained |

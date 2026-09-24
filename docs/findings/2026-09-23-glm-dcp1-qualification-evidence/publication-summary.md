@@ -2,9 +2,11 @@
 
 <!-- benchmark-publication-summary/v1 -->
 
-The exact DCP1 batch-2,048/C4/0.97 r11 recipe is deployed with native client
-acceptance retained, while final solver review and publication closure remain
-pending. The exact r10 recipe remains the rollback.
+The exact DCP1 batch-2,048/C4/0.97 r11 recipe is selected and deployed after
+accepted direct, production-routed, and native-client checks. The final solver
+review, client/control-plane review, and dashboard receipt are retained. Public
+post merge and deployed readback remain pending. The exact r10 recipe remains
+the rollback.
 
 ## Canonical facts
 
@@ -30,8 +32,8 @@ pending. The exact r10 recipe remains the rollback.
 | Fleet client semantics passed | 13 native paths, exact nonce/card oracle; strict format failed on retained paths | `client-acceptance-summary.json` |
 | Client/control-plane review accepted with caveats | fleet changed=0 and seven read-only mounts; publication readback remains pending | `client-control-plane-independent-review.json` |
 | Dashboard imports verified | nine source-matched runs, 99 metrics, nine authenticated cards, repeat imports byte-identical | `promotion-publication-receipt.json` |
+| Full-window C4 capacity is bounded | 825,268 KV; no four full 327K windows | `final-qualification-independent-review.json` |
+| DCP1 is not a speed or root-cause claim | performance-ineligible/limited evidence retained | `routed-admission-capacity.json`; `final-qualification-independent-review.json` |
 
 The public post is still pending PR merge and deployed readback. This receipt
 does not claim a public HTTP 200 response.
-| Full-window C4 capacity is bounded | 825,268 KV; no four full 327K windows | `final-qualification-independent-review.json` |
-| DCP1 is not a speed or root-cause claim | performance-ineligible/limited evidence retained | `routed-admission-capacity.json`; `final-qualification-independent-review.json` |

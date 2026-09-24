@@ -9,5 +9,5 @@
     "r11-startup-gate.json",
     "client-acceptance-summary.json"
   ],
-  "limits": "Live acceptance is retained, but final independent solver review and publication receipt remain pending."
+  "limits": "Independent reviews and dashboard imports are retained. Public-post merge and deployed readback remain pending; this record does not claim a public HTTP 200 response."
 }

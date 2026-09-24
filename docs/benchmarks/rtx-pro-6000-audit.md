@@ -10,6 +10,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 `docs/findings/2026-09-23-glm-runtime-stability.md`
 (dual-Max-Q runtime crash reproduction and bounded DCP1 mitigation; exact baseline restored, no performance ranking or promotion);
 
+`docs/findings/2026-09-23-glm-dcp1-qualification.md`
+(dual-Max-Q DCP1 r11 functional, capacity, and quality qualification; selected
+and deployed with retained direct/routed and native-client acceptance, while
+public-post merge and deployed readback remain pending);
+
 `docs/findings/2026-09-18-glm53-vision.md`;
 `docs/findings/2026-09-18-glm53-vision-evidence/README.md`;
 `docs/findings/2026-09-18-glm53-vision-evidence/publication-summary.md`

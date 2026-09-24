@@ -1,9 +1,11 @@
 # Findings index
 
 **2026-09-23 DCP1 qualification:** [GLM DCP1 r11 evidence](2026-09-23-glm-dcp1-qualification.md)
-retains direct/routed preflight and native-client acceptance, with final solver
-review and publication receipt pending. DCP1 has a 41.73% smaller KV pool than
-retained DCP2, so it is a bounded mitigation rather than a speed or root-cause claim.
+records selected and deployed r11 after direct/routed preflight and native-client
+acceptance. Independent reviews and dashboard imports are retained; public-post
+merge and deployed readback remain pending. DCP1 has a 41.73% smaller KV pool
+than retained DCP2, so it is a bounded mitigation rather than a speed or
+root-cause claim.
 
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
 an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
@@ -87,7 +89,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
-| 2026-09-23 | [GLM DCP1 qualification](2026-09-23-glm-dcp1-qualification.md) | Active, unpromoted DCP1 continuation: bounded 201K/310K observations, quality 12/12, agentic 18/18, absolute SWE 4/5, and an offered-C8 strict/canary failure that stops C8; SWE comparison is environment-ineligible and final gates remain pending |
+| 2026-09-23 | [GLM DCP1 qualification](2026-09-23-glm-dcp1-qualification.md) | Selected and deployed DCP1 r11: bounded 201K/310K observations, quality 12/12, agentic 18/18, absolute SWE 4/5, direct/routed 28/28, and 13 semantic client paths. C8 remains stopped after its strict/canary failure; SWE comparison is environment-ineligible, strict-format caveats remain, and only public-post merge/deployed readback are pending. |
 | 2026-09-23 | [GLM Spark and Qwen Flash Next qualification](2026-09-23-glm-spark-qwen-next-qualification.md) | Frozen local qualification retained GLM after Qwen medium resolved 4/5 SWE tasks but strict C4 was 0/4, Spark was 2/5 attempted (3 submitted/graded; 2 at the 60-call limit), with Oracle7 16/18 and strict C4 0/16, and the incumbent control also failed strict C4 0/16; no promotion or rollout |
 | 2026-09-22 | [Model shortlist validation](2026-09-22-model-shortlist-validation.md) | Qwen3.8 Flash Next NVFP4 used TP2 with C4 configured admission; all checks were serial C1. It passed six direct preflight groups, but native agentic scouts were 16/18 and 15/18 against the campaign's 18/18 deterministic gate; paired GLM scorer defects block broad ranking; retain GLM, `no-promotion` |
 | 2026-09-21 | [MiMo v2.6 Flash replacement qualification](2026-09-21-mimo-v26-qualification.md) | GLM retained after its eligible 100-request C4 baseline cell; MiMo V3 loaded but both correctness probes returned zero visible content; exact GLM restoration verified; SWE official 0/1 is infrastructure-confounded; `no-promotion` |

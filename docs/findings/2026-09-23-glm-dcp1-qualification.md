@@ -1,9 +1,12 @@
-# GLM-5.3-Flash DCP1 qualification in progress
+# GLM-5.3-Flash DCP1 r11 qualification
 
-The DCP1 continuation is an active, unpromoted qualification of the pinned
-GLM-5.3-Flash EXL3 checkpoint on two RTX PRO 6000 Blackwell Max-Q cards. It
-tests the single DCP2-to-DCP1 change after the retained DCP2 mixed-load fault;
-it does not establish a root cause, crash rate, or general hardware maximum.
+The selected DCP1 batch-2,048/C4/0.97 r11 recipe is deployed after accepted
+direct, production-routed, and native-client checks for the pinned
+GLM-5.3-Flash EXL3 checkpoint on two RTX PRO 6000 Blackwell Max-Q cards. The
+public packet is `deployed_publication_pending`: only the public-post merge and
+deployed readback remain pending. This qualification tests the single
+DCP2-to-DCP1 change after the retained DCP2 mixed-load fault; it does not
+establish a root cause, crash rate, or general hardware maximum.
 
 ## Retained interim observations
 
@@ -34,13 +37,13 @@ it does not establish a root cause, crash rate, or general hardware maximum.
   the corrected, versioned gate joins all eight gateway IDs to terminal rows
   with the same configuration and closes only the configured C4
   dispatch/admission boundary. It makes no C8 or sustained-queue claim.
-- Independent review recommends controlled promotion only for the exact DCP1
-  batch-2,048/C4/0.97 recipe under the retained authorization. Its 825,268 KV
-  tokens are 41.73% below retained DCP2's 1,416,244, so four full 327K windows
-  are unsupported. r11 direct and production-routed preflights each passed
-  28/28 checks, with 13 native-client semantic paths passing. Several retained
-  client responses failed strict format (fenced JSON or Mac prose), so this is
-  not a strict-format fleet pass. This remains a
+- Independent review recommended the exact DCP1 batch-2,048/C4/0.97 recipe
+  under the retained authorization, and r11 was subsequently deployed after
+  direct and production-routed preflights each passed 28/28 checks and 13
+  native-client semantic paths passed. Several retained client responses failed
+  strict format (fenced JSON or Mac prose), so this is not a strict-format fleet
+  pass. Its 825,268 KV tokens are 41.73% below retained DCP2's 1,416,244, so
+  four full 327K windows are unsupported. This remains a
   mitigation, not a root-cause fix, crash-rate finding, or speed claim.
 - Dashboard publication inputs are verified (nine source-matched runs, 99
   metrics, and nine authenticated cards), but the public post remains pending
@@ -56,11 +59,12 @@ it does not establish a root cause, crash rate, or general hardware maximum.
 
 ## Decision boundary
 
-The campaign remains active and `no-promotion`. Remaining gates include the
-native-client acceptance, restoration and independent
-promotion review. The existing selected route and
-rollback remain governed by their prior evidence; this finding makes no route
-or lifecycle change.
+The exact r11 recipe is selected and deployed; accepted native-client evidence
+and restoration evidence are retained in the packet. The exact r10 recipe
+remains the rollback. The only campaign-closure gate is a public-post merge and
+deployed readback; this finding does not claim that post returned HTTP 200.
+Historical pre-deployment reviews and gates that record `promoted=false` remain
+unaltered as dated evidence.
 
 The selected public-native artifacts, redaction receipts, and explicit gaps are
-in the [active evidence index](2026-09-23-glm-dcp1-qualification-evidence/README.md).
+in the [evidence index](2026-09-23-glm-dcp1-qualification-evidence/README.md).
