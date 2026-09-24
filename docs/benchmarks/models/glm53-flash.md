@@ -8,6 +8,16 @@ experimental mitigation; the exact baseline was restored. First-fault
 attribution and broader qualification remain open. See the
 [dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
 
+**2026-09-23 DCP1 qualification:** the deployed-publication-pending DCP1/batch-2,048/C4/0.97 continuation
+retains bounded 201K and 310K direct observations, quality 12/12, agentic
+18/18, and absolute SWE 4/5. The SWE baseline pair is environment-ineligible,
+so it supports no causal score claim. An offered-C8 strict/canary diagnostic
+failed 1/16, so C8 stopped. This is `no-promotion`; 64K, routed/client,
+had direct/routed and native-client acceptance retained; final solver review and
+publication receipt remain pending. DCP1's KV pool is 41.73% below retained DCP2,
+so four full 327K windows are unsupported. See the
+[working finding](../../findings/2026-09-23-glm-dcp1-qualification.md).
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 

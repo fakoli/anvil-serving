@@ -1,0 +1,228 @@
+{
+  "created_at": "2026-09-24T00:58:03.971431Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "342ae1f35cd99844cd9e63f8ab0e2b04a301471f67e4054a93f11f0f2c9cc2de",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "ebcb2fcb4d3bc30ae6266b6d4686766202078d1171641f25b2128fb71699f6f0",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "sphinx-doc__sphinx-9658.traj.json",
+        "sha256": "14de3a34e037de4a8558463193fcd5aca4e129c58258f0ed886db2f23b4132db"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "342ae1f35cd99844cd9e63f8ab0e2b04a301471f67e4054a93f11f0f2c9cc2de",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "322775d378f049a9e0cdf09dfbd91384a87cb860c93c45c10549ebfc6e205567",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "sympy__sympy-12096.traj.json",
+        "sha256": "a9b6ee954bd89bd46f9af38cc1391dce8f29b22b4d799b3d301e0ed4199613e5"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "342ae1f35cd99844cd9e63f8ab0e2b04a301471f67e4054a93f11f0f2c9cc2de",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "2253219e0f13c9a707d3be968a4cc3a4d38912b47152f6845a52c6776c983c2e",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "django__django-13512.traj.json",
+        "sha256": "a443bcd0b0decac4c08c98794646a0bde9d600f8817858dd0f6b3f258e8facf0"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "342ae1f35cd99844cd9e63f8ab0e2b04a301471f67e4054a93f11f0f2c9cc2de",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "720c1dc7df1c9886f27067b298344b516ae07a1b298406a731e8c84416a1ac2b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "pydata__xarray-4356.traj.json",
+        "sha256": "7780154a60a7bcf320bb3214df3534278b5d3f99472f2ffbc3c75748343bb277"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "342ae1f35cd99844cd9e63f8ab0e2b04a301471f67e4054a93f11f0f2c9cc2de",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "9babd9e74d9863966f2cbf5da8303bf256186e6ac167f0a9bf7ada1fe4d62ec9",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "pylint-dev__pylint-8898.traj.json",
+        "sha256": "0f5cfb92b8df0e7d2faedd4fc948b6529e42c3c502c3668bbecb23cc55007fa3"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "glm-dcp1-qualification-20260923",
+  "plan_sha256": "ce21ad3728f6575812f3ed14e869eb93a6b058bc7224dc6d22099d6acc1901c2",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "run_id": "glm-dcp1-swe-scout5-20260923",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "duration_s": 2434.476866,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed"
+    },
+    {
+      "duration_s": 96.67675,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

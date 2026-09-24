@@ -1,0 +1,27 @@
+{
+  "anchor_max_tokens": 2048,
+  "anchor_tokens": 4096,
+  "base_url": "http://127.0.0.1:30000/v1",
+  "chat_template_kwargs": {
+    "enable_thinking": true
+  },
+  "configuration": {
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "label": "production-r11-dcp1",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "recipe_sha256": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+    "registry_sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6"
+  },
+  "contender_max_tokens": 1024,
+  "contender_tokens": 1024,
+  "context_limit": 327680,
+  "managed_container": "candidate-container",
+  "mode": "overlap",
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+  "prefix_mode": "unique",
+  "rounds": 1,
+  "run_timeout_seconds": 1200,
+  "schema": "anvil-serving.stability-scenario/v1",
+  "temperature": 0.0,
+  "timeout_seconds": 600
+}

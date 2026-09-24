@@ -1,0 +1,245 @@
+{
+  "fixture_sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee",
+  "fleet_repeat": "harness-r11-repeat.log all4targets changed=0 failed=0",
+  "format_compliance": {
+    "disposition": "Semantic/tool continuation paths pass. Strict-format compliance is not established.",
+    "semantic_paths_passed": 13,
+    "strict_format_passed": false
+  },
+  "qualification_scope": "Semantics, model route, tool continuation and healthy termination. Formatting failure not waived or relabeled a strict-format pass. Existing conversations not reloaded. No secondary text readiness claim.",
+  "recorded_at": "2026-09-24T02:50:03.730193+00:00",
+  "results": [
+    {
+      "client": "pi",
+      "exit_code": 0,
+      "finish_reason": "stop",
+      "format_only_json": false,
+      "installation": "client-pi-primary-main.transport",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "960f13366f1045c08d4ae9e794f36d838de08bc4fb109f6efc6692833d6acba9",
+      "read_tool_results": 2,
+      "session_id": "redacted:sha256:36ab9e5d1c2c643836dbb1326e7c6dcabf19d80cf3b8d25c4c0a88a1d70d9146",
+      "transport": "normal extensions / real PTY",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "pi",
+      "exit_code": 0,
+      "finish_reason": "stop",
+      "format_only_json": false,
+      "installation": "client-pi-primary-wrapper.transport",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "e496a176debce288b49d43d4e01f789ef9c20dc3dd2f3ae42da73398e1894e26",
+      "read_tool_results": 2,
+      "session_id": "redacted:sha256:6f545464c9566de964d56f2dd55321f8d44b86bf4640ecab319849edc849c238",
+      "transport": "normal extensions / real PTY",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "pi",
+      "exit_code": 0,
+      "finish_reason": "stop",
+      "format_only_json": false,
+      "installation": "client-pi-laptop-main.transport",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "0a1e49428add3efcd9983d19f338589b2fefa546e8d940d99b88cc19d067fae8",
+      "read_tool_results": 2,
+      "session_id": "redacted:sha256:1917168a99f018318822c92b41cbcffbd49a8cabd280a9d5de8f371e362f8de6",
+      "transport": "normal extensions / real PTY",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "pi",
+      "exit_code": 0,
+      "finish_reason": "stop",
+      "format_only_json": false,
+      "installation": "client-pi-companion-main.transport",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "51b5b62e1c2136b763981a64c6dff376952548ecb5d631edd23669a6e4c3888b",
+      "read_tool_results": 2,
+      "session_id": "redacted:sha256:1dcb644e16ebf8d8b6f154f9369b2cdcb3ac53e54fd823356715a878ef266aed",
+      "transport": "normal extensions / real PTY",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "pi",
+      "exit_code": 0,
+      "finish_reason": "stop",
+      "format_only_json": false,
+      "installation": "client-pi-companion-wrapper.transport",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "a4ca784546dde1ccd5687c4c4fb910ddf345a70774675b75f52af19c925f089f",
+      "read_tool_results": 2,
+      "session_id": "redacted:sha256:79916fa039524a9bb7f4c63d7126c6643e8aff65a41b8a3cde91c3e74e921968",
+      "transport": "normal extensions / real PTY",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "pi-web",
+      "format_only_json": false,
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "9bb7f2627008679d866802bb61b10bd27827766c86d9bd0b0f8923da16736c42",
+      "runtime_caveat": "get_state reported messageCount=0 after completion; native session transcript proves tool continuation and stop",
+      "session_id": "redacted:sha256:4a26e6a1de22bad56635bc271c0cfcca3be3451f5096dec0ec680acb6425d035",
+      "transport": "native local Pi Web API; public gateway not exercised",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "hermes",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "profile": "default",
+      "raw_sha256": "9ee73470248691da0cb7fa8760f0aed1447d2ab0e204da5593263387a4c6ab1d",
+      "text_alias": "llm.primary",
+      "vision_alias": "vision.general"
+    },
+    {
+      "client": "hermes",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "profile": "anvil-primary",
+      "raw_sha256": "68fe2952d843ff0b57c83f0c1347d57a9f342a4494d5d03fbafb1a89cce6a3f4",
+      "text_alias": "llm.primary",
+      "vision_alias": "vision.general"
+    },
+    {
+      "client": "hermes",
+      "format_only_json": false,
+      "native_auxiliary_vision": "vision.general",
+      "passed": true,
+      "profile": "anvil-secondary",
+      "raw_sha256": "b6b796007d3f0060c6eb92c523b360c051e6974d9ca8371d471ee523dd8c3c95",
+      "secondary_text": "unchanged unavailable; not generated or substituted",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "hermes",
+      "format_only_json": false,
+      "native_auxiliary_vision": "vision.general",
+      "passed": true,
+      "profile": "work-profile",
+      "raw_sha256": "b6b796007d3f0060c6eb92c523b360c051e6974d9ca8371d471ee523dd8c3c95",
+      "secondary_text": "unchanged unavailable; not generated or substituted",
+      "visible_format_caveat": "Correct semantic JSON is wrapped in a Markdown code fence; literal return-only-JSON instruction was not met."
+    },
+    {
+      "client": "openclaw",
+      "compaction_caveat": "Native runtime reports 20000 reserve. Explicit reserveTokens/reserveTokensFloor are retired upstream knobs; not represented as 65536 reserved. Configured catalog maximum remains65536.",
+      "execution_trace": {
+        "attempts": [
+          {
+            "model": "llm.primary",
+            "provider": "anvil",
+            "result": "success",
+            "stage": "assistant"
+          }
+        ],
+        "fallbackUsed": false,
+        "runner": "embedded",
+        "winnerModel": "llm.primary",
+        "winnerProvider": "anvil"
+      },
+      "format_only_json": true,
+      "host": "Companion Node",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "0572a34731729c5340544c2322190a155fc2efd7a48d9b1205919effd6d99e2f",
+      "terminal_receipt": {
+        "effective": {
+          "model": "llm.primary",
+          "provider": "anvil",
+          "responseModel": "llm.primary"
+        },
+        "requested": {
+          "model": "llm.primary",
+          "provider": "anvil"
+        },
+        "rerouted": false,
+        "runId": "redacted:sha256:a0b83d813ee1bc807822e9730cc311ae3c0453a064df5eb4d398a2144df48b67",
+        "sessionId": "redacted:sha256:3f1db384fb14ae286c68a503694e344be4896e8b3ba1ffdfd2154a37f92ccaa0",
+        "successfulToolNames": [
+          "view_image",
+          "read"
+        ],
+        "turnId": "redacted:sha256:a0b83d813ee1bc807822e9730cc311ae3c0453a064df5eb4d398a2144df48b67"
+      },
+      "tools": {
+        "calls": 2,
+        "failures": 0,
+        "tools": [
+          "view_image",
+          "read"
+        ]
+      },
+      "visible_format_caveat": null
+    },
+    {
+      "client": "openclaw",
+      "compaction_caveat": "Native runtime reports 20000 reserve. Explicit reserveTokens/reserveTokensFloor are retired upstream knobs; not represented as 65536 reserved. Configured catalog maximum remains65536.",
+      "execution_trace": {
+        "attempts": [
+          {
+            "model": "llm.primary",
+            "provider": "anvil",
+            "result": "success",
+            "stage": "assistant"
+          }
+        ],
+        "fallbackUsed": false,
+        "runner": "embedded",
+        "winnerModel": "llm.primary",
+        "winnerProvider": "anvil"
+      },
+      "format_only_json": false,
+      "host": "Laptop Node",
+      "oracle": "exact_nonce_card_value",
+      "passed": true,
+      "raw_sha256": "8d11208416b920ece4b6df10df68c74d6b3f52c3b603d5c4be881e8ec0e6f2a9",
+      "terminal_receipt": {
+        "effective": {
+          "model": "llm.primary",
+          "provider": "anvil",
+          "responseModel": "llm.primary"
+        },
+        "requested": {
+          "model": "llm.primary",
+          "provider": "anvil"
+        },
+        "rerouted": false,
+        "runId": "redacted:sha256:5982b36380106f0134ddfeb968e4dc91fe8f46628cc1689af2ba409536a8e092",
+        "sessionId": "redacted:sha256:d7a0a5e5ecdcec612639b5a260bdba734e0d606df36b9b3470344db1f9febc5e",
+        "successfulToolNames": [
+          "read",
+          "view_image"
+        ],
+        "turnId": "redacted:sha256:5982b36380106f0134ddfeb968e4dc91fe8f46628cc1689af2ba409536a8e092"
+      },
+      "tools": {
+        "calls": 2,
+        "failures": 0,
+        "tools": [
+          "read",
+          "view_image"
+        ]
+      },
+      "visible_format_caveat": "Mac prepends explanatory text before the correct JSON; retain as client-visible formatting failure"
+    },
+    {
+      "client": "open-webui",
+      "evidence": "client-webui-browser-acceptance.json",
+      "oracle": "37*43=1591; exact JSON marker",
+      "passed": true,
+      "path": "public gateway / user-completed login / temporary chat / calculate tool"
+    }
+  ],
+  "router_config_sha256": "c68d92e1eb13a7e493fa51842366ee7126f77e4587aa1b56cad795d648476050",
+  "router_correlation": "Pi exact native session/requestIDs. Legacy Hermes/OpenClaw window-only plus native terminal/model evidence; no fabricated session correlation. All captured window decisions use same expected primary config/tier, no fallback.",
+  "schema": "native-client-acceptance/v1",
+  "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+}

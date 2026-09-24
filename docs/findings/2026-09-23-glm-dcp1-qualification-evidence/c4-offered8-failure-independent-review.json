@@ -1,0 +1,204 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently classify the failed b2048/C4 offered-concurrency-8 seed-2801 control and decide whether the optional C8 arm must stop and whether exact b2048/C4 qualification may continue.",
+  "gate_state": "blocked",
+  "targets": {
+    "evaluated_model": "GLM-5.3-Flash served as glm53-flash-exl3-runtime-dcp1-candidate",
+    "implementing_model": "GPT-6 Astra",
+    "reviewer_model": "GPT-5.6 Sol",
+    "recipe_scope": "DCP1, batch2048, max-num-seqs4, native context327680, offered concurrency8 diagnostic",
+    "promotion_scope": "exact production C4 recipe only; C8 arm rejected"
+  },
+  "tools_used": [
+    {
+      "name": "read_only_file_inspection",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "retained campaign artifacts",
+      "error": null
+    },
+    {
+      "name": "sha256sum",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "retained evidence and frozen plans",
+      "error": null
+    },
+    {
+      "name": "workflow_packet_validate",
+      "source_class": "mcp",
+      "ok": false,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "c4-offered8-failure-independent-review.json",
+      "error": "MCP/control-plane validator not available in this reviewer context; JSON syntax checked locally only."
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "finding_summary",
+      "severity": "high",
+      "classification": "confirmed",
+      "summary": "The offered-concurrency-8 control failed its predeclared 100% strict/canary gate. Request 15 returned a complete HTTP response with finish=stop but omitted its own marker and emitted 3 requested code words plus 150 extra words. This is a genuine model response-contract failure for this offered-C8 population, not a missing-response or scorer-observability failure.",
+      "references": [
+        "concurrency-b2048-reload-offered8-seed2801.json:4",
+        "concurrency-b2048-reload-offered8-seed2801.json:14",
+        "concurrency-b2048-reload-offered8-seed2801.json:20",
+        "concurrency-b2048-reload-offered8-seed2801.json:30",
+        "concurrency-b2048-reload-offered8-seed2801.json:35",
+        "concurrency-b2048-reload-offered8-seed2801.json:38",
+        "concurrency-b2048-reload-offered8-seed2801.json:41",
+        "concurrency-b2048-reload-offered8-seed2801.json:44",
+        "concurrency-b2048-reload-offered8-seed2801.json:51",
+        "concurrency-b2048-reload-offered8-seed2801.json:57",
+        "concurrency-b2048-reload-offered8-seed2801.json:292"
+      ]
+    },
+    {
+      "kind": "scope_disposition",
+      "severity": "high",
+      "classification": "confirmed",
+      "summary": "Stop the entire dependent C8 comparison now. Do not load C8, retry seed2801, substitute another seed, or compute a partial comparison. The frozen arm required 100% strict/canary compliance and both reserved pairs eligible; the general estimator says any failed cell stops dependent comparisons.",
+      "references": [
+        "concurrency-arm-plan.json:21",
+        "concurrency-arm-plan.json:22",
+        "concurrency-arm-plan.json:28",
+        "matched-performance-plan.json:63",
+        "optimization-search-v5.json:67",
+        "optimization-search-v5.json:76"
+      ]
+    },
+    {
+      "kind": "promotion_scope",
+      "severity": "medium",
+      "classification": "confirmed",
+      "summary": "This out-of-envelope offered-C8 failure does not by itself disqualify the unchanged b2048/C4 production recipe. The required production capacity gate is C4, and the optional optimization plan separates final C4 qualification from the concurrency axis. Continued exact-C4 agentic 18/18, SWE >=3/5, images, natural/64K diagnostics, routed policy, and real-client gates is defensible only after retaining this scope ruling. Promotion remains blocked until every applicable original gate passes.",
+      "references": [
+        "campaign-plan.md:5",
+        "campaign-plan.md:12",
+        "campaign-plan.md:13",
+        "campaign-plan.md:15",
+        "campaign-plan.md:16",
+        "optimization-search-v5.json:55",
+        "optimization-search-v5.json:56"
+      ]
+    },
+    {
+      "kind": "causal_limits",
+      "severity": "medium",
+      "classification": "refuted",
+      "summary": "The evidence does not support attributing the semantic miss to overload, runtime failure, or cache leakage. Identity was stable; the owner remained running; OOM and kernel fault counters were zero; all requests received HTTP 200. Zero foreign markers only refutes observed cross-request marker leakage in this sample. Logs show 4 running and 4 waiting under offered8/max-seqs4, but that scheduling fact is not causal proof.",
+      "references": [
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:18",
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:24",
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:31",
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:32",
+        "concurrency-b2048-reload-offered8-seed2801-kernel.json:2",
+        "concurrency-b2048-reload-offered8-seed2801-kernel.json:3",
+        "concurrency-b2048-reload-offered8-seed2801-identity.json:2",
+        "concurrency-b2048-reload-offered8-seed2801-identity.json:12",
+        "concurrency-c4-failure-owner-logs.txt:65",
+        "concurrency-c4-failure-owner-logs.txt:138"
+      ]
+    },
+    {
+      "kind": "residual_risk",
+      "severity": "low",
+      "classification": "plausible",
+      "summary": "The cgroup peak equals its configured limit and memory.events.max is nonzero, so resource pressure cannot be excluded; these counters are cumulative and do not establish that pressure caused request 15. Retain this limitation without causal wording.",
+      "references": [
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:22",
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:27",
+        "concurrency-b2048-reload-offered8-seed2801-owner.json:31"
+      ]
+    },
+    {
+      "kind": "production_condition",
+      "severity": "high",
+      "classification": "plausible",
+      "summary": "A C4 promotion is supportable only if routed admission is independently shown to enforce the declared production max_concurrency4 and no publication or harness claims support for offered concurrency8 or max concurrency8. The direct offered8 observation must remain a disclosed failed diagnostic.",
+      "references": [
+        "campaign-plan.md:16",
+        "concurrency-arm-plan.json:23",
+        "concurrency-arm-plan.json:29"
+      ]
+    },
+    {
+      "kind": "breakage_probes",
+      "items": [
+        {
+          "axis": "unreadable state/tools",
+          "input_state": "owner, kernel, identity, or gate sidecar absent/unreadable",
+          "wrong_result": "classify model-only failure or permit promotion without runtime/identity evidence",
+          "result": "refuted; required sidecars were readable and hash-bound"
+        },
+        {
+          "axis": "malformed/boundary input",
+          "input_state": "complete response missing own canary and violating exact 16-word contract",
+          "wrong_result": "count request as eligible or calculate partial throughput",
+          "result": "refuted; native artifact failed request and made aggregate performance ineligible"
+        },
+        {
+          "axis": "resource exhaustion/bounds",
+          "input_state": "offered8 against max-seqs4 with queued requests and cgroup max contacts",
+          "wrong_result": "infer overload caused the semantic miss or ignore timeout/resource bounds",
+          "result": "plausible contributor only; no causal attribution, no OOM/Xid/crash"
+        },
+        {
+          "axis": "state drift/seams",
+          "input_state": "container/image/revision/recipe changes before versus after cell",
+          "wrong_result": "compare different identities as one control",
+          "result": "refuted; before/after identity matched"
+        }
+      ]
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801.json",
+      "sha256": "0e16e02e1e41609f74833ee0fd4bbcb4363573d74ba0b8f2fb279427458aca3b"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801-gate.json",
+      "sha256": "e2f5d64a8bc6712db6b608878d38c74b42ecdc3478b34cda83cae7c70fcf6a31"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801-owner.json",
+      "sha256": "9635bc628563afc693bd786e50ae9ee9dba2f08e5c75cb1c1a9588cfe83f432e"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801-kernel.json",
+      "sha256": "3e166338158867bbf1db7e228699bc37208227d1e6ac47bfa4c504523c1ced42"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801-identity.json",
+      "sha256": "c6845c7e9360e81fa945674eb25c31a6c20d714491f9e623b7eb4f39da180ccf"
+    },
+    {
+      "path": "concurrency-c4-failure-owner-logs.txt",
+      "sha256": "0a63ebf359530e520094ec3e9620d0688529a9f5b5d5f13a469b20336413d013"
+    },
+    {
+      "path": "concurrency-arm-plan.json",
+      "sha256": "50155c6002d3b75b05f4493908838e0f57faff223425673bc8e3221d42ea0d51"
+    },
+    {
+      "path": "optimization-search-v5.json",
+      "sha256": "c73d0a3330b8099b1413bc34b854f3782532addf37b11fce155ee68cf4bfee34"
+    },
+    {
+      "path": "campaign-plan.md",
+      "sha256": "c4c3cb9011e54bfdadbbcf56a9ade78c31e129ca4d4132e780bd1a728d30938d"
+    }
+  ],
+  "advisory_priors": [
+    "Direct offered concurrency8 exceeded the declared production router concurrency4; this is scope context, not a causal explanation.",
+    "The failed synthetic controlled-output cell measures deterministic instruction adherence and isolation, not general coding quality.",
+    "Generating model did not grade itself; this review is by independent GPT-5.6 Sol of Astra-authored orchestration and GLM output."
+  ],
+  "recommendation": "needs_more_data",
+  "human_gate_required": false,
+  "promoted": false
+}

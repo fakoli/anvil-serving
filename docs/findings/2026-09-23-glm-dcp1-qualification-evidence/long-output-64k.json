@@ -1,0 +1,360 @@
+{
+  "context": {
+    "cap_tokens": 326400,
+    "max_model_len": 327680,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 1,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [
+    {
+      "error": "all-chapters; completion-marker",
+      "eval_id": "natural-long-technical-guide",
+      "failure_classes": [
+        "completion_budget_exhausted_after_visible_output"
+      ],
+      "pass_rate": 0.0,
+      "suite": "long-output-stability-64k-v1"
+    }
+  ],
+  "identity": {
+    "candidate_id": "glm-dcp1",
+    "config_id": "r10-dcp1",
+    "engine": "vllm",
+    "gpu": "dual-pro6000-maxq",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "started_at": "2026-09-24T01:45:49Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20260924T014549Z",
+  "sampling": {
+    "temperature": {
+      "effective_request": 1.0,
+      "requested": 1.0,
+      "sent": true
+    },
+    "top_p": {
+      "effective_request": 0.95,
+      "requested": 0.95,
+      "sent": true
+    }
+  },
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "enabled",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "long-output-stability-64k-v1": {
+      "checks": [
+        {
+          "attempt_count": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 65536,
+                "reasoning_headroom_tokens": 16384,
+                "visible_answer_tokens": 49152
+              },
+              "content": "## CHAPTER requirements-and-contracts\n\nThe task runner, called `taskrun`, is a local coding-agent workhorse: it takes a declarative tasks file, builds a dependency graph, executes each task's command on a bounded thread pool, records everything in an append-only journal, and survives crashes by combining atomic state snapshots with journal replay. This chapter fixes the vocabulary used by all later chapters so the scheduler in chapter 9, the recovery logic in chapter 14, and the HTTP facade in chapter 17 all speak the same language.\n\nThe functional requirements are: (1) parse a `.tasks` DSL file into `TaskSpec` objects; (2) execute tasks respecting `needs` ordering with parallelism; (3) bound every subprocess with timeouts, output caps, and OS rlimits; (4) retry transient failures under an explicit policy; (5) support cooperative cancellation from the CLI or HTTP interface; (6) persist an event journal with sequence numbers and checksums; (7) recover interrupted runs on restart; (8) expose `validate`, `run`, `resume`, `status`, `cancel`, and `journal` operations through both a CLI and a local HTTP server. Non-goals are deliberate: no distributed execution, no remote queue, no authentication beyond localhost binding, and no plugin loading beyond the tool protocol in chapter 16.\n\nThe contract types are `TaskSpec` (static definition parsed from the DSL), `TaskState` (runtime status, attempt count, exit code, and human-readable detail), `CommandSpec` (either an `argv` vector executed directly or a named `tool` resolved through the chapter 16 protocol), and `RetrySpec` (attempt budget and backoff shape). Every deliberate failure raises a subclass of `TaskrunError`, so the CLI can map errors to exit codes without parsing message strings.\n\n**Invariants.** (I1) A `TaskState` moves only forward through the transition table: `PENDING → RUNNING → {SUCCEEDED, FAILED, CANCELLED}`, with `PENDING → SKIPPED` when an upstream task fails or is skipped, and `RUNNING → RETRY_WAIT` as a transient state used by the retry layer. (I2) All subprocess execution is argv-vector based; `shell=True` is banned project-wide. (I3) The journal is append-only with contiguous per-run sequence numbers starting at 1. (I4) Once cancellation is requested, no task may transition from `PENDING` to `RUNNING`. (I5) Configuration objects are frozen dataclasses; only `TaskState` mutates, and only under the scheduler lock.\n\n**Error handling.** `ConfigError` covers unusable workspaces and unknown tools; `ValidationError` aggregates every static problem in a tasks file rather than failing on the first; `CycleError` carries the offending path; `ToolError` records the exit code and whether the failure is retryable; `CancelledError` unwinds cooperative workers; `StorageError` stops the runner when snapshots cannot be trusted.\n\n**Worked example.** The file below drives every later chapter: `lint` runs first, `test` waits on `lint` and is gated by `env.CI`, and `package` needs `test`. Given this file, `taskrun run demo.tasks` produces a run id such as `188f2a41c0d39b1c4e7f` from `make_run_id`, executes `lint`, then `test` and `package`, and leaves a journal whose last line is `RUN_FINISHED`.\n\n```python\n# taskrun/core.py\n\"\"\"Shared vocabulary for every taskrun subsystem.\"\"\"\nfrom __future__ import annotations\n\nimport enum\nimport random\nfrom dataclasses import dataclass, field\nfrom typing import Any\n\n\nclass TaskStatus(enum.Enum):\n    PENDING = \"pending\"\n    READY = \"ready\"\n    RUNNING = \"running\"\n    RETRY_WAIT = \"retry_wait\"\n    SUCCEEDED = \"succeeded\"\n    FAILED = \"failed\"\n    CANCELLED = \"cancelled\"\n    SKIPPED = \"skipped\"\n\n\nTERMINAL = frozenset({TaskStatus.SUCCEEDED, TaskStatus.FAILED,\n                      TaskStatus.CANCELLED, TaskStatus.SKIPPED})\n\n\nclass TaskrunError(Exception):\n    \"\"\"Base class for every deliberate taskrun failure.\"\"\"\n\n\nclass ConfigError(TaskrunError):\n    \"\"\"Workspace, registry, or CLI inputs are unusable.\"\"\"\n\n\nclass ValidationError(TaskrunError):\n    \"\"\"A tasks file violates the static contract.\"\"\"\n    def __init__(self, errors: list[str]) -> None:\n        super().__init__(\"; \".join(errors))\n        self.errors = list(errors)\n\n\nclass CycleError(TaskrunError):\n    \"\"\"The dependency graph contains a cycle.\"\"\"\n    def __init__(self, cycle: list[str]) -> None:\n        super().__init__(\"dependency cycle: \" + \" -> \".join(cycle + cycle[:1]))\n        self.cycle = list(cycle)\n\n\nclass StorageError(TaskrunError):\n    \"\"\"Snapshot persistence failed in a way that must stop the runner.\"\"\"\n\n\nclass ToolError(TaskrunError):\n    def __init__(self, tool: str, message: str, exit_code: int | None = None,\n                 retryable: bool = False) -> None:\n        super().__init__(f\"tool {tool!r}: {message}\")\n        self.tool, self.exit_code, self.retryable = tool, exit_code, retryable\n\n\nclass CancelledError(TaskrunError):\n    \"\"\"Raised inside work that observed a cancellation token.\"\"\"\n\n\n@dataclass(frozen=True)\nclass RetrySpec:\n    attempts: int = 0\n    delay_s: float = 0.0\n    backoff: float = 1.0\n    max_delay_s: float = 30.0\n\n\n@dataclass(frozen=True)\nclass CommandSpec:\n    kind: str                                   # \"tool\" or \"argv\"\n    argv: tuple[str, ...] = ()\n    tool: str = \"\"\n    params: dict[str, Any] = field(default_factory=dict)\n\n\n@dataclass\nclass TaskSpec:\n    name: str\n    needs: tuple[str, ...] = ()\n    command: CommandSpec | None = None\n    timeout_s: float = 60.0\n    retry: RetrySpec = field(default_factory=RetrySpec)\n    when: Any = None                            # expression AST from chapter 4\n    description: str = \"\"\n\n\n@dataclass\nclass TaskState:\n    status: TaskStatus = TaskStatus.PENDING\n    attempts: int = 0\n    exit_code: int | None = None\n    detail: str = \"\"\n\n\ndef make_run_id(now: float, rng: random.Random) -> str:\n    \"\"\"20 hex chars: 12 from the millisecond clock, 8 random.\"\"\"\n    return f\"{int(now * 1000) & 0xFFFFFFFFFFFF:012x}{rng.randrange(1 << 32):08x}\"\n```\n\n## CHAPTER workspace-layout\n\nEverything the runner persists lives under one directory so backups, permissions, and cleanup have a single target. The default root is `./.taskrun`; the `--home` flag overrides it, and the `TASKRUN_HOME` environment variable provides a middle layer. Resolution order is therefore CLI flag, then environment, then cwd-relative default, and the resolved path is always canonicalized with `Path.resolve()` so later containment checks in chapter 20 compare absolute, symlink-free paths.\n\nThe layout has six directories with strict responsibilities. `journal/` holds one append-only JSONL file per run, named `<run_id>.jsonl`, plus `.1` rotation successors. `state/` holds `state-<run_id>.json` snapshots written atomically by chapter 13, with `.bak` predecessors. `logs/` holds the rotating structured log from chapter 19. `artifacts/` is the only directory tasks may write into voluntarily, addressed through the sandbox. `tools/` holds `tools.json`, the allowlist mapping tool names to argv vectors used by chapter 16. Keeping journal, state, and logs separate matters operationally: the journal is the recovery source of truth, snapshots are an optimization over it, and logs are human diagnostics that may be deleted freely.\n\nAll directories are created with mode `0o700` because task runs frequently embed tokens in the environment, and a world-readable journal would leak command output. A write probe (`write`, `unlink` of a dotfile) runs at startup so a read-only mount or a squashed NFS mount fails immediately with `ConfigError` instead of corrupting a run twenty minutes later.\n\n**Invariants.** (W1) No component writes outside the workspace root; temporary files are created inside the destination directory so `os.replace` stays on one filesystem. (W2) Journal, snapshot, and log files are never renamed across directories. (W3) Directory creation is idempotent; `ensure_workspace` is safe to call from every entrypoint. (W4) The tools allowlist file is optional; when absent, only `argv` commands are executable.\n\n**Error handling.** Every filesystem failure during setup is converted to `ConfigError` with the errno message embedded, because callers (CLI chapter 18, HTTP chapter 17) need one exception type to map to exit code 3. `mkdir(parents=True, exist_ok=True)` tolerates concurrent creation by two runner processes, which the load tests in chapter 23 actually exercise. `chmod` failures on filesystems that ignore modes are tolerated silently, since the write probe is the real safety check.\n\n**Worked example.** Running the module below against a fresh temporary directory prints exactly the six directories, then the `tools.json` file we placed there. After a real run of `demo.tasks`, the same listing would additionally show `journal/<run_id>.jsonl` and `state/state-<run_id>.json`, which is precisely what the operations script in chapter 24 scans for.\n\n```python\n# taskrun/workspace.py\nfrom __future__ import annotations\n\nimport os\nfrom dataclasses import dataclass\nfrom pathlib import Path\n\n\n@dataclass(frozen=True)\nclass Workspace:\n    root: Path\n    journal_dir: Path\n    state_dir: Path\n    logs_dir: Path\n    artifacts_dir: Path\n    tools_dir: Path\n\n\ndef resolve_home(explicit: str | None = None, env: dict[str, str] | None = None,\n                 cwd: Path | None = None) -> Path:\n    \"\"\"CLI flag beats TASKRUN_HOME beats ./.taskrun next to the cwd.\"\"\"\n    env = os.environ if env is None else env\n    cwd = Path.cwd() if cwd is None else cwd\n    if explicit:\n        return Path(explicit).expanduser().resolve()\n    if env.get(\"TASKRUN_HOME\"):\n        return Path(env[\"TASKRUN_HOME\"]).expanduser().resolve()\n    return (cwd / \".taskrun\").resolve()\n\n\ndef ensure_workspace(home: Path) -> Workspace:\n    home = Path(home).resolve()\n    ws = Workspace(root=home, journal_dir=home / \"journal\", state_dir=home / \"state\",\n                   logs_dir=home / \"logs\", artifacts_dir=home / \"artifacts\",\n                   tools_dir=home / \"tools\")\n    try:\n        for path in (ws.root, ws.journal_dir, ws.state_dir,\n                     ws.logs_dir, ws.artifacts_dir, ws.tools_dir):\n            path.mkdir(parents=True, exist_ok=True)\n            try:\n                os.chmod(path, 0o700)\n            except OSError:\n                pass  # modeless filesystems are fine; the probe below decides\n    except OSError as exc:\n        raise ConfigError(f\"cannot create workspace under {home}: {exc}\") from exc\n    probe = ws.root / \".write-probe\"\n    try:\n        probe.write_text(\"ok\", encoding=\"utf-8\")\n        probe.unlink()\n    except OSError as exc:\n        raise ConfigError(f\"workspace {home} is not writable: {exc}\") from exc\n    return ws\n\n\nif __name__ == \"__main__\":\n    import tempfile\n    with tempfile.TemporaryDirectory() as td:\n        ws = ensure_workspace(Path(td) / \"agent-home\")\n        (ws.tools_dir / \"tools.json\").write_text(\"{}\\n\", encoding=\"utf-8\")\n        for path in sorted(ws.root.rglob(\"*\")):\n            kind = \"dir \" if path.is_dir() else \"file\"\n            print(kind, path.relative_to(ws.root))\n```\n\n## CHAPTER lexer\n\nThe DSL is lexed by a hand-written scanner rather than `re.finditer` or a third-party tokenizer for three reasons: precise line and column on every token so parser errors can point at a column, first-class duration literals like `30s` and `1m` that would otherwise need post-processing, and deterministic maximal-munch behavior for two-character operators such as `==` and `&&`. The lexer is a single pass with one character of lookahead and produces a flat token list ending in an `EOF` sentinel, which frees the parser from bounds checking.\n\nToken kinds are: `IDENT` for `[A-Za-z_][A-Za-z0-9_-]*`, `STRING` for double-quoted text with escapes `\\n`, `\\t`, `\\\"`, `\\\\`, `NUMBER` for integer and decimal digits, `DURATION` for a number suffixed with `ms`, `s`, `m`, or `h`, `OP` for the six comparison and logical operators, `PUNCT` for structural characters `{ } = , [ ] ( ) : < > ! +`, `NEWLINE`, and `EOF`. Keywords such as `task`, `true`, and `env` are deliberately *not* reserved at lex time; the parser interprets `IDENT` values in context, which keeps the lexer reusable for the expression grammar in chapter 5.\n\nComments start with `#` and run to end of line; they are skipped without emitting a token, but the newline that terminates them is still emitted so line-oriented field parsing works. Whitespace between tokens is skipped. An unterminated string, a bad escape, a bare number glued to letters (`30x`), or any unexpected character raises `LexError` carrying line, column, and a human-readable reason.\n\n**Invariants.** (L1) Concatenating token source text plus skipped whitespace and comments reproduces the input exactly, which makes column arithmetic trustworthy. (L2) The final token is always `EOF`; the parser can never read past it because `next()` refuses to advance at `EOF`. (L3) A `DURATION` token is always followed by a non-identifier character or end of input; `30sleep` is a lex error, not a number plus identifier.\n\n**Error handling.** `LexError` subclasses `ValueError` and formats as `line:col: message`, matching `ParseError` so chapter 6 can merge both into one error list. The lexer fails fast on the first error; the parser, not the lexer, implements multi-error recovery by resynchronizing at the next newline or `task` keyword.\n\n**Worked example.** For the three-line sample in the demo, the stream begins with `IDENT 'task'`, `IDENT 'lint'`, `PUNCT ':'`, then on line two `IDENT 'timeout'`, `PUNCT '='`, `DURATION '30s'`; the comment contributes nothing, and line three yields `IDENT 'when'`, `PUNCT '='`, `IDENT 'env'`, `PUNCT '.'`, `IDENT 'CI'`, `OP '!='`, `STRING 'false'`. The trailing token is `EOF` at line 4, column 1.\n\n```python\n# taskrun/lexer.py\nfrom __future__ import annotations\n\nimport re\nfrom dataclasses import dataclass\n\n\nclass LexError(ValueError):\n    def __init__(self, msg: str, line: int, col: int) -> None:\n        super().__init__(f\"{line}:{col}: {msg}\")\n        self.line, self.col = line, col\n\n\n@dataclass\nclass Token:\n    kind: str        # IDENT STRING NUMBER DURATION OP PUNCT NEWLINE EOF\n    value: str\n    line: int\n    col: int\n\n\nIDENT_RE = re.compile(r\"[A-Za-z_][A-Za-z0-9_\\-]*\")\nNUMBER_RE = re.compile(r\"\\d+(?:\\.\\d+)?\")\nDURATION_RE = re.compile(r\"\\d+(?:\\.\\d+)?(?:ms|s|m|h)\")\nTWO_CHAR_OPS = (\"==\", \"!=\", \"<=\", \">=\", \"&&\", \"||\")\nONE_CHAR = set(\"{}[]=(),:<>!\")\n\n\nclass Lexer:\n    def __init__(self, text: str) -> None:\n        self.text, self.i, self.line, self.col = text, 0, 1, 1\n\n    def _peek(self, off: int = 0) -> str:\n        j = self.i + off\n        return self.text[j] if j < len(self.text) else \"\"\n\n    def _advance(self, n: int = 1) -> None:\n        for _ in range(n):\n            if self.i < len(self.text):\n                if self.text[self.i] == \"\\n\":\n                    self.line, self.col = self.line + 1, 1\n                else:\n                    self.col += 1\n                self.i += 1\n\n    def tokens(self) -> list[Token]:\n        out: list[Token] = []\n        while self.i < len(self.text):\n            ch = self._peek()\n            if ch in \" \\t\\r\":\n                self._advance()\n            elif ch == \"#\":\n                while self._peek() not in (\"\", \"\\n\"):\n                    self._advance()\n            elif ch == \"\\n\":\n                out.append(Token(\"NEWLINE\", \"\\\\n\", self.line, self.col))\n                self._advance()\n            elif ch == '\"':\n                out.append(self._string())\n            elif ch.isdigit():\n                out.append(self._number_or_duration())\n            elif ch.isalpha() or ch == \"_\":\n                m = IDENT_RE.match(self.text, self.i)\n                out.append(Token(\"IDENT\", m.group(0), self.line, self.col))\n                self._advance(len(m.group(0)))\n            elif self._peek(0) + self._peek(1) in TWO_CHAR_OPS:\n                out.append(Token(\"OP\", self._peek(0) + self._peek(1), self.line, self.col))\n                self._advance(2)\n            elif ch in ONE_CHAR:\n                out.append(Token(\"PUNCT\", ch, self.line, self.col))\n                self._advance()\n            else:\n                raise LexError(f\"unexpected character {ch!r}\", self.line, self.col)\n        out.append(Token(\"EOF\", \"\", self.line, self.col))\n        return out\n\n    def _string(self) -> Token:\n        line, col = self.line, self.col\n        self._advance()\n        buf: list[str] = []\n        while True:\n            ch = self._peek()\n            if ch in (\"\", \"\\n\"):\n                raise LexError(\"unterminated string\", line, col)\n            if ch == '\"':\n                self._advance()\n                return Token(\"STRING\", \"\".join(buf), line, col)\n            if ch == \"\\\\\":\n                nxt = self._peek(1)\n                mapping = {\"n\": \"\\n\", \"t\": \"\\t\", '\"': '\"', \"\\\\\": \"\\\\\"}\n                if nxt not in mapping:\n                    raise LexError(f\"bad escape \\\\{nxt}\", self.line, self.col)\n                buf.append(mapping[nxt])\n                self._advance(2)\n            else:\n                buf.append(ch)\n                self._advance()\n\n    def _number_or_duration(self) -> Token:\n        line, col = self.line, self.col\n        m = DURATION_RE.match(self.text, self.i)\n        if m and not self.text[m.end():m.end() + 1].isalnum():\n            self._advance(len(m.group(0)))\n            return Token(\"DURATION\", m.group(0), line, col)\n        m = NUMBER_RE.match(self.text, self.i)\n        nxt = self.text[m.end():m.end() + 1]\n        if nxt and (nxt.isalpha() or nxt == \"_\"):\n            raise LexError(f\"bare number followed by {nxt!r}; units are ms s m h\", line, col)\n        self._advance(len(m.group(0)))\n        return Token(\"NUMBER\", m.group(0), line, col)\n\n\nif __name__ == \"__main__\":\n    sample = 'task lint:\\n    timeout = 30s   # seconds\\n'\n    for tok in Lexer(sample).tokens():\n        print(f\"{tok.line}:{tok.col:>2} {tok.kind:<9} {tok.value!r}\")\n```\n\n## CHAPTER parser\n\nThe parser is a recursive-descent translator from the token stream to `TaskSpec` objects plus an expression AST. The grammar is line-oriented: a file is a sequence of `task <name>:` headers, each followed by `key = expression` fields until the next header or EOF. Field keys are restricted to `needs`, `command`, `timeout`, `retry`, `when`, and `description`; unknown keys are rejected with a `difflib` \"did you mean\" hint, which catches the classic `timeoutt` typo.\n\nExpression precedence, lowest to highest, is `||`, `&&`, unary `!`, a single non-associative comparison (`== != < <= > >=`), then primaries: string, number, duration, `true`, `false`, `env.<NAME>`, function calls `name(args, key=value)`, bracketed lists, and parenthesized groups. A bare identifier parses as `Const(name)` so `needs = [lint, test]` works; the validator in chapter 6 rejects bare identifiers where they make no sense. Function calls accept positional and keyword arguments, which is exactly what the `tool(...)` and `retry` builders need.\n\nStructural errors, such as a missing colon after the task name, are fatal to that task but not to the file: `parse_file` records the `ParseError`, then `_sync_to_next_task` skips tokens to the next `task NAME` pair, so one broken task does not hide five others. Field-level errors are capped at 20 to keep diagnostics bounded. Two DSL constructs are translated eagerly: `retry` builders (`none()`, `fixed(attempts, delay, backoff)`, `exponential(...)` with `max_delay`) become `RetrySpec`, and `command` builders (`tool(name, **params)` and `argv([...])`) become `CommandSpec`. Durations are converted to float seconds at parse time, so `timeout = 90s` and `timeout = 1.5m` both arrive as `90.0`.\n\n**Invariants.** (P1) The parser never evaluates `env` references or spawns anything; `when` remains an AST until the scheduler evaluates it in chapter 9. (P2) Every `TaskSpec` reaching chapter 6 has syntactically valid needs (a `ListLit` of strings) and a converted or absent `command` and `retry`. (P3) Parse errors always include line and column taken from the offending token.\n\n**Error handling.** `ParseError` wraps the failing token, and field errors are re-raised prefixed with the task name so a message reads `task 'test': 4:11: unknown dependency syntax`. The `errors` list on `TaskFile` is merged with semantic errors in chapter 6, giving the user the complete problem list in one run.\n\n**Worked example.** Parsing the demo file yields two tasks: `lint` with `needs=()`, `timeout_s=30.0`, `command=CommandSpec(kind='tool', tool='lint', params={'target': 'src/'})`, and `retry=RetrySpec(attempts=2, delay_s=2.0)`; and `test` with `needs=('lint',)`, `when=Binary('!=', EnvRef('CI'), Const('false'))`. The printed errors list is empty, and the AST printout shows the un-evaluated expression tree.\n\n```python\n# taskrun/parser.py\nfrom __future__ import annotations\n\nimport difflib\nfrom dataclasses import dataclass\n\nfrom taskrun.core import CommandSpec, RetrySpec, TaskSpec\nfrom taskrun.lexer import Lexer, Token\n\nFIELD_KEYS = {\"needs\", \"command\", \"timeout\", \"retry\", \"when\", \"description\"}\nCOMPARISONS = {\"==\", \"!=\", \"<\", \"<=\", \">\", \">=\"}\nMAX_ERRORS = 20\n\n\nclass ParseError(Exception):\n    def __init__(self, msg: str, tok: Token) -> None:\n        super().__init__(f\"{tok.line}:{tok.col}: {msg}\")\n\n\n@dataclass(frozen=True)\nclass Const:\n    value: object\n\n\n@dataclass(frozen=True)\nclass EnvRef:\n    name: str\n\n\n@dataclass(frozen=True)\nclass ListLit:\n    items: tuple\n\n\n@dataclass(frozen=True)\nclass Unary:\n    op: str\n    operand: object\n\n\n@dataclass(frozen=True)\nclass Binary:\n    op: str\n    left: object\n    right: object\n\n\n@dataclass(frozen=True)\nclass Call:\n    name: str\n    args: tuple\n    kwargs: dict\n\n\n@dataclass\nclass TaskFile:\n    tasks: list\n    errors: list[str]\n\n\nclass Parser:\n    def __init__(self, tokens: list[Token]) -> None:\n        self.toks, self.pos = tokens, 0\n\n    def peek(self, off: int = 0) -> Token:\n        return self.toks[min(self.pos + off, len(self.toks) - 1)]\n\n    def next(self) -> Token:\n        tok = self.toks[self.pos]\n        if tok.kind != \"EOF\":\n            self.pos += 1\n        return tok\n\n    def expect(self, kind: str, value: str | None = None) -> Token:\n        tok = self.peek()\n        if tok.kind != kind or (value is not None and tok.value != value):\n            raise ParseError(f\"expected {value or kind!r}, found {tok.value or tok.kind!r}\", tok)\n        return self.next()\n\n    def parse_file(self) -> TaskFile:\n        tasks, errors = [], []\n        while self.peek().kind != \"EOF\":\n            while self.peek().kind == \"NEWLINE\":\n                self.next()\n            if self.peek().kind == \"EOF\":\n                break\n            try:\n                tasks.append(self.parse_task())\n            except ParseError as exc:\n                errors.append(str(exc))\n                if len(errors) >= MAX_ERRORS:\n                    break\n                self._sync_to_next_task()\n        return TaskFile(tasks=tasks, errors=errors)\n\n    def _sync_to_next_task(self) -> None:\n        while self.peek().kind != \"EOF\":\n            if (self.peek().kind == \"IDENT\" and self.peek().value == \"task\"\n                    and self.peek(1).kind == \"IDENT\"):\n                return\n            self.next()\n\n    def parse_task(self) -> \"TaskSpec\":\n        self.expect(\"IDENT\", \"task\")\n        name = self.expect(\"IDENT\")\n        self.expect(\"PUNCT\", \":\")\n        spec = TaskSpec(name=name.value)\n        while not (self.peek().kind == \"IDENT\" and self.peek().value == \"task\"\n                   and self.peek(1).kind == \"IDENT\") and self.peek().kind != \"EOF\":\n            if self.peek().kind == \"NEWLINE\":\n                self.next()\n                continue\n            self.parse_field(spec)\n        return spec\n\n    def parse_field(self, spec: \"TaskSpec\") -> None:\n        key = self.expect(\"IDENT\")\n        self.expect(\"PUNCT\", \"=\")\n        if key.value not in FIELD_KEYS:\n            close = difflib.get_close_matches(key.value, FIELD_KEYS, 1)\n            hint = f\" (did you mean {close[0]!r}?)\" if close else \"\"\n            raise ParseError(f\"unknown field {key.value!r}{hint}\", key)\n        expr = self.parse_or()\n        self._end",
+              "content_chars": 24123,
+              "content_excerpt": "## CHAPTER requirements-and-contracts\n\nThe task runner, called `taskrun`, is a local coding-agent workhorse: it takes a declarative tasks file, builds a dependency graph, executes each task's command ",
+              "error": "all-chapters; completion-marker",
+              "failure_class": "completion_budget_exhausted_after_visible_output",
+              "finish_reason": "length",
+              "latency_ms": 842957.3702199996,
+              "reasoning_chars": 252061,
+              "reasoning_field": "reasoning",
+              "reasoning_tokens": null,
+              "status": "failed",
+              "text_checks": [
+                {
+                  "name": "all-chapters",
+                  "passed": false
+                },
+                {
+                  "name": "completion-marker",
+                  "passed": false
+                }
+              ],
+              "usage": {
+                "completion_tokens": 65536,
+                "prompt_tokens": 279,
+                "prompt_tokens_details": null,
+                "total_tokens": 65815
+              }
+            }
+          ],
+          "budget": {
+            "legacy_max_tokens_as_visible": false,
+            "max_completion_tokens": 65536,
+            "reasoning_headroom_tokens": 16384,
+            "visible_answer_tokens": 49152
+          },
+          "content": "## CHAPTER requirements-and-contracts\n\nThe task runner, called `taskrun`, is a local coding-agent workhorse: it takes a declarative tasks file, builds a dependency graph, executes each task's command on a bounded thread pool, records everything in an append-only journal, and survives crashes by combining atomic state snapshots with journal replay. This chapter fixes the vocabulary used by all later chapters so the scheduler in chapter 9, the recovery logic in chapter 14, and the HTTP facade in chapter 17 all speak the same language.\n\nThe functional requirements are: (1) parse a `.tasks` DSL file into `TaskSpec` objects; (2) execute tasks respecting `needs` ordering with parallelism; (3) bound every subprocess with timeouts, output caps, and OS rlimits; (4) retry transient failures under an explicit policy; (5) support cooperative cancellation from the CLI or HTTP interface; (6) persist an event journal with sequence numbers and checksums; (7) recover interrupted runs on restart; (8) expose `validate`, `run`, `resume`, `status`, `cancel`, and `journal` operations through both a CLI and a local HTTP server. Non-goals are deliberate: no distributed execution, no remote queue, no authentication beyond localhost binding, and no plugin loading beyond the tool protocol in chapter 16.\n\nThe contract types are `TaskSpec` (static definition parsed from the DSL), `TaskState` (runtime status, attempt count, exit code, and human-readable detail), `CommandSpec` (either an `argv` vector executed directly or a named `tool` resolved through the chapter 16 protocol), and `RetrySpec` (attempt budget and backoff shape). Every deliberate failure raises a subclass of `TaskrunError`, so the CLI can map errors to exit codes without parsing message strings.\n\n**Invariants.** (I1) A `TaskState` moves only forward through the transition table: `PENDING → RUNNING → {SUCCEEDED, FAILED, CANCELLED}`, with `PENDING → SKIPPED` when an upstream task fails or is skipped, and `RUNNING → RETRY_WAIT` as a transient state used by the retry layer. (I2) All subprocess execution is argv-vector based; `shell=True` is banned project-wide. (I3) The journal is append-only with contiguous per-run sequence numbers starting at 1. (I4) Once cancellation is requested, no task may transition from `PENDING` to `RUNNING`. (I5) Configuration objects are frozen dataclasses; only `TaskState` mutates, and only under the scheduler lock.\n\n**Error handling.** `ConfigError` covers unusable workspaces and unknown tools; `ValidationError` aggregates every static problem in a tasks file rather than failing on the first; `CycleError` carries the offending path; `ToolError` records the exit code and whether the failure is retryable; `CancelledError` unwinds cooperative workers; `StorageError` stops the runner when snapshots cannot be trusted.\n\n**Worked example.** The file below drives every later chapter: `lint` runs first, `test` waits on `lint` and is gated by `env.CI`, and `package` needs `test`. Given this file, `taskrun run demo.tasks` produces a run id such as `188f2a41c0d39b1c4e7f` from `make_run_id`, executes `lint`, then `test` and `package`, and leaves a journal whose last line is `RUN_FINISHED`.\n\n```python\n# taskrun/core.py\n\"\"\"Shared vocabulary for every taskrun subsystem.\"\"\"\nfrom __future__ import annotations\n\nimport enum\nimport random\nfrom dataclasses import dataclass, field\nfrom typing import Any\n\n\nclass TaskStatus(enum.Enum):\n    PENDING = \"pending\"\n    READY = \"ready\"\n    RUNNING = \"running\"\n    RETRY_WAIT = \"retry_wait\"\n    SUCCEEDED = \"succeeded\"\n    FAILED = \"failed\"\n    CANCELLED = \"cancelled\"\n    SKIPPED = \"skipped\"\n\n\nTERMINAL = frozenset({TaskStatus.SUCCEEDED, TaskStatus.FAILED,\n                      TaskStatus.CANCELLED, TaskStatus.SKIPPED})\n\n\nclass TaskrunError(Exception):\n    \"\"\"Base class for every deliberate taskrun failure.\"\"\"\n\n\nclass ConfigError(TaskrunError):\n    \"\"\"Workspace, registry, or CLI inputs are unusable.\"\"\"\n\n\nclass ValidationError(TaskrunError):\n    \"\"\"A tasks file violates the static contract.\"\"\"\n    def __init__(self, errors: list[str]) -> None:\n        super().__init__(\"; \".join(errors))\n        self.errors = list(errors)\n\n\nclass CycleError(TaskrunError):\n    \"\"\"The dependency graph contains a cycle.\"\"\"\n    def __init__(self, cycle: list[str]) -> None:\n        super().__init__(\"dependency cycle: \" + \" -> \".join(cycle + cycle[:1]))\n        self.cycle = list(cycle)\n\n\nclass StorageError(TaskrunError):\n    \"\"\"Snapshot persistence failed in a way that must stop the runner.\"\"\"\n\n\nclass ToolError(TaskrunError):\n    def __init__(self, tool: str, message: str, exit_code: int | None = None,\n                 retryable: bool = False) -> None:\n        super().__init__(f\"tool {tool!r}: {message}\")\n        self.tool, self.exit_code, self.retryable = tool, exit_code, retryable\n\n\nclass CancelledError(TaskrunError):\n    \"\"\"Raised inside work that observed a cancellation token.\"\"\"\n\n\n@dataclass(frozen=True)\nclass RetrySpec:\n    attempts: int = 0\n    delay_s: float = 0.0\n    backoff: float = 1.0\n    max_delay_s: float = 30.0\n\n\n@dataclass(frozen=True)\nclass CommandSpec:\n    kind: str                                   # \"tool\" or \"argv\"\n    argv: tuple[str, ...] = ()\n    tool: str = \"\"\n    params: dict[str, Any] = field(default_factory=dict)\n\n\n@dataclass\nclass TaskSpec:\n    name: str\n    needs: tuple[str, ...] = ()\n    command: CommandSpec | None = None\n    timeout_s: float = 60.0\n    retry: RetrySpec = field(default_factory=RetrySpec)\n    when: Any = None                            # expression AST from chapter 4\n    description: str = \"\"\n\n\n@dataclass\nclass TaskState:\n    status: TaskStatus = TaskStatus.PENDING\n    attempts: int = 0\n    exit_code: int | None = None\n    detail: str = \"\"\n\n\ndef make_run_id(now: float, rng: random.Random) -> str:\n    \"\"\"20 hex chars: 12 from the millisecond clock, 8 random.\"\"\"\n    return f\"{int(now * 1000) & 0xFFFFFFFFFFFF:012x}{rng.randrange(1 << 32):08x}\"\n```\n\n## CHAPTER workspace-layout\n\nEverything the runner persists lives under one directory so backups, permissions, and cleanup have a single target. The default root is `./.taskrun`; the `--home` flag overrides it, and the `TASKRUN_HOME` environment variable provides a middle layer. Resolution order is therefore CLI flag, then environment, then cwd-relative default, and the resolved path is always canonicalized with `Path.resolve()` so later containment checks in chapter 20 compare absolute, symlink-free paths.\n\nThe layout has six directories with strict responsibilities. `journal/` holds one append-only JSONL file per run, named `<run_id>.jsonl`, plus `.1` rotation successors. `state/` holds `state-<run_id>.json` snapshots written atomically by chapter 13, with `.bak` predecessors. `logs/` holds the rotating structured log from chapter 19. `artifacts/` is the only directory tasks may write into voluntarily, addressed through the sandbox. `tools/` holds `tools.json`, the allowlist mapping tool names to argv vectors used by chapter 16. Keeping journal, state, and logs separate matters operationally: the journal is the recovery source of truth, snapshots are an optimization over it, and logs are human diagnostics that may be deleted freely.\n\nAll directories are created with mode `0o700` because task runs frequently embed tokens in the environment, and a world-readable journal would leak command output. A write probe (`write`, `unlink` of a dotfile) runs at startup so a read-only mount or a squashed NFS mount fails immediately with `ConfigError` instead of corrupting a run twenty minutes later.\n\n**Invariants.** (W1) No component writes outside the workspace root; temporary files are created inside the destination directory so `os.replace` stays on one filesystem. (W2) Journal, snapshot, and log files are never renamed across directories. (W3) Directory creation is idempotent; `ensure_workspace` is safe to call from every entrypoint. (W4) The tools allowlist file is optional; when absent, only `argv` commands are executable.\n\n**Error handling.** Every filesystem failure during setup is converted to `ConfigError` with the errno message embedded, because callers (CLI chapter 18, HTTP chapter 17) need one exception type to map to exit code 3. `mkdir(parents=True, exist_ok=True)` tolerates concurrent creation by two runner processes, which the load tests in chapter 23 actually exercise. `chmod` failures on filesystems that ignore modes are tolerated silently, since the write probe is the real safety check.\n\n**Worked example.** Running the module below against a fresh temporary directory prints exactly the six directories, then the `tools.json` file we placed there. After a real run of `demo.tasks`, the same listing would additionally show `journal/<run_id>.jsonl` and `state/state-<run_id>.json`, which is precisely what the operations script in chapter 24 scans for.\n\n```python\n# taskrun/workspace.py\nfrom __future__ import annotations\n\nimport os\nfrom dataclasses import dataclass\nfrom pathlib import Path\n\n\n@dataclass(frozen=True)\nclass Workspace:\n    root: Path\n    journal_dir: Path\n    state_dir: Path\n    logs_dir: Path\n    artifacts_dir: Path\n    tools_dir: Path\n\n\ndef resolve_home(explicit: str | None = None, env: dict[str, str] | None = None,\n                 cwd: Path | None = None) -> Path:\n    \"\"\"CLI flag beats TASKRUN_HOME beats ./.taskrun next to the cwd.\"\"\"\n    env = os.environ if env is None else env\n    cwd = Path.cwd() if cwd is None else cwd\n    if explicit:\n        return Path(explicit).expanduser().resolve()\n    if env.get(\"TASKRUN_HOME\"):\n        return Path(env[\"TASKRUN_HOME\"]).expanduser().resolve()\n    return (cwd / \".taskrun\").resolve()\n\n\ndef ensure_workspace(home: Path) -> Workspace:\n    home = Path(home).resolve()\n    ws = Workspace(root=home, journal_dir=home / \"journal\", state_dir=home / \"state\",\n                   logs_dir=home / \"logs\", artifacts_dir=home / \"artifacts\",\n                   tools_dir=home / \"tools\")\n    try:\n        for path in (ws.root, ws.journal_dir, ws.state_dir,\n                     ws.logs_dir, ws.artifacts_dir, ws.tools_dir):\n            path.mkdir(parents=True, exist_ok=True)\n            try:\n                os.chmod(path, 0o700)\n            except OSError:\n                pass  # modeless filesystems are fine; the probe below decides\n    except OSError as exc:\n        raise ConfigError(f\"cannot create workspace under {home}: {exc}\") from exc\n    probe = ws.root / \".write-probe\"\n    try:\n        probe.write_text(\"ok\", encoding=\"utf-8\")\n        probe.unlink()\n    except OSError as exc:\n        raise ConfigError(f\"workspace {home} is not writable: {exc}\") from exc\n    return ws\n\n\nif __name__ == \"__main__\":\n    import tempfile\n    with tempfile.TemporaryDirectory() as td:\n        ws = ensure_workspace(Path(td) / \"agent-home\")\n        (ws.tools_dir / \"tools.json\").write_text(\"{}\\n\", encoding=\"utf-8\")\n        for path in sorted(ws.root.rglob(\"*\")):\n            kind = \"dir \" if path.is_dir() else \"file\"\n            print(kind, path.relative_to(ws.root))\n```\n\n## CHAPTER lexer\n\nThe DSL is lexed by a hand-written scanner rather than `re.finditer` or a third-party tokenizer for three reasons: precise line and column on every token so parser errors can point at a column, first-class duration literals like `30s` and `1m` that would otherwise need post-processing, and deterministic maximal-munch behavior for two-character operators such as `==` and `&&`. The lexer is a single pass with one character of lookahead and produces a flat token list ending in an `EOF` sentinel, which frees the parser from bounds checking.\n\nToken kinds are: `IDENT` for `[A-Za-z_][A-Za-z0-9_-]*`, `STRING` for double-quoted text with escapes `\\n`, `\\t`, `\\\"`, `\\\\`, `NUMBER` for integer and decimal digits, `DURATION` for a number suffixed with `ms`, `s`, `m`, or `h`, `OP` for the six comparison and logical operators, `PUNCT` for structural characters `{ } = , [ ] ( ) : < > ! +`, `NEWLINE`, and `EOF`. Keywords such as `task`, `true`, and `env` are deliberately *not* reserved at lex time; the parser interprets `IDENT` values in context, which keeps the lexer reusable for the expression grammar in chapter 5.\n\nComments start with `#` and run to end of line; they are skipped without emitting a token, but the newline that terminates them is still emitted so line-oriented field parsing works. Whitespace between tokens is skipped. An unterminated string, a bad escape, a bare number glued to letters (`30x`), or any unexpected character raises `LexError` carrying line, column, and a human-readable reason.\n\n**Invariants.** (L1) Concatenating token source text plus skipped whitespace and comments reproduces the input exactly, which makes column arithmetic trustworthy. (L2) The final token is always `EOF`; the parser can never read past it because `next()` refuses to advance at `EOF`. (L3) A `DURATION` token is always followed by a non-identifier character or end of input; `30sleep` is a lex error, not a number plus identifier.\n\n**Error handling.** `LexError` subclasses `ValueError` and formats as `line:col: message`, matching `ParseError` so chapter 6 can merge both into one error list. The lexer fails fast on the first error; the parser, not the lexer, implements multi-error recovery by resynchronizing at the next newline or `task` keyword.\n\n**Worked example.** For the three-line sample in the demo, the stream begins with `IDENT 'task'`, `IDENT 'lint'`, `PUNCT ':'`, then on line two `IDENT 'timeout'`, `PUNCT '='`, `DURATION '30s'`; the comment contributes nothing, and line three yields `IDENT 'when'`, `PUNCT '='`, `IDENT 'env'`, `PUNCT '.'`, `IDENT 'CI'`, `OP '!='`, `STRING 'false'`. The trailing token is `EOF` at line 4, column 1.\n\n```python\n# taskrun/lexer.py\nfrom __future__ import annotations\n\nimport re\nfrom dataclasses import dataclass\n\n\nclass LexError(ValueError):\n    def __init__(self, msg: str, line: int, col: int) -> None:\n        super().__init__(f\"{line}:{col}: {msg}\")\n        self.line, self.col = line, col\n\n\n@dataclass\nclass Token:\n    kind: str        # IDENT STRING NUMBER DURATION OP PUNCT NEWLINE EOF\n    value: str\n    line: int\n    col: int\n\n\nIDENT_RE = re.compile(r\"[A-Za-z_][A-Za-z0-9_\\-]*\")\nNUMBER_RE = re.compile(r\"\\d+(?:\\.\\d+)?\")\nDURATION_RE = re.compile(r\"\\d+(?:\\.\\d+)?(?:ms|s|m|h)\")\nTWO_CHAR_OPS = (\"==\", \"!=\", \"<=\", \">=\", \"&&\", \"||\")\nONE_CHAR = set(\"{}[]=(),:<>!\")\n\n\nclass Lexer:\n    def __init__(self, text: str) -> None:\n        self.text, self.i, self.line, self.col = text, 0, 1, 1\n\n    def _peek(self, off: int = 0) -> str:\n        j = self.i + off\n        return self.text[j] if j < len(self.text) else \"\"\n\n    def _advance(self, n: int = 1) -> None:\n        for _ in range(n):\n            if self.i < len(self.text):\n                if self.text[self.i] == \"\\n\":\n                    self.line, self.col = self.line + 1, 1\n                else:\n                    self.col += 1\n                self.i += 1\n\n    def tokens(self) -> list[Token]:\n        out: list[Token] = []\n        while self.i < len(self.text):\n            ch = self._peek()\n            if ch in \" \\t\\r\":\n                self._advance()\n            elif ch == \"#\":\n                while self._peek() not in (\"\", \"\\n\"):\n                    self._advance()\n            elif ch == \"\\n\":\n                out.append(Token(\"NEWLINE\", \"\\\\n\", self.line, self.col))\n                self._advance()\n            elif ch == '\"':\n                out.append(self._string())\n            elif ch.isdigit():\n                out.append(self._number_or_duration())\n            elif ch.isalpha() or ch == \"_\":\n                m = IDENT_RE.match(self.text, self.i)\n                out.append(Token(\"IDENT\", m.group(0), self.line, self.col))\n                self._advance(len(m.group(0)))\n            elif self._peek(0) + self._peek(1) in TWO_CHAR_OPS:\n                out.append(Token(\"OP\", self._peek(0) + self._peek(1), self.line, self.col))\n                self._advance(2)\n            elif ch in ONE_CHAR:\n                out.append(Token(\"PUNCT\", ch, self.line, self.col))\n                self._advance()\n            else:\n                raise LexError(f\"unexpected character {ch!r}\", self.line, self.col)\n        out.append(Token(\"EOF\", \"\", self.line, self.col))\n        return out\n\n    def _string(self) -> Token:\n        line, col = self.line, self.col\n        self._advance()\n        buf: list[str] = []\n        while True:\n            ch = self._peek()\n            if ch in (\"\", \"\\n\"):\n                raise LexError(\"unterminated string\", line, col)\n            if ch == '\"':\n                self._advance()\n                return Token(\"STRING\", \"\".join(buf), line, col)\n            if ch == \"\\\\\":\n                nxt = self._peek(1)\n                mapping = {\"n\": \"\\n\", \"t\": \"\\t\", '\"': '\"', \"\\\\\": \"\\\\\"}\n                if nxt not in mapping:\n                    raise LexError(f\"bad escape \\\\{nxt}\", self.line, self.col)\n                buf.append(mapping[nxt])\n                self._advance(2)\n            else:\n                buf.append(ch)\n                self._advance()\n\n    def _number_or_duration(self) -> Token:\n        line, col = self.line, self.col\n        m = DURATION_RE.match(self.text, self.i)\n        if m and not self.text[m.end():m.end() + 1].isalnum():\n            self._advance(len(m.group(0)))\n            return Token(\"DURATION\", m.group(0), line, col)\n        m = NUMBER_RE.match(self.text, self.i)\n        nxt = self.text[m.end():m.end() + 1]\n        if nxt and (nxt.isalpha() or nxt == \"_\"):\n            raise LexError(f\"bare number followed by {nxt!r}; units are ms s m h\", line, col)\n        self._advance(len(m.group(0)))\n        return Token(\"NUMBER\", m.group(0), line, col)\n\n\nif __name__ == \"__main__\":\n    sample = 'task lint:\\n    timeout = 30s   # seconds\\n'\n    for tok in Lexer(sample).tokens():\n        print(f\"{tok.line}:{tok.col:>2} {tok.kind:<9} {tok.value!r}\")\n```\n\n## CHAPTER parser\n\nThe parser is a recursive-descent translator from the token stream to `TaskSpec` objects plus an expression AST. The grammar is line-oriented: a file is a sequence of `task <name>:` headers, each followed by `key = expression` fields until the next header or EOF. Field keys are restricted to `needs`, `command`, `timeout`, `retry`, `when`, and `description`; unknown keys are rejected with a `difflib` \"did you mean\" hint, which catches the classic `timeoutt` typo.\n\nExpression precedence, lowest to highest, is `||`, `&&`, unary `!`, a single non-associative comparison (`== != < <= > >=`), then primaries: string, number, duration, `true`, `false`, `env.<NAME>`, function calls `name(args, key=value)`, bracketed lists, and parenthesized groups. A bare identifier parses as `Const(name)` so `needs = [lint, test]` works; the validator in chapter 6 rejects bare identifiers where they make no sense. Function calls accept positional and keyword arguments, which is exactly what the `tool(...)` and `retry` builders need.\n\nStructural errors, such as a missing colon after the task name, are fatal to that task but not to the file: `parse_file` records the `ParseError`, then `_sync_to_next_task` skips tokens to the next `task NAME` pair, so one broken task does not hide five others. Field-level errors are capped at 20 to keep diagnostics bounded. Two DSL constructs are translated eagerly: `retry` builders (`none()`, `fixed(attempts, delay, backoff)`, `exponential(...)` with `max_delay`) become `RetrySpec`, and `command` builders (`tool(name, **params)` and `argv([...])`) become `CommandSpec`. Durations are converted to float seconds at parse time, so `timeout = 90s` and `timeout = 1.5m` both arrive as `90.0`.\n\n**Invariants.** (P1) The parser never evaluates `env` references or spawns anything; `when` remains an AST until the scheduler evaluates it in chapter 9. (P2) Every `TaskSpec` reaching chapter 6 has syntactically valid needs (a `ListLit` of strings) and a converted or absent `command` and `retry`. (P3) Parse errors always include line and column taken from the offending token.\n\n**Error handling.** `ParseError` wraps the failing token, and field errors are re-raised prefixed with the task name so a message reads `task 'test': 4:11: unknown dependency syntax`. The `errors` list on `TaskFile` is merged with semantic errors in chapter 6, giving the user the complete problem list in one run.\n\n**Worked example.** Parsing the demo file yields two tasks: `lint` with `needs=()`, `timeout_s=30.0`, `command=CommandSpec(kind='tool', tool='lint', params={'target': 'src/'})`, and `retry=RetrySpec(attempts=2, delay_s=2.0)`; and `test` with `needs=('lint',)`, `when=Binary('!=', EnvRef('CI'), Const('false'))`. The printed errors list is empty, and the AST printout shows the un-evaluated expression tree.\n\n```python\n# taskrun/parser.py\nfrom __future__ import annotations\n\nimport difflib\nfrom dataclasses import dataclass\n\nfrom taskrun.core import CommandSpec, RetrySpec, TaskSpec\nfrom taskrun.lexer import Lexer, Token\n\nFIELD_KEYS = {\"needs\", \"command\", \"timeout\", \"retry\", \"when\", \"description\"}\nCOMPARISONS = {\"==\", \"!=\", \"<\", \"<=\", \">\", \">=\"}\nMAX_ERRORS = 20\n\n\nclass ParseError(Exception):\n    def __init__(self, msg: str, tok: Token) -> None:\n        super().__init__(f\"{tok.line}:{tok.col}: {msg}\")\n\n\n@dataclass(frozen=True)\nclass Const:\n    value: object\n\n\n@dataclass(frozen=True)\nclass EnvRef:\n    name: str\n\n\n@dataclass(frozen=True)\nclass ListLit:\n    items: tuple\n\n\n@dataclass(frozen=True)\nclass Unary:\n    op: str\n    operand: object\n\n\n@dataclass(frozen=True)\nclass Binary:\n    op: str\n    left: object\n    right: object\n\n\n@dataclass(frozen=True)\nclass Call:\n    name: str\n    args: tuple\n    kwargs: dict\n\n\n@dataclass\nclass TaskFile:\n    tasks: list\n    errors: list[str]\n\n\nclass Parser:\n    def __init__(self, tokens: list[Token]) -> None:\n        self.toks, self.pos = tokens, 0\n\n    def peek(self, off: int = 0) -> Token:\n        return self.toks[min(self.pos + off, len(self.toks) - 1)]\n\n    def next(self) -> Token:\n        tok = self.toks[self.pos]\n        if tok.kind != \"EOF\":\n            self.pos += 1\n        return tok\n\n    def expect(self, kind: str, value: str | None = None) -> Token:\n        tok = self.peek()\n        if tok.kind != kind or (value is not None and tok.value != value):\n            raise ParseError(f\"expected {value or kind!r}, found {tok.value or tok.kind!r}\", tok)\n        return self.next()\n\n    def parse_file(self) -> TaskFile:\n        tasks, errors = [], []\n        while self.peek().kind != \"EOF\":\n            while self.peek().kind == \"NEWLINE\":\n                self.next()\n            if self.peek().kind == \"EOF\":\n                break\n            try:\n                tasks.append(self.parse_task())\n            except ParseError as exc:\n                errors.append(str(exc))\n                if len(errors) >= MAX_ERRORS:\n                    break\n                self._sync_to_next_task()\n        return TaskFile(tasks=tasks, errors=errors)\n\n    def _sync_to_next_task(self) -> None:\n        while self.peek().kind != \"EOF\":\n            if (self.peek().kind == \"IDENT\" and self.peek().value == \"task\"\n                    and self.peek(1).kind == \"IDENT\"):\n                return\n            self.next()\n\n    def parse_task(self) -> \"TaskSpec\":\n        self.expect(\"IDENT\", \"task\")\n        name = self.expect(\"IDENT\")\n        self.expect(\"PUNCT\", \":\")\n        spec = TaskSpec(name=name.value)\n        while not (self.peek().kind == \"IDENT\" and self.peek().value == \"task\"\n                   and self.peek(1).kind == \"IDENT\") and self.peek().kind != \"EOF\":\n            if self.peek().kind == \"NEWLINE\":\n                self.next()\n                continue\n            self.parse_field(spec)\n        return spec\n\n    def parse_field(self, spec: \"TaskSpec\") -> None:\n        key = self.expect(\"IDENT\")\n        self.expect(\"PUNCT\", \"=\")\n        if key.value not in FIELD_KEYS:\n            close = difflib.get_close_matches(key.value, FIELD_KEYS, 1)\n            hint = f\" (did you mean {close[0]!r}?)\" if close else \"\"\n            raise ParseError(f\"unknown field {key.value!r}{hint}\", key)\n        expr = self.parse_or()\n        self._end",
+          "content_excerpt": "## CHAPTER requirements-and-contracts\n\nThe task runner, called `taskrun`, is a local coding-agent workhorse: it takes a declarative tasks file, builds a dependency graph, executes each task's command ",
+          "error": "all-chapters; completion-marker",
+          "failure_class": "completion_budget_exhausted_after_visible_output",
+          "finish_reason": "length",
+          "id": "natural-long-technical-guide",
+          "latency_ms": 842957.3702199996,
+          "pass_count": 0,
+          "pass_rate": 0.0,
+          "reasoning_chars": 252061,
+          "reasoning_field": "reasoning",
+          "reasoning_tokens": null,
+          "required_pass_rate": 1.0,
+          "status": "failed",
+          "text_checks": [
+            {
+              "name": "all-chapters",
+              "passed": false
+            },
+            {
+              "name": "completion-marker",
+              "passed": false
+            }
+          ],
+          "usage": {
+            "completion_tokens": 65536,
+            "prompt_tokens": 279,
+            "prompt_tokens_details": null,
+            "total_tokens": 65815
+          },
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-09-23",
+      "evidence_use": "diagnostic",
+      "source": "long-output-64k-suite.json",
+      "source_sha256": "c80058f149c05c225ca063d2caadc283a55769903c45fc605656ca3f7d3f2651",
+      "status": "failed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "coding-agent-infrastructure"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "chat_template_kwargs",
+    "control_requested": {
+      "enable_thinking": true
+    },
+    "control_status": "requested_unverified",
+    "mode": "enabled",
+    "reasoning_effort": null,
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 842957.6745010053
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

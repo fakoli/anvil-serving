@@ -3,7 +3,7 @@
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-19 current decision:** the [GLM-5.3-Flash r10 APC promotion follow-up](../findings/2026-09-19-glm53-apc-promotion.md) records explicit human approval and fresh bounded acceptance. The historical [r9/r10 campaign](../findings/2026-09-19-glm53-apc.md) remains the evidence and failure record; exact r9 remains the documented rollback.
+**2026-09-23 deployed-publication-pending decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) has retained direct/routed and native-client acceptance. Final solver review and publication receipt remain pending; exact r10 is the rollback.
 
 
 Compare local models by useful context, quality, and serving performance.

@@ -1,0 +1,142 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent full-visible-text coherence review of the retained GLM DCP1 natural long-output case; inspect off-topic drift, token/sentence degeneration, chapter completeness, and cross-chapter coherence without executing generated code or treating static application correctness as the gate.",
+  "gate_state": "passed_with_documented_limitations",
+  "targets": [
+    {
+      "kind": "visible_output",
+      "path": "natural-long-output-1-visible.txt",
+      "sha256": "4d9cf8bf732e5e1c0b0fa21d52d835b4cd188c5094fea93714568b2c20032adf"
+    },
+    {
+      "kind": "native_artifact",
+      "path": "natural-long-output-1.json",
+      "sha256": "761d0ab7fa1185aedf24b0e8438e35ac135a71cbd184e09fc19eeba02012fd94"
+    },
+    {
+      "kind": "token_count_receipt",
+      "path": "natural-long-output-1-token-count.json",
+      "sha256": "be0d048f5c459e7bede1329bbf2d0f076fd55e7091a3602828974c43b6574e39"
+    }
+  ],
+  "tools_used": [
+    "complete line-ordered visible-text inspection",
+    "offline heading/chapter/word/code-fence analysis",
+    "offline normalized sentence/paragraph/30-word-window repetition probes",
+    "SHA-256 binding"
+  ],
+  "artifacts": {
+    "reviewed_at": "2026-09-23T22:54:05.699470+00:00",
+    "findings_summary": [
+      {
+        "severity": "none",
+        "classification": "refuted",
+        "finding": "No off-topic drift or late-output collapse was found. All 24 chapters stay within the deterministic Python platformer-engine assignment, remain distinct, and preserve the fixed-point/tick/state-layer design through the final chapter.",
+        "references": [
+          "natural-long-output-1-visible.txt:1",
+          "natural-long-output-1-visible.txt:1225",
+          "natural-long-output-1-visible.txt:1269"
+        ]
+      },
+      {
+        "severity": "none",
+        "classification": "refuted",
+        "finding": "No repeated-token, repeated-sentence, repeated-paragraph, or long-window degeneration was found. Offline probes found no duplicate normalized sentence of at least 8 words, no duplicate paragraph of at least 20 words, no duplicate 30-word window, and a maximum identical-token run of 2.",
+        "references": [
+          "natural-long-output-1-visible.txt:1"
+        ]
+      },
+      {
+        "severity": "none",
+        "classification": "confirmed",
+        "finding": "Chapter coverage is complete: exact ordered headings 01 through 24, every chapter contains substantive topic-specific explanation, at least one concrete code block, an Invariants section, and a Failure cases section; the exact terminal marker occurs once at EOF.",
+        "references": [
+          "natural-long-output-1-visible.txt:8",
+          "natural-long-output-1-visible.txt:1269"
+        ]
+      },
+      {
+        "severity": "low",
+        "classification": "confirmed",
+        "finding": "Length undershoots the aspirational wording: 11,069 visible words is 92.2% of the 12,000-word aim; 22 of 24 chapter bodies are below 500 words and 5 are below 400 when code is counted. The shortest is 357 words. Because the prompt says approximately and every chapter remains developed rather than collapsing late, this is an instruction-completeness limitation, not a coherence failure.",
+        "references": [
+          "natural-long-output.suite.json:10",
+          "natural-long-output-1-visible.txt:8",
+          "natural-long-output-1-visible.txt:1269"
+        ]
+      },
+      {
+        "severity": "low",
+        "classification": "confirmed_out_of_scope",
+        "finding": "The prose is coherent, but it is not an integrated implementation acceptance. Static seams remain, including the slope chapter requiring insertion between X/Y while the prior example exposes a combined move_and_collide function, and the save chapter claiming complete reconstruction while its example omits some dynamic counters and treats stateful platforms as tick-derived. Generated code was not executed.",
+        "references": [
+          "natural-long-output-1-visible.txt:347",
+          "natural-long-output-1-visible.txt:439",
+          "natural-long-output-1-visible.txt:458",
+          "natural-long-output-1-visible.txt:1071",
+          "natural-long-output-1-visible.txt:1103"
+        ]
+      }
+    ],
+    "observations": {
+      "visible_tokens": 18016,
+      "visible_words": 11069,
+      "finish_reason": "stop",
+      "chapter_count": 24,
+      "chapters_with_code_invariants_and_failure_cases": 24,
+      "terminal_marker_once": true,
+      "terminal_marker_at_end": true,
+      "minimum_chapter_words_including_code": 357,
+      "chapters_below_400_words_including_code": 5,
+      "chapters_below_500_words_including_code": 22,
+      "duplicate_normalized_sentences_min_8_words": 0,
+      "duplicate_paragraphs_min_20_words": 0,
+      "duplicate_30_word_windows": 0,
+      "maximum_identical_token_run": 2
+    },
+    "breakage_probes": [
+      {
+        "axis": "fail_closed_unreadable_state",
+        "state": "refuted",
+        "input": "missing, unreadable, truncated, or hash-mismatched visible/native/token-count artifact",
+        "wrong_result_prevented": "issuing a coherence verdict against bytes other than the retained generation",
+        "evidence": "all three files were readable and SHA-bound; visible SHA agrees with the token-count receipt"
+      },
+      {
+        "axis": "malformed_boundary_input",
+        "state": "refuted",
+        "input": "missing, duplicate, out-of-order, or malformed chapter headings; unbalanced code fences; duplicate or nonterminal completion marker",
+        "wrong_result_prevented": "treating structurally incomplete text as a complete handbook",
+        "evidence": "24 exact ordered headings, balanced code fences per chapter, one exact marker at EOF"
+      },
+      {
+        "axis": "resource_exhaustion_and_bounds",
+        "state": "refuted_with_limit",
+        "input": "reasoning-cap exhaustion, visible-cap truncation, or late chapter compression/looping",
+        "wrong_result_prevented": "claiming stable long generation from a length-truncated or degenerated response",
+        "evidence": "finish_reason stop, 18,016 visible tokens, complete Chapter 24 and marker; total and five chapter lengths remain below aspirational targets"
+      },
+      {
+        "axis": "cross_seam_state_drift",
+        "state": "refuted_for_artifact_identity",
+        "input": "native content, extracted visible text, and tokenizer receipt refer to different generation bytes or configuration",
+        "wrong_result_prevented": "combining mismatched measurements into one pass",
+        "evidence": "visible SHA is recorded by the token receipt and native content length/content match the extracted visible text; attempt budget and sampling were read from the native attempt"
+      }
+    ],
+    "residual_risk": [
+      "One repetition establishes this artifact only; it is not a reliability rate.",
+      "The review covers long-output coherence and instruction coverage, not correctness, executability, security, performance, or maintainability of the proposed engine.",
+      "The requested natural-output suite contains a second distinct handbook case, but this packet reviews only the specifically requested case 1 artifact.",
+      "The top-level native evaluation_protocol carries generic defaults; the actual attempt budget and sampling are the authoritative per-attempt fields for this review."
+    ]
+  },
+  "advisory_priors": [
+    "Campaign/implementation lead: GPT-6 Astra; evaluated generator: GLM DCP1 candidate; reviewer: independent GPT-5.6 Sol.",
+    "The evaluated GLM model did not grade this output; deterministic structural probes and this independent full-text review are separate.",
+    "No model request, generated-code execution, serving change, lifecycle action, route change, or promotion occurred in this review."
+  ],
+  "recommendation": "PASS the single-artifact long-generation coherence gate with the recorded length and static-correctness limitations. This result may support continued bounded qualification, but it is not model qualification or promotion evidence by itself.",
+  "human_gate_required": false,
+  "promoted": false
+}

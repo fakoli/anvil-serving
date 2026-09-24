@@ -1,0 +1,44 @@
+{
+  "deployment": "Dashboard-source import and Workbench update; observability recovered after a non-secret configuration-permission repair. No inference/router restart or benchmark requests.",
+  "grafana": {
+    "authenticated_datasource_readback": true,
+    "model_readiness": [
+      {
+        "metric": "model_readiness",
+        "value": 1
+      }
+    ],
+    "runs": 9,
+    "sample_count_per_run": 16,
+    "source_matched_metrics": 99,
+    "uid": "benchmark-dashboard"
+  },
+  "observed_at": "2026-09-24T03:08:16.103651+00:00",
+  "post_status": "pending PR merge and deployed public readback",
+  "post_url": null,
+  "repeat_import": {
+    "benchmark_identical": true,
+    "benchmark_sha256": "ec4ea3b0c315b744390f101827ab9a548eb44e2c115bd02a1d5dc152f787fe0f",
+    "workbench_identical": true,
+    "workbench_sha256": "badfeae58f99288cf01c2f015534013dfc9f04a9bfe4924615b95707e7efe1fb"
+  },
+  "schema": "promotion-publication/v1",
+  "status": "dashboards_verified_post_pending",
+  "validation_caveat": "Installed observability skill stopped on stale registry-count assertion; isolated source fixes this and passes its suite.",
+  "workbench": {
+    "authenticated_readback": "Configured fallback-origin session and native evidence detail API; cards equal source-bound deployed cards.",
+    "evidence_ids": [
+      "redacted:sha256:d928970cda5516d148936beae5837f7d88e38a2288767b3f2e0514293671432f",
+      "redacted:sha256:df3da31baa5238579717781ebc3290c7eb482de7a33baa2f07ed6df379617f3e",
+      "redacted:sha256:0075ff49210a1eb88566f6bff629c31183ca64798649f55b3893d172aad278ba",
+      "redacted:sha256:e914012dcfd90f92997b85a1dabaf9375517932505d9b4e36f0397324279c227",
+      "redacted:sha256:193805cfaf19c07c46f1eead3a35587fa6bbe90665674f30e725b41e195771e0",
+      "redacted:sha256:0bdb50c6f504aa757a79c2be37ad09d3921394b2b4481620f4628cc6be7b1086",
+      "redacted:sha256:f34ee4df2d1d21b07cdd17feb0527490666b5e590e129c3cc6fff7caefda91c7",
+      "redacted:sha256:b860d4f66cb9cce85ace5d0e8893817e651d90308ffb50b863ea9d5d683d2da8",
+      "redacted:sha256:1181c7d8a944535f5bfc1edba4719373f99bd32f77891db5029191d5ae420359"
+    ],
+    "source_matched_cards": 9,
+    "url": "authenticated Workbench evidence readback"
+  }
+}

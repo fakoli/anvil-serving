@@ -1,0 +1,1269 @@
+# Deterministic 2D Platformer Engine — Implementation Handbook
+
+**Target:** an experienced Python programmer implementing from this document alone.
+**Core convention:** the simulation is integer-only. All positions and velocities are stored in *subpixel units* where `SUBPIX = 256` units equal one pixel. All time is measured in *ticks* of 1/60 s. The simulation never reads the wall clock, never uses floats, and never iterates unordered containers. Rendering, audio, and input are layers around the simulation, never inside it.
+
+---
+
+## Chapter 01: Simulation Time
+
+The simulation is a pure function of `(state, tick, input)`. It advances in discrete, fixed-size steps called ticks. There is no delta-time in physics; every constant (gravity, friction, buffer windows) is expressed *per tick*. The wall clock's only job is deciding **how many** ticks to run per rendered frame — never *what happens inside* a tick.
+
+The standard structure is the accumulator loop. Each frame, measure real elapsed time, add it to an accumulator, and convert the accumulator into a whole number of ticks. Run that many simulation steps, then render once. Clamp the number of steps per frame (typically 5) so that a stalled process (window drag, breakpoint, disk stall) cannot trigger an unbounded catch-up spiral that freezes the game.
+
+Every timed feature in later chapters — jump buffers, coyote windows, invulnerability, animation timers, platform paths — is measured against a single monotonically increasing integer `tick`. This is what makes determinism cheap: if two runs execute the same tick sequence with the same inputs, every counter, timer, and path position lands on the same value. A wall-clock read anywhere inside the simulation silently destroys this property.
+
+```python
+import time
+
+TICK_RATE = 60
+TICK_MS = 1_000_000_000 // TICK_RATE      # ns per tick
+MAX_STEPS_PER_FRAME = 5
+
+class GameLoop:
+    def __init__(self, sim, renderer):
+        self.sim = sim            # has .step(inputs) and .tick (int)
+        self.renderer = renderer
+        self.acc = 0
+        self.prev = time.monotonic_ns()
+
+    def frame(self, input_source):
+        now = time.monotonic_ns()
+        self.acc += now - self.prev
+        self.prev = now
+
+        steps = 0
+        while self.acc >= TICK_MS and steps < MAX_STEPS_PER_FRAME:
+            snapshot = input_source.snapshot(self.sim.tick)  # Ch. 03
+            self.sim.step(snapshot)
+            self.acc -= TICK_MS
+            steps += 1
+
+        if steps == MAX_STEPS_PER_FRAME:
+            self.acc = 0   # shed debt; never let acc grow unbounded
+
+        self.renderer.draw(self.sim, alpha=self.acc / TICK_MS)
+```
+
+The `alpha` passed to the renderer is the only float in the loop, and it is used exclusively for render-time interpolation between the previous and current sim positions. It must never be fed back into the simulation.
+
+**Invariants**
+- No simulation code calls `time.*`, `random.*`, or reads any clock.
+- `sim.tick` increments by exactly 1 per `step()` call, starting at 0.
+- The accumulator is clamped every frame; `acc < MAX_STEPS_PER_FRAME * TICK_MS` holds after each `frame()`.
+- All durations are integer tick counts.
+
+**Failure cases**
+- Multiplying velocity by real dt each frame: two machines (or two runs at different framerates) diverge within seconds.
+- Removing the `MAX_STEPS` clamp: a 10-second stall queues 600 ticks and the game appears frozen while it catches up.
+- Running the accumulator *inside* the sim step: reentrancy makes tick counts nondeterministic.
+
+---
+
+## Chapter 02: Coordinates and Cameras
+
+The world is a 2D plane in subpixel units, **y-axis pointing down** (gravity is positive y). Tile coordinates are derived, never stored: `tx = x // TILE`, where `TILE = 16 * SUBPIX = 4096`. Python's floor division rounds toward negative infinity, which is exactly what you want — a point at `x = -1` belongs to tile `-1`, and tile ranges computed as `(x + w - 1) // TILE` are correct for negative coordinates too. Test at least one level with entities at negative coordinates.
+
+The camera is a subpixel rectangle position `(cam_x, cam_y)` stored in simulation state (so replays reproduce it exactly). It follows the player using a **deadzone window**: the camera only moves when the player's screen-space position leaves a centered box. This prevents the camera from jittering with tiny in-place movements.
+
+Conversion to screen pixels happens **only at draw time**, and in this exact order: subtract the camera position *in subpixels*, then shift down to pixels. Rounding the camera to pixels first, then subtracting, produces one-pixel shimmer as the camera moves.
+
+```python
+SUBPIX_SHIFT = 8
+SUBPIX = 1 << SUBPIX_SHIFT          # 256
+TILE = 16 * SUBPIX                  # 4096
+
+class Camera:
+    DEADZONE_W = 64 * SUBPIX
+    DEADZONE_H = 32 * SUBPIX
+
+    def __init__(self):
+        self.x = 0
+        self.y = 0
+
+    def update(self, player, level):
+        px = player.x + player.w // 2      # player center
+        py = player.y + player.h // 2
+        # Horizontal: keep center inside deadzone
+        if px < self.x - self.DEADZONE_W // 2:
+            self.x = px + self.DEADZONE_W // 2
+        elif px > self.x + self.DEADZONE_W // 2:
+            self.x = px - self.DEADZONE_W // 2
+        # Vertical: same pattern with DEADZONE_H
+        if py < self.y - self.DEADZONE_H // 2:
+            self.y = py + self.DEADZONE_H // 2
+        elif py > self.y + self.DEADZONE_H // 2:
+            self.y = py - self.DEADZONE_H // 2
+        # Clamp to level bounds (level size in subpixels)
+        self.x = max(0, min(self.x, level.width_px - level.view_w))
+        self.y = max(0, min(self.y, level.height_px - level.view_h))
+
+    def world_to_screen(self, wx, wy):
+        return (wx - self.x) >> SUBPIX_SHIFT, (wy - self.y) >> SUBPIX_SHIFT
+```
+
+Note the clamp uses `level.width_px - level.view_w`; if a level is smaller than the viewport, `max(0, min(...))` keeps the camera pinned at 0 rather than producing a negative scroll.
+
+**Invariants**
+- Camera state lives in the simulation and is updated exactly once per tick, before render.
+- Subtraction happens in subpixels; the bit-shift to pixels is the final operation.
+- All tile lookups use floor division, never `int()` truncation (which fails for negatives).
+
+**Failure cases**
+- `int((wx - cam_x) / SUBPIX)` — float division plus truncation gives off-by-one pixels at negative coordinates and breaks determinism across platforms.
+- Updating the camera *after* drawing: the view lags one frame behind the player permanently.
+- Storing the camera in pixels only: sub-pixel follow motion is lost and the deadzone becomes unstable.
+
+---
+
+## Chapter 03: Keyboard Input
+
+The simulation must never see the operating system. It sees an **input snapshot**: the set of logical actions held during one tick. Edge detection (pressed/released) is derived by comparing consecutive snapshots — never accumulated from OS events, which arrive at arbitrary times and include unreliable key-repeat.
+
+Use a two-layer mapping. Layer 1: physical key → logical key (`K_x → "jump"`), configurable for accessibility (Ch. 22). Layer 2: logical key → action semantics. The simulation only ever queries layer 2.
+
+Set algebra gives you edges cleanly:
+
+```python
+class InputTracker:
+    ACTIONS = {"left", "right", "up", "down", "jump", "pause"}
+
+    def __init__(self, keymap):
+        self.keymap = keymap            # {pygame key constant: action name}
+        self.prev = frozenset()
+        self.curr = frozenset()
+        self.log = []                   # replay record, one frozenset per tick
+
+    def poll(self, pressed_keys):
+        held = set()
+        for key, action in self.keymap.items():
+            if pressed_keys[key]:
+                held.add(action)
+        self.prev = self.curr
+        self.curr = frozenset(held)
+        self.log.append(self.curr)      # index == tick
+
+    def held(self, action):    return action in self.curr
+    def pressed(self, action): return action in self.curr and action not in self.prev
+    def released(self, action): return action not in self.curr and action in self.prev
+```
+
+The critical discipline: **poll exactly once per tick**, immediately before `sim.step()`, and pass the tracker (or the snapshot) into the step. If any simulation code polls again mid-tick, `prev`/`curr` shift and a press that straddled the two polls vanishes. For replay (Ch. 23), `log` is the canonical input record: tick `i` of the replay applies `log[i]` — no OS involved.
+
+**Invariants**
+- One `poll()` per tick, at a fixed point in the frame (before `sim.step`).
+- `pressed`/`released` are pure functions of `(prev, curr)`; no event counters.
+- The keymap is data, not code; swapping it never changes sim logic.
+- The replay log stores frozensets (order-independent, hashable).
+
+**Failure cases**
+- Building `pressed` from a `KEYDOWN` event queue: events can arrive between ticks and be double-counted or lost during slow frames; OS key-repeat generates phantom presses.
+- Polling once in the main loop and again inside the player update: the jump edge fires twice or not at all.
+- Storing the log as lists of strings in insertion order: two keyboards reporting the same keys in different orders produce different replay files.
+
+---
+
+## Chapter 04: Velocity and Acceleration
+
+All motion values are integers in subpixel units per tick. Horizontal physics uses three constants, chosen as integers that approximate clean pixel values:
+
+```python
+RUN_ACCEL  = 90     # ~0.35 px/tick²
+RUN_FRICTION = 96   # ~0.375 px/tick²
+RUN_MAX    = 768    # exactly 3.0 px/tick
+```
+
+The update order each tick is: read input → apply acceleration or friction → clamp to max. Integration itself happens inside the collision step (Ch. 08), not here — this function only modifies velocity.
+
+```python
+class Player:
+    def apply_horizontal(self, inp):
+        if inp.held("left") and not inp.held("right"):
+            self.vx = max(self.vx - RUN_ACCEL, -RUN_MAX)
+            self.facing = -1
+        elif inp.held("right") and not inp.held("left"):
+            self.vx = min(self.vx + RUN_ACCEL, RUN_MAX)
+            self.facing = 1
+        else:
+            # Friction: move toward zero, never overshoot
+            if self.vx > 0:
+                self.vx = max(self.vx - RUN_FRICTION, 0)
+            elif self.vx < 0:
+                self.vx = min(self.vx + RUN_FRICTION, 0)
+        # Turning: apply extra braking so direction reverses quickly
+        if inp.held("left") and self.vx > 0:
+            self.vx = max(self.vx - RUN_FRICTION, 0)
+        elif inp.held("right") and self.vx < 0:
+            self.vx = min(self.vx + RUN_FRICTION, 0)
+```
+
+Two details matter. First, friction uses `max(vx - F, 0)` rather than `vx - F` unconditionally — without the clamp, friction overshoots zero each tick and the player oscillates between ±F/2 forever, visible as a slow creep after stopping. Second, the "turning" branch applies friction *on top of* acceleration when input opposes velocity, so reversing direction feels responsive instead of taking `2 * RUN_MAX / RUN_ACCEL` ≈ 17 ticks.
+
+Because everything is integer arithmetic on Python ints, results are bit-exact on any platform and any Python 3 version. There is no need for a fixed-point library; the only rule is that **no float ever touches `x`, `y`, `vx`, or `vy`**. If you ever write `self.vx *= 0.5`, you have silently broken every replay and golden test downstream.
+
+**Invariants**
+- After `apply_horizontal`, `-RUN_MAX ≤ vx ≤ RUN_MAX`.
+- Friction never flips the sign of `vx`.
+- No float assignment to any motion field, ever; lint or assert this in debug builds.
+- Acceleration is applied exactly once per tick.
+
+**Failure cases**
+- Float velocities (`vx += 0.35`): cross-platform divergence, unstable state hashes in Ch. 23.
+- Unclamped friction: player never fully stops; idle animation never triggers.
+- Applying acceleration twice (once in player, once in a generic "physics" pass): run speed reaches max in half the intended ticks and jump distances change.
+
+---
+
+## Chapter 05: Gravity
+
+Gravity is vertical acceleration applied after input handling and before movement/collision, exactly once per tick. A platformer feel benefits from **variable gravity**: lighter while rising with jump held, much heavier when the jump button is released mid-rise (jump cut), and moderately heavy while falling. This produces floaty controlled ascents and snappy descents without any extra state.
+
+```python
+G_RISE   = 64      # 0.25 px/tick² while rising & holding jump
+G_CUT    = 200     # ~0.78 px/tick² after early release
+G_FALL   = 160     # 0.625 px/tick² while falling
+TERMINAL = 2048    # 8.0 px/tick max fall speed
+
+class Player:
+    def apply_gravity(self, inp):
+        if self.vy < 0:                       # rising
+            g = G_RISE if inp.held("jump") else G_CUT
+        else:                                 # falling or stationary
+            g = G_FALL
+        self.vy = min(self.vy + g, TERMINAL)
+```
+
+With a jump impulse of `-1408` (Ch. 06), the rise phase at `G_RISE` lasts `1408 / 64` = 22 ticks and peaks at `1408² / (2·64)` ≈ 60.5 px — roughly 3.8 tiles. Releasing jump immediately switches to `G_CUT`, cutting the arc short. The low rising gravity also produces a natural "apex hang": near `vy = 0` the player spends several ticks drifting almost horizontally, which is what makes precise platform landings feel fair.
+
+`TERMINAL` is not just feel — it is a **collision safety invariant**. The tile resolver in Chapter 08 assumes per-tick displacement is strictly less than one tile (4096). Since `TERMINAL = 2048 < 4096`, a falling player can never skip an entire tile row between ticks. If you raise terminal velocity, you must raise it to at most `TILE - 1` or add swept collision.
+
+**Invariants**
+- `0 ≤ vy ≤ TERMINAL` after gravity when falling; `-JUMP_IMPULSE ≤ vy < 0` while rising.
+- Gravity applied exactly once per tick, after input, before integration.
+- `TERMINAL < TILE` (hard invariant; assert at load).
+- Jump-cut gravity applies only when `vy < 0`.
+
+**Failure cases**
+- Applying gravity inside both the player update and a global physics pass: fall speed doubles, jump height halves.
+- `TERMINAL = 5000`: fast falls tunnel through one-tile-thick floors intermittently — the worst kind of bug because it depends on where the player lands within the tile.
+- Float gravity (`vy += 0.25`): same determinism loss as Ch. 04, plus state hashes that never match.
+
+---
+
+## Chapter 06: Jump Buffering
+
+Players press jump slightly *before* landing. Without buffering, that press is lost and the game feels unresponsive. A **jump buffer** records the press for a few ticks and consumes it the moment the player becomes grounded.
+
+Implement it as a countdown timer in the player:
+
+```python
+JUMP_BUFFER_TICKS = 6     # ~100 ms window
+JUMP_IMPULSE = -1408      # -5.5 px/tick
+
+class Player:
+    def update_jump_buffer(self, inp):
+        if inp.pressed("jump"):
+            self.jump_buffer = JUMP_BUFFER_TICKS
+
+    def try_consume_jump(self, grounded, coyote):
+        # Called after collision resolution, when `grounded` is fresh.
+        if self.jump_buffer > 0 and (grounded or coyote > 0) and self.vy >= 0:
+            self.vy = JUMP_IMPULSE
+            self.jump_buffer = 0
+            self.coyote = 0          # consume coyote so it can't double-fire
+            self.grounded = False
+            return True
+        return False
+
+    def tick_end(self):
+        if self.jump_buffer > 0:
+            self.jump_buffer -= 1
+```
+
+The ordering within a tick is strict: (1) `update_jump_buffer` (register new presses), (2) horizontal physics and gravity, (3) collision resolution producing fresh `grounded`, (4) `try_consume_jump`, (5) `tick_end` decrements the buffer. Because the buffer is checked *after* collision, a press on the same tick the player lands still fires — the whole point. Because decrement happens in `tick_end`, a press lives for exactly 6 ticks including the press tick.
+
+The `self.vy >= 0` guard prevents a buffered jump from firing while the player is still rising through a one-way platform gap. The explicit `self.coyote = 0` on consumption prevents the coyote window (Ch. 07) from granting a second airborne jump on the same press.
+
+**Invariants**
+- The buffer is decremented exactly once per tick, in `tick_end`, unconditionally when positive.
+- A successful jump zeroes both the buffer and the coyote counter.
+- The buffer is checked only against *fresh* grounded state from this tick's collision pass.
+- Buffer window is an integer constant; assist profiles may change it (Ch. 22) but it is recorded with replays.
+
+**Failure cases**
+- Forgetting `tick_end`: the buffer never expires, so any press within a level lets the player jump on every subsequent landing — instantly noticeable in tests.
+- Checking the buffer *before* collision: a same-tick landing press is missed, defeating the feature.
+- Consuming the buffer in both the grounded branch and a separate coyote branch without clearing: double impulse, launching the player at `-11 px/tick` through the ceiling.
+
+---
+
+## Chapter 07: Coyote Time
+
+Players expect to jump for a few ticks after walking off a ledge. **Coyote time** grants a grace window: the jump permission lingers after ground contact ends. The implementation is a second countdown, but its *refresh rule* is the part people get wrong: coyote is refreshed to full **only while grounded**, and it decays automatically once the player leaves the ground.
+
+```python
+COYOTE_TICKS = 6
+
+class Player:
+    def update_grounded_state(self, grounded_now, jumped_this_tick):
+        if grounded_now:
+            self.coyote = COYOTE_TICKS     # refresh every grounded tick
+        else:
+            if self.coyote > 0:
+                self.coyote -= 1           # decay once per airborne tick
+        if jumped_this_tick:
+            self.coyote = 0                # a real jump spends the grace
+```
+
+This function runs immediately after collision resolution (which computes `grounded_now`) and after `try_consume_jump` (which reports `jumped_this_tick`). The decay branch handles the walk-off-ledge case: the player had `coyote = 6` on their last grounded tick, and it counts down 6, 5, 4… during the fall. A press while it is still positive fires a jump from mid-air, exactly as intended.
+
+The ordering with respect to Chapter 06 matters: `try_consume_jump` runs first (it may jump using the *previous* tick's coyote), then `update_grounded_state` refreshes or decays. If you decay first, the first airborne tick loses one tick of grace; harmless but inconsistent — pick one order and document it.
+
+Two traps. First, **wall contact is not ground contact**: if your collision code sets `grounded` when pressing against a wall (some resolvers do, via a shared flag), coyote refreshes forever against walls and players can climb by repeatedly jumping off vertical surfaces. Keep `grounded` strictly meaning "support below." Second, leaving a moving platform must count: the platform carry code (Ch. 10) must route its grounded flag through this same function.
+
+**Invariants**
+- Coyote is set to `COYOTE_TICKS` only on ticks where `grounded_now` is true.
+- Coyote decrements by exactly 1 per airborne tick and never goes negative.
+- A performed jump zeroes coyote in the same tick.
+- Coyote and the jump buffer are independent counters; neither implies the other.
+
+**Failure cases**
+- Refreshing coyote whenever `vy == 0` (e.g., at the jump apex): infinite mid-air jumps.
+- Decaying coyote only when the player *presses* jump: the counter is stale by the time it's checked; grace window effectively random.
+- Coyote working off ledges but not off moving platforms: players perceive it as a bug even though static ledges behave correctly.
+
+---
+
+## Chapter 08: Tile Collision
+
+Collision against the tile grid is resolved **one axis at a time**: move horizontally, resolve, move vertically, resolve. This axis-separated sweep is simple, robust, and sufficient as long as per-tick displacement is strictly less than one tile — guaranteed by `RUN_MAX = 768` and `TERMINAL = 2048` against `TILE = 4096`.
+
+```python
+def is_solid(level, tx, ty):
+    if ty < 0 or ty >= level.rows:  return False   # open sky / open pit
+    if tx < 0 or tx >= level.cols:  return True    # side walls
+    return level.tiles[ty][tx] == SOLID
+
+def move_and_collide(ent, level):
+    # --- X axis ---
+    ent.x += ent.vx
+    if ent.vx > 0:
+        col = (ent.x + ent.w - 1) // TILE
+        for row in range(ent.y // TILE, (ent.y + ent.h - 1) // TILE + 1):
+            if is_solid(level, col, row):
+                ent.x = col * TILE - ent.w
+                ent.vx = 0
+                break
+    elif ent.vx < 0:
+        col = ent.x // TILE
+        for row in range(ent.y // TILE, (ent.y + ent.h - 1) // TILE + 1):
+            if is_solid(level, col, row):
+                ent.x = (col + 1) * TILE
+                ent.vx = 0
+                break
+    # --- Y axis ---
+    prev_bottom = ent.y + ent.h
+    ent.y += ent.vy
+    ent.grounded = False
+    if ent.vy > 0:
+        row = (ent.y + ent.h - 1) // TILE
+        for col in range(ent.x // TILE, (ent.x + ent.w - 1) // TILE + 1):
+            if is_solid(level, col, row):
+                ent.y = row * TILE - ent.h
+                ent.vy = 0
+                ent.grounded = True
+                break
+    elif ent.vy < 0:
+        row = ent.y // TILE
+        for col in range(ent.x // TILE, (ent.x + ent.w - 1) // TILE + 1):
+            if is_solid(level, col, row):
+                ent.y = (row + 1) * TILE
+                ent.vy = 0
+                break
+    return prev_bottom
+```
+
+The leading-edge scan is valid because displacement < TILE: after moving, the body can overlap at most one new column (or row), so checking only that column is complete. Snapping is exact — the body edge lands precisely on the tile boundary — which is why subsequent `grounded` probes (one subpixel below the bottom) reliably detect support.
+
+`prev_bottom` is returned because one-way platforms (Ch. 11) and coyote bookkeeping need the pre-move bottom edge.
+
+**Invariants**
+- Per-tick `|vx| < TILE` and `|vy| < TILE` for every entity (assert in debug builds).
+- X is fully resolved before Y begins; never interleave.
+- On resolution, the body edge is exactly at a tile boundary and velocity on that axis is zero.
+- `grounded` is recomputed every tick (set false before the Y pass) — never carried over.
+
+**Failure cases**
+- Resolving both axes simultaneously against a combined overlap: the body snaps diagonally into a corner and jams.
+- Raising `TERMINAL` past `TILE`: intermittent tunneling through thin floors, dependent on subpixel starting position.
+- Forgetting `ent.vx = 0` after a wall hit: the body remains pressed into the wall and re-collides every tick, and wall probes (Ch. 12) misreport.
+
+---
+
+## Chapter 09: Slopes
+
+Slope tiles are **not solid**. They define a floor height profile, and the resolver snaps the player's bottom onto that profile. Support two 45° tiles: `/` (rising to the right) and `\` (falling to the right). For a `/` tile whose bottom-left corner is at tile origin, the floor height above the tile bottom at local horizontal offset `lx` (0…TILE) is `lx`; for `\` it is `TILE - 1 - lx`.
+
+The algorithm, after the X-axis pass and before the Y-axis pass:
+
+1. Take the player's bottom-center point `(cx, bottom)`.
+2. Find the tile containing it. If it is a slope tile, compute `floor_y = tile_bottom - height(local_x)`.
+3. If the player was grounded last tick, or `bottom >= floor_y - SNAP_DOWN` (allow snapping down slopes within 8 px), and `bottom >= floor_y - TILE` (don't snap up from far below): set `bottom = floor_y`, mark grounded, and if this moved the player *up*, zero `vy`.
+
+```python
+SNAP_DOWN = 8 * SUBPIX
+
+def slope_height(tile_char, local_x):
+    if tile_char == '/':  return local_x
+    if tile_char == '\\': return TILE - 1 - local_x
+    return None
+
+def resolve_slopes(ent, level):
+    cx = ent.x + ent.w // 2
+    bottom = ent.y + ent.h
+    tx, ty = cx // TILE, bottom // TILE
+    ch = level.tile_char(tx, ty)
+    h = slope_height(ch, cx - tx * TILE)
+    if h is None:
+        return
+    floor_y = (ty + 1) * TILE - h
+    was_grounded = ent.grounded
+    if was_grounded or bottom >= floor_y - SNAP_DOWN:
+        if bottom >= floor_y - TILE:
+            ent.y = floor_y - ent.h
+            ent.grounded = True
+            if bottom > floor_y:      # snapped upward
+                ent.vy = 0
+```
+
+The Y-axis pass must **skip slope tiles entirely** (treat them as empty), or the player collides with the tile's bounding box and the snap fights the resolver. Ordering is: X pass → slope resolve → Y pass.
+
+The classic seam problem: a `/` tile adjacent to a solid tile. At the boundary, the slope's height is `TILE` (its top edge), so the player steps onto the solid smoothly — but walking the other direction, at local offset 0 the floor drops a full tile instantly. The `was_grounded` clause handles this: a grounded player snaps down the step instead of launching into a fall. If the drop is larger than `SNAP_DOWN`, the player genuinely falls, which is correct.
+
+**Invariants**
+- Slope tiles are excluded from `is_solid`.
+- At most one slope claims the bottom-center point per tick (the tile containing it — no ambiguity).
+- `SNAP_DOWN < TILE`; grounded players never gain upward velocity from snapping.
+- Slope resolution happens exactly once per tick, between the axis passes.
+
+**Failure cases**
+- Running slope resolution *after* the Y pass: gravity pulls the player into the slope tile's box, then the snap teleports them up — visible as vertical stutter on every slope.
+- Using the bottom-left corner instead of bottom-center: the player floats with one corner embedded in the hill.
+- Two overlapping slope tiles (level authoring error): the resolver must fail loudly at load time (Ch. 16) rather than oscillate at runtime.
+
+---
+
+## Chapter 10: Moving Platforms
+
+Moving platforms are solid AABBs whose positions are a deterministic function of the tick counter. Use linear ping-pong between waypoints: stateful, trivially deterministic, no trigonometry. (A `sin`-based path computed with floats breaks determinism; if you need smooth easing, precompute an integer lookup table at load time.)
+
+Platform update order is rigid: **platforms move first**, then riders are carried, then all other entities run their normal physics.
+
+```python
+class Platform:
+    def __init__(self, x, y, w, h, ax, ay, bx, by, speed):
+        self.x, self.y = x, y
+        self.w, self.h = w, h
+        self.path = [(ax, ay), (bx, by)]
+        self.target = 1
+        self.speed = speed            # subpix per tick
+        self.dx = self.dy = 0         # delta for this tick, set in update
+
+    def update(self):
+        px, py = self.x, self.y
+        tx, ty = self.path[self.target]
+        dx, dy = tx - self.x, ty - self.y
+        dist = abs(dx) + abs(dy)      # Manhattan; fine for axis-aligned paths
+        if dist <= self.speed:
+            self.x, self.y = tx, ty
+            self.target = 1 - self.target
+        else:
+            self.x += self.speed if dx > 0 else -self.speed if dx < 0 else 0
+            self.y += self.speed if dy > 0 else -self.speed if dy < 0 else 0
+        self.dx, self.dy = self.x - px, self.y - py
+
+def carry_riders(platform, entities):
+    for e in entities:
+        if not e.grounded:            # standing flag from LAST tick's collision
+            continue
+        standing = (e.y + e.h == platform.y or
+                    abs(e.y + e.h - platform.y) <= 2 * SUBPIX) and \
+                   e.x + e.w > platform.x and e.x < platform.x + platform.w
+        if standing:
+            e.x += platform.dx
+            e.y += platform.dy
+```
+
+The rider's `grounded` flag comes from the *previous* tick's collision resolution — this is the contact record. After carrying, the rider's own physics run; gravity pulls them down a fraction of a pixel, the Y-axis pass re-detects the platform top, and `grounded` refreshes. This one-tick handshake is stable as long as platform speed is small relative to the contact tolerance.
+
+Crushing: if a platform moves horizontally into a rider who is against a wall, the carry pushes the rider into the solid, and the rider's X-axis pass snaps them back out — the platform then overlaps the rider. The simple, robust policy: after all physics, if a platform AABB overlaps an entity, push the entity out along the axis of platform motion; if the player still overlaps (fully crushed), kill them and respawn (Ch. 15). Document this; do not leave it undefined.
+
+**Invariants**
+- Platforms update before all other entities, in stable id order.
+- `dx`/`dy` are computed from actual position change, once per tick.
+- Rider contact is judged from the previous tick's grounded flag plus a ≤ 2 px tolerance.
+- Platform paths are integer-only; no float trig in simulation.
+
+**Failure cases**
+- Running platform updates *after* entities: the platform slides out from under a standing player every tick; the player falls through half the time.
+- Applying `dx` inside both carry and the player's own velocity: double-speed riding.
+- Float `sin(t)` paths: replays diverge; also `math.sin` results can differ across libm versions.
+
+---
+
+## Chapter 11: One-Way Platforms
+
+One-way platforms block only downward motion. They are stored as thin solid strips (tile char `=`, occupying the top 4 px of their tile) and participate **only in the Y-axis pass**, only when the body is moving downward, and only when the body's previous bottom was at or above the strip's top.
+
+```python
+ONE_WAY_THICKNESS = 4 * SUBPIX
+DROP_THROUGH_TICKS = 8
+
+def y_pass_one_way(ent, level, prev_bottom):
+    if ent.vy <= 0:
+        return                          # rising or stationary: never collide
+    if ent.drop_timer > 0:
+        return                          # actively dropping through
+    bottom = ent.y + ent.h
+    for col in range(ent.x // TILE, (ent.x + ent.w - 1) // TILE + 1):
+        row = bottom // TILE
+        if level.tile_char(col, row) != '=':
+            continue
+        top = row * TILE
+        if prev_bottom <= top + SUBPIX and bottom >= top:
+            ent.y = top - ent.h
+            ent.vy = 0
+            ent.grounded = True
+            return
+```
+
+The `prev_bottom <= top + SUBPIX` test is the heart of the mechanic. It compares where the body's bottom *was before this tick's movement* against the platform top. If the body was already below the top — because it's jumping up through the strip, or walking sideways into it — no collision occurs. The one-subpixel tolerance handles the exact-equality case: a body standing exactly on the top has `prev_bottom == top`, which must count as contact, not pass-through.
+
+Drop-through: when the player holds down and presses jump while standing on a one-way platform, set `ent.drop_timer = DROP_THROUGH_TICKS`. Decrement it once per tick in `tick_end` (same discipline as the jump buffer). While it is positive, the Y pass ignores one-way strips entirely, letting the player fall through; after it expires, normal rules resume — and since the player has fallen at least a few pixels, `prev_bottom > top` keeps them from re-catching.
+
+Three exclusions must hold: the **X pass never consults one-way strips** (walking into one from the side passes through); **rising bodies never collide** (`vy <= 0` early return); and one-way platforms still confer `grounded` normally, so coyote time and jump buffering work on them identically to solid ground.
+
+**Invariants**
+- `prev_bottom` is captured before `ent.y += ent.vy` and used only for one-way tests.
+- One-way collision requires `vy > 0` and `drop_timer == 0`.
+- `drop_timer` decrements exactly once per tick.
+- One-way strips never appear in `is_solid`.
+
+**Failure cases**
+- Omitting the `prev_bottom` check: the player sticks to the underside of every platform while jumping up through it.
+- Tolerance sign flipped (`prev_bottom < top - SUBPIX`): standing exactly on the platform drops the player through on a random later tick when subpixel drift crosses the threshold.
+- Including one-way strips in the X pass: the player is blocked by an invisible 4 px wall when walking along the ground beneath a platform whose strip overlaps their head height.
+
+---
+
+## Chapter 12: Enemy Patrols
+
+The patrol enemy ("walker") moves at constant horizontal speed, subject to the same gravity and `move_and_collide` as the player, and reverses direction when it hits a wall or reaches a ledge. It has no randomness whatsoever; variety comes from level placement, not from per-enemy noise.
+
+Two tile probes drive the turn logic, both taken relative to the direction of travel:
+
+```python
+WALK_SPEED = 256        # 1.0 px/tick
+
+class Walker:
+    def update(self, level, cam):
+        # Activation: only simulate when near the camera's center.
+        # cam is deterministic (Ch. 02), so activation is deterministic.
+        if abs(self.x - cam.x) > 320 * SUBPIX:
+            return
+        if self.grounded:
+            dir_x = 1 if self.vx > 0 else -1
+            # Wall probe: one pixel ahead of the leading edge, mid-height.
+            wall_x = (self.x + self.w + dir_x * SUBPIX) if dir_x > 0 \
+                     else (self.x - SUBPIX)
+            wall_tx = wall_x // TILE
+            wall_ty = (self.y + self.h // 2) // TILE
+            # Ledge probe: below the point one pixel ahead of the leading
+            # bottom corner.
+            ledge_x = (self.x + self.w + dir_x * SUBPIX) if dir_x > 0 \
+                      else (self.x - SUBPIX)
+            ground_ty = (self.y + self.h + SUBPIX) // TILE
+            ground_tx = ledge_x // TILE
+            if is_solid(level, wall_tx, wall_ty) or \
+               not is_solid(level, ground_tx, ground_ty):
+                self.vx = -self.vx
+        self.vx = max(-WALK_SPEED, min(WALK_SPEED, self.vx))
+        move_and_collide(self, level)
+```
+
+The probes sit one full pixel (`SUBPIX`) ahead of the body edge — inside the *next* tile the enemy is about to enter. A probe exactly at the edge lands on the tile boundary and, depending on subpixel rounding, flickers between "solid" and "empty" each tick, producing the classic oscillating enemy that vibrates in place at a wall. One full pixel of lookahead eliminates the ambiguity.
+
+On slopes, the ledge probe must consult the slope-aware floor: treat a slope tile as solid ground for the probe (add `level.tile_char(...) in ('/', '\\')` to the ground check), otherwise walkers turn around at the base of every hill.
+
+Update order: all entities — walkers, platforms, player — are stored in a list sorted by stable integer id assigned at load time (Ch. 16), and the per-tick loop iterates that order. Never iterate a `set` of entities; insertion order in a set is arbitrary across runs for non-interned objects and will silently reorder your simulation.
+
+**Invariants**
+- Probes are at least one subpixel inside the neighboring tile, never exactly on a boundary.
+- Entity update order is a stable, id-sorted list.
+- Walkers use the same collision resolver as the player — no parallel physics.
+- No RNG in patrol logic; if randomized variants are needed, use the seeded LCG (Ch. 23).
+
+**Failure cases**
+- Probe exactly at the body edge: turn-every-other-tick oscillation.
+- Ledge probe ignoring slopes: enemies refuse to walk on hills, bunching at slope bases.
+- Activation based on distance to the *player* while the player respawns: enemy states jump discontinuously; use the camera, which moves smoothly.
+
+---
+
+## Chapter 13: Damage and Invulnerability
+
+Damage uses two distinct box types. The **hurtbox** is what can be damaged — the player's, slightly inset (2 px per side) from the collision box so grazing contact doesn't hit. The **hitbox** is what deals damage — an enemy's body, or a hazard region. Contact is checked once per tick, after all movement and platform carry, so overlap tests see final positions.
+
+```python
+I_FRAMES = 90           # 1.5 s
+HITSTUN  = 12           # control lock after a hit
+KNOCKBACK_X = 768       # 3.0 px/tick
+KNOCKBACK_Y = -1024     # -4.0 px/tick
+
+def inset(box, px):
+    s = px * SUBPIX
+    return (box.x + s, box.y + s, box.w - 2 * s, box.h - 2 * s)
+
+def check_contact_damage(player, enemies, events):
+    if player.invuln > 0 or player.state == "dead":
+        return
+    hx, hy, hw, hh = inset(player, 2)
+    for e in enemies:                       # enemies list is id-sorted
+        if not e.active or not e.harms_on_touch:
+            continue
+        if hx < e.x + e.w and hx + hw > e.x and \
+           hy < e.y + e.h and hy + hh > e.y:
+            take_damage(player, e, events)
+            return                          # at most one hit per tick
+
+def take_damage(player, source, events):
+    player.health -= 1
+    player.invuln = I_FRAMES
+    player.hitstun = HITSTUN
+    dir_x = 1 if player.x + player.w // 2 >= source.x + source.w // 2 else -1
+    player.vx = dir_x * KNOCKBACK_X
+    player.vy = KNOCKBACK_Y
+    events.emit("hurt", player.x, player.y)
+    if player.health <= 0:
+        player.state = "dead"
+        player.dead_timer = 30
+```
+
+The `return` after the first hit enforces **at most one damage event per tick**. Without it, two overlapping enemies subtract two health in one tick and apply conflicting knockback directions. When sources overlap, the id-sorted iteration makes the *nearest* rule approximate; if you need strictly nearest, compute all overlaps first and take the minimum distance — still one hit per tick.
+
+Invulnerability decays once per tick in `tick_end`: `if invuln > 0: invuln -= 1`. During i-frames the player passes through enemies freely; the renderer draws the flicker (render-only, Ch. 18/19 — the simulation does not care how i-frames look). Knockback velocities respect the normal clamps and terminal velocity because they flow through the same physics pipeline; `KNOCKBACK_Y = -1024` is a modest pop, not a launch.
+
+Death is a state, not an immediate respawn: `state = "dead"` freezes input control, a 30-tick timer runs, then the checkpoint system (Ch. 15) takes over. Keeping death inside the simulation (rather than triggering it from the render layer) is what makes deaths replayable in tests.
+
+**Invariants**
+- Contact damage is evaluated exactly once per tick, after all movement.
+- At most one `take_damage` per tick.
+- `invuln` and `hitstun` decrement exactly once per tick, in `tick_end`.
+- Damage logic reads only post-resolution positions.
+
+**Failure cases**
+- Checking contact before platform carry: the player is hit at the platform's old position, or misses hits entirely on fast platforms.
+- Knockback bypassing clamps: a knockback stacked on an upward elevator launches the player out of the level.
+- Resetting `invuln` inside the damage check's loop: with two overlapping enemies, the second re-damages immediately despite i-frames.
+
+---
+
+## Chapter 14: Collectibles
+
+Every collectible gets a **stable integer id** assigned deterministically at level load (row-major discovery order, Ch. 16). The level holds the full list; a `collected` set of ids records what has been taken. Active collectibles are those whose ids are not in the set. This indirection — rather than deleting picked-up items — is what allows respawn (Ch. 15) and save/load (Ch. 21) to reconstruct the world exactly.
+
+```python
+class Collectible:
+    __slots__ = ("cid", "x", "y", "kind")   # positions in subpix, static
+
+def update_collectibles(level, player, grid, events):
+    hx, hy, hw, hh = inset(player, 0)       # full hurtbox for pickups
+    candidates = grid.query_rect(hx, hy, hw, hh)   # Ch. 17, id-sorted
+    for cid in candidates:
+        item = level.collectibles[cid]
+        if item.cid in level.collected:
+            continue
+        if hx < item.x + PICKUP_W and hx + hw > item.x and \
+           hy < item.y + PICKUP_H and hy + hh > item.y:
+            level.collected.add(item.cid)
+            events.emit("pickup", item.x, item.y)
+            if item.kind == "coin":
+                player.coins += 1
+            elif item.kind == "heart":
+                player.health = min(player.health + 1, player.max_health)
+```
+
+The `collected` membership check guards against double pickup: the spatial grid may return the same id from two overlapping cells, and multiple collectibles can be touched on the same tick. Since `query_rect` returns ids in sorted order and the check is idempotent, processing order never changes the outcome — the invariant that makes replays stable.
+
+The bobbing animation of coins is **render-only**: the draw layer computes `offset = BOB_TABLE[sim.tick % 60]` from the global tick. The simulation stores the coin's static position only. This keeps pickup geometry stable (a coin never bobs into or out of the hurtbox between ticks) and keeps the simulation free of cosmetic state.
+
+If you add a magnet effect (coins fly to the player), the moved position becomes simulation state and must respect walls — the simplest correct policy is to keep coins static and animate only the *visual* pull. Do not let magnet motion pass through solids; that players notice and exploit.
+
+**Invariants**
+- Collectible ids are assigned once at load, in row-major order, and never reused.
+- A cid enters `collected` at most once; the membership check precedes every effect.
+- Pickup positions are static in simulation state; all animation is derived from `sim.tick` at render time.
+- `player.coins` equals the count of collected coin-kind ids — assert this after each tick in debug builds.
+
+**Failure cases**
+- Assigning ids via `enumerate(dict.values())`: dict insertion order is stable in CPython but the *content* order depends on load code; any refactor silently renumbers ids and corrupts old saves.
+- Deleting the collectible object on pickup: respawn restores it, and the save format can't record the gap.
+- Bob offset applied in simulation: pickup range changes every tick, and a coin can become unpickable at its bob apex.
+
+---
+
+## Chapter 15: Checkpoints
+
+A checkpoint stores an **author-defined spawn point**, not the player's transient position. The level format places each checkpoint marker on solid ground; activation records `(level_id, spawn_x, spawn_y)` from the marker, plus the current health. Respawn then reconstructs a known-good state. This design decision prevents the most notorious platformer bug: dying at a checkpoint that was triggered mid-air, respawning in mid-air, falling to death, and looping forever.
+
+```python
+class Checkpoint:
+    __slots__ = ("x", "y", "w", "h", "spawn_x", "spawn_y", "activated")
+
+def update_checkpoints(level, player, events):
+    for cp in level.checkpoints:            # id-sorted list
+        if cp.activated:
+            continue
+        if player.x < cp.x + cp.w and player.x + player.w > cp.x and \
+           player.y < cp.y + cp.h and player.y + player.h > cp.y:
+            cp.activated = True
+            level.current_checkpoint = cp
+            player.respawn_x = cp.spawn_x
+            player.respawn_y = cp.spawn_y
+            events.emit("checkpoint", cp.x, cp.y)
+
+def respawn(level, player, events):
+    # Player dynamic state
+    player.x = player.respawn_x
+    player.y = player.respawn_y
+    player.vx = player.vy = 0
+    player.state = "normal"
+    player.invuln = 30                      # spawn grace
+    player.hitstun = 0
+    player.jump_buffer = 0
+    player.coyote = 0
+    # World dynamic state: enemies reset, collectibles do NOT.
+    for e in level.enemies:
+        e.x, e.y = e.spawn_x, e.spawn_y
+        e.vx = e.spawn_dir * WALK_SPEED
+        e.active = False
+    # NOTE: platforms are NOT reset. Their positions are a function of
+    # sim.tick (Ch. 10); resetting the tick would desynchronize every
+    # replay and every platform path. Leave sim.tick alone.
+    events.emit("respawn", player.x, player.y)
+```
+
+The asymmetry is deliberate and must be documented in the design: **collected items stay collected** (the `collected` set is untouched), while **enemies reset to spawn**. This matches player expectations — backtracking through cleaned areas shouldn't respawn coins, but a fresh set of patrols keeps the path back to the checkpoint meaningful.
+
+The 30-tick invulnerability on respawn prevents spawn-killing by an enemy parked on the checkpoint. The spawn point itself must be validated at load time: the tile at `(spawn_x // TILE, spawn_y // TILE)` and the tile above it must be non-solid, and the tile below must be solid or a slope — a checkpoint embedded in a wall or over a pit is a level data bug that `load_level` (Ch. 16) rejects.
+
+**Invariants**
+- `respawn_x/y` always come from a checkpoint's author-defined spawn, never from live player position.
+- Respawn resets all player dynamic fields explicitly — enumerate them; do not rely on defaults.
+- `sim.tick` and platform state are untouched by respawn.
+- The `collected` set is never modified by respawn.
+
+**Failure cases**
+- Snapshotting the player's position at activation: mid-air checkpoints create death loops.
+- Resetting `sim.tick` on respawn: platform phase jumps, replays diverge from the first respawn onward.
+- Forgetting to reset `jump_buffer`/`coyote`: a buffered jump carried through death fires at spawn, occasionally launching the player into a hazard.
+
+---
+
+## Chapter 16: Level Loading
+
+Levels are plain-text ASCII maps — diffable, reviewable, and trivially checksummed. The format:
+
+```
+PFLVL1 demo01 12x10
+############
+#..........#
+#..e....C..#
+#.../==\...#
+#..P.....c.#
+#......##..#
+#..M...##..#
+############
+```
+
+Line 1 is the header: magic, name, `rows x cols`. Each subsequent line is a row. The character table maps glyphs to tile kinds and entity spawns:
+
+```python
+CHAR_TILES = {'#': SOLID, '.': EMPTY, '/': SLOPE_UP, '\\': SLOPE_DOWN,
+              '=': ONE_WAY}
+CHAR_ENTITIES = {'P': 'player', 'e': 'walker', 'c': 'coin',
+                 'C': 'checkpoint', 'M': 'platform_a'}
+
+def load_level(path):
+    raw = open(path, 'rb').read()
+    expected_hash = hashlib.sha256(raw).hexdigest()   # verified by caller
+    text = raw.decode('ascii')                        # fails on stray bytes
+    lines = text.split('\n')
+    header = lines[0].split()
+    if header[0] != 'PFLVL1':
+        raise LevelError(f"bad magic {header[0]!r}")
+    name, dims = header[1], header[2]
+    rows, cols = (int(v) for v in dims.split('x'))
+    body = lines[1:]
+    if len(body) != rows:
+        raise LevelError(f"expected {rows} rows, got {len(body)}")
+    level = Level(name, rows, cols)
+    entity_id = 0
+    players = 0
+    for y, line in enumerate(body):
+        if len(line) != cols:
+            raise LevelError(f"row {y}: expected {cols} cols, got {len(line)}")
+        for x, ch in enumerate(line):
+            if ch in CHAR_TILES:
+                level.tiles[y][x] = CHAR_TILES[ch]
+            elif ch in CHAR_ENTITIES:
+                kind = CHAR_ENTITIES[ch]
+                level.spawn(kind, entity_id, x * TILE, y * TILE)
+                entity_id += 1
+                if kind == 'player':
+                    players += 1
+            elif ch != '.':
+                raise LevelError(f"row {y} col {x}: unknown char {ch!r}")
+    if players != 1:
+        raise LevelError(f"exactly one 'P' required, found {players}")
+    level.validate_spawns()      # spawn tile non-solid, ground below
+    level.validate_slopes()      # no overlapping slope claims
+    return level
+```
+
+Entity ids are assigned in **row-major scan order** — the same map always yields the same ids, which the save format (Ch. 21) and spatial grid (Ch. 17) depend on. Validation is two-pass by policy: parse everything, then validate structure (spawns not inside solids, ground beneath spawns, no overlapping slope claims, border solidity recommended). Fail loudly with row/column coordinates; a silent bad tile becomes an unreachable runtime bug.
+
+The checksum covers the **exact bytes** of the file. This means the format is defined over LF line endings; a tool that writes CRLF changes the hash. Either normalize on load (and document that the hash covers normalized bytes) or enforce LF in your asset pipeline — pick one and state it in the format spec.
+
+**Invariants**
+- Exactly one player spawn per level; zero or multiple is a hard error.
+- Entity ids are row-major and dense (0, 1, 2, …).
+- All validation happens at load; no tile or spawn can be invalid at runtime.
+- The checksum is computed over the file's exact bytes and verified before parsing.
+
+**Failure cases**
+- A stray Unicode space instead of `'.'`: fails at decode or char lookup with a precise coordinate — this is the desired behavior, not a crash to suppress.
+- Ragged rows (one short line): caught by the per-row length check; without it, tile indexing silently shifts every subsequent row.
+- Skipping `validate_slopes`: two overlapping slope tiles oscillate the player at runtime, far from the data bug that caused it.
+
+---
+
+## Chapter 17: Spatial Queries
+
+As entity counts grow, brute-force overlap checks (every collectible vs. the player, every enemy vs. every hitbox) become the first bottleneck. A **uniform spatial grid** fixes this: divide the world into square cells (one tile, 4096 subpix, works well), and each tick — after all movement, before any queries — rebuild a map from cell coordinates to the entity ids whose AABBs overlap that cell.
+
+```python
+class SpatialGrid:
+    def __init__(self, cell=TILE):
+        self.cell = cell
+        self.buckets = {}          # (cx, cy) -> list of entity ids
+
+    def _cells(self, x, y, w, h):
+        x0, y0 = x // self.cell, y // self.cell
+        x1, y1 = (x + w - 1) // self.cell, (y + h - 1) // self.cell
+        return ((cx, cy)
+                for cx in range(x0, x1 + 1)
+                for cy in range(y0, y1 + 1))
+
+    def rebuild(self, entities):
+        self.buckets.clear()       # clear, not re-create: avoids realloc
+        for e in entities:         # entities iterated in id order
+            for cell in self._cells(e.x, e.y, e.w, e.h):
+                self.buckets.setdefault(cell, []).append(e.id)
+
+    def query_rect(self, x, y, w, h):
+        hits = set()
+        for cell in self._cells(x, y, w, h):
+            hits.update(self.buckets.get(cell, ()))
+        return sorted(hits)        # deterministic order, deduped
+```
+
+Three properties make this deterministic. First, `rebuild` iterates entities in id order, so bucket lists are deterministically ordered even before sorting. Second, `query_rect` deduplicates through a set (an id overlapping two cells appears once) and returns `sorted(hits)` — never iterate the raw set, whose order is arbitrary. Third, the rebuild happens at a fixed point in the tick: after every entity has moved and collided, before collectibles, damage, and enemy probes run. Queries mid-movement would see a half-updated world that depends on entity update order in subtle ways.
+
+The `- 1` in `(x + w - 1) // cell` is the boundary correctness detail: a body whose right edge is exactly at a cell boundary occupies the next cell too. Omitting it makes entities standing exactly on cell edges invisible to queries — an intermittent, subpixel-dependent miss that is miserable to reproduce.
+
+Cell size tuning: one tile means a 10×14 px player touches at most 2×2 = 4 cells; a level with 200 collectibles costs 200 inserts per tick — negligible. If profiling (Ch. 24) shows the rebuild hot, switch to incremental updates (move an entity between buckets when its cell changes), but only with tests proving identical query results.
+
+**Invariants**
+- The grid is rebuilt once per tick, after movement, before any query.
+- `query_rect` returns a deduplicated, id-sorted list.
+- An entity is registered in every cell its AABB overlaps, including exact-boundary cells.
+- Bucket lists are built in id order.
+
+**Failure cases**
+- Querying against the previous tick's grid: pickups trigger one tile late; damage whiffs on fast movers.
+- Dropping the `- 1`: entities exactly on cell boundaries vanish from queries at subpixel-dependent intervals.
+- Returning the raw set from `query_rect`: nondeterministic iteration order makes downstream "first hit" logic replay-breaking.
+
+---
+
+## Chapter 18: Animation State
+
+The simulation owns *which* animation is playing; the renderer owns *which frame* to draw. The simulation stores a state name, a tick counter within that state, and a facing direction. The frame index is derived at draw time from the global tick — the simulation never stores or advances frame counters for cosmetic purposes.
+
+```python
+ANIM_TABLE = {
+    "idle":      ("idle",      8),   # (sheet row, ticks per frame)
+    "run":       ("run",       3),
+    "rise":      ("rise",      1),
+    "fall":      ("fall",      1),
+    "hurt":      ("hurt",      2),
+    "dead":      ("dead",      4),
+}
+
+def resolve_animation(p):
+    if p.state == "dead":
+        return "dead"
+    if p.hitstun > 0:
+        return "hurt"
+    if not p.grounded:
+        return "rise" if p.vy < 0 else "fall"
+    if p.vx > 64 or p.vx < -64:          # > 0.25 px/tick counts as running
+        return "run"
+    return "idle"
+
+class Player:
+    def update_animation_state(self):
+        new = resolve_animation(self)
+        if new != self.anim_state:
+            self.anim_state = new
+            self.anim_timer = 0          # reset on transition
+        else:
+            self.anim_timer += 1
+```
+
+The state is a **pure function of simulation facts** — groundedness, velocity, timers — evaluated once per tick after physics. Purity is the determinism guarantee: two runs with identical inputs select identical states on identical ticks, so a replay's animation is bit-identical to the original session.
+
+The renderer computes frames from the *global* tick, not `anim_timer`:
+
+```python
+def draw_player(renderer, player, tick):
+    row, tpf = ANIM_TABLE[player.anim_state]
+    frame = (tick // tpf) % FRAME_COUNT[row]
+    facing = player.facing
+    renderer.blit(row, frame, facing, player.x, player.y)
+```
+
+Using the global tick means animation freezes automatically when the simulation freezes (pause, Ch. 20) — no special-casing. `anim_timer` still exists in simulation state because gameplay logic sometimes needs "how long have we been running" (e.g., footstep sound events, Ch. 19); it is authoritative for *timing*, while the global tick drives *visual phase*.
+
+The velocity threshold (64 subpix/tick) prevents state thrash: a player decelerating through zero would otherwise flicker between `run` and `idle` every tick near a stop. If thrash appears in practice (friction landing exactly on values around the threshold), add hysteresis — enter `run` above 64, exit below 32 — but note hysteresis must live in `resolve_animation`'s inputs to stay deterministic.
+
+**Invariants**
+- `anim_state` is a pure function of simulation state, updated exactly once per tick.
+- `anim_timer` resets to 0 on every state change.
+- Rendered frame index derives from `sim.tick` and the table only — never from wall time.
+- The renderer reads simulation state but never writes it.
+
+**Failure cases**
+- Advancing animation in the render loop with real dt: animations keep playing while paused, and replays show different frames than the original session.
+- Storing the frame index in simulation state: save files and hashes now depend on cosmetic counters, and changing an animation's length invalidates old saves.
+- No threshold on the run check: `run`/`idle` flicker as friction decays velocity through the boundary.
+
+---
+
+## Chapter 19: Sound Events
+
+The simulation never touches an audio device. Instead, gameplay code **emits events** into a per-tick list: `(tick, name, x, y)`. After the frame's simulation steps complete, the main loop drains the list and hands it to the audio layer, which maps event names to sounds, computes volume and pan from the camera-relative position, and schedules playback. This indirection keeps the simulation headless — a hard requirement for the deterministic tests in Ch. 23 — and gives tests a first-class observable: a replay's event log is assertable data.
+
+```python
+MAX_EVENTS_PER_TICK = 64
+
+class EventBus:
+    def __init__(self):
+        self.pending = []          # drained once per frame
+        self.log = []              # full history, for tests/replays
+
+    def emit(self, name, x, y):
+        assert len(self.pending) < MAX_EVENTS_PER_TICK, "event flood"
+        ev = (self.tick, name, x, y)
+        self.pending.append(ev)
+        self.log.append(ev)
+
+    def drain(self):
+        out, self.pending = self.pending, []
+        return out
+
+# In the main loop, after sim steps:
+for ev in event_bus.drain():
+    audio.play(ev[1], camera_volume_pan(ev[2], ev[3], camera))
+```
+
+Event emission points follow gameplay, not presentation: `jump` from `try_consume_jump`, `hurt` from `take_damage`, `pickup` from `update_collectibles`, `checkpoint` and `respawn` from Ch. 15, and `step` from the run animation when `anim_timer` crosses a stride interval. Because emission happens inside deterministic simulation code, the event log for a given input script is itself deterministic — two runs produce byte-identical logs, which is a powerful regression check (Ch. 23).
+
+The per-tick cap is a tripwire, not a feature. A damage loop that emits every tick, or a pickup checked twice, floods the bus; the assertion fails loudly at the source instead of producing an audio stutter hours later. In release builds, replace the assert with a counter exposed in the debug overlay (Ch. 24).
+
+Position in the event enables spatial audio: the audio layer computes pan from `(x - camera.x)` and attenuation from distance, clamped so off-screen events are silent or faint. This math lives entirely outside the simulation and may use floats freely.
+
+**Invariants**
+- `pending` is drained exactly once per frame, after all sim steps, before render.
+- Every event carries the tick it was emitted on.
+- The simulation has no imports or calls into the audio layer — enforced by a test that greps sim modules.
+- The event log is append-only and deterministic for a given input script.
+
+**Failure cases**
+- Calling `audio.play` directly from gameplay code: the sim is no longer headless; tests crash or must mock audio globally.
+- Draining mid-tick (between player and enemy updates): event ordering depends on drain timing, breaking log determinism.
+- No cap: a respawn loop emitting `hurt` every tick grows the list without bound and eventually exhausts memory.
+
+---
+
+## Chapter 20: Pause and Resume
+
+Pause is a game-level state machine layered above the simulation: `TITLE`, `PLAYING`, `PAUSED`. Only `PLAYING` runs simulation steps. The rule that makes pause deterministic is simple: **while paused, the simulation does not exist** — no steps, no partial updates, no timers. Because every timed feature in this engine counts sim ticks (Ch. 01), freezing the tick counter freezes buffers, i-frames, platform paths, animations, and death timers simultaneously and consistently.
+
+```python
+def frame(self, input_source):
+    now = time.monotonic_ns()
+    dt = now - self.prev
+    self.prev = now
+
+    if self.state == "PLAYING":
+        self.acc += dt
+        steps = 0
+        while self.acc >= TICK_MS and steps < MAX_STEPS_PER_FRAME:
+            self.sim.step(input_source.snapshot(self.sim.tick))
+            self.acc -= TICK_MS
+            steps += 1
+        if steps == MAX_STEPS_PER_FRAME:
+            self.acc = 0
+    elif self.state == "PAUSED":
+        self.acc = 0                # discard time; no debt on resume
+        # Input is still polled so the player can unpause.
+        input_source.poll(input_source.read_os_keys())
+
+    if self.state == "PLAYING" and input_source.pressed("pause"):
+        self.state = "PAUSED"
+        self.events.emit("pause", 0, 0)
+    elif self.state == "PAUSED" and (
+            input_source.pressed("pause") or input_source.pressed("unpause")):
+        self.state = "PLAYING"
+        self.events.emit("unpause", 0, 0)
+
+    self.renderer.draw(self.sim, self.state)
+```
+
+Two subtleties. First, `self.acc = 0` on the paused branch discards accumulated real time. Without it, a 30-second pause accumulates 1800 ticks of debt, and resume fast-forwards the simulation — the player dies to an enemy they never saw move. Discarding is correct for a single-player game; a networked game would need a different policy, but that's out of scope. Second, pause detection uses `pressed` (edge-triggered), not `held`: a held key would toggle pause every frame.
+
+The pause *event* is emitted through the same bus as gameplay sounds, but note it is emitted by the game loop, not the simulation — the sim's own event log stays purely gameplay-deterministic. The renderer draws the last sim state dimmed under a menu; since animation derives from `sim.tick` (Ch. 18), everything on screen is genuinely frozen.
+
+One design rule worth enforcing: no code path may mutate simulation state unless `state == "PLAYING"`. The death timer (Ch. 13) is a sim field, so pausing during death simply delays the respawn — there is no way to "pause-skip" the timer, because the timer counts sim ticks.
+
+**Invariants**
+- Simulation steps run only in `PLAYING`.
+- The accumulator is zeroed on entering pause and while paused; no tick debt survives a pause.
+- Pause toggles are edge-triggered (`pressed`, not `held`).
+- All sim-time effects freeze automatically because they count sim ticks.
+
+**Failure cases**
+- Accumulating dt during pause without discarding: resume triggers a burst of catch-up steps; the player takes damage from events that "happened" while paused.
+- Pausing via `held` check: the game flickers in and out of pause every tick the key is down.
+- A menu animation driven by wall time: it keeps moving while the world is frozen, breaking the visual contract of pause.
+
+---
+
+## Chapter 21: Save Format
+
+A save is a canonical, human-readable serialization of the entire simulation state, protected by a version tag and a hash. The canonical form is a single string built with a **fixed field order** — the hash is only stable if serialization is byte-stable. Integers only: any float that sneaks in (a camera value, a normalized speed) makes the payload differ between runs and machines, silently corrupting saves.
+
+```python
+SAVE_VERSION = 1
+
+def serialize(sim):
+    p = sim.player
+    fields = [
+        f"V{SAVE_VERSION}",
+        f"L{sim.level.name}",
+        f"T{sim.tick}",
+        f"P:{p.x},{p.y},{p.vx},{p.vy},{p.health},{p.invuln},"
+        f"{p.anim_state},{p.facing}",
+        f"K{sim.level.current_checkpoint or -1}",
+        f"C{','.join(str(c) for c in sorted(sim.level.collected))}",
+        "E" + ";".join(
+            f"{e.id}:{e.x},{e.y},{1 if e.vx > 0 else -1}"
+            for e in sim.level.enemies),
+    ]
+    return "\n".join(fields)
+
+def save_game(sim, path):
+    payload = serialize(sim)
+    digest = hashlib.sha256(payload.encode('ascii')).hexdigest()
+    with open(path, 'w') as f:
+        f.write(payload + "\n" + digest + "\n")
+
+def load_game(sim, path):
+    lines = open(path).read().rstrip("\n").split("\n")
+    payload, digest = "\n".join(lines[:-1]), lines[-1]
+    if hashlib.sha256(payload.encode('ascii')).hexdigest() != digest:
+        raise SaveError("checksum mismatch — file corrupted")
+    # parse fields, verify version, restore state...
+```
+
+The critical serialization rules: sets are written **sorted** (`sorted(collected)` — an unsorted set yields a different payload every run); every dynamic entity's state is included (a missing enemy makes the hash pass while the restored world diverges); the version tag is checked **before** parsing, so an old save fails with a clear message instead of garbage state. The hash detects corruption and casual editing; it is not security — nothing here resists a determined user, and it shouldn't try.
+
+Fields are deliberately redundant-free but complete: player position, velocity, health, i-frames, animation state, facing; tick; level identity; checkpoint; collected ids; enemy positions and directions. Anything simulated must appear. Platform state is *not* saved — it is a function of `sim.tick`, which is saved, so it reconstructs exactly (Ch. 10). This is the payoff of the "positions are derived from tick" design.
+
+**Invariants**
+- Field order is fixed by `serialize`; changing it requires bumping `SAVE_VERSION`.
+- All serialized values are ints or fixed strings; assert `isinstance(v, int)` on numeric fields during load.
+- Sets are serialized sorted; entity lists in id order.
+- Hash is verified before any parsing; version is verified before any field is interpreted.
+
+**Failure cases**
+- A float velocity (from a pre-fixed-point codepath): the hash differs across machines and even across Python versions; saves "randomly" fail to load.
+- `','.join(str(c) for c in collected)` without `sorted`: two identical playthroughs produce different files, breaking golden-save tests.
+- Adding a new dynamic field without bumping the version: old saves parse without error but restore a world missing state — the worst failure mode, and the reason version checks come first.
+
+---
+
+## Chapter 22: Accessibility
+
+Accessibility settings must improve play without corrupting determinism. The organizing rule: **input remapping and presentation changes live outside the simulation; gameplay-affecting assists are named profiles recorded alongside replays and saves.**
+
+Input remapping is pure data in the mapping layer from Ch. 03 — the keymap is a dict loaded from settings, and the simulation is untouched. Hold-to-jump toggles, sticky keys, and one-handed modes (e.g., mapping jump to shoulder buttons) are all keymap edits.
+
+```python
+@dataclass
+class Settings:
+    keymap: dict                      # layer 1 remap (Ch. 03) — sim-agnostic
+    auto_hop: bool = False            # hold jump to re-jump on landing
+    reduced_motion: bool = False      # no screenshake, instant camera
+    flash_safe: bool = False          # low-contrast, slower i-frame flicker
+    slow_mode: bool = False           # sim runs every other frame (30 tps)
+    assist: str = "standard"          # "standard" | "generous"
+
+ASSIST_PROFILES = {
+    "standard": {"jump_buffer": 6,  "coyote": 6},
+    "generous": {"jump_buffer": 12, "coyote": 12},
+}
+
+# Application points:
+# auto_hop:    in Player.update_jump_buffer —
+#              if settings.auto_hop and inp.held("jump"):
+#                  self.jump_buffer = JUMP_BUFFER_TICKS
+# slow_mode:   in GameLoop.frame —
+#              if settings.slow_mode and self.frame_count % 2 == 1:
+#                  ...skip sim steps this frame; render current state...
+# assist:      loaded at sim construction; constants are fixed per session.
+```
+
+`auto_hop` is implemented inside the simulation (it changes jump behavior), which is fine — it is deterministic, and replays record it. `slow_mode` changes *scheduling*, not simulation: the tick sequence is identical, only its wall-clock rate halves. A replay remains valid if the recorder stores `slow_mode` outside the sim state. `reduced_motion` and `flash_safe` are render-only: screenshake amplitude, camera smoothing, and the i-frame flicker pattern (longer period, low-contrast pulse instead of full white blink) all live in the draw layer, which may read sim state but never writes it.
+
+The discipline to enforce in review: when someone adds an accessibility feature, ask *which layer* it belongs to. If it changes what the simulation computes, it must be (a) integer-deterministic, (b) fixed at sim construction or recorded in replays, and (c) reflected in the assist profile. If it only changes presentation, it must never write simulation state.
+
+**Invariants**
+- Remapping modifies only the keymap; the simulation's action vocabulary is fixed.
+- Render-only toggles never mutate simulation state.
+- Assist constants are fixed for the life of a simulation instance; replays record the profile name.
+- `slow_mode` scales tick *scheduling* only; the tick sequence is unchanged.
+
+**Failure cases**
+- Implementing reduced motion by altering camera update logic in simulation state: two players with different settings produce different replays from the same inputs.
+- Changing assist constants mid-game: a buffered jump's window changes mid-flight; replay hashes diverge with no visible cause.
+- `auto_hop` implemented by re-triggering `pressed` semantics: double jumps on the landing tick when combined with the jump buffer — the buffer and the held-check must write the same counter, not two.
+
+---
+
+## Chapter 23: Deterministic Tests
+
+Determinism is only valuable if it is *tested*. The test harness runs the simulation headlessly — no window, no audio, no OS input — driven by **input scripts**: a list of frozensets indexed by tick, where missing entries mean "no keys held." The primary assertion tool is the **state hash**: serialize the full simulation state (reusing Ch. 21's `serialize`) after N ticks and compare against a golden hash.
+
+```python
+import hashlib
+
+class LCG:
+    """Deterministic RNG for anything that needs randomness in-sim."""
+    MASK = (1 << 64) - 1
+    def __init__(self, seed):
+        self.state = seed & self.MASK
+    def next_u64(self):
+        self.state = (self.state * 6364136223846793005
+                      + 1442695040888963407) & self.MASK
+        return self.state
+    def below(self, n):                    # uniform in [0, n)
+        return self.next_u64() % n
+
+def run_headless(level_path, script, ticks, seed=0):
+    sim = Sim(load_level(level_path), LCG(seed))
+    for t in range(ticks):
+        held = script[t] if t < len(script) else frozenset()
+        sim.step(frozenset(held))
+    return sim
+
+def state_hash(sim):
+    return hashlib.sha256(serialize(sim).encode('ascii')).hexdigest()
+
+def test_walk_right_golden():
+    script = [frozenset({"right"})] * 120
+    sim = run_headless("levels/demo01.pfl", script, 120)
+    assert state_hash(sim) == GOLDEN["walk_right_120"]
+    assert sim.player.vx == RUN_MAX        # property: reached max speed
+
+def test_never_leaves_world():
+    script = [frozenset({"right", "jump"}) if i % 30 < 10 else frozenset()
+              for i in range(600)]
+    sim = run_headless("levels/demo01.pfl", script, 600)
+    assert 0 <= sim.player.x < sim.level.width_px
+```
+
+Golden tests catch *any* behavioral change — including bugs nobody thought to test for. The workflow: generate goldens once with reviewed, correct code; regenerate deliberately when behavior legitimately changes, and review the diff of `serialize` output, not just the hash. Property tests (bounds, grounded-implies-support, coin-count consistency from Ch. 14) complement goldens by asserting invariants that must hold on *every* input, not just scripted ones.
+
+The rules that keep tests honest: no wall clock anywhere in the harness; no `random` module — only the seeded `LCG`, whose state is part of simulation state if it influences gameplay; no iteration over sets or dicts where order matters (sort explicitly); and the hash must cover **all** dynamic state — a hash over just the player position will pass while enemies desynchronize.
+
+**Invariants**
+- The harness feeds exactly one frozenset per tick; the sim never reads OS input in tests.
+- Golden hashes cover the complete `serialize` output.
+- Any in-sim randomness flows through the seeded LCG.
+- Test execution touches no display, audio, or clock APIs.
+
+**Failure cases**
+- A golden generated from buggy code: the test then *protects the bug*. Regenerating goldens must be a deliberate, reviewed act — never a "make it pass" button.
+- Hashing a partial state: enemies or platforms drift out of sync across a refactor while tests stay green.
+- Using `random.random()` for one cosmetic scatter: hashes diverge across Python versions, and every golden test fails mysteriously.
+
+---
+
+## Chapter 24: Debugging and Performance
+
+Debugging a deterministic engine has a superpower: **any bug reproduces exactly**. Capture the input log up to the failure (Ch. 03's recorder), replay it headlessly, and inspect state tick by tick. Build the tooling for this first — it pays for itself immediately.
+
+The **debug overlay** is render-only: draw collision boxes (green = grounded, red = airborne), tile grid lines, velocity vectors, platform paths with current targets, spatial grid cell boundaries, and the last dozen events from the bus. It reads simulation state and writes nothing:
+
+```python
+class DebugOverlay:
+    def __init__(self, enabled=False):
+        self.enabled = enabled
+        self.counters = {"collisions": 0, "entities": 0, "events": 0}
+
+    def draw(self, screen, sim, camera):
+        if not self.enabled:
+            return
+        for e in sim.level.enemies:               # read-only iteration
+            screen.draw_rect(e.x, e.y, e.w, e.h, color="red", layer="debug")
+        screen.draw_rect(sim.player.x, sim.player.y,
+                         sim.player.w, sim.player.h,
+                         color="green" if sim.player.grounded else "yellow")
+        for (cx, cy), ids in sim.grid.buckets.items():
+            screen.draw_cell(cx, cy, count=len(ids))
+        screen.draw_text(f"tick={sim.tick} acc_checks={self.counters['collisions']}")
+```
+
+For performance, measure before optimizing: run `cProfile` around `run_headless(level, script, 3600)` — profiling the simulation *without rendering* tells you where sim time actually goes. In practice the hot spots are the spatial grid rebuild (Ch. 17) and narrowphase collision. The counters in the overlay (collision checks per tick, entities updated, events emitted) are cheap integer increments that turn "it feels slow" into "the grid rebuild is 40% of tick time."
+
+Allocation hygiene matters more than algorithmic cleverness in Python: clear and reuse the grid's bucket lists rather than rebuilding dicts; use `__slots__` on entity classes; emit events as tuples, not objects; avoid creating throwaway lists inside `move_and_collide` (the range loops above already avoid this). If the grid rebuild dominates, incremental cell updates are the first real optimization — but only with a test proving query results are identical to the rebuild version.
+
+The most common logic bugs, and their signatures: **stuck-in-wall after a teleport or respawn** — resolve by pushing the body out along the axis of smallest penetration, then verify with a probe; **zero-speed jitter** — friction or slope snapping oscillating around a boundary, fix by clamping toward zero exactly; **event storms** — watch the per-tick event counter. And the cardinal rule: if debug code ever writes to simulation state, every golden test in Ch. 23 fails — which is exactly why they exist.
+
+**Invariants**
+- Debug and overlay code never mutates simulation state; enforced by golden tests.
+- Perf counters are plain ints, incremented in sim hot paths, read at render.
+- Profiling runs headless; render time is measured separately.
+- Optimizations must preserve `state_hash` outputs on the standard test scripts.
+
+**Failure cases**
+- A "harmless" debug hook that nudges the player out of walls: goldens fail immediately — the system working as designed.
+- Optimizing the collision loop before profiling: the actual cost was in event string formatting all along.
+- Leaving the overlay enabled in a release build: not a correctness bug, but the per-tick draw calls halve the frame budget on low-end machines.
+
+---
+
+HANDBOOK_COMPLETE_1

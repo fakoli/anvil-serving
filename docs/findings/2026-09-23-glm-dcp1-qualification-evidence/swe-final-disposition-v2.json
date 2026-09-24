@@ -1,0 +1,12 @@
+{
+  "at": "2026-09-24T01:45:49.336663+00:00",
+  "absolute_gate_passed": true,
+  "paired_comparison_eligible": false,
+  "resolved": 4,
+  "graded": 5,
+  "required_resolved": 3,
+  "review": "swe-environment-disposition-independent-review.json",
+  "review_sha256": "0569de14bb7491188c4b268f10cc13ca3b53ddb635b40c27605f6ba15bb7ac65",
+  "prior_composite_gate": "swe-final-gate.json",
+  "limit": "Python/package environments differ. No causal4vs3 improvement claim. No rerun."
+}

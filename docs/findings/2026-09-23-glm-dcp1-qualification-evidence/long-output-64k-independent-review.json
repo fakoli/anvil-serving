@@ -1,0 +1,192 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently review the complete retained visible text from the GLM DCP1 65536-completion-token diagnostic for coherence, degeneration, completeness, and useful-output comparison with the incumbent; do not execute generated code or infer uncaptured reasoning behavior.",
+  "gate_state": "not_required",
+  "targets": {
+    "implementing_model": "GPT-6 Astra",
+    "evaluated_model": "GLM-5.3-Flash DCP1",
+    "reviewer_model": "GPT-5.6 Sol",
+    "source_revision": "731309e499ade9ad0043afbe9024a108cc1285f2",
+    "candidate_native_sha256": "e285b5e221099bccb1db46e04315749072c3da88e008e637dd343156c1bc843a",
+    "candidate_visible_sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723",
+    "incumbent_native_sha256": "c7fcf161b54145301617d63a486ed5c7aadbd1ce2bd637f5f69efb4e922d0690"
+  },
+  "tools_used": [
+    {
+      "name": "complete_visible_text_review",
+      "source_class": "manual",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "all 468 retained visible lines; no generated-code execution",
+      "error": null
+    },
+    {
+      "name": "offline_repetition_and_structure_probe",
+      "source_class": "manual",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "candidate visible text and incumbent retained artifact",
+      "error": null
+    },
+    {
+      "name": "workflow_packet_validate",
+      "source_class": "manual",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "this operator-workflow/v1 packet",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "finding_summary",
+      "path": "long-output-64k.json",
+      "severity": "high",
+      "classification": "confirmed",
+      "summary": "The native suite result remains a completion-budget failure: finish_reason=length at 65536 reported completion tokens, with three complete chapters, a fourth parser chapter cut off mid-statement, and no terminal marker. It must not be relabeled as a completed guide or suite pass.",
+      "references": [
+        "long-output-64k-summary.json",
+        "long-output-64k-visible.txt:1",
+        "long-output-64k-visible.txt:330",
+        "long-output-64k-visible.txt:468"
+      ]
+    },
+    {
+      "kind": "finding_summary",
+      "path": "long-output-64k-visible.txt",
+      "severity": "none",
+      "classification": "refuted",
+      "summary": "No visible degeneration or off-topic drift was found. The answer remains a coherent task-runner handbook from requirements through workspace, lexer, and parser; chapters are distinct and later prose/code follows earlier vocabulary. Offline full-text probes found zero duplicate normalized sentences of at least eight words, zero duplicate paragraphs of at least twenty words, zero duplicate thirty-word windows, and a maximum identical-token run of two.",
+      "references": [
+        "long-output-64k-visible.txt:1",
+        "long-output-64k-visible.txt:118",
+        "long-output-64k-visible.txt:197",
+        "long-output-64k-visible.txt:330",
+        "long-output-64k-visible.txt:468"
+      ]
+    },
+    {
+      "kind": "finding_summary",
+      "path": "long-output-64k-summary.json",
+      "severity": "medium",
+      "classification": "confirmed",
+      "summary": "Useful visible output regressed materially against the matched incumbent diagnostic. DCP1 retained 24123 visible characters, 5921 exact visible tokens, and three complete chapters plus part of chapter four; the incumbent retained 70772 visible characters and eleven complete chapters plus part of chapter twelve. Both report the same 65536 completion-token ceiling, finish_reason=length, prompt_tokens=279, and the same assignment. This is a descriptive one-attempt regression, not a throughput or reliability estimate.",
+      "references": [
+        "long-output-64k-summary.json",
+        "baseline-long-output-64k.json",
+        "baseline-long-output-64k-independent-review.json"
+      ]
+    },
+    {
+      "kind": "finding_summary",
+      "path": "long-output-64k-summary.json",
+      "severity": "medium",
+      "classification": "confirmed_limit",
+      "summary": "The evidence cannot explain the visible-output regression. DCP1 retains 252061 reasoning characters as metadata, but reasoning_tokens is null and full reasoning was intentionally not retained. No claim of a reasoning loop, productive deliberation, or runtime allocation defect is supported. The incumbent visible token count is also unavailable, so the exact comparison is characters and chapter coverage rather than candidate-versus-incumbent token counts.",
+      "references": [
+        "long-output-64k-summary.json",
+        "baseline-long-output-64k-independent-review.json"
+      ]
+    },
+    {
+      "kind": "finding_summary",
+      "path": "long-output-64k-visible.txt",
+      "severity": "low",
+      "classification": "confirmed_out_of_scope",
+      "summary": "Coherence does not establish integrated code correctness. Visible static seams include workspace.py referencing ConfigError without importing it, lexer punctuation omitting the dot required by the documented env.CI syntax, and a mutable TaskSpec conflicting with the chapter's frozen-configuration invariant. Generated code was not executed, and these defects do not change the long-generation coherence result.",
+      "references": [
+        "long-output-64k-visible.txt:9",
+        "long-output-64k-visible.txt:95",
+        "long-output-64k-visible.txt:133",
+        "long-output-64k-visible.txt:176",
+        "long-output-64k-visible.txt:201",
+        "long-output-64k-visible.txt:237"
+      ]
+    },
+    {
+      "kind": "disposition",
+      "path": "campaign-plan.md",
+      "severity": "none",
+      "classification": "confirmed",
+      "summary": "Continuing to the frozen routed-admission gate is consistent with the predeclared campaign and is not a waiver. campaign-plan.md permits the separate 65536-cap diagnostic to end with stop or length when visible content is coherent and usage is retained. Those diagnostic conditions are met, while the native completion failure and useful-output regression remain recorded. The independent natural-output gate separately passed with 18016 visible tokens, stop finish, all 24 chapters, and its terminal marker.",
+      "references": [
+        "campaign-plan.md:13",
+        "natural-long-output-1-independent-review.json",
+        "long-output-64k-summary.json"
+      ]
+    },
+    {
+      "kind": "breakage_probes",
+      "path": "long-output-64k-visible.txt",
+      "items": [
+        {
+          "axis": "fail_closed_unreadable_state",
+          "input_state": "Visible text, usage, finish reason, identity, or native failure unavailable",
+          "wrong_result": "Infer coherence or completion from partial evidence",
+          "result": "refuted; full visible text, usage, finish, equal before/after identity hashes, and failure are retained"
+        },
+        {
+          "axis": "malformed_boundary_input",
+          "input_state": "Guide reaches the 65536 completion boundary mid-code",
+          "wrong_result": "Treat syntactically incomplete output as completed",
+          "result": "confirmed boundary failure and retained as native failed"
+        },
+        {
+          "axis": "resource_exhaustion_or_missing_bounds",
+          "input_state": "Generation consumes the full configured completion budget",
+          "wrong_result": "Unbounded generation or silent success",
+          "result": "refuted; request stops at the declared ceiling with finish_reason=length"
+        },
+        {
+          "axis": "state_drift_across_runtime_and_evidence",
+          "input_state": "Managed identity changes during the attempt or owner/kernel failure is omitted",
+          "wrong_result": "Attribute output to the qualified recipe after drift",
+          "result": "refuted by equal before/after identity artifacts and retained zero-match kernel evidence; this does not prove general reliability"
+        }
+      ]
+    },
+    {
+      "path": "long-output-64k.json",
+      "sha256": "e285b5e221099bccb1db46e04315749072c3da88e008e637dd343156c1bc843a"
+    },
+    {
+      "path": "long-output-64k-visible.txt",
+      "sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723"
+    },
+    {
+      "path": "long-output-64k-summary.json",
+      "sha256": "1b375d1979c6af900bf16102dc0546881c816b248f31e44d8c4ab609f57955bd"
+    },
+    {
+      "path": "baseline-long-output-64k.json",
+      "sha256": "c7fcf161b54145301617d63a486ed5c7aadbd1ce2bd637f5f69efb4e922d0690"
+    },
+    {
+      "path": "baseline-long-output-64k-independent-review.json",
+      "sha256": "309e3e3d297d009e0746e6dc0149b6e22aaa99ee27ca51b5d3fe10ac9166c114"
+    }
+  ],
+  "advisory_priors": [
+    {
+      "summary": "The evaluated GLM model did not grade itself; GPT-5.6 Sol independently reviewed the complete retained visible output and Astra-authored evidence framing.",
+      "advisory_only": true,
+      "promotion_quality_evidence": false
+    },
+    {
+      "summary": "No generated code, model request, router operation, lifecycle action, service change, or GPU action was performed.",
+      "advisory_only": true,
+      "promotion_quality_evidence": false
+    },
+    {
+      "summary": "This single diagnostic supports visible coherence through truncation; it does not establish completion, correctness, reliability, or causal attribution for output allocation.",
+      "advisory_only": true,
+      "promotion_quality_evidence": false
+    }
+  ],
+  "recommendation": "needs_more_data",
+  "human_gate_required": false,
+  "promoted": false
+}

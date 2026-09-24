@@ -1,0 +1,28 @@
+{
+  "at": "2026-09-24T02:00:36.901275+00:00",
+  "native_sha256": "e285b5e221099bccb1db46e04315749072c3da88e008e637dd343156c1bc843a",
+  "visible_sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723",
+  "visible_characters": 24123,
+  "visible_tokens": 5921,
+  "tokenizer_add_special_tokens": false,
+  "finish_reason": "length",
+  "usage": {
+    "completion_tokens": 65536,
+    "prompt_tokens": 279,
+    "prompt_tokens_details": null,
+    "total_tokens": 65815
+  },
+  "reasoning_characters": 252061,
+  "reasoning_tokens_reported": null,
+  "full_reasoning_retained": false,
+  "chapter_headers": [
+    "## CHAPTER requirements-and-contracts",
+    "## CHAPTER workspace-layout",
+    "## CHAPTER lexer",
+    "## CHAPTER parser"
+  ],
+  "completion_marker_present": false,
+  "native_status": "failed",
+  "failure_class": "completion_budget_exhausted_after_visible_output",
+  "scope": "Separate65536cap diagnostic; coherence review pending. Does not replace natural18016visible stopfinish gate."
+}

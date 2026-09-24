@@ -1,0 +1,420 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": false,
+  "finished_at": "2026-09-23T21:59:03.007090+00:00",
+  "identity_observations": [
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:54:03.479971+00:00",
+      "phase": "start",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:54:03.520345+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:55:45.819378+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:55:45.856226+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:57:24.265168+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:57:24.297509+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    },
+    {
+      "container_id": "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-09-23T21:59:03.000206+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": false,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 45050.948443786,
+        "expected_values": [
+          "VALUE_799b2cc6aa94",
+          "VALUE_649807b01152",
+          "VALUE_a0f3deab9ac3"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T21:55:45.775998+00:00",
+        "first_output": 44984.330643074,
+        "last_output": 45050.948332505,
+        "partial_visible": "# Key Values\n\n- **KEY_0** = VALUE_799b2cc6aa94\n- **KEY_1** = VALUE_649807b01152\n- **KEY_2** = VALUE_a0f3deab9ac3\n\n---\n\n# Engineering Guide: Software Component Design and Testing\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Define clear boundaries between components using interfaces. Each component should encapsulate a single responsibility with well-defined inputs and outputs. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `PaymentProcessor` component accepts a `PaymentRequest` interface and returns a `PaymentResult`, without knowing whether the underlying gateway is Stripe or PayPal.\n\n**Edge Cases:** Circular dependencies between components; components that grow beyond their intended scope; interface leakage where internal types are exposed.\n\n**Tests:** Verify that each component can be instantiated independently. Test that interfaces are honored by all implementations. Write architecture tests that detect circular dependencies automatically.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Design interfaces at the consumer's level of abstraction. Keep interfaces small and focused. Prefer composition over inheritance when defining component contracts.\n\n**Example:** Instead of a monolithic `DataAccess` interface, split into `Reader`, `Writer`, and `QueryExecutor` interfaces that consumers can depend on individually.\n\n**Edge Cases:** Interfaces that are too granular leading to combinatorial explosion; interfaces that leak implementation details; breaking changes to published interfaces.\n\n**Tests:** Write consumer-driven contract tests. Verify that mock implementations satisfy the same behavioral contracts as real implementations. Test interface evolution scenarios.\n\n---\n\n## Section 3: Dependency Injection Patterns\n\n**Implementation:** Use constructor injection for required dependencies and setter injection for optional ones. Implement a DI container that manages component lifecycle and resolution.\n\n**Example:** A `UserService` receives an `EmailSender` and a `UserRepository` through its constructor, making it testable with mock implementations.\n\n**Edge Cases:** Circular dependency resolution; transient vs. singleton lifetime management; optional dependencies that are null at runtime.\n\n**Tests:** Verify that all dependencies are resolved correctly. Test that lifecycle scopes are respected. Write integration tests that exercise the full DI graph.\n\n---\n\n## Section 4: Error Handling Strategies\n\n**Implementation:** Define a hierarchy of error types specific to each component. Use result types or exceptions consistently. Never swallow errors silently; always propagate or log with context.\n\n**Example:** A `FileParser` component defines `ParseError`, `FormatError`, and `SizeLimitError` as distinct error types that callers can handle differently.\n\n**Edge Cases:** Errors during cleanup/rollback; cascading failures across component boundaries; partial failures in batch operations.\n\n**Tests:** Test each error path explicitly. Verify error messages contain sufficient context for debugging. Test that resources are released even when errors occur.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Externalize all configuration from component code. Use typed configuration objects validated at startup. Support environment-specific overrides.\n\n**Example:** A `DatabaseConnector` component reads connection settings from a `DatabaseConfig` record validated at boot time, with environment variable overrides.\n\n**Edge Cases:** Missing required configuration values; invalid configuration that passes type checks but fails semantically; configuration changes at runtime.\n\n**Tests:** Test configuration validation with valid and invalid inputs. Verify environment variable overrides work correctly. Test behavior when configuration is missing or malformed.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Implement structured logging with consistent levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs for tracing requests across components. Add metrics for component health.\n\n**Example:** A `OrderService` logs with fields like `order_id`, `user_id`, and `trace_id` so that any order can be traced through the entire processing pipeline.\n\n**Edge Cases:** Log flooding from high-frequency events; sensitive data accidentally logged; log levels that differ between environments.\n\n**Tests:** Verify log output format is valid structured data. Test that correlation IDs propagate correctly. Assert that sensitive fields are redacted.\n\n---\n\n## Section 7: Unit Testing Fundamentals\n\n**Implementation:** Write tests that isolate a single component using test doubles for dependencies. Follow the Arrange-Act-Assert pattern. Keep tests fast and deterministic.\n\n**Example:** Testing a `Calculator.add()` method: arrange inputs, call the method, assert the result equals the expected sum. No mocks needed for pure functions.\n\n**Edge Cases:** Tests that depend on execution order; tests that pass in isolation but fail together; flaky tests due to timing or randomness.\n\n**Tests:** Ensure 100% of public methods have at least one test. Verify tests run in any order. Use property-based testing for functions with wide input domains.\n\n---\n\n## Section 8: Mock and Stub Design\n\n**Implementation:** Create mocks that simulate dependency behavior for testing. Stubs return canned responses; mocks verify interactions; fakes provide lightweight working implementations.\n\n**Example:** A `MockEmailSender` records sent emails in memory so tests can assert that the correct email was sent without a real SMTP server.\n\n**Edge Cases:** Mocks that drift from real implementations; over-mocking leading to brittle tests; mocks that hide real bugs in dependency interactions.\n\n**Tests:** Verify mocks implement the same interface as real dependencies. Write contract tests that run against both mocks and real implementations. Periodically validate mock behavior against integration tests.\n\n---\n\n## Section 9: Integration Testing\n\n**Implementation:** Test interactions between components using real implementations where possible. Use test containers or in-memory databases for infrastructure dependencies.\n\n**Example:** Test that a `UserService` correctly persists a user through a real `UserRepository` backed by an in-memory database, then retrieves it correctly.\n\n**Edge Cases:** Network latency in integration tests; shared state between parallel test runs; external services that are unavailable during CI.\n\n**Tests:** Verify data flows correctly between components. Test transaction boundaries across component calls. Validate that error propagation works across integration points.\n\n---\n\n## Section 10: End-to-End Testing\n\n**Implementation:** Test complete user workflows through the entire system. Use realistic data and scenarios. Automate critical paths for regression detection.\n\n**Example:** An E2E test that creates a user, adds items to a cart, applies a discount code, and completes checkout, verifying the order appears in the admin panel.\n\n**Edge Cases:** Timing issues with asynchronous operations; browser-specific rendering differences; third-party service outages during test runs.\n\n**Tests:** Cover all critical user journeys. Test with realistic data volumes. Include negative scenarios like invalid inputs at each step.\n\n---\n\n## Section 11: Test Data Management\n\n**Implementation:** Create factories or builders for generating test data. Use realistic but synthetic data. Separate test data creation from test logic.\n\n**Example:** A `UserFactory` creates test users with configurable attributes: `UserFactory.create(email=\"test@example.com\", role=\"admin\")`.\n\n**Edge Cases:** Test data that becomes stale as schemas evolve; collisions between parallel test runs using the same data; accidentally using production data in tests.\n\n**Tests:** Verify factories produce valid entities. Test that generated data meets all validation constraints. Ensure test data cleanup runs after each test.\n\n---\n\n## Section 12: Code Coverage Analysis\n\n**Implementation:** Measure statement, branch, and path coverage. Set minimum coverage thresho",
+        "prompt_sha256": "5160c0e88e9012502af8095a5db830a86b16145f77db72e807c0a76e68cb4d70",
+        "prompt_tokens_tokenized": 201002,
+        "request_id": null,
+        "response_headers_at": 44949.308885819,
+        "result": {
+          "content_chunks": 3932,
+          "e2e": 101.85294716600038,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 154,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 35.23519691499678,
+          "ttft": 50.83796482899925,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 201002,
+            "total_tokens": 205098
+          },
+          "visible_content": "# Key Values\n\n- **KEY_0** = VALUE_799b2cc6aa94\n- **KEY_1** = VALUE_649807b01152\n- **KEY_2** = VALUE_a0f3deab9ac3\n\n---\n\n# Engineering Guide: Software Component Design and Testing\n\n## Section 1: Component Architecture Fundamentals\n\n**Implementation:** Define clear boundaries between components using interfaces. Each component should encapsulate a single responsibility with well-defined inputs and outputs. Use dependency injection to decouple components from their dependencies.\n\n**Example:** A `PaymentProcessor` component accepts a `PaymentRequest` interface and returns a `PaymentResult`, without knowing whether the underlying gateway is Stripe or PayPal.\n\n**Edge Cases:** Circular dependencies between components; components that grow beyond their intended scope; interface leakage where internal types are exposed.\n\n**Tests:** Verify that each component can be instantiated independently. Test that interfaces are honored by all implementations. Write architecture tests that detect circular dependencies automatically.\n\n---\n\n## Section 2: Interface Design Principles\n\n**Implementation:** Design interfaces at the consumer's level of abstraction. Keep interfaces small and focused. Prefer composition over inheritance when defining component contracts.\n\n**Example:** Instead of a monolithic `DataAccess` interface, split into `Reader`, `Writer`, and `QueryExecutor` interfaces that consumers can depend on individually.\n\n**Edge Cases:** Interfaces that are too granular leading to combinatorial explosion; interfaces that leak implementation details; breaking changes to published interfaces.\n\n**Tests:** Write consumer-driven contract tests. Verify that mock implementations satisfy the same behavioral contracts as real implementations. Test interface evolution scenarios.\n\n---\n\n## Section 3: Dependency Injection Patterns\n\n**Implementation:** Use constructor injection for required dependencies and setter injection for optional ones. Implement a DI container that manages component lifecycle and resolution.\n\n**Example:** A `UserService` receives an `EmailSender` and a `UserRepository` through its constructor, making it testable with mock implementations.\n\n**Edge Cases:** Circular dependency resolution; transient vs. singleton lifetime management; optional dependencies that are null at runtime.\n\n**Tests:** Verify that all dependencies are resolved correctly. Test that lifecycle scopes are respected. Write integration tests that exercise the full DI graph.\n\n---\n\n## Section 4: Error Handling Strategies\n\n**Implementation:** Define a hierarchy of error types specific to each component. Use result types or exceptions consistently. Never swallow errors silently; always propagate or log with context.\n\n**Example:** A `FileParser` component defines `ParseError`, `FormatError`, and `SizeLimitError` as distinct error types that callers can handle differently.\n\n**Edge Cases:** Errors during cleanup/rollback; cascading failures across component boundaries; partial failures in batch operations.\n\n**Tests:** Test each error path explicitly. Verify error messages contain sufficient context for debugging. Test that resources are released even when errors occur.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Externalize all configuration from component code. Use typed configuration objects validated at startup. Support environment-specific overrides.\n\n**Example:** A `DatabaseConnector` component reads connection settings from a `DatabaseConfig` record validated at boot time, with environment variable overrides.\n\n**Edge Cases:** Missing required configuration values; invalid configuration that passes type checks but fails semantically; configuration changes at runtime.\n\n**Tests:** Test configuration validation with valid and invalid inputs. Verify environment variable overrides work correctly. Test behavior when configuration is missing or malformed.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Implement structured logging with consistent levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs for tracing requests across components. Add metrics for component health.\n\n**Example:** A `OrderService` logs with fields like `order_id`, `user_id`, and `trace_id` so that any order can be traced through the entire processing pipeline.\n\n**Edge Cases:** Log flooding from high-frequency events; sensitive data accidentally logged; log levels that differ between environments.\n\n**Tests:** Verify log output format is valid structured data. Test that correlation IDs propagate correctly. Assert that sensitive fields are redacted.\n\n---\n\n## Section 7: Unit Testing Fundamentals\n\n**Implementation:** Write tests that isolate a single component using test doubles for dependencies. Follow the Arrange-Act-Assert pattern. Keep tests fast and deterministic.\n\n**Example:** Testing a `Calculator.add()` method: arrange inputs, call the method, assert the result equals the expected sum. No mocks needed for pure functions.\n\n**Edge Cases:** Tests that depend on execution order; tests that pass in isolation but fail together; flaky tests due to timing or randomness.\n\n**Tests:** Ensure 100% of public methods have at least one test. Verify tests run in any order. Use property-based testing for functions with wide input domains.\n\n---\n\n## Section 8: Mock and Stub Design\n\n**Implementation:** Create mocks that simulate dependency behavior for testing. Stubs return canned responses; mocks verify interactions; fakes provide lightweight working implementations.\n\n**Example:** A `MockEmailSender` records sent emails in memory so tests can assert that the correct email was sent without a real SMTP server.\n\n**Edge Cases:** Mocks that drift from real implementations; over-mocking leading to brittle tests; mocks that hide real bugs in dependency interactions.\n\n**Tests:** Verify mocks implement the same interface as real dependencies. Write contract tests that run against both mocks and real implementations. Periodically validate mock behavior against integration tests.\n\n---\n\n## Section 9: Integration Testing\n\n**Implementation:** Test interactions between components using real implementations where possible. Use test containers or in-memory databases for infrastructure dependencies.\n\n**Example:** Test that a `UserService` correctly persists a user through a real `UserRepository` backed by an in-memory database, then retrieves it correctly.\n\n**Edge Cases:** Network latency in integration tests; shared state between parallel test runs; external services that are unavailable during CI.\n\n**Tests:** Verify data flows correctly between components. Test transaction boundaries across component calls. Validate that error propagation works across integration points.\n\n---\n\n## Section 10: End-to-End Testing\n\n**Implementation:** Test complete user workflows through the entire system. Use realistic data and scenarios. Automate critical paths for regression detection.\n\n**Example:** An E2E test that creates a user, adds items to a cart, applies a discount code, and completes checkout, verifying the order appears in the admin panel.\n\n**Edge Cases:** Timing issues with asynchronous operations; browser-specific rendering differences; third-party service outages during test runs.\n\n**Tests:** Cover all critical user journeys. Test with realistic data volumes. Include negative scenarios like invalid inputs at each step.\n\n---\n\n## Section 11: Test Data Management\n\n**Implementation:** Create factories or builders for generating test data. Use realistic but synthetic data. Separate test data creation from test logic.\n\n**Example:** A `UserFactory` creates test users with configurable attributes: `UserFactory.create(email=\"test@example.com\", role=\"admin\")`.\n\n**Edge Cases:** Test data that becomes stale as schemas evolve; collisions between parallel test runs using the same data; accidentally using production data in tests.\n\n**Tests:** Verify factories produce valid entities. Test that generated data meets all validation constraints. Ensure test data cleanup runs after each test.\n\n---\n\n## Section 12: Code Coverage Analysis\n\n**Implementation:** Measure statement, branch, and path coverage. Set minimum coverage thresho",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 44949.08029897,
+        "started_at": "2026-09-23T21:54:03.907839+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-9a5a08e4c4ee164e",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 45000.804052333,
+        "expected_values": [
+          "VALUE_6ef665ebecd8",
+          "VALUE_a05604c85d6b",
+          "VALUE_d11f8bfabef7"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T21:54:55.631608+00:00",
+        "first_output": 44998.124624817,
+        "last_output": 45000.788900095,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_6ef665ebecd8\n- **KEY_1** = VALUE_a05604c85d6b\n- **KEY_2** = VALUE_d11f8bfabef7",
+        "prompt_sha256": "d55a961071b964e6cfc419a239dee6110338615e6a76d2e53b30210527c1fa86",
+        "prompt_tokens_tokenized": 46790,
+        "request_id": null,
+        "response_headers_at": 44984.387371137,
+        "result": {
+          "content_chunks": 58,
+          "e2e": 16.45749133899517,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 186,
+          "output_token_source": "usage",
+          "reasoning_chunks": 123,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 13.77808884299884,
+          "ttft": 15.615460336994147,
+          "usage": {
+            "completion_tokens": 186,
+            "prompt_tokens": 46790,
+            "total_tokens": 46976
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_6ef665ebecd8\n- **KEY_1** = VALUE_a05604c85d6b\n- **KEY_2** = VALUE_d11f8bfabef7",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 44984.343614207,
+        "started_at": "2026-09-23T21:54:39.171154+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-8aaf416535b2473d",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "overlap_output_at": 44984.388654611,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 45149.395660362,
+        "expected_values": [
+          "VALUE_4a48ac93ddbc",
+          "VALUE_b2e339d30f89",
+          "VALUE_21d55fd7de93"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T21:57:24.223215+00:00",
+        "first_output": 45087.805210837,
+        "last_output": 45149.395559122,
+        "partial_visible": "# Key Values\n\n| Key | Value |\n|---|---|\n| KEY_0 | `VALUE_4a48ac93ddbc` |\n| KEY_1 | `VALUE_b2e339d30f89` |\n| KEY_2 | `VALUE_21d55fd7de93` |\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\nA 40-section practical guide covering implementation, examples, edge cases, and tests for each topic.\n\n---\n\n## Section 1: Component Design Principles\n\n**Implementation.** Design each component around a single responsibility. Define its public surface (functions, classes, endpoints) first, then implement internals. Keep dependencies explicit — pass them in rather than constructing them internally. Aim for high cohesion (related logic together) and low coupling (minimal knowledge of other components).\n\n**Example.**\n```python\nclass InvoiceCalculator:\n    def __init__(self, tax_table, clock):\n        self._tax_table = tax_table\n        self._clock = clock  # injected, not global\n\n    def total(self, line_items, region):\n        subtotal = sum(item.price * item.qty for item in line_items)\n        return subtotal + self._tax_table.rate(region, self._clock.now()) * subtotal\n```\n\n**Edge cases.** Empty line-item lists; components that grow into \"god objects\" over time; circular dependencies discovered late; hidden temporal coupling (method A must run before method B).\n\n**Tests.** Assert the component does one thing: instantiate it in isolation with fakes and verify all behavior is reachable without a real network, database, or filesystem. A component requiring real infrastructure in its unit tests is a design smell.\n\n---\n\n## Section 2: Interface Contracts\n\n**Implementation.** Define explicit contracts: typed signatures, preconditions, postconditions, and invariants. Document what happens on failure, not just success. Prefer narrow interfaces (few methods) over broad ones.\n\n**Example.**\n```python\nfrom typing import Protocol\n\nclass PaymentGateway(Protocol):\n    def charge(self, amount_cents: int, currency: str) -> str:\n        \"\"\"Returns transaction ID.\n        Pre: amount_cents > 0, currency is ISO-4217.\n        Post: returned ID is non-empty and unique.\n        Raises: PaymentDeclined, GatewayUnavailable.\n        \"\"\"\n        ...\n```\n\n**Edge cases.** Contracts violated by subclasses (Liskov violations); implicit contracts in error behavior; contracts that leak implementation details (e.g., promising a specific exception type forever).\n\n**Tests.** Write a contract test suite that any implementation of the interface must pass. Run the same suite against every implementation, including mocks used elsewhere.\n\n---\n\n## Section 3: Dependency Injection\n\n**Implementation.** Inject dependencies through constructors or function parameters. Use a composition root (a single place, usually `main`) to wire concrete implementations. Avoid service-locator patterns that hide dependencies.\n\n**Example.**\n```python\ndef main():\n    clock = SystemClock()\n    repo = PostgresUserRepo(conn_string)\n    service = SignupService(repo, clock, mailer=SESMailer(api_key))\n```\n\n**Edge cases.** Over-injection (constructors with 10+ parameters signal the class does too much); injection of mutable singletons causing cross-test contamination; DI frameworks that fail at runtime rather than startup.\n\n**Tests.** Verify the composition root fails fast when a required dependency is missing. Test that each component can be constructed with only fakes.\n\n---\n\n## Section 4: Configuration Management\n\n**Implementation.** Layer configuration: defaults < file < environment variables < feature-specific overrides. Validate all configuration at startup and fail fast on invalid values. Never read config deep inside business logic.\n\n**Example.**\n```python\n@dataclass(frozen=True)\nclass Config:\n    db_url: str\n    max_retries: int = 3\n\n    @staticmethod\n    def load(env):\n        cfg = Config(db_url=env[\"DB_URL\"], max_retries=int(env.get(\"MAX_RETRIES\", 3)))\n        if cfg.max_retries < 0:\n            raise ConfigError(\"MAX_RETRIES must be >= 0\")\n        return cfg\n```\n\n**Edge cases.** Type coercion surprises (`\"0\"` vs `0`); empty-string env vars treated as set; config changed at runtime by another process; secrets accidentally logged.\n\n**Tests.** Table-driven tests over valid/invalid config permutations. A test asserting the app refuses to start with missing required keys. A test that no config value matching a secret pattern appears in logs.\n\n---\n\n## Section 5: Error Handling Strategies\n\n**Implementation.** Distinguish three failure classes: (1) caller errors (return 4xx / raise `ValueError`), (2) internal bugs (raise, crash loudly), (3) dependency failures (retry, degrade, or propagate with context). Never swallow exceptions silently. Wrap low-level errors with operational context before propagating.\n\n**Example.**\n```python\ntry:\n    record = repo.fetch(user_id)\nexcept NotFound:\n    raise UserMissingError(f\"user {user_id} not found\") from None\nexcept ConnectionError as e:\n    raise TransientDependencyError(\"repo unreachable\") from e\n```\n\n**Edge cases.** Exceptions raised inside `finally` blocks masking original errors; error messages containing PII; catching `Exception` too broadly; partial writes after a mid-operation failure.\n\n**Tests.** Force each failure class with fakes and assert the resulting error type, message, and `__cause__`. Test that no error path leaves shared state mutated.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation.** Log structured key-value events, not prose strings. Include a correlation/request ID on every line. Use levels correctly: DEBUG (developer detail), INFO (state transitions), WARN (degraded but functioning), ERROR (failed operation).\n\n**Example.**\n```python\nlog.info(\"order.processed\", order_id=oid, amount_cents=total, duration_ms=elapsed)\n```\n\n**Edge cases.** Log injection via newlines in user input; high-cardinality fields (user IDs) breaking metrics aggregators; logging at ERROR for expected conditions causing alert fatigue; async log loss on crash.\n\n**Tests.** Capture log output in tests and assert on structured fields. Test that user-controlled strings are sanitized. Test that a request ID propagates across an async boundary.\n\n---\n\n## Section 7: Unit Testing Fundamentals\n\n**Implementation.** One behavior per test. Name tests as `test_<unit>_<scenario>_<expected_result>`. Follow Arrange–Act–Assert. Keep tests independent: any test must pass when run alone, in any order, in parallel.\n\n**Example.**\n```python\ndef test_cart_total_applies_discount():\n    cart = Cart(items=[Item(price=100, qty=2)])\n    cart.apply_discount(pct=10)\n    assert cart.total_cents == 180\n```\n\n**Edge cases.** Tests coupled by shared module-level state; tests depending on wall-clock time or randomness; flaky tests due to unordered dict iteration; assertion on implementation details rather than behavior.\n\n**Tests.** Meta-tests: run the suite with random ordering; run each test twice in the same process to catch state leakage; enforce naming conventions with a linter.\n\n---\n\n## Section 8: Test Doubles (Mocks, Stubs, Fakes)\n\n**Implementation.** Prefer fakes (working lightweight implementations, e.g., in-memory repo) over mocks. Use stubs for fixed inputs, mocks only to verify interactions that *are* the behavior (e.g., \"email was sent\"). Never mock what you own internally without a contract test behind it.\n\n**Example.**\n```python\nclass FakeMailer:\n    def __init__(self): self.sent = []\n    def send(self, to, body): self.sent.append((to, body))\n\ndef test_signup_sends_welcome_email():\n    mailer = FakeMailer()\n    SignupService(..., mailer).register(\"a@b.c\")\n    assert len(mailer.sent) == 1\n```\n\n**Edge cases.** Mocks that drift from the real implementation's behavior; over-mocking producing tests that pass while production breaks; fakes lacking failure modes (real mailers fail — fakes should too).\n\n**Tests.** Run the contract suite (Section 2) against both the fake and the real implementation. Add a `fail_next_call()` mode to fakes to exercise error paths.\n\n---\n\n## Section 9: Property-Based Testing\n\n**Implementation.** Instead of hand-picked examples, state invariants that must hold for *all* inputs and let the framework generate cases. Combine with a seed for reproducibility",
+        "prompt_sha256": "9a29b84a9caf1ee7401cb35a2ce637d0399ddedb91a89597a0872ecab0d3c0bd",
+        "prompt_tokens_tokenized": 201003,
+        "request_id": null,
+        "response_headers_at": 45051.647127325,
+        "result": {
+          "content_chunks": 3340,
+          "e2e": 97.95540579099907,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 688,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 36.36501037600101,
+          "ttft": 54.700879639996856,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 201003,
+            "total_tokens": 205099
+          },
+          "visible_content": "# Key Values\n\n| Key | Value |\n|---|---|\n| KEY_0 | `VALUE_4a48ac93ddbc` |\n| KEY_1 | `VALUE_b2e339d30f89` |\n| KEY_2 | `VALUE_21d55fd7de93` |\n\n---\n\n# Engineering Guide: Building and Testing Ordinary Software Components\n\nA 40-section practical guide covering implementation, examples, edge cases, and tests for each topic.\n\n---\n\n## Section 1: Component Design Principles\n\n**Implementation.** Design each component around a single responsibility. Define its public surface (functions, classes, endpoints) first, then implement internals. Keep dependencies explicit — pass them in rather than constructing them internally. Aim for high cohesion (related logic together) and low coupling (minimal knowledge of other components).\n\n**Example.**\n```python\nclass InvoiceCalculator:\n    def __init__(self, tax_table, clock):\n        self._tax_table = tax_table\n        self._clock = clock  # injected, not global\n\n    def total(self, line_items, region):\n        subtotal = sum(item.price * item.qty for item in line_items)\n        return subtotal + self._tax_table.rate(region, self._clock.now()) * subtotal\n```\n\n**Edge cases.** Empty line-item lists; components that grow into \"god objects\" over time; circular dependencies discovered late; hidden temporal coupling (method A must run before method B).\n\n**Tests.** Assert the component does one thing: instantiate it in isolation with fakes and verify all behavior is reachable without a real network, database, or filesystem. A component requiring real infrastructure in its unit tests is a design smell.\n\n---\n\n## Section 2: Interface Contracts\n\n**Implementation.** Define explicit contracts: typed signatures, preconditions, postconditions, and invariants. Document what happens on failure, not just success. Prefer narrow interfaces (few methods) over broad ones.\n\n**Example.**\n```python\nfrom typing import Protocol\n\nclass PaymentGateway(Protocol):\n    def charge(self, amount_cents: int, currency: str) -> str:\n        \"\"\"Returns transaction ID.\n        Pre: amount_cents > 0, currency is ISO-4217.\n        Post: returned ID is non-empty and unique.\n        Raises: PaymentDeclined, GatewayUnavailable.\n        \"\"\"\n        ...\n```\n\n**Edge cases.** Contracts violated by subclasses (Liskov violations); implicit contracts in error behavior; contracts that leak implementation details (e.g., promising a specific exception type forever).\n\n**Tests.** Write a contract test suite that any implementation of the interface must pass. Run the same suite against every implementation, including mocks used elsewhere.\n\n---\n\n## Section 3: Dependency Injection\n\n**Implementation.** Inject dependencies through constructors or function parameters. Use a composition root (a single place, usually `main`) to wire concrete implementations. Avoid service-locator patterns that hide dependencies.\n\n**Example.**\n```python\ndef main():\n    clock = SystemClock()\n    repo = PostgresUserRepo(conn_string)\n    service = SignupService(repo, clock, mailer=SESMailer(api_key))\n```\n\n**Edge cases.** Over-injection (constructors with 10+ parameters signal the class does too much); injection of mutable singletons causing cross-test contamination; DI frameworks that fail at runtime rather than startup.\n\n**Tests.** Verify the composition root fails fast when a required dependency is missing. Test that each component can be constructed with only fakes.\n\n---\n\n## Section 4: Configuration Management\n\n**Implementation.** Layer configuration: defaults < file < environment variables < feature-specific overrides. Validate all configuration at startup and fail fast on invalid values. Never read config deep inside business logic.\n\n**Example.**\n```python\n@dataclass(frozen=True)\nclass Config:\n    db_url: str\n    max_retries: int = 3\n\n    @staticmethod\n    def load(env):\n        cfg = Config(db_url=env[\"DB_URL\"], max_retries=int(env.get(\"MAX_RETRIES\", 3)))\n        if cfg.max_retries < 0:\n            raise ConfigError(\"MAX_RETRIES must be >= 0\")\n        return cfg\n```\n\n**Edge cases.** Type coercion surprises (`\"0\"` vs `0`); empty-string env vars treated as set; config changed at runtime by another process; secrets accidentally logged.\n\n**Tests.** Table-driven tests over valid/invalid config permutations. A test asserting the app refuses to start with missing required keys. A test that no config value matching a secret pattern appears in logs.\n\n---\n\n## Section 5: Error Handling Strategies\n\n**Implementation.** Distinguish three failure classes: (1) caller errors (return 4xx / raise `ValueError`), (2) internal bugs (raise, crash loudly), (3) dependency failures (retry, degrade, or propagate with context). Never swallow exceptions silently. Wrap low-level errors with operational context before propagating.\n\n**Example.**\n```python\ntry:\n    record = repo.fetch(user_id)\nexcept NotFound:\n    raise UserMissingError(f\"user {user_id} not found\") from None\nexcept ConnectionError as e:\n    raise TransientDependencyError(\"repo unreachable\") from e\n```\n\n**Edge cases.** Exceptions raised inside `finally` blocks masking original errors; error messages containing PII; catching `Exception` too broadly; partial writes after a mid-operation failure.\n\n**Tests.** Force each failure class with fakes and assert the resulting error type, message, and `__cause__`. Test that no error path leaves shared state mutated.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation.** Log structured key-value events, not prose strings. Include a correlation/request ID on every line. Use levels correctly: DEBUG (developer detail), INFO (state transitions), WARN (degraded but functioning), ERROR (failed operation).\n\n**Example.**\n```python\nlog.info(\"order.processed\", order_id=oid, amount_cents=total, duration_ms=elapsed)\n```\n\n**Edge cases.** Log injection via newlines in user input; high-cardinality fields (user IDs) breaking metrics aggregators; logging at ERROR for expected conditions causing alert fatigue; async log loss on crash.\n\n**Tests.** Capture log output in tests and assert on structured fields. Test that user-controlled strings are sanitized. Test that a request ID propagates across an async boundary.\n\n---\n\n## Section 7: Unit Testing Fundamentals\n\n**Implementation.** One behavior per test. Name tests as `test_<unit>_<scenario>_<expected_result>`. Follow Arrange–Act–Assert. Keep tests independent: any test must pass when run alone, in any order, in parallel.\n\n**Example.**\n```python\ndef test_cart_total_applies_discount():\n    cart = Cart(items=[Item(price=100, qty=2)])\n    cart.apply_discount(pct=10)\n    assert cart.total_cents == 180\n```\n\n**Edge cases.** Tests coupled by shared module-level state; tests depending on wall-clock time or randomness; flaky tests due to unordered dict iteration; assertion on implementation details rather than behavior.\n\n**Tests.** Meta-tests: run the suite with random ordering; run each test twice in the same process to catch state leakage; enforce naming conventions with a linter.\n\n---\n\n## Section 8: Test Doubles (Mocks, Stubs, Fakes)\n\n**Implementation.** Prefer fakes (working lightweight implementations, e.g., in-memory repo) over mocks. Use stubs for fixed inputs, mocks only to verify interactions that *are* the behavior (e.g., \"email was sent\"). Never mock what you own internally without a contract test behind it.\n\n**Example.**\n```python\nclass FakeMailer:\n    def __init__(self): self.sent = []\n    def send(self, to, body): self.sent.append((to, body))\n\ndef test_signup_sends_welcome_email():\n    mailer = FakeMailer()\n    SignupService(..., mailer).register(\"a@b.c\")\n    assert len(mailer.sent) == 1\n```\n\n**Edge cases.** Mocks that drift from the real implementation's behavior; over-mocking producing tests that pass while production breaks; fakes lacking failure modes (real mailers fail — fakes should too).\n\n**Tests.** Run the contract suite (Section 2) against both the fake and the real implementation. Add a `fail_next_call()` mode to fakes to exercise error paths.\n\n---\n\n## Section 9: Property-Based Testing\n\n**Implementation.** Instead of hand-picked examples, state invariants that must hold for *all* inputs and let the framework generate cases. Combine with a seed for reproducibility",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 45051.424898692,
+        "started_at": "2026-09-23T21:55:46.252437+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-95c679566d71f41d",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 45099.324657378,
+        "expected_values": [
+          "VALUE_4dac059fdd6e",
+          "VALUE_0fd70071463d",
+          "VALUE_32534cbe4814"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T21:56:34.152212+00:00",
+        "first_output": 45096.54338693,
+        "last_output": 45099.309693889,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_4dac059fdd6e\n- **KEY_1** = VALUE_0fd70071463d\n- **KEY_2** = VALUE_32534cbe4814",
+        "prompt_sha256": "3af1f8abeff6dcfd47bd333ccd60d104515f2654d239bae7efe564f150256dd0",
+        "prompt_tokens_tokenized": 46788,
+        "request_id": null,
+        "response_headers_at": 45087.862205211,
+        "result": {
+          "content_chunks": 59,
+          "e2e": 11.50330280000344,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 192,
+          "output_token_source": "usage",
+          "reasoning_chunks": 126,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.722048112002085,
+          "ttft": 10.637431895003829,
+          "usage": {
+            "completion_tokens": 192,
+            "prompt_tokens": 46788,
+            "total_tokens": 46980
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_4dac059fdd6e\n- **KEY_1** = VALUE_0fd70071463d\n- **KEY_2** = VALUE_32534cbe4814",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 45087.81824384,
+        "started_at": "2026-09-23T21:56:22.645784+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-9b94a0e9370a1692",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "overlap_output_at": 45087.863127583,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 45248.13924135,
+        "error": "stream completed without visible content",
+        "error_type": "ValueError",
+        "expected_values": [
+          "VALUE_9f44f360aa54",
+          "VALUE_ba098ea8f490",
+          "VALUE_46bf61070226"
+        ],
+        "failure_classes": [
+          "semantic_output_absent"
+        ],
+        "finished_at": "2026-09-23T21:59:02.966797+00:00",
+        "first_output": 45186.498505015,
+        "http_status": null,
+        "last_output": 45248.13915537,
+        "partial_visible": "",
+        "prompt_sha256": "1882790383acdc4d41d4a26002ce82ac154d33a7a6e357edf35ea92106479bf6",
+        "prompt_tokens_tokenized": 201003,
+        "request_id": null,
+        "response_headers_at": 45150.068558269,
+        "result": {
+          "content_chunks": 0,
+          "e2e": 98.27925710000272,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 3907,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 36.63855263499863,
+          "ttft": null,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 201003,
+            "total_tokens": 205099
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "start": 45149.84457221,
+        "started_at": "2026-09-23T21:57:24.672113+00:00",
+        "status": "failed",
+        "stream_id": "chatcmpl-9498d6cb60ae3295"
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 45198.251376819,
+        "expected_values": [
+          "VALUE_81f713e7388c",
+          "VALUE_040154148382",
+          "VALUE_17b287a87d76"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-09-23T21:58:13.078932+00:00",
+        "first_output": 45195.246369593,
+        "last_output": 45198.236600491,
+        "partial_visible": "Here are the values in order:\n\n- **KEY_0** = VALUE_81f713e7388c\n- **KEY_1** = VALUE_040154148382\n- **KEY_2** = VALUE_17b287a87d76",
+        "prompt_sha256": "a25d23dd8e4bae206a5af0ec503d7d4d8270fabc6176066e01ddf3f2be084589",
+        "prompt_tokens_tokenized": 46788,
+        "request_id": null,
+        "response_headers_at": 45186.547786542,
+        "result": {
+          "content_chunks": 59,
+          "e2e": 11.745181203994434,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 208,
+          "output_token_source": "usage",
+          "reasoning_chunks": 142,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.740198927996971,
+          "ttft": 10.881980095997278,
+          "usage": {
+            "completion_tokens": 208,
+            "prompt_tokens": 46788,
+            "total_tokens": 46996
+          },
+          "visible_content": "Here are the values in order:\n\n- **KEY_0** = VALUE_81f713e7388c\n- **KEY_1** = VALUE_040154148382\n- **KEY_2** = VALUE_17b287a87d76",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 45186.502754236,
+        "started_at": "2026-09-23T21:58:01.330290+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-ae4e70a4f6c1e24e",
+        "usage_verified": true
+      },
+      "coverage_passed": false,
+      "failure_classes": [
+        "semantic_output_absent",
+        "coverage_not_exercised"
+      ],
+      "index": 2,
+      "overlap_output_at": 45186.55465492,
+      "retrieval_passed": false,
+      "runtime_passed": false
+    }
+  ],
+  "runtime_passed": false,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 201166,
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "r10-dcp1-driver615-thinking-enabled",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4"
+    },
+    "contender_max_tokens": 1024,
+    "contender_tokens": 46916,
+    "context_limit": 327680,
+    "managed_container": "glm-runtime-dcp1-candidate",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "prefix_mode": "unique",
+    "rounds": 3,
+    "run_timeout_seconds": 1200,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600
+  },
+  "scenario_sha256": "e42d985ae035207c65a2a14b9aa3105af7e3f2e8bd5fb49226906447f8aa00b1",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "stage": "identity_check",
+  "started_at": "2026-09-23T21:54:03.387076+00:00",
+  "status": "incomplete"
+}

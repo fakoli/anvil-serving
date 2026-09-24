@@ -1,0 +1,125 @@
+{
+  "advisory_priors": [
+    "Client acceptance proves semantic correctness, tool continuation, selected route, and healthy completion; it is not a 13-of-13 strict-format claim.",
+    "Existing conversations were not reloaded, no secondary-text readiness claim is made, and the OpenClaw compaction reserve is distinct from the router output ceiling.",
+    "Public copies must sanitize private host paths, user identifiers, and the real WebUI domain before publication."
+  ],
+  "artifacts": {
+    "client_acceptance_summary": {
+      "path": "client-acceptance-summary.json",
+      "sha256": "3622d7896ea19a347de6d0bb0f4c0a4d24286d36318295494b47c71426f91800"
+    },
+    "controller_mount_live_verification": {
+      "path": "controller-mount-live-verification.json",
+      "sha256": "82d3152bf0249f6a71a9cea4cc3587d2c768da15f9d7e61942acd9b1c0f6ec38"
+    },
+    "findings_summary": [
+      {
+        "classification": "confirmed",
+        "severity": "none",
+        "summary": "All 13 declared semantic client paths completed with the expected value or explicitly scoped auxiliary-vision result; native finishes were healthy and no fallback or model substitution was observed."
+      },
+      {
+        "classification": "confirmed",
+        "severity": "none",
+        "summary": "Fleet reconciliation repeated with changed=0 and failed=0 on Primary Node, Companion Node, Laptop Node, and localhost."
+      },
+      {
+        "classification": "confirmed",
+        "severity": "none",
+        "summary": "The controller exposes all seven retained r9/r10/r11 manifest dependencies as exact read-only mounts, remained healthy after its managed recreation, and the router and GLM container identities remained unchanged."
+      },
+      {
+        "classification": "confirmed_limit",
+        "severity": "low",
+        "summary": "Strict return-only-JSON formatting did not pass on five Pi paths, Pi Web, two auxiliary-vision Hermes paths, or Mac OpenClaw. Semantic values, tool continuation, route selection, and termination passed. Mac OpenClaw additionally prepended explanatory prose."
+      },
+      {
+        "classification": "confirmed_limit",
+        "severity": "low",
+        "summary": "Pi Web get_state reported messageCount=0, while its retained native six-message session transcript independently proves two tool results and a stop completion."
+      },
+      {
+        "classification": "confirmed_limit",
+        "severity": "low",
+        "summary": "OpenClaw preserves its existing 20000-token compaction reserve. The router catalog still advertises the configured 65536-token output ceiling, but this evidence does not establish 65536-token usable output through OpenClaw."
+      },
+      {
+        "classification": "confirmed_limit",
+        "severity": "low",
+        "summary": "Legacy Hermes and OpenClaw lack opaque request-header correlation. Their evidence is bounded to terminal requested/effective model receipts, no-fallback traces, and the same-config router decision window; no fabricated exact request join is claimed."
+      }
+    ],
+    "fleet_repeat": {
+      "path": "harness-r11-repeat.log",
+      "sha256": "d8ba143f7c57c4ba28ec7cf0eced5831c02dc2ad3ef402053a8a9de715bf3c07"
+    }
+  },
+  "breakage_probes": [
+    {
+      "axis": "fail_closed_unreadable_state",
+      "classification": "refuted",
+      "evidence": "All cited artifacts are readable and hash-bound.",
+      "input_state": "Any client terminal receipt, fleet repeat, controller health, or exact mount observation is missing or unreadable",
+      "wrong_result": "Accept convergence from an incomplete summary"
+    },
+    {
+      "axis": "malformed_or_boundary_output",
+      "classification": "confirmed",
+      "evidence": "Per-path format_only_json and visible_format_caveat fields preserve the failures.",
+      "input_state": "Correct semantic values are wrapped in Markdown or preceded by prose despite a return-only-JSON instruction",
+      "wrong_result": "Report strict-format compliance"
+    },
+    {
+      "axis": "resource_or_budget_boundary",
+      "classification": "refuted",
+      "evidence": "The artifact separates compaction reserve from the configured catalog output ceiling and makes no long-output client claim.",
+      "input_state": "Treat OpenClaw reserveTokens=20000 as either a 65536 reserve or proof that the advertised output ceiling is unusable",
+      "wrong_result": "Misstate client capacity"
+    },
+    {
+      "axis": "state_drift_across_clients_router_controller",
+      "classification": "refuted",
+      "evidence": "Fleet repeat changed=0; controller health and seven mounts pass; router and GLM identities are unchanged.",
+      "input_state": "Clients retain stale catalog state or the controller-only recreation changes router/GLM ownership",
+      "wrong_result": "Close promotion with stale clients or changed serving identity"
+    }
+  ],
+  "gate_state": "accepted_with_caveats",
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": "accept_configuration_promotion_and_client_control_plane_convergence_with_documented_caveats; publication_and_live_readback_remain_required_for_campaign_closure",
+  "request": "Independently review final native-client acceptance, fleet convergence, and controller mount closure for the GLM DCP1 production configuration.",
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    {
+      "identity": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "kind": "evaluated_model"
+    },
+    {
+      "kind": "implementation_author",
+      "model": "GPT-6 Astra"
+    },
+    {
+      "kind": "independent_reviewer",
+      "model": "GPT-5.6 Sol"
+    },
+    {
+      "count": 13,
+      "kind": "client_paths"
+    },
+    {
+      "count": 4,
+      "kind": "fleet_targets"
+    },
+    {
+      "count": 7,
+      "kind": "controller_mounts"
+    }
+  ],
+  "tools_used": [
+    "read-only artifact inspection",
+    "bounded raw-output sampling",
+    "SHA-256 verification"
+  ]
+}

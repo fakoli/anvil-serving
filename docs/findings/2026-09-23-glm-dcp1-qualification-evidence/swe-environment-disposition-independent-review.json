@@ -1,0 +1,200 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independently decide whether the completed DCP1 SWE scout satisfies the frozen absolute >=3/5 qualification gate despite a post-run Python/package environment mismatch with the retained baseline.",
+  "gate_state": "blocked",
+  "targets": {
+    "implementing_model": "GPT-6 Astra",
+    "evaluated_model": "GLM-5.3-Flash DCP1",
+    "reviewer_model": "GPT-5.6 Sol",
+    "candidate_result": "5 attempted, 5 submitted/graded, 4 resolved",
+    "baseline_result": "5 attempted/graded, 3 resolved",
+    "decision_scope": "absolute qualification only; paired quality comparison excluded"
+  },
+  "tools_used": [
+    {
+      "name": "read_only_evidence_inspection",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "retained campaign artifacts",
+      "error": null
+    },
+    {
+      "name": "sha256sum",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": true,
+      "target": "native SWE, gate, plan, and baseline binding artifacts",
+      "error": null
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "finding_summary",
+      "severity": "none",
+      "classification": "confirmed",
+      "summary": "The frozen absolute SWE qualification gate passes. The campaign requires the fixed five-task scout to be submitted and officially graded with at least3/5 resolved, zero runtime/harness failures, retained sampling, and the 3600s wall bound. Candidate evidence has5/5 submitted and graded,4/5 resolved, no native/instance failure, both stages return0, and agent+grader complete in2531.15s. Python/package equality to baseline is not an explicit gate.",
+      "references": [
+        "campaign-plan.md:13",
+        "campaign-plan.md:20",
+        "swe-native.json:8",
+        "swe-native.json:359",
+        "swe-native.json:422",
+        "swe-native.json:425",
+        "swe-native.json:426",
+        "swe-native.json:456",
+        "swe-native.json:459",
+        "swe-native.json:460",
+        "swe-native.json:465",
+        "swe-native.json:467",
+        "swe-native.json:468",
+        "swe-native.json:470",
+        "swe-final-gate.json:16",
+        "swe-final-gate.json:17",
+        "swe-final-gate.json:18",
+        "swe-final-gate.json:19",
+        "swe-final-gate.json:20",
+        "swe-final-gate.json:21"
+      ]
+    },
+    {
+      "kind": "comparison_limit",
+      "severity": "high",
+      "classification": "confirmed",
+      "summary": "The candidate4/5 and baseline3/5 are not a paired environment comparison. Agent and grader revisions, task selection, profile, and request controls match, but the candidate usedCPython3.14.4/packages809336... while baseline usedCPython3.12.14/packages91f4.... Do not claim the extra resolved task, score delta, latency, or quality improvement was caused by DCP1/model behavior. The retained comparison confirms equal 113-package counts and pinned source commits but eight version differences, including LiteLLM, so the caveat is material rather than cosmetic.",
+      "references": [
+        "swe-native.json:9",
+        "swe-native.json:12",
+        "swe-native.json:16",
+        "swe-native.json:18",
+        "swe-native.json:23",
+        "swe-native.json:25",
+        "swe-native.json:363",
+        "baseline-swe-scout5-native.json:9",
+        "baseline-swe-scout5-native.json:12",
+        "baseline-swe-scout5-native.json:16",
+        "baseline-swe-scout5-native.json:18",
+        "baseline-swe-scout5-native.json:23",
+        "baseline-swe-scout5-native.json:25",
+        "baseline-swe-scout5-native.json:357",
+        "swe-final-gate.json:24",
+        "swe-environment-comparison.json:2",
+        "swe-environment-comparison.json:6",
+        "swe-environment-comparison.json:10",
+        "swe-environment-comparison.json:11",
+        "swe-environment-comparison.json:15",
+        "swe-environment-comparison.json:42",
+        "swe-environment-comparison.json:57"
+      ]
+    },
+    {
+      "kind": "gate_reconciliation",
+      "severity": "medium",
+      "classification": "confirmed",
+      "summary": "Preserve swe-final-gate.json unchanged: its false composite accurately records the later same_harnesses check. Add this versioned disposition rather than rewriting the raw gate. Classify absolute_gate_passed=true and paired_comparison_eligible=false. The retained binding only says spec parameters match except declared model identity and separately discloses the shorter timeout; it does not bind the prepared Python environment.",
+      "references": [
+        "swe-final-gate.json:15",
+        "swe-final-gate.json:24",
+        "swe-final-gate.json:27",
+        "retained-quality-baseline-bindings.json:6",
+        "retained-quality-baseline-bindings.json:9",
+        "retained-quality-baseline-bindings.json:11",
+        "retained-quality-baseline-bindings.json:14",
+        "retained-quality-baseline-bindings.json:15",
+        "retained-quality-baseline-bindings.json:16"
+      ]
+    },
+    {
+      "kind": "continuation",
+      "severity": "none",
+      "classification": "confirmed",
+      "summary": "The environment mismatch is not a failed deterministic model gate and does not require rerun or restoration under the frozen plan. The 64K and routed gates may proceed. Promotion remains blocked until those and every other applicable final gate pass.",
+      "references": [
+        "campaign-plan.md:7",
+        "campaign-plan.md:13",
+        "campaign-plan.md:15",
+        "campaign-plan.md:16"
+      ]
+    },
+    {
+      "kind": "harness_runtime_classification",
+      "severity": "low",
+      "classification": "confirmed",
+      "summary": "The changed Python/package environment is a comparability caveat, not an observed harness failure: preflight passed, locked agent/grader revisions were used, all task containers ran network-none, the official grader completed with zero instance errors, and neither stage failed. This does not prove Python3.14 had zero influence on agent behavior.",
+      "references": [
+        "swe-native.json:10",
+        "swe-native.json:14",
+        "swe-native.json:359",
+        "swe-native.json:425",
+        "swe-native.json:459",
+        "swe-native.json:472",
+        "swe-final-gate.json:19",
+        "swe-final-gate.json:20",
+        "swe-final-gate.json:21"
+      ]
+    },
+    {
+      "kind": "breakage_probes",
+      "items": [
+        {
+          "axis": "unreadable state/tools",
+          "input_state": "missing harness environment, stage return codes, or official grader completeness",
+          "wrong_result": "pass absolute or paired gate without provenance",
+          "result": "refuted; evidence is readable and hash-bound"
+        },
+        {
+          "axis": "malformed/boundary",
+          "input_state": "fewer than five exact tasks, incomplete submissions, empty patches, or partial grader",
+          "wrong_result": "count partial run as >=3/5",
+          "result": "refuted; five exact tasks submitted and officially graded"
+        },
+        {
+          "axis": "resource exhaustion/bounds",
+          "input_state": "agent/grader exceeds3600s wall or stage fails",
+          "wrong_result": "accept timeout as lower score",
+          "result": "refuted; completed within bound with returncode0"
+        },
+        {
+          "axis": "state drift/seams",
+          "input_state": "Python/package environment differs between candidate and baseline",
+          "wrong_result": "claim paired 4/5 versus3/5 improvement",
+          "result": "confirmed drift; paired comparison rejected while absolute gate remains valid"
+        }
+      ]
+    },
+    {
+      "path": "swe-native.json",
+      "sha256": "0ee6ee89b3cee5698a22ed3a10d2a6dee011c6057c50668add628cefa5387e13"
+    },
+    {
+      "path": "swe-final-gate.json",
+      "sha256": "b0f3df79a96560e378ab9455bc4b51b2403bca332873bfcc6da198b684f1f746"
+    },
+    {
+      "path": "retained-quality-baseline-bindings.json",
+      "sha256": "37c278d27f2a66ebb160964b69d1563c7ecca0a8f7779fea54fa7a3942426589"
+    },
+    {
+      "path": "campaign-plan.md",
+      "sha256": "c4c3cb9011e54bfdadbbcf56a9ade78c31e129ca4d4132e780bd1a728d30938d"
+    },
+    {
+      "path": "baseline-swe-scout5-native.json",
+      "sha256": "11c8f2fcf5c0c803847989726d1683e286d7b3ca43a3fea95900aeaf66d9ff0b"
+    },
+    {
+      "path": "swe-environment-comparison.json",
+      "sha256": "b0af4e783cfbbe34c4fd61d8ce94e288f67ececf54ee76180bee364ab381f156"
+    }
+  ],
+  "advisory_priors": [
+    "Implementer is Astra; evaluated model is GLM; reviewer is independent Sol.",
+    "No rerun, model request, lifecycle operation, or evidence mutation occurred beyond this requested review packet.",
+    "The 4/5 result is a five-task absolute scout, not a general coding-quality score."
+  ],
+  "recommendation": "needs_more_data",
+  "human_gate_required": false,
+  "promoted": false
+}

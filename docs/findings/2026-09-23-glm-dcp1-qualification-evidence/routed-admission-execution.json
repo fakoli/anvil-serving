@@ -1,0 +1,38 @@
+{
+  "config_file_sha256": "7ff75e26fa216b36601ba5ef694f68b7b418b738c27482bfeb4e78e79fb04d58",
+  "deadline_seconds": 660,
+  "decision_bytes": 8743,
+  "decision_capture_complete": true,
+  "decision_device": 66309,
+  "decision_inode": 4393259291,
+  "decision_log_binding_passed": true,
+  "decision_offset": 30404,
+  "effective_config_sha256": "905956f7e21d8741487113ff5dd82ba3a9bbc93d54a82ddc097c668ada7ae773",
+  "exit_code": 1,
+  "finished_at": "2026-09-24T02:06:35.148980+00:00",
+  "identity_after": {
+    "container_id": "redacted:sha256:0f6965e8b332ecc3e16ff30f51810aaada853856ae102ba781163089cf3697ce",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "running": true,
+    "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+  },
+  "identity_before": {
+    "container_id": "redacted:sha256:0f6965e8b332ecc3e16ff30f51810aaada853856ae102ba781163089cf3697ce",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "running": true,
+    "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate"
+  },
+  "interpreter": "/usr/bin/python3",
+  "plan_sha256": "b7dfba5a319e7afebeb9aa2493d7af39b89bb406ef23c7e84219f282326c4825",
+  "sampler_errors": [],
+  "scenario_sha256": "d5a5af3722350d8324d9d33483f206d91847ba097cced76d3e5a3a171e1c6d85",
+  "source_root": "repository-root",
+  "started_at": "2026-09-24T02:05:58.140893+00:00",
+  "timed_out": false
+}

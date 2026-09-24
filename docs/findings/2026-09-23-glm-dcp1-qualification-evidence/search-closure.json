@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-24T00:55:32.296292+00:00",
+  "selected_compute": "DCP1 batch2048 max_num_seqs4 memory0.97",
+  "upward_search_closed": true,
+  "reason": "OfferedC8controlseed2801 failedstrict/canary on1of16; stopdependentC8comparison; no retry orload",
+  "failure_class": "visible_instruction_nonadherence; sourcecauseunproven",
+  "runtime": "healthy samecontainer,noOOM/Xid/enginefault observed",
+  "concurrency_claim": "C8 notqualified; offered8directdiffersfromproductionrouteradmission4; no causationclaim",
+  "C8_recipe": "prepared neverloaded",
+  "memory975": "notrun",
+  "promoted": false,
+  "full_quality": "pending",
+  "identity": {
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+    "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate",
+    "running": true
+  },
+  "evidence": "concurrency-b2048-reload-offered8-seed2801.json"
+}

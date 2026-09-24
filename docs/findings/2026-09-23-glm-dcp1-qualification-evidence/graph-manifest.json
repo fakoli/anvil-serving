@@ -1,0 +1,57 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "DCP1 batch-2048 descriptive capacity cells",
+  "subtitle": "Nine eligible 16-request cells; cache and context groups remain separate. This is not a batch-4096 comparison or an offered-C8 result.",
+  "output": "batch2048-capacity-matrix.svg",
+  "data_output": "batch2048-capacity-graph-data.json",
+  "metric_semantics": {
+    "population": "Each plotted point is one retained 16-request native cell.",
+    "comparison_limit": "No p99 or causal batch-selection claim; unique and shared cache modes are distinct."
+  },
+  "charts": [
+    {
+      "title": "Aggregate throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Retained repetition",
+      "y_label": "tokens/s",
+      "series": [
+        {"label":"C1 32K unique","points":[{"x":"initial","artifact":"performance-dcp1-c1-32k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c1-32k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c1-32k-unique.json"}]},
+        {"label":"C4 128K unique","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-unique.json"}]},
+        {"label":"C4 128K shared","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-shared.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-shared.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-shared.json"}]}
+      ]
+    },
+    {
+      "title": "Median TTFT",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Retained repetition",
+      "y_label": "milliseconds",
+      "series": [
+        {"label":"C1 32K unique","points":[{"x":"initial","artifact":"performance-dcp1-c1-32k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c1-32k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c1-32k-unique.json"}]},
+        {"label":"C4 128K unique","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-unique.json"}]},
+        {"label":"C4 128K shared","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-shared.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-shared.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-shared.json"}]}
+      ]
+    },
+    {
+      "title": "Median effective prefill",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Retained repetition",
+      "y_label": "tokens/s including queueing",
+      "series": [
+        {"label":"C1 32K unique","points":[{"x":"initial","artifact":"performance-dcp1-c1-32k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c1-32k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c1-32k-unique.json"}]},
+        {"label":"C4 128K unique","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-unique.json"}]},
+        {"label":"C4 128K shared","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-shared.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-shared.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-shared.json"}]}
+      ]
+    },
+    {
+      "title": "Median TPOT proxy",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Retained repetition",
+      "y_label": "milliseconds per output token",
+      "series": [
+        {"label":"C1 32K unique","points":[{"x":"initial","artifact":"performance-dcp1-c1-32k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c1-32k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c1-32k-unique.json"}]},
+        {"label":"C4 128K unique","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-unique.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-unique.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-unique.json"}]},
+        {"label":"C4 128K shared","points":[{"x":"initial","artifact":"performance-dcp1-c4-128k-shared.json"},{"x":"repeat 1","artifact":"performance-dcp1-repeat1-c4-128k-shared.json"},{"x":"repeat 2","artifact":"performance-dcp1-repeat2-c4-128k-shared.json"}]}
+      ]
+    }
+  ]
+}

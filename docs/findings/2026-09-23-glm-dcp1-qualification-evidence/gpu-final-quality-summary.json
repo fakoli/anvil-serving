@@ -1,0 +1,23 @@
+{
+  "by_gpu_index": {
+    "0": {
+      "max_power_w": 301.84,
+      "max_temperature_c": 87.0,
+      "minimum_free_mib": 1721.0,
+      "samples": 4273
+    },
+    "1": {
+      "max_power_w": 303.54,
+      "max_temperature_c": 85.0,
+      "minimum_free_mib": 1721.0,
+      "samples": 4273
+    }
+  },
+  "closed": true,
+  "file": "gpu-final-quality-1s.csv",
+  "first": "2026/09/23 17:56:54.952",
+  "last": "2026/09/23 19:08:08.508",
+  "scope": "FinalSWE+64K+routedqualification;1secondsnapshotsnotcontinuousminimum.",
+  "sha256": "dab252f5aeaed48f4a4f1712a2325433c81f637083a5c8a6e0146c3ca615f276",
+  "timestamp_timezone": "America/Los_Angeles"
+}
