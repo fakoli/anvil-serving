@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.qualification-restoration/v1",
+  "campaign_id": "2026-09-23-glm-dcp1-qualification",
+  "state": "deployed_publication_pending",
+  "current_candidate": "r11 DCP1 batch2048/C4/0.97",
+  "rollback": "exact r10 remains the recorded rollback",
+  "verification": [
+    "controller-mount-live-verification.json",
+    "r11-startup-gate.json",
+    "client-acceptance-summary.json"
+  ],
+  "limits": "Independent reviews and dashboard imports are retained. Public-post merge and deployed readback remain pending; this record does not claim a public HTTP 200 response."
+}

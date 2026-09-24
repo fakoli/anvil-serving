@@ -1,0 +1,636 @@
+{
+  "base_url": "http://127.0.0.1:30000/v1",
+  "budget": {
+    "max_completion_tokens": 8192,
+    "reasoning_headroom_tokens": 6144,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "CARD A",
+    "17"
+  ],
+  "model": "llm.primary",
+  "multimodal_input": {
+    "bytes": 8679,
+    "mime": "image/png",
+    "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's the idiomatic way \u2014 Python's built-in `sum()` does exactly this.\n\nIf you want it as a reusable one-liner function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you're avoiding the built-in (e.g., for an exercise):\n\n```python\nfunctools.reduce(lambda acc, x: acc + x, xs, 0)\n```",
+      "content_chars": 311,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's the idiomatic way \u2014 Python's built-in `sum()` does exactly this.\n\nIf you want it as a reusable one-liner function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you'r",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1546,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 6.34,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 474,
+        "prompt_tokens": 28,
+        "total_tokens": 502
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 90,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.536,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 30,
+        "total_tokens": 64
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 85,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 2.3,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 31,
+        "prompt_tokens": 4967,
+        "total_tokens": 4998
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 2.315,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 2.629,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 163,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 3.494,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 4967,
+        "total_tokens": 5016
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 5,
+      "seconds": 4.062,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 93,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 6,
+      "seconds": 4.398,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 4967,
+        "total_tokens": 5001
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 4.733,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 4967,
+        "total_tokens": 5007
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 144,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 7,
+      "seconds": 5.444,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 44,
+        "prompt_tokens": 4967,
+        "total_tokens": 5011
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 8,
+      "seconds": 5.811,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 78,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 9,
+      "seconds": 5.828,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 31,
+        "prompt_tokens": 4967,
+        "total_tokens": 4998
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 11,
+      "seconds": 6.566,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 10,
+      "seconds": 7.278,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 15,
+      "seconds": 7.683,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 4967,
+        "total_tokens": 5007
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 13,
+      "seconds": 8.037,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 163,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 12,
+      "seconds": 8.422,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 4967,
+        "total_tokens": 5016
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 78,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 14,
+      "seconds": 8.99,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 31,
+        "prompt_tokens": 4967,
+        "total_tokens": 4998
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 81,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 16,
+      "seconds": 9.433,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 4967,
+        "total_tokens": 5000
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 78,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 18,
+      "seconds": 9.57,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 31,
+        "prompt_tokens": 4967,
+        "total_tokens": 4998
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 103,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 17,
+      "seconds": 9.586,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 38,
+        "prompt_tokens": 4967,
+        "total_tokens": 5005
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 144,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 19,
+      "seconds": 9.974,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 46,
+        "prompt_tokens": 4967,
+        "total_tokens": 5013
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 34,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.65,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 105,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.58,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 37,
+        "prompt_tokens": 166,
+        "total_tokens": 203
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 149,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.698,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 47,
+        "prompt_tokens": 70,
+        "total_tokens": 117
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_field": null,
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 1.19,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 16,
+        "output_tokens": 78,
+        "total_tokens": 94
+      },
+      "validation_detail": "completed exact READY"
+    },
+    {
+      "content": "# Image Description\n\nThis image shows a **minimal presentation slide or card** with a plain white background and black text.\n\n## Content\n\n| Element | Value |\n|---------|-------|\n| **Card Label** | CARD A |\n| **Value** | 17 |\n\n## Details\n\n- **Text 1 (upper left):** \"CARD A\" \u2014 appears to be the card's identifier or title\n- **Text 2 (middle left):** \"VALUE 17\" \u2014 indicates the card's assigned numerical value\n\n## Observations\n\n- The design is extremely simple \u2014 no graphics, borders, colors, or decorative elements\n- The text is left-aligned and uses a standard sans-serif font\n- The layout suggests this could be a card from a **game, flashcard deck, data visualization, or a test/training slide** where each card displays an identifier and an associated value\n- There are no additional status indicators, symbols, or markings present\n\n**Summary:** The image depicts \"Card A\" with a value of **17**, presented on a clean, unadorned white background.",
+      "content_chars": 949,
+      "content_excerpt": "# Image Description\n\nThis image shows a **minimal presentation slide or card** with a plain white background and black text.\n\n## Content\n\n| Element | Value |\n|---------|-------|\n| **Card Label** | CAR",
+      "expected": [
+        "CARD A",
+        "17"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 8679,
+        "mime": "image/png",
+        "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+      },
+      "passed": true,
+      "reasoning_chars": 387,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 4.282,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 317,
+        "prompt_tokens": 566,
+        "total_tokens": 883
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "CARD A\n\nVALUE 17",
+      "content_chars": 16,
+      "content_excerpt": "CARD A\n\nVALUE 17",
+      "expected": [
+        "CARD A",
+        "17"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 8679,
+        "mime": "image/png",
+        "sha256": "e02b7e290b35c966e27a0a4eb5ca9928555155409700510e5caf669956a7a3ee"
+      },
+      "passed": true,
+      "reasoning_chars": 86,
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.566,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 31,
+        "prompt_tokens": 567,
+        "total_tokens": 598
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "CARD A",
+    "17"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "6.3s got=\"```python\\nsum(xs)\\n```\\n\\nThat's the idiomatic way \u2014 \" finish='stop' visible=311 reasoning_chars=1546 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=90 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "20/20 clean (sample: 2.3s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=85 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x20",
+      "passed": true
+    },
+    {
+      "detail": "0.6s done=True events=34 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.3s tool result retained finish='stop' visible=11 reasoning_chars=149 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "1.2s status='completed' output='READY' reasoning_chars=0",
+      "name": "Responses API subset",
+      "passed": true
+    },
+    {
+      "detail": "4.3s all expected text present finish='stop' visible=949 reasoning_chars=387 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.6s all expected text present finish='stop' visible=16 reasoning_chars=86 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

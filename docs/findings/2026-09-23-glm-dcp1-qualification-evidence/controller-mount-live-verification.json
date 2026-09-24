@@ -1,0 +1,59 @@
+{
+  "at": "2026-09-24T02:46:04.095526+00:00",
+  "controller_health": {
+    "node": "Primary Node",
+    "request_id": "redacted:sha256:f93fd8632934976e52cee57cb5a777f502dccd92a083dc1fd1aed1058eab245d",
+    "service": "anvil-serving-controller",
+    "status": "ok"
+  },
+  "exact_read_only_mounts": [
+    {
+      "Destination": "sanitized:router.glm53-exl3-327k-r9-vision8-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:router.glm53-exl3-327k-r9-vision8-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:router.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:router.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:serve-recipes.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:serve-recipes.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:router.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:router.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "Type": "bind"
+    },
+    {
+      "Destination": "sanitized:serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "RW": false,
+      "Source": "sanitized:serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "Type": "bind"
+    }
+  ],
+  "identities_after": {
+    "anvil-router": "redacted:sha256:2e6fc8e32478becf9fcc314af83d289fb703b2e39c4ed164c313157a0b4e52a4 2026-09-24T02:21:22.063888082Z",
+    "anvil-serving-controller": "redacted:sha256:aa50827241a0816d6e0f61c2f89ecaf0a34e0d960f483d6d3caa519c2826286b 2026-09-24T02:45:42.716690806Z",
+    "candidate-container": "redacted:sha256:1331c101410976c1e4497f4ccfbae32f953eac79c73a27bba3068258bcbd38e5 2026-09-24T02:15:14.024030322Z"
+  },
+  "siblings_unchanged": true
+}

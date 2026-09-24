@@ -1,0 +1,37 @@
+{
+  "admission_boundary_gate_passed": false,
+  "admission_timeouts": 2,
+  "at": "2026-09-24T02:08:09.195917+00:00",
+  "checks": {
+    "all_route_config": true,
+    "collector_not_timed_out": true,
+    "decision_binding": true,
+    "exact8_unique_decisions": true,
+    "failures_are_only_admission_timeouts": true,
+    "identity_unchanged": true,
+    "kernel_faults_absent": true,
+    "max4_attained": true,
+    "owner_faults_absent": true,
+    "queued_observed": true,
+    "sampler_no_errors": true,
+    "samples_config": false,
+    "samples_nontruncated": true,
+    "served_contracts_pass": true,
+    "terminal_wait_observed": true
+  },
+  "limits": "One offered8 nominal32K(actual~25K)population; discrete snapshots support source-boundC4; no sustainedqueue/cancellation/generalC8 claim.",
+  "max_dispatched_plus_streaming": 4,
+  "max_sample_gap_s": 0.500075846000982,
+  "native_exit_code": 1,
+  "native_performance_eligible": false,
+  "optional8of8_completion_passed": false,
+  "sample_count": 75,
+  "served_strict": 6,
+  "source_hashes": {
+    "routed-admission-active.jsonl": "6fb94d3eebefa747d346082e1cf6a6bc7425c1f5cdcb46f9242232e02b30bb0f",
+    "routed-admission-capacity.json": "3c04a8fce230789a7414d57ace790fefe12ddf9f40d2661c49aedeaf239b87a1",
+    "routed-admission-decisions.jsonl": "5476545a9aa79fb07cf9018aa36cb8ab36ee65b54c2b07b801b817ebdbf10b46",
+    "routed-admission-execution.json": "1701c7bf98626362214a8866be6caf8aad43bc7c4c8cd13c3e03b084e1990130",
+    "routed-admission-router-errors.txt": "c1f0836cb51768adb32601066835be1deb7c55512b6d9b144ee5c621101c98f3"
+  }
+}

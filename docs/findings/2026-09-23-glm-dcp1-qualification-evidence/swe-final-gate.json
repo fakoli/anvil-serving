@@ -1,0 +1,80 @@
+{
+  "at": "2026-09-24T01:41:59.007203+00:00",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "baseline_summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.6,
+    "resolved": 3
+  },
+  "checks": {
+    "official_grader_complete": true,
+    "graded_five": true,
+    "resolved_at_least_three": true,
+    "no_native_failure": true,
+    "all_stages_completed": true,
+    "no_instance_failure": true,
+    "same_container": true,
+    "same_selection": true,
+    "same_harnesses": false,
+    "same_request_controls": true
+  },
+  "gate_passed": false,
+  "native_artifact_sha256": "0ee6ee89b3cee5698a22ed3a10d2a6dee011c6057c50668add628cefa5387e13",
+  "native_extracted_sha256": "0ee6ee89b3cee5698a22ed3a10d2a6dee011c6057c50668add628cefa5387e13",
+  "instances": [
+    {
+      "id": "sphinx-doc__sphinx-9658",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "resolved": false
+    },
+    {
+      "id": "sympy__sympy-12096",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "resolved": true
+    },
+    {
+      "id": "django__django-13512",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "resolved": true
+    },
+    {
+      "id": "pydata__xarray-4356",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "resolved": true
+    },
+    {
+      "id": "pylint-dev__pylint-8898",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "resolved": true
+    }
+  ],
+  "stages": [
+    {
+      "name": "agent",
+      "duration_s": 2434.476866,
+      "returncode": 0,
+      "status": "completed"
+    },
+    {
+      "name": "official_grader",
+      "duration_s": 96.67675,
+      "returncode": 0,
+      "status": "completed"
+    }
+  ],
+  "limits": [
+    "Five fixed tasks, not broad coding ranking",
+    "Job wall timeout3600 vs retainedbaseline21600; same per-instance settings and officialgrader"
+  ]
+}

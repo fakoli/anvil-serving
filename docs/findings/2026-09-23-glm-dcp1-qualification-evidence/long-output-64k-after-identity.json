@@ -1,0 +1,9 @@
+{
+  "container_id": "redacted:sha256:0f6965e8b332ecc3e16ff30f51810aaada853856ae102ba781163089cf3697ce",
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "recipe_digest": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+  "registry_digest": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+  "served_identity": "glm53-flash-exl3-runtime-dcp1-candidate",
+  "running": true
+}

@@ -1,0 +1,440 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-23-glm-dcp1-qualification",
+    "state": "deployed_publication_pending",
+    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public-post merge and deployed readback pending",
+    "rollback": "exact r10"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "native-client-acceptance/v1",
+    "operator-workflow/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "7630c3eb672792577333f6100723e8be065c666204d7db8c7eba38349e88503f",
+          "bytes": 11175
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "92b1218869fc9a37cd1d4158cc9c0d5723aa901e6dc619ced47a96666dfd7bee",
+          "bytes": 292
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "graph-manifest.json",
+          "sha256": "0d3d065be85769835061a7dddb86e376268cba5a0fb57d3358819c9698627efd",
+          "bytes": 4543
+        },
+        {
+          "path": "production-r11-scenario-binding.json",
+          "sha256": "a3f31d8c98e65e01961f99c9e00ef59c9f6982fa8207e67d98c8e3db14b10d4b",
+          "bytes": 973
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "graph-manifest.json",
+          "sha256": "0d3d065be85769835061a7dddb86e376268cba5a0fb57d3358819c9698627efd",
+          "bytes": 4543
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "candidate-dcp1.public.toml",
+          "sha256": "5beeb35fd7854f21ac7bd0e56c6b96ace7948e529dfcd50f78a83cd136ab95b5",
+          "bytes": 5149
+        },
+        {
+          "path": "r11-startup-gate.json",
+          "sha256": "1abc222a51f6485e04950503426ef3246e70332f10077655060cc0e0ba601ee8",
+          "bytes": 2025
+        },
+        {
+          "path": "qualification-final-candidate-status.json",
+          "sha256": "84c2f891c785ba6b0fe36715376f3fc463f597cc252aa2862d2349b5367a3c64",
+          "bytes": 1764
+        },
+        {
+          "path": "controller-mount-live-verification.json",
+          "sha256": "14a0c069470f1c418cc7441acd5f39bb1fc7f24bccf49ad05fc5eee3b8942cec",
+          "bytes": 2359
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "agentic-final-gate.json",
+          "sha256": "dc187c385398218614b0989ff4d7d9addd70029a5d08dcab64b06098a45659bb",
+          "bytes": 178
+        },
+        {
+          "path": "batch2048-capacity-graph-data.json",
+          "sha256": "42e216325c9908160910e4fe4265c20895e53b85e27328cfe4c342ee442cfd87",
+          "bytes": 12215
+        },
+        {
+          "path": "batch2048-capacity-matrix.svg",
+          "sha256": "f50e1fc1ce928475c4661ab7f12cbc9bbf28deed42d180b676a050564f63d3e4",
+          "bytes": 13814
+        },
+        {
+          "path": "c4-offered8-failure-independent-review.json",
+          "sha256": "8a51af6bce295ca6591db82b21b5190d6ac0b956b5bb9e0728b8d41ef2f93501",
+          "bytes": 10013
+        },
+        {
+          "path": "client-acceptance-summary.json",
+          "sha256": "c1de76aa3f2245a985ff2188b9210901409f6a365e21377ba4d0eb39604eafe6",
+          "bytes": 10462
+        },
+        {
+          "path": "client-control-plane-independent-review.json",
+          "sha256": "cd0f4936875e300565c4e5bc0a29c07f20996e2350d8d32c76a392bdfe81f38f",
+          "bytes": 5989
+        },
+        {
+          "path": "concurrency-b2048-reload-offered8-seed1801.json",
+          "sha256": "0dd05ec00e41d20d575c550263812f3c1b5a806efa30540cf60cb90338f3dd03",
+          "bytes": 31307
+        },
+        {
+          "path": "concurrency-b2048-reload-offered8-seed2801.json",
+          "sha256": "e965bff60ae60753342fa7c420da5be49289a3772719d923e92123ce17f111be",
+          "bytes": 32698
+        },
+        {
+          "path": "concurrency-b2048-reload-offered8-seed801.json",
+          "sha256": "8023f23211ccee5476762913896f82119f5630909ee63bc805cd2f0c6fea81f9",
+          "bytes": 31298
+        },
+        {
+          "path": "gpu-c4-reload-control-summary.json",
+          "sha256": "6b336183a85e677d0c81020e0a32c3845d994266040538b2d6088d2d69a68d13",
+          "bytes": 1045
+        },
+        {
+          "path": "gpu-final-quality-summary.json",
+          "sha256": "175c2c84950a5c45eb184211d44656dbd440d4b608e47cee2095c9fb76afe8bd",
+          "bytes": 642
+        },
+        {
+          "path": "isolated-routed-final-preflight-execution.json",
+          "sha256": "b9fe78be7b29451419748895597bfe7a46a7b3087943b3b37eb490ae94147f80",
+          "bytes": 2021
+        },
+        {
+          "path": "isolated-routed-final-preflight.json",
+          "sha256": "297dd11d0ff816d4e24c3a2543c7ca5fdeb2f938344e0f7d652d9fadedcc1218",
+          "bytes": 19128
+        },
+        {
+          "path": "long-output-64k-after-identity.json",
+          "sha256": "9d3135977908386882e477c1c6be9467dc41367fe138085e5772e04de29616db",
+          "bytes": 515
+        },
+        {
+          "path": "long-output-64k-before-identity.json",
+          "sha256": "9d3135977908386882e477c1c6be9467dc41367fe138085e5772e04de29616db",
+          "bytes": 515
+        },
+        {
+          "path": "long-output-64k-execution.json",
+          "sha256": "4968171c9c06d75b384d141ac8e66641e2cbc37d91a13435521904f66be59b06",
+          "bytes": 185
+        },
+        {
+          "path": "long-output-64k-independent-review.json",
+          "sha256": "7233d62262407eed850ff6702df54f4e7b7c2304ffa0ca5a4f41c8607876429b",
+          "bytes": 9667
+        },
+        {
+          "path": "long-output-64k-summary.json",
+          "sha256": "1b375d1979c6af900bf16102dc0546881c816b248f31e44d8c4ab609f57955bd",
+          "bytes": 1010
+        },
+        {
+          "path": "long-output-64k-visible.txt",
+          "sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723",
+          "bytes": 24131
+        },
+        {
+          "path": "natural-long-output-1-independent-review.json",
+          "sha256": "5d3402a8721beaf665624c688bb93f42a7ef11df7f6c9939d75e992fbc1a865c",
+          "bytes": 8207
+        },
+        {
+          "path": "natural-long-output-1-token-count.json",
+          "sha256": "be0d048f5c459e7bede1329bbf2d0f076fd55e7091a3602828974c43b6574e39",
+          "bytes": 946
+        },
+        {
+          "path": "natural-long-output-1-visible.txt",
+          "sha256": "4d9cf8bf732e5e1c0b0fa21d52d835b4cd188c5094fea93714568b2c20032adf",
+          "bytes": 75557
+        },
+        {
+          "path": "overlap-201k-8k-repeat.json",
+          "sha256": "6b0e0de2bdf71a3ef6b2b8f759ea0d334471532c7d1f0b9e66ab6d2448517791",
+          "bytes": 14889
+        },
+        {
+          "path": "overlap-201k-8k-unique.json",
+          "sha256": "7fc368f6944318de625ce28ec9986bc0777c9403eed9126c892eb3bc95f5e753",
+          "bytes": 14885
+        },
+        {
+          "path": "overlap-310k-8k.json",
+          "sha256": "fdcfe70fb3fcbea1ed0ce4b45f28507f63bb3746b6bc06b67c0b3ea161aedc40",
+          "bytes": 6420
+        },
+        {
+          "path": "performance-dcp1-c1-32k-unique.json",
+          "sha256": "3253797ef2a481ceab33bba94fa7bb6818d8a3ffaa6be0c3171bd56f3d779775",
+          "bytes": 31311
+        },
+        {
+          "path": "performance-dcp1-c4-128k-shared.json",
+          "sha256": "1417958bc2b118b71a8ddebd7000ef6c4142e6b117e9926fc7f59bfe5e698c2d",
+          "bytes": 31370
+        },
+        {
+          "path": "performance-dcp1-c4-128k-unique.json",
+          "sha256": "545b19db31c2ca7300e573a52ace38c01b2db00a0f8be6267f5ede3fd915a4ac",
+          "bytes": 31332
+        },
+        {
+          "path": "performance-dcp1-repeat1-c1-32k-unique.json",
+          "sha256": "4638b75a8da0bd00d91d6da1baf6957bbb878496992ea7f1b2d3f1e8e4d7d089",
+          "bytes": 31333
+        },
+        {
+          "path": "performance-dcp1-repeat1-c4-128k-shared.json",
+          "sha256": "4f9f1f599b30c6514a2b25de99ae9f0453cdec36098a2893fc0b6475f7b979e0",
+          "bytes": 31425
+        },
+        {
+          "path": "performance-dcp1-repeat1-c4-128k-unique.json",
+          "sha256": "043039713153480fec31b4241be39db62beaf998835d17aba8497f6df6b83b5b",
+          "bytes": 31368
+        },
+        {
+          "path": "performance-dcp1-repeat2-c1-32k-unique.json",
+          "sha256": "24a602c4e14bba250efb5878491b37fad8478ce179ba725edc210c8ea2b405fe",
+          "bytes": 31314
+        },
+        {
+          "path": "performance-dcp1-repeat2-c4-128k-shared.json",
+          "sha256": "a8ef71f78f34c7e70429d3b7c3a3652863d904df9334ec6f56b6841db5089799",
+          "bytes": 31402
+        },
+        {
+          "path": "performance-dcp1-repeat2-c4-128k-unique.json",
+          "sha256": "5600209d800bfa3384d8458d5b27f1daf38ad1e85926045ce562980acc53df84",
+          "bytes": 31395
+        },
+        {
+          "path": "promotion-publication-receipt.json",
+          "sha256": "f23fb7b752624dcf49cbc181b24b005ea1199c50c4549c687db015a9cfb31f5e",
+          "bytes": 2217
+        },
+        {
+          "path": "quality.json",
+          "sha256": "a6216379a6933393e85ccbda21b47a00afe84b41a471156d144a639ec5e02ce4",
+          "bytes": 27697
+        },
+        {
+          "path": "r11-direct-preflight.json",
+          "sha256": "6622f983cb092fb2c2cd93e65ab0c9cc81fe5078f295730ea8036065c713656a",
+          "bytes": 20400
+        },
+        {
+          "path": "r11-production-routed-preflight.json",
+          "sha256": "98369cd0e020f47910dc7dc6a887c449959eebbdad03c4ba25b6f782d1be5fb6",
+          "bytes": 19021
+        },
+        {
+          "path": "routed-admission-active.jsonl",
+          "sha256": "3d3211c13779e64ec8ad3d7b4d3ed59b60085d503092e7e5f9f8832552bf6eaa",
+          "bytes": 559535
+        },
+        {
+          "path": "routed-admission-capacity.json",
+          "sha256": "1227ef759dd163c6a8962c81d71e48ff489526f4fb7b7c3cba9a461a58e8ff59",
+          "bytes": 19770
+        },
+        {
+          "path": "routed-admission-decisions.jsonl",
+          "sha256": "4b6ff03f289825bc744b450d3b51f26d160ee675a170f22f29655f082829dbb4",
+          "bytes": 9447
+        },
+        {
+          "path": "routed-admission-execution.json",
+          "sha256": "83058edaba9cb5ca6e338ff90cf187359fb60216d1cf7f478bdbfb0b308ccd1e",
+          "bytes": 1930
+        },
+        {
+          "path": "routed-admission-final-gate-v2.json",
+          "sha256": "60462e61e3ca00c3b74058664bc01a05e178ad35ab542f7a6ecd2e928eb61fba",
+          "bytes": 1955
+        },
+        {
+          "path": "sanitization-receipts.json",
+          "sha256": "e2a421170aad48711cee56d56f17f7a7fdac967ff023032105444b2196dca2e4",
+          "bytes": 15370
+        },
+        {
+          "path": "search-closure.json",
+          "sha256": "6d8021164a6d2042227da6b4a807876a6be5bff7fd1133a856a6b263e7a65388",
+          "bytes": 1136
+        },
+        {
+          "path": "swe-environment-comparison.json",
+          "sha256": "b0af4e783cfbbe34c4fd61d8ce94e288f67ececf54ee76180bee364ab381f156",
+          "bytes": 1392
+        },
+        {
+          "path": "swe-environment-disposition-independent-review.json",
+          "sha256": "588b2527d3b623b48cf8f0bbe7b1162d36a5edc2c6c2206022289bcb5206ac5a",
+          "bytes": 8884
+        },
+        {
+          "path": "swe-final-disposition-v2.json",
+          "sha256": "f99e777d9cafd738ea564bd23d92059e95e7d2bb3cb125eceaf55adeac4d837c",
+          "bytes": 472
+        },
+        {
+          "path": "swe-final-gate.json",
+          "sha256": "b0f3df79a96560e378ab9455bc4b51b2403bca332873bfcc6da198b684f1f746",
+          "bytes": 1942
+        },
+        {
+          "path": "swe-native.json",
+          "sha256": "28919cc54aca92acd4d75f2afa9085ad322edc619597c2fc661c5bf7da58816e",
+          "bytes": 7014
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "a7976000b1537443f55a4457540379c5295c344290cc3987958451d5fc19de65",
+          "bytes": 1075
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "b4a3312d80c547f245997ed6232cb082ba5d0206834f811c0f420fe2ac6b7cdd",
+          "bytes": 1741
+        },
+        {
+          "path": "routed-admission-router-errors.txt",
+          "sha256": "f87ed3b4aa1f2da84ce66c39101a3f94c7d3609fbbcdbf880f61770bd86850e0",
+          "bytes": 434
+        },
+        {
+          "path": "routed-admission-final-gate.json",
+          "sha256": "5e6c4ba944338a37e8c42a1380f281cb4ab34457c1caf0b9ff74246eff09dc6b",
+          "bytes": 1584
+        },
+        {
+          "path": "long-output-64k.json",
+          "sha256": "1382e6951334a830107f6e765c942aae94c94ac8d500469c0016ae670ef9154f",
+          "bytes": 61982
+        },
+        {
+          "path": "overlap-201k-unique.json",
+          "sha256": "0236f50d3121ccc2e6f10b9ab3d1982bcdf8f41390783f73bc4e51baa3814ee1",
+          "bytes": 50474
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "77ded6d5da21993bd3db6a7447159dffe1ab7932f1b2f32d9c6c3b599b52c7b1",
+          "bytes": 588
+        },
+        {
+          "path": "controller-mount-live-verification.json",
+          "sha256": "14a0c069470f1c418cc7441acd5f39bb1fc7f24bccf49ad05fc5eee3b8942cec",
+          "bytes": 2359
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "a885de156e15148af7927390fb6a038fe5f726cd988db32a0f00b05d8bb6a5c0",
+          "bytes": 2892
+        },
+        {
+          "path": "final-qualification-independent-review.json",
+          "sha256": "9db6194128df30563e3b2ab6112c5f5a80aeaf06f2474429eff0fca60cc62869",
+          "bytes": 14812
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "c6ca5a548742d92e2f52d305e837bd8acaad8b62cebb09033b763dc881a52c40",
+          "bytes": 2527
+        }
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": "each retained public artifact is under 2 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

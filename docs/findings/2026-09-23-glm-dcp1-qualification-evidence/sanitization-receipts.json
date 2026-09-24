@@ -1,0 +1,277 @@
+{
+  "schema": "anvil-serving.sanitization-receipts/v1",
+  "policy": "Removed private endpoints, paths, container and GPU identifiers. Native schemas, measurements, pass/fail fields, original configuration hashes, and reviewed synthetic output are retained where needed for audit. The 64K raw reasoning excerpt is not retained. Public scenario hashes were recomputed after transformation.",
+  "container_redactions": [
+    "redacted:sha256:0f6965e8b332ecc3e16ff30f51810aaada853856ae102ba781163089cf3697ce",
+    "redacted:sha256:d0a5e9a3d564aea056b51ab3d39aa39743ff5d33e9b59b52cf25d73b5581ba7a"
+  ],
+  "original_configuration_digests": {
+    "private_recipe_semantic_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "private_registry_sha256": "cfbc4dc4f4f7e8a73590e21cf95e7586172aab67dc4a892a51ca45adc77607f4",
+    "public_recipe_bytes_sha256": "743a8e2f91b791de2c4aceae4f0c972da13303c22bd95586d3b691032c9b876c"
+  },
+  "scenario_rebindings": [
+    {
+      "path": "overlap-201k-8k-unique.json",
+      "private_sha256": "f921f937f3cc844437f9cfc54b3c4c0dde4f7aad7ef989950b8ea510c68de1e4",
+      "public_sha256": "7fc368f6944318de625ce28ec9986bc0777c9403eed9126c892eb3bc95f5e753"
+    },
+    {
+      "path": "overlap-201k-8k-repeat.json",
+      "private_sha256": "46ddffcb0eba605c6f0a0cf810fbea5a358dc5fc9c26d014df5f062dea86d354",
+      "public_sha256": "6b0e0de2bdf71a3ef6b2b8f759ea0d334471532c7d1f0b9e66ab6d2448517791"
+    },
+    {
+      "path": "overlap-310k-8k.json",
+      "private_sha256": "3c2de70ab0f3cfc463f8e0a4faad77f157543f586d4de06b3335af7c73d59546",
+      "public_sha256": "fdcfe70fb3fcbea1ed0ce4b45f28507f63bb3746b6bc06b67c0b3ea161aedc40"
+    }
+  ],
+  "files": [
+    {
+      "path": "concurrency-b2048-reload-offered8-seed801.json",
+      "private_sha256": "c9c61b27781073483ea2a9d388ba2790b5375ce040ecbd16e011c28652645113",
+      "public_sha256": "8023f23211ccee5476762913896f82119f5630909ee63bc805cd2f0c6fea81f9"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed1801.json",
+      "private_sha256": "8b50d71dfc0e459b31223146af36fb3d2f2ceea6139cd14cf2e9ae6de650c943",
+      "public_sha256": "0dd05ec00e41d20d575c550263812f3c1b5a806efa30540cf60cb90338f3dd03"
+    },
+    {
+      "path": "concurrency-b2048-reload-offered8-seed2801.json",
+      "private_sha256": "0e16e02e1e41609f74833ee0fd4bbcb4363573d74ba0b8f2fb279427458aca3b",
+      "public_sha256": "e965bff60ae60753342fa7c420da5be49289a3772719d923e92123ce17f111be"
+    },
+    {
+      "path": "quality.json",
+      "private_sha256": "89c03e53c5e1f4a75205ca77b00c070ca7a362b9087234b5827fe9c21e2da44e",
+      "public_sha256": "a6216379a6933393e85ccbda21b47a00afe84b41a471156d144a639ec5e02ce4"
+    },
+    {
+      "path": "agentic-final-gate.json",
+      "private_sha256": "dc187c385398218614b0989ff4d7d9addd70029a5d08dcab64b06098a45659bb",
+      "public_sha256": "dc187c385398218614b0989ff4d7d9addd70029a5d08dcab64b06098a45659bb"
+    },
+    {
+      "path": "natural-long-output-1-token-count.json",
+      "private_sha256": "be0d048f5c459e7bede1329bbf2d0f076fd55e7091a3602828974c43b6574e39",
+      "public_sha256": "be0d048f5c459e7bede1329bbf2d0f076fd55e7091a3602828974c43b6574e39"
+    },
+    {
+      "path": "candidate-dcp1.public.toml",
+      "private_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+      "public_sha256": "743a8e2f91b791de2c4aceae4f0c972da13303c22bd95586d3b691032c9b876c",
+      "note": "Private value is the original managed recipe semantic digest; public value is sanitized recipe bytes with generic /srv cache paths."
+    },
+    {
+      "path": "natural-long-output-1-visible.txt",
+      "private_sha256": "4d9cf8bf732e5e1c0b0fa21d52d835b4cd188c5094fea93714568b2c20032adf",
+      "public_sha256": "4d9cf8bf732e5e1c0b0fa21d52d835b4cd188c5094fea93714568b2c20032adf"
+    },
+    {
+      "path": "natural-long-output-1-independent-review.json",
+      "private_sha256": "ea573759ae62761231683227c8ec8e2397f85f0f2e02745b0494cc5513046403",
+      "public_sha256": "5d3402a8721beaf665624c688bb93f42a7ef11df7f6c9939d75e992fbc1a865c"
+    },
+    {
+      "path": "overlap-201k-unique.json",
+      "private_sha256": "5d3628a6f049ec6c3fffc5b2dc5e56e8d653028ff3b276944530c56d9447239d",
+      "public_sha256": "0236f50d3121ccc2e6f10b9ab3d1982bcdf8f41390783f73bc4e51baa3814ee1"
+    },
+    {
+      "path": "swe-native.json",
+      "private_sha256": "0ee6ee89b3cee5698a22ed3a10d2a6dee011c6057c50668add628cefa5387e13",
+      "public_sha256": "28919cc54aca92acd4d75f2afa9085ad322edc619597c2fc661c5bf7da58816e"
+    },
+    {
+      "path": "swe-final-disposition-v2.json",
+      "private_sha256": "f99e777d9cafd738ea564bd23d92059e95e7d2bb3cb125eceaf55adeac4d837c",
+      "public_sha256": "f99e777d9cafd738ea564bd23d92059e95e7d2bb3cb125eceaf55adeac4d837c"
+    },
+    {
+      "path": "swe-environment-disposition-independent-review.json",
+      "private_sha256": "0569de14bb7491188c4b268f10cc13ca3b53ddb635b40c27605f6ba15bb7ac65",
+      "public_sha256": "588b2527d3b623b48cf8f0bbe7b1162d36a5edc2c6c2206022289bcb5206ac5a"
+    },
+    {
+      "path": "swe-environment-comparison.json",
+      "private_sha256": "b0af4e783cfbbe34c4fd61d8ce94e288f67ececf54ee76180bee364ab381f156",
+      "public_sha256": "b0af4e783cfbbe34c4fd61d8ce94e288f67ececf54ee76180bee364ab381f156"
+    },
+    {
+      "path": "swe-final-gate.json",
+      "private_sha256": "b0f3df79a96560e378ab9455bc4b51b2403bca332873bfcc6da198b684f1f746",
+      "public_sha256": "b0f3df79a96560e378ab9455bc4b51b2403bca332873bfcc6da198b684f1f746"
+    },
+    {
+      "path": "c4-offered8-failure-independent-review.json",
+      "private_sha256": "283fb5975609b2bccbcb2250d9a2d64856411cfede5998aaed8615b675d27ed3",
+      "public_sha256": "8a51af6bce295ca6591db82b21b5190d6ac0b956b5bb9e0728b8d41ef2f93501"
+    },
+    {
+      "path": "gpu-c4-reload-control-summary.json",
+      "private_sha256": "6b336183a85e677d0c81020e0a32c3845d994266040538b2d6088d2d69a68d13",
+      "public_sha256": "6b336183a85e677d0c81020e0a32c3845d994266040538b2d6088d2d69a68d13"
+    },
+    {
+      "path": "long-output-64k.json",
+      "private_sha256": "e285b5e221099bccb1db46e04315749072c3da88e008e637dd343156c1bc843a",
+      "public_sha256": "1382e6951334a830107f6e765c942aae94c94ac8d500469c0016ae670ef9154f",
+      "note": "Private endpoint and suite path removed; raw reasoning excerpt removed while synthetic visible output remains."
+    },
+    {
+      "path": "long-output-64k-visible.txt",
+      "private_sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723",
+      "public_sha256": "4053e63d747bae643735a315b4bad7716971e5b5f59a0f4e91c43381f7c02723"
+    },
+    {
+      "path": "long-output-64k-summary.json",
+      "private_sha256": "1b375d1979c6af900bf16102dc0546881c816b248f31e44d8c4ab609f57955bd",
+      "public_sha256": "1b375d1979c6af900bf16102dc0546881c816b248f31e44d8c4ab609f57955bd"
+    },
+    {
+      "path": "long-output-64k-execution.json",
+      "private_sha256": "4968171c9c06d75b384d141ac8e66641e2cbc37d91a13435521904f66be59b06",
+      "public_sha256": "4968171c9c06d75b384d141ac8e66641e2cbc37d91a13435521904f66be59b06"
+    },
+    {
+      "path": "long-output-64k-before-identity.json",
+      "private_sha256": "66549c5c0e1424f1b8ac1e27d93f3f21889fa44b46f8844be4d8309363243d01",
+      "public_sha256": "9d3135977908386882e477c1c6be9467dc41367fe138085e5772e04de29616db",
+      "note": "Container ID is consistently hash-redacted and bound port removed; original recipe and registry digests are retained."
+    },
+    {
+      "path": "long-output-64k-after-identity.json",
+      "private_sha256": "66549c5c0e1424f1b8ac1e27d93f3f21889fa44b46f8844be4d8309363243d01",
+      "public_sha256": "9d3135977908386882e477c1c6be9467dc41367fe138085e5772e04de29616db",
+      "note": "Container ID is consistently hash-redacted and bound port removed; original recipe and registry digests are retained."
+    },
+    {
+      "path": "long-output-64k-independent-review.json",
+      "private_sha256": "ac8fe47402465d5cf99cf05b41afb5eaf4807a2f6cd984f5e6fb33363797aa15",
+      "public_sha256": "7233d62262407eed850ff6702df54f4e7b7c2304ffa0ca5a4f41c8607876429b",
+      "note": "Private evidence paths are reduced to public basenames; source artifact hashes remain bound."
+    },
+    {
+      "path": "isolated-routed-final-preflight.json",
+      "private_sha256": "aa8356e6a8899914cf59bdfdb62c3d27b0e4e92ce2adafadf01088178a809deb",
+      "public_sha256": "297dd11d0ff816d4e24c3a2543c7ca5fdeb2f938344e0f7d652d9fadedcc1218",
+      "note": "Private endpoint removed and reasoning excerpts omitted; native observations and synthetic visible output retained."
+    },
+    {
+      "path": "isolated-routed-final-preflight-execution.json",
+      "private_sha256": "478856ff85cd7b15f5862208b3372e5c7e6d56eebe6e2b709753e33fe205050e",
+      "public_sha256": "b9fe78be7b29451419748895597bfe7a46a7b3087943b3b37eb490ae94147f80",
+      "note": "Private endpoint/path and container identity fields sanitized."
+    },
+    {
+      "path": "routed-admission-capacity.json",
+      "private_sha256": "3c04a8fce230789a7414d57ace790fefe12ddf9f40d2661c49aedeaf239b87a1",
+      "public_sha256": "1227ef759dd163c6a8962c81d71e48ff489526f4fb7b7c3cba9a461a58e8ff59",
+      "note": "Private endpoint removed; native failed/ineligible schema retained."
+    },
+    {
+      "path": "routed-admission-execution.json",
+      "private_sha256": "1701c7bf98626362214a8866be6caf8aad43bc7c4c8cd13c3e03b084e1990130",
+      "public_sha256": "83058edaba9cb5ca6e338ff90cf187359fb60216d1cf7f478bdbfb0b308ccd1e",
+      "note": "Private source root, port, and container identity sanitized."
+    },
+    {
+      "path": "routed-admission-final-gate.json",
+      "private_sha256": "1d840c6e586bc97b06861ea167e33ca6dd08c6df757d455ebaecc481cda8cd2e",
+      "public_sha256": "5e6c4ba944338a37e8c42a1380f281cb4ab34457c1caf0b9ff74246eff09dc6b",
+      "note": "Retained initial false gate; native source hashes remain original-source bindings."
+    },
+    {
+      "path": "routed-admission-final-gate-v2.json",
+      "private_sha256": "bc6fafd431effe46fa3434e4ba245c6fc676f6a6e6350d1cdc417ecd1ceda8c6",
+      "public_sha256": "60462e61e3ca00c3b74058664bc01a05e178ad35ab542f7a6ecd2e928eb61fba",
+      "note": "Retained corrected versioned gate; native source hashes remain original-source bindings."
+    },
+    {
+      "path": "routed-admission-active.jsonl",
+      "private_sha256": "6fb94d3eebefa747d346082e1cf6a6bc7425c1f5cdcb46f9242232e02b30bb0f",
+      "public_sha256": "3d3211c13779e64ec8ad3d7b4d3ed59b60085d503092e7e5f9f8832552bf6eaa",
+      "note": "Native JSONL schema retained; gateway request IDs are consistently hash-redacted to preserve joins."
+    },
+    {
+      "path": "routed-admission-decisions.jsonl",
+      "private_sha256": "5476545a9aa79fb07cf9018aa36cb8ab36ee65b54c2b07b801b817ebdbf10b46",
+      "public_sha256": "4b6ff03f289825bc744b450d3b51f26d160ee675a170f22f29655f082829dbb4",
+      "note": "Native JSONL schema retained; request IDs are consistently hash-redacted to preserve joins."
+    },
+    {
+      "path": "routed-admission-router-errors.txt",
+      "private_sha256": "c1f0836cb51768adb32601066835be1deb7c55512b6d9b144ee5c621101c98f3",
+      "public_sha256": "f87ed3b4aa1f2da84ce66c39101a3f94c7d3609fbbcdbf880f61770bd86850e0",
+      "note": "Gateway request IDs are consistently hash-redacted."
+    },
+    {
+      "path": "gpu-final-quality-summary.json",
+      "private_sha256": "564459a72c797d86df6e07b9e8040edb7817c52ee03c7f10494072533547b756",
+      "public_sha256": "175c2c84950a5c45eb184211d44656dbd440d4b608e47cee2095c9fb76afe8bd",
+      "note": "Source CSV remains private and is bound by the retained original CSV SHA-256."
+    },
+    {
+      "path": "qualification-final-candidate-status.json",
+      "private_sha256": "83c2b2a4374ae98701df7a24bd4256c5bbffc24bd78e12bb6418a42c28421e99",
+      "public_sha256": "84c2f891c785ba6b0fe36715376f3fc463f597cc252aa2862d2349b5367a3c64",
+      "note": "Private command/path, container, and image naming sanitized; memory fields retained."
+    },
+    {
+      "path": "final-qualification-independent-review.json",
+      "private_sha256": "c1ad39dfb898b1ff482456bd9fc20d6254f3eccde4da584cef088624aafa0e85",
+      "public_sha256": "9db6194128df30563e3b2ab6112c5f5a80aeaf06f2474429eff0fca60cc62869",
+      "note": "Private evidence paths reduced to public basenames; original artifact hashes retained."
+    },
+    {
+      "path": "r11-direct-preflight.json",
+      "private_sha256": "fa9626d325daedb962de940199e381e08c04d850ab06db48b63db108af2ccc6d",
+      "public_sha256": "6622f983cb092fb2c2cd93e65ab0c9cc81fe5078f295730ea8036065c713656a",
+      "note": "Private endpoint removed and reasoning excerpts omitted; native observations and synthetic visible output retained."
+    },
+    {
+      "path": "r11-production-routed-preflight.json",
+      "private_sha256": "97b626c69f6a25ec86e627cc5428c63d169ba6143d527cce9f71e74f61915ffb",
+      "public_sha256": "98369cd0e020f47910dc7dc6a887c449959eebbdad03c4ba25b6f782d1be5fb6",
+      "note": "Private endpoint removed and reasoning excerpts omitted; native observations and synthetic visible output retained."
+    },
+    {
+      "path": "r11-startup-gate.json",
+      "private_sha256": "d88bb520fcb2334b5d06e1b63526b940ae9883924f6125b807189be826405170",
+      "public_sha256": "1abc222a51f6485e04950503426ef3246e70332f10077655060cc0e0ba601ee8",
+      "note": "Container ID and model-permission identifier hash-redacted; private port/cache path removed."
+    },
+    {
+      "path": "production-r11-scenario-binding.json",
+      "private_sha256": "3173da8536191ec06281ca5a87ac072010f98ddffa7f4a08ee71701f9d32f791",
+      "public_sha256": "a3f31d8c98e65e01961f99c9e00ef59c9f6982fa8207e67d98c8e3db14b10d4b",
+      "note": "Private endpoint and managed container name sanitized; original deployment configuration digests retained."
+    },
+    {
+      "path": "client-acceptance-summary.json",
+      "private_sha256": "3622d7896ea19a347de6d0bb0f4c0a4d24286d36318295494b47c71426f91800",
+      "public_sha256": "c1de76aa3f2245a985ff2188b9210901409f6a365e21377ba4d0eb39604eafe6",
+      "note": "Session, run, and turn IDs are consistently hash-redacted; client host/install labels sanitized."
+    },
+    {
+      "path": "controller-mount-live-verification.json",
+      "private_sha256": "82d3152bf0249f6a71a9cea4cc3587d2c768da15f9d7e61942acd9b1c0f6ec38",
+      "public_sha256": "14a0c069470f1c418cc7441acd5f39bb1fc7f24bccf49ad05fc5eee3b8942cec",
+      "note": "Private mount paths, node, request ID, and container identity sanitized while read-only mount facts remain."
+    },
+    {
+      "path": "client-control-plane-independent-review.json",
+      "private_sha256": "1294bf5c4c708935214390f9948dca628cccc0716fa755725956ae4ae79ec434",
+      "public_sha256": "cd0f4936875e300565c4e5bc0a29c07f20996e2350d8d32c76a392bdfe81f38f",
+      "note": "Private paths and fleet host labels sanitized; original source hashes remain bound."
+    },
+    {
+      "path": "promotion-publication-receipt.json",
+      "private_sha256": "86969b47c37d4e5c4b529a392f287071d4e1936c6d8970c8fa2d3416b800ed9a",
+      "public_sha256": "f23fb7b752624dcf49cbc181b24b005ea1199c50c4549c687db015a9cfb31f5e",
+      "note": "Public-post URL, dashboard/host metadata, Workbench URL, and evidence IDs sanitized; source-matched counts and repeat hashes retained."
+    }
+  ]
+}

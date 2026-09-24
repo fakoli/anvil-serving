@@ -1,0 +1,2 @@
+[anvil] 503 admission_timeout: RequestDeadlineExceeded gateway_request_id=redacted:sha256:387f2b05b84906b56a252b024892576f067519942b13f2151dd15a2ff0f7f20d elapsed_ms=30005.5 timestamp=2026-09-24T02:06:28.232856+00:00
+[anvil] 503 admission_timeout: RequestDeadlineExceeded gateway_request_id=redacted:sha256:b55f59f7ba2acb4619dac53e8573ee68e18ee24173257d89f44fd23b18788afa elapsed_ms=30012.1 timestamp=2026-09-24T02:06:28.233261+00:00

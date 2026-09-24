@@ -1,0 +1,28 @@
+{
+  "schema": "gpu-window-summary/v1",
+  "window": "C4 reload ready through completion of agentic18: warm-up, offered8 controls and agentic workload; not all prior C4 qualification",
+  "source": "gpu-concurrency-250ms.csv",
+  "source_sha256": "cbe40aae04c22c391d3298a9cd5dc07a252a109726d3930e32062bafb455efaf",
+  "timezone_interpretation": "nvidia-smi local America/Los_Angeles converted to UTC",
+  "gpus": {
+    "0": {
+      "samples": 5234,
+      "start": "2026-09-24T00:35:06.024000+00:00",
+      "end": "2026-09-24T00:56:55.991000+00:00",
+      "min_free_mib": 1755.0,
+      "max_temperature_c": 88.0,
+      "max_power_w": 304.73,
+      "max_sample_gap_s": 0.256
+    },
+    "1": {
+      "samples": 5234,
+      "start": "2026-09-24T00:35:06.024000+00:00",
+      "end": "2026-09-24T00:56:55.992000+00:00",
+      "min_free_mib": 1755.0,
+      "max_temperature_c": 86.0,
+      "max_power_w": 305.65,
+      "max_sample_gap_s": 0.256
+    }
+  },
+  "limit": "Discrete sampling, not continuous minimum; index0/1 are the two declared compute GPUs."
+}

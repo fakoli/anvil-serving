@@ -1,0 +1,61 @@
+{
+  "baseline_python": {
+    "implementation": "CPython",
+    "version": "3.12.14"
+  },
+  "candidate_python": {
+    "implementation": "CPython",
+    "version": "3.14.4"
+  },
+  "pinned_sources_equal": true,
+  "package_counts": [
+    113,
+    113
+  ],
+  "package_differences": [
+    {
+      "package": "boto3",
+      "baseline": "boto3==1.43.100",
+      "candidate": "boto3==1.43.99"
+    },
+    {
+      "package": "botocore",
+      "baseline": "botocore==1.43.100",
+      "candidate": "botocore==1.43.99"
+    },
+    {
+      "package": "filelock",
+      "baseline": "filelock==4.0.1",
+      "candidate": "filelock==3.32.7"
+    },
+    {
+      "package": "httpcore2",
+      "baseline": "httpcore2==2.13.1",
+      "candidate": "httpcore2==2.13.0"
+    },
+    {
+      "package": "httpx2",
+      "baseline": "httpx2==2.13.1",
+      "candidate": "httpx2==2.13.0"
+    },
+    {
+      "package": "litellm",
+      "baseline": "litellm==1.102.1",
+      "candidate": "litellm==1.102.0"
+    },
+    {
+      "package": "pip",
+      "baseline": "pip==25.0.1",
+      "candidate": "pip==25.1.1"
+    },
+    {
+      "package": "virtualenv",
+      "baseline": "virtualenv==21.11.0",
+      "candidate": "virtualenv==21.9.1"
+    }
+  ],
+  "environment_receipt_hashes": [
+    "23999d9dbc4d4b6cc76c138b394601513151c3e01090c398930ccd2339f43dc0",
+    "0e7abe0d93aa407d3d72a0230cd809929b6d8a9363b72a479b07e691bec1faca"
+  ]
+}

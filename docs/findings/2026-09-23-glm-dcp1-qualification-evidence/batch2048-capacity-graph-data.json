@@ -1,0 +1,319 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "C1 32K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c1-32k-unique.json",
+              "artifact_sha256": "3253797ef2a481ceab33bba94fa7bb6818d8a3ffaa6be0c3171bd56f3d779775",
+              "value": 21.253417166058764,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c1-32k-unique.json",
+              "artifact_sha256": "4638b75a8da0bd00d91d6da1baf6957bbb878496992ea7f1b2d3f1e8e4d7d089",
+              "value": 23.58102309553183,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c1-32k-unique.json",
+              "artifact_sha256": "24a602c4e14bba250efb5878491b37fad8478ce179ba725edc210c8ea2b405fe",
+              "value": 21.084209248390586,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-unique.json",
+              "artifact_sha256": "545b19db31c2ca7300e573a52ace38c01b2db00a0f8be6267f5ede3fd915a4ac",
+              "value": 5.882306820068099,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-unique.json",
+              "artifact_sha256": "043039713153480fec31b4241be39db62beaf998835d17aba8497f6df6b83b5b",
+              "value": 6.2973192494448735,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-unique.json",
+              "artifact_sha256": "5600209d800bfa3384d8458d5b27f1daf38ad1e85926045ce562980acc53df84",
+              "value": 7.124319651842065,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K shared",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-shared.json",
+              "artifact_sha256": "1417958bc2b118b71a8ddebd7000ef6c4142e6b117e9926fc7f59bfe5e698c2d",
+              "value": 25.40516146247193,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-shared.json",
+              "artifact_sha256": "4f9f1f599b30c6514a2b25de99ae9f0453cdec36098a2893fc0b6475f7b979e0",
+              "value": 20.135445500775003,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-shared.json",
+              "artifact_sha256": "a8ef71f78f34c7e70429d3b7c3a3652863d904df9334ec6f56b6841db5089799",
+              "value": 20.64667913472706,
+              "x": "repeat 2"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate throughput",
+      "x_label": "Retained repetition",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "C1 32K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c1-32k-unique.json",
+              "artifact_sha256": "3253797ef2a481ceab33bba94fa7bb6818d8a3ffaa6be0c3171bd56f3d779775",
+              "value": 6247.993081000459,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c1-32k-unique.json",
+              "artifact_sha256": "4638b75a8da0bd00d91d6da1baf6957bbb878496992ea7f1b2d3f1e8e4d7d089",
+              "value": 6354.741421004292,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c1-32k-unique.json",
+              "artifact_sha256": "24a602c4e14bba250efb5878491b37fad8478ce179ba725edc210c8ea2b405fe",
+              "value": 6405.5911140021635,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-unique.json",
+              "artifact_sha256": "545b19db31c2ca7300e573a52ace38c01b2db00a0f8be6267f5ede3fd915a4ac",
+              "value": 75048.61343700031,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-unique.json",
+              "artifact_sha256": "043039713153480fec31b4241be39db62beaf998835d17aba8497f6df6b83b5b",
+              "value": 79566.08060999861,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-unique.json",
+              "artifact_sha256": "5600209d800bfa3384d8458d5b27f1daf38ad1e85926045ce562980acc53df84",
+              "value": 70146.08647600107,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K shared",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-shared.json",
+              "artifact_sha256": "1417958bc2b118b71a8ddebd7000ef6c4142e6b117e9926fc7f59bfe5e698c2d",
+              "value": 35892.90524999524,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-shared.json",
+              "artifact_sha256": "4f9f1f599b30c6514a2b25de99ae9f0453cdec36098a2893fc0b6475f7b979e0",
+              "value": 34360.50154300028,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-shared.json",
+              "artifact_sha256": "a8ef71f78f34c7e70429d3b7c3a3652863d904df9334ec6f56b6841db5089799",
+              "value": 44306.22493100236,
+              "x": "repeat 2"
+            }
+          ]
+        }
+      ],
+      "title": "Median TTFT",
+      "x_label": "Retained repetition",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "C1 32K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c1-32k-unique.json",
+              "artifact_sha256": "3253797ef2a481ceab33bba94fa7bb6818d8a3ffaa6be0c3171bd56f3d779775",
+              "value": 5061.4866245870635,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c1-32k-unique.json",
+              "artifact_sha256": "4638b75a8da0bd00d91d6da1baf6957bbb878496992ea7f1b2d3f1e8e4d7d089",
+              "value": 4955.3534600144,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c1-32k-unique.json",
+              "artifact_sha256": "24a602c4e14bba250efb5878491b37fad8478ce179ba725edc210c8ea2b405fe",
+              "value": 4885.153372792276,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-unique.json",
+              "artifact_sha256": "545b19db31c2ca7300e573a52ace38c01b2db00a0f8be6267f5ede3fd915a4ac",
+              "value": 2553.204284577003,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-unique.json",
+              "artifact_sha256": "043039713153480fec31b4241be39db62beaf998835d17aba8497f6df6b83b5b",
+              "value": 2202.487673029899,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-unique.json",
+              "artifact_sha256": "5600209d800bfa3384d8458d5b27f1daf38ad1e85926045ce562980acc53df84",
+              "value": 2852.0165580586777,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K shared",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-shared.json",
+              "artifact_sha256": "1417958bc2b118b71a8ddebd7000ef6c4142e6b117e9926fc7f59bfe5e698c2d",
+              "value": 9121.620203159444,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-shared.json",
+              "artifact_sha256": "4f9f1f599b30c6514a2b25de99ae9f0453cdec36098a2893fc0b6475f7b979e0",
+              "value": 6812.921629681095,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-shared.json",
+              "artifact_sha256": "a8ef71f78f34c7e70429d3b7c3a3652863d904df9334ec6f56b6841db5089799",
+              "value": 6819.960025286029,
+              "x": "repeat 2"
+            }
+          ]
+        }
+      ],
+      "title": "Median effective prefill",
+      "x_label": "Retained repetition",
+      "y_label": "tokens/s including queueing"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "C1 32K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c1-32k-unique.json",
+              "artifact_sha256": "3253797ef2a481ceab33bba94fa7bb6818d8a3ffaa6be0c3171bd56f3d779775",
+              "value": 12.837410249982984,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c1-32k-unique.json",
+              "artifact_sha256": "4638b75a8da0bd00d91d6da1baf6957bbb878496992ea7f1b2d3f1e8e4d7d089",
+              "value": 12.830660117231218,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c1-32k-unique.json",
+              "artifact_sha256": "24a602c4e14bba250efb5878491b37fad8478ce179ba725edc210c8ea2b405fe",
+              "value": 12.833023709125966,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K unique",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-unique.json",
+              "artifact_sha256": "545b19db31c2ca7300e573a52ace38c01b2db00a0f8be6267f5ede3fd915a4ac",
+              "value": 366.2661457735494,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-unique.json",
+              "artifact_sha256": "043039713153480fec31b4241be39db62beaf998835d17aba8497f6df6b83b5b",
+              "value": 321.55817246507644,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-unique.json",
+              "artifact_sha256": "5600209d800bfa3384d8458d5b27f1daf38ad1e85926045ce562980acc53df84",
+              "value": 354.13516420402595,
+              "x": "repeat 2"
+            }
+          ]
+        },
+        {
+          "label": "C4 128K shared",
+          "points": [
+            {
+              "artifact": "performance-dcp1-c4-128k-shared.json",
+              "artifact_sha256": "1417958bc2b118b71a8ddebd7000ef6c4142e6b117e9926fc7f59bfe5e698c2d",
+              "value": 95.65608380880269,
+              "x": "initial"
+            },
+            {
+              "artifact": "performance-dcp1-repeat1-c4-128k-shared.json",
+              "artifact_sha256": "4f9f1f599b30c6514a2b25de99ae9f0453cdec36098a2893fc0b6475f7b979e0",
+              "value": 122.64454666910751,
+              "x": "repeat 1"
+            },
+            {
+              "artifact": "performance-dcp1-repeat2-c4-128k-shared.json",
+              "artifact_sha256": "a8ef71f78f34c7e70429d3b7c3a3652863d904df9334ec6f56b6841db5089799",
+              "value": 110.35514908888015,
+              "x": "repeat 2"
+            }
+          ]
+        }
+      ],
+      "title": "Median TPOT proxy",
+      "x_label": "Retained repetition",
+      "y_label": "milliseconds per output token"
+    }
+  ],
+  "metric_semantics": {
+    "comparison_limit": "No p99 or causal batch-selection claim; unique and shared cache modes are distinct.",
+    "population": "Each plotted point is one retained 16-request native cell."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Nine eligible 16-request cells; cache and context groups remain separate. This is not a batch-4096 comparison or an offered-C8 result.",
+  "title": "DCP1 batch-2048 descriptive capacity cells"
+}

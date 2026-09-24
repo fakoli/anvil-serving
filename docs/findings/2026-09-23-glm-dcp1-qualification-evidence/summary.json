@@ -1,0 +1,43 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-23-glm-dcp1-qualification",
+  "complete": false,
+  "identity": {
+    "source_revision": "731309e499ade9ad0043afbe9024a108cc1285f2",
+    "control": "candidate-dcp1.public.toml",
+    "finalist": "r11 DCP1 batch2048/C4/0.97"
+  },
+  "measurement": {
+    "path": "direct and production-routed r11 endpoint; native-client acceptance retained",
+    "sample_count": 16,
+    "statistics": ["C8 diagnostic only; failed population is performance-ineligible"]
+  },
+  "headline_results": [
+    "DCP1 batch 2048/C4 selected with 825268 logical KV tokens at startup",
+    "201K unique 3/3, repeated 3/3, and 310K/C2 1/1 retained",
+    "quality 12/12 and agentic 18/18 retained",
+    "official SWE scout 4/5 resolved meets the absolute at-least-3/5 gate",
+    "offered C8 seed 2801 failed strict/canary 1/16; dependent C8 stopped",
+    "64K diagnostic reached its 65536 completion cap with 5921 visible tokens; review found coherent truncation but materially lower one-attempt visible yield than the matched incumbent",
+    "isolated routed preflight passed 28 observations across eight functional families, including a 20-request tool batch",
+    "routed offered-eight closed the configured C4 dispatch/admission boundary with six strict served responses and two admission-timeout 503s; the native performance result is ineligible and optional 8/8 completion failed",
+    "the final independent review recommended the exact DCP1 batch2048/C4/0.97 recipe under retained authorization; r11 was subsequently selected and deployed after direct and production-routed preflights each passed 28/28 and native-client acceptance passed"
+  ],
+  "limitations": [
+    "Original 201K/4K third-anchor no-visible-answer failure retained",
+    "No root-cause, crash-rate, general hardware-maximum, or C8 qualification claim",
+    "SWE paired comparison is ineligible because CPython/package environments differ",
+    "64K native completion-budget failure remains; coherence does not establish completion, correctness, reliability, or causal attribution",
+    "Routed capacity evidence supports only the configured C4 boundary; it does not qualify C8, sustained queueing, cancellation, or performance",
+    "DCP1 has 825268 KV tokens versus DCP2 1416244 (-41.73%); four full 327K windows are unsupported",
+    "DCP1 is a mitigation, not a root-cause fix, crash-rate result, or speed winner",
+    "Public-post merge and deployed readback remain pending; historical pre-deployment review records with promoted=false are retained as dated evidence"
+  ],
+  "decision": {
+    "evidence_labels": ["functional", "capacity", "quality"],
+    "decision_labels": ["selected", "deployed_publication_pending"],
+    "promotion_authorized": true,
+    "promotion_performed": true,
+    "next_gate": "Record public-post merge and deployed readback"
+  }
+}

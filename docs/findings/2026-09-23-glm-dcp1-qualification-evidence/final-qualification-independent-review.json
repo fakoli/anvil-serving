@@ -1,0 +1,277 @@
+{
+  "advisory_priors": [
+    {
+      "advisory_only": true,
+      "promotion_quality_evidence": false,
+      "summary": "The evaluated GLM model did not grade itself; GPT-5.6 Sol independently reviewed Astra-authored plans, evidence, and deployment bytes."
+    },
+    {
+      "advisory_only": true,
+      "promotion_quality_evidence": false,
+      "summary": "External runtime support, model-card claims, and untested profiles were not used to pass qualification."
+    },
+    {
+      "advisory_only": true,
+      "promotion_quality_evidence": false,
+      "summary": "No model request, service operation, router change, lifecycle action, cutover, or GPU action was performed by this review."
+    }
+  ],
+  "artifacts": [
+    {
+      "classification": "confirmed",
+      "kind": "finding_summary",
+      "path": "campaign-plan.md",
+      "references": [
+        "campaign-plan.md:3",
+        "campaign-plan.md:5",
+        "campaign-plan.md:9",
+        "campaign-plan.md:16",
+        "authorization.json",
+        "search-closure.json",
+        "agentic-final-gate.json",
+        "swe-environment-disposition-independent-review.json",
+        "natural-long-output-1-independent-review.json",
+        "long-output-64k-independent-review.json",
+        "isolated-routed-final-preflight.json",
+        "routed-admission-final-gate-v2.json"
+      ],
+      "severity": "none",
+      "summary": "Qualification passes for the exact DCP1 batch2048/C4/memory0.97 recipe, and controlled r11 activation is recommended under the user's retained authorization. Required identity, containment, direct protocol, long-context overlap, C4 isolation, image, short-quality, agentic, absolute SWE, natural long-output, separate 64K coherence diagnostic, isolated production-policy preflight, routed C4 admission, and independent-review gates have evidence. This recommendation is limited to the reviewed compute and deployment bytes."
+    },
+    {
+      "classification": "confirmed_limit",
+      "kind": "residual_risk",
+      "path": "coverage-and-gaps.md",
+      "references": [
+        "campaign-plan.md:7",
+        "campaign-plan.md:11",
+        "campaign-plan.md:14",
+        "campaign-plan.md:18",
+        "coverage-and-gaps.md"
+      ],
+      "severity": "high",
+      "summary": "DCP1 is a qualified mitigation, not a demonstrated fix for the prior Xid31/cross-rank failure. Repeated 175K, 201K/8K, near-310K/C2, and C4 workloads completed without a new Xid/OOM/engine death, but no intentional DCP2 recrash, cancellation/slot-reuse fixture, separate 60-minute soak, or statistical crash-rate study was performed. Keep the original incident/root-cause work open and preserve exact r10 rollback."
+    },
+    {
+      "classification": "confirmed",
+      "kind": "capacity_tradeoff",
+      "path": "dcp1-reload-startup-gate.json",
+      "references": [
+        "dcp1-reload-startup-gate.json",
+        "measured-kv-envelope.json",
+        "campaign-plan.md:12",
+        "README.md:32"
+      ],
+      "severity": "high",
+      "summary": "The qualified DCP1 runtime reports 825268 KV tokens versus 1416244 for retained DCP2, a reduction of 590976 tokens or 41.73%. The configured 327680-token per-request context remains and near-310K/C2 plus nominal-128K/C4 gates passed, but four simultaneous full 327680-token windows are not supported by this pool. Promotion and client documentation must preserve that simultaneous-capacity limitation."
+    },
+    {
+      "classification": "confirmed",
+      "kind": "optimization_disposition",
+      "path": "search-closure.json",
+      "references": [
+        "optimization-search-v7.json",
+        "b4096-final-comparison.json",
+        "b8192-startup-gate.json",
+        "search-closure.json"
+      ],
+      "severity": "medium",
+      "summary": "The selected batch2048/C4/memory0.97 recipe is the highest configuration supported by the frozen campaign, not a universal hardware maximum or a speed winner. Batch4096 passed functional work but four of six paired comparisons were completion-volume confounded, so no eligible performance gain exists. Batch8192 reported only 403531 KV tokens, below the 636384 campaign C2 reserve. C8 was never loaded after a failed offered-eight control, and memory0.975 was not run. Make no throughput, latency, C8, or higher-memory claim."
+    },
+    {
+      "classification": "confirmed",
+      "kind": "admission_disposition",
+      "path": "routed-admission-final-gate-v2.json",
+      "references": [
+        "routed-admission-final-gate.json",
+        "routed-admission-final-gate-v2.json",
+        "routed-admission-router-errors.txt",
+        "routed-admission-decisions.jsonl",
+        "routed-admission-active.jsonl"
+      ],
+      "severity": "medium",
+      "summary": "The frozen routed C4 admission boundary passes. Seventy-five non-truncated snapshots observed queued work and a maximum dispatched-plus-streaming count of four; all eight sampled gateway IDs join exactly to eight terminal llm.primary decisions with the expected effective config. Six served responses passed strict output and canaries; two received the expected 30-second HTTP503 admission_timeout. The optional 8/8 completion objective therefore remains failed, native performance is ineligible, and no sustained-queue or C8 claim is allowed."
+    },
+    {
+      "classification": "confirmed",
+      "kind": "quality_limits",
+      "path": "long-output-64k-independent-review.json",
+      "references": [
+        "agentic-final-gate.json",
+        "swe-environment-disposition-independent-review.json",
+        "natural-long-output-1-independent-review.json",
+        "long-output-64k-independent-review.json"
+      ],
+      "severity": "medium",
+      "summary": "Quality evidence meets the frozen absolute gates but does not prove superiority. Agentic passed18/18. SWE submitted and officially graded5/5 with4/5 resolved, but Python/package drift makes the candidate4/5 versus baseline3/5 comparison ineligible. The natural long-output gate passed with18016 visible tokens, stop finish,24 chapters, and independent coherence review. The separate 65536-cap diagnostic remained coherent but ended length after5921 visible tokens and three complete chapters plus part of chapter four, materially below the incumbent's70772 visible characters and eleven complete chapters plus part of chapter twelve. Retain this one-attempt useful-output regression and do not infer its cause from uncaptured reasoning."
+    },
+    {
+      "classification": "confirmed_limit",
+      "kind": "router_version_seam",
+      "path": "isolated-routed-final-preflight.json",
+      "references": [
+        "isolated-routed-final-preflight.json",
+        "routed-admission-decisions.jsonl",
+        "campaign-plan.md:16",
+        "client-acceptance-preparation.md"
+      ],
+      "severity": "medium",
+      "summary": "The isolated routed evidence ran router1.3.0, while production remains router1.2.1. The installed1.2.1 and reviewed source have AST-identical _ConcurrencyLimitedBackend implementations, and the production router binary is intentionally unchanged, but source equivalence at one class is not full transport parity. After r11 activation, run the production routed protocol and real Pi/Hermes/OpenClaw acceptance before recording promoted=true; rollback on any failure."
+    },
+    {
+      "classification": "confirmed_condition",
+      "kind": "activation_and_rollback",
+      "path": "proposed-model-activation.json",
+      "references": [
+        "proposed-production-independent-review.json",
+        "proposed-production-equivalence.json",
+        "proposed-model-activation.json",
+        "campaign-plan.md:16"
+      ],
+      "severity": "high",
+      "summary": "Promotion must be a bounded transaction. Recheck exact r11 recipe/router/manifest/unit hashes; stop the existing r10 unit while its r10 ExecStop bytes remain installed; install/reload/start r11; verify exact identity, containment, KV pool, direct readiness, and production router fingerprint before switching traffic; then run production routed and real-client gates, update all declared harnesses, capture/apply/repeat to changed0, and publish/read back evidence. Any failed identity, readiness, route, client, Xid/OOM, or containment check triggers exact r10 rollback. Do not upgrade the router binary as part of this model promotion."
+    },
+    {
+      "classification": "confirmed",
+      "kind": "authorization_and_status",
+      "path": "authorization.json",
+      "references": [
+        "authorization.json",
+        "campaign-plan.md:3"
+      ],
+      "severity": "none",
+      "summary": "The user already authorized qualification followed by passing-candidate promotion and all-harness convergence, with exact rollback and no host/driver/cloud-provider change. No additional confirmation prompt is needed. This review recommends that action but records promoted=false because no production activation result or post-cutover acceptance exists yet."
+    },
+    {
+      "items": [
+        {
+          "axis": "fail_closed_unreadable_state",
+          "input_state": "Any r11 or r10 identity/hash, readiness, containment, route status, or client receipt is absent or unreadable",
+          "result": "must fail closed and restore exact r10; pre-cutover files are currently readable and hash-bound",
+          "wrong_result": "Continue cutover or call promotion complete without rollback evidence"
+        },
+        {
+          "axis": "malformed_boundary_and_paths",
+          "input_state": "Model/container/unit/manifest identity differs, or r11 unit replaces r10 before r10 stop",
+          "result": "reviewed deployment bytes are consistent; stop-old-before-replace remains mandatory",
+          "wrong_result": "Strand the old GPU owner or stop/start the wrong container"
+        },
+        {
+          "axis": "resource_exhaustion_and_timeouts",
+          "input_state": "Startup, inference, admission, client checks, host reserve, GPU memory, Xid/OOM, or service stop exceeds declared bounds",
+          "result": "pre-cutover evidence is bounded and clean; live cutover must use the declared timeouts and rollback",
+          "wrong_result": "Wait indefinitely or retain a degraded primary route"
+        },
+        {
+          "axis": "state_drift_across_router_process_config_and_clients",
+          "input_state": "Isolation router1.3.0 evidence is treated as proof of production1.2.1 behavior, or harnesses retain old model fingerprints",
+          "result": "plausible until production routed/client/fleet convergence succeeds; this is the remaining transactional gate",
+          "wrong_result": "Record promotion while real production transport or clients remain stale/broken"
+        }
+      ],
+      "kind": "breakage_probes",
+      "path": "proposed-model-activation.json"
+    },
+    {
+      "path": "authorization.json",
+      "sha256": "da6ea4fbf8f9cd824ad10e302d66ff6099dae5d1c5cbb80602556df5c78438f7"
+    },
+    {
+      "path": "campaign-plan.md",
+      "sha256": "c4c3cb9011e54bfdadbbcf56a9ade78c31e129ca4d4132e780bd1a728d30938d"
+    },
+    {
+      "path": "search-closure.json",
+      "sha256": "05549ee80024d31363b59d0396333440d41a0286763b56b4f561ad1d63538b39"
+    },
+    {
+      "path": "optimization-search-v7.json",
+      "sha256": "1efd95dd5034c96b1e4dc6d7cedc841d39f5b929d61bb75cda4a08f811671278"
+    },
+    {
+      "path": "isolated-routed-final-preflight.json",
+      "sha256": "aa8356e6a8899914cf59bdfdb62c3d27b0e4e92ce2adafadf01088178a809deb"
+    },
+    {
+      "path": "isolated-routed-final-preflight-execution.json",
+      "sha256": "478856ff85cd7b15f5862208b3372e5c7e6d56eebe6e2b709753e33fe205050e"
+    },
+    {
+      "path": "routed-admission-final-gate.json",
+      "sha256": "1d840c6e586bc97b06861ea167e33ca6dd08c6df757d455ebaecc481cda8cd2e"
+    },
+    {
+      "path": "routed-admission-final-gate-v2.json",
+      "sha256": "bc6fafd431effe46fa3434e4ba245c6fc676f6a6e6350d1cdc417ecd1ceda8c6"
+    },
+    {
+      "path": "gpu-final-quality-summary.json",
+      "sha256": "564459a72c797d86df6e07b9e8040edb7817c52ee03c7f10494072533547b756"
+    },
+    {
+      "path": "proposed-production-equivalence.json",
+      "sha256": "79f3491f3e615bd55a7aac979b04d504b76e006a6af96ed150bbc2e59908c272"
+    },
+    {
+      "path": "proposed-model-activation.json",
+      "sha256": "12b4e440c4902109fb863fd6d54ffd982c94f0bceb7bce531aa32e9da410392b"
+    },
+    {
+      "path": "qualification-final-candidate-status.json",
+      "sha256": "83c2b2a4374ae98701df7a24bd4256c5bbffc24bd78e12bb6418a42c28421e99"
+    },
+    {
+      "path": "cutover-backup-receipt.json",
+      "sha256": "c1f1559feff1521ca4fce5583d5bba755a043be68fb5726e5d37f0556f961171"
+    }
+  ],
+  "gate_state": "human_required",
+  "human_gate_required": true,
+  "promoted": false,
+  "recommendation": "promote",
+  "request": "Independently determine whether the exact GLM DCP1 batch2048 C4 recipe is qualified for the already-authorized controlled production promotion, while preserving all failed diagnostics, capacity tradeoffs, rollback, and post-cutover client gates.",
+  "schema_version": "operator-workflow/v1",
+  "targets": {
+    "candidate_recipe_sha256": "561d548b4124a98493c88c4145405f40ed25c747bde9ddf9a17696fe8a96661d",
+    "configured_context_tokens": 327680,
+    "configured_image_limit": 8,
+    "configured_max_output_tokens": 65536,
+    "deployment_recipe_sha256": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+    "evaluated_model": "GLM-5.3-Flash DCP1",
+    "human_gate_status": "satisfied by retained authorization.json; no new confirmation request is required",
+    "implementing_model": "GPT-6 Astra",
+    "promotion_status": "recommended controlled activation; not yet applied",
+    "qualified_compute": "DCP1 TP2 EP2, batch2048, max_num_seqs4, gpu_memory_utilization0.97, FP8 DS-MLA KV, APC, no speculation",
+    "reviewer_model": "GPT-5.6 Sol",
+    "source_revision": "731309e499ade9ad0043afbe9024a108cc1285f2"
+  },
+  "tools_used": [
+    {
+      "confirmed": true,
+      "dry_run": true,
+      "error": null,
+      "name": "read_only_evidence_and_source_review",
+      "ok": true,
+      "source_class": "manual",
+      "target": "frozen campaign, native gates, independent reviews, deployment equivalence, installed/worktree router admission source"
+    },
+    {
+      "confirmed": true,
+      "dry_run": false,
+      "error": null,
+      "name": "recorded_user_authorization",
+      "ok": true,
+      "source_class": "manual",
+      "target": "authorization.json SHA256 da6ea4fbf8f9cd824ad10e302d66ff6099dae5d1c5cbb80602556df5c78438f7"
+    },
+    {
+      "confirmed": true,
+      "dry_run": true,
+      "error": null,
+      "name": "workflow_packet_validate",
+      "ok": true,
+      "source_class": "manual",
+      "target": "this operator-workflow/v1 packet"
+    }
+  ]
+}

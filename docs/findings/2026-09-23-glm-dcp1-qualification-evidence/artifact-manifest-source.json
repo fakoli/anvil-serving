@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-23-glm-dcp1-qualification",
+    "state": "deployed_publication_pending",
+    "decision": "r11 selected and deployed after accepted direct, production-routed, and native-client checks; public-post merge and deployed readback pending",
+    "rollback": "exact r10"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "native-client-acceptance/v1",
+    "operator-workflow/v1"
+  ],
+  "closed_inventory": true,
+  "size_policy": "each retained public artifact is under 2 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "graph-manifest.json",
+        "production-r11-scenario-binding.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "graph-manifest.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "candidate-dcp1.public.toml",
+        "r11-startup-gate.json",
+        "qualification-final-candidate-status.json",
+        "controller-mount-live-verification.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "agentic-final-gate.json",
+        "batch2048-capacity-graph-data.json",
+        "batch2048-capacity-matrix.svg",
+        "c4-offered8-failure-independent-review.json",
+        "client-acceptance-summary.json",
+        "client-control-plane-independent-review.json",
+        "concurrency-b2048-reload-offered8-seed1801.json",
+        "concurrency-b2048-reload-offered8-seed2801.json",
+        "concurrency-b2048-reload-offered8-seed801.json",
+        "gpu-c4-reload-control-summary.json",
+        "gpu-final-quality-summary.json",
+        "isolated-routed-final-preflight-execution.json",
+        "isolated-routed-final-preflight.json",
+        "long-output-64k-after-identity.json",
+        "long-output-64k-before-identity.json",
+        "long-output-64k-execution.json",
+        "long-output-64k-independent-review.json",
+        "long-output-64k-summary.json",
+        "long-output-64k-visible.txt",
+        "natural-long-output-1-independent-review.json",
+        "natural-long-output-1-token-count.json",
+        "natural-long-output-1-visible.txt",
+        "overlap-201k-8k-repeat.json",
+        "overlap-201k-8k-unique.json",
+        "overlap-310k-8k.json",
+        "performance-dcp1-c1-32k-unique.json",
+        "performance-dcp1-c4-128k-shared.json",
+        "performance-dcp1-c4-128k-unique.json",
+        "performance-dcp1-repeat1-c1-32k-unique.json",
+        "performance-dcp1-repeat1-c4-128k-shared.json",
+        "performance-dcp1-repeat1-c4-128k-unique.json",
+        "performance-dcp1-repeat2-c1-32k-unique.json",
+        "performance-dcp1-repeat2-c4-128k-shared.json",
+        "performance-dcp1-repeat2-c4-128k-unique.json",
+        "promotion-publication-receipt.json",
+        "quality.json",
+        "r11-direct-preflight.json",
+        "r11-production-routed-preflight.json",
+        "routed-admission-active.jsonl",
+        "routed-admission-capacity.json",
+        "routed-admission-decisions.jsonl",
+        "routed-admission-execution.json",
+        "routed-admission-final-gate-v2.json",
+        "sanitization-receipts.json",
+        "search-closure.json",
+        "swe-environment-comparison.json",
+        "swe-environment-disposition-independent-review.json",
+        "swe-final-disposition-v2.json",
+        "swe-final-gate.json",
+        "swe-native.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md",
+        "routed-admission-router-errors.txt",
+        "routed-admission-final-gate.json",
+        "long-output-64k.json",
+        "overlap-201k-unique.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "controller-mount-live-verification.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "final-qualification-independent-review.json"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Retained sanitized public evidence for the deployed-publication-pending campaign."
+    }
+  ]
+}
