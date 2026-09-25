@@ -36,12 +36,12 @@ These controls organize the review; they are not independent benchmark proof.
 
 ## Workload and plan
 
-The [source-build scout recipe](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-post-profile.toml)
-and [baked deployment recipe](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml)
+The [source-build scout recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-post-profile.toml)
+and [baked deployment recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml)
 pin the model revision and runtime source. The public
-[runtime Dockerfile](../../../configs/runtime/ninfer-bace20dc-swift15/Dockerfile)
+[runtime Dockerfile](https://github.com/fakoli/anvil-serving/blob/main/configs/runtime/ninfer-bace20dc-swift15/Dockerfile)
 produced the [verified immutable image](baked-build.txt). The preflight fixture image is
-[`small-text-1.png`](../../../tests/computer_use/vision_diagnostic/assets/small-text-1.png),
+[`small-text-1.png`](https://github.com/fakoli/anvil-serving/blob/main/tests/computer_use/vision_diagnostic/assets/small-text-1.png),
 SHA-256 `7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46`.
 Native artifacts retain the thinking-mode and output budgets used by each gate.
 The [frozen run plan](run-plan.md) fixes the promotion-first sequence and the

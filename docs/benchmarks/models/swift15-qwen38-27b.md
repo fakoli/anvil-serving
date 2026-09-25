@@ -14,7 +14,7 @@
     - **Important limitation:** C4 at 128K generated five HTTP 503 queue timeouts. Exact 256-word output adherence failed in the visible-output capacity workload, so throughput is descriptive.
     - **Review dates:** evidence through 2026-09-25; dossier reviewed 2026-09-25.
 
-The [dated result](../../findings/2026-09-25-swift15-ninfer-5090-promotion.md) separates deployment acceptance from benchmark qualification. The [managed recipe](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml) is the reproducible public configuration.
+The [dated result](../../findings/2026-09-25-swift15-ninfer-5090-promotion.md) separates deployment acceptance from benchmark qualification. The [managed recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml) is the reproducible public configuration.
 
 ### Review narrative
 
@@ -47,7 +47,7 @@ The community post's single-5090 profile was brought up as a pinned, baked manag
 - **Topology:** Single GPU, no tensor-parallel replica.
 - **Contract:** 262,144 total tokens, 32,768 maximum output, C4 admission, one-image vision, thinking enabled with 16K default budget.
 - **Runtime controls:** Automatic KV pool, measured 282,112 shared tokens, DFlash2 K=7 with LM-head draft, 4,096 prefill chunk, 450 W power cap.
-- **Recipe:** [baked managed recipe](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml); [source-build scout](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-post-profile.toml).
+- **Recipe:** [baked managed recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml); [source-build scout](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-post-profile.toml).
 
 ## Evidence by measurement class
 

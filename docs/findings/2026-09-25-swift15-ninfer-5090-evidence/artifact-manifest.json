@@ -34,8 +34,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "a38a305696982314ee5c86fc567e882f7fec1763ab82fad330ce5f999b61051b",
-          "bytes": 7513
+          "sha256": "66c7985dabe7726fa84206860a1eb4fe292058b05897cd08bd447f24b9c94acd",
+          "bytes": 7677
         }
       ],
       "reason": "Sanitized bundle index and claim boundary."
@@ -58,8 +58,8 @@
       "files": [
         {
           "path": "workload-manifest.md",
-          "sha256": "c168a29a44bcd2b00d2cc55c54ad0067a1c3d94f8752440ed9578073b1225ff9",
-          "bytes": 2483
+          "sha256": "194fbae5a1399049ea1bbf4c6304fa54714ae5302e808424432b7fa27553b561",
+          "bytes": 2524
         }
       ],
       "reason": "Frozen suites, request counts, fixture hash, and SWE issue selection."
@@ -80,8 +80,8 @@
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "4fa3f43bda41197830f2b5a22dc62f9f8957ac26481182ea19735de51957ad44",
-          "bytes": 3361
+          "sha256": "e170c001de96f6988b00d779e2836d5071d5092d2f27394161d7ac676d01d7b2",
+          "bytes": 3402
         }
       ],
       "reason": "Promotion-first controls, amended pre-model SWE selection, and request coverage."
@@ -251,13 +251,13 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "e44214bff57f9d737a1dc1f7e8f792de4d9e087a29c3d25f5ad674746c06c3fd",
-          "bytes": 5492
+          "sha256": "d6853defa27456e9448ee949632d408431890d6b0a11991f350c476799d56c4c",
+          "bytes": 5615
         },
         {
           "path": "coverage-and-gaps.md",
-          "sha256": "4fa3f43bda41197830f2b5a22dc62f9f8957ac26481182ea19735de51957ad44",
-          "bytes": 3361
+          "sha256": "e170c001de96f6988b00d779e2836d5071d5092d2f27394161d7ac676d01d7b2",
+          "bytes": 3402
         }
       ],
       "reason": "Actionable setup, strict-output, HTTP 503, and protocol failures with dispositions."
@@ -292,8 +292,8 @@
       "files": [
         {
           "path": "publication-summary.md",
-          "sha256": "6ac47beb2d9aec44fbbbde7851cf51e4e4fe938e1a422860fc8cd91f0300687b",
-          "bytes": 4619
+          "sha256": "7446c0b796aba79070a99a039a6ffd19d82560ce2a06e6fac03cf443452fe99f",
+          "bytes": 4660
         }
       ],
       "reason": "Derivative claim ledger and unposted draft copy; live publication readback remains pending."

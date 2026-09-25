@@ -9,7 +9,7 @@ and [native artifacts](README.md) control every claim.
 
 - **Model:** `kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3@ff891a1130adfcf46bf745e06f0fa3dcde2e8c82`; served as `qwen38-swift15-ninfer-dflash2-c4-262k`.
 - **Runtime:** NInfer `bace20dc70249eed6402b66d4852c6c3f9612905`; image `sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67`.
-- **Setup:** single RTX 5090 32 GB, Windows/WSL2, all-NVFP4 W4A4, K8V4, DFlash2 K7, vision, 16K default thinking budget, 262,144 context, C4 configured, 450 W cap. The [managed recipe](../../../configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml) uses 2 GiB Host KV because the card's 48 GiB Host KV exceeds the host's physical RAM.
+- **Setup:** single RTX 5090 32 GB, Windows/WSL2, all-NVFP4 W4A4, K8V4, DFlash2 K7, vision, 16K default thinking budget, 262,144 context, C4 configured, 450 W cap. The [managed recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-swift15-ninfer-dflash2-rtx5090-baked.toml) uses 2 GiB Host KV because the card's 48 GiB Host KV exceeds the host's physical RAM.
 - **Measurement path:** post-promotion direct capacity with warm server and unique request prefixes; routed native context, agentic, and client acceptance.
 - **Capacity:** 4K/C1 100/100 completions, 0.31 s mean visible TTFT, 328.21 aggregate visible output tok/s; 4K/C4 100/100, 0.43 s, 614.85 aggregate tok/s. Both are *descriptive* because exact 256-word adherence was zero.
 - **Capability:** routed exact-marker context 18/18 through 257,898 actual prompt tokens with 4,096 output reserve; agentic scout 17/18; frozen official SWE Verified 5/5; pinned image/OCR 12/12.

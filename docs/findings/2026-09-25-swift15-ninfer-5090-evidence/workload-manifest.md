@@ -12,7 +12,7 @@ preflight was a correctness gate.
 | Routed context | Six cases at each 32,768, 131,072, and 258,048 requested-token bucket | Three needle positions, two repeats each, 4,096 output reserve; independent exact-marker match and actual prompt tokens |
 | Routed agentic | 18 frozen `scout` cases | Native tool/protocol validator; default thinking; failure retained even if final prose is correct |
 | Routed SWE-bench Verified | Frozen IDs `django__django-11099`, `pytest-dev__pytest-10051`, `scikit-learn__scikit-learn-10297`, `psf__requests-1142`, `sympy__sympy-11618` | One mini-SWE-agent worker, default thinking, pinned assets and official SWE-bench grader; five completed and resolved IDs required |
-| Image/OCR | Twelve cases in [`tests/computer_use/vision_diagnostic/corpus.json`](../../../tests/computer_use/vision_diagnostic/corpus.json), SHA-256 `d58dce55d29cf687678a12112d1aa51d8af2e8e93190ea8a8a3d84ecbb08d76c` | Pinned repository fixture images and native computer-use scorer; no synthetic image generation |
+| Image/OCR | Twelve cases in [`tests/computer_use/vision_diagnostic/corpus.json`](https://github.com/fakoli/anvil-serving/blob/main/tests/computer_use/vision_diagnostic/corpus.json), SHA-256 `d58dce55d29cf687678a12112d1aa51d8af2e8e93190ea8a8a3d84ecbb08d76c` | Pinned repository fixture images and native computer-use scorer; no synthetic image generation |
 
 The SWE dataset is `princeton-nlp/SWE-bench_Verified`, split `test`, pinned
 dataset revision `c104f840cc67f8b6eec6f759ebc8b2693d585d4a`;
