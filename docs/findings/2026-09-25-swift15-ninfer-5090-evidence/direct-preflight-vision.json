@@ -1,0 +1,123 @@
+{
+  "base_url": "http://127.0.0.1:49127/v1",
+  "budget": {
+    "max_completion_tokens": 16640,
+    "reasoning_headroom_tokens": 16384,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "Inventory"
+  ],
+  "model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+  "multimodal_input": {
+    "bytes": 14994,
+    "mime": "image/png",
+    "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+  },
+  "observations": [
+    {
+      "content": "This image is a digital \"Inventory detail\" report, presented with a dark blue header banner at the top containing the title in white text. Below the header is a light gray panel holding a four-column table and a summary section.\n\n**Table contents (columns: Item | Units | Unit price | Total):**\n- Row 1: **Cable** \u2014 2 units \u2014 14.75 \u2014 29.50\n- Row 2: **Adapter** \u2014 1 unit \u2014 43.75 \u2014 43.75\n- Row 3: **Order** \u2014 4817 \u2014 **Status** \u2014 READY\n\n**Summary below the table:**\n- **Total due: 73.25**\n- **Ship by 2026-09-30**\n\n**Key takeaways:**\n- The order (number **4817**) contains two line items: 2 Cables and 1 Adapter.\n- The order **Status is READY**.\n- The line totals (29.50 + 43.75) reconcile with the **Total due of 73.25**.\n- The required ship-by date is **2026-09-30**.\n\nIn short, this is a clean, ready-to-ship inventory/order detail screen showing two products, their quantities and prices, a confirmed total of 73.25, a READY status, and a ship-by date of 2026-09-30.",
+      "content_chars": 967,
+      "content_excerpt": "This image is a digital \"Inventory detail\" report, presented with a dark blue header banner at the top containing the title in white text. Below the header is a light gray panel holding a four-column ",
+      "expected": [
+        "Inventory"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 748,
+      "reasoning_excerpt": "The user wants a description of the image, focusing on the key labels, values, and status. I need to carefully transcribe all the data from the table and the summary text below it.\n\nLet me parse the i",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 268,
+      "seconds": 2.511,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 598,
+        "completion_tokens_details": {
+          "reasoning_tokens": 268
+        },
+        "prompt_tokens": 294,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 892
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29.50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "content_chars": 146,
+      "content_excerpt": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29.50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "expected": [
+        "4817"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 462,
+      "reasoning_excerpt": "The user requires a transcription of the text from the image. I will extract the text exactly as it appears, preserving the structure of the table and the labels.\n\n1.  **Header**: \"Inventory detail\"\n2",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 182,
+      "seconds": 0.81,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 258,
+        "completion_tokens_details": {
+          "reasoning_tokens": 182
+        },
+        "prompt_tokens": 295,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 553
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "4817"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2.5s all expected text present finish='stop' visible=967 reasoning_chars=748 reasoning_tokens=268",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.8s all expected text present finish='stop' visible=146 reasoning_chars=462 reasoning_tokens=182",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

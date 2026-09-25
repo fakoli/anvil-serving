@@ -1,0 +1,20 @@
+Managed recipe startup attempt 2, 2026-09-25 UTC
+Model artifact revision: ff891a1130adfcf46bf745e06f0fa3dcde2e8c82
+Model artifact SHA-256: 16f313c043c06a19f7c27d74f8259ed9d86c8cb5beed631efbb96f392b373d96, verified by sha256sum before server exec
+NInfer source revision: bace20dc70249eed6402b66d4852c6c3f9612905
+Managed recipe load: success; HTTP /health returned {"status":"ok"}.
+Relevant server startup lines, sanitized:
+  loading weights | 18.0 GiB
+  weights ready | 18.0 GiB | 4.2s
+  pinning host state | 747.3 MiB
+  host state pinned | 747.3 MiB
+  pinning host KV | 2.00 GiB
+  host KV pinned | 2.00 GiB
+  CUDA graphs ready | 5.2s
+  engine ready | qwen3.8-27b-swift15 | total 18.1s | weights 18.0 GiB
+  capacity | KV 282,112 tokens, k8v4, auto | pages 4,408/16,384 | runtime 11.2 GiB | free 2.63 GiB
+  context cache | 4 active + 4 cached device states | host 4 states, 2.00 GiB KV
+  media | 16 preprocess workers | cache 1.00 GiB | live 2.00 GiB
+  listening | model qwen38-swift15-ninfer-dflash2-c4-262k
+The measured local device-KV pool is 26,624 tokens smaller than the publisher's claimed 308,736-token pool. Startup does not establish four simultaneous full-context requests.
+Subsequent server request logs prove the DFlash2 path ran: the 251,715-prompt-token retrieval accepted 70 of 161 draft tokens (43.5%); four concurrent tool requests each recorded nonzero DFlash2 accepted tokens. These short outputs are diagnostic and are not a sustained decode benchmark.

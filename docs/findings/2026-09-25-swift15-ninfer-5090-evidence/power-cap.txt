@@ -1,0 +1,6 @@
+RTX 5090 qualification host, 2026-09-25 UTC
+Observed initial GPU power cap: 460 W (device default maximum: 575 W).
+Applied requested community-post cap: 450 W.
+Independent nvidia-smi readback: 450.00 W.
+End-of-campaign readback and restoration or retained deployment state: pending.
+Anvil Serving has no managed GPU power-cap verb; this one-off host action is recorded as an operator-surface gap.

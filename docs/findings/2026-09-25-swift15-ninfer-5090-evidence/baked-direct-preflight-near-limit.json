@@ -1,0 +1,68 @@
+{
+  "base_url": "http://127.0.0.1:49127/v1",
+  "budget": {
+    "max_completion_tokens": 4352,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 333,
+      "reasoning_excerpt": "The user is asking me to identify a \"launch code\" from a very long repeated text. Embedded within the massive repetition of \"The engineers continued routine checks while the telemetry stayed nominal.\"",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 79,
+      "seconds": 81.839,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 94,
+        "completion_tokens_details": {
+          "reasoning_tokens": 79
+        },
+        "prompt_tokens": 251715,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 251809
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "81.8s ctx~305000 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=333 reasoning_tokens=79",
+      "name": "needle @ ~305000 ctx",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

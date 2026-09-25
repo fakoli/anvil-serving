@@ -1,0 +1,114 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-09-25-swift15-ninfer-5090",
+  "updated_at": "2026-09-25T11:51:17.230861Z",
+  "status": "active",
+  "current_stage": "publication",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.0.0",
+    "repository_revision": "e760e7b3c2438bc90a091d27c73fa1a39a9a78e8",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "completed",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "completed",
+      "evidence": [
+        "../2026-09-25-swift15-ninfer-5090-exact-recipe-feasibility.md"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "completed",
+      "evidence": [
+        "baked-build.txt",
+        "baked-direct-preflight.json",
+        "baked-direct-preflight-near-limit.json"
+      ],
+      "failures": [
+        "startup-attempt-1.txt"
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "completed",
+      "evidence": [
+        "capacity-4k-c1-visible-observe.json",
+        "capacity-4k-c4-visible-observe.json",
+        "capacity-128k-c4-visible-observe.json",
+        "context-routed-18.json"
+      ],
+      "failures": [
+        "capacity-4k-c1.json",
+        "capacity-128k-c4-visible-observe.json"
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "completed",
+      "evidence": [
+        "quality-chat-tool-session-intelligence.json",
+        "multimodal-computer-use-12.json",
+        "agentic-routed-18.json",
+        "swe-routed-5.json",
+        "swe-routed-evidence.json"
+      ],
+      "failures": [
+        "agentic-routed-18.json",
+        "friction-log.md"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "completed",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "active",
+      "evidence": [
+        "../2026-09-25-swift15-ninfer-5090-promotion.md"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "direct-preflight",
+    "baked-preflight",
+    "routed-acceptance",
+    "fleet-convergence",
+    "capacity-4k-c1",
+    "capacity-4k-c4",
+    "capacity-32k-c1",
+    "capacity-32k-c4",
+    "capacity-128k-c1",
+    "capacity-128k-c4-failed",
+    "capacity-near-limit-c1",
+    "quality-bounded",
+    "vision-12",
+    "context-routed-18",
+    "agentic-routed-17-of-18",
+    "swe-verified-frozen-5-of-5"
+  ],
+  "next_actions": [
+    "Finalize public artifact set and publication receipt",
+    "Verify Workbench cards after operator sign-in and Pages post after publication",
+    "Push and attach public and private operator PRs"
+  ],
+  "promotion_authorized": true
+}

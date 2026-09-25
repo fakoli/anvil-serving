@@ -36,7 +36,8 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
-| ThinkingCap Qwen3.8 27B AWQ | 128K/C1; vision 18/18, limited quality 30/30, context 60/60, strict capacity 100/100 | `current` after authorized secondary promotion; mixed near-limit vision and soak untested | 2026-09-24 | [ThinkingCap Qwen3.8](thinkingcap-qwen38-27b.md) |
+| Swift-1.5 Qwen3.8 27B all-NVFP4 / NInfer DFlash2 | 262K configured, routed context 18/18 through 257,898 actual tokens, image/OCR 12/12; 4K C1/C4 visible 100/100 | `current` secondary as of 2026-09-25; 128K/C4 only 5/10 due queue timeouts; throughput descriptive | 2026-09-25 | [Swift-1.5 Qwen3.8](swift15-qwen38-27b.md) |
+| ThinkingCap Qwen3.8 27B AWQ | 128K/C1; vision 18/18, limited quality 30/30, context 60/60, strict capacity 100/100 | former selected secondary; 128K/C1 qualification and rollback preserved; mixed near-limit vision and soak untested | 2026-09-24 | [ThinkingCap Qwen3.8](thinkingcap-qwen38-27b.md) |
 | FLUX.2 Klein 4B | 6/8 bounded visual reviews pass | workflow `available=true`, not promoted | 2026-08-28 | [FLUX.2 Klein](flux2-klein.md) |
 | Wan2.2 TI2V 5B | Functional/decode and Hermes acceptance | unavailable, `no-promotion` | 2026-09-15 | [Wan2.2](wan22.md) |
 | Qwen3.8 27B GGUF / NVFP4 | 50.9 ms warm TTFT target-only and 137.7 tok/s 64K speculative arm | challengers and incumbent retained; `no-promotion` | 2026-09-03 | [Qwen3.8 27B](qwen38-27b.md) |

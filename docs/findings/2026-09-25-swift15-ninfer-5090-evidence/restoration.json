@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-09-25-swift15-ninfer-5090",
+  "status": "verified_selected_state",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "RTX 5090 host had no running managed serve or GPU owner; GPU cap was 460 W",
+      "secondary route served the prior 128K/C1 selected profile; exact private router snapshot retained"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "pinned baked Swift-1.5 managed recipe healthy with 262144 context and C4 configured admission",
+      "secondary route selects the exact Swift-1.5 served name and private router fingerprint",
+      "managed fleet repeat changed=0, failed=0, unreachable=0",
+      "450 W GPU power readback; primary route remained ready"
+    ]
+  },
+  "differences": [
+    "user-authorized secondary selection changed from prior 128K/C1 profile to Swift-1.5 NInfer 262K/C4 configured profile",
+    "GPU power cap changed from 460 W to 450 W",
+    "model artifact, source build cache, baked image, and prior rollback assets retained"
+  ],
+  "post_run_checks": [
+    "direct and routed model identity and preflight passed",
+    "Mini OpenClaw/Hermes routed tool-result 2/2 passed",
+    "Windows Pi catalog repeat changed=[] and fresh tool-read passed",
+    "Linux/macOS fleet repeat changed=0 and failed=0 on every declared host",
+    "post-promotion routed context 18/18 passed through 257898 actual prompt tokens",
+    "managed serve remained healthy after failed 128K/C4 benchmark; no GPU OOM or container crash"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

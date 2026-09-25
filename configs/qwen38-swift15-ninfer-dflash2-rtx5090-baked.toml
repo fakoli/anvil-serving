@@ -1,0 +1,65 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "kaushikvira/Qwen3.8-27B-Swift15-NInfer-DFlash2-262K-Baked"
+status = "candidate"
+source = "2026-09-25 community post's RTX 5090 settings, with measured host-memory adaptation and immutable baked NInfer runtime"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3"
+revision = "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+vram_total_gb = 32
+vram_note = "Publisher reports 18.0 GiB resident weights and 308,736 shared device-KV tokens; this exact local profile remains unmeasured."
+
+[recipe.serve]
+engine = "ninfer"
+image = "anvil-ninfer@sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67"
+model_path = "/root/.cache/huggingface/hub/models--kaushikvira--Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/snapshots/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82/qwen3_8_27b_swift15_nvfp4full-dflash2.ninfer"
+quantization = "all-NVFP4 W4A4 target, BF16 DFlash2 companion, K8V4 KV"
+context_tokens = 262144
+port = 39127
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-swift15-ninfer-dflash2-c4-262k"
+flags = [
+  "--host 0.0.0.0",
+  "--port 39127",
+  "--model-id qwen38-swift15-ninfer-dflash2-c4-262k",
+  "--max-context 262144",
+  "--kv-capacity auto",
+  "--kv-dtype k8v4",
+  "--max-concurrency 4",
+  "--default-max-tokens 32768",
+  "--prefill-chunk 4096",
+  "--temperature 0.9",
+  "--min-p 0.05",
+  "--spec dflash2",
+  "--draft-tokens 7",
+  "--lm-head-draft",
+  "--host-kv-mib 2048",
+  "--host-state-slots 4",
+  "--vision",
+  "--default-thinking-budget 16384",
+  "--preserve-thinking",
+]
+note = "Reproduces every setting explicitly stated in the community post with 2 GiB Host KV and four Host State slots because the linked card's 48 GiB/16-slot sample cannot fit this host's 30.91 GiB physical RAM. The runtime is the exact locally built image from configs/runtime/ninfer-bace20dc-swift15/; startup verifies binary and artifact hashes. Effective shared K8V4 device pool measured 282,112 tokens on the qualification host."
+
+[recipe.fit]
+suited = ["single-rtx5090", "long-context", "vision", "agentic-candidate"]
+not_suited = ["automatic-promotion", "publisher-profile-performance-comparison"]
+rationale = "Deployment candidate after exact baked-image, startup, and direct-correctness gates; routed promotion and full benchmarks remain separate."
+
+[recipe.sources]
+official = ["https://github.com/Neroued/ninfer/tree/bace20dc70249eed6402b66d4852c6c3f9612905"]
+community = [
+  "https://www.reddit.com/r/LocalLLM/comments/1wplkrm/swift15_qwen3827b_on_a_single_rtx_5090_allnvfp4/",
+  "https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/tree/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+]

@@ -405,8 +405,9 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
                 if not isinstance(chunk["id"], str) or not 1 <= len(chunk["id"]) <= 512:
                     raise ValueError("SSE id must be a nonempty string of at most 512 characters")
                 observer("stream_id", {"request_id": chunk["id"]})
-            if observer is not None and "error" in chunk:
-                observer("server_error", {"error": json.dumps(chunk["error"])[:1024]})
+            if isinstance(chunk, dict) and "error" in chunk:
+                if observer is not None:
+                    observer("server_error", {"error": json.dumps(chunk["error"])[:1024]})
                 raise ValueError("upstream sent an SSE error")
             if observer is not None and chunk.get("usage") is not None and not isinstance(chunk["usage"], dict):
                 raise ValueError("malformed SSE usage")

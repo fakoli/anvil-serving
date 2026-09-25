@@ -1,0 +1,305 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-25-swift15-ninfer-5090",
+    "capability": "secondary text/tools/vision and long context",
+    "repository_revision": "e760e7b3c2438bc90a091d27c73fa1a39a9a78e8",
+    "dirty_state": "worktree changes in this pull request",
+    "started_at": "2026-09-25T09:36:00Z",
+    "completed_at": "2026-09-25T11:45:28Z",
+    "evidence_labels": [
+      "functional",
+      "bounded-quality",
+      "descriptive-capacity",
+      "failed-long-context-concurrency"
+    ],
+    "decision_labels": [
+      "current"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "66c7985dabe7726fa84206860a1eb4fe292058b05897cd08bd447f24b9c94acd",
+          "bytes": 7677
+        }
+      ],
+      "reason": "Sanitized bundle index and claim boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "711623577fc3931895b266284537dc96f3df1fb7dda5abde6288308bcf085c75",
+          "bytes": 2230
+        }
+      ],
+      "reason": "Dated publisher, alternate artifact, runtime and local source provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.md",
+          "sha256": "194fbae5a1399049ea1bbf4c6304fa54714ae5302e808424432b7fa27553b561",
+          "bytes": 2524
+        }
+      ],
+      "reason": "Frozen suites, request counts, fixture hash, and SWE issue selection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "9bb695697268524cf3451a49911b53a9959a84540359487ec4a153f19ec11166",
+          "bytes": 4073
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "0c7defba62b4bf9fa1fcae977ff335696c39d40598b79a1a89e465f50c70aea0",
+          "bytes": 2857
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "e170c001de96f6988b00d779e2836d5071d5092d2f27394161d7ac676d01d7b2",
+          "bytes": 3402
+        }
+      ],
+      "reason": "Promotion-first controls, amended pre-model SWE selection, and request coverage."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baked-build.txt",
+          "sha256": "4f542af91f6df8b58d3a5c72efd00c839739e3481a4bbb5ff0573ab39d35d5ac",
+          "bytes": 1333
+        },
+        {
+          "path": "power-cap.txt",
+          "sha256": "e1042b8c2066cc55586d062292b026b92ff1f5d367a6b590d399887bdb4b67da",
+          "bytes": 397
+        }
+      ],
+      "reason": "Pinned baked image, binary/model hashes, loaded memory/KV and 450 W readback; exact recipe is linked outside this bundle."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "agentic-routed-18.json",
+          "sha256": "ef5a9b2ca159f2affa33e77ee2afb695093e78e31aff939af5e5ab9457b7fdd4",
+          "bytes": 39933
+        },
+        {
+          "path": "agentic-routed-evidence.json",
+          "sha256": "1578e587090bee1530e5047ac212869935df0b07f7558d9c816984e8eb4b54a7",
+          "bytes": 2845
+        },
+        {
+          "path": "baked-direct-preflight-near-limit.json",
+          "sha256": "d3d91e7a258026bd03828d2c261c90ea41bfc89581157117405a19a2f83ae654",
+          "bytes": 1841
+        },
+        {
+          "path": "baked-direct-preflight.json",
+          "sha256": "6dde50b45947dc069de7af67f99d29796d371884005378ba556b076a646bdf9f",
+          "bytes": 14655
+        },
+        {
+          "path": "baked-reasoning-effort-xhigh.json",
+          "sha256": "e87cf2c9d525c8fd75f6c362d279e595e4b7766955b80b19915e2252f00ee65a",
+          "bytes": 1787
+        },
+        {
+          "path": "capacity-128k-c1-visible-observe.json",
+          "sha256": "6c46e03f876b26e1907320fb94f76fb448d0a468abebd39e2bb7b65148caadf9",
+          "bytes": 23987
+        },
+        {
+          "path": "capacity-128k-c4-visible-observe.json",
+          "sha256": "e7fe4712ac9e90f5644cd98966945c45b00f9a7a96bcc274214f353e43a27c4d",
+          "bytes": 21265
+        },
+        {
+          "path": "capacity-32k-c1-visible-observe.json",
+          "sha256": "ca908482d6e629c35059a89cf9a8a81f0266690cfe37d73c748d959541616ff1",
+          "bytes": 48653
+        },
+        {
+          "path": "capacity-32k-c4-visible-observe.json",
+          "sha256": "4531ab2046ae991ecf3f39637e6ffdf3396c7a0f6f7bd9516b367ddd70a35a5c",
+          "bytes": 48680
+        },
+        {
+          "path": "capacity-4k-c1-no-think-probe.json",
+          "sha256": "9578e673c286f7edcd397c06c36b6b996545e2cc7859a680ac25af9a26c15f6f",
+          "bytes": 12638
+        },
+        {
+          "path": "capacity-4k-c1-visible-observe.json",
+          "sha256": "68cb9bc5d33e1b9d6e534cbcb6b9ca682b43099e47f7d0fedc3fab71be2a534b",
+          "bytes": 134422
+        },
+        {
+          "path": "capacity-4k-c1.json",
+          "sha256": "627b518f2d1fec2621acb3e1c20da75d4a46d449782b648a237818a285681080",
+          "bytes": 92291
+        },
+        {
+          "path": "capacity-4k-c4-visible-observe.json",
+          "sha256": "17e22b70b3075f88d6c5299d7ccb7c5139449f00b6e8793b96400b085b57556e",
+          "bytes": 134450
+        },
+        {
+          "path": "capacity-near-limit-c1-visible-observe.json",
+          "sha256": "4c2f8f48cac9018e09f2a9f2bae0be444781aca8fdb6490c6a8df62fccff6e06",
+          "bytes": 15329
+        },
+        {
+          "path": "context-routed-18.json",
+          "sha256": "f8390fd31ad8863cf5b2f6a921a190b48bd00e37d881d84c2ba84d2012d00e0a",
+          "bytes": 24032
+        },
+        {
+          "path": "direct-preflight-250k.json",
+          "sha256": "dde05e3832a5df4fd3dd398fc87bf525c7e158f525110b2b246d3e14e0cfd1a3",
+          "bytes": 1839
+        },
+        {
+          "path": "direct-preflight-c4-tools.json",
+          "sha256": "0ef52e6e0476bfcf7285b422469f02b570b8084786416aa50fd332c904a56cdf",
+          "bytes": 4305
+        },
+        {
+          "path": "direct-preflight-near-limit.json",
+          "sha256": "f19ed08108a4db95bb965febb2b35b8bc8c202167d05f5bfdb8c819c69519442",
+          "bytes": 1841
+        },
+        {
+          "path": "direct-preflight-smoke.json",
+          "sha256": "fe65dac85f4bee2539b72e3e032be18d870197f83961bc21e5a5624fe388a8ca",
+          "bytes": 2894
+        },
+        {
+          "path": "direct-preflight-tools.json",
+          "sha256": "a011f909e4a25375a56c83b3a6cb69659eab5a19e6b5494d6506bb246bee0ca8",
+          "bytes": 5748
+        },
+        {
+          "path": "direct-preflight-vision.json",
+          "sha256": "5292d2ec249ba1ee16424293a68e0fc5d6c553512cfa109dbd9031cd14ce54e6",
+          "bytes": 4988
+        },
+        {
+          "path": "multimodal-computer-use-12.json",
+          "sha256": "4e0de3d6d34449f721a6574b43a80d785e964439c39dadcaf7175c6e015ca7b4",
+          "bytes": 27591
+        },
+        {
+          "path": "quality-chat-tool-session-intelligence.json",
+          "sha256": "437b23c2cf5120415a5e4d53417b712fbb9778cc2bd7dc034b180f55b6580bb6",
+          "bytes": 31961
+        },
+        {
+          "path": "startup-attempt-1.txt",
+          "sha256": "49a283f6c17594d311cc59dff8de0073e456795b8295528a989387df1c59e659",
+          "bytes": 593
+        },
+        {
+          "path": "startup-attempt-2.txt",
+          "sha256": "8b310883a7549fa88d2b411557607cb140a6a2bccc5e3db95dc9ec5ac3abbffb",
+          "bytes": 1472
+        },
+        {
+          "path": "swe-routed-5.json",
+          "sha256": "52dabd1f96ef7d94186883f89d6d90630a2b5dd9ea4b68dab9a1a7d26cd4468a",
+          "bytes": 28989
+        },
+        {
+          "path": "swe-routed-evidence.json",
+          "sha256": "625a3a036cd5456f00b125c35b147a5f2e7fa77ee300681793d704a8087e207c",
+          "bytes": 4723
+        }
+      ],
+      "reason": "Native functional, capacity, context, agentic, SWE, image/OCR, and failed startup/strict/long-C4 attempts."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "d6853defa27456e9448ee949632d408431890d6b0a11991f350c476799d56c4c",
+          "bytes": 5615
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "e170c001de96f6988b00d779e2836d5071d5092d2f27394161d7ac676d01d7b2",
+          "bytes": 3402
+        }
+      ],
+      "reason": "Actionable setup, strict-output, HTTP 503, and protocol failures with dispositions."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "d812f904d960d3835fe417b5cab4dd36c3847d8f62e5d23178439e7060d559a7",
+          "bytes": 1659
+        }
+      ],
+      "reason": "Starting state and independently verified selected ending state."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "8a7f212ec1666a7e13ec404712e44d915f3bc097378dbf779f5f7e67d78b6df3",
+          "bytes": 26094
+        }
+      ],
+      "reason": "Machine-readable bounded result and promotion boundary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "7446c0b796aba79070a99a039a6ffd19d82560ce2a06e6fac03cf443452fe99f",
+          "bytes": 4660
+        }
+      ],
+      "reason": "Derivative claim ledger and unposted draft copy; live publication readback remains pending."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

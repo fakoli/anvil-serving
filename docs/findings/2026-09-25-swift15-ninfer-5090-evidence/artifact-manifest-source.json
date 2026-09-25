@@ -1,0 +1,145 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-09-25-swift15-ninfer-5090",
+    "capability": "secondary text/tools/vision and long context",
+    "repository_revision": "e760e7b3c2438bc90a091d27c73fa1a39a9a78e8",
+    "dirty_state": "worktree changes in this pull request",
+    "started_at": "2026-09-25T09:36:00Z",
+    "completed_at": "2026-09-25T11:45:28Z",
+    "evidence_labels": [
+      "functional",
+      "bounded-quality",
+      "descriptive-capacity",
+      "failed-long-context-concurrency"
+    ],
+    "decision_labels": [
+      "current"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "preflight/v2"
+  ],
+  "output": "artifact-manifest.json",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Sanitized bundle index and claim boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Dated publisher, alternate artifact, runtime and local source provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.md"
+      ],
+      "reason": "Frozen suites, request counts, fixture hash, and SWE issue selection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md",
+        "campaign-state.json",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Promotion-first controls, amended pre-model SWE selection, and request coverage."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "baked-build.txt",
+        "power-cap.txt"
+      ],
+      "reason": "Pinned baked image, binary/model hashes, loaded memory/KV and 450 W readback; exact recipe is linked outside this bundle."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "agentic-routed-18.json",
+        "agentic-routed-evidence.json",
+        "baked-direct-preflight-near-limit.json",
+        "baked-direct-preflight.json",
+        "baked-reasoning-effort-xhigh.json",
+        "capacity-128k-c1-visible-observe.json",
+        "capacity-128k-c4-visible-observe.json",
+        "capacity-32k-c1-visible-observe.json",
+        "capacity-32k-c4-visible-observe.json",
+        "capacity-4k-c1-no-think-probe.json",
+        "capacity-4k-c1-visible-observe.json",
+        "capacity-4k-c1.json",
+        "capacity-4k-c4-visible-observe.json",
+        "capacity-near-limit-c1-visible-observe.json",
+        "context-routed-18.json",
+        "direct-preflight-250k.json",
+        "direct-preflight-c4-tools.json",
+        "direct-preflight-near-limit.json",
+        "direct-preflight-smoke.json",
+        "direct-preflight-tools.json",
+        "direct-preflight-vision.json",
+        "multimodal-computer-use-12.json",
+        "quality-chat-tool-session-intelligence.json",
+        "startup-attempt-1.txt",
+        "startup-attempt-2.txt",
+        "swe-routed-5.json",
+        "swe-routed-evidence.json"
+      ],
+      "reason": "Native functional, capacity, context, agentic, SWE, image/OCR, and failed startup/strict/long-C4 attempts."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Actionable setup, strict-output, HTTP 503, and protocol failures with dispositions."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Starting state and independently verified selected ending state."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Machine-readable bounded result and promotion boundary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Derivative claim ledger and unposted draft copy; live publication readback remains pending."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB"
+}

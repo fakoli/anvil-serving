@@ -1,0 +1,688 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-09-25T11:14:29.229618Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": null,
+      "output_headroom_tokens": 4096,
+      "profile_buckets": [
+        8192,
+        32768,
+        131072,
+        262144
+      ],
+      "selected_buckets": [
+        32768,
+        131072,
+        258048
+      ]
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "id": "rtx5090-32gb"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.context/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "id": "qwen38-swift15-ninfer-dflash2-c4-262k",
+      "revision": "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"
+    },
+    "runtime": {
+      "engine": "ninfer",
+      "image": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+      "revision": "bace20dc70249eed6402b66d4852c6c3f9612905"
+    },
+    "served_model": {
+      "configured_context": null,
+      "id": "llm.secondary"
+    },
+    "topology": {
+      "kind": "isolated-benchmark-client",
+      "model_host_id": "rtx5090-host",
+      "worker_id": "isolated-client"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "swift15-ninfer-5090-20260925",
+    "profile": "scout",
+    "run_id": "swift15-ninfer-context-20260925-001",
+    "spec_sha256": "aeb5daf1eedc65d6d786403c415b21991027f429ad5ce14c4d6d6acc53900b42",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 567,
+          "path": "evidence/0-assets.json",
+          "sha256": "f09b34bef92b8d8d634676b54c278837f44a4e20e8846a1b99437983ffc1a492"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2111,
+          "path": "evidence/0-preflight.json",
+          "sha256": "07ceb25fa242aca747329708a813f5714fc398c4971736b8aafff1a0b7465e65"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 37834,
+          "path": "evidence/0-context.json",
+          "sha256": "ec39ce28bd5c117b864de47e488ce9662b931734465a93b3ba3bc3dab9757af6"
+        }
+      ],
+      "name": "context",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "advertised_context": 262144,
+    "attempted_buckets": [
+      32768,
+      131072,
+      258048
+    ],
+    "buckets": [
+      {
+        "completed_count": 6,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 3494.360805644343,
+          "observations": [
+            3506.851749960333,
+            3523.2567919883877,
+            3526.143957977183,
+            3471.6177090303972,
+            3452.903041965328,
+            3485.3915829444304
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 6,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 32768,
+        "sample_count": 6,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-32768-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3506.851749960333,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 3.992184728127831,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-32768-0.100-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3523.2567919883877,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 3.9735962566892407,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-32768-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3526.143957977183,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 3.970342721920882,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-32768-0.500-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3471.6177090303972,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 4.032702092624743,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-32768-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3452.903041965328,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 4.054559259223063,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-32768-0.900-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 3485.3915829444304,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 32718,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 32768,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 4.016765309386819,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 4.00669172799543,
+          "observations": [
+            3.992184728127831,
+            3.9735962566892407,
+            3.970342721920882,
+            4.032702092624743,
+            4.054559259223063,
+            4.016765309386819
+          ]
+        }
+      },
+      {
+        "completed_count": 6,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 26314.87241664824,
+          "observations": [
+            26159.703166922554,
+            26243.175790994428,
+            26301.161249983124,
+            26385.273708961904,
+            26375.228374963626,
+            26424.69220806379
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 6,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 131072,
+        "sample_count": 6,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-131072-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26159.703166922554,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.5351742682501917,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-131072-0.100-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26243.175790994428,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.533472019983352,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-131072-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26301.161249983124,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.5322958886467031,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-131072-0.500-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26385.273708961904,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.530599005885803,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-131072-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26375.228374963626,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.530801091121142,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-131072-0.900-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 26424.69220806379,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 130918,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 131072,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.529807495571424,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 0.532024961576436,
+          "observations": [
+            0.5351742682501917,
+            0.533472019983352,
+            0.5322958886467031,
+            0.530599005885803,
+            0.530801091121142,
+            0.529807495571424
+          ]
+        }
+      },
+      {
+        "completed_count": 6,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 85457.3132431251,
+          "observations": [
+            85416.51870799251,
+            85358.78174996469,
+            85499.90354198962,
+            85527.45366690215,
+            85495.66620890982,
+            85445.5555829918
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 6,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 258048,
+        "sample_count": 6,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-258048-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85416.51870799251,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.16390272293654137,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-258048-0.100-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85358.78174996469,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.1640135872722409,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-258048-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85499.90354198962,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.16374287478727387,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-258048-0.500-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85527.45366690215,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.163690129891214,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-258048-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85495.66620890982,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.16375099020564166,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "c4ba00fb8b508f5c86d7c837e13532c12c7d595863b20ce02cd8bc4a954523f9",
+            "case_id": "native-needle-258048-0.900-r1",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 85445.5555829918,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 257898,
+            "raw_reasoning": "",
+            "raw_reasoning_field": null,
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 258048,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 0.16384702404330487,
+            "token_measurement": "usage",
+            "visible_answer": "K233922512839",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 0.16382455485603611,
+          "observations": [
+            0.16390272293654137,
+            0.1640135872722409,
+            0.16374287478727387,
+            0.163690129891214,
+            0.16375099020564166,
+            0.16384702404330487
+          ]
+        }
+      }
+    ],
+    "effective_context": 258048,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 32768,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  }
+}

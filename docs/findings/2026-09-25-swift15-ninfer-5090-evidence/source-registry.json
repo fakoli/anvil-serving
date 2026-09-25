@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-25-swift15-ninfer-5090",
+  "observed_at": "2026-09-25T09:39:31Z",
+  "sources": [
+    {
+      "id": "community-post",
+      "url": "https://www.reddit.com/r/LocalLLM/comments/1wplkrm/swift15_qwen3827b_on_a_single_rtx_5090_allnvfp4/",
+      "published_or_observed": "2026-09-25",
+      "observed_at": "2026-09-25T09:39:31Z",
+      "age_class": "current",
+      "evidence_type": "community-external-prior",
+      "hardware_runtime_relevance": "RTX 5090 and NInfer DFlash2 post profile",
+      "decision_impact": "Starting configuration and external performance prior only"
+    },
+    {
+      "id": "model-card",
+      "url": "https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/tree/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+      "published_or_observed": "2026-09-25",
+      "observed_at": "2026-09-25T09:39:31Z",
+      "age_class": "current",
+      "evidence_type": "publisher-artifact-and-recipe",
+      "hardware_runtime_relevance": "Pinned model artifact and NInfer command",
+      "decision_impact": "Artifact identity, source flags, and infeasible 48 GiB Host KV sample"
+    },
+    {
+      "id": "ninfer-source",
+      "url": "https://github.com/Neroued/ninfer/tree/bace20dc70249eed6402b66d4852c6c3f9612905",
+      "published_or_observed": "2026-09-25",
+      "observed_at": "2026-09-25T09:39:31Z",
+      "age_class": "current",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Pinned serving engine source and host-KV allocator",
+      "decision_impact": "Runtime source identity and physical host-memory feasibility"
+    },
+    {
+      "id": "alternate-uncensored-mtp",
+      "url": "https://huggingface.co/ajgazin/Swift-1.5-Qwen3.8-27B-Uncensored-MTP",
+      "published_or_observed": "2026-09-25",
+      "observed_at": "2026-09-25T09:39:31Z",
+      "age_class": "current",
+      "evidence_type": "user-provided-alternate-artifact",
+      "hardware_runtime_relevance": "Related Swift-1.5 checkpoint, not the linked NInfer all-NVFP4 DFlash2 artifact",
+      "decision_impact": "Kept as an alternate lead only; not served or benchmarked in this exact-post campaign"
+    }
+  ]
+}

@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import re
 import subprocess
-import sys
 import time
 from typing import Any, Callable, Mapping, Sequence
 
@@ -164,18 +163,30 @@ def _python_environment(manifest: Mapping[str, Any], *, cache_root: str) -> tupl
     expected_executable = "Scripts/python.exe" if os.name == "nt" else "bin/python"
     relative_executable = value["executable"].replace("\\", "/")
     executable = os.path.abspath(os.path.join(environment_root, relative_executable))
-    same_interpreter = True
+    isolated_venv = True
     if os.name != "nt":
         try:
-            same_interpreter = os.path.samefile(executable, sys.executable)
+            settings = {
+                key.strip().lower(): item.strip()
+                for line in (Path(environment_root) / "pyvenv.cfg").read_text(
+                    encoding="utf-8"
+                ).splitlines()
+                if "=" in line
+                for key, item in [line.split("=", 1)]
+            }
+            isolated_venv = (
+                settings.get("include-system-site-packages", "").lower() == "false"
+                and bool(settings.get("executable"))
+                and os.path.samefile(executable, settings["executable"])
+            )
         except OSError:
-            same_interpreter = False
+            isolated_venv = False
     if (
         not path_is_within(environment_root, cache)
         or relative_executable != expected_executable
         or os.path.commonpath((environment_root, executable)) != environment_root
         or not os.path.isfile(executable)
-        or not same_interpreter
+        or not isolated_venv
     ):
         raise BenchmarkJobError(
             "unsafe_cache_path", "SWE Python executable escaped the harness cache"
