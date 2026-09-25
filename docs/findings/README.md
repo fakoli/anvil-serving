@@ -1,5 +1,7 @@
 # Findings index
 
+- [2026-09-25 Swift-1.5 RTX 5090 secondary promotion and post-promotion benchmark](2026-09-25-swift15-ninfer-5090-promotion.md) — pinned NInfer DFlash2, 262K route, client acceptance, and 128K/C4 queue-timeout boundary.
+
 **2026-09-23 DCP1 qualification:** [GLM DCP1 r11 evidence](2026-09-23-glm-dcp1-qualification.md)
 records selected and deployed r11 after direct/routed preflight and native-client
 acceptance. Independent reviews, dashboard imports, successful Pages publication,
@@ -89,6 +91,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-09-25 | [Swift-1.5 NInfer post-profile trial](2026-09-25-swift15-ninfer-5090-exact-recipe-feasibility.md) | Publisher card's 48 GiB pinned Host KV sample exceeds this RTX 5090 host's 30.91 GiB physical RAM. The 2 GiB Host KV adaptation is healthy; direct smoke, tools, vision/OCR, C4 tool calls, and 251,715-actual-token retrieval passed. Full benchmark and promotion pending. |
 | 2026-09-24 | [ThinkingCap 128K secondary promotion](2026-09-24-thinkingcap-secondary-promotion.md) | Human-authorized router promotion, 131072 total / 10240 output / C1 / two images; initial routed gates pass; intermittent multimodal relay and Pi effort compatibility incidents retained. Fleet and UI acceptance tracked separately. |
 | 2026-09-24 | [ThinkingCap Qwen3.8 27B AWQ 128K context](2026-09-24-thinkingcap-context-5090.md) | Current user-selected RTX 5090 challenger: configured 131072-total-token MTP3/BF16-KV/default-FP32-SSM C1 with generic UVA3. Completed 27 functional, 9 thinking, 18/18 vision, 30/30 limited diagnostic, and strict 100/100 short-output capacity; 32K and near-126K text scout passed 2/2. Full 60-case text context passed with all `stop` results at 32658–32689 and 125838–125869 actual inputs, retaining a 4096-token reserve; synthetic agentic passed 2/2 across six turns and four tool calls. No promotion. |
 | 2026-09-24 | [ThinkingCap Qwen3.8 27B AWQ RTX 5090: earlier 32K qualification](2026-09-23-thinkingcap-5090.md) | Qualified 32K/C1 Triton + MTP3 BF16 KV alternative: 27 functional, 8 thinking, 18/18 image, 30/30 limited diagnostic, 100/100 strict capacity, context 60/60, and agentic 2/2. Retained faster rollback; no promotion, C2, SWE, soak, video, or universal-context claim; FP8 rejected at 27/30. |

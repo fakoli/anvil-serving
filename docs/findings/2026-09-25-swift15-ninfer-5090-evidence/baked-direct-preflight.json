@@ -1,0 +1,414 @@
+{
+  "base_url": "http://127.0.0.1:49127/v1",
+  "budget": {
+    "max_completion_tokens": 16640,
+    "reasoning_headroom_tokens": 16384,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses",
+    "image",
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "Inventory"
+  ],
+  "model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+  "multimodal_input": {
+    "bytes": 14994,
+    "mime": "image/png",
+    "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+  },
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 183,
+      "reasoning_excerpt": "We need answer user: \"Write a Python one-liner that returns the sum of a list `xs`.\" Simple. Need final concise. Could be `sum(xs)`. Maybe one-liner: `sum(xs)`. Ensure Python. final.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 53,
+      "seconds": 0.44,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 63,
+        "completion_tokens_details": {
+          "reasoning_tokens": 53
+        },
+        "prompt_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 131
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 140,
+      "reasoning_excerpt": "We need answer user's request: Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. Need final only JSON. Ensure no extra.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 36,
+      "seconds": 0.192,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 47,
+        "completion_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "prompt_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 117
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 102,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland. I should use the get_weather tool with city \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 25,
+      "request_index": 2,
+      "seconds": 1.467,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 53,
+        "completion_tokens_details": {
+          "reasoning_tokens": 25
+        },
+        "prompt_tokens": 5522,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 5575
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 143,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland and explicitly says to use the tool. I should call the get_weather function with city \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 32,
+      "request_index": 1,
+      "seconds": 1.635,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 60,
+        "completion_tokens_details": {
+          "reasoning_tokens": 32
+        },
+        "prompt_tokens": 5522,
+        "prompt_tokens_details": {
+          "cached_tokens": 5515
+        },
+        "total_tokens": 5582
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 102,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland. I should use the get_weather tool with city \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 25,
+      "request_index": 3,
+      "seconds": 1.634,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 53,
+        "completion_tokens_details": {
+          "reasoning_tokens": 25
+        },
+        "prompt_tokens": 5522,
+        "prompt_tokens_details": {
+          "cached_tokens": 5515
+        },
+        "total_tokens": 5575
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 102,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland. I should use the get_weather tool with city \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 25,
+      "request_index": 0,
+      "seconds": 1.702,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 53,
+        "completion_tokens_details": {
+          "reasoning_tokens": 25
+        },
+        "prompt_tokens": 5522,
+        "prompt_tokens_details": {
+          "cached_tokens": 5515
+        },
+        "total_tokens": 5575
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 15,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 170,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland and explicitly requesting to use the tool. I have a get_weather function available. Let me call it with the city \"Oakland\".\n",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.351,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 66,
+        "completion_tokens_details": {
+          "reasoning_tokens": 38
+        },
+        "prompt_tokens": 322,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 388
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 170,
+      "reasoning_excerpt": "The user is asking for the weather in Oakland and explicitly requesting to use the tool. I have a get_weather function available. Let me call it with the city \"Oakland\".\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 38,
+      "seconds": 0.413,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 66,
+        "completion_tokens_details": {
+          "reasoning_tokens": 38
+        },
+        "prompt_tokens": 322,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 388
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 163,
+      "reasoning_excerpt": "We need to respond to user: \"Reply exactly OAKLAND 72F using the tool result.\" They want exact string likely \"OAKLAND 72F\". Need final only that. Ensure no extra.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 47,
+      "seconds": 0.279,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 56,
+        "completion_tokens_details": {
+          "reasoning_tokens": 47
+        },
+        "prompt_tokens": 143,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 199
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 101,
+      "reasoning_excerpt": "We need to respond to user: \"Reply with exactly READY\". Must output exactly READY. Final only READY.\n",
+      "reasoning_field": "reasoning_text",
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 0.155,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 56,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 27,
+        "output_tokens_details": {
+          "reasoning_tokens": 24
+        },
+        "total_tokens": 83
+      },
+      "validation_detail": "completed exact READY"
+    },
+    {
+      "content": "This image is a digital \"Inventory detail\" report, presented with a dark blue header banner at the top containing the title in white text. Below the header is a light gray panel holding a four-column table and a summary section.\n\n**Table contents (columns: Item | Units | Unit price | Total):**\n- Row 1: **Cable** \u2014 2 units \u2014 14.75 \u2014 29.50\n- Row 2: **Adapter** \u2014 1 unit \u2014 43.75 \u2014 43.75\n- Row 3: **Order** \u2014 4817 \u2014 **Status** \u2014 READY\n\n**Summary below the table:**\n- **Total due: 73.25**\n- **Ship by 2026-09-30**\n\n**Key takeaways:**\n- The order (number **4817**) contains two line items: 2 Cables and 1 Adapter.\n- The order **Status is READY**.\n- The line totals (29.50 + 43.75) reconcile with the **Total due of 73.25**.\n- The required ship-by date is **2026-09-30**.\n\nIn short, this is a clean, ready-to-ship inventory/order detail screen showing two products, their quantities and prices, a confirmed total of 73.25, a READY status, and a ship-by date of 2026-09-30.",
+      "content_chars": 967,
+      "content_excerpt": "This image is a digital \"Inventory detail\" report, presented with a dark blue header banner at the top containing the title in white text. Below the header is a light gray panel holding a four-column ",
+      "expected": [
+        "Inventory"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 748,
+      "reasoning_excerpt": "The user wants a description of the image, focusing on the key labels, values, and status. I need to carefully transcribe all the data from the table and the summary text below it.\n\nLet me parse the i",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 268,
+      "seconds": 2.317,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 598,
+        "completion_tokens_details": {
+          "reasoning_tokens": 268
+        },
+        "prompt_tokens": 294,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 892
+      },
+      "validation_detail": "all expected text present"
+    },
+    {
+      "content": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29.50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "content_chars": 146,
+      "content_excerpt": "Inventory detail\nItem Units Unit price Total\nCable 2 14.75 29.50\nAdapter 1 43.75 43.75\nOrder 4817 Status READY\nTotal due: 73.25\nShip by 2026-09-30",
+      "expected": [
+        "4817"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 14994,
+        "mime": "image/png",
+        "sha256": "7a065d780311911f33cb2ccacaa21a1491cf81b6fcaf869d4ee0c5a5cb3e0a46"
+      },
+      "passed": true,
+      "reasoning_chars": 462,
+      "reasoning_excerpt": "The user requires a transcription of the text from the image. I will extract the text exactly as it appears, preserving the structure of the table and the labels.\n\n1.  **Header**: \"Inventory detail\"\n2",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 182,
+      "seconds": 0.81,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 258,
+        "completion_tokens_details": {
+          "reasoning_tokens": 182
+        },
+        "prompt_tokens": 295,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 553
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "4817"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.4s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=183 reasoning_tokens=53",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=140 reasoning_tokens=36",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "4/4 clean (sample: 1.5s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=102 reasoning_tokens=25)",
+      "name": "shared-prefix tool batch x4",
+      "passed": true
+    },
+    {
+      "detail": "0.4s done=True events=15 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "0.7s tool result retained finish='stop' visible=11 reasoning_chars=163 reasoning_tokens=47",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "0.2s status='completed' output='READY' reasoning_chars=101",
+      "name": "Responses API subset",
+      "passed": true
+    },
+    {
+      "detail": "2.3s all expected text present finish='stop' visible=967 reasoning_chars=748 reasoning_tokens=268",
+      "name": "general image understanding",
+      "passed": true
+    },
+    {
+      "detail": "0.8s all expected text present finish='stop' visible=146 reasoning_chars=462 reasoning_tokens=182",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

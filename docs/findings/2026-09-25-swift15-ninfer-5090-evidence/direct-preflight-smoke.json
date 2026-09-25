@@ -1,0 +1,99 @@
+{
+  "base_url": "http://127.0.0.1:49127/v1",
+  "budget": {
+    "max_completion_tokens": 16640,
+    "reasoning_headroom_tokens": 16384,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```",
+      "content_chars": 21,
+      "content_excerpt": "```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 183,
+      "reasoning_excerpt": "We need answer user: \"Write a Python one-liner that returns the sum of a list `xs`.\" Simple. Need final concise. Could be `sum(xs)`. Maybe one-liner: `sum(xs)`. Ensure Python. final.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 53,
+      "seconds": 0.463,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 63,
+        "completion_tokens_details": {
+          "reasoning_tokens": 53
+        },
+        "prompt_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 131
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 140,
+      "reasoning_excerpt": "We need answer user's request: Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. Need final only JSON. Ensure no extra.\n",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 36,
+      "seconds": 0.192,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 47,
+        "completion_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "prompt_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 117
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.5s got='```python\\nsum(xs)\\n```' finish='stop' visible=21 reasoning_chars=183 reasoning_tokens=53",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=140 reasoning_tokens=36",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

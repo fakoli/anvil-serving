@@ -4,6 +4,13 @@ Every retained model configuration measured on this hardware, in one place:
 what it ran on, how fast it was, whether reasoning was on or off, and where the
 working recipe lives.
 
+**September 25 secondary update:** The [Swift-1.5 NInfer RTX 5090
+profile](models/swift15-qwen38-27b.md) is deployed at 262,144 configured
+tokens/C4. Routed retrieval passed 18/18 through 257,898 actual prompt tokens;
+128K/C4 completed only 5/10 because of queue timeouts. Its visible-output
+capacity rates are descriptive because exact word-target adherence was zero,
+so they are excluded from the matched decode ranking below.
+
 If you already know your hardware and workload, start with
 [measured recipe results](recipe-results.md). They show a compact strength and
 limitation summary beside metrics read directly from native artifacts. Return

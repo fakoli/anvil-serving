@@ -1,5 +1,7 @@
 # Benchmark results
 
+**2026-09-25 secondary deployment:** [Swift-1.5 Qwen3.8 27B all-NVFP4/NInfer DFlash2](findings/2026-09-25-swift15-ninfer-5090-promotion.md) was selected for the RTX 5090 secondary alias at 262,144 total tokens and C4 configured admission. Exact direct retrieval passed at 251,715 actual prompt tokens, routed context at 18/18 through 257,898, image/OCR at 12/12, frozen official SWE Verified at 5/5, and routed clients accepted the model. The 128K/C4 benchmark completed only 5/10 because of serving queue timeouts; no four-long-window qualification follows. Short-output throughput is descriptive, not a reproduced publisher result. The earlier ThinkingCap 128K/C1 qualification remains retained as historical control and operator rollback.
+
 **2026-09-23 DCP1 r11 publication verified:** the [GLM DCP1 qualification](findings/2026-09-23-glm-dcp1-qualification.md) records selected and deployed r11 after 28/28 direct and production-routed checks plus 13 native-client semantic paths. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. DCP1 is a mitigation, not a root-cause or speed claim; its 825,268 KV pool is 41.73% below DCP2's 1,416,244, so four full 327K windows are unsupported. Exact r10 remains the rollback.
 
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
@@ -67,7 +69,7 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The 160K context measurements use one RTX 5090 with no co-resident media-generation workload. They do not establish concurrent model/media capacity. The separate model vision gate passed 18/18.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-24**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-25**.
 
 ## GLM mixed 3.5-bpw startup failure (2026-09-17)
 

@@ -1,0 +1,8 @@
+Managed recipe startup attempt 1, 2026-09-25 UTC
+Runtime source: NInfer bace20dc70249eed6402b66d4852c6c3f9612905
+Model revision: ff891a1130adfcf46bf745e06f0fa3dcde2e8c82
+Model artifact SHA-256 verification: passed
+Earliest actionable server error:
+ninfer-serve: unknown argument: --image-token-budget
+Container state: exited, load returned nonzero, health not attained.
+Disposition: removed the card-sample flag from the managed recipe. It is not a setting explicitly stated in the community post and the pinned server does not implement it. Retried with the same artifact and runtime source.
