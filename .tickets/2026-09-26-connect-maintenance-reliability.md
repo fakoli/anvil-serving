@@ -29,7 +29,7 @@ Keep bounded waits and authority checks; verify real traffic separately.
 
 ## Security review
 
-Caddy error entries can serialize custom WebSocket credential headers and OIDC
+Caddy error entries can serialize custom WebSocket headers and OIDC
 callback query strings. The renderer now filters request headers/URI and response
 headers on the default logger, covering runtime errors as well as access logs.
 A real isolated Caddy regression sends synthetic credentials to a failing proxy
@@ -37,4 +37,7 @@ and requires a useful 502 event without any synthetic credential value.
 
 Reference: https://caddyserver.com/docs/caddyfile/directives/log (filter encoder).
 Existing operator logs remain private incident evidence; filtering is prospective.
-This defect is credential exposure to log readers, not evidence of intrusion.
+The observed wstunnel subprotocol is routing metadata, not Connect authority;
+its separate Authorization header was redacted. Callback codes and other custom
+application headers still warrant prospective redaction. No access-credential
+disclosure or intrusion is established by the observed subprotocol entries.
