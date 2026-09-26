@@ -171,7 +171,16 @@ def _caddy(manifest: dict[str, Any]) -> dict[str, Any]:
     servers = {"anvil_connect": server}
     if "origin_proxy" in manifest["caddy"]:
         servers["anvil_connect_origin_proxy"] = _origin_proxy(manifest["caddy"]["origin_proxy"])
-    return {"admin": {"disabled": True}, "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": servers}, "tls": tls}}
+    # Error logs also serialize requests. Custom WebSocket credentials and
+    # callback query strings are not covered by Caddy's built-in redaction.
+    logging = {"logs": {"default": {"encoder": {
+        "format": "filter", "wrap": {"format": "json"},
+        "fields": {field: {"filter": "delete"} for field in (
+            "request>headers", "request>uri", "headers", "resp_headers",
+        )},
+    }}}}
+    return {"admin": {"disabled": True}, "logging": logging,
+            "apps": {"http": {"grace_period": _CADDY_GRACE_PERIOD, "servers": servers}, "tls": tls}}
 
 
 def _quote(value: str) -> str:

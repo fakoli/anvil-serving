@@ -862,12 +862,12 @@ def local_tunnel_manifest(value: dict | None = None) -> dict:
 def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
     import hashlib
 
-    # Captured from the supported isolated fixture before Slice 1 changed either reader.
+    # Local-tunnel omission baseline, including the mandatory error-log redaction.
     expected = {
         "authelia/configuration.yml": "53f2b4fc272dd89cd886b1a9557439a9ad99a093dd11fee34e6e75ee6bfff2f2",
         "authelia/notification-templates/IdentityVerificationJWT.html": "a0d83413ce6574c618e4fd25ef18f0cf265693d9f316c25a27e27cc8a2b49ae2",
         "authelia/notification-templates/IdentityVerificationJWT.txt": "c2f3d30f8e4a7145e0a47af2338e51d7901678cc9bc2d4fb226a6702568b75d9",
-        "caddy.json": "c3810b3ba1096c911f9983d5999f8d8436d1fee169ae262a99704b74c383bec8",
+        "caddy.json": "a241baafb83e24dd7d2ab2e567062b4720be2fe5223c8286d6cf81e42ecfd327",
         "clients/dashboard-api.json": "797df756cc7391a94bf230a3a5e8ba84545c5bc7a8a31e099218f5834f15a672",
         "connectors/dashboard.json": "2d6b1299fe15ea09c10a2438c035a15413ab78df31b39c379c0d25bede593716",
         "gateway.json": "9eba949a2b1679b1f7cfb8907116635b851da9f32fc48a6c62a4b0b37034c56b",
@@ -876,7 +876,7 @@ def test_local_tunnel_omission_preserves_pre_slice_bytes() -> None:
         "systemd/anvil-connect-client-dashboard-api.service": "213a3fd28ca1ce71e1288ddb249021763a4a08149b05b6eea2ec447d6dfbdacb",
         "systemd/anvil-connect-connector-dashboard.service": "c7d6da3ae0e75e203ae3dd6f3f7bce042d895e00351019aceb92f36d693b4f13",
         "systemd/anvil-connect-gateway.service": "d41891ef4907ca24a554827f6de463c2b5714269ef946bbeb0f437f44c381214",
-        "managed.json": "1cba584f7cdde232b86423a6e9c76af5879f6ea8c1800af9c4af8b13463b7c89",
+        "managed.json": "cb2808ea1733b292c8260337cb039a83bc6c5aae4a119ec3da403090303951e3",
     }
     value = isolated_manifest()
     # This is a pre-upgrade compatibility fixture. Keep the old executable
