@@ -436,15 +436,15 @@ services:
       --host 0.0.0.0 --port 30006
 
   # Router: single network-facing, token-authed endpoint (ADR-0004). Reaches heavy/fast over
-  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:1.3.0
+  # host.docker.internal:<port>. Pinned to the locally built release image anvil-serving:1.4.0
   # and a config VOLUME (anvil-router-cfg). Build that image with the repository Dockerfile; do
   # not use `build:` here, so `up` runs the exact configured runtime tag.
   # Bump this tag with the package version on each router release.
   # ROUTER_IMAGE is a per-invocation CANDIDATE override for pre-release router verification
-  # (e.g. `ROUTER_IMAGE=anvil-serving:1.3.0rc1 anvil-serving router up`); a bare `up` always
+  # (e.g. `ROUTER_IMAGE=anvil-serving:1.4.0rc1 anvil-serving router up`); a bare `up` always
   # reproduces the pinned release.
   router:
-    image: ${ROUTER_IMAGE:-anvil-serving:1.3.0}
+    image: ${ROUTER_IMAGE:-anvil-serving:1.4.0}
     container_name: anvil-router
     restart: unless-stopped
     # ADR-0033: above the router's 20s SIGTERM drain budget, so in-flight
@@ -474,6 +474,9 @@ services:
       # sinks configured through [server] in the router config. The mount is
       # harmless while those keys are unset.
       - "anvil-router-state:/var/lib/anvil-router"
+      # Device-key authority is separate from disposable request evidence.
+      # The image seeds this new volume with the router user and private mode.
+      - "anvil-router-keys:/var/lib/anvil-serving/router-keys"
       # Host-local durable media state shared with the co-located lifecycle
       # controller. Never place this SQLite database on network storage.
       - "./media-state:/var/lib/anvil-media"
@@ -489,3 +492,7 @@ volumes:
   # auto-created on first up; `down -v` loss only clears evidence and the
   # fail-safe quiesce intent, never desired state.
   anvil-router-state:
+
+  # Credential authority: back up privately; never remove with down --volumes.
+  # Managed router lifecycle commands preserve volumes.
+  anvil-router-keys:

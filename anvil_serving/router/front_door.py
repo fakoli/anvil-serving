@@ -81,6 +81,7 @@ from .internal import (
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
+from .keys import KeyStore, KeyStoreError
 from ..control_plane.authorization import (
     AuthorizationPolicy,
     INFERENCE_USE,
@@ -459,8 +460,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_host: Optional[str] = None,
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
-                  server_config=None):
+                  server_config=None, api_keys=None):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
+    key_store_slots = threading.BoundedSemaphore(4)
     operator_route_map = {
         (route.method, route.path): route
         for route in _validated_operator_routes(operator_routes)
@@ -499,6 +501,92 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     file=sys.stderr,
                     flush=True,
                 )
+            finally:
+                if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                    acquired = key_store_slots.acquire(blocking=False)
+                    try:
+                        if not acquired:
+                            raise KeyStoreError("credential audit is busy")
+                        api_keys.record(
+                            self._anvil_client_id,
+                            (self._anvil_correlation or {}).get("gateway_request_id"),
+                            getattr(self, "command", ""),
+                            getattr(self, "path", "").split("?", 1)[0].rstrip("/"),
+                            self._anvil_http_status,
+                            int((time.monotonic() - self._anvil_request_started) * 1000),
+                        )
+                    except KeyStoreError:
+                        print("[anvil] event=key_audit_unavailable", file=sys.stderr, flush=True)
+                    finally:
+                        if acquired:
+                            key_store_slots.release()
+
+        def send_response(self, code, message=None):
+            self._anvil_http_status = code
+            super().send_response(code, message)
+
+        def parse_request(self):
+            if not super().parse_request():
+                return False
+            return self._device_access()
+
+        def _device_access(self):
+            """Apply device policy before every dispatch, including operator routes."""
+            path = self.path.split("?", 1)[0].rstrip("/")
+            if api_keys is None or (self.command == "GET" and path == _HEALTHZ_PATH):
+                return True
+            supplied = _extract_operator_token(self.headers)
+            if supplied is None:
+                self._device_error(401, "authentication_error", "invalid or missing API key")
+                return False
+            if hmac.compare_digest(supplied.encode(), auth_token.encode()):
+                self._anvil_client_id = "_legacy"
+                self._start_request_correlation()
+                return True
+            # Generated device keys use a reserved namespace. Existing scoped
+            # operator credentials do not depend on availability of this store.
+            if not supplied.startswith("ask_"):
+                return True
+            if not key_store_slots.acquire(blocking=False):
+                self._device_error(503, "key_store_unavailable", "API key policy unavailable")
+                return False
+            try:
+                principal = api_keys.authenticate(supplied)
+                if principal is None:
+                    self._device_error(401, "authentication_error", "invalid or missing API key")
+                    return False
+                self._anvil_device = principal
+                self._anvil_client_id = principal.key_id
+                self._start_request_correlation()
+                if not principal.allows_path(self.command, path):
+                    self._device_error(403, "key_access_denied", "API key does not grant this endpoint")
+                    return False
+                retry_after = api_keys.admit(principal.key_id)
+            except KeyStoreError:
+                self._device_error(503, "key_store_unavailable", "API key policy unavailable")
+                return False
+            finally:
+                key_store_slots.release()
+            if retry_after:
+                self._device_error(429, "key_rate_limited", "API key request rate exceeded", retry_after)
+                return False
+            return True
+
+        def _device_error(self, status, code, message, retry_after=None):
+            # Denied requests may carry unread bodies. Never reuse that connection.
+            self.close_connection = True
+            dialect = _ROUTES.get(self.path.split("?", 1)[0].rstrip("/"), _OPENAI_DIALECT)
+            self._json(status, dialect.render_error(status, code, message), extra_headers={
+                "Cache-Control": "no-store",
+                **({"Retry-After": str(retry_after)} if retry_after else {}),
+            })
+            self._flush_closing_response()
+
+        def _device_model_allowed(self, model, *, normalize=True):
+            if self._anvil_device is None or self._anvil_device.allows_model(model, normalize=normalize):
+                return True
+            self._device_error(403, "key_access_denied", "API key does not grant this model")
+            return False
 
         def _reset_request_correlation(self) -> None:
             """Clear per-request state on a reused HTTP/1.1 handler."""
@@ -507,6 +595,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_delivery_outcome = None
             self._anvil_request_started = time.monotonic()
             self._anvil_client_id = None
+            self._anvil_device = None
+            self._anvil_http_status = None
             self._anvil_client_budget_held = False
             self._anvil_worker = None
 
@@ -529,7 +619,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _start_request_correlation(self) -> None:
             """Stamp one authenticated inference request with trusted lineage."""
-            self._anvil_correlation = _new_request_correlation(self.headers)
+            if self._anvil_correlation is None:
+                self._anvil_correlation = _new_request_correlation(self.headers)
             if self._anvil_client_id:
                 self._anvil_correlation["client_id"] = self._anvil_client_id
 
@@ -612,6 +703,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             timing can't be used to guess the token byte-by-byte. The token
             itself is never logged: on failure only a generic message is sent.
             """
+            if self._anvil_device is not None:
+                return True
             if auth_token is None:
                 return True  # [server].auth_env unset -> auth OFF
             supplied = _extract_bearer_token(self.headers)
@@ -1246,7 +1339,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             dialect=_OPENAI_DIALECT)
                 return
             except PurposeError as e:
-                self._error(e.status, e.etype, e.message,
+                message = "unknown configured model" if self._anvil_device is not None and e.status == 404 else e.message
+                self._error(e.status, e.etype, message,
                             dialect=_OPENAI_DIALECT)
                 return
             except Exception as e:  # unexpected fault: bounded metadata only
@@ -1367,7 +1461,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         # --- routes ----------------------------------------------------------
         def do_GET(self) -> None:
-            self._reset_request_correlation()
+            if api_keys is None:
+                self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
             operator_route = self._operator_route("GET")
             if operator_route is not None:
@@ -1719,12 +1814,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     if discovery_fn is None:
                         routing = getattr(self.server, "anvil_routing", None)
                         discovery_fn = getattr(routing, "model_discovery", None)
-                    self._json(
-                        200,
-                        discovery_fn()
-                        if callable(discovery_fn)
-                        else models_payload(model_routes),
-                    )
+                    payload = discovery_fn() if callable(discovery_fn) else models_payload(model_routes)
+                    if self._anvil_device is not None:
+                        payload = {**payload, "data": [entry for entry in payload["data"]
+                            if self._anvil_device.allows_model(entry["id"])]}
+                    self._json(200, payload, extra_headers={"Cache-Control": "no-store"})
                 elif route == DECISION_SUMMARY_ENDPOINT:
                     query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                     raw_limit = (query.get("limit") or ["20"])[0]
@@ -1793,7 +1887,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 _CONCURRENCY_LIMIT.release()
 
         def do_POST(self) -> None:
-            self._reset_request_correlation()
+            if api_keys is None:
+                self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
             operator_route = self._operator_route("POST")
             if operator_route is not None:
@@ -2088,6 +2183,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # the PurposeRouter — never parsed as a chat dialect and never
             # dispatched to backend.generate() (no fallthrough to chat).
             if purpose_kind is not None:
+                if not self._device_model_allowed(body.get("model"), normalize=False):
+                    return
                 self._handle_purpose(purpose_kind, body)
                 return
 
@@ -2099,6 +2196,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except Exception as e:  # other malformed but JSON-parseable body
                 self._error(400, "invalid_request", f"bad request: {e}",
                             dialect=dialect)
+                return
+
+            if not self._device_model_allowed(request.model):
                 return
 
             # Always overwrite caller JSON at this reserved key. Only the trusted
@@ -2395,6 +2495,11 @@ def make_server(host: str, port: int,
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
+    api_keys = None
+    if server_config is not None and server_config.api_keys_path is not None:
+        if auth_token is None:
+            raise ValueError("device API keys require a resolved front-door auth token")
+        api_keys = KeyStore(server_config.api_keys_path)
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),
@@ -2402,7 +2507,7 @@ def make_server(host: str, port: int,
             backend, timeout, model_routes, exhaustion_status, auth_token,
             purpose, audio, gateway, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
-            server_config,
+            server_config, api_keys,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

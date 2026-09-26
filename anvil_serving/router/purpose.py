@@ -43,6 +43,7 @@ from .decision_log import (
     DecisionRecord,
     decision_line,
     safe_correlation,
+    safe_client_id,
     safe_gateway_request_id,
 )
 from .internal import BackendClientError
@@ -294,6 +295,8 @@ class PurposeRouter:
             ),
             workbench_run_id=safe_correlation(meta.get("workbench_run_id")),
             task_id=safe_correlation(meta.get("task_id")),
+            session_id=safe_correlation(meta.get("session_id")),
+            client_id=safe_client_id(meta.get("client_id")),
         )
         if self._log is not None:
             self._log.record(record)

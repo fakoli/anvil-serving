@@ -81,10 +81,11 @@ def test_rejects_unowned_mount(setup, change):
     CONFIG + '\n# Authorization: Bearer private-value\n',
     CONFIG + '\n[extra]\nrouter_config = "other.toml"\n',
     CONFIG.replace('[server]', '[server]\nauthorization_policy_path = "policy.json"'),
+    CONFIG.replace('[server]', '[server]\napi_keys_path = "/var/lib/anvil-router/keys/keys.sqlite3"'),
     "invalid = [",
     'server = "bad"\n',
     "x" * (export.MAX_BYTES + 1),
-], ids=["secret-field", "secret-comment", "dependency", "authorization-policy", "malformed", "server-shape", "oversized"])
+], ids=["secret-field", "secret-comment", "dependency", "authorization-policy", "device-keys", "malformed", "server-shape", "oversized"])
 def test_rejects_unsafe_or_incomplete_content(setup, content):
     path, _, _, _, run = setup
     path.write_text(content)
@@ -184,3 +185,18 @@ def test_budget_exception_does_not_cover_other_fields_or_scopes():
     for data in [{"thinking_token_budget": 49152}, {"router": {"tiers": [{"params": {"extra_body": {"thinking_token_budget": 49152}}}]}}, {"router": {"tiers": [{"params": {"api_token": 49152}}]}}]:
         with pytest.raises(export.operator_config.ConfigExportError):
             export.operator_config._assert_no_secret_literals(export._secret_projection(data), path="router.toml")
+
+
+def test_device_key_dependency_is_refused_after_runtime_validation(setup):
+    path, _, _, _, run = setup
+    path.write_text(CONFIG.replace('[server]', '[server]\napi_keys_path="/var/lib/anvil-serving/router-keys/keys.sqlite3"'))
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def runtime(argv, **kwargs):
+        if argv[1] == "exec":
+            return SimpleNamespace(returncode=0, stdout=digest + "\n", stderr="")
+        return run(argv, **kwargs)
+
+    with pytest.raises(UsageError) as caught:
+        export.export_installed_config("anvil-router", digest, _run=runtime)
+    assert caught.value.details == {"stage": "dependency_validation"}

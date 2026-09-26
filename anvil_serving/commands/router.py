@@ -26,6 +26,41 @@ def commands() -> CommandNode:
                 docs_anchor="docs/cli/router.md#export-installed-configuration",
             ),
             _node(
+                "keys",
+                "Manage local device API keys and inspect bounded access history.",
+                children=tuple(
+                    _node(
+                        action, summary,
+                        handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,)),
+                        mutation_class="mutate" if action in {"init", "create", "revoke"} else "read",
+                        options=(
+                            _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
+                            _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
+                        ) + options,
+                        docs_anchor="docs/cli/router.md#device-api-keys",
+                    )
+                    for action, summary, options in (
+                        ("init", "Initialize protected device-key storage without changing the master key.", ()),
+                        ("create", "Create a scoped device key and save its secret once to a protected file.", (
+                            _option("--name", summary="Device label (required).", value_name="NAME"),
+                            _option("--model", summary="Allowed alias or purpose-model name; repeat for multiple grants (required).", value_name="MODEL"),
+                            _option("--path", summary="Allowed inference endpoint; repeat for multiple grants (required).", value_name="PATH"),
+                            _option("--rpm", summary="Request token bucket capacity and refill per minute (default 60).", value_name="COUNT"),
+                            _option("--expires-days", summary="Expire the key after this many days.", value_name="DAYS"),
+                            _option("--out", summary="New protected secret file (required); never overwritten.", value_name="PATH"),
+                        )),
+                        ("list", "List key IDs, grants, and lifecycle state without secrets.", ()),
+                        ("revoke", "Revoke a device key for subsequent requests.", (
+                            _option("--key-id", summary="Device key ID to revoke (required).", value_name="ID"),
+                        )),
+                        ("usage", "Read bounded key access history.", (
+                            _option("--key-id", summary="Filter history to one key ID; _legacy selects the master.", value_name="ID"),
+                            _option("--limit", summary="Maximum recent request records (default 50).", value_name="COUNT"),
+                        )),
+                    )
+                ),
+            ),
+            _node(
                 "workloads",
                 "Read a bounded canonical workload snapshot from one router.",
                 handler=_handler(

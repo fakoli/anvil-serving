@@ -16,6 +16,7 @@ import ipaddress
 import json
 import math
 import os
+import posixpath
 import re
 import sys
 import tomllib
@@ -440,6 +441,7 @@ class ServerConfig:
     media_public_origin: Optional[str] = None
     workload_host: Optional[str] = None
     authorization_policy_path: Optional[str] = None
+    api_keys_path: Optional[str] = None
     client_limits: Mapping[str, int] = field(default_factory=dict)
     admission_timeout_s: float = 30.0
     startup_timeout_s: float = 300.0
@@ -457,7 +459,7 @@ _SERVER_KEYS = frozenset({
     "media_scopes",
     "media_public_origin",
     "workload_host",
-    "authorization_policy_path", "client_limits", "admission_timeout_s",
+    "authorization_policy_path", "api_keys_path", "client_limits", "admission_timeout_s",
     "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
     "heartbeat_interval_s", "trace_export_url",
 })
@@ -467,7 +469,7 @@ _MEDIA_SCOPES = frozenset(
 )
 
 
-def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
+def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths: bool = False) -> ServerConfig:
     """Validate the optional ``[server]`` table from one parsed config snapshot."""
     server = data.get("server")
     if server is None:
@@ -528,11 +530,15 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         raw_media_scopes = []
 
     paths: dict[str, Optional[str]] = {}
-    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path"):
+    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path", "api_keys_path"):
         value = server.get(key)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ConfigError(f"[server].{key} must be a non-empty file path")
         paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
+
+    is_absolute = posixpath.isabs if container_paths else os.path.isabs
+    if paths["api_keys_path"] is not None and not is_absolute(paths["api_keys_path"]):
+        raise ConfigError("[server].api_keys_path must be an absolute file path")
 
     durations = {}
     defaults = ServerConfig()
@@ -549,7 +555,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         if (client != "_legacy" and _WORKLOAD_HOST_RE.fullmatch(client) is None
                 or type(limit) is not int or not 1 <= limit <= 1024):
             raise ConfigError("[server].client_limits requires client IDs and integer limits 1..1024")
-    if (client_limits or paths["authorization_policy_path"]) and auth_env is None:
+    if (client_limits or paths["authorization_policy_path"] or paths["api_keys_path"]) and auth_env is None:
         raise ConfigError("[server] client policies require auth_env")
     trace_export_url = server.get("trace_export_url")
     if trace_export_url is not None:
@@ -568,19 +574,22 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         media_public_origin=media_public_origin,
         workload_host=workload_host,
         authorization_policy_path=paths["authorization_policy_path"],
+        api_keys_path=paths["api_keys_path"],
         client_limits=MappingProxyType(dict(client_limits)),
         trace_export_url=trace_export_url,
         **durations,
     )
 
 
-def load_server_config(path: str) -> ServerConfig:
+def load_server_config(path: str, *, container_paths: bool = False) -> ServerConfig:
     """Load + validate the optional ``[server]`` table of the TOML config at ``path``.
 
     No ``[server]`` table, or one with no ``auth_env`` key, yields
     ``ServerConfig(auth_env=None)`` — auth OFF. Never reads ``os.environ``:
     only the env-var NAME shape is validated here (same rules as a tier's
-    ``auth_env``), never the secret literal.
+    ``auth_env``), never the secret literal. Container key management sets
+    ``container_paths`` to validate the key-store path as POSIX even when its
+    operator CLI runs on Windows.
     """
     path = os.path.expanduser(path)
     try:
@@ -590,7 +599,7 @@ def load_server_config(path: str) -> ServerConfig:
         raise ConfigError(f"cannot read router config {path!r}: {e}") from e
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
-    return _parse_server_config(data, path)
+    return _parse_server_config(data, path, container_paths=container_paths)
 
 
 def _normalized_replica_endpoint(value: object, label: str) -> tuple[str, str, int, str]:
