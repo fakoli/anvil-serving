@@ -3,11 +3,26 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
+import sqlite3
+import sys
+import time
 
 import pytest
 
 from anvil_serving.router import keys
 from anvil_serving.router.keys import KeyStore, KeyStoreError, dispatch
+
+
+@pytest.fixture
+def tmp_path(tmp_path_factory):
+    """Use a disposable owner-only root for native Windows credential tests."""
+    if sys.platform != "win32":
+        yield tmp_path_factory.mktemp("keys")
+        return
+    from tests.bootstrap_windows_fixtures import windows_fixture_tree
+
+    with windows_fixture_tree() as tree:
+        yield tree.root
 
 
 def _store(tmp_path):
@@ -45,6 +60,19 @@ def test_expiry_and_missing_store_fail_closed(tmp_path):
     assert store.authenticate(secret) is None
 
 
+def test_malformed_database_values_fail_closed_without_token_type_errors(tmp_path):
+    store = _store(tmp_path)
+    metadata, secret = _key(store)
+    with store._connect() as connection:
+        connection.execute("UPDATE keys SET token_hash = 'not-a-digest' WHERE key_id = ?", (metadata["key_id"],))
+    assert store.authenticate(secret) is None
+    with store._connect() as connection:
+        connection.execute("UPDATE keys SET token_hash = ? WHERE key_id = ?", (keys.hashlib.sha256(secret.encode()).digest(), metadata["key_id"]))
+        connection.execute("UPDATE keys SET models = 7 WHERE key_id = ?", (metadata["key_id"],))
+    with pytest.raises(KeyStoreError, match="invalid grants"):
+        store.authenticate(secret)
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX ownership and symlink contract")
 def test_store_refuses_unsafe_permissions_and_symlinks(tmp_path):
     unsafe = tmp_path / "unsafe"
@@ -63,6 +91,20 @@ def test_store_refuses_unsafe_permissions_and_symlinks(tmp_path):
         KeyStore(link)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX hardlink contract")
+def test_store_refuses_hardlinked_database_and_linked_ancestor(tmp_path):
+    store = _store(tmp_path)
+    os.link(store.path, tmp_path / "other.sqlite3")
+    with pytest.raises(KeyStoreError, match="owner-only"):
+        KeyStore(store.path)
+    root = tmp_path / "root"
+    root.mkdir(mode=0o700)
+    linked = tmp_path / "linked"
+    linked.symlink_to(root, target_is_directory=True)
+    with pytest.raises(KeyStoreError, match="unsafe"):
+        KeyStore.initialize(linked / "keys.sqlite3")
+
+
 def test_store_path_is_absolute_and_model_grants_are_closed(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     store = KeyStore.initialize("relative.sqlite3")
@@ -71,6 +113,18 @@ def test_store_path_is_absolute_and_model_grants_are_closed(tmp_path, monkeypatc
         store.create("phone", ["llm.*"], ["/v1/chat/completions"])
     with pytest.raises(KeyStoreError):
         store.create("phone", ["llm\nprimary"], ["/v1/chat/completions"])
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="native Windows ACL contract")
+def test_windows_protected_fixture_allows_database_and_secret_output():
+    from tests.bootstrap_windows_fixtures import windows_fixture_tree
+
+    with windows_fixture_tree() as tree:
+        store = KeyStore.initialize(tree.root / "keys.sqlite3")
+        _key(store)
+        output = tree.root / "device.key"
+        keys._write_secret(str(output), "ask_test")
+        assert output.read_text(encoding="utf-8") == "ask_test\n"
 
 
 def test_rate_limit_is_atomic_and_persists(tmp_path):
@@ -94,6 +148,33 @@ def test_rate_limit_clock_bounce_cannot_mint_tokens(tmp_path, monkeypatch):
         assert connection.execute("SELECT updated_at FROM buckets").fetchone()[0] == 100.0
     monkeypatch.setattr(keys.time, "time", lambda: 130.0)
     assert store.admit(metadata["key_id"]) == 0
+
+
+def test_store_contention_returns_a_bounded_failure(tmp_path):
+    store = _store(tmp_path)
+    lock = sqlite3.connect(store.path, isolation_level=None)
+    lock.execute("BEGIN EXCLUSIVE")
+    started = time.monotonic()
+    try:
+        with pytest.raises(KeyStoreError):
+            store.list_keys()
+    finally:
+        lock.execute("ROLLBACK")
+        lock.close()
+    assert time.monotonic() - started < 0.5
+
+
+def test_capacity_prunes_revoked_keys_without_erasing_audit(tmp_path, monkeypatch):
+    monkeypatch.setattr(keys, "_MAX_KEYS", 2)
+    store = _store(tmp_path)
+    first, _ = _key(store)
+    store.record(first["key_id"], "req_retained", "POST", "/v1/chat/completions", 200, 1)
+    second, _ = _key(store)
+    assert store.revoke(first["key_id"])
+    assert {row["key_id"] for row in store.list_keys()} == {first["key_id"], second["key_id"]}
+    third, _ = _key(store)
+    assert {row["key_id"] for row in store.list_keys()} == {second["key_id"], third["key_id"]}
+    assert store.usage(first["key_id"])[0]["request_id"] == "req_retained"
 
 
 def test_audit_is_bounded_and_supports_legacy_and_unknown_principals(tmp_path, monkeypatch):

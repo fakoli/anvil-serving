@@ -7790,6 +7790,15 @@
           "requires_confirmation": false,
           "summary": "Router config declaring server.api_keys_path.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run storage operations as the verified router container user; secret output stays on this host.",
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -7929,6 +7938,15 @@
           "requires_confirmation": false,
           "summary": "Router config declaring server.api_keys_path.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run storage operations as the verified router container user; secret output stays on this host.",
+          "value_name": "NAME"
         },
         {
           "flags": [
@@ -8122,6 +8140,15 @@
           "requires_confirmation": false,
           "summary": "Router config declaring server.api_keys_path.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run storage operations as the verified router container user; secret output stays on this host.",
+          "value_name": "NAME"
         }
       ],
       "output_policy": "bounded",
@@ -8261,6 +8288,15 @@
           "requires_confirmation": false,
           "summary": "Router config declaring server.api_keys_path.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run storage operations as the verified router container user; secret output stays on this host.",
+          "value_name": "NAME"
         },
         {
           "flags": [
@@ -8409,6 +8445,15 @@
           "requires_confirmation": false,
           "summary": "Router config declaring server.api_keys_path.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--container"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Run storage operations as the verified router container user; secret output stays on this host.",
+          "value_name": "NAME"
         },
         {
           "flags": [

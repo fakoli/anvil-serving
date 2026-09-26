@@ -81,10 +81,11 @@ def test_rejects_unowned_mount(setup, change):
     CONFIG + '\n# Authorization: Bearer private-value\n',
     CONFIG + '\n[extra]\nrouter_config = "other.toml"\n',
     CONFIG.replace('[server]', '[server]\nauthorization_policy_path = "policy.json"'),
+    CONFIG.replace('[server]', '[server]\napi_keys_path = "/var/lib/anvil-router/keys/keys.sqlite3"'),
     "invalid = [",
     'server = "bad"\n',
     "x" * (export.MAX_BYTES + 1),
-], ids=["secret-field", "secret-comment", "dependency", "authorization-policy", "malformed", "server-shape", "oversized"])
+], ids=["secret-field", "secret-comment", "dependency", "authorization-policy", "device-keys", "malformed", "server-shape", "oversized"])
 def test_rejects_unsafe_or_incomplete_content(setup, content):
     path, _, _, _, run = setup
     path.write_text(content)

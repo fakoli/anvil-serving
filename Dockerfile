@@ -5,18 +5,18 @@
 # unless-stopped`) alongside the compose-defined serves (ADR-0002). Docker is an
 # ADDITIONAL deployment option -- `pip install anvil-serving` still works unchanged.
 #
-# Build (from repo root): docker build -t anvil-serving:1.3.0 .
+# Build (from repo root): docker build -t anvil-serving:1.4.0 .
 # Run:   docker run -p 127.0.0.1:8000:8000 \
 #          -e ANVIL_ROUTER_TOKEN \
 #          -v ./configs/example-docker.toml:/etc/anvil/config.toml:ro \
-#          anvil-serving:1.3.0
+#          anvil-serving:1.4.0
 ARG DOCKER_CLI_IMAGE=docker:29.6.2-cli@sha256:be132a9f282288de4afaf63379dff75711fda0147c6b72a9df44e51841402144
 
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli
 
 FROM python:3.11-slim AS runtime
 
-ARG ANVIL_SERVING_VERSION=1.3.0
+ARG ANVIL_SERVING_VERSION=1.4.0
 LABEL org.opencontainers.image.title="anvil-serving" \
       org.opencontainers.image.version="${ANVIL_SERVING_VERSION}"
 
@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir --no-compile .
 
 # Default config path the entrypoint reads unless ANVIL_CONFIG overrides it; the
 # actual file is normally bind-mounted or baked in by whoever builds/runs the image.
-RUN mkdir -p /etc/anvil /var/lib/anvil-serving
+RUN mkdir -p /etc/anvil /var/lib/anvil-serving/router-keys \
+    && chmod 700 /var/lib/anvil-serving/router-keys
 
 # Non-root runtime user (defense-in-depth: a compromised front door process should
 # not run as root inside the container).

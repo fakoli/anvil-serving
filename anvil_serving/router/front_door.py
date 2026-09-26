@@ -462,6 +462,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
+    key_store_slots = threading.BoundedSemaphore(4)
     operator_route_map = {
         (route.method, route.path): route
         for route in _validated_operator_routes(operator_routes)
@@ -502,7 +503,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 )
             finally:
                 if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                    acquired = key_store_slots.acquire(blocking=False)
                     try:
+                        if not acquired:
+                            raise KeyStoreError("credential audit is busy")
                         api_keys.record(
                             self._anvil_client_id,
                             (self._anvil_correlation or {}).get("gateway_request_id"),
@@ -513,6 +517,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         )
                     except KeyStoreError:
                         print("[anvil] event=key_audit_unavailable", file=sys.stderr, flush=True)
+                    finally:
+                        if acquired:
+                            key_store_slots.release()
 
         def send_response(self, code, message=None):
             self._anvil_http_status = code
@@ -540,11 +547,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # operator credentials do not depend on availability of this store.
             if not supplied.startswith("ask_"):
                 return True
+            if not key_store_slots.acquire(blocking=False):
+                self._device_error(503, "key_store_unavailable", "API key policy unavailable")
+                return False
             try:
                 principal = api_keys.authenticate(supplied)
                 if principal is None:
-                    # Existing explicitly scoped operator credentials retain their policy.
-                    return True
+                    self._device_error(401, "authentication_error", "invalid or missing API key")
+                    return False
                 self._anvil_device = principal
                 self._anvil_client_id = principal.key_id
                 self._start_request_correlation()
@@ -555,6 +565,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except KeyStoreError:
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
+            finally:
+                key_store_slots.release()
             if retry_after:
                 self._device_error(429, "key_rate_limited", "API key request rate exceeded", retry_after)
                 return False

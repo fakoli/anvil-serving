@@ -23,6 +23,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..control_plane import bootstrap_shim
+from ..control_plane.mcp import auth_file
+from .. import operator_config
+
 
 _KEY_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _MAX_KEYS = 1024
@@ -65,7 +69,6 @@ class Principal:
 
 
 def _is_windows() -> bool:
-    # Windows ACLs, rather than POSIX mode bits, enforce this boundary.
     return os.name == "nt"
 
 
@@ -85,6 +88,117 @@ def _audit_path(value: str) -> str:
     return value if value in _POST_PATHS | {_MODELS_PATH} else "[other]"
 
 
+def _link_or_reparse(info: os.stat_result) -> bool:
+    return stat.S_ISLNK(info.st_mode) or bool(
+        getattr(info, "st_file_attributes", 0)
+        & getattr(bootstrap_shim, "_FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    )
+
+
+def _safe_ancestors(path: Path) -> None:
+    """Reject lexical link/reparse substitutions without resolving them."""
+    for candidate in (path, *path.parents):
+        try:
+            info = candidate.lstat()
+        except OSError as exc:
+            raise KeyStoreError("credential store path is unavailable") from exc
+        if _link_or_reparse(info):
+            raise KeyStoreError("credential store path is unsafe")
+
+
+def _windows_open_verification_file(path: Path) -> int:
+    """Open a held non-following verifier handle without blocking SQLite writers."""
+    import msvcrt
+    import ctypes
+    from ctypes import wintypes
+
+    handle = operator_config._windows_file_handle(path, deny_writes=False)
+    descriptor: int | None = None
+    try:
+        descriptor = msvcrt.open_osfhandle(int(handle), os.O_RDONLY | getattr(os, "O_BINARY", 0))
+        handle = None
+        os.set_inheritable(descriptor, False)
+        return descriptor
+    except BaseException:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        if handle is not None:
+            close_handle = ctypes.WinDLL("kernel32", use_last_error=True).CloseHandle
+            close_handle.argtypes = [wintypes.HANDLE]
+            close_handle.restype = wintypes.BOOL
+            close_handle(handle)
+        raise
+
+
+def _windows_private_path(path: Path, *, directory: bool) -> None:
+    """Validate the held Windows object with the shared DACL policy."""
+    try:
+        descriptor = (
+            bootstrap_shim._windows_open_prefix(str(path), directory=True)
+            if directory else _windows_open_verification_file(path)
+        )
+        try:
+            is_directory, _identity, links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
+            if is_directory != directory or (not directory and links != 1):
+                raise KeyStoreError("credential store path is unsafe")
+            auth_file._require_windows_private_descriptor(descriptor)
+        finally:
+            os.close(descriptor)
+    except KeyStoreError:
+        raise
+    except (AttributeError, OSError, ValueError, auth_file.AuthFileError, operator_config.ConfigExportError):
+        raise KeyStoreError("credential store path is not private") from None
+
+
+def _posix_private_path(path: Path, *, directory: bool) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    if directory:
+        flags |= getattr(os, "O_DIRECTORY", 0)
+    try:
+        listed = path.lstat()
+        descriptor = os.open(path, flags)
+        try:
+            info = os.fstat(descriptor)
+            if (not os.path.samestat(listed, info)
+                    or stat.S_ISDIR(info.st_mode) != directory or info.st_uid != os.geteuid()
+                    or info.st_mode & 0o077 or (not directory and info.st_nlink != 1)):
+                raise KeyStoreError("credential store path must be owner-only")
+        finally:
+            os.close(descriptor)
+    except KeyStoreError:
+        raise
+    except (AttributeError, OSError, ValueError):
+        raise KeyStoreError("credential store path is unavailable") from None
+
+
+def _private_path(path: Path, *, directory: bool) -> None:
+    _safe_ancestors(path)
+    if _is_windows():
+        _windows_private_path(path, directory=directory)
+    else:
+        _posix_private_path(path, directory=directory)
+
+
+def _private_created_descriptor(descriptor: int) -> None:
+    try:
+        info = os.fstat(descriptor)
+        if _is_windows():
+            is_directory, _identity, links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
+            if is_directory or links != 1:
+                raise KeyStoreError("credential store file is unsafe")
+            auth_file._require_windows_private_descriptor(descriptor)
+        elif (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+              or info.st_uid != os.geteuid() or info.st_mode & 0o077):
+            raise KeyStoreError("credential store file must be owner-only")
+    except KeyStoreError:
+        raise
+    except (AttributeError, OSError, ValueError, auth_file.AuthFileError):
+        raise KeyStoreError("credential store file is not private") from None
+
+
 def _secure_directory(path: Path, *, create: bool) -> None:
     if create:
         path.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -92,11 +206,9 @@ def _secure_directory(path: Path, *, create: bool) -> None:
         info = path.lstat()
     except OSError as exc:
         raise KeyStoreError("credential store directory is unavailable") from exc
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+    if _link_or_reparse(info) or not stat.S_ISDIR(info.st_mode):
         raise KeyStoreError("credential store directory is unsafe")
-    if not _is_windows():
-        if info.st_uid != os.getuid() or info.st_mode & 0o077:
-            raise KeyStoreError("credential store directory must be owner-only")
+    _private_path(path, directory=True)
 
 
 def _secure_database(path: Path, *, exists: bool) -> None:
@@ -109,10 +221,9 @@ def _secure_database(path: Path, *, exists: bool) -> None:
         return
     except OSError as exc:
         raise KeyStoreError("credential store is unavailable") from exc
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+    if _link_or_reparse(info) or not stat.S_ISREG(info.st_mode):
         raise KeyStoreError("credential store file is unsafe")
-    if not _is_windows() and (info.st_uid != os.getuid() or info.st_mode & 0o077):
-        raise KeyStoreError("credential store file must be owner-only")
+    _private_path(path, directory=False)
 
 
 def _json_list(value: object, label: str) -> tuple[str, ...]:
@@ -123,6 +234,15 @@ def _json_list(value: object, label: str) -> tuple[str, ...]:
     if len(set(value)) != len(value):
         raise KeyStoreError("credential store contains invalid grants")
     return tuple(value)
+
+
+def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    try:
+        parsed_models = json.loads(models) if isinstance(models, str) else None
+        parsed_paths = json.loads(paths) if isinstance(paths, str) else None
+        return KeyStore._grants(parsed_models, parsed_paths)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        raise KeyStoreError("credential store contains invalid grants") from None
 
 
 class KeyStore:
@@ -154,7 +274,24 @@ class KeyStore:
         except OSError as exc:
             raise KeyStoreError("credential store could not be initialized") from exc
         else:
-            os.close(descriptor)
+            try:
+                _private_created_descriptor(descriptor)
+            except KeyStoreError:
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+                raise
+            finally:
+                os.close(descriptor)
+        try:
+            _secure_database(target, exists=True)
+        except KeyStoreError:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
         try:
             connection = sqlite3.connect(target)
             try:
@@ -174,6 +311,7 @@ class KeyStore:
                         key_id TEXT, request_id TEXT NOT NULL, method TEXT NOT NULL,
                         path TEXT NOT NULL, status INTEGER NOT NULL, elapsed_ms INTEGER NOT NULL
                     );
+                    CREATE UNIQUE INDEX keys_token_hash ON keys(token_hash);
                     CREATE INDEX audit_key_id_id ON audit(key_id, id DESC);
                 """)
             finally:
@@ -190,9 +328,9 @@ class KeyStore:
     @contextmanager
     def _connect(self):
         _secure_database(self.path, exists=True)
-        connection = sqlite3.connect(self.path, timeout=5, isolation_level=None)
+        connection = sqlite3.connect(self.path, timeout=0.1, isolation_level=None)
         try:
-            connection.execute("PRAGMA busy_timeout=5000")
+            connection.execute("PRAGMA busy_timeout=100")
             yield connection
         finally:
             connection.close()
@@ -200,9 +338,17 @@ class KeyStore:
     @staticmethod
     def _metadata(row: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
         key_id, name, models, paths, rpm, created_at, expires_at, revoked_at = row
+        if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
+                or not isinstance(name, str) or not name or len(name) > 128
+                or type(rpm) is not int or isinstance(rpm, bool) or not 1 <= rpm <= 100_000
+                or type(created_at) is not int or isinstance(created_at, bool) or created_at < 0
+                or (expires_at is not None and (type(expires_at) is not int or isinstance(expires_at, bool)))
+                or (revoked_at is not None and (type(revoked_at) is not int or isinstance(revoked_at, bool)))):
+            raise KeyStoreError("credential store contains invalid key metadata")
+        grants_models, grants_paths = _stored_grants(models, paths)
         return {
-            "key_id": key_id, "name": name, "models": list(_json_list(json.loads(models), "models")),
-            "paths": list(_json_list(json.loads(paths), "paths")), "rpm": rpm, "created_at": created_at,
+            "key_id": key_id, "name": name, "models": list(grants_models),
+            "paths": list(grants_paths), "rpm": rpm, "created_at": created_at,
             "expires_at": expires_at, "revoked_at": revoked_at,
         }
 
@@ -248,7 +394,17 @@ class KeyStore:
                     connection.execute("BEGIN IMMEDIATE")
                     count = connection.execute("SELECT COUNT(*) FROM keys").fetchone()[0]
                     if count >= _MAX_KEYS:
-                        raise KeyStoreError("credential store key limit reached")
+                        connection.execute(
+                            "DELETE FROM buckets WHERE key_id IN "
+                            "(SELECT key_id FROM keys WHERE revoked_at IS NOT NULL OR expires_at <= ?)",
+                            (now,),
+                        )
+                        connection.execute(
+                            "DELETE FROM keys WHERE revoked_at IS NOT NULL OR expires_at <= ?", (now,)
+                        )
+                        count = connection.execute("SELECT COUNT(*) FROM keys").fetchone()[0]
+                        if count >= _MAX_KEYS:
+                            raise KeyStoreError("credential store key limit reached")
                     connection.execute(
                         "INSERT INTO keys VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
                         (key_id, name.strip(), digest, json.dumps(grants_models), json.dumps(grants_paths), rpm, now, expires_at),
@@ -270,22 +426,32 @@ class KeyStore:
         try:
             with self._connect() as connection:
                 rows = connection.execute(
-                    "SELECT key_id, token_hash, models, paths, expires_at, revoked_at FROM keys"
+                    "SELECT key_id, token_hash, models, paths, expires_at, revoked_at "
+                    "FROM keys WHERE token_hash = ? LIMIT 2", (digest,)
                 ).fetchall()
         except KeyStoreError:
             raise
         except sqlite3.Error as exc:
             raise KeyStoreError("credential store is unavailable") from exc
-        now = int(time.time())
-        for key_id, stored, models, paths, expires_at, revoked_at in rows:
-            if hmac.compare_digest(stored, digest):
-                if revoked_at is not None or (expires_at is not None and expires_at <= now):
-                    return None
-                try:
-                    return Principal(key_id, _json_list(json.loads(models), "models"), _json_list(json.loads(paths), "paths"))
-                except (TypeError, ValueError, json.JSONDecodeError):
-                    raise KeyStoreError("credential store contains invalid grants") from None
-        return None
+        if not rows:
+            return None
+        if len(rows) != 1:
+            raise KeyStoreError("credential store contains duplicate token hashes")
+        key_id, stored, models, paths, expires_at, revoked_at = rows[0]
+        if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
+                or not isinstance(stored, bytes) or len(stored) != 32
+                or (expires_at is not None and (type(expires_at) is not int or isinstance(expires_at, bool)))
+                or (revoked_at is not None and (type(revoked_at) is not int or isinstance(revoked_at, bool)))):
+            raise KeyStoreError("credential store contains invalid key metadata")
+        if not hmac.compare_digest(stored, digest):
+            raise KeyStoreError("credential store token index is invalid")
+        if revoked_at is not None or (expires_at is not None and expires_at <= int(time.time())):
+            return None
+        try:
+            grants_models, grants_paths = _stored_grants(models, paths)
+            return Principal(key_id, grants_models, grants_paths)
+        except KeyStoreError:
+            raise
 
     def admit(self, key_id: str) -> int:
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
@@ -301,10 +467,21 @@ class KeyStore:
                     connection.execute("ROLLBACK")
                     raise KeyStoreError("credential key is unavailable")
                 rpm = row[0]
+                if (type(rpm) is not int or isinstance(rpm, bool) or not 1 <= rpm <= 100_000
+                        or (row[1] is not None and (type(row[1]) is not int or isinstance(row[1], bool)))
+                        or (row[2] is not None and (type(row[2]) is not int or isinstance(row[2], bool)))):
+                    connection.execute("ROLLBACK")
+                    raise KeyStoreError("credential store contains invalid key metadata")
                 bucket = connection.execute(
                     "SELECT tokens, updated_at FROM buckets WHERE key_id = ?", (key_id,)
                 ).fetchone()
                 tokens, updated = (float(rpm), now) if bucket is None else bucket
+                if (type(tokens) not in (int, float) or isinstance(tokens, bool)
+                        or type(updated) not in (int, float) or isinstance(updated, bool)
+                        or not math.isfinite(tokens) or not math.isfinite(updated)
+                        or not 0 <= tokens <= rpm):
+                    connection.execute("ROLLBACK")
+                    raise KeyStoreError("credential store contains invalid rate state")
                 observed_at = max(now, float(updated))
                 tokens = min(float(rpm), float(tokens) + (observed_at - float(updated)) * rpm / 60.0)
                 if tokens >= 1.0:
@@ -402,6 +579,7 @@ def _parser() -> argparse.ArgumentParser:
     for action in ("init", "create", "list", "revoke", "usage"):
         item = actions.add_parser(action, allow_abbrev=False)
         item.add_argument("--config", metavar="PATH")
+        item.add_argument("--container", metavar="NAME")
         if action == "create":
             item.add_argument("--name", required=True)
             item.add_argument("--model", action="append", required=True)
@@ -428,7 +606,7 @@ def _store_from_config(config_path: str | None, *, initialize: bool) -> KeyStore
 
 
 def _write_secret(path: str, secret: str) -> None:
-    target = Path(path).expanduser()
+    target = Path(path).expanduser().absolute()
     _secure_directory(target.parent, create=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
@@ -436,6 +614,7 @@ def _write_secret(path: str, secret: str) -> None:
     descriptor = os.open(target, flags, 0o600)
     created = os.fstat(descriptor)
     try:
+        _private_created_descriptor(descriptor)
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
             descriptor = -1
             output.write(secret + "\n")
@@ -456,11 +635,14 @@ def dispatch(argv: list[str] | None = None) -> int:
     """Run the local credential CLI; stdout is always public JSON."""
     try:
         args = _parser().parse_args(argv)
+        if args.container:
+            from .key_container import dispatch_container
+            return dispatch_container(args)
         if args.action == "init":
             store = _store_from_config(args.config, initialize=True)
             result: Any = {"initialized": True, "key_count": len(store.list_keys())}
         elif args.action == "create":
-            output = Path(args.out).expanduser()
+            output = Path(args.out).expanduser().absolute()
             if os.path.lexists(output):
                 raise KeyStoreError("credential output file already exists")
             store = _store_from_config(args.config, initialize=False)

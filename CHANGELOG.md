@@ -6,6 +6,35 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-26
+
+### Added
+
+- Device-specific router API keys with local creation, listing, expiry and
+  revocation, explicit model/endpoint grants, persistent request-rate budgets,
+  filtered model discovery and credential-derived request audit identity.
+  Key secrets are delivered once to protected files; only hashes are retained.
+- Bounded read-only browser observation and inspection tooling, retained Pi
+  observation evidence, and a separately packaged observation core.
+- Managed qualification contracts, runtime-stability evidence and an optional
+  shadow Jev benchmark pilot. Candidate evidence does not promote a model.
+
+### Fixed
+
+- Connect backup readiness, legacy account-deletion response decoding and
+  diagnostic log redaction, plus published onboarding and recovery fixes.
+- Browser observation binding after retention/navigation, benchmark cancellation
+  evidence, and Pi Web 0.9.2 bridge source verification.
+
+### Compatibility
+
+- Device keys are opt-in through `server.api_keys_path`; the existing router
+  credential retains its current authority. Device keys do not authorize
+  management, audio, media or operator endpoints. Rate budgets are single-host
+  request buckets, not token quotas or a distributed billing ledger.
+- Publishing this package does not deploy services, change routes, promote
+  candidates or activate optional browser/Jev integrations.
+
 ## [1.3.0] - 2026-09-20
 
 ### Added

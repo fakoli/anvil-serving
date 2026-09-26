@@ -127,34 +127,74 @@ auth_env = "ANVIL_ROUTER_TOKEN"
 api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
 ```
 
-Use a directory owned by the router process and CLI operator. Initialization
-creates the final directory with mode 700 and the database with mode 600 on
-POSIX; an existing directory must already be owner-only. On Windows, restrict
-the directory ACL to the router identity and administrators. Keep this directory,
-its SQLite sidecars, and issued secret files out of both public and private Git
-repositories. For containers, mount the **directory** read-write and configure
-the path as seen inside the container; the owner CLI must address the same
-store. Do not copy independent stores to router replicas.
+For the standard Compose deployment, use the dedicated durable
+`anvil-router-keys:/var/lib/anvil-serving/router-keys` mount from the updated
+Compose template. The image seeds it with the router user and private permissions.
+For an existing installation, update only the router image to `anvil-serving:1.4.0`
+and add the following entries to the existing operator-home `docker-compose.yml`
+once, retaining its other services, ports, and settings. Do not rerun `init` over
+customized configuration to acquire this mount.
+
+```yaml
+services:
+  router:
+    volumes:
+      - "anvil-router-keys:/var/lib/anvil-serving/router-keys"
+volumes:
+  anvil-router-keys:
+```
+
+This is a partial configuration delta; merge these entries into the existing
+`services.router.volumes` list and top-level `volumes` mapping. After building or
+installing the 1.4.0 image, preview and recreate the router while retaining its
+current installed router configuration:
 
 ```bash
-anvil-serving router keys init
-anvil-serving router keys create --name laptop --model llm.primary --path /v1/chat/completions --rpm 60 --expires-days 90 --out ~/.config/anvil-serving/device-secrets/laptop.key
-anvil-serving router keys list
-anvil-serving router keys usage --key-id KEY_ID
-anvil-serving router keys revoke --key-id KEY_ID
+anvil-serving router up --recreate --dry-run
+anvil-serving router up --recreate --confirm
+```
+
+Then run these commands against the host candidate `router.toml` shown above:
+
+```bash
+anvil-serving router keys init --container anvil-router
+anvil-serving router keys create --container anvil-router --name laptop --model llm.primary --path /v1/chat/completions --rpm 60 --expires-days 90 --out ~/.config/anvil-serving/device-secrets/laptop.key
+anvil-serving router keys list --container anvil-router
+anvil-serving router keys usage --container anvil-router --key-id KEY_ID
+anvil-serving router keys revoke --container anvil-router --key-id KEY_ID
 ```
 
 The commands select the normal operator-home `router.toml`; `--config PATH`
-selects another file. `api_keys_path` must be absolute; CLI and container
-configurations may use different absolute paths to the same mounted database.
-Initial activation requires starting the updated router
-with this configuration. After activation, key creation, expiry, and revocation
-apply on subsequent requests without a router reload. Revocation does not cancel
-requests already admitted. A missing or unreadable store rejects device access;
-the configured master credential retains its existing access.
+selects another file. In container mode, its absolute `api_keys_path` is the
+**container-visible** path. The command verifies the running Compose router and
+its writable persistent mount, then executes as the router user. The generated
+secret travels through a captured pipe into the host `--out` file; it is never
+printed or passed in process arguments. Keep issued files out of Git.
+
+After initializing storage, preview and install the candidate configuration
+with `router install-config --config PATH --dry-run`, then repeat with
+`--confirm`. This activates device keys using the existing guarded config
+installation and restart. Store initialization alone does not change live auth.
+Managed router lifecycle commands preserve this credential volume. Back it up
+privately; never use `docker compose down --volumes` on this deployment. Volume
+loss destroys issued-key authority and configured startup fails closed. Do not
+copy independent stores to replicas.
+
+For a native router, omit `--container` and use an absolute host path owned by
+the router process and CLI operator. Initialization creates the final directory
+with mode 700 and database with mode 600 on POSIX. Windows ACLs must restrict
+access to the process identity and administrators; unsafe storage is refused.
+Secret output receives the same protection. SQLite sidecars stay in the private
+directory. After activation, creation, expiry, and revocation apply on subsequent
+requests without reload. Revocation does not cancel already admitted requests.
+A missing or unreadable store rejects device access; the configured master
+credential retains its existing access.
 
 Creation writes the random secret once to the new `--out` file and prints only
 public metadata, including `key_id`. It refuses to overwrite an existing file.
+If host delivery fails, the command revokes the new key. If the container also
+becomes unavailable during revocation, it reports the public `key_id` with
+`cleanup_required: true`; revoke that ID before retrying creation.
 Install that file using your protected credential distribution mechanism; send
 its value as `Authorization: Bearer ...` or `x-api-key`. Device labels are
 operator-supplied labels, not cryptographic proof of a physical device. Issue a
@@ -186,7 +226,9 @@ at completion; this release does not claim such quotas.
 
 `keys usage` reports a bounded recent access list;
 `--limit` controls returned rows and `--key-id _legacy` selects master traffic.
-The store retains at most 10,000 access records. HTTP status describes transport
+The store retains at most 10,000 access records and 1,024 key records. At key
+capacity, expired and revoked records are pruned before issuing replacements;
+their retained audit rows remain searchable by key ID. HTTP status describes transport
 response status: a stream can begin with 200 and subsequently fail. Join its
 `request_id` to `router diagnose --request-id ...` for inference outcome,
 selected tier, latency, and observed token usage. Those existing decision logs,

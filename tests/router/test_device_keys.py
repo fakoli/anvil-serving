@@ -208,3 +208,57 @@ def test_config_rejects_ambiguous_relative_key_store(tmp_path):
     config.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="keys.sqlite3"\n')
     with pytest.raises(ConfigError, match="absolute"):
         load_server_config(str(config))
+
+
+@pytest.mark.parametrize("retired", ["revoked", "expired"])
+def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tmp_path, monkeypatch, retired):
+    from anvil_serving.control_plane.authorization import load_authorization_policy
+    from anvil_serving.router import keys
+
+    meta, token = issue(store)
+    policy_file = tmp_path / "collision-policy.json"
+    policy_file.write_text(json.dumps({"schema_version": 1, "clients": [{
+        "id": "existing-client", "scopes": ["inference:use"], "credential_env": "TEST_SCOPED",
+    }]}))
+    policy = load_authorization_policy(str(policy_file), env={"TEST_SCOPED": token})
+    if retired == "revoked":
+        store.revoke(meta["key_id"])
+    else:
+        with store._connect() as connection:
+            connection.execute("UPDATE keys SET expires_at = 1")
+        monkeypatch.setattr(keys.time, "time", lambda: 2)
+    with running(store, authorization_policy=policy) as (connection, backend):
+        assert request(connection, token)[0] == 401
+        assert backend.requests == []
+
+
+def test_authentication_storage_work_is_bounded_and_master_remains_available(store, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    _, token = issue(store)
+    entered = threading.Barrier(5)
+    release = threading.Event()
+    original = KeyStore.authenticate
+
+    def blocked_authenticate(self, candidate):
+        entered.wait(5)
+        assert release.wait(5)
+        return original(self, candidate)
+
+    monkeypatch.setattr(KeyStore, "authenticate", blocked_authenticate)
+    with running(store) as (connection, backend), ThreadPoolExecutor(max_workers=4) as pool:
+        def send():
+            client = http.client.HTTPConnection(connection.host, connection.port, timeout=5)
+            try:
+                return request(client, token)[0]
+            finally:
+                client.close()
+
+        futures = [pool.submit(send) for _ in range(4)]
+        try:
+            entered.wait(5)
+            assert request(connection, token)[0] == 503
+            assert request(connection, MASTER)[0] == 200
+        finally:
+            release.set()
+        assert [future.result() for future in futures] == [200] * 4

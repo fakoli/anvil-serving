@@ -35,6 +35,7 @@ def commands() -> CommandNode:
                         mutation_class="mutate" if action in {"init", "create", "revoke"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
+                            _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
                         ) + options,
                         docs_anchor="docs/cli/router.md#device-api-keys",
                     )

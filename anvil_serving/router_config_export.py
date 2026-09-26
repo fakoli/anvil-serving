@@ -125,7 +125,7 @@ def export_installed_config(container: str, expected_sha256: str, *, _run=subpro
                     return any(k in operator_config._DEPENDENCY_KEYS or has_dependency(v) for k, v in value.items())
                 return isinstance(value, list) and any(has_dependency(v) for v in value)
             server = parsed.get("server", {})
-            if not isinstance(server, dict) or has_dependency(parsed) or server.get("authorization_policy_path") is not None:
+            if not isinstance(server, dict) or has_dependency(parsed) or any(server.get(key) is not None for key in ("authorization_policy_path", "api_keys_path")):
                 raise _refusal("dependency_validation")
             stage = "installed_identity"
             mounted_digest = run(["docker", "exec", before["container_id"], "python", "-c", _HASH_CODE]).strip()
