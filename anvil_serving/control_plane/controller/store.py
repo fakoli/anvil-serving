@@ -946,10 +946,11 @@ class BenchmarkJobStore:
         *,
         failure: Mapping[str, Any] | None = None,
         results: Mapping[str, Any] | None = None,
+        write_artifact: bool = True,
     ) -> dict[str, Any]:
         def change(record: dict[str, Any]) -> dict[str, Any]:
             updated = transition_job(record, target, failure=failure)
-            if target in {"completed", "failed", "cancelled"}:
+            if write_artifact and target in {"completed", "failed", "cancelled"}:
                 artifact = build_artifact_envelope(
                     updated, results=results, failure=failure
                 )
@@ -981,7 +982,7 @@ class BenchmarkJobStore:
         results: Mapping[str, Any] | None = None,
         failure: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Record partial evidence, perform owned cleanup, and finish cancelled."""
+        """Retain terminal cancellation evidence before any owned cleanup."""
         record = self._required(run_id)
         if record["state"] in {"completed", "failed", "cancelled"}:
             return record
@@ -995,8 +996,21 @@ class BenchmarkJobStore:
                 current, level="warning", message="cancellation requested"
             ),
         )
-        partial = build_artifact_envelope(record, results=results, failure=failure)
-        self._write_artifact(record, partial)
+        try:
+            cancelled = self.transition(run_id, "cancelled", results=results, failure=failure)
+        except OSError:
+            retention_failure = {
+                "class": "cancellation",
+                "code": "cancellation_artifact_unavailable",
+                "message": "benchmark cancellation could not retain its artifact",
+            }
+            return self.transition(
+                run_id,
+                "cancelled",
+                results={"cancellation": {"artifact_retention": "failed"}},
+                failure=retention_failure,
+                write_artifact=False,
+            )
         if cleanup is not None:
             work_path = resolve_owned_run_path(
                 self.run_root,
@@ -1005,7 +1019,7 @@ class BenchmarkJobStore:
                 relative="work",
             )
             cleanup(work_path)
-        return self.transition(run_id, "cancelled", results=results, failure=failure)
+        return cancelled
 
     def artifact(self, run_id: str) -> Optional[dict[str, Any]]:
         record = self._required(run_id)

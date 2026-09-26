@@ -299,12 +299,14 @@ def launch_benchmark_job(
     *, path: str, run_root: str, run_id: str, popen: Any = subprocess.Popen
 ) -> dict[str, Any]:
     """Launch an owned detached worker without embedding credentials in argv."""
+    database = os.path.realpath(path)
+    root = os.path.realpath(run_root)
     argv = [
         sys.executable,
         "-m",
         "anvil_serving.benchmarking.worker",
-        "--db", path,
-        "--run-root", run_root,
+        "--db", database,
+        "--run-root", root,
         "--run-id", run_id,
     ]
     kwargs: dict[str, Any] = {
@@ -322,18 +324,27 @@ def launch_benchmark_job(
         raise BenchmarkJobError(
             "worker_launch_failed", "detached benchmark worker could not be launched"
         ) from exc
-    store = BenchmarkJobStore(path, run_root=run_root)
+    store = BenchmarkJobStore(database, run_root=root)
     record = store.status(run_id)
     if record is None:
         raise BenchmarkJobError("job_not_found", "cannot register a worker for an absent job")
     worker_path = resolve_owned_run_path(
-        run_root,
+        root,
         ownership_id=record["spec"]["ownership_id"],
         run_id=run_id,
         relative="worker.json",
     )
     Path(worker_path).parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(worker_path, {"run_id": run_id, "pid": int(process.pid), "launched_at": utc_now()})
+    atomic_write_json(worker_path, {
+        "run_id": run_id,
+        "pid": int(process.pid),
+        "db": database,
+        "run_root": root,
+        "process_start": _process_start_identity(int(process.pid)),
+        "process_group_id": int(process.pid),
+        "session_id": int(process.pid),
+        "launched_at": utc_now(),
+    })
     return {"launched": True, "pid": int(process.pid), "run_id": run_id}
 
 
@@ -341,7 +352,29 @@ _MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
 _MAX_PARTIAL_OUTPUT_FILES = 512
 
 
-def _stop_owned_worker(worker_path: str, run_id: str) -> dict[str, Any]:
+def _process_start_identity(pid: int) -> str | None:
+    """Return Linux's non-reusable process-start value when it is available."""
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+        return raw.rsplit(")", 1)[1].split()[19]
+    except (IndexError, OSError):
+        return None
+
+
+def _process_arguments(pid: int) -> tuple[str, ...] | None:
+    try:
+        return tuple(
+            value.decode(sys.getfilesystemencoding(), "surrogateescape")
+            for value in Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+            if value
+        )
+    except OSError:
+        return None
+
+
+def _stop_owned_worker(
+    worker_path: str, run_id: str, *, database: str, run_root: str
+) -> dict[str, Any]:
     """Stop the dedicated worker session only after proving its identity."""
     try:
         worker = json.loads(Path(worker_path).read_text(encoding="utf-8"))
@@ -350,26 +383,37 @@ def _stop_owned_worker(worker_path: str, run_id: str) -> dict[str, Any]:
         return {"stopped": False, "status": "worker_record_missing"}
     except (OSError, ValueError):
         return {"stopped": False, "status": "worker_record_unreadable"}
-    if worker.get("run_id") != run_id or not isinstance(pid, int) or pid <= 1:
+    if (
+        worker.get("run_id") != run_id
+        or not isinstance(pid, int)
+        or pid <= 1
+        or not all(isinstance(worker.get(key), str) and worker[key] for key in ("db", "run_root", "process_start"))
+        or worker.get("process_group_id") != pid
+        or worker.get("session_id") != pid
+        or worker["db"] != database
+        or worker["run_root"] != run_root
+    ):
         return {"stopped": False, "status": "unverified_identity"}
     if os.name == "nt":
         return {"stopped": False, "status": "unsupported_platform", "pid": pid}
     try:
-        observed = subprocess.run(
-            ("ps", "-p", str(pid), "-o", "command="),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            timeout=5,
-            check=False,
+        arguments = _process_arguments(pid)
+        if arguments is None:
+            return {"stopped": False, "status": "leader_missing_unverified", "pid": pid}
+        expected = (
+            sys.executable,
+            "-m",
+            "anvil_serving.benchmarking.worker",
+            "--db",
+            worker["db"],
+            "--run-root",
+            worker["run_root"],
+            "--run-id",
+            run_id,
         )
-        command = observed.stdout
-        if observed.returncode != 0:
-            return {"stopped": True, "status": "already_stopped", "pid": pid}
         if (
-            "anvil_serving.benchmarking.worker" not in command
-            or run_id not in command
+            arguments != expected
+            or _process_start_identity(pid) != worker["process_start"]
             or os.getpgid(pid) != pid
             or os.getsid(pid) != pid
         ):
@@ -504,29 +548,51 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         run_id=run_id,
         relative="worker.json",
     )
-    termination = _stop_owned_worker(worker_path, run_id)
+    termination = _stop_owned_worker(
+        worker_path,
+        run_id,
+        database=os.path.realpath(store.path),
+        run_root=store.run_root,
+    )
     run_path = resolve_owned_run_path(
         store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id
     )
     work_path = resolve_owned_run_path(
         store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id, relative="work"
     )
-    retention = (
-        _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
-        if termination["stopped"]
-        else {"state": "failed", "reason": "worker_termination_unverified"}
-    )
-    evidence = _cancellation_evidence(record, run_path=run_path, retention=retention, termination=termination)
-    failure = evidence["failure"]
+    try:
+        retention = (
+            _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+            if termination["stopped"]
+            else {"state": "failed", "reason": "worker_termination_unverified"}
+        )
+        evidence = _cancellation_evidence(
+            record, run_path=run_path, retention=retention, termination=termination
+        )
+        failure = evidence["failure"]
+        results = {"evidence": evidence}
+    except (BenchmarkArtifactError, OSError):
+        retention = {"state": "failed", "reason": "cancellation_artifact_unavailable"}
+        failure = {
+            "class": "cancellation",
+            "code": "cancellation_artifact_unavailable",
+            "message": "benchmark cancellation could not retain its artifact",
+        }
+        results = {"cancellation": {"retention": retention, "termination": termination}}
 
     def cleanup(work_path: str) -> None:
         if termination["stopped"] and retention["state"] in {"retained", "absent"} and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
-    cancelled = store.cancel(run_id, cleanup=cleanup, results={"evidence": evidence}, failure=failure)
+    cancelled = store.cancel(run_id, cleanup=cleanup, results=results, failure=failure)
     cancelled = dict(cancelled)
+    artifact_retention_failed = (
+        cancelled.get("failure", {}).get("code") == "cancellation_artifact_unavailable"
+    )
     cancelled["worker_terminated"] = termination["stopped"]
-    cancelled["cleanup_deferred"] = not (termination["stopped"] and retention["state"] in {"retained", "absent"})
+    cancelled["cleanup_deferred"] = artifact_retention_failed or not (
+        termination["stopped"] and retention["state"] in {"retained", "absent"}
+    )
     return cancelled
 
 
