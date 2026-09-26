@@ -241,10 +241,10 @@ def test_cancellation_does_not_signal_same_run_from_another_store(monkeypatch, t
         lambda _pid: (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db", other_db, "--run-root", other_root, "--run-id", "worker-run"),
     )
     monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "other-start")
-    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: 12345)
-    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda _pid: 12345)
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: 12345, raising=False)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda _pid: 12345, raising=False)
     signals = []
-    monkeypatch.setattr(benchmark_worker.os, "killpg", lambda *args: signals.append(args))
+    monkeypatch.setattr(benchmark_worker.os, "killpg", lambda *args: signals.append(args), raising=False)
 
     cancelled = cancel_benchmark_job(store, "worker-run")
 
