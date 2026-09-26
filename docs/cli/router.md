@@ -115,6 +115,97 @@ topology and belongs in private operator evidence. No service is changed.
 The direct tier `extra_body.thinking_token_budget` setting is recognized as a numeric
 inference limit only for integers from 0 through 1,048,576. Strings, booleans,
 nested occurrences, and other credential-shaped fields retain the secret guard.
+## Device API keys
+
+On the router owner, configure a dedicated, untracked credential directory in
+`router.toml` once. Keep the existing `auth_env`: that credential retains its
+existing administrative access and is identified as `_legacy` in traces.
+
+```toml
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
+```
+
+Use a directory owned by the router process and CLI operator. Initialization
+creates the final directory with mode 700 and the database with mode 600 on
+POSIX; an existing directory must already be owner-only. On Windows, restrict
+the directory ACL to the router identity and administrators. Keep this directory,
+its SQLite sidecars, and issued secret files out of both public and private Git
+repositories. For containers, mount the **directory** read-write and configure
+the path as seen inside the container; the owner CLI must address the same
+store. Do not copy independent stores to router replicas.
+
+```bash
+anvil-serving router keys init
+anvil-serving router keys create --name laptop --model llm.primary --path /v1/chat/completions --rpm 60 --expires-days 90 --out ~/.config/anvil-serving/device-secrets/laptop.key
+anvil-serving router keys list
+anvil-serving router keys usage --key-id KEY_ID
+anvil-serving router keys revoke --key-id KEY_ID
+```
+
+The commands select the normal operator-home `router.toml`; `--config PATH`
+selects another file. `api_keys_path` must be absolute; CLI and container
+configurations may use different absolute paths to the same mounted database.
+Initial activation requires starting the updated router
+with this configuration. After activation, key creation, expiry, and revocation
+apply on subsequent requests without a router reload. Revocation does not cancel
+requests already admitted. A missing or unreadable store rejects device access;
+the configured master credential retains its existing access.
+
+Creation writes the random secret once to the new `--out` file and prints only
+public metadata, including `key_id`. It refuses to overwrite an existing file.
+Install that file using your protected credential distribution mechanism; send
+its value as `Authorization: Bearer ...` or `x-api-key`. Device labels are
+operator-supplied labels, not cryptographic proof of a physical device. Issue a
+separate key for each device or application. Rotate by issuing a replacement,
+installing it, checking usage, then revoking the old ID.
+
+Repeat `--model` and `--path` for additional grants. Both must authorize a
+request. Chat grants use the router's trimmed, case-insensitive aliases;
+embeddings and reranking use exact served-model names. Supported inference
+paths are `/v1/chat/completions`, `/v1/messages`, `/v1/responses`,
+`/v1/embeddings`, and `/v1/rerank`. `/v1/models` is granted automatically and
+returns only granted chat aliases. Other metadata, operator, admin, audio,
+media, MCP, and A2A endpoints are denied to device keys. Purpose models remain
+available through their dedicated endpoints, as before; the chat catalog does
+not advertise them.
+
+Each key has a persistent token bucket: `--rpm 60` allows a burst of 60 requests
+and replenishes one request per second. All permitted endpoints, including
+catalog reads, share the budget. Over-budget requests return 429 with
+`Retry-After`; grants denied before rate admission do not consume tokens.
+SQLite transactions serialize admission across threads and local processes
+sharing the store, and restart does not reset the bucket. This is a single-host
+store, not a distributed quota service; do not place it on a network filesystem.
+For long-running chat requests, the existing `[server.client_limits]` can also
+cap concurrent requests by the generated key ID. Tier admission still protects
+model capacity independently. Token-per-minute quotas would require reserving
+estimated input/output tokens before dispatch and reconciling measured usage
+at completion; this release does not claim such quotas.
+
+`keys usage` reports a bounded recent access list;
+`--limit` controls returned rows and `--key-id _legacy` selects master traffic.
+The store retains at most 10,000 access records. HTTP status describes transport
+response status: a stream can begin with 200 and subsequently fail. Join its
+`request_id` to `router diagnose --request-id ...` for inference outcome,
+selected tier, latency, and observed token usage. Those existing decision logs,
+active request records, and optional trace exports carry the trusted `client_id`
+for chat; purpose-model decision records carry it as well. A caller-provided
+client-ID header or JSON field cannot override it. Upstreams receive the
+router-generated request ID, not the device credential.
+
+Generated keys use the reserved `ask_` prefix; keep separately configured scoped
+operator credentials outside that namespace. Anonymous requests and health
+probes do not consume the retained per-key usage history or generate per-request
+authentication logs. Authenticated device denials are retained under the key ID.
+
+The access audit records timestamps, key IDs, request IDs, allowed endpoint
+labels, status, and elapsed time. Unknown paths collapse to a fixed label;
+query strings, prompts, outputs, and credentials are excluded. Failure to
+write access history emits `event=key_audit_unavailable`; it does not turn a
+completed inference into a retryable failure. Decision-log retention remains
+controlled by `decision_log_path`; access history is not a billing ledger.
 
 ## Workloads
 

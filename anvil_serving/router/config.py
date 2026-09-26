@@ -440,6 +440,7 @@ class ServerConfig:
     media_public_origin: Optional[str] = None
     workload_host: Optional[str] = None
     authorization_policy_path: Optional[str] = None
+    api_keys_path: Optional[str] = None
     client_limits: Mapping[str, int] = field(default_factory=dict)
     admission_timeout_s: float = 30.0
     startup_timeout_s: float = 300.0
@@ -457,7 +458,7 @@ _SERVER_KEYS = frozenset({
     "media_scopes",
     "media_public_origin",
     "workload_host",
-    "authorization_policy_path", "client_limits", "admission_timeout_s",
+    "authorization_policy_path", "api_keys_path", "client_limits", "admission_timeout_s",
     "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
     "heartbeat_interval_s", "trace_export_url",
 })
@@ -528,11 +529,14 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         raw_media_scopes = []
 
     paths: dict[str, Optional[str]] = {}
-    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path"):
+    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path", "api_keys_path"):
         value = server.get(key)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ConfigError(f"[server].{key} must be a non-empty file path")
         paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
+
+    if paths["api_keys_path"] is not None and not os.path.isabs(paths["api_keys_path"]):
+        raise ConfigError("[server].api_keys_path must be an absolute file path")
 
     durations = {}
     defaults = ServerConfig()
@@ -549,7 +553,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         if (client != "_legacy" and _WORKLOAD_HOST_RE.fullmatch(client) is None
                 or type(limit) is not int or not 1 <= limit <= 1024):
             raise ConfigError("[server].client_limits requires client IDs and integer limits 1..1024")
-    if (client_limits or paths["authorization_policy_path"]) and auth_env is None:
+    if (client_limits or paths["authorization_policy_path"] or paths["api_keys_path"]) and auth_env is None:
         raise ConfigError("[server] client policies require auth_env")
     trace_export_url = server.get("trace_export_url")
     if trace_export_url is not None:
@@ -568,6 +572,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
         media_public_origin=media_public_origin,
         workload_host=workload_host,
         authorization_policy_path=paths["authorization_policy_path"],
+        api_keys_path=paths["api_keys_path"],
         client_limits=MappingProxyType(dict(client_limits)),
         trace_export_url=trace_export_url,
         **durations,
