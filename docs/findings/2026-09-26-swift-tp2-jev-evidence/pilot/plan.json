@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-serving.jev-pilot-publication-plan/v1",
+  "status": "frozen-inputs-only",
+  "packet_directory": "packets",
+  "packet_count": 30,
+  "receipt_directory": "shadow-001",
+  "receipt_count": 30,
+  "labels": "labels.json",
+  "freeze_verification": "freeze-verification.json",
+  "source_plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+  "selection": {
+    "paths": ["current", "deterministic", "jev"],
+    "labels_frozen_before_provider_calls": true,
+    "automatic_consumption": false
+  },
+  "publication_boundary": "Public copies redact private artifact paths; source-to-public bindings are in ../redaction-ledger.json. No downstream comparison result is included."
+}

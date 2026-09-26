@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.live-attempt-label/v1",
+  "attempt": "swift-flash-tp2-r2",
+  "evidence": {
+    "path": "../swift-r2-startup-all.txt",
+    "sha256": "c460c64e75ff3898aeb44595e172841546e63059ff804c9cf08fb13c39a1e9fe"
+  },
+  "stage": "POSTrank/POSTweights/PREKV",
+  "outcome": "resource-rejected",
+  "category": "kv-cache-capacity",
+  "decision": "Treat r2 as a measured C1 KV-capacity rejection at gpu_memory_utilization=0.96. It proves neither long-context quality nor eight-image request allocation, and it does not justify CPU offload.",
+  "mandatory_limits": {
+    "requested_max_model_len": 327680,
+    "kv_needed_gib": 4.16,
+    "kv_available_gib": 3.75,
+    "estimated_max_model_len": 293216,
+    "weight_load_gib_per_tp_rank": 85.7
+  },
+  "rank_created": true,
+  "next_escalation": "A bounded r3 retry may adjust only the GPU utilization envelope while retaining 327680, TP=2, GPU-resident PLE, and no CPU offload. It must capture resolved binding, KV admission, and a separate eight-image allocation probe.",
+  "pilot_oracle": {
+    "expected_closed_category": "resource_exhaustion",
+    "actual_closed_category": "resource_exhaustion",
+    "unknown": false,
+    "escalate": true,
+    "critical_evidence_ids": [
+      "swift-r2-startup-all-kv-admission",
+      "swift-r2-startup-all-tp2-weight-load",
+      "r2-live-startup-assessment"
+    ],
+    "capture_qualification": "swift-r2-startup-all.txt retains combined stdout and stderr for the measured startup failure."
+  }
+}

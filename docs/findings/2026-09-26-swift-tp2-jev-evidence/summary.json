@@ -1,0 +1,18 @@
+{
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "candidate": "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4@3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+  "coding_gate": "2/5 below frozen 4/5",
+  "limitations": [
+    "r1 native stderr incomplete",
+    "old ThinkingCap loss missing",
+    "pre-shadow final-label hash missing",
+    "near-318K boundary, C4 and performance not run after coding-gate failure"
+  ],
+  "outcome": "not-qualified",
+  "promotion": {
+    "human_gate_required": true,
+    "promoted": false
+  },
+  "restoration": "exact incumbent restored on current host; direct and routed five-check preflights passed, tools 5/5",
+  "schema": "anvil-serving.benchmark-decision-summary/v1"
+}

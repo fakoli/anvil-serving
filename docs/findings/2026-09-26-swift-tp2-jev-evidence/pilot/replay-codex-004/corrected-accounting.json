@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.jev-exploratory-accounting/v1",
+  "scope": "154 instrumented provider requests: original frozen shadow and downstream replay plus supplemental live shadows. Excludes development, corpus-authoring, and review-session usage.",
+  "original_audited_campaign": {
+    "provider_calls": 150,
+    "known_all_tokens": 1596888,
+    "unknown_failed_usage_calls": 5,
+    "cost": "unknown; cannot pass a savings gate"
+  },
+  "independent_audit_source_sha256": "sha256:ab3a39aae3677143b202c4957bcef17db3eac368893796ee1145b21343221863",
+  "supplemental_live_shadows": {
+    "provider_calls": 4,
+    "known_all_tokens": 2927,
+    "r1_label_provenance": "closed category was added after the call; no independent pre-call final-label freeze proof",
+    "r2_label_provenance": "label recorded before call"
+  },
+  "combined_known_accounting": {
+    "provider_calls": 154,
+    "known_all_tokens": 1599815,
+    "unknown_failed_usage_calls": 5
+  },
+  "heldout_proxy": {
+    "current": {"category_correct": "15/20", "joint_correct": "14/20", "selection_critical_preserved": "20/20 label-relative", "median_input_tokens": 16503.0, "p95_total_elapsed_ms_nearest_rank": 8897.097609998193, "downstream_relevant_id_mean_recall": 0.5},
+    "deterministic": {"category_correct": "15/20", "joint_correct": "14/20", "selection_critical_preserved": "17/20 label-relative", "median_input_tokens": 16483.5, "p95_total_elapsed_ms_nearest_rank": 9948.097609998193, "downstream_relevant_id_mean_recall": 0.125},
+    "jev": {"category_correct": "11/20", "joint_correct": "10/20", "selection_critical_preserved": "20/20 label-relative", "median_input_tokens": 16481.5, "p95_total_elapsed_ms_nearest_rank": 11010.909470976796, "downstream_relevant_id_mean_recall": 0.75, "selection_overhead_tokens": 23196},
+    "acceptance": "failed: no material benefit, higher observed latency, cost unknown, and exact pre-shadow final-label freeze unproven"
+  },
+  "live_r2_qualification_omission_risk": "The immutable Jev view omitted optional rope_contradiction. The live oracle did not mark it critical, but qualification use requires it pinned or mandatory; do not extend original heldout critical preservation to this live packet.",
+  "claim_boundary": "Exploratory controlled single-turn GPT-6 Astra proxy only; heldout critical preservation is finite and label-relative, not universal/live qualification safety. It is not interactive Codex-session savings, causal latency, or promotion evidence.",
+  "promotion": {"promoted": false, "human_gate_required": true}
+}

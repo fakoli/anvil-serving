@@ -1,0 +1,54 @@
+{
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result"
+  ],
+  "model": "llm.primary",
+  "passed": true,
+  "public_sanitization": {
+    "omitted": [
+      "endpoint port",
+      "content and reasoning excerpts",
+      "request indexes",
+      "raw event detail"
+    ]
+  },
+  "results": [
+    {
+      "detail": "4.9s got=\"```python\\nsum(xs)\\n```\\n\\nPython's built-in `sum()` d\" finish='stop' visible=370 reasoning_chars=1016 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=172 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "5/5 clean (sample: 7.2s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=78 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x5",
+      "passed": true
+    },
+    {
+      "detail": "0.6s done=True events=33 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.4s tool result retained finish='stop' visible=11 reasoning_chars=165 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    }
+  ],
+  "route": "routed",
+  "schema": "anvil-serving.sanitized-restoration-preflight/v1",
+  "source_sha256": "sha256:2d54dbf5a6b818976ae304eaab9e2c0ce78c6f512e235f639a992eaca3cd883e",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  }
+}

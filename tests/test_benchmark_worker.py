@@ -4,6 +4,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
 import re
+import os
+import signal
+import subprocess
+import sys
 import threading
 import time
 from types import SimpleNamespace
@@ -15,7 +19,7 @@ from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
 from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
-from anvil_serving.benchmarking.worker import execute_benchmark_job, launch_benchmark_job
+from anvil_serving.benchmarking.worker import cancel_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
 
@@ -152,6 +156,156 @@ def test_detached_launcher_reports_typed_process_failure(tmp_path):
         )
 
     assert exc.value.code == "worker_launch_failed"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
+def test_cancellation_retains_native_output_and_stops_owned_child(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    store.claim("worker-run")
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    output = run_path / "work" / "mini-output" / "case-1"
+    output.mkdir(parents=True)
+    trajectory = output / "trajectory.json"
+    expected_trajectory = '{"patch":"retained"}\n'
+    trajectory.write_text(expected_trajectory, encoding="utf-8")
+    code = (
+        "import subprocess,sys,time;"
+        "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']);"
+        "print(child.pid, flush=True);time.sleep(60)"
+    )
+    process = subprocess.Popen(
+        [sys.executable, "-c", code, "anvil_serving.benchmarking.worker", "worker-run"],
+        stdout=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        child_pid = int(process.stdout.readline().strip())
+        database = os.path.realpath(store.path)
+        (run_path / "worker.json").write_text(
+            json.dumps({
+                "run_id": "worker-run", "pid": process.pid, "db": database,
+                "run_root": store.run_root, "process_start": "test-start",
+                "process_group_id": process.pid, "session_id": process.pid,
+            }), encoding="utf-8"
+        )
+        monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "test-start")
+        monkeypatch.setattr(
+            benchmark_worker,
+            "_process_arguments",
+            lambda _pid: (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db", database, "--run-root", store.run_root, "--run-id", "worker-run"),
+        )
+        cancelled = cancel_benchmark_job(store, "worker-run")
+        assert cancelled["state"] == "cancelled"
+        assert cancelled["worker_terminated"] is True
+        assert cancelled["cleanup_deferred"] is False
+        process.wait(timeout=5)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and subprocess.run(
+            ("ps", "-p", str(child_pid)), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        ).returncode == 0:
+            time.sleep(0.05)
+        assert subprocess.run(("ps", "-p", str(child_pid)), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0
+        artifact = store.artifact("worker-run")
+        evidence = artifact["results"]["evidence"]
+        assert evidence["completeness"] == "cancelled"
+        assert evidence["failure"]["class"] == "cancellation"
+        assert (run_path / "evidence" / "native-partial" / "case-1" / "trajectory.json").read_text(encoding="utf-8") == expected_trajectory
+        assert not (run_path / "work").exists()
+    finally:
+        if process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+
+
+def test_cancellation_does_not_signal_same_run_from_another_store(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs-a.db"), run_root=str(tmp_path / "runs-a"))
+    store.submit(spec())
+    store.claim("worker-run")
+    run_path = tmp_path / "runs-a" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    other_db = os.path.realpath(str(tmp_path / "jobs-b.db"))
+    other_root = os.path.realpath(str(tmp_path / "runs-b"))
+    (run_path / "worker.json").write_text(
+        json.dumps({
+            "run_id": "worker-run", "pid": 12345, "db": other_db,
+            "run_root": other_root, "process_start": "other-start",
+            "process_group_id": 12345, "session_id": 12345,
+        }), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        benchmark_worker,
+        "_process_arguments",
+        lambda _pid: (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db", other_db, "--run-root", other_root, "--run-id", "worker-run"),
+    )
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "other-start")
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: 12345, raising=False)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda _pid: 12345, raising=False)
+    signals = []
+    monkeypatch.setattr(benchmark_worker.os, "killpg", lambda *args: signals.append(args), raising=False)
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_deferred"] is True
+    assert signals == []
+    assert work.exists()
+
+
+def test_cancellation_artifact_write_failure_is_terminal_and_preserves_work(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    store.claim("worker-run")
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work" / "mini-output"
+    work.mkdir(parents=True)
+    (work / "trajectory.json").write_text("retained source\n", encoding="utf-8")
+    monkeypatch.setattr(
+        benchmark_worker,
+        "_stop_owned_worker",
+        lambda *_args, **_kwargs: {"stopped": True, "status": "terminated", "pid": 12},
+    )
+    monkeypatch.setattr(
+        benchmark_worker,
+        "atomic_write_json",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("ENOSPC")),
+    )
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_deferred"] is True
+    assert store.status("worker-run")["failure"]["code"] == "cancellation_artifact_unavailable"
+    assert (run_path / "work").exists()
+
+
+def test_cancellation_store_artifact_failure_is_terminal_and_preserves_work(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    store.claim("worker-run")
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work" / "mini-output"
+    work.mkdir(parents=True)
+    (work / "trajectory.json").write_text("retained source\n", encoding="utf-8")
+    monkeypatch.setattr(
+        benchmark_worker,
+        "_stop_owned_worker",
+        lambda *_args, **_kwargs: {"stopped": True, "status": "terminated", "pid": 12},
+    )
+    monkeypatch.setattr(
+        store,
+        "_write_artifact",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("ENOSPC")),
+    )
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_deferred"] is True
+    assert cancelled["failure"]["code"] == "cancellation_artifact_unavailable"
+    assert (run_path / "work").exists()
 
 
 class EndpointHandler(BaseHTTPRequestHandler):

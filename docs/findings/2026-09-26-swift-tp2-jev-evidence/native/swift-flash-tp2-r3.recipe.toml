@@ -1,0 +1,84 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4-327K-TP2-r3"
+status = "experimental"
+source = "2026-09-26 Swift 1.5 Flash Next TP2 r2: explicit Qwen4Exp text-config YaRN and 327680 binding; unregistered and not loaded"
+family = "qwen4-exp-multimodal-moe"
+total_params_b = 180
+
+[recipe.download]
+repo = "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4"
+revision = "3ff0520224f264a2d0ac4ab56ece8f2f13aadb38"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 192
+vram_note = "Exclusive TP=2 candidate. The feasibility calculation retains 3 GiB per GPU policy headroom."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "/root/.cache/huggingface/hub/models--ukisai--Swift-1.5-Qwen3.8-Flash-Next-NVFP4/snapshots/3ff0520224f264a2d0ac4ab56ece8f2f13aadb38"
+quantization = "ModelOpt NVFP4; ModelOpt excludes the Qwen4Exp PLE prefix. Only its n-gram embedding is ETP/TP-sharded; PLE kv_proj and short-convolution cache are TP-replicated."
+context_tokens = 327680
+port = 39146
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "swift15-flash-next-nvfp4-tp2-327k-r3"
+ipc = "host"
+shm_size = "16gb"
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53249
+host_memory_reserve_mib = 12288
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "MAX_JOBS=2",
+  "OMP_NUM_THREADS=2",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+]
+flags = [
+  "--dtype bfloat16",
+  "--mamba-ssm-cache-dtype float32",
+  "--hf-overrides '{\"text_config\":{\"max_position_embeddings\":327680,\"rope_parameters\":{\"mrope_interleaved\":true,\"mrope_section\":[11,11,10],\"partial_rotary_factor\":0.25,\"rope_theta\":10000000,\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":262144}}}'",
+  "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'",
+  "--max-num-batched-tokens 2048",
+  "--served-model-name swift15-flash-next-nvfp4-tp2-327k-r3",
+  "--tensor-parallel-size 2",
+  "--max-model-len 327680",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.968",
+  "--kv-cache-dtype auto",
+  "--mamba-cache-mode align",
+  "--engram-config '{\"cpu_offload\":false}'",
+  "--enforce-eager",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 39146",
+]
+note = "r1 stopped before rank creation because its nested rope_parameters override left text_config.max_position_embeddings at 262144. In pinned vLLM, ModelConfig recursively applies nested text_config overrides, then derives max length from hf_text_config; Qwen4ExpTextConfig accepts rope_parameters and maps them to rope_scaling. r2 changes the supported nested binding itself: max_position_embeddings=327680 plus YaRN factor 2.0 with original_max_position_embeddings=262144. No VLLM_ALLOW_LONG_MAX_MODEL_LEN bypass is used. C4 is a scheduler limit, not four full windows. Before C4 scheduling, startup must log resolved 327680 config, create both TP ranks, and prove C1 allocation with eight images and a 65536 output reserve."
+
+[recipe.fit]
+suited = ["bounded-startup-trial", "long-context", "coding-agent", "tool-use"]
+rationale = "Exact architecture and TP runtime path are source-supported. Feasibility remains unresolved: the corrected C1 lower bound includes PLE non-embedding TP replication, but runtime workspace and eight-image allocation are still unknown within a 1.987 GiB policy envelope."
+
+[recipe.sources]
+official = [
+  "https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4/tree/3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+  "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/models/qwen4_exp/nvidia/model.py",
+  "https://github.com/vllm-project/vllm/blob/ced6857afa0ea7b2e3f0846a62e1394e90f15607/vllm/models/qwen4_exp/nvidia/ngram_embedding.py",
+  "https://docs.vllm.ai/en/latest/features/engram/",
+]
+
+# r3 changes only identity/port and memory utilization from 0.96 to 0.968.
+# r2 measured TP0/TP1 loading85.7GiB each; KV needed4.16GiB vs available3.75GiB.
+# 0.968 retains3.059GiB/card on97887MiB capacity, exceeding the3GiB reserve.

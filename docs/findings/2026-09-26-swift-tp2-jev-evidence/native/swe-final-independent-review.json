@@ -1,0 +1,221 @@
+{
+  "actions_performed": {
+    "config_or_service_mutation": false,
+    "gpu_benchmark_or_model_call": false,
+    "grader_rerun": false,
+    "patch_content_review": false
+  },
+  "baseline_compatibility": {
+    "baseline_result": "4/5",
+    "baseline_source_sha256": "sha256:28919cc54aca92acd4d75f2afa9085ad322edc619597c2fc661c5bf7da58816e",
+    "candidate_result": "2/5",
+    "conclusion": "Candidate fails the frozen floor and does not match the retained 4/5 baseline.",
+    "intentional_nonidentity": "Baseline thinking_mode=enabled; candidate thinking_mode=default/native. This remains explicit and prevents a general causal model ranking, but the pre-reviewed reuse contract permits the frozen-five quality-floor comparison.",
+    "same_agent_revision": true,
+    "same_five_explicit_instance_ids": true,
+    "same_grader_revision": true,
+    "same_profile_sha256": true,
+    "same_python_environment_digest": true,
+    "same_selection_sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4",
+    "same_temperature_and_top_p": true,
+    "task_container_network_is_none_for_both": true
+  },
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "cancellation_ticket": {
+    "applicability": "No cancellation was invoked in this run. The agent batch reached 5/5 terminal instance states, official grading completed its four non-empty predictions, and official output reported zero unstopped containers. The ticket remains valid for future cancellation behavior but does not explain or invalidate these results.",
+    "source_sha256": "sha256:8ddedac10d03c6dc11d1dbe0d79111bb230d388df47bb89d426bb99a41d24ee9",
+    "status": "open independent product gap"
+  },
+  "coding_result": {
+    "empty_patch": 1,
+    "errors": 0,
+    "fixed_denominator": "2/5",
+    "floor_passed": false,
+    "frozen_floor": "4/5",
+    "incomplete": 0,
+    "interpretation": "The empty patch remains zero on the five-task denominator. Even an invalid alternative that removed it would yield only 2/4, still below the frozen 4/5 floor.",
+    "native_official_grader_complete": false,
+    "native_wrapper_state": "incomplete",
+    "official_completed_ids": [
+      "django__django-13512",
+      "pylint-dev__pylint-8898",
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096"
+    ],
+    "official_empty_patch_ids": [
+      "pydata__xarray-4356"
+    ],
+    "official_resolved_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096"
+    ],
+    "official_submitted_ids": [
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898",
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096"
+    ],
+    "official_unresolved_ids": [
+      "django__django-13512",
+      "pylint-dev__pylint-8898"
+    ],
+    "report_partition_valid": true,
+    "resolved": 2,
+    "unresolved": 2
+  },
+  "failure_cause_review": [
+    {
+      "caveat": "The official per-test report also lists test_label_for_field as FAIL_TO_PASS failure, while raw unittest output shows that test as ok and the final runner summary reports only one failure. This parser/classification discrepancy does not change unresolved=false because test_json_display_for_field genuinely failed.",
+      "classification": "genuine_gold_test_functional_failure",
+      "evidence": [
+        "Candidate patch applied cleanly and the selected Django test command completed.",
+        "The raw runner executed 35 tests and reported one assertion failure with no harness, dependency, timeout, or runtime error.",
+        "The failing gold behavior still emitted escaped Unicode in admin JSON display where literal Unicode was expected.",
+        "All retained PASS_TO_PASS cases succeeded."
+      ],
+      "instance_id": "django__django-13512",
+      "resolved": false
+    },
+    {
+      "caveat": "Python emitted a nonfatal missing _distutils_hack .pth warning during startup, but package installation succeeded and the complete selected pytest suite ran. The evidence does not support attributing the gold assertion failure to that warning.",
+      "classification": "genuine_gold_test_functional_failure",
+      "evidence": [
+        "Candidate patch applied cleanly; editable install completed successfully.",
+        "Pytest collected and ran 20 selected tests: 19 passed and the gold test test_csv_regex_error failed because malformed regex input did not raise SystemExit.",
+        "All retained PASS_TO_PASS cases succeeded.",
+        "The grader reported no error or timeout."
+      ],
+      "instance_id": "pylint-dev__pylint-8898",
+      "resolved": false
+    },
+    {
+      "classification": "model_limits_exceeded_empty_patch",
+      "evidence": [
+        "The agent reached its frozen 60-call limit and produced an empty prediction.",
+        "The official reporter classified it in empty_patch_ids, outside completed_ids, with no grader error."
+      ],
+      "instance_id": "pydata__xarray-4356",
+      "resolved": false
+    }
+  ],
+  "notes": [
+    "The native wrapper remains incomplete with official_grader_complete=false because empty patches are excluded from completed_ids.",
+    "The official report itself is complete enough for the frozen fixed-denominator result because all five submitted IDs are disjointly classified as successfully graded or explicit empty patch, with zero errors and zero incomplete IDs.",
+    "No qualification or promotion inference is made from successful Sphinx and Sympy tasks beyond their official resolved status."
+  ],
+  "public_sanitization": {
+    "omitted": [
+      "private source paths",
+      "container names and IDs",
+      "process-group identifier",
+      "raw test and operations logs"
+    ],
+    "retained": "grader outcome, classifications, hashes, and failure caveats"
+  },
+  "qualification": {
+    "candidate_qualified": false,
+    "promotion_allowed_by_this_result": false,
+    "reason": "Only two of five selected tasks resolved. This is below 4/5 regardless of how the one explicit empty patch is discussed.",
+    "restoration_consistent_with_result": true
+  },
+  "resource_and_retention": {
+    "exact_container_exit_observation": {
+      "all_absent": true,
+      "container_count": 5,
+      "docker_lifecycle_action": false,
+      "interpretation": "The five Mini-SWE task containers were absent at read-only observation."
+    },
+    "official_grader_stdout": {
+      "interpretation": "No grader containers remained. Five reusable evaluation images remained cached; this is image-cache retention, not a live-container leak.",
+      "unremoved_images": 5,
+      "unstopped_containers": 0
+    },
+    "worker_exit": {
+      "interpretation": "The recorded benchmark worker process group was empty before restoration. Process-group identifier omitted.",
+      "owned_group_processes_empty": true
+    }
+  },
+  "result": "qualification-blocked",
+  "reviewed_at": "2026-09-26T20:03:03.947818+00:00",
+  "reviewed_files": [
+    {
+      "bytes": 33244,
+      "private_source_sha256": "sha256:bef8795568e9d1b3a54fe22a240883b03f2a8ee94176564d78690fddfe000289"
+    },
+    {
+      "bytes": 1027,
+      "private_source_sha256": "sha256:4a5fe709a3501856d97dc1f3ac6b4d8a891fe625e9d4091401aa4f461b21ddaf"
+    },
+    {
+      "bytes": 2578,
+      "private_source_sha256": "sha256:7312801dd4c5b1734340a988f629df4789cb52517b9fc3161b8e52d69c61efd5"
+    },
+    {
+      "bytes": 4151,
+      "private_source_sha256": "sha256:d961e08c372b4ba1768103c90d622b3e3f5f98d0f9f3f5620a8be1fab0a188c3"
+    },
+    {
+      "bytes": 884,
+      "private_source_sha256": "sha256:04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70"
+    },
+    {
+      "bytes": 3705,
+      "private_source_sha256": "sha256:3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943"
+    },
+    {
+      "bytes": 9046,
+      "private_source_sha256": "sha256:024783c68c6aa50e73ccdd54107f747e3f19d3a477fbba37da8c8e9df623d7f9"
+    },
+    {
+      "bytes": 20212,
+      "private_source_sha256": "sha256:4ba2bb59f0ba32a298086614fc210418d1377e8115973abb68ba8568721bc4f8"
+    },
+    {
+      "bytes": 2327,
+      "private_source_sha256": "sha256:18a32f247ac4a8cef034d452a17c8c0c9b3e7df2bebb8c92e5a5b3cdd921a710"
+    },
+    {
+      "bytes": 2242,
+      "private_source_sha256": "sha256:c7bf3d9a65df546184f31b46b6a64f026fb3d1d37604e314627cedb6b836d1d7"
+    },
+    {
+      "bytes": 13999,
+      "private_source_sha256": "sha256:407ca4480c642a9fa4270874634ed66a0865014e982571254c53e8b567ec3f88"
+    },
+    {
+      "bytes": 24542,
+      "private_source_sha256": "sha256:ad8b7b3c37954488e083876bc4b3904a3b777fbbc45d8b67cb29d055626f1c48"
+    },
+    {
+      "bytes": 2877,
+      "private_source_sha256": "sha256:0068c082b9ba859c9f09b2b8925ccce6cf9ad7faa7edd63528c679fd2cd47c45"
+    },
+    {
+      "bytes": 7014,
+      "private_source_sha256": "sha256:28919cc54aca92acd4d75f2afa9085ad322edc619597c2fc661c5bf7da58816e"
+    },
+    {
+      "bytes": 1879,
+      "private_source_sha256": "sha256:8ddedac10d03c6dc11d1dbe0d79111bb230d388df47bb89d426bb99a41d24ee9"
+    },
+    {
+      "bytes": 5788,
+      "private_source_sha256": "sha256:854467e67fb2eb332960cfcebcbf98f7b7cd78046cdc869413be937fe6191005"
+    },
+    {
+      "bytes": 8871,
+      "private_source_sha256": "sha256:da8f97f3f59dae67e963f8b22ccdf4bbda6f53cdcb1f549f2dcab8c5285d0660"
+    },
+    {
+      "bytes": 1829,
+      "private_source_sha256": "sha256:dab63e2fc1e04fae35161a931718d87fcf0191cc7653e53517728ffbce904fa8"
+    },
+    {
+      "bytes": 474,
+      "private_source_sha256": "sha256:588d32f0388f8b73f8279aa7094f32749e8fc71f1956589f787ee32b6883ef5c"
+    }
+  ],
+  "schema": "anvil-serving.swe-final-independent-review/v1",
+  "scope": "Official SWE report, fixed-denominator partition, Django and Pylint authoritative grader logs, frozen baseline compatibility, and cancellation-ticket applicability."
+}

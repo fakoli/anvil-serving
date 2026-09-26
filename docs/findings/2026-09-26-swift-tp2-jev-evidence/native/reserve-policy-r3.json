@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-09-26T17:55:49.715353+00:00",
+  "default_reserve_gib_per_gpu": 3,
+  "configured_fraction_unused_gib": 3.059,
+  "observed_free_mib_per_gpu": [
+    1543,
+    1543
+  ],
+  "effective_trial_reserve_gib_per_gpu": 1,
+  "scope": "exclusive bounded r3 qualification only, not promotion",
+  "rationale": "Both compute-only GPUs have one owned TP2 serve; no desktop or competing model work. Runtime allocations outside the configured fraction reduce actual free memory. Direct protocol preflight passed with no observed CUDA error. Representative long-context and eight-image workload safety remains unverified and is a required gate.",
+  "policy_authority": "campaign owner reserve adjustment allowed by recipe-feasibility skill; user authorized temporary both-GPU qualification",
+  "rollback": "exact captured GLM r11",
+  "promotion_authorized": false
+}

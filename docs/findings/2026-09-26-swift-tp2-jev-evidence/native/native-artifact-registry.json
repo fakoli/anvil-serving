@@ -1,0 +1,50 @@
+{
+  "schema": "anvil-serving.sanitized-native-artifact-registry/v1",
+  "candidate": "swift15-flash-next-nvfp4-tp2-327k-r3",
+  "source_hashes": {
+    "context-artifact.json": "sha256:435c8c03372e4b32d5e2fcd67a5ca141947c9c8cfc9c53c6689a47c4e4bf14e8",
+    "agentic-artifact.json": "sha256:82c9c374b07876d1a829b75e1b8b6b327c07acab361193c2c37538414be0c48c",
+    "eight-images.json": "sha256:0873089205ee46d5786be5efad3bcb59adca63e9e5c74375eb2fd6cb80a45c99",
+    "images.json": "sha256:547a6646c6fdb4ed7e77272e4e37d2b23d5c16e6e2f179a7cfb271990267e991",
+    "feasibility-result.json": "sha256:3fc5d01aaa84634be70273bd81ac32139716fe8617850da3953478da0924155e",
+    "reserve-policy-r3.json": "sha256:ea9f74baf33f2618edb021734cedc1c561bb60b6f744807a2e8feda6b4e82a23",
+    "r3-gpu-observation.csv": "sha256:60b8f15bc708b45084f2f4df150e47d1b517b3cc1631fb51370e325c61cbc454",
+    "swift-flash-tp2-r3.recipe.toml": "sha256:76d46ca43322539dc562602658e2acb064fb8a3609ad078610534f564bed5d69",
+    "swe-2-swe.json": "sha256:bef8795568e9d1b3a54fe22a240883b03f2a8ee94176564d78690fddfe000289",
+    "swe-terminal-artifact.json": "sha256:5219ee07d7b3bfff644b16610f0d7ca335b1c6f5f58c71b588d9c6d29ee756ca",
+    "swe-official-aggregate-grade.json": "sha256:04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70",
+    "swe-final-independent-review.json": "sha256:52563f9e5aca16b5944018a800b85b39c5b28738055093c41fc1be46fab8837c",
+    "swe-coding-gate.json": "sha256:e0766ffa9cd0477a8bfaeb753cace0e2b227291534bdb4825d108a2c36b23b9c",
+    "swe-container-exit-observation.json": "sha256:dab63e2fc1e04fae35161a931718d87fcf0191cc7653e53517728ffbce904fa8"
+  },
+  "redaction_bindings": "redaction-bindings.json",
+  "native_schemas": [
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.context/v1",
+    "anvil-serving.agentic/v1",
+    "anvil-serving.recipe-feasibility-result/v1"
+  ],
+  "observations": {
+    "context": "completed scout artifact; not a final quality or capacity ranking",
+    "agentic": "completed scout artifact; not a final quality ranking",
+    "eight_images": "four successful image attempts with visible output and reasoning-channel metadata",
+    "images": "12 successful image attempts; source and public digests are bound in redaction-bindings.json",
+    "no_cpu_offload": true,
+    "tp_rank_binding": "two observed TP ranks; hardware identifiers redacted",
+    "reserve": {
+      "historical_recipe_nominal_gib_per_gpu": 3,
+      "scoped_trial_reserve_gib_per_gpu": 1,
+      "measured_free_mib_per_gpu": 1543,
+      "measurement_artifact": "r3-gpu-observation.csv",
+      "promotion_authorized": false
+    },
+    "recipe_export": "Exact historical source bytes; its source/vram_note/fit/comments describe earlier planning and are not substituted for measured r3 state.",
+    "swe": "Fixed selected-task result 2/5; 2/4 native graded ratio is not a qualification rate; wrapper failed and official grader incomplete."
+  },
+  "promotion": {
+    "promoted": false,
+    "human_gate_required": true
+  },
+  "swe_redaction_bindings": "swe-redaction-bindings.json",
+  "swe_audit_redaction_bindings": "swe-audit-redaction-bindings.json"
+}

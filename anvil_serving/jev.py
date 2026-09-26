@@ -277,13 +277,58 @@ def advise(capability, value, *, allow_export=False, disabled=False, environment
     try:
         annotation = _annotation(result, capability, value)
     except (ValueError, TypeError, KeyError, RecursionError):
-        return report(capability, "invalid_response", "invalid_bridge_response", started=True)
+        rejected = report(capability, "invalid_response", "invalid_bridge_response", started=True)
+        # A rejected answer can still incur usage. Retain only the independently
+        # validated closed receipt, never malformed answers or arbitrary fields.
+        try:
+            data = result["data"]
+            allowed = (set(report(capability, "disabled", "")) - {"advisory"}) | {"usage_receipt"}
+            if (set(result) == {"ok", "command", "data"}
+                    and result["ok"] is True and result["command"] == "jev bridge"
+                    and set(data) == allowed
+                    and data["schema"] == "anvil.jev.annotation.v1"
+                    and data["provider"] == "typesafe" and data["model"] == MODEL
+                    and data["capability"] == capability
+                    and data["status"] in {"unavailable", "invalid_response", "completed"}
+                    and data["requested"] is True and data["request_started"] is True
+                    and type(data["used"]) is bool
+                    and data["used"] == (data["status"] == "completed")
+                    and data["input_digest"] == digest(value)):
+                rejected["usage_receipt"] = _usage_receipt(data["usage_receipt"])
+        except (ValueError, TypeError, KeyError, RecursionError):
+            pass
+        return rejected
     try:
         if policy_reader() != policy:
-            return report(capability, "blocked", "policy_changed", started=annotation["request_started"])
+            return _revoked(annotation)
     except (OSError, ValueError, TypeError, RecursionError):
-        return report(capability, "blocked", "policy_changed", started=annotation["request_started"])
+        return _revoked(annotation)
     return annotation
+
+
+def _revoked(annotation):
+    """Discard advice without discarding costs of an already completed call."""
+    result = report(annotation["capability"], "blocked", "policy_changed", started=annotation["request_started"])
+    for key in ("elapsed_ms", "input_digest", "rubric_digest", "usage_receipt"):
+        if key in annotation:
+            result[key] = annotation[key]
+    if "usage_receipt" not in result and annotation["usage"]:
+        result["usage_receipt"] = {"state": "validated", **annotation["usage"]}
+    return result
+
+
+def _usage_receipt(receipt):
+    if (type(receipt) is not dict
+            or set(receipt) != {"state", "input_tokens", "output_tokens"}
+            or receipt["state"] not in {"not_received", "validated", "invalid"}):
+        raise ValueError("Invalid usage receipt")
+    numbers = [receipt["input_tokens"], receipt["output_tokens"]]
+    if receipt["state"] == "validated":
+        if any(type(n) is not int or n < 0 for n in numbers):
+            raise ValueError("Invalid usage receipt tokens")
+    elif numbers != [None, None]:
+        raise ValueError("Invalid usage receipt state")
+    return dict(receipt)
 
 
 def _annotation(result, capability, value):
@@ -301,7 +346,7 @@ def _annotation(result, capability, value):
         raise ValueError("Invalid bridge state")
     if data["used"] != (data["status"] == "completed") or (data["used"] and not data["request_started"]):
         raise ValueError("Invalid bridge completion")
-    allowed = set(report(capability, "disabled", "")) - {"advisory"}
+    allowed = (set(report(capability, "disabled", "")) - {"advisory"}) | {"usage_receipt"}
     if set(data) - allowed or not re.fullmatch(r"[a-z0-9_]{0,96}", data.get("reason") or ""):
         raise ValueError("Invalid bridge fields")
     for key in ("rubric_digest", "input_digest"):
@@ -313,6 +358,11 @@ def _annotation(result, capability, value):
     if type(data.get("answers")) is not dict or type(data.get("usage")) is not dict:
         raise ValueError("Invalid bridge answers")
     usage = data["usage"]
+    if "usage_receipt" in data:
+        receipt = _usage_receipt(data["usage_receipt"])
+        if data["used"] and (receipt["state"] != "validated"
+                or usage != {k: receipt[k] for k in ("input_tokens", "output_tokens")}):
+            raise ValueError("Inconsistent usage receipt")
     if usage and (set(usage) != {"input_tokens", "output_tokens"}
                   or any(type(number) is not int or number < 0 for number in usage.values())):
         raise ValueError("Invalid bridge usage")

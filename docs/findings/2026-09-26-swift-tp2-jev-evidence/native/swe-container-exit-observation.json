@@ -1,0 +1,10 @@
+{
+  "all_absent": true,
+  "container_count": 5,
+  "docker_lifecycle_action": false,
+  "interpretation": "Official grader output reported zero unstopped containers. The five task containers were absent at observation; cached evaluation images are not live containers. Container names, IDs, diagnostics, and process-group identifier are omitted.",
+  "method": "Narrow read-only Docker State inspection of exactly five Mini-SWE task containers retained by the pinned harness. No Docker lifecycle action.",
+  "observed_at": "2026-09-26T20:02:22.714361+00:00",
+  "schema": "anvil-serving.swe-container-exit-observation/v1",
+  "worker_process_group_empty_before_restoration": true
+}

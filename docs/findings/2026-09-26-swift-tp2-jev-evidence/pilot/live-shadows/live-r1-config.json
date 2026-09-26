@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.jev-pilot/v1",
+  "packets": [
+    "live-r1-packet.json"
+  ],
+  "output": "live-shadow-002",
+  "jev": {
+    "enabled": true,
+    "capabilities": [
+      "context_ranking",
+      "incident_triage"
+    ],
+    "allow_api": true,
+    "allow_export": true,
+    "anvil_binary": "<anvil-cli>",
+    "model": "jev-1.13.0",
+    "timeout_seconds": 5.0
+  }
+}

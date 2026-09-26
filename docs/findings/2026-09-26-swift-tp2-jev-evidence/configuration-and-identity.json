@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.sanitized-candidate-identity/v1",
+  "candidate": {
+    "repository": "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4",
+    "revision": "3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+    "served_identity": "swift15-flash-next-nvfp4-tp2-327k-r3",
+    "runtime": "vLLM v0.30.0",
+    "runtime_image_digest": "sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90",
+    "quantization": "ModelOpt NVFP4",
+    "tensor_parallel_size": 2,
+    "context_tokens": 327680,
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 2048,
+    "gpu_memory_utilization": 0.968,
+    "kv_cache_dtype": "auto",
+    "reasoning_parser": "qwen3",
+    "tool_call_parser": "qwen3_coder",
+    "recipe_state": "experimental"
+  },
+  "privacy": {
+    "command_host": "Primary Node",
+    "profile": "TP2 candidate managed recipe",
+    "gpu_uuid": "redacted",
+    "local_model_path": "redacted"
+  },
+  "promotion": {"promoted": false, "human_gate_required": true}
+}

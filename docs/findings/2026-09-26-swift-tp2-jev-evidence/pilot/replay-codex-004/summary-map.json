@@ -1,0 +1,48 @@
+{
+  "schema": "anvil-serving.jev-downstream-summary-map/v1",
+  "run": "codex-replay-004",
+  "receipt_count": 90,
+  "frozen_bindings": {
+    "plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+    "labels_sha256": "e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+    "shadow_prompt_and_packet_digest_bindings": "valid for 90 of 90 receipts"
+  },
+  "heldout": {
+    "count": 20,
+    "paths": {
+      "current": {"downstream_input_total": 330168, "downstream_input_median": 16503.0, "total_latency_median_ms": 7291.102650024928, "category_correct": 15, "escalate_correct": 15},
+      "deterministic": {"downstream_input_total": 330035, "downstream_input_median": 16483.5, "total_latency_median_ms": 6790.612235022243, "category_correct": 15, "escalate_correct": 14},
+      "jev": {"downstream_input_total": 329747, "downstream_input_median": 16481.5, "total_latency_median_ms": 7870.859235998243, "category_correct": 11, "escalate_correct": 15, "selection_input_tokens": 20942, "selection_output_tokens": 2254}
+    },
+    "observed_downstream_input_delta_jev_vs_current": -421,
+    "observed_downstream_input_delta_jev_vs_deterministic": -288
+  },
+  "tuning": {
+    "count": 10,
+    "paths": {
+      "current": {"downstream_input_total": 165340, "downstream_input_median": 16527.5, "total_latency_median_ms": 6643.103950471384, "category_correct": 8, "escalate_correct": 9},
+      "deterministic": {"downstream_input_total": 164977, "downstream_input_median": 16492.5, "total_latency_median_ms": 6666.102699967101, "category_correct": 8, "escalate_correct": 8},
+      "jev": {"downstream_input_total": 165546, "downstream_input_median": 16499.5, "total_latency_median_ms": 8312.068504980998, "category_correct": 7, "escalate_correct": 8, "selection_input_tokens": 9985, "selection_output_tokens": 1045}
+    },
+    "observed_downstream_input_delta_jev_vs_current": 206,
+    "observed_downstream_input_delta_jev_vs_deterministic": 569
+  },
+  "known_input_accounting": {
+    "full_replay_downstream": 1485813,
+    "full_replay_jev_selection": 30927,
+    "failed_or_invalid_codex_diagnostic": 16525,
+    "known_total_excluding_noncomparable_claude_preflight": 1533265,
+    "unknown_failed_or_invalid_codex_receipts": 3,
+    "prior_claude_preflight": {"known_model_usage_input_tokens": 1739, "two_failed_receipts_report_synthetic_zero_usage": true, "failed_billing": "unknown"}
+  },
+  "acceptance": {
+    "eligible": false,
+    "cost": "unknown for all Jev annotations and failed Claude preflight billing",
+    "reason": "Unknown cost cannot pass; observed downstream token deltas are measurements, not validated savings."
+  },
+  "limitations": [
+    "This is a controlled tool-free GPT-6 Astra workflow proxy, not a measured interactive Codex-session savings claim.",
+    "The frozen first-version shadow is from anvil-serving cd8b7415; current production changes are separate.",
+    "The shared Codex skills-context notice is retained in each receipt and contributes fixed environment context across paths."
+  ]
+}

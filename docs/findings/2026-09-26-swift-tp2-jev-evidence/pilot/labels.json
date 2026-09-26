@@ -1,0 +1,500 @@
+{
+  "schema": "anvil-serving.jev-pilot-labels/v1",
+  "label_provenance": "Authored by the pilot corpus owner from retained summaries and synthetic controls before provider calls. The shadow selection consumer did not read labels; heldout labels are not tuning input.",
+  "labels": [
+    {
+      "id": "t01_flash_r2_schema",
+      "split": "tuning",
+      "correct_category": "incompatible_configuration",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "t02_flash_r3_floor",
+      "split": "tuning",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "t03_swift27_budget",
+      "split": "tuning",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "t04_thinkingcap_gap",
+      "split": "tuning",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "missing",
+        "failure"
+      ],
+      "critical_ids": [
+        "required",
+        "missing",
+        "failure",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "t05_cache_control",
+      "split": "tuning",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal",
+        "missing"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "missing",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h01_restore",
+      "split": "heldout",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h02_baseline_identity",
+      "split": "heldout",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h03_cancel_orphan",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal",
+        "missing"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "missing",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h04_candidate_contradiction",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "contradiction"
+      ],
+      "critical_ids": [
+        "required",
+        "contradiction",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h05_missing_speed",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "missing",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "missing",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "t06_auth401",
+      "split": "tuning",
+      "correct_category": "authentication",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "t07_missing_module",
+      "split": "tuning",
+      "correct_category": "missing_dependency",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "t08_bad_tool_schema",
+      "split": "tuning",
+      "correct_category": "incompatible_configuration",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "t09_oom",
+      "split": "tuning",
+      "correct_category": "resource_exhaustion",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "t10_prompt_injection",
+      "split": "tuning",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h06_license403",
+      "split": "heldout",
+      "correct_category": "authorization_or_license",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h07_connect",
+      "split": "heldout",
+      "correct_category": "connectivity",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h08_grader_failure",
+      "split": "heldout",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h09_ambiguous",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h10_missing_capture",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h11_repeated_config",
+      "split": "heldout",
+      "correct_category": "incompatible_configuration",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h12_route_contradiction",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h13_optional_relevance",
+      "split": "heldout",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h14_old_prior",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h15_artifact_gap",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h16_timeout",
+      "split": "heldout",
+      "correct_category": "unknown",
+      "escalate": true,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h17_bad_json",
+      "split": "heldout",
+      "correct_category": "incompatible_configuration",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h18_permission_scope",
+      "split": "heldout",
+      "correct_category": "authorization_or_license",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    },
+    {
+      "id": "h19_resource_clean",
+      "split": "heldout",
+      "correct_category": "application_behavior",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal",
+        "current_summary"
+      ],
+      "relevant_optional_ids": [
+        "current_summary"
+      ]
+    },
+    {
+      "id": "h20_repeated_network",
+      "split": "heldout",
+      "correct_category": "connectivity",
+      "escalate": false,
+      "pinned_ids": [
+        "required",
+        "signal"
+      ],
+      "critical_ids": [
+        "required",
+        "signal"
+      ],
+      "relevant_optional_ids": []
+    }
+  ]
+}

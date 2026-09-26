@@ -1,0 +1,28 @@
+{
+  "at": "2026-09-26T20:04:20.000185+00:00",
+  "attempted": 5,
+  "downstream_planned_cells": "context-boundary318k, C4readiness and matchedperformance notrun because codinggatefailed",
+  "interpretation_review": "swe-grade-interpretation-review.json",
+  "native_wrapper": {
+    "failure": "model_failure/swe_limits_exceeded",
+    "native_graded_denominator": 4,
+    "native_resolve_rate": 0.5,
+    "official_grader_complete": false,
+    "state": "incomplete"
+  },
+  "official_errors": 0,
+  "official_report_sha256": "04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70",
+  "partition_checks_passed": true,
+  "passed": false,
+  "promotion": "not authorized by unmet condition; not performed",
+  "public_sanitization": {
+    "clarification": "native_resolve_rate 0.5 is 2 resolved among 4 successfully graded completed tasks. The frozen qualification score remains 2/5 = 0.4 because the one empty patch remains in the fixed denominator.",
+    "omitted": [
+      "private source paths"
+    ]
+  },
+  "qualification_rate": 0.4,
+  "required_resolved": 4,
+  "resolved": 2,
+  "schema": "swift-tp2-coding-gate/v1"
+}

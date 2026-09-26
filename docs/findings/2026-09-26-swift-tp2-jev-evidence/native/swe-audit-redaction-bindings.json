@@ -1,0 +1,39 @@
+{
+  "bindings": [
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swe-final-independent-review.json",
+      "private_source_sha256": "sha256:52563f9e5aca16b5944018a800b85b39c5b28738055093c41fc1be46fab8837c",
+      "public_path": "native/swe-final-independent-review.json",
+      "public_sha256": "sha256:5493119e6a2a8ef80fd20fef14a593889b408db270d95e1b1a69dd476cee4b8f",
+      "redactions": [
+        "private paths",
+        "container names and IDs",
+        "process-group identifier",
+        "raw logs"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swe-coding-gate.json",
+      "private_source_sha256": "sha256:e0766ffa9cd0477a8bfaeb753cace0e2b227291534bdb4825d108a2c36b23b9c",
+      "public_path": "native/swe-coding-gate.json",
+      "public_sha256": "sha256:1dd384978e159b86bc8ff2eb3995311d91e4e912ed404ba1a6b75a9e8a513292",
+      "redactions": [
+        "private source paths"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swe-container-exit-observation.json",
+      "private_source_sha256": "sha256:dab63e2fc1e04fae35161a931718d87fcf0191cc7653e53517728ffbce904fa8",
+      "public_path": "native/swe-container-exit-observation.json",
+      "public_sha256": "sha256:c877a95f90ff5c5a2f42461b3be48142a9877ecd1f022b26d6c5a6f6b85dff75",
+      "redactions": [
+        "container names and IDs",
+        "diagnostics",
+        "process-group identifier"
+      ]
+    }
+  ],
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "schema": "anvil-serving.public-redaction-bindings/v1",
+  "scope": "SWE independent audit, deterministic coding gate, and resource exit observation"
+}

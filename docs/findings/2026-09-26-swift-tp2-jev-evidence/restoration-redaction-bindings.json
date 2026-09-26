@@ -1,0 +1,32 @@
+{
+  "bindings": [
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/restoration-receipt.json",
+      "private_source_sha256": "sha256:8bff581ecb04a7d3eb047c97530b13b28c1595a86babf3a2e4a8c60f4b946ccd",
+      "public_path": "restoration-receipt.json",
+      "public_sha256": "sha256:6e79b675176a1923f0a25e6c2eef5e98a872a452f1387b5546bac7aa0d23e3d5",
+      "redactions": [
+        "private endpoint/container/request detail"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/glm-restored-direct-preflight.json",
+      "private_source_sha256": "sha256:2cc5ae345b1537026da8ea8e019f6ff337795abd7697edcf4ee5317cb5aa70ff",
+      "public_path": "native/glm-restored-direct-preflight.json",
+      "public_sha256": "sha256:f2443dc3998656cc22856d82d1c8230c2f4b7ff3a62e910184ffc00989e97044",
+      "redactions": [
+        "private endpoint/container/request detail"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/glm-restored-routed-preflight.json",
+      "private_source_sha256": "sha256:2d54dbf5a6b818976ae304eaab9e2c0ce78c6f512e235f639a992eaca3cd883e",
+      "public_path": "native/glm-restored-routed-preflight.json",
+      "public_sha256": "sha256:9dd673a2f999b791bff9fbe91bebdaea14167b16bc86e879af6bafb82e858fb2",
+      "redactions": [
+        "private endpoint/container/request detail"
+      ]
+    }
+  ],
+  "schema": "anvil-serving.public-redaction-bindings/v1"
+}

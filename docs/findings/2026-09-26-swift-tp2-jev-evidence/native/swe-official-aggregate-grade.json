@@ -1,0 +1,54 @@
+{
+  "completed_ids": [
+    "django__django-13512",
+    "pylint-dev__pylint-8898",
+    "sphinx-doc__sphinx-9658",
+    "sympy__sympy-12096"
+  ],
+  "completed_instances": 4,
+  "empty_patch_ids": [
+    "pydata__xarray-4356"
+  ],
+  "empty_patch_instances": 1,
+  "error_ids": [],
+  "error_instances": 0,
+  "fixed_denominator_score": {
+    "denominator": 5,
+    "numerator": 2,
+    "value": 0.4
+  },
+  "incomplete_ids": [],
+  "interpretation": "Sphinx and Sympy resolved; Django and Pylint unresolved; xarray had an empty patch and LimitsExceeded. This is 2/5 on the fixed selected-task denominator.",
+  "native_graded_ratio": {
+    "denominator": 4,
+    "meaning": "resolved among successfully graded completed tasks only; not a qualification rate",
+    "numerator": 2,
+    "value": 0.5
+  },
+  "native_wrapper_status": "failed",
+  "official_grader_complete": false,
+  "promotion_authorized": false,
+  "resolved_ids": [
+    "sphinx-doc__sphinx-9658",
+    "sympy__sympy-12096"
+  ],
+  "resolved_instances": 2,
+  "result_complete": false,
+  "schema": "anvil-serving.swe-official-aggregate-grade/v1",
+  "selected_instances": 5,
+  "source_report_schema_version": 2,
+  "source_report_sha256": "04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70",
+  "submitted_ids": [
+    "django__django-13512",
+    "pydata__xarray-4356",
+    "pylint-dev__pylint-8898",
+    "sphinx-doc__sphinx-9658",
+    "sympy__sympy-12096"
+  ],
+  "submitted_instances": 5,
+  "unresolved_ids": [
+    "django__django-13512",
+    "pylint-dev__pylint-8898"
+  ],
+  "unresolved_instances": 2
+}

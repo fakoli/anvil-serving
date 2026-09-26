@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.jev-downstream-run-status/v1",
+  "status": "completed_non_acceptance",
+  "requested_calls": 90,
+  "durable_receipts": 90,
+  "paths": {
+    "current": 30,
+    "deterministic": 30,
+    "jev": 30
+  },
+  "runner_errors": 0,
+  "raw_event_truncations": 0,
+  "retries": 0,
+  "frozen_bindings": {
+    "plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+    "labels_sha256": "e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+    "shadow_prompt_and_packet_digest_bindings": "verified for all 90 receipts"
+  },
+  "source_versions": {
+    "shadow": "anvil-serving cd8b7415",
+    "downstream_runner": ["anvil 1a8b445", "anvil 48ca2b1"]
+  },
+  "assessment_sha256": "223cc8b4f426849467850df1de488aa62c8d8255b14fcdc200a433e44dd8add2",
+  "receipt_set_sha256": "eddeec6b639fb7a219e6004a83e99aee5cd35d50e000ebc60e6e4bbe72d6e152",
+  "summary_map_sha256": "142784f569de1d3477213dff616cb57675eb07610454c8dbe70ef9b04e2b8ce5",
+  "acceptance": {
+    "eligible": false,
+    "reason": "Jev cost and campaign failure overhead billing are unknown; unknown cost cannot pass. This controlled proxy also is not a measured interactive Codex-session savings claim."
+  }
+}

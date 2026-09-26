@@ -1,0 +1,7 @@
+{
+  "completed": [
+    "live_r2_kv_capacity"
+  ],
+  "mode": "shadow",
+  "output": "private-evidence://2026-09-26-swift-tp2-jev/pilot/live-shadow-003"
+}

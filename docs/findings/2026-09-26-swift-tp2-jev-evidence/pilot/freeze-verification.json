@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.jev-pilot-freeze-verification/v1",
+  "result": "valid",
+  "packet_count": 30,
+  "packet_set_sha256": "dc2b359fbb1e60787af77415c769aa6e0d07bd123bc1888c5cb9b1c078ccb10e",
+  "labels_sha256": "e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+  "original_plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+  "superseded_unfrozen_plan_sha256": "07916f767bea51de6114d019eb5f76fae0512d32ee6e1d36dfcec8a8d12a8ccd",
+  "downstream_amendment_sha256": "0a3df030f9184731f9004158a853383f223b0a8ab3e5605eb1728f0e987f5186",
+  "shadow_receipts": {
+    "directory": "shadow-001",
+    "count": 30,
+    "packet_digest_binding": "verified for every same-ID receipt against the current frozen packet canonical digest",
+    "source_version": "anvil-serving cd8b7415"
+  },
+  "downstream_runner_source_version": "anvil 56beebf",
+  "scope": "The original plan was restored. The separate downstream amendment changes only provider preflight configuration; labels, packets, and immutable shadow prompts were not regenerated."
+}

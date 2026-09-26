@@ -1,0 +1,592 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-result/v1",
+  "campaign": "swift15-flash-next-tp2-jev",
+  "equations": {
+    "required_tokens": "sum(requirements.tokens)",
+    "policy_available_vram": "physical_vram - sum(all vram_reserves)",
+    "demand": "resident + concurrency*per_sequence + required_tokens*kv_token_multiplier*per_token",
+    "relative_quality_loss": "1 - quality/reference_quality",
+    "warm_e2e_gain": "1 - warm_e2e/no_spec_warm_e2e",
+    "tasks_per_hour_ratio": "tasks_per_hour/reference_tasks_per_hour"
+  },
+  "required_tokens": {
+    "min": 327680,
+    "max": 327680
+  },
+  "physical_available_bytes": {
+    "min": 102641958912,
+    "max": 102641958912
+  },
+  "policy_available_bytes": {
+    "min": 99420733440,
+    "max": 99420733440
+  },
+  "candidates": [
+    {
+      "id": "swift15-flash-next-nvfp4-tp2-c1-327k",
+      "classification": "unresolved",
+      "reasons": [
+        "context or VRAM bounds overlap or remain unbounded"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "unknown",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 327680,
+        "max": 327680
+      },
+      "demand_bytes": {
+        "min": null,
+        "max": null
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 99420733440,
+        "max": 99420733440
+      },
+      "physical_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "policy_margin_bytes": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_physical": {
+        "min": null,
+        "max": null
+      },
+      "estimated_max_tokens_policy": {
+        "min": null,
+        "max": null
+      },
+      "load_bearing_unknowns": [
+        "candidates[0].resident_components.runtime_workspace_recurrent",
+        "candidates[0].per_sequence_components.eight_image_activation"
+      ],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.media_protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[0].runtime_context_limit_tokens",
+        "candidates[0].per_token_components.attention_kv_and_indexer_per_gpu",
+        "candidates[0].kv_token_multiplier"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "hypothetical-four-full-windows-w4a16-autoround-tp2-327k",
+      "classification": "modeled-infeasible",
+      "reasons": [
+        "optimistic demand exceeds optimistic physical VRAM under encoded bounds"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "physical-fail",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 327680,
+        "max": 327680
+      },
+      "demand_bytes": {
+        "min": 104782798729,
+        "max": 104782798729
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 99420733440,
+        "max": 99420733440
+      },
+      "physical_margin_bytes": {
+        "min": -2140839817,
+        "max": -2140839817
+      },
+      "policy_margin_bytes": {
+        "min": -5362065289,
+        "max": -5362065289
+      },
+      "estimated_max_tokens_physical": {
+        "min": 284124,
+        "max": 284124
+      },
+      "estimated_max_tokens_policy": {
+        "min": 218588,
+        "max": 218588
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.media_protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[1].runtime_context_limit_tokens"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    },
+    {
+      "id": "hypothetical-four-full-windows-nvfp4-tp2-327k",
+      "classification": "modeled-infeasible",
+      "reasons": [
+        "optimistic demand exceeds optimistic physical VRAM under encoded bounds"
+      ],
+      "axes": {
+        "context_limit": "unknown",
+        "measured_context": "not-measured",
+        "measured_context_evidence_status": "not-supplied",
+        "memory": "physical-fail",
+        "correctness": {
+          "status": "unknown",
+          "missing_variables": [
+            "deterministic_pass_rate"
+          ]
+        },
+        "quality": {
+          "status": "unknown",
+          "missing_variables": [
+            "quality_score",
+            "reference_quality_score"
+          ]
+        },
+        "warm_e2e_speed": {
+          "status": "unknown",
+          "missing_variables": [
+            "warm_e2e_seconds",
+            "no_spec_warm_e2e_seconds"
+          ]
+        },
+        "tasks_per_hour": {
+          "status": "unknown",
+          "missing_variables": [
+            "successful_tasks_per_hour",
+            "reference_tasks_per_hour"
+          ]
+        }
+      },
+      "required_tokens": {
+        "min": 327680,
+        "max": 327680
+      },
+      "demand_bytes": {
+        "min": 109366321556,
+        "max": 109366321556
+      },
+      "physical_available_bytes": {
+        "min": 102641958912,
+        "max": 102641958912
+      },
+      "policy_available_bytes": {
+        "min": 99420733440,
+        "max": 99420733440
+      },
+      "physical_margin_bytes": {
+        "min": -6724362644,
+        "max": -6724362644
+      },
+      "policy_margin_bytes": {
+        "min": -9945588116,
+        "max": -9945588116
+      },
+      "estimated_max_tokens_physical": {
+        "min": 190872,
+        "max": 190872
+      },
+      "estimated_max_tokens_policy": {
+        "min": 125336,
+        "max": 125336
+      },
+      "load_bearing_unknowns": [],
+      "planning_bound_inputs": [
+        "requirements.tokens.prompt",
+        "requirements.tokens.output_reserve",
+        "requirements.tokens.media_protocol",
+        "requirements.concurrency",
+        "requirements.vram_reserves.headroom.variable",
+        "candidates[2].runtime_context_limit_tokens"
+      ],
+      "missing_evidence": [
+        "deterministic_pass_rate",
+        "measured_max_stable_context_tokens",
+        "no_spec_warm_e2e_seconds",
+        "quality_score",
+        "reference_quality_score",
+        "reference_tasks_per_hour",
+        "successful_tasks_per_hour",
+        "warm_e2e_seconds"
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "path": "tracked_variables.host_ram_available_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 71086944256,
+      "max": 71086944256,
+      "source": "free -b, 2026-09-26T17:15:00Z",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "tracked_variables.swap_free_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 507301888,
+      "max": 507301888,
+      "source": "free -b, 2026-09-26T17:15:00Z",
+      "observed_at": "2026-09-26",
+      "notes": "Insufficient as an offload assumption."
+    },
+    {
+      "path": "tracked_variables.data_free_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 1139387113472,
+      "max": 1139387113472,
+      "source": "df -B1 /data, 2026-09-26T17:12:33Z",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "tracked_variables.exact_flash_tp2_start",
+      "status": "unknown",
+      "unit": "boolean",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Pinned vLLM 0.30.0 source recognizes exact Qwen4Exp, but this exact NVFP4 Flash TP2 start remains unmeasured."
+    },
+    {
+      "path": "requirements.tokens.prompt",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 253952,
+      "max": 253952,
+      "source": "327680 contract less 65536 output and 8192 media/protocol",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.output_reserve",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 65536,
+      "max": 65536,
+      "source": "campaign requirement",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.tokens.media_protocol",
+      "status": "assumed",
+      "unit": "tokens",
+      "min": 8192,
+      "max": 8192,
+      "source": "eight-image campaign reserve; measure actual expansion",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.concurrency",
+      "status": "assumed",
+      "unit": "sequences",
+      "min": 1,
+      "max": 1,
+      "source": "C1 lane; C4 is encoded as its own candidate",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.physical_vram_bytes",
+      "status": "measured",
+      "unit": "bytes",
+      "min": 102641958912,
+      "max": 102641958912,
+      "source": "nvidia-smi GPU 0 and 1 total, 2026-09-26T17:15:00Z",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.vram_reserves.headroom.variable",
+      "status": "assumed",
+      "unit": "bytes",
+      "min": 3221225472,
+      "max": 3221225472,
+      "source": "retained single-GPU campaign policy: 3 GiB per device",
+      "observed_at": "2026-09-26",
+      "notes": "No TP2 waiver has been evaluated."
+    },
+    {
+      "path": "candidates[0].runtime_context_limit_tokens",
+      "status": "estimated",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 327680,
+      "source": "pinned config native limit plus untested YaRN2 extension",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.checkpoint_minimum_per_gpu",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 93260194196,
+      "max": 93260194196,
+      "source": "186454709032 exact checkpoint bytes / TP2 plus 32839680 bytes: half of the 65679360-byte Qwen4Exp PLE non-embedding parameters already counted by equal split must be restored because vLLM sets PLE kv_proj disable_tp=True. Only the 128-shard n-gram embedding is ETP/TP-sharded.",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.ple_shortconv_state_per_sequence_bf16_minimum",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 184320,
+      "max": 184320,
+      "source": "Pinned source passes tp_world_size=1, intermediate_size=2560*4 and 9-state-token PLE short convolution; BF16 minimum. MambaSpec marks it tp_replicated.",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].resident_components.runtime_workspace_recurrent",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Need exact TP2 NVFP4 startup allocation, including FP32 GDN recurrent state, graph/runtime workspace, and any additional PLE cache block allocation."
+    },
+    {
+      "path": "candidates[0].per_sequence_components.eight_image_activation",
+      "status": "unknown",
+      "unit": "bytes",
+      "min": null,
+      "max": null,
+      "source": null,
+      "observed_at": null,
+      "notes": "Pinned vLLM defaults the vision encoder to weight TP, but the eight-image activation and media-token expansion allocation remains unmeasured under TP2."
+    },
+    {
+      "path": "candidates[0].per_token_components.attention_kv_and_indexer_per_gpu",
+      "status": "estimated",
+      "unit": "bytes/token",
+      "min": 12288,
+      "max": 16384,
+      "source": "12 full-attention layers x K/V x 2 KV heads x 256 dims x BF16, divided TP2; upper retains indexer allowance",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[0].kv_token_multiplier",
+      "status": "assumed",
+      "unit": "copies",
+      "min": 1,
+      "max": 1,
+      "source": "one independent C1 sequence",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_deterministic_pass_rate",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 1,
+      "max": 1,
+      "source": "qualification hard gates",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.max_relative_quality_loss",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.05,
+      "max": 0.05,
+      "source": "campaign coding-quality floor",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "requirements.thresholds.min_tasks_per_hour_ratio",
+      "status": "assumed",
+      "unit": "ratio",
+      "min": 0.95,
+      "max": 0.95,
+      "source": "campaign throughput floor",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].runtime_context_limit_tokens",
+      "status": "estimated",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 327680,
+      "source": "pinned config native limit plus untested YaRN2 extension",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].resident_components.checkpoint_minimum_per_gpu",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 88676671369,
+      "max": 88676671369,
+      "source": "W4A16 equal split plus the same exact Qwen4Exp PLE non-embedding TP replication correction; this remains a hypothetical reservation calculation because the pinned runtime rejects AutoRound PLE dispatch",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].per_token_components.attention_kv_minimum_per_gpu",
+      "status": "confirmed",
+      "unit": "bytes/token",
+      "min": 12288,
+      "max": 12288,
+      "source": "12 full-attention layers x K/V x 2 KV heads x 256 dims x BF16, divided TP2",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[1].kv_token_multiplier",
+      "status": "confirmed",
+      "unit": "copies",
+      "min": 4,
+      "max": 4,
+      "source": "four independent full 327680-token windows",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].runtime_context_limit_tokens",
+      "status": "estimated",
+      "unit": "tokens",
+      "min": 262144,
+      "max": 327680,
+      "source": "pinned config native limit plus untested YaRN2 extension",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].resident_components.checkpoint_minimum_per_gpu",
+      "status": "confirmed",
+      "unit": "bytes",
+      "min": 93260194196,
+      "max": 93260194196,
+      "source": "NVFP4 equal split plus the exact PLE non-embedding TP replication correction; still omits unknown runtime workspace",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].per_token_components.attention_kv_minimum_per_gpu",
+      "status": "confirmed",
+      "unit": "bytes/token",
+      "min": 12288,
+      "max": 12288,
+      "source": "12 full-attention layers x K/V x 2 KV heads x 256 dims x BF16, divided TP2",
+      "observed_at": "2026-09-26",
+      "notes": null
+    },
+    {
+      "path": "candidates[2].kv_token_multiplier",
+      "status": "confirmed",
+      "unit": "copies",
+      "min": 4,
+      "max": 4,
+      "source": "four independent full 327680-token windows",
+      "observed_at": "2026-09-26",
+      "notes": null
+    }
+  ],
+  "unresolved_variables": [
+    "tracked_variables.exact_flash_tp2_start",
+    "candidates[0].resident_components.runtime_workspace_recurrent",
+    "candidates[0].per_sequence_components.eight_image_activation"
+  ],
+  "promotion_authority": false
+}

@@ -254,3 +254,29 @@ def test_disable_then_identical_reenable_invalidates_inflight_advice(tmp_path, m
     result = jev.advise("voice_intent", value, allow_export=True, bridge=bridge)
     assert result["reason"] == "policy_changed" and not result["used"] and result["request_started"]
     assert dict(jev.load_policy()) == initial
+
+
+def test_invalid_typed_answer_retains_independently_validated_usage():
+    value = {'observation': 'Unknown failure'}
+    response = completed('incident_triage', {'category': choice('authentication', jev.INCIDENT_CHECKS)}, value)
+    response['data']['answers']['category']['choice'] = 'unoffered'
+    response['data']['usage_receipt'] = {'state': 'validated', 'input_tokens': 10, 'output_tokens': 2}
+    result = jev.advise('incident_triage', value, allow_export=True, policy_reader=policy, bridge=lambda *_: response)
+    assert not result['used'] and result['answers'] == {}
+    assert result['usage_receipt'] == response['data']['usage_receipt']
+    response['data']['usage_receipt']['input_tokens'] = True
+    result = jev.advise('incident_triage', value, allow_export=True, policy_reader=policy, bridge=lambda *_: response)
+    assert 'usage_receipt' not in result
+
+
+@pytest.mark.parametrize('change', [
+    {'model': 'other'}, {'status': 'bogus'}, {'request_started': False},
+    {'requested': False}, {'input_digest': 'c' * 64}, {'extra': True},
+])
+def test_rejected_usage_requires_exact_attempt_provenance(change):
+    value = {'observation': 'Unknown failure'}
+    response = completed('incident_triage', {}, value)
+    response['data'].update(change)
+    response['data']['usage_receipt'] = {'state': 'validated', 'input_tokens': 10, 'output_tokens': 2}
+    result = jev.advise('incident_triage', value, allow_export=True, policy_reader=policy, bridge=lambda *_: response)
+    assert not result['used'] and 'usage_receipt' not in result
