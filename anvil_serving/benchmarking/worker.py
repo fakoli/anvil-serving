@@ -10,6 +10,8 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
+import time
 from typing import Any, Mapping
 
 from .artifacts import (
@@ -19,7 +21,7 @@ from .artifacts import (
     evidence_file_reference,
     normalize_evidence_failure_class,
 )
-from .harnesses import cleanup_harness_work, prepare_harness_assets
+from .harnesses import prepare_harness_assets
 from .jobs import BenchmarkJobError, resolve_owned_run_path, utc_now
 from .preflight import require_benchmark_preflight, run_benchmark_preflight
 from .profiles import load_profile
@@ -218,11 +220,6 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         store.append_log(run_id, level="info", message=f"executing {spec['suite']} suite")
         suite_result = _run_suite(store, record, profile, assets)
         if store.status(run_id)["state"] != "running":
-            cleanup_harness_work(
-                run_root=store.run_root,
-                ownership_id=spec["ownership_id"],
-                run_id=spec["run_id"],
-            )
             return store.status(run_id)
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
@@ -340,8 +337,162 @@ def launch_benchmark_job(
     return {"launched": True, "pid": int(process.pid), "run_id": run_id}
 
 
+_MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
+_MAX_PARTIAL_OUTPUT_FILES = 512
+
+
+def _stop_owned_worker(worker_path: str, run_id: str) -> dict[str, Any]:
+    """Stop the dedicated worker session only after proving its identity."""
+    try:
+        worker = json.loads(Path(worker_path).read_text(encoding="utf-8"))
+        pid = worker.get("pid")
+    except FileNotFoundError:
+        return {"stopped": False, "status": "worker_record_missing"}
+    except (OSError, ValueError):
+        return {"stopped": False, "status": "worker_record_unreadable"}
+    if worker.get("run_id") != run_id or not isinstance(pid, int) or pid <= 1:
+        return {"stopped": False, "status": "unverified_identity"}
+    if os.name == "nt":
+        return {"stopped": False, "status": "unsupported_platform", "pid": pid}
+    try:
+        observed = subprocess.run(
+            ("ps", "-p", str(pid), "-o", "command="),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        command = observed.stdout
+        if observed.returncode != 0:
+            return {"stopped": True, "status": "already_stopped", "pid": pid}
+        if (
+            "anvil_serving.benchmarking.worker" not in command
+            or run_id not in command
+            or os.getpgid(pid) != pid
+            or os.getsid(pid) != pid
+        ):
+            return {"stopped": False, "status": "unverified_identity", "pid": pid}
+        os.killpg(pid, signal.SIGTERM)
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            if not _process_group_running(pid):
+                return {"stopped": True, "status": "terminated", "pid": pid}
+            time.sleep(0.05)
+        os.killpg(pid, signal.SIGKILL)
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            if not _process_group_running(pid):
+                return {"stopped": True, "status": "killed", "pid": pid}
+            time.sleep(0.05)
+    except ProcessLookupError:
+        return {"stopped": True, "status": "already_stopped", "pid": pid}
+    except (OSError, subprocess.SubprocessError):
+        return {"stopped": False, "status": "termination_error", "pid": pid}
+    return {"stopped": False, "status": "termination_unverified", "pid": pid}
+
+
+def _process_group_running(group_id: int) -> bool:
+    """Report live, rather than merely unreaped, members of one worker group."""
+    observed = subprocess.run(
+        ("ps", "-eo", "pgid=,stat="),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    if observed.returncode != 0:
+        raise OSError("could not verify worker process group")
+    for line in observed.stdout.splitlines():
+        fields = line.split(None, 1)
+        if len(fields) == 2 and fields[0].isdigit() and int(fields[0]) == group_id:
+            if not fields[1].lstrip().startswith("Z"):
+                return True
+    return False
+
+
+def _retain_native_partial_outputs(
+    *, run_path: str, work_path: str
+) -> dict[str, Any]:
+    """Copy only bounded regular mini-SWE output into retained evidence."""
+    source = os.path.join(work_path, "mini-output")
+    if not os.path.exists(source):
+        return {"state": "absent", "source": "work/mini-output", "files": [], "bytes": 0}
+    if not os.path.isdir(source) or os.path.islink(source):
+        return {"state": "failed", "reason": "native_output_is_not_a_directory"}
+    evidence_dir = os.path.join(run_path, "evidence")
+    destination = os.path.join(evidence_dir, "native-partial")
+    Path(evidence_dir).mkdir(parents=True, exist_ok=True)
+    if os.path.exists(destination):
+        return {"state": "failed", "reason": "native_output_destination_exists"}
+    staging = tempfile.mkdtemp(prefix=".native-partial-", dir=evidence_dir)
+    files: list[dict[str, Any]] = []
+    total = 0
+    try:
+        for current, directories, names in os.walk(source, followlinks=False):
+            directories.sort()
+            names.sort()
+            if any(os.path.islink(os.path.join(current, name)) for name in directories):
+                return {"state": "failed", "reason": "native_output_contains_symlink"}
+            for name in names:
+                original = os.path.join(current, name)
+                relative = os.path.relpath(original, source)
+                if os.path.islink(original) or not os.path.isfile(original):
+                    return {"state": "failed", "reason": "native_output_contains_nonregular_file"}
+                size = os.path.getsize(original)
+                if len(files) >= _MAX_PARTIAL_OUTPUT_FILES or total + size > _MAX_PARTIAL_OUTPUT_BYTES:
+                    return {"state": "failed", "reason": "native_output_exceeds_retention_bound"}
+                copied = os.path.join(staging, relative)
+                Path(copied).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(original, copied)
+                files.append({"path": relative.replace("\\", "/"), **evidence_file_reference(copied, root=staging)})
+                total += size
+        os.replace(staging, destination)
+        return {"state": "retained", "source": "work/mini-output", "files": files, "bytes": total}
+    finally:
+        if os.path.isdir(staging):
+            shutil.rmtree(staging, ignore_errors=True)
+
+
+def _cancellation_evidence(
+    record: Mapping[str, Any], *, run_path: str, retention: Mapping[str, Any], termination: Mapping[str, Any]
+) -> dict[str, Any]:
+    spec = record["spec"]
+    manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
+    Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(manifest_path, {"schema": "anvil-serving.native-partial-output/v1", "retention": retention, "termination": termination})
+    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "absent" else "failed"
+    failure_code = "cancelled" if retention["state"] in {"retained", "absent"} else "partial_artifact_retention_failed"
+    failure_message = "benchmark cancellation retained native partial output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because native output retention failed"
+    identities = {
+        "model": {"alias": spec["endpoint"]["model"]},
+        "served_model": {"id": spec["endpoint"]["model"], "status": "unavailable"},
+        "runtime": {"status": "unavailable", "reason": "cancellation before collection"},
+        "image": {"status": "unavailable", "reason": "cancellation before collection"},
+        "hardware": {"worker_id": spec["worker"]["id"]},
+        "topology": {"kind": "isolated-benchmark-worker", "worker_id": spec["worker"]["id"]},
+        "context": {"status": "unavailable", "reason": "cancellation before collection"},
+        "concurrency": {"status": "unavailable", "reason": "cancellation before collection"},
+        "harnesses": {"status": "unavailable", "reason": "cancellation before collection"},
+        "dataset": {"status": "unavailable", "reason": "cancellation before collection"},
+    }
+    return build_measured_evidence(
+        run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+        identities=identities,
+        stages=[_stage(0, "native_partial_outputs", status, evidence_file_reference(manifest_path, root=run_path))],
+        completeness="cancelled",
+        summary={"completed": False, "native_partial_output": dict(retention)},
+        failure={"class": "cancellation", "code": failure_code, "message": failure_message},
+        created_at=utc_now(),
+        artifact_root=run_path,
+    )
+
+
 def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
-    """Cancel a detached worker only after verifying its exact command identity."""
+    """Retain owned partial output, then cancel and clean up a detached worker."""
     record = store.status(run_id)
     if record is None:
         raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
@@ -353,39 +504,29 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         run_id=run_id,
         relative="worker.json",
     )
-    terminated = False
-    try:
-        worker = json.loads(Path(worker_path).read_text(encoding="utf-8"))
-        pid = worker.get("pid")
-        if worker.get("run_id") == run_id and isinstance(pid, int) and pid > 1 and os.name != "nt":
-            observed = subprocess.run(
-                ("ps", "-p", str(pid), "-o", "command="),
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-            command = observed.stdout
-            if (
-                observed.returncode == 0
-                and "anvil_serving.benchmarking.worker" in command
-                and run_id in command
-            ):
-                os.kill(pid, signal.SIGTERM)
-                terminated = True
-    except (OSError, ValueError, subprocess.SubprocessError):
-        terminated = False
+    termination = _stop_owned_worker(worker_path, run_id)
+    run_path = resolve_owned_run_path(
+        store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id
+    )
+    work_path = resolve_owned_run_path(
+        store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id, relative="work"
+    )
+    retention = (
+        _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+        if termination["stopped"]
+        else {"state": "failed", "reason": "worker_termination_unverified"}
+    )
+    evidence = _cancellation_evidence(record, run_path=run_path, retention=retention, termination=termination)
+    failure = evidence["failure"]
 
     def cleanup(work_path: str) -> None:
-        if terminated and os.path.isdir(work_path):
+        if termination["stopped"] and retention["state"] in {"retained", "absent"} and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
-    cancelled = store.cancel(run_id, cleanup=cleanup)
+    cancelled = store.cancel(run_id, cleanup=cleanup, results={"evidence": evidence}, failure=failure)
     cancelled = dict(cancelled)
-    cancelled["worker_terminated"] = terminated
-    cancelled["cleanup_deferred"] = not terminated
+    cancelled["worker_terminated"] = termination["stopped"]
+    cancelled["cleanup_deferred"] = not (termination["stopped"] and retention["state"] in {"retained", "absent"})
     return cancelled
 
 

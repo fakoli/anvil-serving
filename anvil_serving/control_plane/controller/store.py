@@ -978,6 +978,8 @@ class BenchmarkJobStore:
         run_id: str,
         *,
         cleanup: BenchmarkCleanup | None = None,
+        results: Mapping[str, Any] | None = None,
+        failure: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Record partial evidence, perform owned cleanup, and finish cancelled."""
         record = self._required(run_id)
@@ -993,7 +995,7 @@ class BenchmarkJobStore:
                 current, level="warning", message="cancellation requested"
             ),
         )
-        partial = build_artifact_envelope(record)
+        partial = build_artifact_envelope(record, results=results, failure=failure)
         self._write_artifact(record, partial)
         if cleanup is not None:
             work_path = resolve_owned_run_path(
@@ -1003,7 +1005,7 @@ class BenchmarkJobStore:
                 relative="work",
             )
             cleanup(work_path)
-        return self.transition(run_id, "cancelled")
+        return self.transition(run_id, "cancelled", results=results, failure=failure)
 
     def artifact(self, run_id: str) -> Optional[dict[str, Any]]:
         record = self._required(run_id)
