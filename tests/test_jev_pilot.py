@@ -1,4 +1,5 @@
 import copy
+from pathlib import Path
 
 import pytest
 
@@ -21,7 +22,8 @@ def packet():
 
 def settings():
     return jev.validate_policy({"enabled": True, "capabilities": ['context_ranking', 'incident_triage'],
-                               "allow_api": True, "allow_export": True, "anvil_binary": '/bin/anvil'})
+                               "allow_api": True, "allow_export": True,
+                               "anvil_binary": str(Path(__file__).absolute())})
 
 
 def advice(capability, value, **kwargs):
