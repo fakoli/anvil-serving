@@ -1,0 +1,443 @@
+{
+  "created_at": "2026-09-26T14:26:40.825338Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "base_url": "http://127.0.0.1:8080/v1",
+    "model": "swift15-flash-next-iq3-327k-c4-medium-r3"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "8d1ee4ef40e6019642bef74c39ae2757259a75e01642be2fde813a963d99c4ba",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0w8qvSUh1VvTvJe9ZLlev999DB1a0p00",
+        "chatcmpl-4Wk0s4tLH7hkQJRLt214lM0bCiuM8v02",
+        "chatcmpl-52GRASjXVprtkR5dKPrZbEtyJnZZ1iRf",
+        "chatcmpl-5Iou4FuHlWS3Gf34GHPKYfoEEmAXGs6T",
+        "chatcmpl-AzwITcJmScNuN7TuJpm2Wfm8zXplnkhU",
+        "chatcmpl-DRHFZsTRJlLGlgwIS6ZqNsrGQ9KEIYsW",
+        "chatcmpl-KPRphPDVSuWe2iyDQqWC7Nlh7MusKEIe",
+        "chatcmpl-Kt5iPGjWFDSIF1B4YKm5f7FBlFynJyUp",
+        "chatcmpl-MDzebhlqd7U3sCOjPRcQHMVekRD1peFs",
+        "chatcmpl-MfjTv0YbXZzBksub5izs6UAfUaBQ8Vp3",
+        "chatcmpl-NbuSzLjPT7adPC52wGg99BecHdcsIBVk",
+        "chatcmpl-NfnmRp2OaSiEW6WGBe26SlY4els4kdNI",
+        "chatcmpl-PV8HUQSSTe2BqC7yJTTxHT6GjYrtCOlF",
+        "chatcmpl-SaKJTlAICyEoph5PNjJa92CByjpIniCB",
+        "chatcmpl-W8JeCDPI5xEjuwEfWEJPjOHD3PXsLYg3",
+        "chatcmpl-XJAX75tHGwbIUBhm8joBrIHE5LfKRUqz",
+        "chatcmpl-acLB7nJ0eGqSAnlNvqm5NAd7HNwu3Cca",
+        "chatcmpl-bXdFmbVzi2t4Eye8WAYBR5zf3gWwkNYz",
+        "chatcmpl-dH7UiQJpQOzuJbOX7qRkvirv7WowgEnS",
+        "chatcmpl-gGWWZSC5W9HaTMbMgASnrdInisOVBYTG",
+        "chatcmpl-gLZMTraTgb4s66Z77nR87DqKEVc7adwq",
+        "chatcmpl-gMGXWded3kC82lhSl4eDj9RpeyPSSxQq",
+        "chatcmpl-hPdXY5tVZfBhpLFZ9wnJsw7gddvxWIAS",
+        "chatcmpl-iCy2UPRzwB1WKPmKj77REBawO1pBleFv",
+        "chatcmpl-isnpPk7EytJMtBUp6Sc1CB1HERC7YuUY",
+        "chatcmpl-jX4DR8zxu3rrRtpPsbSGCUfsJIrJ5nm4",
+        "chatcmpl-nopallWyniLlxcOKIZq7dPzK0Vv9AHKG",
+        "chatcmpl-oaeQWMHGYKL2EPGijbwpnr2I7n3jKtSi",
+        "chatcmpl-qawqf1A90UKX8N0q4u1znifOKC8oHDaN",
+        "chatcmpl-sM7YhapDfOiAQrkSsMjWvxkSfHuzNAI4",
+        "chatcmpl-sYwaJYKGvlHEAN7JjyOHYLGdUyJ6trIT",
+        "chatcmpl-scwUrvZY5kUcwsMUsDHnuJXnxdDBRsfr",
+        "chatcmpl-t9g97LDiR5w7NCIAou4LSYzsI1BT06VP",
+        "chatcmpl-ueHVyQoQ01A8FWjK5O2YoAa0Xt9ZrqBL",
+        "chatcmpl-vpsUeUFMPHvM57TDrH0CEgaiZSXX3pPg",
+        "chatcmpl-vvH4dKWfPTSb0xiGT7BwTk1OBVZLgR35",
+        "chatcmpl-xzP1rhzfgpS4Hw6ZJm4n0JXsRVQLkBqi",
+        "chatcmpl-yEW9QAw1gYlYx0SBHTdtQ8CdYcEsgdgP",
+        "chatcmpl-yKODEmvMWsL31NWV80yV1o5mifg51p71",
+        "chatcmpl-yuTi1a7A37tSNhCfE8NMpdpAJBapXMNz"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json",
+        "sha256": "18bda2b34f18ffa68a1f8f1aca0fc9e1acec5a954769e36ff4d22f88edbd2a17"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "41426a679060e71247eb2c5157e4e0ee5b915cce661f85ec22735ded67ba89fe",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-236jarf3Cd3qKVT1WSsLP4QJAigu29yf",
+        "chatcmpl-3wJ4ZBtFmV5Xs67ySH8Zz2zKysm9gDBM",
+        "chatcmpl-4XGHjgRQ8Ran6fxL4SUAMIWizi5BpnEw",
+        "chatcmpl-8QCWxiDY2A9V5R2TMQcJZBiNOVAQs4cH",
+        "chatcmpl-B86kgpBQEigKJ7vZyuP4oCqrdTt7Un3j",
+        "chatcmpl-E1OSOonmlhAptcw7qjdqLdGzCWLxLvtN",
+        "chatcmpl-HpFOpSkxXeJDz6ZOYfSfi3cMhzvzkwm1",
+        "chatcmpl-KCwDlAlFP6vE071AAnceyYzZl9jMBDjO",
+        "chatcmpl-LNBEkg2VYtEXhdUrb6UIhgHZrqDZMStT",
+        "chatcmpl-OhTQPtc8ZZVaD0KlFMofHBaXmJQx9JqH",
+        "chatcmpl-Pcdn5VseKXGN4aD3JlycpWbLjlKVA2Xu",
+        "chatcmpl-W4O0bbckY4WYgBtcnkMHo9wfRbuBkIYL",
+        "chatcmpl-WSnve2qGhsvHYyRuxqqUiYqJIoVZeCgX",
+        "chatcmpl-ZWGB9n9kLq1xteFcBfqjOYDl2e4zrhoG",
+        "chatcmpl-fzDLNmkdTjm2W3O2ps1qDe2VekVupjie",
+        "chatcmpl-g7FbD4j2nYvGfS8kFYPk098iZdLjapQk",
+        "chatcmpl-g8vhf82TdG1lHDlBEnAkUGDDLQRYKG3v",
+        "chatcmpl-iitGQlrcA8TcD6jfjqsDEaxCvZW8I593",
+        "chatcmpl-jq9b2mBcKfOjy1iBuKQSSTR0uy7HdM1R",
+        "chatcmpl-lSqYsty9tM3IPjN6oVNqzO05ViyjdtHC",
+        "chatcmpl-mPEWPZ6q55vCRRLjXhiOQWcK13oDI2bU",
+        "chatcmpl-mfsc7QVxWHJC6MIZr8Up9uMoDnI9TqXP",
+        "chatcmpl-oGfBROtkVMXEvAM8cyC2ckls1oizdixC",
+        "chatcmpl-qMBa9lWCYJuYdsKpMw3oXNRExM51wigI",
+        "chatcmpl-zQvkfaEGa1LzfrZZUEUgnbLr7SihIcPw",
+        "chatcmpl-zmjPt8LT3lMXCrbgufe1YdnOSEbhIUeI"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/sympy__sympy-12096/sympy__sympy-12096.traj.json",
+        "sha256": "fdc86dc63434d3b6bdc29de921e5bf26be27de6c6ce13d2a19ae7dc133efbc24"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "cfc35c3899dc0c77f9e601a1256c55d827540ea92316c454aa2a8a1184c4baea",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0E1ZIppzcW1rjztzjLU8uSq0Um2MuPmT",
+        "chatcmpl-480GvBQiltdsxP44s0ZN3C1sOEaEuhRR",
+        "chatcmpl-829yo52BHjWhLCb5Gz1PKzls8hxZjuVj",
+        "chatcmpl-9dBYH1FXY51i48XfKcZhQENWJCypgVjC",
+        "chatcmpl-EaMrTmdv6uIVqlXOrMO6hxaeRqrneq6c",
+        "chatcmpl-GUeWWwB6GE3jyghEuk4Zxo5KulFTmB78",
+        "chatcmpl-MlC9r6Cx2mLRihZCBwdB1DTh80Tlg97k",
+        "chatcmpl-N7NQDWIYNM1blGK6WHDTE0I6nbw14gg8",
+        "chatcmpl-R1X6V7uW0Wi3tgdDnvHZjeg940XDKlIO",
+        "chatcmpl-Rs3V8vizsVkwiodi0blWysWzVpSsvsAn",
+        "chatcmpl-SQtv0yVDqMW1WQnxknSIvqXmCeLxQFGC",
+        "chatcmpl-WDaGOX9h5SaGo7obAGWLAALkTmoj2wi6",
+        "chatcmpl-XZhTzttUPd1TVkbwTx1Vxqplb4ajaJfx",
+        "chatcmpl-YTzKugOyj12POmJtTxRiKiKmEWJIcg3Y",
+        "chatcmpl-a3z0kyeWM7FqcOzcCNqRI2jiv98UFx4X",
+        "chatcmpl-bMdm6Jb2z7hQqOKYmBOyEObRkkmimYu3",
+        "chatcmpl-dDLFIVj1h30a0YNZ6ph9dTrioE4bFOjT",
+        "chatcmpl-eQYu1cv8lClr6pDbEbhEjeMv7WZFyD3I",
+        "chatcmpl-g514BLM0wuU5Z1OOMFqTiMqWrx6gjwa9",
+        "chatcmpl-hrSiB8XgcttcC9c9ro3zCbshTYZ12Duy",
+        "chatcmpl-oRMNf7bHjnGueF8GjvYJZ2NFCXTuYRfv",
+        "chatcmpl-yd6NMbgFC6NAvHGTBsLv37OLtNjHFs6W",
+        "chatcmpl-zfGsRbvg4Ha1QtOS52Y6wFm6gmhyILPb"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/django__django-13512/django__django-13512.traj.json",
+        "sha256": "8c90db5a8083501352884de9535bd6f7d03ff4cc676585993a9269740b5d0a59"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "7544b3dc0c5d45af56dbd63731d78c645ab81a952aa623e6115cc51c0500ff07",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0smUspO3dc722Z32uROkBrw8NRXnXLQU",
+        "chatcmpl-20VydP7tsqU2eCSwbztQWe3blcqbUnMw",
+        "chatcmpl-42DwuMlEo11lRVlN2l9SdpZEritgL56p",
+        "chatcmpl-4DH47lENhKhzSP1WlpnBW9Ot0hfmgLF1",
+        "chatcmpl-4Eebnj37BFrAVEe0sBX5M2M2YmtoSLpy",
+        "chatcmpl-5ljSSvLhHNQZOZKToSvRQLuZzlGepwqi",
+        "chatcmpl-6BN1oB8Jiihzmtr4kOxPR9hV28wPYchj",
+        "chatcmpl-7bnVqFjrdXivdfEL48pkgqfezASmGVM8",
+        "chatcmpl-84J2l18dOuHhyuch4RAG4NCrWnoD7Ixv",
+        "chatcmpl-8BjBj1Xh4QXxUaB6ZQDswi5MzXuz188J",
+        "chatcmpl-BPU0RseAdZXzeac5pz6LoykI5ImA0uWA",
+        "chatcmpl-BXUvPBxZKVZg24lYSHMcjL1GHROp0eNO",
+        "chatcmpl-DVrx6pWeq5GVeizCjOloyZoigijNv2LQ",
+        "chatcmpl-ETL82akGEjASn887yjUhRILnBr9YyAmM",
+        "chatcmpl-JUjkoygPmcrbQR5VBZLwlvF4wTUOYN9M",
+        "chatcmpl-JzwNXfOIyPKobbZppQsnH7VUmDGHaIFC",
+        "chatcmpl-KUTCK1SPYjGnVMAsOl9dRdlIgsykSnUd",
+        "chatcmpl-LaQmdTz9weXRqYkMBop1T6rsxElWeibW",
+        "chatcmpl-N69D52HIqp5W7hpmZbf2xANuA6rXdE3E",
+        "chatcmpl-WLlwzE0MOz8439NHnu1QHhmUe4zvbMrd",
+        "chatcmpl-aDgi7ZwfrLVbwDUDqqFFPyKf7CkYMRIK",
+        "chatcmpl-advClOanbJbD38YhC8epl1iZkzaihezB",
+        "chatcmpl-dAsZfsCk2ZfwGoHix7PrDLGpnRAmljJv",
+        "chatcmpl-ffw7zk8NHH6jVSchkC4puDb097sMYNXg",
+        "chatcmpl-hZL7H2V1F6MOmxnZeKjSHmSJnSXylhMs",
+        "chatcmpl-k0ZhH3Cs1tcQta4y9pZCo8yXi0cOQg3y",
+        "chatcmpl-lhDbzM7GtSPsIWTtUknIHvSf8w1efiaw",
+        "chatcmpl-m2bTpDlpxN849plnWUlO1sGBLUNMr0ns",
+        "chatcmpl-mA84NGwx50HA1SQH3n37kY9SjDNYG95n",
+        "chatcmpl-mX5MfTvAlKFiGCVNXdO5rEsBJGicQkGj",
+        "chatcmpl-mzmSAISG45nIZpKAo5xf1w9mpxRjEQGT",
+        "chatcmpl-ockE01v6vye7fyPvQK9Z2jvmvENEPdMU",
+        "chatcmpl-ppCXgEuaxLnzvCZxV1lvDeFY2eUoWJNt",
+        "chatcmpl-wFcz8ezdbpY3KV3n3PJfbkuT4LKrjiKN",
+        "chatcmpl-y2QYeaxqJXGznTZiPPcK6oecrRiz6q6y"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/pydata__xarray-4356/pydata__xarray-4356.traj.json",
+        "sha256": "9eb2d3ee60e2b75d39122921a94ae60851143f561706cfabb3a97f25c54a36ad"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "7235f6786e645d1db9bac07044e609757adb5c14931adeb6367214b92a77e3c5",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0RYFC6udkYHitiwZZgCZhi2Qo0CRBKsE",
+        "chatcmpl-1j6JkP8LboUyXtcZGBFxSQwbVPolAMkw",
+        "chatcmpl-1xGdEWddr6CjxvAsGCYLjhD8S9doemPD",
+        "chatcmpl-4mM0auoVJXgrlRXhuEYOcDgLvJkce6PS",
+        "chatcmpl-ADhwsax359dB67eVh8AYOp520t6n2L5l",
+        "chatcmpl-Aj20X558fICG7kdARDxN5iEI6DGJRLIk",
+        "chatcmpl-AoI7IzqY9QGPSDk12QTLBNGmqfBvvpBP",
+        "chatcmpl-B1nUiEdKFsvDuT9rJrjPaLGaEIQg3BjN",
+        "chatcmpl-BWTd6BmTRGqQBljknlWyQgTH5qm1n7ej",
+        "chatcmpl-BYumfa0a7FovMNWDgKBUZVF8YXo2y55N",
+        "chatcmpl-DesWa2AU6jEU9gvw0POUiQANKxJbbEU8",
+        "chatcmpl-IyYs5RvkIRTtADLxYwlSAWSuXTiEEmLa",
+        "chatcmpl-MHIiTqLdkus8BospzkigAr2ZdBZOXEtA",
+        "chatcmpl-MZOKgGAoBMNZHL3jf8pb6lWY0wVKcGFG",
+        "chatcmpl-PiZzLvkIC0ahV1bIRfu0dlAVtUiayBpy",
+        "chatcmpl-TR6lYY9dbejzu4pau1OlxbtyMWiKFtv5",
+        "chatcmpl-VSM83DNv47Y7jjisf878Z5ZtQxU0YkV5",
+        "chatcmpl-WOi9i5myCioMNztnOBXWA4Pdf2nRjz2R",
+        "chatcmpl-eEYs2gPPoFksqt8Z2Z3vS7ciJWWVlUfH",
+        "chatcmpl-ikB7jC8YKQjVXthjA4PjKgLqJNh9c1jF",
+        "chatcmpl-lFtx30FuV0Bwr1dc1qWEuafaIqNlXqTq",
+        "chatcmpl-lpBEYrRfrOFKsOGRpwDEdT54VjgMeKLl",
+        "chatcmpl-lzulMWDZswSLrI5rgNMbJjq9xhDR0XeA",
+        "chatcmpl-m6ZTNm47hQxMk8m9wBa3F8YtK2QDLHFI",
+        "chatcmpl-qKckWsg3N1iLGPocSQYLYRN3wivUh0mk",
+        "chatcmpl-qRptrSOlw1EXUZVabVdLvDU3ebhfgG4y",
+        "chatcmpl-st4yv6npw0vaQDrVFIjmGuCcWwol6GYw",
+        "chatcmpl-uNZG4csd3yNPXh85LPhe8fGp4dUyx08A",
+        "chatcmpl-wgmo6WGTO27Z0PJlGnZrj3OSi5Lhn75Z"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json",
+        "sha256": "1a5ab31421b02a8ce1a7fd8bfa98f68a5d384f4592708ab72c7bbbf9bdc8380b"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "qualification-owner",
+  "plan_sha256": "1352c4c6ef0bda61ea84937b9ffd96a28fcab43627c06c37664491fdc73b642f",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "single-gpu-swift-iq3-r3-swe",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "/operator-home/benchmark-harness-cache/swe-python-environments/0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93/bin/python",
+        "/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/run/benchmarks/swebench.py",
+        "--output",
+        "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output",
+        "--model",
+        "openai/swift15-flash-next-iq3-327k-c4-medium-r3",
+        "--subset",
+        "verified",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:sphinx\\-doc__sphinx\\-9658|sympy__sympy\\-12096|django__django\\-13512|pydata__xarray\\-4356|pylint\\-dev__pylint\\-8898)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/swebench.yaml",
+        "--config",
+        "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/anvil-swe-config.yaml"
+      ],
+      "duration_s": 790.263846,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n/operator-home/benchm\nark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output       \nLogging to '/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/minisweagent.log'\nminisweagent: INFO: Loading dataset princeton-nlp/SWE-Bench_Verified, split     \ntest...                                                                         \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['/operator-home/benc\nhmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/\nminisweagent/config/benchmarks/swebench.yaml',                                  \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/anvil-swe-config.\nyaml']                                                                          \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-REDACTED -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-13512:latest sleep 2h    \nminisweagent.environment: INFO: Started container minisweagent-REDACTED with ID \nREDACTED_CONTAINER_ID                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/djang\no__django-13512/django__django-13512.traj.json'                                 \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-REDACTED -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest sleep 2h     \nminisweagent.environment: INFO: Started container minisweagent-REDACTED with ID \nREDACTED_CONTAINER_ID                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/pydat\na__xarray-4356/pydata__xarray-4356.traj.json'                                   \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-REDACTED -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest sleep 2h \nminisweagent.environment: INFO: Started container minisweagent-REDACTED with ID \nREDACTED_CONTAINER_ID                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/pylin\nt-dev__pylint-8898/pylint-dev__pylint-8898.traj.json'                           \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-REDACTED -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest sleep 2h \nminisweagent.environment: INFO: Started container minisweagent-REDACTED with ID \nREDACTED_CONTAINER_ID                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/sphin\nx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json'                           \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-REDACTED -w /testbed --platform      \nlinux/amd64 --network none --rm                                                 \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-REDACTED with ID \nREDACTED_CONTAINER_ID                \nminisweagent: INFO: Saved trajectory to                                         \n'/operator-home/bench\nmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/mini-output/sympy\n__sympy-12096/sympy__sympy-12096.traj.json'                                     \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:13:07 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status \u2503 Count \u2503 Most recent instances                                  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 Submitted   \u2502     5 \u2502 sympy__sympy-12096, sphinx-doc__sphinx-9658,           \u2502\n\u2502             \u2502       \u2502 pylint-...                                             \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "command": [
+        "/operator-home/benchmark-harness-cache/swe-python-environments/0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93/bin/python",
+        "-m",
+        "swebench.harness.run_evaluation",
+        "--dataset_name",
+        "princeton-nlp/SWE-bench_Verified",
+        "--split",
+        "test",
+        "--predictions_path",
+        "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/predictions.jsonl",
+        "--max_workers",
+        "1",
+        "--run_id",
+        "single-gpu-swift-iq3-r3-swe",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "/operator-home/benchmark-runs/qualification-owner/single-gpu-swift-iq3-r3-swe/work/official-grader",
+        "--instance_ids",
+        "sphinx-doc__sphinx-9658",
+        "sympy__sympy-12096",
+        "django__django-13512",
+        "pydata__xarray-4356",
+        "pylint-dev__pylint-8898"
+      ],
+      "duration_s": 97.692149,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n2026-09-26 07:39:51,745 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-26 07:39:51,753 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:51,850 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:52,104 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:52,198 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/revision/c104f840cc67f8b6eec6f759ebc8b2693d585d4a \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:52,283 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:52,415 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:52,507 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data?recursive=true&expand=false \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:52,594 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a?recursive=false&expand=false \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:52,681 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:52,796 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/main/README.md \"HTTP/1.1 307 Temporary Redirect\"\n2026-09-26 07:39:52,804 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/api/resolve-cache/datasets/princeton-nlp/SWE-bench_Verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/README.md?%2Fdatasets%2Fprinceton-nlp%2FSWE-bench_Verified%2Fresolve%2Fmain%2FREADME.md=&etag=%22f362a6ce9579a3ee1922e3402463feef139b7d00%22 \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:52,885 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:52,969 - httpx - INFO - HTTP Request: HEAD https://s3.amazonaws.com/datasets.huggingface.co/datasets/datasets/princeton-nlp/SWE-bench_Verified/princeton-nlp/SWE-bench_Verified.py \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:53,054 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/.huggingface.yaml \"HTTP/1.1 404 Not Found\"\n2026-09-26 07:39:53,142 - httpx - INFO - HTTP Request: GET https://datasets-server.huggingface.co/info?dataset=princeton-nlp/SWE-bench_Verified \"HTTP/1.1 200 OK\"\n2026-09-26 07:39:53,246 - httpx - INFO - HTTP Request: HEAD https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/dataset_infos.json \"HTTP/1.1 404 Not Found\"\n\rEvaluation:   0%|          | 0/5 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/5 [00:18<?, ?it/s, \u2713=0, \u2716=1, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:18<01:12, 18.10s/it, \u2713=0, \u2716=1, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:38<01:12, 18.10s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:38<00:59, 19.69s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:57<00:59, 19.69s/it, \u2713=1, \u2716=2, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [00:57<00:38, 19.11s/it, \u2713=1, \u2716=2, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:14<00:38, 19.11s/it, \u2713=2, \u2716=2, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:14<00:18, 18.21s/it, \u2713=2, \u2716=2, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:31<00:18, 18.21s/it, \u2713=3, \u2716=2, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:31<00:00, 17.80s/it, \u2713=3, \u2716=2, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:31<00:00, 18.25s/it, \u2713=3, \u2716=2, error=0]\n",
+      "stdout": "Found 5 existing instance images. Will reuse them.\nRunning 5 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 5\nInstances incomplete: 0\nInstances resolved: 3\nInstances unresolved: 2\nInstances with empty patches: 0\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__swift15-flash-next-iq3-327k-c4-medium-r3.single-gpu-swift-iq3-r3-swe.json\n"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.6,
+    "resolved": 3
+  },
+  "task_container_network": "none"
+}

@@ -1,0 +1,139 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-09-26-single-gpu-qualification",
+    "capability": "text-and-multimodal",
+    "repository_revision": "a7d04b72f03b7302816342703f1711311a6f3a3f",
+    "dirty_state": "publication worktree; unrelated ticket edits preserved",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "status": "complete; incumbent retained",
+    "completed_at": "2026-09-26"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "human-readable bundle map"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "dated external priors"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "frozen gates"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "campaign-state.json",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "closed scope and coverage"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configurations/swift-iq3-r2.recipe.toml",
+        "configurations/swift-iq3-r3.recipe.toml",
+        "configurations/swift27-r2.recipe.toml",
+        "configurations/thinkingcap-r1.recipe.toml",
+        "redaction-ledger.json"
+      ],
+      "reason": "sanitized exact recipe reconstructions"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw-run-evidence/single-gpu-glm-agentic-0-agentic.json",
+        "raw-run-evidence/single-gpu-swift-iq3-r2-agentic-0-agentic.json",
+        "raw-run-evidence/single-gpu-swift-iq3-r3-agentic-0-agentic.json",
+        "raw-run-evidence/single-gpu-swift-iq3-r3-context-0-context.json",
+        "raw-run-evidence/single-gpu-swift-iq3-r3-swe-2-swe.json",
+        "raw-run-evidence/single-gpu-swift27-r2-agentic-0-agentic.json",
+        "raw-run-evidence/single-gpu-swift27-r2-context-0-context.json",
+        "raw-run-evidence/single-gpu-swift27-r2-swe-2-swe.json",
+        "raw-run-evidence/single-gpu-thinkingcap-r1-agentic-0-agentic.json",
+        "raw-run-evidence/single-gpu-thinkingcap-r1-context-0-context.json",
+        "baseline-swe-reuse-verification.json",
+        "raw-run-evidence/baseline-images.json",
+        "raw-run-evidence/baseline-eight-images.json",
+        "raw-run-evidence/swift-iq3-r3-images.json",
+        "raw-run-evidence/swift-iq3-r3-eight-images.json",
+        "raw-run-evidence/swift27-r2-images.json",
+        "raw-run-evidence/swift27-r2-eight-images.json",
+        "raw-run-evidence/thinkingcap-r1-images.json",
+        "raw-run-evidence/thinkingcap-r1-eight-images.json",
+        "raw-run-evidence/swift-iq3-r3-final-c1-unique.json",
+        "raw-run-evidence/swift-iq3-r3-final-c4-shared.json",
+        "raw-run-evidence/capacity-cache-control-correction.json",
+        "raw-run-evidence/glm-r11-restored-direct-preflight.json",
+        "raw-run-evidence/glm-r11-restored-routed-preflight.json",
+        "raw-run-evidence/swift-iq3-r3-preflight.json",
+        "raw-run-evidence/swift-iq3-r3-final-c4-unique.json"
+      ],
+      "reason": "Retained native completed results, image/capacity/preflight artifacts, and incumbent reuse. Partial at campaign level: ThinkingCap raw coding trajectories are missing after cancellation; retained excerpts establish only an attainable upper bound, not a completed score."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "thinkingcap-r1-cancellation-review-excerpts.json"
+      ],
+      "reason": "Failed configurations, retained cancellation excerpts, and the explicit missing raw ThinkingCap coding capture"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Full sanitized starting/ending identity and preflight receipt"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "derived closed decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "no compact public communication requested"
+    }
+  ]
+}

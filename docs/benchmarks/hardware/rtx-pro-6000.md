@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-09-26 single-GPU qualification:** one-card Swift Flash, Swift27, and ThinkingCap candidate configurations each passed their retained deterministic agentic/image/context gates but did not clear the frozen 4/5 coding floor. Flash r3 resolved 3/5, Swift27 r2 2/5 with four graded, and ThinkingCap stopped with two known unresolved tasks and a maximum possible 3/5; its raw coding trajectories are missing after managed cancellation. Exact dual-card GLM r11 was restored and readmitted. No performance winner or promotion follows. [Finding](../../findings/2026-09-26-single-gpu-qualification.md).
+
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
 an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
 prefill, while its serial control passed. A single-setting DCP1 trial passed

@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-09-26-single-gpu-qualification",
+  "complete": true,
+  "decision": "retain incumbent; no candidate promotion",
+  "promotion_authorized": true,
+  "promoted": false,
+  "incumbent": {"configuration": "GLM-5.3-Flash EXL3 r11 TP2 DCP1 C4", "swe": {"attempted": 5, "graded": 5, "resolved": 4}, "evidence": "baseline-swe-reuse-verification.json"},
+  "candidates": [
+    {"id": "Swift Flash Next IQ3 r2", "decision": "rejected", "agentic": "17/18", "reason": "invalid tool enum"},
+    {"id": "Swift Flash Next IQ3 r3", "decision": "rejected", "agentic": "18/18", "images": "16/16", "context": "12/12", "tools": "20/20", "swe": {"attempted": 5, "graded": 5, "resolved": 3}, "reason": "below 4/5 coding floor"},
+    {"id": "Swift27 NVFP4 r2", "decision": "rejected", "agentic": "18/18", "images": "16/16", "context": "12/12", "swe": {"attempted": 5, "graded": 4, "resolved": 2}, "reason": "below 4/5 coding floor; APC successor unrun"},
+    {"id": "ThinkingCap27 AWQ r1", "decision": "no-promotion", "agentic": "18/18", "images": "16/16", "context": "12/12", "swe": {"complete": false, "known_unresolved": 2, "maximum_possible_resolved": 3}, "reason": "4/5 floor unattainable; raw coding trajectories missing after cancellation"}
+  ],
+  "limitations": ["Small frozen coding sample", "No matched speed comparison", "No candidate capacity/ranking claim", "Flash host-mapped PLE means weights were not all VRAM-resident", "ThinkingCap coding evidence is partial"],
+  "restoration": "exact GLM r11 restored, readmitted, direct and authenticated routed preflights passed"
+}

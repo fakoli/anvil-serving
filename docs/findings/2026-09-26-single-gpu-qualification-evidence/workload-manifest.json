@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.single-gpu-workload-manifest/v1",
+  "frozen_swe": {
+    "tasks": 5,
+    "required_resolved": 4,
+    "call_limit": 60,
+    "independent_grader": true,
+    "completion_token_cap": 16384,
+    "temperature": 1,
+    "top_p": 0.95,
+    "thinking": "family-native; Flash r3 medium, Swift27 and ThinkingCap default enabled, GLM enabled",
+    "reference": "verified retained GLM r11 4/5; no fresh incumbent SWE rerun"
+  },
+  "deterministic": {
+    "agentic": 18,
+    "images": 16,
+    "context": 12,
+    "flash_tools": 20
+  },
+  "context": {
+    "output_headroom_tokens": 65536,
+    "buckets": [
+      32768,
+      257000
+    ]
+  },
+  "performance": "not run after candidates failed coding; retained diagnostics are not comparable"
+}

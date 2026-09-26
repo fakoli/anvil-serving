@@ -1,0 +1,69 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "ukisai/Swift-1.5-Qwen3.8-27b-NVFP4-327K-r2"
+status = "experimental"
+source = "2026-09-26 single-GPU Swift27 vision and extended-context challenger"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "ukisai/Swift-1.5-Qwen3.8-27b-NVFP4"
+revision = "25482027debd5485e8108897ba9fed8d3ba16595"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during the bounded Qwen3.8 optimization campaign."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.27.1@sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "${MODEL_CACHE}/hub/models--ukisai--Swift-1.5-Qwen3.8-27b-NVFP4/snapshots/25482027debd5485e8108897ba9fed8d3ba16595"
+quantization = "compressed-tensors mixed NVFP4 MLP and FP8 projections; BF16 KV; FP32 SSM; no speculation"
+context_tokens = 327680
+port = 39142
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "swift15-27b-nvfp4-327k-r2"
+ipc = "host"
+shm_size = "4gb"
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53249
+host_memory_reserve_mib = 12288
+named_volumes = ["single-gpu-swift27-vllm-0271:${ENGINE_CACHE}"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--dtype bfloat16",
+  "--mamba-ssm-cache-dtype float32",
+  "--hf-overrides '{\"text_config\":{\"rope_parameters\":{\"mrope_interleaved\":true,\"mrope_section\":[11,11,10],\"partial_rotary_factor\":0.25,\"rope_theta\":10000000,\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":262144}}}'",
+  "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'",
+  "--max-num-batched-tokens 8192",
+  "--served-model-name swift15-27b-nvfp4-327k-r2",
+  "--tensor-parallel-size 1",
+  "--max-model-len 327680",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype auto",
+  "--no-enable-prefix-caching",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_coder",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 39142",
+]
+note = "Reuses pinned vLLM0.27.1 SM120 recipe lineage. Full multimodal model, native thinking, explicit YaRN2 to327680, C4 scheduling not four full contexts. Exact Swift export generation and cache resolution require startup and behavioral proof."
+
+[recipe.sources]
+official = ["https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27b-NVFP4/tree/25482027debd5485e8108897ba9fed8d3ba16595", "https://docs.vllm.ai/en/v0.27.1/"]

@@ -1,0 +1,896 @@
+{
+  "aggregates": {
+    "case": {
+      "image-chart": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.145227,
+        "latency_p95_seconds": 3.387397,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ocr": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.364404,
+        "latency_p95_seconds": 1.953481,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-scene": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.401982,
+        "latency_p95_seconds": 4.761606,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-spatial-count": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.7172245,
+        "latency_p95_seconds": 2.31147,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ui": {
+        "attempts": 2,
+        "latency_p50_seconds": 3.0780915,
+        "latency_p95_seconds": 3.111661,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "multi-image-comparison": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.552355,
+        "latency_p95_seconds": 4.96105,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 12,
+        "latency_p50_seconds": 3.0780915,
+        "latency_p95_seconds": 4.96105,
+        "pass_rate": 1.0,
+        "passed": 12
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nQ1: 10\nQ2: 20\nQ3: 30",
+      "passed": true,
+      "reasoning": {
+        "chars": 534,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 2.903057,
+      "usage": {
+        "completion_tokens": 185,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 474
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nQ1: 10\nQ2: 20\nQ3: 30",
+      "passed": true,
+      "reasoning": {
+        "chars": 615,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 3.387397,
+      "usage": {
+        "completion_tokens": 217,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 506
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 343,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.953481,
+      "usage": {
+        "completion_tokens": 121,
+        "prompt_tokens": 285,
+        "prompt_tokens_details": null,
+        "total_tokens": 406
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 108,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.775327,
+      "usage": {
+        "completion_tokens": 46,
+        "prompt_tokens": 285,
+        "prompt_tokens_details": null,
+        "total_tokens": 331
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nThe scene is set against a solid dark navy-blue background. A small bright red rectangle is positioned in the left-center area, resting directly on top of a wider dark green horizontal rectangle that spans most of the lower portion of the image. Text labels appear in three locations: a yellow title across the top, a white label above the red rectangle, and a white label on the right side of the green rectangle.\n\nThe prominent labels, verbatim, are:\n- SUNNY DAY\n- RED CAR\n- GREEN PARK",
+      "passed": true,
+      "reasoning": {
+        "chars": 840,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.761606,
+      "usage": {
+        "completion_tokens": 301,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 590
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nThe scene is set against a solid dark navy background. At the top, a bright yellow title reads \"SUNNY DAY\". Below it on the left, white text labels \"RED CAR\", and directly beneath that label sits a small red rectangle representing the car. At the bottom, a long dark green horizontal bar stretches across the width, with white text on its right side reading \"GREEN PARK\".\n\nThe prominent labels, verbatim, are:\n- SUNNY DAY\n- RED CAR\n- GREEN PARK",
+      "passed": true,
+      "reasoning": {
+        "chars": 669,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.042358,
+      "usage": {
+        "completion_tokens": 261,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 550
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nthree",
+      "passed": true,
+      "reasoning": {
+        "chars": 287,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.122979,
+      "usage": {
+        "completion_tokens": 68,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 357
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nthree",
+      "passed": true,
+      "reasoning": {
+        "chars": 619,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 2.31147,
+      "usage": {
+        "completion_tokens": 146,
+        "prompt_tokens": 289,
+        "prompt_tokens_details": null,
+        "total_tokens": 435
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\n- **Application name:** Anvil Serving\n- **Status:** Ready\n- **GPU percentage:** 42 percent",
+      "passed": true,
+      "reasoning": {
+        "chars": 748,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 3.111661,
+      "usage": {
+        "completion_tokens": 198,
+        "prompt_tokens": 285,
+        "prompt_tokens_details": null,
+        "total_tokens": 483
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\n- **Application name:** Anvil Serving\n- **Status:** Ready\n- **GPU percentage:** 42%",
+      "passed": true,
+      "reasoning": {
+        "chars": 731,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 3.044522,
+      "usage": {
+        "completion_tokens": 194,
+        "prompt_tokens": 285,
+        "prompt_tokens_details": null,
+        "total_tokens": 479
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nMeter B is higher. Its value is **75 percent** (compared to Meter A's 25 percent).",
+      "passed": true,
+      "reasoning": {
+        "chars": 1170,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.96105,
+      "usage": {
+        "completion_tokens": 315,
+        "prompt_tokens": 511,
+        "prompt_tokens_details": null,
+        "total_tokens": 826
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "\n\nMeter B is higher. Its value is **75 percent** (compared to Meter A's 25 percent).",
+      "passed": true,
+      "reasoning": {
+        "chars": 902,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.14366,
+      "usage": {
+        "completion_tokens": 264,
+        "prompt_tokens": 511,
+        "prompt_tokens_details": null,
+        "total_tokens": 775
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": null,
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 8192,
+    "max_videos_per_request": 1,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default",
+    "timeout_seconds": 180.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "id": "image-scene",
+        "media": [
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Describe the scene and report every prominent label. Use the labels verbatim.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ocr",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Transcribe all visible text exactly. Preserve every number.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "id": "image-chart",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read the chart and report each quarter with its value in ascending quarter order.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ui",
+        "media": [
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Report the application name, status, and GPU percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "id": "image-spatial-count",
+        "media": [
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the blue boxes. Reply with the count written as an English word.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "id": "multi-image-comparison",
+        "media": [
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Compare the two meters. Identify which meter is higher and report its percentage.",
+        "repetitions": 2,
+        "sampling": null
+      }
+    ],
+    "path": "/source/tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+    "provenance": {
+      "derived_from": "corpus.json",
+      "observed_date": "2026-08-29",
+      "scope": "Deterministic image-only qualification subset for servers that intentionally disable video",
+      "synthetic": {
+        "generator": "generate.py",
+        "license": "CC0-1.0"
+      }
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-09-26T12:52:20Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:39142/v1",
+    "engine_build_ref": null,
+    "engine_revision": "6e448d0ea9bf3d88d898b65449ca6dc2aec170ac",
+    "hardware": "1x RTX PRO 6000 Blackwell Max-Q",
+    "model": "swift15-27b-nvfp4-327k-r2",
+    "model_revision": "25482027debd5485e8108897ba9fed8d3ba16595",
+    "runtime_image": "sha256:c2f3b1b964e47809b722b5e75b61b1e7b39a50f70388cf2bf2418f16a9f31da2",
+    "served_models": [
+      "swift15-27b-nvfp4-327k-r2"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 12,
+  "requests": 12,
+  "run_id": "multimodal-20260926T125144Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-09-26T12:51:44Z"
+}

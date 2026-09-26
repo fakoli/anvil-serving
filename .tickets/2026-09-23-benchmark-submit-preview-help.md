@@ -15,3 +15,8 @@ The current campaign used an independently reviewed, explicit job JSON and a
 successful native preflight before its authorized `--confirm` submission. The
 first topology refusal was separately resolved by a private campaign topology
 declaring the local evaluation resource; deployed topology was unchanged.
+
+The same mismatch was observed for `eval benchmark swe cancel` in 1.3.0 at
+`a7d04b72f03b7302816342703f1711311a6f3a3f` on September 26: focused help lists
+`--dry-run`, while the parser rejects it. The separately authorized confirmed
+cancel succeeded. Include cancellation in the help/parser consistency fix.

@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-09-26 single-GPU qualification:** [Swift and Qwen3.8 candidates](2026-09-26-single-gpu-qualification.md) did not clear the frozen 4/5 coding floor. Exact GLM r11 was restored and readmitted; no candidate was promoted. The ThinkingCap coding capture is explicitly partial after managed cancellation.
+
 **2026-09-23 DCP1 qualification:** [GLM DCP1 r11 evidence](2026-09-23-glm-dcp1-qualification.md)
 records selected and deployed r11 after direct/routed preflight and native-client
 acceptance. Independent reviews, dashboard imports, successful Pages publication,
