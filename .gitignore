@@ -58,3 +58,6 @@ htmlcov/
 unsloth_compiled_cache/
 graphify-out/
 .scratch/
+
+# Local test receipts include interpreter and checkout paths.
+.pytest_cache/

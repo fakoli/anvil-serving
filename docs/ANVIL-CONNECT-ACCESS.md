@@ -4,6 +4,9 @@ For new accounts, credential delivery, service tiles, and recovery, start with
 [Invite a developer](ANVIL-CONNECT-ONBOARDING.md). The Connect service home provides
 the same protected access editor for configured operators.
 
+For separately approved inference access and personal usage, see
+[Router API keys from Connect Home](ANVIL-CONNECT-ROUTER-KEYS.md).
+
 Workbench's **Settings → Connect access** panel lets an explicitly configured administrator
 manage existing Connect users and revoke individual browser or terminal
 sessions through the existing Connect authorization boundary.

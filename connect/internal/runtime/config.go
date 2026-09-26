@@ -118,6 +118,9 @@ func absolutePath(value string) bool {
 }
 
 func (c GatewayConfig) Validate() error {
+	if keys := c.Gateway.RouterKeys; keys != nil && (keys.SecretEnv == c.OIDC.ClientSecretEnv || keys.CheckEnv == c.OIDC.ClientSecretEnv) {
+		return ErrConfiguration
+	}
 	if c.Ingress != nil && (c.Ingress.Validate() != nil || !disjointDirectories(c.StateDirectory, c.Ingress.Directory)) {
 		return ErrConfiguration
 	}

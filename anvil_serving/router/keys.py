@@ -49,6 +49,7 @@ class Principal:
     key_id: str
     models: tuple[str, ...]
     paths: tuple[str, ...]
+    owner: tuple[str, str, str] | None = None
 
     def allows_model(self, model: str, normalize: bool = True) -> bool:
         if not isinstance(model, str):
@@ -251,14 +252,16 @@ def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tupl
 class KeyStore:
     """A small SQLite-backed device-key store with fail-closed reads."""
 
-    def __init__(self, path: str | os.PathLike[str]) -> None:
+    def __init__(self, path: str | os.PathLike[str], *, owner_check=None) -> None:
+        self.owner_check = owner_check
         self.path = Path(path).expanduser().absolute()
         _secure_database(self.path, exists=True)
         try:
             with self._connect() as connection:
                 version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version != 1:
+            if version not in (1, 2):
                 raise KeyStoreError("credential store format is unsupported")
+            self.version = version
         except sqlite3.Error as exc:
             raise KeyStoreError("credential store is unavailable") from exc
 
@@ -378,8 +381,9 @@ class KeyStore:
         return granted_models, tuple(dict.fromkeys((_MODELS_PATH, *granted)))
 
     def create(self, name: str, models: list[str], paths: list[str], rpm: int = 60,
-               expires_days: int | None = None) -> tuple[dict[str, Any], str]:
-        if not isinstance(name, str) or not name.strip() or len(name) > 128:
+               expires_days: int | None = None, *, owner=None) -> tuple[dict[str, Any], str]:
+        if (not isinstance(name, str) or not name.strip() or len(name) > 128
+                or any(unicodedata.category(char).startswith("C") for char in name)):
             raise KeyStoreError("invalid key name")
         grants_models, grants_paths = self._grants(models, paths)
         if type(rpm) is not int or not 1 <= rpm <= 100_000:
@@ -395,6 +399,9 @@ class KeyStore:
             try:
                 with self._connect() as connection:
                     connection.execute("BEGIN IMMEDIATE")
+                    if owner is not None:
+                        from .connect_keys import authorize_creation
+                        authorize_creation(connection, owner, grants_models, grants_paths, rpm, expires_days)
                     count = connection.execute("SELECT COUNT(*) FROM keys").fetchone()[0]
                     if count >= _MAX_KEYS:
                         connection.execute(
@@ -412,6 +419,9 @@ class KeyStore:
                         "INSERT INTO keys VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
                         (key_id, name.strip(), digest, json.dumps(grants_models), json.dumps(grants_paths), rpm, now, expires_at),
                     )
+                    if owner is not None:
+                        connection.execute("DELETE FROM connect_key_owners WHERE key_id NOT IN (SELECT key_id FROM keys) AND key_id NOT IN (SELECT key_id FROM audit)")
+                        connection.execute("INSERT INTO connect_key_owners VALUES (?, ?, ?, ?, ?)", (key_id, *owner))
                     connection.execute("COMMIT")
                 return ({"key_id": key_id, "name": name.strip(), "models": list(grants_models),
                          "paths": list(grants_paths), "rpm": rpm, "created_at": now,
@@ -422,7 +432,7 @@ class KeyStore:
                 raise KeyStoreError("credential store is unavailable") from exc
         raise KeyStoreError("credential key allocation failed")
 
-    def authenticate(self, token: str) -> Principal | None:
+    def authenticate(self, token: str, *, check_owner=True) -> Principal | None:
         if not isinstance(token, str) or not 40 <= len(token) <= 128:
             return None
         digest = hashlib.sha256(token.encode("utf-8")).digest()
@@ -432,6 +442,7 @@ class KeyStore:
                     "SELECT key_id, token_hash, models, paths, expires_at, revoked_at "
                     "FROM keys WHERE token_hash = ? LIMIT 2", (digest,)
                 ).fetchall()
+                version = connection.execute("PRAGMA user_version").fetchone()[0]
         except KeyStoreError:
             raise
         except sqlite3.Error as exc:
@@ -452,7 +463,16 @@ class KeyStore:
             return None
         try:
             grants_models, grants_paths = _stored_grants(models, paths)
-            return Principal(key_id, grants_models, grants_paths)
+            owner = None
+            if version == 2:
+                from .connect_keys import owned_binding, Denied
+                try:
+                    owner = owned_binding(self, key_id)
+                except Denied:
+                    return None
+                if owner is not None and check_owner and (self.owner_check is None or not self.owner_check(*owner)):
+                    return None
+            return Principal(key_id, grants_models, grants_paths, owner)
         except KeyStoreError:
             raise
 
@@ -469,6 +489,12 @@ class KeyStore:
                 if row is None or row[1] is not None or (row[2] is not None and row[2] <= int(now)):
                     connection.execute("ROLLBACK")
                     raise KeyStoreError("credential key is unavailable")
+                if connection.execute("PRAGMA user_version").fetchone()[0] == 2:
+                    from .connect_keys import admit_owner
+                    retry = admit_owner(connection, key_id, now)
+                    if retry:
+                        connection.execute("COMMIT")
+                        return retry
                 rpm = row[0]
                 if (type(rpm) is not int or isinstance(rpm, bool) or not 1 <= rpm <= 100_000
                         or (row[1] is not None and (type(row[1]) is not int or isinstance(row[1], bool)))

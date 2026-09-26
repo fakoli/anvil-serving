@@ -18,6 +18,7 @@ const dedicatedHomePath = "/_anvil-connect/home"
 // Home is the dedicated, grantless Connect landing host.  It owns only its
 // fixed browser/OIDC endpoints and never reaches an application dispatcher.
 type Home struct {
+	router        *homeRouter
 	host          string
 	authority     homeAuthority
 	resources     []config.Resource
@@ -73,6 +74,10 @@ func (h *Home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		browserFailure(w, http.StatusNotFound)
 		return
 	}
+	if r.URL.Path == routerPrincipalPath {
+		h.routerPrincipal(w, r)
+		return
+	}
 	cookies, err := parseBrowserCookies(r.Header)
 	if err != nil {
 		browserFailure(w, http.StatusBadRequest)
@@ -89,12 +94,15 @@ func (h *Home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		browserRedirect(w, r, dedicatedHomePath, http.StatusFound)
 		return
-	case dedicatedHomePath, dedicatedHomePath + "/data", BrowserLoginPath, BrowserCallbackPath, BrowserLogoutPath:
+	case dedicatedHomePath, dedicatedHomePath + "/data", routerKeysPath, BrowserLoginPath, BrowserCallbackPath, BrowserLogoutPath:
 	default:
 		browserFailure(w, http.StatusNotFound)
 		return
 	}
 	slots := h.control
+	if r.URL.Path == routerKeysPath && h.router != nil {
+		slots = h.router.management
+	}
 	if r.URL.Path == BrowserLogoutPath {
 		slots = h.logout
 	}
@@ -107,6 +115,8 @@ func (h *Home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	r = r.WithContext(ctx)
 	switch r.URL.Path {
+	case routerKeysPath:
+		h.routerKeys(w, r, cookies)
 	case dedicatedHomePath:
 		h.page(w, r, cookies)
 	case dedicatedHomePath + "/data":
@@ -210,12 +220,13 @@ func (h *Home) data(w http.ResponseWriter, r *http.Request, cookies browserCooki
 	h.headers(w)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(struct {
+		RouterKeys     bool            `json:"router_keys"`
 		Services       []portalService `json:"services"`
 		Account        string          `json:"account_url"`
 		Passkeys       string          `json:"passkeys_url"`
 		Logout         string          `json:"logout_path"`
 		Administration string          `json:"administration_url,omitempty"`
-	}{services, account + "/security", account + "/two-factor-authentication", BrowserLogoutPath, adminURL})
+	}{h.router != nil, services, account + "/security", account + "/two-factor-authentication", BrowserLogoutPath, adminURL})
 }
 
 func (h *Home) login(w http.ResponseWriter, r *http.Request) {

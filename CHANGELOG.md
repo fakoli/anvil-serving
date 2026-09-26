@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- Connect Home router-access requests, explicit operator approval, device-key
+  creation and revocation, and personal usage from retained request metadata.
+- Per-account model and endpoint grants, shared rate budgets, bounded key
+  lifetimes, and live account checks for Connect-owned router credentials.
+
+### Compatibility
+
+- Connect router keys require explicit configuration of both services and two
+  separate protected service credentials. Browser service grants do not grant
+  router API access. Existing router master and manually issued keys retain
+  their authority.
+- Enabling the feature upgrades the key database to schema 2. Older binaries
+  require a complete pre-upgrade database backup for rollback; see the
+  [Connect router-key guide](https://fakoli.github.io/anvil-serving/ANVIL-CONNECT-ROUTER-KEYS/).
+
 ## [1.4.0] - 2026-09-26
 
 ### Added
@@ -2563,7 +2582,9 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/fakoli/anvil-serving/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/fakoli/anvil-serving/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/fakoli/anvil-serving/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fakoli/anvil-serving/compare/v1.1.0...v1.2.0

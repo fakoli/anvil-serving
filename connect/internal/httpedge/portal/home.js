@@ -108,6 +108,7 @@ byID("logout").addEventListener("click", async () => {
   try {
     const response = await fetch(settings.logout_path, {method:"POST",credentials:"same-origin",redirect:"manual"});
     if (!response.ok && response.type !== "opaqueredirect") throw new Error("Sign-out failed. Try again.");
+    clearKeySecret(); byID("router-keys").hidden=true; byID("key-list").replaceChildren(); byID("router-accounts").replaceChildren();
     byID("services").replaceChildren(); byID("service-count").textContent="0 enabled"; byID("administration").hidden=true; byID("manage-access-link").hidden=true; byID("logout").disabled=true; notice("Signed out of Connect. Your account provider may still have an active sign-in.");
   } catch(error) { notice(error.message); }
 });
@@ -120,6 +121,109 @@ byID("logout").addEventListener("click", async () => {
     const passkeys=byID("passkeys-link"); passkeys.href=settings.passkeys_url; passkeys.hidden=false;
     if(settings.administration_url) { const link=byID("manage-access-link"); link.href=settings.administration_url; link.hidden=false; }
     notice(settings.services.length ? "" : "No services have been assigned. Contact your operator.");
+    if(settings.router_keys) { byID("router-keys").hidden=false; await loadRouterKeys(); }
     if(settings.administration_path) { byID("administration").hidden=false; await loadUsers(""); }
   } catch(error) { notice(error.message); }
 })();
+
+let keyState, keyCSRF = "";
+async function keyRequest(operation) {
+  const response = await fetch(home+"/router-keys", {credentials:"same-origin", cache:"no-store",
+    ...(operation ? {method:"POST", headers:{"Content-Type":"application/json","X-CSRF-Token":keyCSRF}, body:JSON.stringify(operation)} : {})});
+  if (!response.ok) throw new Error(response.status===401 ? "Your session changed. Reload to sign in." : response.status===403 ? "Access changed or this action is not allowed. Refresh keys and usage." : "Router key service unavailable ("+response.status+").");
+  keyCSRF=response.headers.get("X-CSRF-Token") || keyCSRF;
+  return response.json();
+}
+function clearKeySecret() { byID("key-secret").value=""; byID("new-key").hidden=true; }
+function keyChoices(container, values, selected) {
+  const legend=container.querySelector("legend"); container.replaceChildren(legend);
+  for (const value of values) {
+    const label=element("label",value), input=element("input");
+    input.type="checkbox"; input.value=value; input.checked=selected.includes(value); label.prepend(input); container.append(label);
+  }
+}
+function selectedKeys(container) { return [...container.querySelectorAll("input:checked")].map(input=>input.value); }
+function formatKeyTime(seconds) { return seconds ? new Date(seconds*1000).toLocaleString() : "Never"; }
+function keyRow(key, usage) {
+  const row=element("article",undefined,"user"), revoke=element("button","Revoke key"); revoke.type="button";
+  const expired=key.expires_at && key.expires_at<=Date.now()/1000;
+  row.append(element("h3",key.name),element("code",key.key_id,"user-id"),
+    element("p",(key.revoked_at?"Revoked":expired?"Expired":"Active")+" · Expires "+formatKeyTime(key.expires_at)),
+    element("p",key.models.join(", ")+" · "+key.rpm+" requests/minute"),element("p",key.paths.join(", ")));
+  row.append(element("p",usage ? usage.requests+" requests · "+usage.errors+" HTTP errors · "+usage.rate_limited+" rate limited · Last used "+formatKeyTime(usage.last_used)+" · Average "+Math.round(usage.average_ms)+" ms" : "No requests in the retained log."));
+  revoke.disabled=!!key.revoked_at;
+  revoke.addEventListener("click",async()=>{
+    if(!window.confirm("Revoke "+key.name+"? New requests using this key will be denied.")) return;
+    revoke.disabled=true;
+    try { await keyRequest({action:"revoke",key_id:key.key_id}); await loadRouterKeys(); notice("Key revoked."); }
+    catch(error) { notice(error.message); revoke.disabled=false; }
+  });
+  row.append(revoke); return row;
+}
+function routerAccountEditor(account) {
+  const form=element("form",undefined,"user"), models=element("fieldset"), paths=element("fieldset");
+  form.append(element("code",account.owner,"user-id"),element("p","Status: "+account.status));
+  models.append(element("legend","Allowed models")); paths.append(element("legend","Allowed endpoints"));
+  keyChoices(models,keyState.models,account.models); keyChoices(paths,keyState.paths,account.paths);
+  const rpm=element("input"), days=element("input"), rpmLabel=element("label","Account requests per minute "), daysLabel=element("label","Maximum key lifetime in days ");
+  rpm.type=days.type="number"; rpm.min=days.min="1"; rpm.max="100000"; days.max="90"; rpm.required=days.required=true;
+  rpm.value=account.rpm||60; days.value=account.expires_days||30; rpmLabel.append(rpm); daysLabel.append(days);
+  const save=element("button","Approve access"), deny=element("button","Deny / remove access"); save.type="submit"; deny.type="button";
+  const forget=element("button","Remove inactive record"); forget.type="button";
+  forget.addEventListener("click",async()=>{
+    if(!window.confirm("Remove this denied or deleted account’s router access record? Retained key usage is preserved. Enabled accounts must have access denied first.")) return;
+    forget.disabled=true;
+    try { await keyRequest({action:"forget",owner:account.owner,revision:account.revision}); await loadRouterKeys(); notice("Inactive access record removed."); }
+    catch(error) { notice(error.message); forget.disabled=false; }
+  });
+  form.append(models,paths,rpmLabel,daysLabel,save,deny,forget);
+  const update=async status=>{
+    const selectedModels=selectedKeys(models), selectedPaths=selectedKeys(paths);
+    if(status==="approved" && (!selectedModels.length || !selectedPaths.length)) { notice("Choose at least one model and endpoint."); return; }
+    save.disabled=deny.disabled=true;
+    try {
+      await keyRequest({action:"approve",owner:account.owner,revision:account.revision,status,models:selectedModels,paths:selectedPaths,rpm:Number(rpm.value),expires_days:Number(days.value)});
+      await loadRouterKeys(); notice("Router access updated; existing keys revoked.");
+    } catch(error) { notice(error.message); save.disabled=deny.disabled=false; }
+  };
+  form.addEventListener("submit",event=>{event.preventDefault();update("approved");}); deny.addEventListener("click",()=>update("denied")); return form;
+}
+async function loadRouterKeys() {
+  keyState=await keyRequest(); const account=keyState.account, approved=account?.status==="approved";
+  byID("key-access").textContent=approved ? "Approved: "+account.rpm+" requests/minute shared across your keys. Up to 10 active keys. Revocation stops new requests; admitted streams may finish." : account?.status==="pending" ? "Your router access request is waiting for operator approval." : account?.status==="denied" ? "Router access was denied or removed. Contact your operator." : "Request router access once. After approval, create and revoke keys for your devices here.";
+  byID("request-api-access").hidden=!!account; byID("create-key").hidden=!approved;
+  if(approved) {
+    keyChoices(byID("key-models"),account.models,account.models); keyChoices(byID("key-paths"),account.paths.filter(path=>path!=="/v1/models"),account.paths);
+    const form=byID("create-key"); form.elements.rpm.max=account.rpm; form.elements.rpm.value=account.rpm;
+    form.elements.expires_days.max=account.expires_days; form.elements.expires_days.value=account.expires_days;
+  }
+  byID("key-usage-window").textContent=keyState.usage_window;
+  const totals=keyState.usage_totals;
+  byID("key-summary").textContent=totals.requests+" requests · "+totals.errors+" HTTP errors · "+totals.rate_limited+" rate limited across your keys (including retired keys)."+(keyState.keys_truncated ? " Showing your 100 most recent keys, with active keys first." : "");
+  byID("key-list").replaceChildren(...keyState.keys.map(key=>keyRow(key,keyState.usage.find(item=>item.key_id===key.key_id))));
+  byID("router-approvals").hidden=keyState.accounts===null;
+  byID("router-accounts").replaceChildren(...(keyState.accounts||[]).map(routerAccountEditor));
+}
+byID("refresh-keys").addEventListener("click",()=>loadRouterKeys().catch(error=>notice(error.message)));
+byID("request-api-access").addEventListener("click",async()=>{
+  const button=byID("request-api-access"); button.disabled=true;
+  try { await keyRequest({action:"request"}); await loadRouterKeys(); notice("Router access requested."); }
+  catch(error) { notice(error.message); } finally { button.disabled=false; }
+});
+byID("create-key").addEventListener("submit",async event=>{
+  event.preventDefault(); const form=event.currentTarget, button=form.querySelector("button"), models=selectedKeys(byID("key-models")), paths=selectedKeys(byID("key-paths"));
+  if(!models.length||!paths.length) { notice("Choose at least one model and endpoint."); return; }
+  button.disabled=true; clearKeySecret();
+  try {
+    const result=await keyRequest({action:"create",name:form.elements.name.value,models,paths,rpm:Number(form.elements.rpm.value),expires_days:Number(form.elements.expires_days.value),revision:keyState.account.revision});
+    byID("key-secret").value=result.secret; byID("new-key").hidden=false; byID("copy-key").focus(); form.elements.name.value="";
+    await loadRouterKeys(); notice("Key created. Copy it now; it cannot be shown again.");
+  } catch(error) { notice(error.message+" If creation was interrupted, refresh and revoke any unused key before retrying."); }
+  finally { button.disabled=false; }
+});
+byID("copy-key").addEventListener("click",async()=>{
+  try { await navigator.clipboard.writeText(byID("key-secret").value); notice("Key copied. Store it securely."); }
+  catch { byID("key-secret").focus(); byID("key-secret").select(); notice("Select and copy the key from the field."); }
+});
+byID("dismiss-key").addEventListener("click",clearKeySecret);
+window.addEventListener("pagehide",clearKeySecret);

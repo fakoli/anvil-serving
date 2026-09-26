@@ -460,9 +460,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_host: Optional[str] = None,
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
-                  server_config=None, api_keys=None):
+                  server_config=None, api_keys=None, connect_keys=None, connect_verifier=None):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
+    connect_slots = threading.BoundedSemaphore(2)
+    owner_check_slots = threading.BoundedSemaphore(4)
     operator_route_map = {
         (route.method, route.path): route
         for route in _validated_operator_routes(operator_routes)
@@ -535,6 +537,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             path = self.path.split("?", 1)[0].rstrip("/")
             if api_keys is None or (self.command == "GET" and path == _HEALTHZ_PATH):
                 return True
+            if self.path == "/v1/connect/keys" and connect_keys is not None:
+                if self.command == "POST":
+                    return True  # Dedicated assertion validation precedes the bounded body read.
+                self._device_error(401, "authentication_error", "invalid service credential")
+                return False
             supplied = _extract_operator_token(self.headers)
             if supplied is None:
                 self._device_error(401, "authentication_error", "invalid or missing API key")
@@ -551,7 +558,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
             try:
-                principal = api_keys.authenticate(supplied)
+                principal = api_keys.authenticate(supplied, check_owner=False)
                 if principal is None:
                     self._device_error(401, "authentication_error", "invalid or missing API key")
                     return False
@@ -570,6 +577,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if retry_after:
                 self._device_error(429, "key_rate_limited", "API key request rate exceeded", retry_after)
                 return False
+            if principal.owner is not None:
+                if not owner_check_slots.acquire(blocking=False):
+                    self._device_error(503, "account_check_busy", "Connect account check busy")
+                    return False
+                try:
+                    if api_keys.owner_check is None or not api_keys.owner_check(*principal.owner):
+                        self._device_error(401, "authentication_error", "Connect account access changed")
+                        return False
+                except KeyStoreError:
+                    self._device_error(503, "account_check_unavailable", "Connect account check unavailable")
+                    return False
+                finally:
+                    owner_check_slots.release()
             return True
 
         def _device_error(self, status, code, message, retry_after=None):
@@ -877,7 +897,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _protocol_json_error(self, status: int, code: str, message: str) -> None:
             self._json(status, {"error": {"type": code, "message": message}})
 
-        def _protocol_body(self) -> dict | None:
+        def _protocol_body(self, *, strict=False) -> dict | None:
             """Read one strictly framed, bounded protocol JSON body."""
             te_all = self.headers.get_all("Transfer-Encoding") or []
             cl_all = self.headers.get_all("Content-Length") or []
@@ -902,7 +922,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return None
             raw = self.rfile.read(length) if length else b""
             try:
-                body = json.loads(raw or b"{}")
+                if strict:
+                    from ..observability.dashboard.contracts import strict_json, ObservatoryError
+                    try:
+                        body = strict_json(raw)
+                    except ObservatoryError:
+                        self._protocol_json_error(400, "invalid_request", "body must be unambiguous JSON")
+                        return None
+                else:
+                    body = json.loads(raw or b"{}")
             except (UnicodeDecodeError, json.JSONDecodeError):
                 self._protocol_json_error(400, "invalid_request", "body must be valid JSON")
                 return None
@@ -1886,7 +1914,46 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             finally:
                 _CONCURRENCY_LIMIT.release()
 
+        def _connect_keys(self):
+            self.close_connection = True
+            if not connect_slots.acquire(blocking=False):
+                self._device_error(503, "server_busy", "key management busy")
+                return
+            try:
+                from ..observability.dashboard.contracts import ObservatoryError
+                try:
+                    assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
+                except ObservatoryError:
+                    self._device_error(401, "authentication_error", "invalid Connect assertion")
+                    return
+                self.connection.settimeout(5)
+                body = self._protocol_body(strict=True)
+                if body is None:
+                    return
+                from .connect_keys import Denied
+                import sqlite3
+                try:
+                    binding = assertion.binding
+                    result = connect_keys.dispatch({"principal": binding.subject,
+                        "generation": str(binding.policy_generation), "epoch": binding.epoch,
+                        "administrator": binding.role == "admin", "operation": body})
+                except Denied:
+                    self._device_error(403, "access_denied", "access changed or operation not allowed")
+                    return
+                except (sqlite3.Error, KeyStoreError):
+                    self._device_error(503, "key_store_unavailable", "key management unavailable")
+                    return
+                except (ValueError, TypeError):
+                    self._device_error(400, "invalid_request", "key operation could not be completed")
+                    return
+                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+            finally:
+                connect_slots.release()
+
         def do_POST(self) -> None:
+            if self.path == "/v1/connect/keys" and connect_keys is not None:
+                self._connect_keys()
+                return
             if api_keys is None:
                 self._reset_request_correlation()
             route = self.path.split("?", 1)[0].rstrip("/")
@@ -2500,6 +2567,27 @@ def make_server(host: str, port: int,
         if auth_token is None:
             raise ValueError("device API keys require a resolved front-door auth token")
         api_keys = KeyStore(server_config.api_keys_path)
+    connect_keys, connect_verifier = None, None
+    if server_config is not None and server_config.connect_keys_env is not None:
+        from .connect_keys import ConnectKeys, principal_checker
+        connect_secret = os.environ.get(server_config.connect_keys_env, "")
+        if (api_keys is None or not 32 <= len(connect_secret) <= 256
+                or any(ord(c) < 33 or ord(c) > 126 for c in connect_secret)
+                or hmac.compare_digest(connect_secret.encode(), (auth_token or "").encode())):
+            raise ValueError("Connect keys require a distinct configured service credential")
+        from ..observability.dashboard.access import ConnectVerifier
+        connect_verifier = ConnectVerifier({"resource": "router-keys", "keys": [
+            {"id": "router-keys", "secret_env": server_config.connect_keys_env}], "principals": {}},
+            origin=server_config.connect_home_url, environment=os.environ)
+        check_secret = os.environ.get(server_config.connect_check_env or "", "")
+        if (not 32 <= len(check_secret) <= 256 or any(ord(c) < 33 or ord(c) > 126 for c in check_secret)
+                or check_secret in {connect_secret, auth_token}):
+            raise ValueError("Connect account checks require a separate service credential")
+        api_keys.owner_check = principal_checker(server_config.connect_home_url, check_secret)
+        owned_models = list(model_routes)
+        if purpose is not None:
+            owned_models += list(purpose.model_ids("embedding")) + list(purpose.model_ids("rerank"))
+        connect_keys = ConnectKeys(api_keys, owned_models)
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),
@@ -2507,7 +2595,7 @@ def make_server(host: str, port: int,
             backend, timeout, model_routes, exhaustion_status, auth_token,
             purpose, audio, gateway, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
-            server_config, api_keys,
+            server_config, api_keys, connect_keys, connect_verifier,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

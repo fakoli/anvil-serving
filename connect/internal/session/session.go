@@ -65,6 +65,7 @@ type Config struct {
 // issuer and subject so the authority store need not retain an IdP identifier.
 // A generation change invalidates every previously issued Connect session.
 type Human struct {
+	RouterIncarnation       string            `json:"router_incarnation,omitempty"`
 	ID                      string            `json:"id"`
 	Username                string            `json:"username,omitempty"`
 	DeletionRequest         string            `json:"deletion_request,omitempty"`
@@ -395,7 +396,7 @@ func (m *Manager) setHuman(issuer, subject string, username *string, resources [
 		if username != nil {
 			name = *username
 		}
-		result = Human{ID: id, Username: name, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor}
+		result = Human{ID: id, Username: name, Generation: old.Generation + 1, Disabled: disabled, Resources: resources, ApplicationRoles: applicationRoles, BrowserTransactionFloor: old.BrowserTransactionFloor, RouterIncarnation: old.RouterIncarnation}
 		if err := m.preserveAdministrators(tx, result); err != nil {
 			return err
 		}
@@ -429,13 +430,13 @@ func (m *Manager) SuspendHuman(issuer, subject string) (Human, error) {
 			return ErrUnavailable
 		}
 		if human.Disabled {
-			result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+			result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor, RouterIncarnation: human.RouterIncarnation}
 			return nil
 		}
 		if err := m.UpdateHumanTx(tx, id, human.Generation, human.Resources, true); err != nil {
 			return err
 		}
-		result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor}
+		result = Human{ID: human.ID, Username: human.Username, Generation: human.Generation + 1, Disabled: true, Resources: append([]string(nil), human.Resources...), ApplicationRoles: maps.Clone(human.ApplicationRoles), BrowserTransactionFloor: human.BrowserTransactionFloor, RouterIncarnation: human.RouterIncarnation}
 		return nil
 	})
 	if err != nil {

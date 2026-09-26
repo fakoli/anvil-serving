@@ -442,6 +442,9 @@ class ServerConfig:
     workload_host: Optional[str] = None
     authorization_policy_path: Optional[str] = None
     api_keys_path: Optional[str] = None
+    connect_keys_env: Optional[str] = None
+    connect_home_url: Optional[str] = None
+    connect_check_env: Optional[str] = None
     client_limits: Mapping[str, int] = field(default_factory=dict)
     admission_timeout_s: float = 30.0
     startup_timeout_s: float = 300.0
@@ -459,7 +462,7 @@ _SERVER_KEYS = frozenset({
     "media_scopes",
     "media_public_origin",
     "workload_host",
-    "authorization_policy_path", "api_keys_path", "client_limits", "admission_timeout_s",
+    "authorization_policy_path", "api_keys_path", "connect_keys_env", "connect_home_url", "connect_check_env", "client_limits", "admission_timeout_s",
     "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
     "heartbeat_interval_s", "trace_export_url",
 })
@@ -540,6 +543,20 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
     if paths["api_keys_path"] is not None and not is_absolute(paths["api_keys_path"]):
         raise ConfigError("[server].api_keys_path must be an absolute file path")
 
+    connect_keys_env, connect_home_url = server.get("connect_keys_env"), server.get("connect_home_url")
+    connect_check_env = server.get("connect_check_env")
+    if any(key in server for key in ("connect_keys_env", "connect_home_url", "connect_check_env")):
+        _validate_auth_env(connect_keys_env, "[server].connect_keys_env", detailed=False)
+        _validate_auth_env(connect_check_env, "[server].connect_check_env", detailed=False)
+        if (connect_check_env in {auth_env, connect_keys_env} or not connect_home_url
+                or paths["api_keys_path"] is None or auth_env is None or connect_keys_env == auth_env):
+            raise ConfigError("Connect keys require api_keys_path, distinct secret references, and a Home URL")
+        from .connect_keys import home_url
+        try:
+            connect_home_url = home_url(connect_home_url)
+        except ValueError:
+            raise ConfigError("invalid Connect Home URL") from None
+
     durations = {}
     defaults = ServerConfig()
     for key in ("admission_timeout_s", "startup_timeout_s", "idle_timeout_s",
@@ -575,6 +592,9 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
         workload_host=workload_host,
         authorization_policy_path=paths["authorization_policy_path"],
         api_keys_path=paths["api_keys_path"],
+        connect_keys_env=connect_keys_env,
+        connect_home_url=connect_home_url,
+        connect_check_env=connect_check_env,
         client_limits=MappingProxyType(dict(client_limits)),
         trace_export_url=trace_export_url,
         **durations,

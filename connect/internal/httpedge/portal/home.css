@@ -5,3 +5,5 @@
 #terminal-help pre{padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);color:var(--accent);white-space:pre-wrap}#terminal-help ol{max-width:770px;padding-left:22px;font-size:14px}#terminal-help li{margin:8px 0}
 
 main{padding-top:36px;padding-bottom:36px}#notice:empty{margin:0}
+
+#router-keys{border-top:1px solid var(--line);padding:30px 0;margin-top:20px}#router-keys p{color:var(--muted);overflow-wrap:anywhere}#router-keys form{display:flex;flex-wrap:wrap;align-items:end;gap:16px}#router-keys label{display:flex;flex-direction:column;gap:6px}#router-keys fieldset{display:flex;flex-wrap:wrap;gap:12px;flex-basis:100%;border:1px solid var(--line)}#router-keys fieldset label{flex-direction:row;align-items:center}#router-keys input{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:8px;max-width:100%}#new-key{border:1px solid var(--amber);padding:20px;margin-top:20px}#key-secret{width:100%;font-family:monospace}#router-accounts .user-id,#router-accounts form>p{flex-basis:100%}#router-keys .user h3{margin:0}

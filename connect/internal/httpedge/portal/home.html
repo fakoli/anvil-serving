@@ -23,6 +23,19 @@
       </ol>
       <p>Run Connect on the same machine as your SDK. Over SSH, that means the remote machine. Run the command again when your session expires.</p>
     </section>
+    <section id="router-keys" hidden aria-labelledby="router-keys-heading">
+      <div class="section-heading"><h2 id="router-keys-heading">Router API keys</h2><button id="refresh-keys" type="button">Refresh keys and usage</button></div>
+      <p id="key-access" role="status"></p><button id="request-api-access" type="button" hidden>Request router access</button>
+      <form id="create-key" hidden>
+        <label>Device or key name <input name="name" required maxlength="128" autocomplete="off" placeholder="My laptop"></label>
+        <fieldset id="key-models"><legend>Models</legend></fieldset><fieldset id="key-paths"><legend>Endpoints</legend></fieldset>
+        <label>Requests per minute <input name="rpm" type="number" required min="1"></label>
+        <label>Expires in days <input name="expires_days" type="number" required min="1"></label><button type="submit">Create API key</button>
+      </form>
+      <div id="new-key" hidden role="status"><p>Save this key now. It is shown only once.</p><label>New API key <input id="key-secret" type="password" readonly autocomplete="off"></label><button id="copy-key" type="button">Copy key</button><button id="dismiss-key" type="button">I saved it</button></div>
+      <p id="key-usage-window"></p><p id="key-summary"></p><div id="key-list"></div>
+      <section id="router-approvals" hidden aria-labelledby="router-approvals-heading"><h3 id="router-approvals-heading">Router access requests</h3><p>Approve models and endpoints separately from browser services. Changes revoke this account’s existing router keys.</p><div id="router-accounts"></div></section>
+    </section>
     <section id="administration" hidden aria-labelledby="admin-heading"><div class="section-heading"><div><h2 id="admin-heading">Manage access</h2></div><button id="refresh-users" type="button">Refresh accounts</button></div><p>Choose which services each person can open and their role inside each app. Saving access changes invalidates their current Connect sessions. An app admin does not become a Connect operator.</p><div id="users"></div><button id="next-users" type="button" hidden>Next accounts →</button></section>
   </main>
   <noscript><p>Enable JavaScript to load your current services and manage access.</p></noscript>

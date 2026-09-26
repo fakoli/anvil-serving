@@ -241,10 +241,10 @@ def test_authentication_storage_work_is_bounded_and_master_remains_available(sto
     release = threading.Event()
     original = KeyStore.authenticate
 
-    def blocked_authenticate(self, candidate):
+    def blocked_authenticate(self, candidate, **kwargs):
         entered.wait(5)
         assert release.wait(5)
-        return original(self, candidate)
+        return original(self, candidate, **kwargs)
 
     monkeypatch.setattr(KeyStore, "authenticate", blocked_authenticate)
     # This gate tests bounded authentication work. SQLite contention can
