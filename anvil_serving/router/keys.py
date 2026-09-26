@@ -201,7 +201,10 @@ def _private_created_descriptor(descriptor: int) -> None:
 
 def _secure_directory(path: Path, *, create: bool) -> None:
     if create:
-        path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        # CPython's Windows ``mode=0o700`` adds an effective OWNER_RIGHTS ACE
+        # even below a protected owner-only parent. Use the inherited DACL,
+        # then validate the held directory descriptor below.
+        path.mkdir(mode=0o777 if _is_windows() else 0o700, parents=True, exist_ok=True)
     try:
         info = path.lstat()
     except OSError as exc:

@@ -185,3 +185,18 @@ def test_budget_exception_does_not_cover_other_fields_or_scopes():
     for data in [{"thinking_token_budget": 49152}, {"router": {"tiers": [{"params": {"extra_body": {"thinking_token_budget": 49152}}}]}}, {"router": {"tiers": [{"params": {"api_token": 49152}}]}}]:
         with pytest.raises(export.operator_config.ConfigExportError):
             export.operator_config._assert_no_secret_literals(export._secret_projection(data), path="router.toml")
+
+
+def test_device_key_dependency_is_refused_after_runtime_validation(setup):
+    path, _, _, _, run = setup
+    path.write_text(CONFIG.replace('[server]', '[server]\napi_keys_path="/var/lib/anvil-serving/router-keys/keys.sqlite3"'))
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def runtime(argv, **kwargs):
+        if argv[1] == "exec":
+            return SimpleNamespace(returncode=0, stdout=digest + "\n", stderr="")
+        return run(argv, **kwargs)
+
+    with pytest.raises(UsageError) as caught:
+        export.export_installed_config("anvil-router", digest, _run=runtime)
+    assert caught.value.details == {"stage": "dependency_validation"}

@@ -16,6 +16,7 @@ import ipaddress
 import json
 import math
 import os
+import posixpath
 import re
 import sys
 import tomllib
@@ -468,7 +469,7 @@ _MEDIA_SCOPES = frozenset(
 )
 
 
-def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
+def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths: bool = False) -> ServerConfig:
     """Validate the optional ``[server]`` table from one parsed config snapshot."""
     server = data.get("server")
     if server is None:
@@ -535,7 +536,8 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
             raise ConfigError(f"[server].{key} must be a non-empty file path")
         paths[key] = os.path.expanduser(value) if isinstance(value, str) else None
 
-    if paths["api_keys_path"] is not None and not os.path.isabs(paths["api_keys_path"]):
+    is_absolute = posixpath.isabs if container_paths else os.path.isabs
+    if paths["api_keys_path"] is not None and not is_absolute(paths["api_keys_path"]):
         raise ConfigError("[server].api_keys_path must be an absolute file path")
 
     durations = {}
@@ -579,13 +581,15 @@ def _parse_server_config(data: Mapping[str, Any], path: str) -> ServerConfig:
     )
 
 
-def load_server_config(path: str) -> ServerConfig:
+def load_server_config(path: str, *, container_paths: bool = False) -> ServerConfig:
     """Load + validate the optional ``[server]`` table of the TOML config at ``path``.
 
     No ``[server]`` table, or one with no ``auth_env`` key, yields
     ``ServerConfig(auth_env=None)`` — auth OFF. Never reads ``os.environ``:
     only the env-var NAME shape is validated here (same rules as a tier's
-    ``auth_env``), never the secret literal.
+    ``auth_env``), never the secret literal. Container key management sets
+    ``container_paths`` to validate the key-store path as POSIX even when its
+    operator CLI runs on Windows.
     """
     path = os.path.expanduser(path)
     try:
@@ -595,7 +599,7 @@ def load_server_config(path: str) -> ServerConfig:
         raise ConfigError(f"cannot read router config {path!r}: {e}") from e
     except tomllib.TOMLDecodeError as e:
         raise ConfigError(f"invalid TOML in router config {path!r}: {e}") from e
-    return _parse_server_config(data, path)
+    return _parse_server_config(data, path, container_paths=container_paths)
 
 
 def _normalized_replica_endpoint(value: object, label: str) -> tuple[str, str, int, str]:

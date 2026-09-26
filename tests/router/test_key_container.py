@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving.router import key_container, keys
+from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 @pytest.fixture

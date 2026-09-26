@@ -10,6 +10,7 @@ from anvil_serving.router.config import ServerConfig, ConfigError, load_server_c
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore
 from tests.router.helpers import StaticBackend
+from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 MASTER = "test-master-credential"

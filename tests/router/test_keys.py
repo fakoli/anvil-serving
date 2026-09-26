@@ -11,18 +11,7 @@ import pytest
 
 from anvil_serving.router import keys
 from anvil_serving.router.keys import KeyStore, KeyStoreError, dispatch
-
-
-@pytest.fixture
-def tmp_path(tmp_path_factory):
-    """Use a disposable owner-only root for native Windows credential tests."""
-    if sys.platform != "win32":
-        yield tmp_path_factory.mktemp("keys")
-        return
-    from tests.bootstrap_windows_fixtures import windows_fixture_tree
-
-    with windows_fixture_tree() as tree:
-        yield tree.root
+from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 def _store(tmp_path):

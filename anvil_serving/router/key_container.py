@@ -62,7 +62,7 @@ def dispatch_container(args) -> int:
     from .serve import resolve_config_path
 
     try:
-        path = load_server_config(resolve_config_path(args.config)).api_keys_path
+        path = load_server_config(resolve_config_path(args.config), container_paths=True).api_keys_path
         if not path:
             raise KeyStoreError("router credential store path is not configured")
         if args.action == "create":
