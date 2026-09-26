@@ -248,7 +248,7 @@ def test_authentication_storage_work_is_bounded_and_master_remains_available(sto
 
     monkeypatch.setattr(KeyStore, "authenticate", blocked_authenticate)
     # This gate tests bounded authentication work. SQLite contention can
-    # independently return 503 after 100 ms and has its own storage tests.
+    # independently return 503 after one second and has its own storage tests.
     monkeypatch.setattr(KeyStore, "admit", lambda self, key_id: 0)
     monkeypatch.setattr(KeyStore, "record", lambda *args: None)
     with running(store) as (connection, backend), ThreadPoolExecutor(max_workers=4) as pool:

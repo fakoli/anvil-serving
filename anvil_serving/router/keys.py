@@ -331,9 +331,9 @@ class KeyStore:
     @contextmanager
     def _connect(self):
         _secure_database(self.path, exists=True)
-        connection = sqlite3.connect(self.path, timeout=0.1, isolation_level=None)
+        connection = sqlite3.connect(self.path, timeout=1.0, isolation_level=None)
         try:
-            connection.execute("PRAGMA busy_timeout=100")
+            connection.execute("PRAGMA busy_timeout=1000")
             yield connection
         finally:
             connection.close()

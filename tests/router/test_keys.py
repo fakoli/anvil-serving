@@ -5,6 +5,7 @@ import json
 import os
 import sqlite3
 import sys
+import threading
 import time
 
 import pytest
@@ -150,7 +151,33 @@ def test_store_contention_returns_a_bounded_failure(tmp_path):
     finally:
         lock.execute("ROLLBACK")
         lock.close()
-    assert time.monotonic() - started < 0.5
+    assert time.monotonic() - started < 2.0
+
+
+def test_authentication_waits_for_a_short_audit_lock(tmp_path):
+    store = _store(tmp_path)
+    metadata, secret = _key(store)
+    lock = sqlite3.connect(store.path, isolation_level=None)
+    lock.execute("BEGIN EXCLUSIVE")
+    started = threading.Event()
+
+    def authenticate():
+        started.set()
+        principal = store.authenticate(secret)
+        assert principal.key_id == metadata["key_id"]
+        return store.admit(principal.key_id)
+
+    with ThreadPoolExecutor(max_workers=1) as workers:
+        future = workers.submit(authenticate)
+        try:
+            assert started.wait(2)
+            # A normal audit can outlast the former 100 ms busy timeout.
+            time.sleep(0.25)
+            assert not future.done()
+        finally:
+            lock.execute("ROLLBACK")
+            lock.close()
+        assert future.result(timeout=2) == 0
 
 
 def test_capacity_prunes_revoked_keys_without_erasing_audit(tmp_path, monkeypatch):
