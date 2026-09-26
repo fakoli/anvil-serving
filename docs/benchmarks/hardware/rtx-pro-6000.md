@@ -1,6 +1,6 @@
 # RTX PRO 6000 benchmark view
 
-**2026-09-26 Swift TP2 campaign:** bounded functional observations were retained, but SWE was 2/5 against the 4/5 floor. The candidate was not qualified or promoted; the exact GLM incumbent was restored on the current host. No performance, full-window, production, or route claim follows. [Evidence](../../findings/2026-09-26-swift-tp2-jev-evidence/README.md).
+**2026-09-26 Swift TP2 campaign:** bounded functional observations were retained, but SWE was 2/5 against the 4/5 floor. The candidate was not qualified or promoted; the exact GLM incumbent was restored on the current host. No performance, full-window, production, or route claim follows. [Evidence](../../findings/2026-09-26-swift-tp2-jev.md).
 
 **2026-09-26 single-GPU qualification:** one-card Swift Flash, Swift27, and ThinkingCap candidate configurations each passed their retained deterministic agentic/image/context gates but did not clear the frozen 4/5 coding floor. Flash r3 resolved 3/5, Swift27 r2 2/5 with four graded, and ThinkingCap stopped with two known unresolved tasks and a maximum possible 3/5; its raw coding trajectories are missing after managed cancellation. Exact dual-card GLM r11 was restored and readmitted. No performance winner or promotion follows. [Finding](../../findings/2026-09-26-single-gpu-qualification.md).
 

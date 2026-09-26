@@ -4,7 +4,7 @@
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
 |---|---|---|---|---|---|---|
-| 2026-09-26 | Swift 1.5 Qwen3.8 Flash Next TP2 bounded qualification | Exact NVFP4 `3ff052…`, vLLM 0.30.0 digest `8a69ff…`, TP2/C1, GPU-resident PLE, no CPU offload; 327,680 context and requested 65,536 output allowance | 2x RTX PRO 6000 Blackwell Max-Q | protocol/tools; agentic 18/18; context 12/12 at ~32.7K and ~256.9K actual prompts; images 12/12; eight images 4/4 | `not-qualified`, `no-promotion`; SWE fixed-denominator 2/5 below the 4/5 floor; exact GLM incumbent restored; no performance or full-window claim | [Efficient variants](models/qwen38-efficient-variants.md) · [finding](../findings/2026-09-26-swift-tp2-jev-evidence/README.md) |
+| 2026-09-26 | Swift 1.5 Qwen3.8 Flash Next TP2 bounded qualification | Exact NVFP4 `3ff052…`, vLLM 0.30.0 digest `8a69ff…`, TP2/C1, GPU-resident PLE, no CPU offload; 327,680 context and requested 65,536 output allowance | 2x RTX PRO 6000 Blackwell Max-Q | protocol/tools; agentic 18/18; context 12/12 at ~32.7K and ~256.9K actual prompts; images 12/12; eight images 4/4 | `not-qualified`, `no-promotion`; SWE fixed-denominator 2/5 below the 4/5 floor; exact GLM incumbent restored; no performance or full-window claim | [Efficient variants](models/qwen38-efficient-variants.md) · [finding](../findings/2026-09-26-swift-tp2-jev.md) |
 
 ## 2026-09-23 GLM runtime investigation
 

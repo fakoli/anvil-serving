@@ -130,7 +130,7 @@ an efficiency research lead, not a proven full-contract upgrade.
 - **Status:** bounded observations; SWE fixed denominator 2/5 failed the 4/5 floor. No qualification or promotion; exact GLM incumbent restored on the current host.
 - **Measured:** exact NVFP4 TP2 r3 passed protocol/tools, agentic 18/18, context 12/12 at ~32.7K and ~256.9K prompts, images 12/12, and eight images 4/4.
 - **Limits:** C1 only; configured 327,680 context plus a requested 65,536 output allowance does not prove an actual full-window prompt or full output. No matched baseline, throughput, or cost result exists.
-- **Decision:** retain GLM; no route or promotion change. See the [evidence bundle](../../findings/2026-09-26-swift-tp2-jev-evidence/README.md).
+- **Decision:** retain GLM; no route or promotion change. See the [dated finding](../../findings/2026-09-26-swift-tp2-jev.md).
 
 ## Dated run history
 
