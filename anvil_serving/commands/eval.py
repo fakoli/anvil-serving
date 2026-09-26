@@ -326,6 +326,17 @@ def commands() -> CommandNode:
                 "benchmark",
                 "Run or import benchmark evidence.",
                 children=(
+                    _node(
+                        "jev",
+                        "Replay selected evidence through a shadow Jev pilot.",
+                        handler=_handler("anvil_serving.benchmarking.jev_pilot", argv_prefix=()),
+                        options=(
+                            _option("--config", summary="Pilot configuration (default: jev-pilot.json).", value_name="PATH"),
+                            _option("--allow-export", summary="Permit selected sanitized text export to Jev."),
+                            _option("--no-jev", summary="Use baseline selection without provider calls."),
+                        ),
+                        docs_anchor="docs/benchmarks/jev-pilot.md",
+                    ),
                     _resource_node(
                         "stability",
                         "Replay bounded mixed-load scenarios and retain coverage and failure evidence.",
