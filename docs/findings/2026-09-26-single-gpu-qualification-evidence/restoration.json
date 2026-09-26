@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-09-26T15:48:09.558497+00:00",
+  "status": "restored",
+  "selected_backing_identity": "exact original GLM r11",
+  "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "file_hashes_match_start": {
+    "router.toml": true,
+    "serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml": true,
+    "anvil-glm53-r11-dcp1-vision8-apc.service": true
+  },
+  "direct_preflight_passed": true,
+  "authenticated_routed_preflight_passed": true,
+  "readmitted": true,
+  "route_alias_or_contract_changed": false,
+  "candidate_containers_unloaded": true,
+  "no_candidate_promoted": true,
+  "client_catalog_rewrite": "not applicable; alias/backing/limits restored unchanged",
+  "artifacts": [
+    "rollback-file-hashes.json",
+    "glm-r11-restore-load.txt",
+    "glm-r11-restored-final-status.json",
+    "glm-r11-restored-direct-preflight.json",
+    "glm-r11-restored-readmit.json",
+    "glm-r11-restored-routed-preflight.json"
+  ]
+}

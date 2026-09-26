@@ -1,0 +1,19 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "policy": "Public bundle excludes operator paths, network identities, GPU UUIDs, credentials, and transient container identifiers.",
+  "transformations": [
+    {
+      "files": "raw-run-evidence/*swe*.json",
+      "change": "operator paths replaced with /operator-home; transient container names and IDs and the private ownership identifier replaced. Scientific artifact, dependency-environment, source and runtime SHA-256 identities are preserved."
+    },
+    {
+      "files": "configurations/*.toml",
+      "change": "cache paths replaced with ${MODEL_CACHE} and ${ENGINE_CACHE}"
+    },
+    {
+      "file": "thinkingcap-r1-cancellation-review-excerpts.json",
+      "change": "operator paths removed; retained review excerpts remain partial evidence"
+    }
+  ],
+  "source_receipt": "private dispatch decision and restoration receipts, observed 2026-09-26"
+}

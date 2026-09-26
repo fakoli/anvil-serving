@@ -127,6 +127,8 @@ an efficiency research lead, not a proven full-contract upgrade.
 
 ## Dated run history
 
+- 2026-09-26 — [single-GPU Swift qualification](../../findings/2026-09-26-single-gpu-qualification.md): Flash IQ3 r3 passed deterministic gates but SWE 3/5; Swift27 NVFP4 r2 resolved 2/5 with four graded. Neither is qualified or promoted.
+
 - 2026-09-19 — [Apple artifact feasibility stop](../../findings/2026-09-19-swift-qwen38-apple-feasibility.md): the separately pinned Swift/stock GGUF
   families were not downloaded or run. All selected uncached Q6_K/Q4_K_M plus
   F16-projector pairs failed the retained disk-policy arithmetic; memory

@@ -1,0 +1,78 @@
+{
+  "document_type": "bounded-independent-review-excerpts",
+  "campaign": "2026-09-26-single-gpu-qualification",
+  "candidate": "thinkingcap27-awq-327k-apc-r1",
+  "evidence_status": "partial reviewer-tool excerpts captured before managed cancellation",
+  "source_paths": {
+    "pylint_trajectory": "/operator-home/.anvil-serving/benchmark-runs/qualification-owner/single-gpu-thinkingcap-r1-swe/work/mini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json",
+    "sphinx_trajectory": "/operator-home/.anvil-serving/benchmark-runs/qualification-owner/single-gpu-thinkingcap-r1-swe/work/mini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json"
+  },
+  "pylint": {
+    "terminal_info": {
+      "exit_status": "LimitsExceeded",
+      "submission": "",
+      "api_calls": 60,
+      "step_limit": 60,
+      "message_count": 152,
+      "role_counts": {
+        "assistant": 60,
+        "exit": 1,
+        "system": 1,
+        "tool": 89,
+        "user": 1
+      }
+    },
+    "exact_executable_output_excerpts": [
+      "E           Failed: DID NOT RAISE <class 'SystemExit'>",
+      "FAILED tests/config/test_config.py::test_csv_regex_error - Failed: DID NOT RA...",
+      "1 failed, 15 passed in 0.88s",
+      "1 failed, 74 passed in 1.92s",
+      "ModuleNotFoundError: No module named '_distutils_hack'"
+    ],
+    "bounded_review_observations": [
+      "The first observed source-edit command was shell-command ordinal 51.",
+      "The targeted executable test rejected the edit before the step limit was reached.",
+      "Later pytest output showed successful collection and execution despite the distutils startup warning.",
+      "No patch submission was recorded."
+    ]
+  },
+  "sphinx": {
+    "terminal_info": {
+      "exit_status": "LimitsExceeded",
+      "submission": "",
+      "api_calls": 60,
+      "step_limit": 60,
+      "message_count": 140,
+      "role_counts": {
+        "assistant": 60,
+        "exit": 1,
+        "system": 1,
+        "tool": 77,
+        "user": 1
+      }
+    },
+    "exact_executable_output_excerpts": [],
+    "bounded_review_observations": [
+      "The observed sequence contained 77 shell commands across 60 model steps.",
+      "The final observed shell command attempted the first source edit.",
+      "No later test, patch creation, patch verification, or submission was observed.",
+      "No patch submission was recorded."
+    ]
+  },
+  "acceptance_boundary": {
+    "frozen_tasks": 5,
+    "required_resolved": 4,
+    "known_unresolved": [
+      "pylint-dev__pylint-8898",
+      "sphinx-doc__sphinx-9658"
+    ],
+    "maximum_possible_resolved": 3,
+    "decision_scope": "The frozen 4-of-5 floor was unreachable; remaining tasks were not all officially graded."
+  },
+  "limitations": [
+    "This file is not a complete trajectory, submitted patch, official grader result, or completed benchmark artifact.",
+    "Only excerpts and metadata actually displayed to the independent reviewer before cancellation are retained.",
+    "The managed cancellation later removed the source work outputs, so omitted raw content cannot be reconstructed from this review.",
+    "No 3-of-5 completed score is claimed."
+  ]
+}

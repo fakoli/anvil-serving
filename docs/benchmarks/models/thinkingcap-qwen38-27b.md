@@ -118,6 +118,8 @@ The output limit was raised from the initial 4,096 to 10,240 because three succe
 
 ## Dated run history
 
+- 2026-09-26 — [single-GPU qualification](../../findings/2026-09-26-single-gpu-qualification.md): a separate RTX PRO 6000 ThinkingCap r1 trial passed deterministic gates but stopped during coding. Pylint and Sphinx each exhausted 60 calls, so the upper bound is 3/5; cancellation lost raw trajectories. This does not alter the existing RTX 5090 current decision.
+
 - 2026-09-24 - [Secondary promotion](../../findings/2026-09-24-thinkingcap-secondary-promotion.md), user-authorized 131072/10240/C1/two-image router contract.
 
 - 2026-09-24 - [128K context extension and system-RAM tradeoff](../../findings/2026-09-24-thinkingcap-context-5090.md), qualified within the declared bounded contract and retained.

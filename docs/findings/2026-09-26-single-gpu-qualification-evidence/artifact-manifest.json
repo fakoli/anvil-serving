@@ -1,0 +1,301 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-09-26-single-gpu-qualification",
+    "capability": "text-and-multimodal",
+    "repository_revision": "a7d04b72f03b7302816342703f1711311a6f3a3f",
+    "dirty_state": "publication worktree; unrelated ticket edits preserved",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "status": "complete; incumbent retained",
+    "completed_at": "2026-09-26"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "7c499ebb0d9d775f1fa619982f0508f00e5afff922d982012cf50f8b3f05a4c4",
+          "bytes": 3331
+        }
+      ],
+      "reason": "human-readable bundle map"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "904d7df249c873fd1dca3c79bb3b05381abfef449c131736c0d9137064b6a7be",
+          "bytes": 1733
+        }
+      ],
+      "reason": "dated external priors"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "8904b87808e1411464feaba162054122ed7d0d52e5ce516ad4f898f4f6f101b1",
+          "bytes": 754
+        }
+      ],
+      "reason": "frozen gates"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-state.json",
+          "sha256": "937c7926fafb52d8702a9081d794fb1805bce0e9ab7ea856d940e5270b905feb",
+          "bytes": 548
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "6cb603ab940d563a867411f99c2253095b5cff033510223dc294a8f83fab05c5",
+          "bytes": 510
+        }
+      ],
+      "reason": "closed scope and coverage"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configurations/swift-iq3-r2.recipe.toml",
+          "sha256": "bfa52ad60b8434adc90bddcd261258c1e31f40caf85a642e224bf4cd0efe2ccf",
+          "bytes": 2738
+        },
+        {
+          "path": "configurations/swift-iq3-r3.recipe.toml",
+          "sha256": "4f38960364057333d6c24eb50202eb9959ee7f8f417d74cc1a19a7488aab6a42",
+          "bytes": 2798
+        },
+        {
+          "path": "configurations/swift27-r2.recipe.toml",
+          "sha256": "66c147c89d15df39ca0c65d918136a55d90fcbb0e1502ef90c43eedd7d3954a7",
+          "bytes": 2778
+        },
+        {
+          "path": "configurations/thinkingcap-r1.recipe.toml",
+          "sha256": "5f20a4cddf25a195b25af52b743f73dbc0115abdbdb03ad3f05eab438bdd9648",
+          "bytes": 3057
+        },
+        {
+          "path": "redaction-ledger.json",
+          "sha256": "33609d43d48a04a59fe5185ee95a9ee7dd662f30dc7fd01d3b589ae110f033a2",
+          "bytes": 921
+        }
+      ],
+      "reason": "sanitized exact recipe reconstructions"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw-run-evidence/single-gpu-glm-agentic-0-agentic.json",
+          "sha256": "91713680759ca4fca7afc5cede6492dfcc37b41dbc64b50ccd755bc657ee5949",
+          "bytes": 36756
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift-iq3-r2-agentic-0-agentic.json",
+          "sha256": "9cc0a98092747c1b12d2cf1e47e99285c91d435f8befae0c2d9cbf5c3945a982",
+          "bytes": 36595
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift-iq3-r3-agentic-0-agentic.json",
+          "sha256": "b7e4de12d21263bb04b0b544f89105db688981761f08dbde0abb4a2ba296eae7",
+          "bytes": 36586
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift-iq3-r3-context-0-context.json",
+          "sha256": "09a5fcfe3b8ffbaedb5e7a56a4ab49905ea1d36e7b9fe4a0ab2e6b85e503b02f",
+          "bytes": 35782
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift-iq3-r3-swe-2-swe.json",
+          "sha256": "5da360dba2ad34bcd373d9446566cc02361a6327577308376bf93bc7cff9465e",
+          "bytes": 30736
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift27-r2-agentic-0-agentic.json",
+          "sha256": "da0756adf95073fb1f53ae226f986a6f5b71f86ac8e2698d2a80477635a77fdf",
+          "bytes": 35249
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift27-r2-context-0-context.json",
+          "sha256": "fe2142f546bd4401ea1cd4cf89b3949718fdc2eeb567fea5a0fae415084dc98c",
+          "bytes": 35213
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-swift27-r2-swe-2-swe.json",
+          "sha256": "7326ad8c66ecbaaf7e234188f850ae4fac5733b2378912d3d3f00f25cbd8d759",
+          "bytes": 30208
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-thinkingcap-r1-agentic-0-agentic.json",
+          "sha256": "651cd67d68e9076c554c352dbca74d068eb64b494f4ab18f4327d54168f697b9",
+          "bytes": 36320
+        },
+        {
+          "path": "raw-run-evidence/single-gpu-thinkingcap-r1-context-0-context.json",
+          "sha256": "6b016201f5e16d1c89e44fd98f017df4e5bd671c7313646c8cd6247361a2baf8",
+          "bytes": 32418
+        },
+        {
+          "path": "baseline-swe-reuse-verification.json",
+          "sha256": "25b9c4f30ebbf31b68966f067bb56981d419c529d40e6f6c057743f77e7a09a5",
+          "bytes": 1665
+        },
+        {
+          "path": "raw-run-evidence/baseline-images.json",
+          "sha256": "9360e5a8bd1324b1103aec14712a0b57114195a170943d21b04a805dfc2771c9",
+          "bytes": 26046
+        },
+        {
+          "path": "raw-run-evidence/baseline-eight-images.json",
+          "sha256": "8ac24ea76e069567d85305338d8a2c737903f5cf359c22599a78c3ec6f13f6fe",
+          "bytes": 22722
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-images.json",
+          "sha256": "9177064a8c138c31af51d6737037a1db350f8806d6ef0813d37b42d62f981434",
+          "bytes": 24878
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-eight-images.json",
+          "sha256": "ecd7def8d223701b42dfeb482a8b0f55cbfa08d179d5adc43cf6cda0b84d814a",
+          "bytes": 22850
+        },
+        {
+          "path": "raw-run-evidence/swift27-r2-images.json",
+          "sha256": "b993463c8ee6daf5e759651f1d70fb0c4f74135924356d4e404e177cccb6959d",
+          "bytes": 24032
+        },
+        {
+          "path": "raw-run-evidence/swift27-r2-eight-images.json",
+          "sha256": "6fb86cefe1cfeb171877a65df9af8b5bdfd74653ba383aedd5613548a365ef57",
+          "bytes": 22593
+        },
+        {
+          "path": "raw-run-evidence/thinkingcap-r1-images.json",
+          "sha256": "3d577e488401b9474d480da63fa2a3050298e523baeb8246a7ec32b262a5e316",
+          "bytes": 25216
+        },
+        {
+          "path": "raw-run-evidence/thinkingcap-r1-eight-images.json",
+          "sha256": "decfd89945f98db8a492a1061ae442e423c5ff0ea81f5508c2b2b0255860408e",
+          "bytes": 23019
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-final-c1-unique.json",
+          "sha256": "0a9d442b317b47069fb0f85a0395861b0c4969a3c5f7bdaa10383da12b3ee99f",
+          "bytes": 31396
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-final-c4-shared.json",
+          "sha256": "18b736a2fef1e8418aaa63f8e736297151f8b92303526481bddf2c0777da4525",
+          "bytes": 31350
+        },
+        {
+          "path": "raw-run-evidence/capacity-cache-control-correction.json",
+          "sha256": "a054c433d66dd51dcd653828158774e1396358b4599a5adc72855d9c50d11519",
+          "bytes": 1175
+        },
+        {
+          "path": "raw-run-evidence/glm-r11-restored-direct-preflight.json",
+          "sha256": "344ea640b8c11d5bace394124ee6eeb2a0c5821d58acd8a0b36f1a3e60210ca6",
+          "bytes": 9485
+        },
+        {
+          "path": "raw-run-evidence/glm-r11-restored-routed-preflight.json",
+          "sha256": "07876297c56f4fb241013fac9d59d36862eda315c660c3c7ebd3331329aa8a82",
+          "bytes": 9020
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-preflight.json",
+          "sha256": "9bc7f964da96d2b6c6d33966eb4be6a7225e3e49fc051772cd131e03770ceac5",
+          "bytes": 21165
+        },
+        {
+          "path": "raw-run-evidence/swift-iq3-r3-final-c4-unique.json",
+          "sha256": "d4a961a4595f71ff6160b419a933b19b1ff8a9553232e2e24ad7d50c57e28f6d",
+          "bytes": 31370
+        }
+      ],
+      "reason": "Retained native completed results, image/capacity/preflight artifacts, and incumbent reuse. Partial at campaign level: ThinkingCap raw coding trajectories are missing after cancellation; retained excerpts establish only an attainable upper bound, not a completed score."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "37ab2f41e62a6f2c6fbb9461c9852f3f2450dee225718262bca98bce64cc98f9",
+          "bytes": 450
+        },
+        {
+          "path": "thinkingcap-r1-cancellation-review-excerpts.json",
+          "sha256": "0ea6de707d7e8b6f4f3b2e058f921a7aaab5445b945f4f1ba91754ef34a5cda8",
+          "bytes": 3167
+        }
+      ],
+      "reason": "Failed configurations, retained cancellation excerpts, and the explicit missing raw ThinkingCap coding capture"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "3f34adb52bcedb47cdf1b16c8a3442aaaf25a6c7ca44f04535d415318d839a0c",
+          "bytes": 1048
+        }
+      ],
+      "reason": "Full sanitized starting/ending identity and preflight receipt"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "6487451461b139db29b904dd99d23cb088bda1efbe7c513b9ee4777ea8ca13e4",
+          "bytes": 1643
+        }
+      ],
+      "reason": "derived closed decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "no compact public communication requested"
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

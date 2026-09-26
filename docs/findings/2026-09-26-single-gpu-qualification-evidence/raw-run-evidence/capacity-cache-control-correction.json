@@ -1,0 +1,20 @@
+{
+  "observed_at": "2026-09-26T14:34:54.477661+00:00",
+  "prior_artifact": "swift-iq3-r3-final-c4-unique.json",
+  "prior_correctness": "16/16 exact preserved",
+  "comparison_eligible": false,
+  "reason": "C4 unique seed0 repeats byte-identical large prompts from earlier C1unique seed0; prefixcachehistory uncontrolled. Native performance_eligible checksoutput, not cross-cellhistory.",
+  "retained_eligible": [
+    "swift-iq3-r3-final-c1-unique.json",
+    "swift-iq3-r3-final-c4-shared.json"
+  ],
+  "remedy": "Rerun only C4unique withfreshseed1 after coding andwithoutco-residentmodelwork; allothermodelsplannedseed1samecell",
+  "source": "anvil_serving/benchmarking/requests.py make_prompt unique_header; cli.py defaultseed0",
+  "product_code_change": false,
+  "independent_review": {
+    "reviewer": "GPT-5.6 Sol high independent review",
+    "observed_at": "2026-09-26T14:40:05.899500+00:00",
+    "verdict": "accepted",
+    "scope": "Retain first-use C1 unique and distinct shared-prefix timing; exact shared hit ratio unknown. Preserve original C4 seed0 correctness but exclude timing. Rerun only isolated C4 unique seed1, matched across candidates and baseline."
+  }
+}

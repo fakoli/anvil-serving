@@ -1,0 +1,71 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ-327K-APC-r1"
+status = "experimental"
+source = "2026-09-26 single-GPU ThinkingCap vision and extended-context challenger"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ"
+revision = "f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+volume = "vllm-hfcache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+arch = "sm_120"
+vram_total_gb = 96
+vram_note = "Dedicated TP=1 qualification lane during the bounded Qwen3.8 optimization campaign."
+
+[recipe.serve]
+engine = "vllm"
+image = "vllm/vllm-openai:v0.29.0@sha256:082ca6f035279109041ffd3fe0695cb568b29bc580b35c4f297a66a08b216c1b"
+entrypoint = ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+model_flag = "--model"
+model_path = "${MODEL_CACHE}/hub/models--bottlecapai--ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/snapshots/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11"
+quantization = "compressed-tensors mixed NVFP4 MLP and FP8 projections; BF16 KV; FP32 SSM; no speculation"
+context_tokens = 327680
+port = 39144
+health = "/health"
+startup_timeout_seconds = 2400
+served_model_name = "thinkingcap27-awq-327k-apc-r1"
+ipc = "host"
+shm_size = "4gb"
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53249
+host_memory_reserve_mib = 12288
+named_volumes = ["single-gpu-thinkingcap-vllm-0290:${ENGINE_CACHE}"]
+env = [
+  "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+  "PYTHONHASHSEED=0",
+  "FLASHINFER_CUDA_ARCH_LIST=12.0f",
+  "MAX_JOBS=2",
+]
+flags = [
+  "--dtype bfloat16",
+  "--attention-backend TRITON_ATTN",
+  "--mamba-ssm-cache-dtype float32",
+  "--hf-overrides '{\"text_config\":{\"rope_parameters\":{\"mrope_interleaved\":true,\"mrope_section\":[11,11,10],\"partial_rotary_factor\":0.25,\"rope_theta\":10000000,\"rope_type\":\"yarn\",\"factor\":2.0,\"original_max_position_embeddings\":262144}}}'",
+  "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'",
+  "--max-num-batched-tokens 8192",
+  "--served-model-name thinkingcap27-awq-327k-apc-r1",
+  "--tensor-parallel-size 1",
+  "--max-model-len 327680",
+  "--max-num-seqs 4",
+  "--gpu-memory-utilization 0.90",
+  "--kv-cache-dtype bfloat16",
+  "--enable-prefix-caching",
+  "--mamba-cache-mode align",
+  "--reasoning-parser qwen3",
+  "--enable-auto-tool-choice",
+  "--tool-call-parser qwen3_xml",
+  "--generation-config vllm",
+  "--host 0.0.0.0",
+  "--port 39144",
+]
+note = "Pinned cached f8fe checkpoint and previously qualified vLLM0.29.0 runtime, new PRO6000 TP1 327680 C4 geometry. YaRN2 preserves multimodal rope fields, BF16 KV and FP32 SSM, APC align, no speculation or CPU offload, eight-image limit. The prior 5090 128K profile is not inherited qualification. Validate startup checkpoint-state allocation and fresh full correctness/coding gates."
+
+[recipe.sources]
+official = ["https://huggingface.co/bottlecapai/ThinkingCap-Qwen3.8-27B-NVFP4A4-AWQ/tree/f8fe157f207a13f977bc3d620ce10a3e9ba5ab11", "https://docs.vllm.ai/en/v0.29.0/"]
