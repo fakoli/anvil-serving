@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.sanitized-replay-export-contract/v1",
+  "receipt_count": 90,
+  "retained_per_call": ["frozen view prompt", "selected IDs", "annotations", "output", "input and cached-input usage", "output usage", "wall time", "requested model and reasoning effort"],
+  "request_template": "request-template.json",
+  "excluded_per_call": ["session IDs", "thread IDs", "raw event streams", "inherited skills-context notices"],
+  "source_receipt_set_sha256": "eddeec6b639fb7a219e6004a83e99aee5cd35d50e000ebc60e6e4bbe72d6e152",
+  "provider_served_model_identity": null,
+  "reason": "Provider receipts did not independently echo the served model identity or the full inherited environment. Frozen view prompt alone omits the appended answer suffix."
+}

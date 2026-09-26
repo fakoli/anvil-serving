@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.sanitized-native-artifact-bindings/v1",
+  "bindings": [
+    {
+      "public_path": "context-artifact.json",
+      "private_source_sha256": "sha256:435c8c03372e4b32d5e2fcd67a5ca141947c9c8cfc9c53c6689a47c4e4bf14e8",
+      "public_sha256": "sha256:435c8c03372e4b32d5e2fcd67a5ca141947c9c8cfc9c53c6689a47c4e4bf14e8",
+      "redactions": []
+    },
+    {
+      "public_path": "agentic-artifact.json",
+      "private_source_sha256": "sha256:82c9c374b07876d1a829b75e1b8b6b327c07acab361193c2c37538414be0c48c",
+      "public_sha256": "sha256:82c9c374b07876d1a829b75e1b8b6b327c07acab361193c2c37538414be0c48c",
+      "redactions": []
+    },
+    {
+      "public_path": "eight-images.json",
+      "private_source_sha256": "sha256:0873089205ee46d5786be5efad3bcb59adca63e9e5c74375eb2fd6cb80a45c99",
+      "public_sha256": "sha256:68736cdb79aa82d93f0dcad8cac271221659354e9442238711554a2ca7431805",
+      "redactions": [
+        "corpus path to public-evidence URI"
+      ]
+    },
+    {
+      "public_path": "images.json",
+      "private_source_sha256": "sha256:547a6646c6fdb4ed7e77272e4e37d2b23d5c16e6e2f179a7cfb271990267e991",
+      "public_sha256": "sha256:c65c5fe2bfae27d0ff79e613215f11530c67b20184a2c1c385a17451cbb05ffd",
+      "redactions": [
+        "corpus path to public-fixture URI"
+      ]
+    },
+    {
+      "public_path": "feasibility-result.json",
+      "private_source_sha256": "sha256:3fc5d01aaa84634be70273bd81ac32139716fe8617850da3953478da0924155e",
+      "public_sha256": "sha256:3fc5d01aaa84634be70273bd81ac32139716fe8617850da3953478da0924155e",
+      "redactions": []
+    },
+    {
+      "public_path": "reserve-policy-r3.json",
+      "private_source_sha256": "sha256:ea9f74baf33f2618edb021734cedc1c561bb60b6f744807a2e8feda6b4e82a23",
+      "public_sha256": "sha256:ea9f74baf33f2618edb021734cedc1c561bb60b6f744807a2e8feda6b4e82a23",
+      "redactions": []
+    },
+    {
+      "public_path": "r3-gpu-observation.csv",
+      "private_source_sha256": "sha256:60b8f15bc708b45084f2f4df150e47d1b517b3cc1631fb51370e325c61cbc454",
+      "public_sha256": "sha256:812f79bfbe65e84e1006beff58f2c584edcbfa6df303d77347a0d285c34ac172",
+      "redactions": [
+        "GPU UUIDs redacted"
+      ]
+    },
+    {
+      "public_path": "swift-flash-tp2-r3.recipe.toml",
+      "private_source_sha256": "sha256:76d46ca43322539dc562602658e2acb064fb8a3609ad078610534f564bed5d69",
+      "public_sha256": "sha256:76d46ca43322539dc562602658e2acb064fb8a3609ad078610534f564bed5d69",
+      "redactions": []
+    }
+  ]
+}

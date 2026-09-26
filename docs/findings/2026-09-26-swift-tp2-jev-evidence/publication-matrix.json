@@ -1,0 +1,25 @@
+{
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "candidate": "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4@3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+  "planned_not_run": [
+    "near-318K boundary",
+    "C4",
+    "performance"
+  ],
+  "promotion": {
+    "human_gate_required": true,
+    "promoted": false
+  },
+  "restoration": "managed restoration receipt completed",
+  "runtime": "vLLM 0.30 TP2",
+  "schema": "anvil-serving.benchmark-publication-matrix/v1",
+  "swe": {
+    "fixed_selected_tasks": 5,
+    "native_graded_ratio": "2/4 = 0.5; not a qualification rate",
+    "native_wrapper_status": "failed",
+    "official_grader_complete": false,
+    "resolved": 2,
+    "result_complete": false,
+    "score": "2/5"
+  }
+}

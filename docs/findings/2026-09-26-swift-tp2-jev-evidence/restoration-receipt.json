@@ -1,0 +1,65 @@
+{
+  "alias_mapping_changed": false,
+  "at": "2026-09-26T20:07:47.321689+00:00",
+  "benchmark_worker_group_empty": true,
+  "boot_owner": {
+    "active": true,
+    "bytes_match_captured_source": true,
+    "enabled": true,
+    "unit": "anvil-glm53.service"
+  },
+  "cancellation_used": false,
+  "claim_limit": "Current-host managed restoration and live direct/authenticated routed preflights; no reboot or fresh rebuild tested.",
+  "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "mini_swe_containers_absent": 5,
+  "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "performance_tests_run": false,
+  "preflights": {
+    "direct": {
+      "checks": [
+        "smoke",
+        "json",
+        "tools",
+        "streaming-tools",
+        "tool-result"
+      ],
+      "passed": true,
+      "sha256": "2cc5ae345b1537026da8ea8e019f6ff337795abd7697edcf4ee5317cb5aa70ff",
+      "tool_batch": "5/5"
+    },
+    "routed": {
+      "checks": [
+        "smoke",
+        "json",
+        "tools",
+        "streaming-tools",
+        "tool-result"
+      ],
+      "passed": true,
+      "sha256": "2d54dbf5a6b818976ae304eaab9e2c0ce78c6f512e235f639a992eaca3cd883e",
+      "tool_batch": "5/5"
+    }
+  },
+  "primary_state": "admitting",
+  "promotion": "not_performed; frozencoding2/5below4/5",
+  "promotion_preview_applied": false,
+  "public_sanitization": {
+    "accepted_scope": "Current-host managed restoration plus direct and authenticated routed preflights; no reboot or fresh rebuild tested.",
+    "omitted": [
+      "container name and ID"
+    ]
+  },
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "rollback_file_checks": {
+    "anvil-glm53-r11-dcp1-vision8-apc.service": true,
+    "operator-topology.toml": true,
+    "router.toml": true,
+    "serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml": true,
+    "serves.toml": true
+  },
+  "router_file_sha256": "225e9105b7a97f8906196eb5ae75ddea155462d67b9ebb40dc4ca055f22bbc0f",
+  "schema": "swift-tp2-restoration/v1",
+  "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+  "state": "exact_incumbent_restored",
+  "swift_unloaded": true
+}

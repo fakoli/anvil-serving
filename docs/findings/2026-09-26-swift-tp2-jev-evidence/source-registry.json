@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "observed_at": "2026-09-26T00:00:00Z",
+  "sources": [
+    {
+      "id": "swift-model-revision",
+      "url": "https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4/tree/3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+      "published_or_observed": "2026-09-26",
+      "observed_at": "2026-09-26T00:00:00Z",
+      "age_class": "current-campaign",
+      "evidence_type": "official-model-source",
+      "hardware_runtime_relevance": "pins candidate repository and revision only",
+      "decision_impact": "identity"
+    },
+    {
+      "id": "private-r1-r3-observations",
+      "url": "private-evidence://2026-09-26-swift-tp2-jev",
+      "published_or_observed": "2026-09-26",
+      "observed_at": "2026-09-26T00:00:00Z",
+      "age_class": "current-campaign",
+      "evidence_type": "local-observation",
+      "hardware_runtime_relevance": "TP2 candidate recipe and functional smoke",
+      "decision_impact": "failure classification and next qualification gate"
+    },
+    {
+      "id": "swe-official-grader",
+      "url": "https://github.com/SWE-bench/SWE-bench",
+      "published_or_observed": "2026-09-26",
+      "observed_at": "2026-09-26T00:00:00Z",
+      "age_class": "current-campaign",
+      "evidence_type": "local-official-grader-output",
+      "hardware_runtime_relevance": "fixed five-task run; public aggregate retains completion and failure flags",
+      "decision_impact": "coding outcome only; does not qualify or promote"
+    }
+  ]
+}

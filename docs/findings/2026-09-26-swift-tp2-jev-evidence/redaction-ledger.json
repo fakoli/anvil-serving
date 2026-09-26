@@ -1,0 +1,53 @@
+{
+  "schema": "anvil-serving.publication-redaction-ledger/v1",
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "status": "finalized",
+  "redactions": [
+    {
+      "kind": "private absolute artifact paths",
+      "replacement": "private-evidence://<campaign-relative-path>"
+    },
+    {
+      "kind": "operator home paths",
+      "replacement": "/operator-home/"
+    },
+    {
+      "kind": "GPU UUIDs and process IDs",
+      "replacement": "omitted or redacted"
+    },
+    {
+      "kind": "raw Codex events, provider sessions, and inherited environment text",
+      "replacement": "not included"
+    },
+    {
+      "kind": "downstream comparison receipts",
+      "replacement": "sanitized reproducibility export retained"
+    }
+  ],
+  "source_bindings": {
+    "pilot/labels.json": "sha256:e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+    "pilot/plan.json": "sha256:ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+    "pilot/freeze-verification.json": "sha256:c135f667d750e1cec665e6280dfbe82bbde78f08c70e69eaf11c46d956db49d7",
+    "swift-r1-failure-observation.json": "sha256:5fa1508a3edc66fd49aa5c4dc374b2d99e2dd31e8c073b2983890ba24c0d37d2",
+    "swift-r3-preflight.json": "sha256:107d4eee0d0620d6ccf683ce8d8f8de3edfb8c5d27caa8e42af53b49839ac337",
+    "swift-r3-rank-placement.json": "sha256:4959ec0f49b09fc102d718b148d355263c42899bec274c488543221f7e61363a",
+    "pilot/independent-audit.json": "sha256:ab3a39aae3677143b202c4957bcef17db3eac368893796ee1145b21343221863",
+    "swift-r3-swe-2-swe.json": "sha256:bef8795568e9d1b3a54fe22a240883b03f2a8ee94176564d78690fddfe000289",
+    "swe-native-retained/artifact.json": "sha256:5219ee07d7b3bfff644b16610f0d7ca335b1c6f5f58c71b588d9c6d29ee756ca",
+    "swe-native-retained/official-aggregate-grade.json": "sha256:04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70",
+    "swe-final-independent-review.json": "sha256:52563f9e5aca16b5944018a800b85b39c5b28738055093c41fc1be46fab8837c",
+    "swe-coding-gate.json": "sha256:e0766ffa9cd0477a8bfaeb753cace0e2b227291534bdb4825d108a2c36b23b9c",
+    "swe-container-exit-observation.json": "sha256:dab63e2fc1e04fae35161a931718d87fcf0191cc7653e53517728ffbce904fa8",
+    "restoration-receipt.json": "sha256:8bff581ecb04a7d3eb047c97530b13b28c1595a86babf3a2e4a8c60f4b946ccd",
+    "glm-restored-direct-preflight.json": "sha256:2cc5ae345b1537026da8ea8e019f6ff337795abd7697edcf4ee5317cb5aa70ff",
+    "glm-restored-routed-preflight.json": "sha256:2d54dbf5a6b818976ae304eaab9e2c0ce78c6f512e235f639a992eaca3cd883e"
+  },
+  "per_packet_bindings": "pilot/public-redaction-bindings.json",
+  "per_replay_receipt_bindings": "pilot/replay-codex-004/receipt-redaction-bindings.json",
+  "replay_request_template": "pilot/replay-codex-004/request-template.json",
+  "native_artifact_bindings": "native/redaction-bindings.json",
+  "finalization": "closed inventory finalized; per-artifact bindings retained.",
+  "swe_artifact_bindings": "native/swe-redaction-bindings.json",
+  "swe_audit_bindings": "native/swe-audit-redaction-bindings.json",
+  "restoration_bindings": "restoration-redaction-bindings.json"
+}

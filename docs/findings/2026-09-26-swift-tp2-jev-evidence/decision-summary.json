@@ -1,0 +1,25 @@
+{
+  "basis": [
+    "SWE fixed-denominator score is 2/5, below the frozen 4/5 floor.",
+    "Independent audit classifies Django Unicode and Pylint regex outcomes as genuine functional failures with zero grader errors.",
+    "Exact GLM incumbent restored on the current host; direct and routed five-check preflights passed, including tools 5/5.",
+    "Read-only observation found the five Mini-SWE containers absent; no cancellation was used."
+  ],
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "limitations": [
+    "r1 stderr incomplete",
+    "old ThinkingCap loss missing",
+    "pre-shadow final-label hash missing",
+    "cancellation-container evidence missing; no cancellation used"
+  ],
+  "promotion": {
+    "human_approved_serve_promotion_result": null,
+    "human_gate_required": true,
+    "promoted": false
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "status": "not-qualified",
+  "restoration_receipt": "restoration-receipt.json",
+  "independent_grade_audit": "native/swe-final-independent-review.json",
+  "container_exit_observation": "native/swe-container-exit-observation.json"
+}

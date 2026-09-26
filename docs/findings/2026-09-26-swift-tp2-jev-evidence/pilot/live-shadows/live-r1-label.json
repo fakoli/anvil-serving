@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.live-attempt-label/v1",
+  "attempt": "swift-flash-tp2-r1",
+  "evidence": {
+    "path": "../swift-r1-startup.txt",
+    "sha256": "2dcce2f5d05e99e388993e0e9f3202fc446675079ee196ca00f51832d95e1c4c"
+  },
+  "stage": "PRErank/PREKV",
+  "outcome": "configuration-rejected",
+  "category": "context-ceiling-configuration",
+  "decision": "Do not interpret as a TP, KV, or model-load failure; use the explicit nested Qwen4Exp text_config max_position_embeddings and YaRN binding in r2 before any capacity conclusion.",
+  "mandatory_limits": {
+    "checkpoint_text_config_max_position_embeddings": 262144,
+    "requested_max_model_len": 327680,
+    "required_r2_text_config_max_position_embeddings": 327680
+  },
+  "rank_created": false,
+  "next_escalation": "If r2 remains rejected before rank creation, retain its exact startup log and stop context-extension attempts for this pinned runtime until an upstream-supported Qwen4Exp configuration is identified.",
+  "pilot_oracle": {
+    "expected_closed_category": "incompatible_configuration",
+    "actual_closed_category": "incompatible_configuration",
+    "unknown": false,
+    "escalate": false,
+    "critical_evidence_ids": [
+      "swift-r1-startup-stdout-sha256-2dcce2f5d05e99e388993e0e9f3202fc446675079ee196ca00f51832d95e1c4c",
+      "swift-r1-failure-observation-stderr-excerpt",
+      "qwen4exp-text-config-max-position-262144"
+    ],
+    "capture_qualification": "swift-r1-startup.txt retained stdout only. The decisive stderr excerpt was observed in managed tool output and recorded in ../swift-r1-failure-observation.json; complete native stderr was not retained before unload."
+  }
+}

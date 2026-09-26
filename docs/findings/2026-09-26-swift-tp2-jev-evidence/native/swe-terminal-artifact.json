@@ -1,0 +1,162 @@
+{
+  "created_at": "2026-09-26T19:57:42.738041Z",
+  "failure": {
+    "class": "model_behavior",
+    "code": "model_failure",
+    "message": "benchmark suite did not complete"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "base_url": "http://127.0.0.1:<ephemeral-port>/v1",
+      "model": "swift15-flash-next-nvfp4-tp2-327k-r3"
+    },
+    "finished_at": "2026-09-26T19:57:42.737971Z",
+    "started_at": "2026-09-26T18:10:31.641348Z",
+    "submitted_at": "2026-09-26T17:50:34.239229+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "public_sanitization": {
+    "omitted": [
+      "raw trajectories",
+      "private operations logs"
+    ],
+    "redacted": [
+      "private endpoint port"
+    ]
+  },
+  "results": {
+    "evidence": {
+      "completeness": "failed",
+      "created_at": "2026-09-26T19:57:42.728967Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "model_behavior",
+        "code": "model_failure",
+        "message": "benchmark suite did not complete"
+      },
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 327680
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+          "tensor_parallel_size": 2,
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "repository": "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4",
+          "revision": "3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+          "served_name": "swift15-flash-next-nvfp4-tp2-327k-r3"
+        },
+        "runtime": {
+          "engine_revision": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+          "image_id": "sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90"
+        },
+        "served_model": {
+          "configured_context": 327680,
+          "id": "swift15-flash-next-nvfp4-tp2-327k-r3"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "local-benchmark"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "swift-tp2-20260926",
+        "profile": "scout",
+        "run_id": "swift-tp2-r3-swe",
+        "spec_sha256": "abeae1858958789c26be5ba6fedafb5a0c457b8e2f8c18930362649378653e0d",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 10865,
+              "path": "evidence/0-assets.json",
+              "sha256": "3649430300260593d3a7455bdfd626e0353a439f9a89332501d16f1221f230dc"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1995,
+              "path": "evidence/0-preflight.json",
+              "sha256": "fb797956dfda062178efbf2d9f869bbf8c2d0a242e9e10ddafc61c1ab9f9c93e"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 33244,
+              "path": "evidence/2-swe.json",
+              "sha256": "bef8795568e9d1b3a54fe22a240883b03f2a8ee94176564d78690fddfe000289"
+            }
+          ],
+          "name": "swe",
+          "sequence": 2,
+          "status": "failed"
+        }
+      ],
+      "summary": {
+        "attempted": true,
+        "completed": false
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "swift-tp2-20260926",
+    "profile": "scout",
+    "run_id": "swift-tp2-r3-swe",
+    "spec_sha256": "abeae1858958789c26be5ba6fedafb5a0c457b8e2f8c18930362649378653e0d",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "failed"
+}

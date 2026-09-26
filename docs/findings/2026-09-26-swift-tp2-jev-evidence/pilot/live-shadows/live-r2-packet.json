@@ -1,0 +1,51 @@
+{
+  "schema": "anvil-serving.jev-decision-packet/v1",
+  "id": "live_r2_kv_capacity",
+  "intent": "Identify the next diagnostic area for a measured TP2 KV-capacity startup rejection without claiming long-context quality, eight-image allocation, or a CPU-offload remedy.",
+  "observation": "vLLM created both TP ranks and loaded 85.7 GiB per rank, then rejected C1 at 327680 because 4.16 GiB KV cache was required and 3.75 GiB was available.",
+  "optional_limit": 1,
+  "evidence": [
+    {
+      "id": "kv_admission",
+      "text": "At max seq len 327680, vLLM required 4.16 GiB KV cache but had 3.75 GiB available; its estimated maximum was 293216.",
+      "kind": "mandatory",
+      "artifact": "swift-r2-startup-all.txt",
+      "sha256": "c460c64e75ff3898aeb44595e172841546e63059ff804c9cf08fb13c39a1e9fe"
+    },
+    {
+      "id": "tp_weight_load",
+      "text": "Both TP workers loaded the exact candidate; each reported 85.7 GiB model-loading memory.",
+      "kind": "mandatory",
+      "artifact": "swift-r2-startup-all.txt",
+      "sha256": "c460c64e75ff3898aeb44595e172841546e63059ff804c9cf08fb13c39a1e9fe"
+    },
+    {
+      "id": "measured_classification",
+      "text": "The recorded stage is post-rank and post-weight-load but pre-KV-allocation: this is capacity evidence, not long-context quality or eight-image allocation evidence.",
+      "kind": "mandatory",
+      "artifact": "feasibility/r2-live-startup-assessment.json",
+      "sha256": "d74a8ca408b284724b95007521f5aef51ff18eb4fbadb9ab5835eb8dd8108012"
+    },
+    {
+      "id": "rope_contradiction",
+      "text": "Startup resolved max model len 327680, while raw-config RoPE warnings remain insufficient to prove the worker effective YaRN object.",
+      "kind": "optional",
+      "artifact": "swift-r2-startup-all.txt",
+      "sha256": "c460c64e75ff3898aeb44595e172841546e63059ff804c9cf08fb13c39a1e9fe"
+    },
+    {
+      "id": "recipe_constraint",
+      "text": "The r2 recipe kept PLE GPU-resident through engram cpu_offload=false; the observed KV shortfall does not support calling CPU offload a remedy.",
+      "kind": "optional",
+      "artifact": "feasibility/swift-flash-tp2-r2.recipe.toml",
+      "sha256": "047becb25bf2d71d02f6a370da9d61fd24155853d1f5361f677620fc9635f6fc"
+    },
+    {
+      "id": "multimodal_gap",
+      "text": "Startup profiled one maximum-size image; configured eight-image request allocation remains untested.",
+      "kind": "optional",
+      "artifact": "feasibility/r2-live-startup-assessment.json",
+      "sha256": "d74a8ca408b284724b95007521f5aef51ff18eb4fbadb9ab5835eb8dd8108012"
+    }
+  ]
+}

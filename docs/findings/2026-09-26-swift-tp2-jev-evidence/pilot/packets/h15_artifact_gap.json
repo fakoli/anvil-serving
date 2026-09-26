@@ -1,0 +1,44 @@
+{
+  "schema": "anvil-serving.jev-decision-packet/v1",
+  "id": "h15_artifact_gap",
+  "intent": "Select optional evidence and a diagnostic area without executing work.",
+  "evidence": [
+    {
+      "id": "required",
+      "text": "Owner must retain frozen plan, authorization, and deterministic gate evidence.",
+      "kind": "mandatory",
+      "artifact": "private-evidence://2026-09-26-swift-tp2-jev/pilot/sources/synthetic-controls.md",
+      "sha256": "84ec41b8eb737fd62970b04a23a620c0b9a81d8f493328f47240872ea9d646b7"
+    },
+    {
+      "id": "signal",
+      "text": "A score is claimed without the required retained grader artifact.",
+      "kind": "failure",
+      "artifact": "private-evidence://2026-09-26-swift-tp2-jev/pilot/sources/synthetic-controls.md",
+      "sha256": "84ec41b8eb737fd62970b04a23a620c0b9a81d8f493328f47240872ea9d646b7"
+    },
+    {
+      "id": "current_summary",
+      "text": "Current selected run summary names the same decision boundary.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-swift-tp2-jev/pilot/sources/synthetic-controls.md",
+      "sha256": "84ec41b8eb737fd62970b04a23a620c0b9a81d8f493328f47240872ea9d646b7"
+    },
+    {
+      "id": "old_prior",
+      "text": "Old model-card claim is background only and has no local run identity.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-swift-tp2-jev/pilot/sources/synthetic-controls.md",
+      "sha256": "84ec41b8eb737fd62970b04a23a620c0b9a81d8f493328f47240872ea9d646b7"
+    },
+    {
+      "id": "distractor",
+      "text": "Unrelated historical throughput note does not decide this diagnostic.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-swift-tp2-jev/pilot/sources/synthetic-controls.md",
+      "sha256": "84ec41b8eb737fd62970b04a23a620c0b9a81d8f493328f47240872ea9d646b7"
+    }
+  ],
+  "observation": "A score is claimed without the required retained grader artifact.",
+  "optional_limit": 2
+}

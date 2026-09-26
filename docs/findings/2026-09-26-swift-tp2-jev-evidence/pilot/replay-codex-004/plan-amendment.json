@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.jev-pilot-downstream-amendment/v1",
+  "base_plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+  "base_labels_sha256": "e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+  "base_packet_set_sha256": "dc2b359fbb1e60787af77415c769aa6e0d07bd123bc1888c5cb9b1c078ccb10e",
+  "frozen_packet_count": 30,
+  "shadow_source_version": "anvil-serving cd8b7415",
+  "downstream_runner_source_version": "anvil 1a8b445",
+  "reason": "Full replay after the valid three-path smoke. It uses the same frozen packets, immutable shadow prompts, tool-free runner, requested model, reasoning effort, and timeout as the smoke.",
+  "downstream": {
+    "provider": "anvil_codex_subscription",
+    "model": "gpt-6-astra",
+    "reasoning_effort": "high",
+    "tools": [],
+    "allow_tools": false,
+    "max_turns": 1,
+    "timeout_seconds": 120,
+    "cost_usd": null,
+    "purpose": "tool-free controlled full-context GPT-6 Astra workflow proxy; not a measured full interactive Codex-session savings claim"
+  },
+  "known_environmental_notice": "Each path may retain the exact Codex skills-context shortening notice. Its fixed skills overhead is shared environment context, so the comparison remains a controlled prompt-view proxy and not a full interactive session savings claim.",
+  "prior_claude_preflight": {
+    "status": "incomplete_and_not_comparable",
+    "raw_receipts_directory": "downstream-t01-001",
+    "failed_requests": 2,
+    "failed_wall_elapsed_ms": 55045,
+    "failed_cost_usd": null,
+    "failed_billing": "unknown",
+    "successful_requests": 1,
+    "successful_wall_elapsed_ms": 8116,
+    "successful_cost_usd": 0.003615,
+    "campaign_overhead_included": true,
+    "note": "The two authentication failures report zero synthetic usage but have unknown provider billing and are retained as failed overhead. The isolated successful Jev request is retained but is not combined with the Codex replay comparison."
+  }
+}

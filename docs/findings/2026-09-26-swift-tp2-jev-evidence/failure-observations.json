@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.sanitized-campaign-failures/v1",
+  "attempts": [
+    {
+      "attempt": "swift-r1",
+      "stage": "pre-rank configuration validation",
+      "outcome": "failed",
+      "configured_context_tokens": 327680,
+      "derived_context_tokens": 262144,
+      "error": "User-specified max_model_len (327680) is greater than the derived max_model_len (max_position_embeddings=262144.0 or model_max_length=None in model config).",
+      "stderr_capture": "partial: the full native stderr was not retained before managed unload",
+      "model_quality_result": null
+    },
+    {
+      "attempt": "swift-r2",
+      "stage": "KV cache allocation after TP2 model load",
+      "outcome": "failed",
+      "model_load_memory_per_rank": "85.7 GiB",
+      "kv_cache_needed": "4.16 GiB",
+      "kv_cache_available": "3.75 GiB",
+      "classification": "resource-capacity failure; not quality evidence",
+      "model_quality_result": null
+    }
+  ]
+}

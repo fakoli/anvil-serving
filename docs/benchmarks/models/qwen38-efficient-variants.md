@@ -125,6 +125,13 @@ an efficiency research lead, not a proven full-contract upgrade.
   general release pending shared lifecycle locking and immutable process
   attestation. The separate Windows Pi transport fixes passed a real smoke.
 
+### 2026-09-26 Swift 1.5 Flash Next TP2
+
+- **Status:** bounded observations; SWE fixed denominator 2/5 failed the 4/5 floor. No qualification or promotion; exact GLM incumbent restored on the current host.
+- **Measured:** exact NVFP4 TP2 r3 passed protocol/tools, agentic 18/18, context 12/12 at ~32.7K and ~256.9K prompts, images 12/12, and eight images 4/4.
+- **Limits:** C1 only; configured 327,680 context plus a requested 65,536 output allowance does not prove an actual full-window prompt or full output. No matched baseline, throughput, or cost result exists.
+- **Decision:** retain GLM; no route or promotion change. See the [evidence bundle](../../findings/2026-09-26-swift-tp2-jev-evidence/README.md).
+
 ## Dated run history
 
 - 2026-09-26 — [single-GPU Swift qualification](../../findings/2026-09-26-single-gpu-qualification.md): Flash IQ3 r3 passed deterministic gates but SWE 3/5; Swift27 NVFP4 r2 resolved 2/5 with four graded. Neither is qualified or promoted.

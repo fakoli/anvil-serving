@@ -182,6 +182,9 @@ public-post merge and deployed readback remain pending);
 `.tickets/closed/2026-08-02-deepseek-r16-native-kv-offload-illegal-access.md`;
 `examples/primary-node/q36/README.md`.
 
+`docs/findings/2026-09-26-swift-tp2-jev-evidence/README.md`
+(Swift TP2 bounded observations; SWE 2/5 below 4/5 floor; no qualification or promotion; exact GLM incumbent restored, no performance claim);
+
 ## `external-prior`
 
 `docs/findings/2026-08-10-deepseek-v4-flash-0731-community-config-refresh.md`
@@ -242,6 +245,7 @@ qualification evidence).
 ## 2026-09-11 output-budget additions
 
 | Path | Classification | Basis |
+| `docs/findings/2026-09-26-swift-tp2-jev.md` | measured, not-qualified | Swift TP2 bounded evidence: fixed-denominator SWE 2/5 below the 4/5 floor; no promotion; exact GLM incumbent restored. |
 |---|---|---|
 | `docs/findings/2026-09-11-glm53-output-budget.md` | measured | Real Pi requests on the native Max-Q pair; bounded functional evidence. |
 | `docs/findings/2026-09-11-glm53-output-budget-evidence/publication-summary.md` | measured | Derivative of the same local evidence; no new hardware claim. |

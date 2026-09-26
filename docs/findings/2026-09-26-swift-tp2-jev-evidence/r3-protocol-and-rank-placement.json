@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.sanitized-r3-observation/v1",
+  "attempt": "swift-r3",
+  "command_host": "Primary Node",
+  "profile": "TP2 candidate managed recipe",
+  "state": "running at observation",
+  "rank_placement": {
+    "tensor_parallel_ranks": 2,
+    "observed_workers": [
+      {"rank": 0, "used_gpu_memory": "95790 MiB"},
+      {"rank": 1, "used_gpu_memory": "95790 MiB"}
+    ],
+    "hardware_identifiers": "redacted"
+  },
+  "protocol_smoke": {
+    "passed": true,
+    "checks": ["smoke", "json", "tools", "streaming-tools", "tool-result"],
+    "finish_reasons_observed": ["stop", "tool_calls"],
+    "reasoning_channel_observed": true,
+    "visible_output_retained": true,
+    "scope": "functional protocol smoke only"
+  },
+  "qualification": "still running",
+  "promotion": {"promoted": false, "human_gate_required": true}
+}

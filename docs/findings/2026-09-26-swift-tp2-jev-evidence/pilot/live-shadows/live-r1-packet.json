@@ -1,0 +1,58 @@
+{
+  "schema": "anvil-serving.jev-decision-packet/v1",
+  "id": "live_r1_context",
+  "intent": "Identify the next diagnostic area for a pre-rank context configuration rejection without claiming a model quality or TP failure.",
+  "observation": "Value error, User-specified max_model_len (327680) is greater than the derived max_model_len (max_position_embeddings=262144.0 or model_max_length=None in model's config.json).",
+  "optional_limit": 1,
+  "evidence": [
+    {
+      "id": "limits",
+      "text": "Swift Flash Next r1 requested 327680 tokens; checkpoint native max_position_embeddings is 262144.",
+      "kind": "mandatory",
+      "artifact": "feasibility/nvfp4-config.json",
+      "sha256": "4d4e2b825edff957ffc9d962c40f636527fe08f9f76ae02b16080693ed911b36"
+    },
+    {
+      "id": "failure",
+      "text": "Value error, User-specified max_model_len (327680) is greater than the derived max_model_len (max_position_embeddings=262144.0 or model_max_length=None in model's config.json).",
+      "kind": "failure",
+      "artifact": "swift-r1-failure-observation.json",
+      "sha256": "5fa1508a3edc66fd49aa5c4dc374b2d99e2dd31e8c073b2983890ba24c0d37d2"
+    },
+    {
+      "id": "override",
+      "text": "The startup args show a YaRN factor2 rope override, yet max-position remained262144. A configured argument alone does not prove applied scaling.",
+      "kind": "contradiction",
+      "artifact": "swift-r1-startup.txt",
+      "sha256": "2dcce2f5d05e99e388993e0e9f3202fc446675079ee196ca00f51832d95e1c4c"
+    },
+    {
+      "id": "capture_gap",
+      "text": "Initial log redirection retained stdout only. Stderr was visible in tool output but full native stderr was not copied before managed unload. r2 capture explicitly redirects both streams.",
+      "kind": "missing_capture",
+      "artifact": "swift-r1-failure-observation.json",
+      "sha256": null
+    },
+    {
+      "id": "runtime",
+      "text": "Pinned vLLM max-length derivation consumes text_config.max_position_embeddings; YaRN also needs the explicit327680 bound.",
+      "kind": "optional",
+      "artifact": "feasibility/r1-context-diagnostic.md",
+      "sha256": "bd16efce41e5dee5318dbc28dbc93c44a2ff2ede79e42375ea4dd5fae1db8057"
+    },
+    {
+      "id": "hardware",
+      "text": "Only the PLE embedding is TP-sharded; projection and short-convolution state replicate. This is memory math, not the observed configuration error.",
+      "kind": "optional",
+      "artifact": "feasibility/research.md",
+      "sha256": "31429b4b3cbdc62a3476d08ebce8a0d6c4753144e455343308bedd55a567ed2a"
+    },
+    {
+      "id": "baseline",
+      "text": "GLM incumbent routed preflight passed before the campaign and rollback is pinned.",
+      "kind": "optional",
+      "artifact": "starting-state/routed-preflight.json",
+      "sha256": "c825c8d17c34f541c2e51b2f1e755ff5d097d1e3adbaae72b13d76f27030f9b9"
+    }
+  ]
+}

@@ -1,0 +1,602 @@
+{
+  "schema": "anvil-serving.jev-independent-comparative-audit/v1",
+  "audit_date": "2026-09-26",
+  "audit_mode": "read_only_local_evidence_review",
+  "scope": "Independent review of the frozen Jev shadow selection pilot, downstream Codex replay, prior attempts, accounting, labels, and retained freeze provenance.",
+  "disposition": {
+    "acceptance_grade": false,
+    "automatic_consumption": false,
+    "recommendation": "Retain Jev as shadow-only research. The heldout controlled proxy shows no material input reduction, higher observed latency, worse category and joint correctness, unknown total cost, and incomplete proof that the final labels were immutable before shadow calls."
+  },
+  "source_bindings": {
+    "evidence_repository_observed_head": "9ebf3241638ac0c475880a0cb821c6a3371817ff",
+    "evidence_worktree_state": "dirty_with_unrelated_and_campaign_changes",
+    "frozen_plan_sha256": "ad9012eea13f92bd5db8756378b5a79bf12010cb99388b71da9f9ddfc4856757",
+    "labels_sha256": "e7e1634b5608c8ccbe577c81c3f2579a840842d1a35615f9a61df8f15196790c",
+    "packet_set_sha256": "dc2b359fbb1e60787af77415c769aa6e0d07bd123bc1888c5cb9b1c078ccb10e",
+    "shadow_source_version": "anvil-serving cd8b741593cd30dc35104265b92c2013b0eae642",
+    "current_post_measurement_fix": "anvil-serving 54001be369d96aeddefa2e8b1c0db68c19b4344f",
+    "current_fix_separation": "The 54001be3 conservative fallback and validated-cost changes are not part of the cd8b7415 frozen shadow measurement and cannot rehabilitate its measured result.",
+    "downstream_runner_versions": {
+      "explicit_anvil_48ca2b1_receipts": 78,
+      "receipts_without_top_level_runner_source_version": 12,
+      "inferred_for_missing_receipts_by_amendment_and_assessment": "anvil 1a8b4458516a3bff2904c39c106535340ae05420"
+    },
+    "artifact_sha256": {
+      "freeze_verification.json": "c135f667d750e1cec665e6280dfbe82bbde78f08c70e69eaf11c46d956db49d7",
+      "codex-replay-004/assessment.json": "223cc8b4f426849467850df1de488aa62c8d8255b14fcdc200a433e44dd8add2",
+      "codex-replay-004/status.json": "2cfaf99465e3a4fa7a38d29206e54846b26d388753cdb50b8016218559910dc0",
+      "codex-replay-004/summary-map.json": "142784f569de1d3477213dff616cb57675eb07610454c8dbe70ef9b04e2b8ce5",
+      "replay_downstream.py": "f920f751632d9d914383fc7197654cf60207ea50a74d97379e5f90f7c61f7c89"
+    }
+  },
+  "receipt_verification": {
+    "downstream_receipts": 90,
+    "paths_per_packet": 3,
+    "packets": 30,
+    "packet_digest_matches": 90,
+    "frozen_view_matches": 90,
+    "annotation_matches": 90,
+    "canonical_packet_digest_matches": 30,
+    "requested_model": "gpt-6-astra",
+    "requested_reasoning_effort": "high",
+    "requested_settings_match_count": 90,
+    "provider_returned_served_model_identity": null,
+    "allow_tools": false,
+    "max_turns": 1,
+    "runner_errors": 0,
+    "raw_event_truncations": 0,
+    "retries": 0,
+    "prompt_binding_note": "Each replay row exactly retains its selected frozen shadow view and annotations. The replay harness appends one fixed answer suffix before each call. The provider receipt does not independently echo the complete submitted prompt or served model identity."
+  },
+  "label_freeze_investigation": {
+    "verdict": "partial_provenance_but_exact_pre_shadow_freeze_unsupported",
+    "retained_evidence": {
+      "labels_file_birth_local": "2026-09-26T10:19:47.634385482-07:00",
+      "labels_file_final_modify_local": "2026-09-26T10:26:28.907340725-07:00",
+      "shadow_plan_birth_local": "2026-09-26T10:23:11.612543026-07:00",
+      "first_shadow_receipt_modify_local": "2026-09-26T10:23:12.790364281-07:00",
+      "last_shadow_receipt_modify_local": "2026-09-26T10:23:39.273460942-07:00",
+      "shadow_command_record_modify_local": "2026-09-26T10:23:39.287461346-07:00",
+      "plan_final_modify_local": "2026-09-26T10:29:25.640388423-07:00",
+      "freeze_verification_modify_local": "2026-09-26T10:34:32.954082221-07:00",
+      "corpus_builder_birth_local": "2026-09-26T10:19:23.867215198-07:00",
+      "corpus_builder_final_modify_local": "2026-09-26T10:37:14.104397275-07:00"
+    },
+    "supportable_finding": "The filesystem birth time shows that a labels.json file existed before shadow execution, consistent with the stated workflow. The retained shadow command also shows a completed 30-packet run.",
+    "missing_binding": "No retained pre-call label SHA-256, immutable label copy, signed manifest, process log, or shadow receipt field binds the current final labels to their pre-shadow contents. labels.json was modified after all shadow calls, and the retained corpus builder was also modified after the calls.",
+    "conclusion": "The retained record supports pre-shadow label-file existence but does not establish that the exact final labels were frozen and unchanged before the 50 Jev provider calls. The downstream replay does bind the final labels hash and loads labels only after raw downstream receipts are durable, so post-label retuning during the downstream replay is not indicated."
+  },
+  "methodology": {
+    "acceptance_slice": "heldout_only",
+    "heldout_cases": 20,
+    "tuning_cases": 10,
+    "downstream_proxy": "controlled_tool_free_single_turn_codex_subscription",
+    "fixed_path_order_per_packet": [
+      "current",
+      "deterministic",
+      "jev"
+    ],
+    "cache_limit": "Path order was not randomized or counterbalanced. Cached and noncached input differed materially by path, so latency is an observed fixed-order result rather than a causal speed estimate.",
+    "shared_context_limit": "Each downstream call retained the same large Codex skills-context environment. Input medians near 16.5K are dominated by fixed environment context, limiting sensitivity to small selected-context differences.",
+    "comparison_limit": "This is a controlled workflow proxy, not a measurement of interactive Codex-session token savings, latency, or task success."
+  },
+  "metrics": {
+    "heldout": {
+      "count": 20,
+      "paths": {
+        "current": {
+          "category_correct": 15,
+          "escalate_correct": 15,
+          "category_and_escalate_correct": 14,
+          "critical_preserved": 20,
+          "median_downstream_input_tokens": 16503.0,
+          "median_total_elapsed_ms": 7291.102650024928,
+          "p95_downstream_elapsed_ms_nearest_rank": 8897,
+          "p95_total_elapsed_ms_nearest_rank": 8897.097609998193
+        },
+        "deterministic": {
+          "category_correct": 15,
+          "escalate_correct": 14,
+          "category_and_escalate_correct": 14,
+          "critical_preserved": 17,
+          "median_downstream_input_tokens": 16483.5,
+          "median_total_elapsed_ms": 6790.612235022243,
+          "p95_downstream_elapsed_ms_nearest_rank": 9948,
+          "p95_total_elapsed_ms_nearest_rank": 9948.097609998193
+        },
+        "jev": {
+          "category_correct": 11,
+          "escalate_correct": 15,
+          "category_and_escalate_correct": 10,
+          "critical_preserved": 20,
+          "median_downstream_input_tokens": 16481.5,
+          "median_total_elapsed_ms": 7870.859235998243,
+          "p95_downstream_elapsed_ms_nearest_rank": 9947,
+          "p95_total_elapsed_ms_nearest_rank": 11010.909470976796
+        }
+      },
+      "jev_vs_stronger_deterministic": {
+        "median_downstream_input_token_reduction": 2.0,
+        "median_downstream_input_reduction_percent": 0.0121333454666788,
+        "aggregate_downstream_input_token_reduction": 288,
+        "aggregate_downstream_input_reduction_percent": 0.08726347205599407,
+        "median_total_elapsed_increase_ms": 1080.247000976,
+        "median_total_elapsed_increase_percent": 15.907947083249432,
+        "category_correct_delta": -4,
+        "escalate_correct_delta": 1,
+        "category_and_escalate_correct_delta": -4,
+        "critical_preserved_delta": 3
+      }
+    },
+    "tuning": {
+      "count": 10,
+      "paths": {
+        "current": {
+          "category_correct": 8,
+          "escalate_correct": 9,
+          "category_and_escalate_correct": 8,
+          "critical_preserved": 10,
+          "median_downstream_input_tokens": 16527.5,
+          "median_total_elapsed_ms": 6643.103950471384,
+          "p95_downstream_elapsed_ms_nearest_rank": 8892,
+          "p95_total_elapsed_ms_nearest_rank": 8892.099920027424
+        },
+        "deterministic": {
+          "category_correct": 8,
+          "escalate_correct": 8,
+          "category_and_escalate_correct": 7,
+          "critical_preserved": 9,
+          "median_downstream_input_tokens": 16492.5,
+          "median_total_elapsed_ms": 6666.102699967101,
+          "p95_downstream_elapsed_ms_nearest_rank": 7992,
+          "p95_total_elapsed_ms_nearest_rank": 7992.099920027424
+        },
+        "jev": {
+          "category_correct": 7,
+          "escalate_correct": 8,
+          "category_and_escalate_correct": 7,
+          "critical_preserved": 10,
+          "median_downstream_input_tokens": 16499.5,
+          "median_total_elapsed_ms": 8312.068504980998,
+          "p95_downstream_elapsed_ms_nearest_rank": 9646,
+          "p95_total_elapsed_ms_nearest_rank": 10197.45409196848
+        }
+      }
+    },
+    "all_30_cases_descriptive_only": {
+      "current": {
+        "category_correct": 23,
+        "escalate_correct": 24,
+        "category_and_escalate_correct": 22,
+        "critical_preserved": 30,
+        "median_downstream_input_tokens": 16506.5,
+        "median_total_elapsed_ms": 7141.1405,
+        "p95_downstream_elapsed_ms_nearest_rank": 8897,
+        "p95_total_elapsed_ms_nearest_rank": 8897.097609998193
+      },
+      "deterministic": {
+        "category_correct": 23,
+        "escalate_correct": 22,
+        "category_and_escalate_correct": 21,
+        "critical_preserved": 26,
+        "median_downstream_input_tokens": 16484.5,
+        "median_total_elapsed_ms": 6666.1027,
+        "p95_downstream_elapsed_ms_nearest_rank": 9948,
+        "p95_total_elapsed_ms_nearest_rank": 9948.097609998193
+      },
+      "jev": {
+        "category_correct": 18,
+        "escalate_correct": 23,
+        "category_and_escalate_correct": 17,
+        "critical_preserved": 30,
+        "median_downstream_input_tokens": 16484.0,
+        "median_total_elapsed_ms": 8039.898,
+        "p95_downstream_elapsed_ms_nearest_rank": 9947,
+        "p95_total_elapsed_ms_nearest_rank": 11010.909470976796
+      }
+    },
+    "latency_percentile_method": "Empirical nearest-rank p95: sort the observations and select rank ceil(0.95*n). Total elapsed includes the shadow selection time used by the assessment; downstream elapsed reports the Codex wall time alone.",
+    "selection_and_downstream_recall": {
+      "measurement_boundary": "Selection critical preservation is computed from the frozen view selected_ids before the downstream call. Downstream relevant-ID recall is computed only from labeled relevant optional IDs named in the downstream answer's relevant_ids field. They are separate measurements and must not be conflated.",
+      "heldout": {
+        "labeled_relevant_optional_cases": 8,
+        "current": {
+          "selection_critical_preserved_cases": 20,
+          "selection_critical_case_denominator": 20,
+          "selection_relevant_optional_mean_recall": 1.0,
+          "selection_critical_loss_cases": [],
+          "downstream_answer_full_relevant_id_recall_cases": 4,
+          "downstream_answer_relevant_id_case_denominator": 8,
+          "downstream_answer_mean_relevant_id_recall": 0.5,
+          "downstream_answer_relevant_id_loss_cases": [
+            "h01_restore",
+            "h02_baseline_identity",
+            "h04_candidate_contradiction",
+            "h05_missing_speed"
+          ]
+        },
+        "deterministic": {
+          "selection_critical_preserved_cases": 17,
+          "selection_critical_case_denominator": 20,
+          "selection_relevant_optional_mean_recall": 0.625,
+          "selection_critical_loss_cases": [
+            {
+              "id": "h13_optional_relevance",
+              "missing_critical_ids": [
+                "current_summary"
+              ]
+            },
+            {
+              "id": "h14_old_prior",
+              "missing_critical_ids": [
+                "current_summary"
+              ]
+            },
+            {
+              "id": "h19_resource_clean",
+              "missing_critical_ids": [
+                "current_summary"
+              ]
+            }
+          ],
+          "downstream_answer_full_relevant_id_recall_cases": 1,
+          "downstream_answer_relevant_id_case_denominator": 8,
+          "downstream_answer_mean_relevant_id_recall": 0.125,
+          "downstream_answer_relevant_id_loss_cases": [
+            "h01_restore",
+            "h02_baseline_identity",
+            "h04_candidate_contradiction",
+            "h05_missing_speed",
+            "h13_optional_relevance",
+            "h14_old_prior",
+            "h19_resource_clean"
+          ]
+        },
+        "jev": {
+          "selection_critical_preserved_cases": 20,
+          "selection_critical_case_denominator": 20,
+          "selection_relevant_optional_mean_recall": 1.0,
+          "selection_critical_loss_cases": [],
+          "downstream_answer_full_relevant_id_recall_cases": 6,
+          "downstream_answer_relevant_id_case_denominator": 8,
+          "downstream_answer_mean_relevant_id_recall": 0.75,
+          "downstream_answer_relevant_id_loss_cases": [
+            "h02_baseline_identity",
+            "h04_candidate_contradiction"
+          ]
+        }
+      },
+      "all_30_cases": {
+        "labeled_relevant_optional_cases": 12,
+        "current": {
+          "selection_critical_preserved_cases": 30,
+          "selection_relevant_optional_mean_recall": 1.0,
+          "downstream_answer_full_relevant_id_recall_cases": 5,
+          "downstream_answer_mean_relevant_id_recall": 0.4166666666666667
+        },
+        "deterministic": {
+          "selection_critical_preserved_cases": 26,
+          "selection_relevant_optional_mean_recall": 0.6666666666666666,
+          "selection_critical_loss_cases": [
+            "t03_swift27_budget",
+            "h13_optional_relevance",
+            "h14_old_prior",
+            "h19_resource_clean"
+          ],
+          "downstream_answer_full_relevant_id_recall_cases": 2,
+          "downstream_answer_mean_relevant_id_recall": 0.16666666666666666
+        },
+        "jev": {
+          "selection_critical_preserved_cases": 30,
+          "selection_relevant_optional_mean_recall": 1.0,
+          "downstream_answer_full_relevant_id_recall_cases": 8,
+          "downstream_answer_mean_relevant_id_recall": 0.6666666666666666
+        }
+      }
+    }
+  },
+  "token_accounting": {
+    "input_counter_semantics": "The runner stores noncached input in input_tokens and cached input separately in cached_input_tokens. Total provider input is their sum once; cached input must not be added to an already-total input value.",
+    "heldout_downstream": {
+      "current": {
+        "noncached_input_tokens": 109496,
+        "cached_input_tokens": 220672,
+        "total_input_tokens": 330168,
+        "output_tokens": 1925,
+        "all_tokens": 332093
+      },
+      "deterministic": {
+        "noncached_input_tokens": 99507,
+        "cached_input_tokens": 230528,
+        "total_input_tokens": 330035,
+        "output_tokens": 1821,
+        "all_tokens": 331856
+      },
+      "jev": {
+        "noncached_input_tokens": 162323,
+        "cached_input_tokens": 167424,
+        "total_input_tokens": 329747,
+        "output_tokens": 1945,
+        "all_tokens": 331692,
+        "selection_input_tokens": 20942,
+        "selection_output_tokens": 2254,
+        "selection_all_tokens": 23196
+      }
+    },
+    "tuning_downstream": {
+      "current": {
+        "noncached_input_tokens": 95196,
+        "cached_input_tokens": 70144,
+        "total_input_tokens": 165340,
+        "output_tokens": 944,
+        "all_tokens": 166284
+      },
+      "deterministic": {
+        "noncached_input_tokens": 92273,
+        "cached_input_tokens": 72704,
+        "total_input_tokens": 164977,
+        "output_tokens": 946,
+        "all_tokens": 165923
+      },
+      "jev": {
+        "noncached_input_tokens": 87338,
+        "cached_input_tokens": 78208,
+        "total_input_tokens": 165546,
+        "output_tokens": 1058,
+        "all_tokens": 166604,
+        "selection_input_tokens": 9985,
+        "selection_output_tokens": 1045,
+        "selection_all_tokens": 11030
+      }
+    },
+    "full_replay_downstream": {
+      "current": {
+        "noncached_input_tokens": 204692,
+        "cached_input_tokens": 290816,
+        "total_input_tokens": 495508,
+        "output_tokens": 2869,
+        "all_tokens": 498377
+      },
+      "deterministic": {
+        "noncached_input_tokens": 191780,
+        "cached_input_tokens": 303232,
+        "total_input_tokens": 495012,
+        "output_tokens": 2767,
+        "all_tokens": 497779
+      },
+      "jev": {
+        "noncached_input_tokens": 249661,
+        "cached_input_tokens": 245632,
+        "total_input_tokens": 495293,
+        "output_tokens": 3003,
+        "all_tokens": 498296
+      },
+      "all_paths": {
+        "noncached_input_tokens": 646133,
+        "cached_input_tokens": 839680,
+        "total_input_tokens": 1485813,
+        "output_tokens": 8639,
+        "all_tokens": 1494452
+      }
+    },
+    "jev_selection_all_50_calls": {
+      "context_ranking_calls": 27,
+      "context_ranking_input_tokens": 18404,
+      "context_ranking_output_tokens": 1269,
+      "incident_triage_calls": 23,
+      "incident_triage_input_tokens": 12523,
+      "incident_triage_output_tokens": 2030,
+      "total_calls": 50,
+      "input_tokens": 30927,
+      "output_tokens": 3299,
+      "all_tokens": 34226,
+      "dollar_cost": null
+    },
+    "attempt_inventory": [
+      {
+        "stage": "jev_shadow_selection",
+        "provider_calls": 50,
+        "status": "completed_validated",
+        "known_input_tokens": 30927,
+        "known_output_tokens": 3299,
+        "known_all_tokens": 34226,
+        "dollar_cost": null
+      },
+      {
+        "stage": "claude_downstream_preflight",
+        "provider_calls": 3,
+        "status": "one_success_two_auth_failures",
+        "known_input_tokens": 1739,
+        "known_output_tokens": 62,
+        "known_all_tokens": 1801,
+        "known_success_cost_usd": 0.003615,
+        "failed_call_usage_and_billing": "unknown_for_2_calls"
+      },
+      {
+        "stage": "initial_codex_smoke",
+        "provider_calls": 3,
+        "status": "failed_receipts",
+        "known_input_tokens": null,
+        "known_output_tokens": null,
+        "known_all_tokens": null,
+        "usage_and_billing": "unknown_for_3_calls"
+      },
+      {
+        "stage": "codex_invalid_diagnostic",
+        "provider_calls": 1,
+        "status": "invalid_but_usage_retained",
+        "noncached_input_tokens": 2573,
+        "cached_input_tokens": 13952,
+        "known_input_tokens": 16525,
+        "known_output_tokens": 96,
+        "known_all_tokens": 16621,
+        "dollar_cost": null
+      },
+      {
+        "stage": "successful_codex_smoke_all_paths",
+        "provider_calls": 3,
+        "status": "completed",
+        "known_input_tokens": 49521,
+        "known_output_tokens": 267,
+        "known_all_tokens": 49788,
+        "dollar_cost": null
+      },
+      {
+        "stage": "full_codex_replay",
+        "provider_calls": 90,
+        "status": "completed",
+        "known_input_tokens": 1485813,
+        "known_output_tokens": 8639,
+        "known_all_tokens": 1494452,
+        "dollar_cost": null
+      }
+    ],
+    "supplemental_live_jev_not_pooled_with_original_comparison": [
+      {
+        "stage": "live_r1_context",
+        "receipt": "live-shadow-002/live_r1_context.json",
+        "provider_calls": 2,
+        "status": "completed_validated",
+        "known_input_tokens": 1311,
+        "known_output_tokens": 134,
+        "known_all_tokens": 1445,
+        "dollar_cost": null
+      },
+      {
+        "stage": "live_r2_kv_capacity",
+        "receipt": "live-shadow-003/live_r2_kv_capacity.json",
+        "provider_calls": 2,
+        "status": "completed_validated",
+        "known_input_tokens": 1340,
+        "known_output_tokens": 142,
+        "known_all_tokens": 1482,
+        "dollar_cost": null,
+        "semantic_review": {
+          "formal_owner_labeled_mandatory_ids_preserved": true,
+          "jev_omitted_optional_ids": [
+            "rope_contradiction",
+            "multimodal_gap"
+          ],
+          "material_omission_risk": "rope_contradiction",
+          "finding": "The resource_exhaustion category is supported by pinned measured KV-admission, TP weight-load, and stage-classification evidence. However, rope_contradiction records that resolving max_model_len=327680 does not prove the worker's effective YaRN object. That is material opposing or missing qualification evidence under a contract that requires such caveats to remain pinned.",
+          "mitigation_present": "The pinned measured_classification row still says the observation is capacity evidence and not long-context quality evidence, so the omission does not invalidate the narrow incident category.",
+          "owner_classification_gap": "The live oracle did not label rope_contradiction as critical. For qualification use it should be pinned or otherwise made mandatory; the Jev view omitted its exact unresolved-binding caveat.",
+          "claim_limit": "Do not extend the original corpus's zero Jev critical-loss count to this live packet or to universal qualification safety."
+        }
+      }
+    ],
+    "campaign_totals": {
+      "original_comparative_provider_calls": 150,
+      "supplemental_live_jev_provider_calls": 4,
+      "all_exploratory_provider_calls": 154,
+      "provider_calls_with_unknown_token_usage": 5,
+      "known_codex_and_jev_phase_tokens_excluding_claude": 1595087,
+      "known_original_comparison_tokens_including_successful_claude_preflight": 1596888,
+      "known_supplemental_live_jev_tokens": 2927,
+      "known_all_exploratory_tokens_including_supplemental_live_jev": 1599815,
+      "unknown_additional_tokens": true,
+      "total_dollar_cost_known": false,
+      "pooling_note": "The four live r1/r2 Jev calls are supplemental operational observations. They are included in full-task overhead accounting but are not pooled into the original 30-packet comparative metrics or its 150 calls.",
+      "cost_note": "The successful Claude preflight reported $0.003615, but Jev annotations, Codex subscription calls, and failed attempts do not establish a complete campaign dollar cost."
+    },
+    "summary_map_accounting_correction": {
+      "reported_known_input_subtotal": 1533265,
+      "interpretation": "This is only full-replay input plus Jev-selection input plus invalid-diagnostic input.",
+      "omitted_known_usage": [
+        "8639 full-replay output tokens",
+        "3299 Jev-selection output tokens",
+        "96 invalid-diagnostic output tokens",
+        "49788 known tokens from the successful three-path Codex smoke",
+        "1801 known tokens from the successful Claude preflight"
+      ],
+      "prohibited_interpretation": "Do not report 1533265 as total campaign tokens or complete cost accounting."
+    }
+  },
+  "label_caveats": {
+    "taxonomy_gap": "The category set has no no_issue or not_applicable class, forcing benign restoration, reference, evidence-ranking, and clean-capacity cases into a failure category.",
+    "clear_problem_cases": [
+      {
+        "id": "h01_restore",
+        "label": "application_behavior, escalate=false",
+        "observed_all_paths": "unknown, escalate=true",
+        "reason": "The observation says restoration and routed checks completed successfully."
+      },
+      {
+        "id": "h02_baseline_identity",
+        "label": "application_behavior, escalate=false",
+        "observed_all_paths": "unknown, escalate=true",
+        "reason": "The observation is valid reference evidence rather than an application failure."
+      },
+      {
+        "id": "h13_optional_relevance",
+        "label": "application_behavior, escalate=false",
+        "observed_all_paths": "unknown, escalate=true",
+        "reason": "The case asks about evidence relevance and states no application fault."
+      },
+      {
+        "id": "h19_resource_clean",
+        "label": "application_behavior, escalate=false",
+        "observed_all_paths": "unknown, escalate=true",
+        "reason": "The observation explicitly says no resource error occurred."
+      }
+    ],
+    "debatable_case": {
+      "id": "h17_bad_json",
+      "label": "incompatible_configuration",
+      "observed_all_paths": "application_behavior",
+      "reason": "Malformed tool JSON can reasonably be treated as runtime/application behavior rather than configuration."
+    },
+    "jev_unique_heldout_category_misses": [
+      "h04_candidate_contradiction",
+      "h05_missing_speed",
+      "h12_route_contradiction",
+      "h15_artifact_gap"
+    ],
+    "jev_unique_miss_escalation": "All four Jev-only category misses still returned escalate=true, matching their labels. This mitigates silent resolution risk but does not correct the wrong category or the 10/20 joint score.",
+    "common_escalation_miss": "h18_permission_scope was categorized correctly as authorization_or_license by all paths, but every path escalated while the label says escalate=false."
+  },
+  "acceptance_gates": {
+    "median_input_reduction_at_least_20_percent": {
+      "pass": false,
+      "observed_percent_vs_stronger_deterministic": 0.0121333454666788
+    },
+    "no_increased_total_cost": {
+      "pass": false,
+      "reason": "Complete dollar cost is unknown; the frozen plan says unknown cost cannot pass."
+    },
+    "no_increased_median_latency": {
+      "pass": false,
+      "observed_jev_increase_ms_vs_stronger_deterministic": 1080.247000976,
+      "causal_interpretation_allowed": false
+    },
+    "zero_heldout_critical_misses": {
+      "pass": true,
+      "jev_critical_preserved": 20,
+      "heldout_count": 20
+    },
+    "pre_shadow_label_freeze_proven": {
+      "pass": false,
+      "reason": "Pre-shadow file existence is retained, but exact final label content is not hash-bound before provider calls."
+    },
+    "overall": "fail_non_acceptance"
+  },
+  "claim_boundaries": {
+    "allowed": [
+      "In a 20-case heldout controlled tool-free proxy, Jev produced no material downstream input reduction versus the stronger deterministic baseline.",
+      "Under the fixed observed request order, Jev had higher median total elapsed time and worse category and joint correctness while preserving all heldout critical evidence.",
+      "Escalation correctness remained 15/20 for Jev, equal to current and one above deterministic, including escalation on all four Jev-only category misses.",
+      "The pilot does not support automatic consumption or an acceptance-grade savings claim."
+    ],
+    "blocked": [
+      "Jev reduces interactive Codex-session token use or cost.",
+      "Jev improves latency causally.",
+      "The complete campaign cost did not increase.",
+      "The exact final labels are proven immutable before the 50 Jev shadow calls.",
+      "The provider-returned served downstream model identity is independently recorded.",
+      "Post-measurement 54001be3 behavior was evaluated by the cd8b7415 shadow run.",
+      "The 1533265 summary subtotal is total campaign token usage.",
+      "The original 20/20 heldout critical-preservation result proves universal or live qualification safety."
+    ]
+  }
+}

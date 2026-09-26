@@ -1,0 +1,3 @@
+index, uuid, memory.total [MiB], memory.used [MiB], memory.free [MiB], utilization.gpu [%]
+0, GPU-REDACTED, 97887 MiB, 95799 MiB, 1543 MiB, 0 %
+1, GPU-REDACTED, 97887 MiB, 95799 MiB, 1543 MiB, 0 %

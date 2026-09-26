@@ -1,0 +1,44 @@
+{
+  "schema": "anvil-serving.jev-decision-packet/v1",
+  "id": "h04_candidate_contradiction",
+  "intent": "Classify a contradictory qualification claim.",
+  "evidence": [
+    {
+      "id": "required",
+      "text": "Campaign record: frozen coding floor is 4/5; retained facts are advisory input only.",
+      "kind": "mandatory",
+      "artifact": "private-evidence://2026-09-26-single-gpu-qualification/campaign.md",
+      "sha256": "a3ffa9e668ad7d431ece72ca96306df47faa0b42b43c337db04e3ffdb75d15d8"
+    },
+    {
+      "id": "contradiction",
+      "text": "Flash IQ3 r3 ran the frozen five-task SWE suite under the selected recipe.",
+      "kind": "contradiction",
+      "artifact": "private-evidence://2026-09-26-single-gpu-qualification/swift-iq3-r3-swe-submit.json",
+      "sha256": "f91eef55d3eaa638a77d0ec2a936faee4a21da08a05ffe0334a09f52a3337b37"
+    },
+    {
+      "id": "current_summary",
+      "text": "Coverage record: incomplete or overlapping evidence cannot support a speed claim.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-single-gpu-qualification/coverage-and-gaps.md",
+      "sha256": "97813cb7efc86b7096acd4b02b9bc6de120b891e62cbc1f9ec273addd5f5301e"
+    },
+    {
+      "id": "old_prior",
+      "text": "The exact GLM r11 4/5 SWE reuse was independently verified for frozen comparison.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-single-gpu-qualification/baseline-swe-reuse-verification.json",
+      "sha256": "25b9c4f30ebbf31b68966f067bb56981d419c529d40e6f6c057743f77e7a09a5"
+    },
+    {
+      "id": "distractor",
+      "text": "The earlier C4 timing had cache reuse and is excluded from a matched speed comparison.",
+      "kind": "optional",
+      "artifact": "private-evidence://2026-09-26-single-gpu-qualification/capacity-cache-control-correction.json",
+      "sha256": "a054c433d66dd51dcd653828158774e1396358b4599a5adc72855d9c50d11519"
+    }
+  ],
+  "observation": "Functional checks passed, but retained coding is below the frozen floor.",
+  "optional_limit": 2
+}

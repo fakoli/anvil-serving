@@ -1,0 +1,40 @@
+{
+  "bindings": [
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swift-r3-swe-2-swe.json",
+      "private_source_sha256": "sha256:bef8795568e9d1b3a54fe22a240883b03f2a8ee94176564d78690fddfe000289",
+      "public_path": "native/swe-2-swe.json",
+      "public_sha256": "sha256:e803492f94c271f0b04005965ce0f072ab3b4b64e4e3ab0beb5f449e1194f107",
+      "redactions": [
+        "request IDs",
+        "trajectory paths",
+        "commands",
+        "stdout",
+        "stderr",
+        "container identifiers",
+        "endpoint port"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swe-native-retained/artifact.json",
+      "private_source_sha256": "sha256:5219ee07d7b3bfff644b16610f0d7ca335b1c6f5f58c71b588d9c6d29ee756ca",
+      "public_path": "native/swe-terminal-artifact.json",
+      "public_sha256": "sha256:ea7dc1db0deed679b9b80386c34c06fce5bd391290d7be992ae62d56a2ac873a",
+      "redactions": [
+        "endpoint port"
+      ]
+    },
+    {
+      "private_source_path": "private-evidence://2026-09-26-swift-tp2-jev/swe-native-retained/work/official-grader/openai__swift15-flash-next-nvfp4-tp2-327k-r3.swift-tp2-r3-swe.json",
+      "private_source_sha256": "sha256:04c5a20d30ce391bafd5b5678802d88dfb845cd457c3fd8213a9aee839cf1d70",
+      "public_path": "native/swe-official-aggregate-grade.json",
+      "public_sha256": "sha256:76082468ee20ae4a0f260940ed5e24013b20d369bba03c5d9bc81edbaa761996",
+      "redactions": [
+        "source path and filename; aggregate fields retained"
+      ]
+    }
+  ],
+  "campaign_id": "2026-09-26-swift-tp2-jev",
+  "schema": "anvil-serving.public-redaction-bindings/v1",
+  "scope": "SWE retained records only; original native/redaction-bindings.json remains unchanged"
+}
