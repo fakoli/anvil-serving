@@ -615,3 +615,24 @@ def test_pending_authelia_upgrade_blocks_delete_worker_before_phase_or_native_ac
         user_delete.delete(str(tmp_path / "deployment.json"), "owner", apply=True)
     with pytest.raises(manage.ManageError, match="Authelia migration recovery is pending"):
         user_delete.process_pending(str(tmp_path / "deployment.json"), apply=True)
+
+
+def test_omitted_legacy_username_decodes_and_preserves_mapping_fence(monkeypatch):
+    wire = {"request_id": "11111111-1111-4111-8111-111111111111", "principal": "human:" + "a" * 64,
+            "generation": 2, "epoch": "b" * 64, "digest": "c" * 64, "complete": False,
+            "completed_at": "0001-01-01T00:00:00Z"}
+    decoded = user_delete._deletion(wire)
+    assert decoded["username"] == "" and "username" not in wire
+    human = user_delete._human({"id": wire["principal"], "generation": 2, "disabled": True})
+    assert human["username"] == ""
+    data = {"gateway": {"oidc": {"issuer": "https://auth.example.test"}}}
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *a, **kw: [])
+    assert user_delete._mapped_subject(data, None, wire["principal"], decoded["username"], None) == ""
+    monkeypatch.setattr(users, "_principal", lambda *a: wire["principal"])
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *a, **kw: [
+        {"service": "openid", "sector_id": "", "identifier": "subject", "username": "owner"}])
+    with pytest.raises(UsageError, match="incomplete"):
+        user_delete._mapped_subject(data, None, wire["principal"], decoded["username"], None)
+    for invalid in (None, 1, [], {}):
+        with pytest.raises(UsageError):
+            user_delete._deletion({**wire, "username": invalid})

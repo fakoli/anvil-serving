@@ -170,7 +170,7 @@ def _human(value: object) -> dict:
             or type(value.get("generation")) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or type(value.get("disabled")) is not bool):
         raise _invalid("Native permanent deletion response is invalid.")
-    return value
+    return {**value, "username": value.get("username", "")}
 
 
 def _inspection(response: dict) -> dict | None:
@@ -216,6 +216,7 @@ def _deletion(value: object) -> dict:
         parsed_completed_at = None
     if (_request_id(value.get("request_id")) != value["request_id"]
             or not isinstance(value.get("principal"), str) or not re.fullmatch(r"human:[0-9a-f]{64}", value["principal"])
+            or not isinstance(value.get("username", ""), str)
             or (value.get("username", "") != "" and not users._USER.fullmatch(value["username"]))
             or type(value.get("generation")) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or not isinstance(value.get("epoch"), str) or not re.fullmatch(r"[0-9a-f]{64}", value["epoch"])
@@ -224,7 +225,8 @@ def _deletion(value: object) -> dict:
             or (value["complete"] and parsed_completed_at is None)
             or (not value["complete"] and "completed_at" in value and parsed_completed_at != datetime.min.replace(tzinfo=timezone.utc))):
         raise _invalid("Native permanent deletion response is invalid.")
-    return value
+    # Go omits an empty legacy username. Normalize once at the wire boundary.
+    return {**value, "username": value.get("username", "")}
 
 
 def _intent(data: dict, manifest: str, principal: str, generation: int, request_id: str, runner) -> dict:

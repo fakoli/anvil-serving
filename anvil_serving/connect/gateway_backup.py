@@ -3,12 +3,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
 import secrets
 import stat
 import re
+import time
+from urllib.parse import urlsplit
 
 from . import manage, recovery
 from .user_backup import private_directory
@@ -25,6 +28,30 @@ def _fsync(directory: Path) -> None:
         os.fsync(fd)
     finally:
         os.close(fd)
+
+
+def _wait_for_oidc(data: dict) -> None:
+    """Keep the running gateway until its restarted identity provider is ready."""
+    issuer = data["gateway"].get("oidc", {}).get("issuer")
+    if not issuer:
+        return
+    endpoint = urlsplit(issuer)
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        connection = http.client.HTTPSConnection(endpoint.hostname, endpoint.port or 443,
+                                                 timeout=min(1, deadline - time.monotonic()))
+        try:
+            connection.request("GET", endpoint.path.rstrip("/") + "/.well-known/openid-configuration")
+            response = connection.getresponse()
+            raw = response.read(65537)
+            if response.status == 200 and len(raw) <= 65536 and json.loads(raw).get("issuer") == issuer:
+                return
+        except (OSError, http.client.HTTPException, ValueError, AttributeError):
+            pass
+        finally:
+            connection.close()
+        time.sleep(max(0, min(0.1, deadline - time.monotonic())))
+    raise manage.ManageError("Identity provider discovery is not ready; gateway was left running.")
 
 
 def snapshot(data: dict, manifest: str, auth_backup: dict, *, runner=None,
@@ -76,6 +103,8 @@ def _snapshot_locked(data: dict, manifest: str, auth_backup: dict, *, runner, un
     result = {"file": str(archive), "receipt": str(receipt), "native_sha256": digests["native"],
               "authentication_backup": {"file": auth_backup["file"], "sha256": auth_backup["sha256"]},
               "gateway_was_active": was_active, "gateway_unit_state": enabled}
+    if was_active:
+        _wait_for_oidc(data)
     stopped = False
     try:
         if was_active:
