@@ -88,6 +88,11 @@ def test_gateway_snapshot_stops_only_gateway_and_restores_readiness(tmp_path, mo
         if argv[:3] == (manage._SYSTEMCTL, "show", "--property=ActiveState,UnitFileState"):
             return manage.RunResult(0, f"ActiveState={'active' if active[0] else 'inactive'}\nUnitFileState=enabled\n".encode())
         return manage.RunResult(0)
+    def oidc_ready(_data):
+        assert locked[0] and active[0]
+        assert not any(call[:2] == (manage._SYSTEMCTL, "stop") for call in calls)
+        calls.append(("oidc-ready",))
+    monkeypatch.setattr(gateway_backup, "_wait_for_oidc", oidc_ready)
     def backup(_data, output_path, *_):
         assert locked[0]
         assert not active[0]; Path(output_path).write_bytes(b"gateway"); Path(output_path).chmod(0o600)
@@ -109,6 +114,7 @@ def test_gateway_snapshot_stops_only_gateway_and_restores_readiness(tmp_path, mo
         result = run()
     assert not locked[0]
     assert active[0] and (manage._SYSTEMCTL, "stop", gateway_backup._UNIT) in calls and (manage._SYSTEMCTL, "start", gateway_backup._UNIT) in calls and ("ready",) in calls
+    assert calls.index(("oidc-ready",)) < calls.index((manage._SYSTEMCTL, "stop", gateway_backup._UNIT))
     assert Path(result["receipt"]).stat().st_mode & 0o777 == 0o600
 
 
@@ -136,3 +142,35 @@ def test_gateway_snapshot_restarts_after_native_backup_failure(tmp_path, monkeyp
     with pytest.raises(manage.ManageError):
         gateway_backup.snapshot(data, str(tmp_path / "deployment.json"), {"file": "/private/auth.zip", "sha256": "b" * 64}, runner=runner, unit_root=units)
     assert active[0]
+
+
+def test_backup_waits_for_exact_oidc_issuer_without_redirects(monkeypatch):
+    issuer = "https://auth.example.test"
+    data = {"gateway": {"oidc": {"issuer": issuer}}}
+    replies = [(502, b"unavailable"), (302, b""), (200, b'{"issuer":"https://wrong.example.test"}'),
+               (200, json.dumps({"issuer": issuer}).encode())]
+    calls = []
+    class Connection:
+        def __init__(self, host, port, timeout):
+            assert (host, port) == ("auth.example.test", 443) and 0 < timeout <= 1
+        def request(self, method, path):
+            calls.append((method, path))
+        def getresponse(self):
+            self.status, self.body = replies.pop(0)
+            return self
+        def read(self, size):
+            assert size == 65537
+            return self.body
+        def close(self):
+            pass
+    monkeypatch.setattr(gateway_backup.http.client, "HTTPSConnection", Connection)
+    monkeypatch.setattr(gateway_backup.time, "sleep", lambda _: None)
+    gateway_backup._wait_for_oidc(data)
+    assert calls == [("GET", "/.well-known/openid-configuration")] * 4
+
+
+def test_backup_oidc_unavailability_is_bounded(monkeypatch):
+    ticks = iter([0, 11])
+    monkeypatch.setattr(gateway_backup.time, "monotonic", lambda: next(ticks))
+    with pytest.raises(gateway_backup.manage.ManageError, match="left running"):
+        gateway_backup._wait_for_oidc({"gateway": {"oidc": {"issuer": "https://auth.example.test"}}})
