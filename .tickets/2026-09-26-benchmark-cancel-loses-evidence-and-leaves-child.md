@@ -1,6 +1,6 @@
 # Benchmark cancellation deletes uncollected evidence and leaves a child running
 
-Status: open; observed with Anvil Serving 1.3.0 at
+Status: fixed in source; observed with Anvil Serving 1.3.0 at
 `a7d04b72f03b7302816342703f1711311a6f3a3f` on Linux.
 
 ## Observed behavior
@@ -42,3 +42,17 @@ result before that cleanup does not retain suite outputs still in `work/`.
 
 The related unsupported `--dry-run` help is tracked separately in
 [the help/parser ticket](2026-09-23-benchmark-submit-preview-help.md).
+
+## Resolution
+
+Cancellation now checks the exact worker command, canonical store/run root,
+process start identity, process group and session before signaling the owned
+group. It waits for that group to stop, then retains bounded native files and
+a completeness manifest before cleanup. If identity or retention cannot be
+proved, cleanup is deferred and the working files remain available. Retention
+or artifact-write failure still records a terminal cancellation in the store.
+
+Regressions cover a live owned child, cross-store run-ID reuse, partial native
+capture, and failed retention. Independent review passed after these checks.
+This repairs future cancellation; the historical ThinkingCap trajectories
+remain missing and its official coding result remains incomplete.
