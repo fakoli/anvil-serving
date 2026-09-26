@@ -105,3 +105,24 @@ def test_failed_call_receipt_and_policy_read_failure_remain_observable():
     assert result['annotations'][0]['usage_receipt']['input_tokens'] == 80
     assert result['views']['jev']['selected_ids'] == result['views']['current']['selected_ids']
     assert 'input_or_policy_changed' in result['fallbacks']
+
+
+def test_provider_failure_restores_full_view_and_unfamiliar_triage_stays_escalated():
+    value = packet()
+    value['evidence'] = [r for r in value['evidence'] if r['kind'] != 'missing_capture']
+    def unavailable(capability, value, **kwargs):
+        return jev.report(capability, 'unavailable', 'provider_timeout', started=True)
+    result = pilot.replay(value, policy_reader=settings, advise=unavailable)
+    assert result['views']['jev']['selected_ids'] == result['views']['current']['selected_ids']
+    assert result['views']['jev']['escalate']
+    result = pilot.replay(value, policy_reader=settings, advise=advice)
+    assert result['views']['jev']['category'] == 'missing_dependency'
+    assert result['views']['jev']['escalate']
+
+
+def test_disabled_jev_keeps_deterministic_comparator():
+    value = packet()
+    value['observation'] = '401 authentication failed'
+    value['evidence'] = [r for r in value['evidence'] if r['kind'] != 'missing_capture']
+    result = pilot.replay(value, policy_reader=settings, disabled=True)
+    assert result['views']['jev'] == result['views']['deterministic']

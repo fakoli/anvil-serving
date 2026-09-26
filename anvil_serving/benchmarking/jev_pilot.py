@@ -135,14 +135,22 @@ def replay(packet, *, policy_reader=jev.load_policy, allow_export=False, disable
                 fallbacks.append("ambiguous_ranking_boundary")
             else:
                 selected = pinned + order[:limit]
+        elif annotation["status"] != "disabled":
+            selected = all_ids[:]
     if packet["observation"] and category == "unknown":
         annotation = ask("incident_triage", {"observation": packet["observation"]})
         if annotation["used"]:
             proposed_category = annotation["answers"]["category"]["choice"]
+        elif annotation["status"] != "disabled":
+            selected = all_ids[:]
     if not active():
         selected, proposed_category = all_ids[:], "unknown"
         fallbacks.append("input_or_policy_changed")
     views["jev"] = _view(packet, selected, proposed_category)
+    # A semantic category is a review queue suggestion, not evidence that an
+    # unfamiliar or ambiguous incident has been resolved.
+    views["jev"]["escalate"] |= category == "unknown" or any(
+        reason != "capability_disabled" for reason in fallbacks)
     for view in views.values():
         assert set(pinned) <= set(view["selected_ids"])
     return {"schema": "anvil-serving.jev-shadow-replay/v1", "packet_id": packet["id"],

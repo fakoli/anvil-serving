@@ -57,8 +57,9 @@ reviewed diagnostic templates from the existing Anvil bridge. No confidence
 threshold is treated as calibrated proof.
 
 The command binds packet and policy digests and checks both around calls.
-Revoked or changed inputs invalidate recommendations. Provider failures retain
-the baseline and escalation path; every attempt and fallback remains in the
+Revoked or changed inputs invalidate recommendations. Provider failures restore
+the full view and escalation path; disabled calls use the deterministic comparator.
+Unfamiliar incidents remain escalated even with a semantic category suggestion; every attempt and fallback remains in the
 receipt. Anvil validates typed responses; Serving independently validates
 capability IDs and provenance. Source instructions never become tool authority.
 
