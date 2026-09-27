@@ -12,6 +12,43 @@
   <main>
     <p id="notice" role="status" aria-live="polite">Loading your services…</p>
     <section aria-labelledby="services-heading"><div class="section-heading"><h1 id="services-heading">Your services</h1><span id="service-count"></span></div><div id="services" class="services"></div></section>
+    <section id="router-keys" hidden aria-labelledby="router-keys-heading">
+      <div class="section-heading"><div><p class="eyebrow">For apps and devices</p><h2 id="router-keys-heading">Router API keys</h2></div><button id="refresh-keys" type="button">Refresh</button></div>
+      <p class="section-intro">Give each device its own key to use your approved models. You can revoke a key without changing the others.</p>
+      <a id="review-router-access" href="#router-approvals-heading" hidden>Review router access requests</a>
+      <p id="key-notice" role="status" aria-live="polite"></p>
+      <div id="key-access-panel" class="access-panel"><div><span id="key-status" class="key-badge"></span><p id="key-access"></p></div><button id="request-api-access" class="primary" type="button" hidden>Request router access</button></div>
+      <div id="key-workspace" hidden>
+        <div id="key-summary" class="key-metrics" aria-label="Your API usage"></div>
+        <details class="key-explainer"><summary>About these numbers</summary><p>Usage includes active and retired keys. Rate-limited requests are included in errors.</p><p id="key-usage-window"></p></details>
+        <div class="section-heading key-list-heading"><h3>Your keys <span id="key-count"></span></h3><button id="open-create-key" class="primary" type="button" aria-expanded="false" aria-controls="create-key-panel">Create API key</button></div>
+        <p id="key-capacity" hidden>All 10 key slots are in use. Revoke an unused key to create another.</p>
+        <div id="create-key-panel" class="key-panel" hidden>
+          <h3>Name this key</h3><p>Use a name you’ll recognize later, such as “Work laptop” or “Home server”.</p>
+          <form id="create-key">
+            <label>Device or app name <input name="name" required maxlength="128" autocomplete="off" placeholder="Work laptop"></label>
+            <label>Expires after (days) <input name="expires_days" type="number" required min="1"></label>
+            <fieldset id="key-models"><legend>Models this key can use</legend></fieldset>
+            <details id="key-advanced" class="key-advanced"><summary>Limit permissions and request rate</summary><p>Start with your approved access, or reduce it for this device.</p><fieldset id="key-paths"><legend>API endpoints</legend></fieldset><label>Requests per minute <input name="rpm" type="number" required min="1"></label><p id="key-budget"></p></details>
+            <div class="key-actions"><button class="primary" type="submit">Create key</button><button id="cancel-create-key" type="button">Cancel</button></div>
+          </form>
+        </div>
+        <div id="new-key" class="key-panel" hidden aria-labelledby="new-key-heading">
+          <h3 id="new-key-heading" tabindex="-1">Your key is ready. Save it now.</h3><p>This is the only time you can copy it. Store it with your app’s credentials.</p>
+          <label>New API key <input id="key-secret" type="password" readonly autocomplete="off" spellcheck="false"></label>
+          <div class="key-actions"><button id="copy-key" class="primary" type="button">Copy API key</button><button id="reveal-key" type="button" aria-pressed="false">Show key</button><button id="dismiss-key" type="button">I saved it</button></div>
+          <p>Use the router URL provided by your operator. This key does not set up a network connection or replace the local key from <code>anvil-connect login</code>.</p>
+        </div>
+        <div id="key-list"></div>
+        <p id="key-list-note"></p>
+      </div>
+      <section id="router-approvals" hidden aria-labelledby="router-approvals-heading">
+        <div class="section-heading"><div><p class="eyebrow">Operator controls</p><h3 id="router-approvals-heading" tabindex="-1">Manage router access</h3></div><span id="approval-count" class="key-badge"></span></div>
+        <p>Review each person’s models, API endpoints, and shared request limit. Router access is separate from browser service access.</p>
+        <div id="router-accounts"></div>
+      </section>
+    </section>
+    <dialog id="key-confirm" aria-labelledby="key-confirm-title" aria-describedby="key-confirm-description"><form method="dialog"><h2 id="key-confirm-title"></h2><p id="key-confirm-description"></p><div class="key-actions"><button value="cancel" autofocus>Cancel</button><button id="key-confirm-action" value="confirm" class="danger"></button></div></form></dialog>
     <section class="account" aria-labelledby="account-heading"><div><h2 id="account-heading">Your account</h2><p>Change your password or add a passkey.</p></div><div class="account-actions"><a id="account-link" hidden>Change password <span aria-hidden="true">↗</span></a><a id="passkeys-link" hidden>Manage passkeys <span aria-hidden="true">↗</span></a><a id="manage-access-link" hidden>Manage access <span aria-hidden="true">↗</span></a><a id="install-link" href="https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.2.0" target="_blank" rel="noopener noreferrer" title="Downloads (opens in a new tab)">Install Anvil Connect <span aria-hidden="true">↗</span></a><button id="terminal" type="button" aria-expanded="false" aria-controls="terminal-help">Connect from a terminal <span aria-hidden="true">→</span></button><button id="logout" type="button">Sign out of Connect</button></div></section>
     <section id="terminal-help" hidden aria-labelledby="terminal">
       <p><a id="install-guide" href="https://github.com/fakoli/anvil-serving/blob/connect-v0.2.0/docs/ANVIL-CONNECT-INSTALL.md#install-a-bundle" target="_blank" rel="noopener noreferrer" title="Client installation guide (opens in a new tab)">Client setup guide</a> · Get your connection setup from your operator, then run:</p>
@@ -22,19 +59,6 @@
         <li>Keep Connect running. Use the printed API URL and your local API key in your SDK. Press <kbd>Ctrl+C</kbd> to disconnect.</li>
       </ol>
       <p>Run Connect on the same machine as your SDK. Over SSH, that means the remote machine. Run the command again when your session expires.</p>
-    </section>
-    <section id="router-keys" hidden aria-labelledby="router-keys-heading">
-      <div class="section-heading"><h2 id="router-keys-heading">Router API keys</h2><button id="refresh-keys" type="button">Refresh keys and usage</button></div>
-      <p id="key-access" role="status"></p><button id="request-api-access" type="button" hidden>Request router access</button>
-      <form id="create-key" hidden>
-        <label>Device or key name <input name="name" required maxlength="128" autocomplete="off" placeholder="My laptop"></label>
-        <fieldset id="key-models"><legend>Models</legend></fieldset><fieldset id="key-paths"><legend>Endpoints</legend></fieldset>
-        <label>Requests per minute <input name="rpm" type="number" required min="1"></label>
-        <label>Expires in days <input name="expires_days" type="number" required min="1"></label><button type="submit">Create API key</button>
-      </form>
-      <div id="new-key" hidden role="status"><p>Save this key now. It is shown only once.</p><label>New API key <input id="key-secret" type="password" readonly autocomplete="off"></label><button id="copy-key" type="button">Copy key</button><button id="dismiss-key" type="button">I saved it</button></div>
-      <p id="key-usage-window"></p><p id="key-summary"></p><div id="key-list"></div>
-      <section id="router-approvals" hidden aria-labelledby="router-approvals-heading"><h3 id="router-approvals-heading">Router access requests</h3><p>Approve models and endpoints separately from browser services. Changes revoke this account’s existing router keys.</p><div id="router-accounts"></div></section>
     </section>
     <section id="administration" hidden aria-labelledby="admin-heading"><div class="section-heading"><div><h2 id="admin-heading">Manage access</h2></div><button id="refresh-users" type="button">Refresh accounts</button></div><p>Choose which services each person can open and their role inside each app. Saving access changes invalidates their current Connect sessions. An app admin does not become a Connect operator.</p><div id="users"></div><button id="next-users" type="button" hidden>Next accounts →</button></section>
   </main>

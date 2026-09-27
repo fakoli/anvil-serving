@@ -24,6 +24,7 @@ const routerPrincipalPath = dedicatedHomePath + "/router-principal"
 type routerAccountAuthority interface {
 	RouterFence(string, string) (string, error)
 	CheckRouterPrincipal(string, uint64, string) error
+	RouterAccountName(string, uint64, string) (string, error)
 }
 
 type homeRouter struct {
@@ -210,6 +211,15 @@ func (h *Home) routerKeys(w http.ResponseWriter, r *http.Request, cookies browse
 		browserFailure(w, 503)
 		return
 	}
+	// Account names are resolved only for the freshly authorized operator view.
+	// They never enter the router database or member responses.
+	if r.Method == "GET" && operator && response.StatusCode == 200 {
+		raw, err = h.routerAccountNames(raw)
+		if err != nil {
+			browserFailure(w, 503)
+			return
+		}
+	}
 	if current, _, valid := h.admission(cookies.session); !valid || !sameAdmission(current, admitted) {
 		browserFailure(w, 401)
 		return
@@ -228,4 +238,37 @@ func (h *Home) routerKeys(w http.ResponseWriter, r *http.Request, cookies browse
 	w.Header().Set("X-CSRF-Token", routerCSRF(admitted.SessionID))
 	w.WriteHeader(200)
 	_, _ = w.Write(raw)
+}
+
+func (h *Home) routerAccountNames(raw []byte) ([]byte, error) {
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return nil, err
+	}
+	var accounts []map[string]json.RawMessage
+	if err := json.Unmarshal(envelope["accounts"], &accounts); err != nil || len(accounts) > 256 {
+		return nil, ErrBrowserConfiguration
+	}
+	for _, account := range accounts {
+		var owner, generation, fence string
+		if json.Unmarshal(account["owner"], &owner) != nil || json.Unmarshal(account["generation"], &generation) != nil || json.Unmarshal(account["epoch"], &fence) != nil {
+			return nil, ErrBrowserConfiguration
+		}
+		number, err := strconv.ParseUint(generation, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		name, err := h.router.authority.RouterAccountName(owner, number, fence)
+		if err != nil && !errors.Is(err, session.ErrDenied) {
+			return nil, err
+		}
+		available := err == nil
+		if !available {
+			name = ""
+		}
+		account["username"], _ = json.Marshal(name)
+		account["available"], _ = json.Marshal(available)
+	}
+	envelope["accounts"], _ = json.Marshal(accounts)
+	return json.Marshal(envelope)
 }

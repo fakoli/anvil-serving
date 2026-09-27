@@ -6,7 +6,8 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 	m, idp := portalSessionFixture(t)
 	defer m.Close()
 	login := func() (Human, Completion) {
-		human, err := m.SetHuman(idp.issuer(), "router-person", nil, false)
+		username := "router-person"
+		human, err := m.SetHumanWithUsername(idp.issuer(), "router-person", &username, nil, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -21,6 +22,9 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 	fence, err := m.RouterFence(completed.Cookie, "home.example.test")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if name, err := m.RouterAccountName(human.ID, human.Generation, fence); err != nil || name != "router-person" {
+		t.Fatal("current username unavailable", err)
 	}
 	if m.CheckRouterPrincipal(human.ID, human.Generation, fence) != nil {
 		t.Fatal("new fence denied")
@@ -45,6 +49,9 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 	newFence, err := m.RouterFence(next.Cookie, "home.example.test")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if name, err := m.RouterAccountName(human.ID, 1, fence); err == nil || name != "" {
+		t.Fatal("stale record labeled as recreated account")
 	}
 	if fence == newFence || m.CheckRouterPrincipal(human.ID, 1, fence) == nil {
 		t.Fatal("deleted credential resurrected")

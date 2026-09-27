@@ -17,6 +17,7 @@ import (
 type routerHomeStub struct {
 	*homeStub
 	fenceError, checkError error
+	nameCalls              int
 }
 
 func (s *routerHomeStub) RouterFence(raw, host string) (string, error) {
@@ -38,12 +39,17 @@ func (s *routerHomeStub) CheckRouterPrincipal(id string, generation uint64, epoc
 	return nil
 }
 
+func (s *routerHomeStub) RouterAccountName(id string, generation uint64, fence string) (string, error) {
+	s.nameCalls++
+	return s.human.Username, s.CheckRouterPrincipal(id, generation, fence)
+}
+
 func TestHomeRouterBoundaryAndSignedIdentity(t *testing.T) {
 	declaration := browserDeclaration("none")
 	declaration.PortalHost = "home.example.test"
 	principal := "human:" + strings.Repeat("a", 64)
 	declaration.BrowserAdministration = &config.BrowserAdministration{BrowserResource: "dash", Operators: []string{principal}}
-	authority := &routerHomeStub{homeStub: &homeStub{&portalStub{browserAuthorityStub: newBrowserAuthorityStub(), human: session.Human{ID: principal, Generation: 1, Resources: []string{"dash"}}}}}
+	authority := &routerHomeStub{homeStub: &homeStub{&portalStub{browserAuthorityStub: newBrowserAuthorityStub(), human: session.Human{ID: principal, Username: "example-member", Generation: 1, Resources: []string{"dash"}}}}}
 	authority.admitted = session.Admission{Principal: principal, PrincipalGeneration: 1, SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Resource: homeSessionResource, Host: declaration.PortalHost, Epoch: strings.Repeat("e", 64), ExpiresAt: time.Now().Add(time.Hour)}
 	calls := 0
 	role := ""
@@ -69,7 +75,11 @@ func TestHomeRouterBoundaryAndSignedIdentity(t *testing.T) {
 		}
 		role, _ = claims["role"].(string)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"account":null,"keys":[],"usage":[]}`))
+		var accounts any
+		if role == "admin" {
+			accounts = []map[string]string{{"owner": principal, "generation": "1", "epoch": strings.Repeat("f", 64)}}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"account": nil, "keys": []any{}, "usage": []any{}, "accounts": accounts})
 	}))
 	defer broker.Close()
 	home, err := NewHome(declaration, authority)
@@ -107,6 +117,9 @@ func TestHomeRouterBoundaryAndSignedIdentity(t *testing.T) {
 	if read.Code != 200 || role != "admin" || read.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("view: %d", read.Code)
 	}
+	if !strings.Contains(read.Body.String(), `"username":"example-member"`) || !strings.Contains(read.Body.String(), `"available":true`) {
+		t.Fatal("operator view missing verified name")
+	}
 	csrf := read.Header().Get("X-CSRF-Token")
 	for _, test := range []struct {
 		body, csrf, origin, cookie string
@@ -123,9 +136,13 @@ func TestHomeRouterBoundaryAndSignedIdentity(t *testing.T) {
 			t.Fatalf("boundary: %d want %d", w.Code, test.status)
 		}
 	}
+	nameCalls := authority.nameCalls
 	authority.human.Resources = nil
 	if w := request("GET", routerKeysPath, "", "", "", "opaque-session", ""); w.Code != 200 || role != "member" {
 		t.Fatal("browser grant removal did not remove admin authority")
+	}
+	if authority.nameCalls != nameCalls {
+		t.Fatal("member view resolved other account names")
 	}
 	before := calls
 	if w := request("POST", routerKeysPath, `{"action":"approve"}`, csrf, "https://home.example.test", "opaque-session", ""); w.Code != 403 || calls != before {

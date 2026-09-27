@@ -4,8 +4,9 @@ Open **Home → Router API keys → Request router access**. An explicitly confi
 Connect operator approves the account's models, endpoints, requests per minute,
 and maximum key lifetime. Browser service access alone never grants router access.
 
-After approval, name a device, select from your approved models and endpoints,
-and choose **Create API key**. Copy the key immediately into protected credential
+After approval, choose **Create API key**, name a device or app, select its models
+and lifetime, and choose **Create key**. Endpoint permissions and a lower request
+rate are available under **Limit permissions and request rate**. Copy the key immediately into protected credential
 storage; it cannot be retrieved later. Home lists your keys, expiry, grants and
 recent usage (up to 100 keys, active keys first). **Revoke key** stops subsequent
 requests. If a create response is lost, refresh the list and revoke the unused key before creating another.
@@ -58,10 +59,13 @@ match its canonical hostname, without an explicit port or path.
 
 Home uses its signed account session to call the fixed router broker endpoint.
 Only explicitly listed, enabled operators with the administration resource grant
-can approve or remove access. Match the opaque account ID with **Manage access**
-when reviewing requests. Every approval edit invalidates that account's existing
-router keys; stale policy revisions fail rather than overwrite another edit.
-**Remove inactive record** frees a denied or deleted account record when the
+can approve or remove access. **Manage router access** shows pending requests
+first, with current usernames resolved by Connect and the account ID available
+for verification. Names are not copied into the router database. Changed or
+deleted accounts cannot be approved until a fresh request is made. Every approval edit invalidates that account's existing
+router keys; **Save limits and revoke keys** requires confirmation. Stale policy
+revisions fail rather than overwrite another edit.
+Under **Record options**, **Remove inactive record** frees a denied or deleted account record when the
 256-record capacity is reached. Deny enabled accounts first. Retained request
 metadata is preserved, and removed records cannot reuse an old policy revision.
 

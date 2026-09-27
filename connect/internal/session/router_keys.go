@@ -42,10 +42,24 @@ func routerFence(epoch, incarnation string) string {
 }
 
 func (m *Manager) CheckRouterPrincipal(id string, generation uint64, fence string) error {
+	_, err := m.routerPrincipal(id, generation, fence)
+	return err
+}
+
+// RouterAccountName is for the operator-only Home view. It returns no identity
+// provider subject, session, or stored incarnation, and never labels stale keys
+// with the name of an account recreated under the same principal ID.
+func (m *Manager) RouterAccountName(id string, generation uint64, fence string) (string, error) {
+	human, err := m.routerPrincipal(id, generation, fence)
+	return human.Username, err
+}
+
+func (m *Manager) routerPrincipal(id string, generation uint64, fence string) (Human, error) {
 	if !config.ValidHumanID(id) || generation == 0 || len(fence) != 64 {
-		return ErrDenied
+		return Human{}, ErrDenied
 	}
-	return m.state.View(func(tx *store.Tx) error {
+	var result Human
+	err := m.state.View(func(tx *store.Tx) error {
 		var human Human
 		if err := tx.Get("principals", id, &human); err != nil {
 			if errors.Is(err, store.ErrMissing) {
@@ -56,6 +70,8 @@ func (m *Manager) CheckRouterPrincipal(id string, generation uint64, fence strin
 		if human.ID != id || human.Disabled || human.DeletionRequest != "" || human.Generation != generation || !validBinding(human.RouterIncarnation) || routerFence(tx.Epoch(), human.RouterIncarnation) != fence {
 			return ErrDenied
 		}
+		result = human
 		return nil
 	})
+	return result, err
 }
