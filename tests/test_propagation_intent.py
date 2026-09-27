@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import json
 import sqlite3
@@ -64,6 +65,11 @@ def _admit(
         value, approval_lookup=_approval(value), active_identity=identity,
         caller_id=caller_id, request_id=request_id, now=now,
     )
+
+
+def _sqlite_page_size(path) -> int:
+    with closing(sqlite3.connect(path)) as connection:
+        return connection.execute("PRAGMA page_size").fetchone()[0]
 
 
 def _large_contract(*, scope: str, revision: str, generation: int) -> dict:
@@ -231,7 +237,7 @@ def test_scope_duplicate_refuses_real_page_growth_without_tombstone_eviction(tmp
     path = tmp_path / "propagation.sqlite3"
     first_store = PropagationIntentStore(path)
     accepted = _admit(first_store, _contract())
-    page_size = sqlite3.connect(path).execute("PRAGMA page_size").fetchone()[0]
+    page_size = _sqlite_page_size(path)
 
     for number in range(1, 513):
         before = path.stat().st_size
@@ -273,7 +279,7 @@ def test_new_intent_refuses_actual_page_growth_and_rolls_back_every_binding(tmp_
     first_store = PropagationIntentStore(path)
     first = _admit(first_store, _contract())
     before = path.stat().st_size
-    page_size = sqlite3.connect(path).execute("PRAGMA page_size").fetchone()[0]
+    page_size = _sqlite_page_size(path)
     constrained = PropagationIntentStore(path, max_database_bytes=before + page_size - 1)
     second_value = _contract(scope="scope-2", revision="revision-2", generation=2)
 
