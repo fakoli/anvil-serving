@@ -14,6 +14,7 @@ import re
 import stat
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import urlsplit
 
 SCHEMA = "anvil-connect.deployment/v1"
 # Connect may declare up to this many connectors and clients. Render/lifecycle
@@ -120,6 +121,23 @@ def _env(value: Any, path: str) -> str:
     if not _ENV.fullmatch(text):
         raise _error(path, "must be an environment variable name")
     return text
+
+
+def service_url(value):
+    """Fixed HTTPS authority, or explicit loopback HTTP, without ambient proxies."""
+    if not isinstance(value, str) or len(value) > 2048 or any(c.isspace() for c in value):
+        raise ValueError("invalid Connect service URL")
+    parsed = urlsplit(value)
+    if (parsed.username is not None or parsed.password is not None or not parsed.hostname
+            or parsed.path not in ("", "/") or parsed.query or parsed.fragment
+            or "?" in value or "#" in value or "\\" in value
+            or parsed.scheme not in ("http", "https")
+            or parsed.hostname == "localhost" or parsed.hostname.endswith(".localhost")
+            or (parsed.scheme == "http" and parsed.hostname != "127.0.0.1")):
+        raise ValueError("Connect service requires HTTPS or explicit loopback HTTP")
+    if parsed.port is not None and not 1 <= parsed.port <= 65535:
+        raise ValueError("invalid service port")
+    return value.rstrip("/")
 
 
 def _client_id(value: Any, path: str) -> str:
@@ -775,7 +793,6 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if browser_administration is not None:
         gateway_embedded["browser_administration"] = browser_administration
     if "router_keys" in embedded:
-        from ..router.connect_keys import service_url
         fields = _mapping(embedded["router_keys"], "$.gateway.gateway.router_keys", {"url", "secret_env", "check_env"})
         try:
             broker_url = service_url(fields["url"])

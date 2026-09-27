@@ -190,6 +190,14 @@ def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: 
     assert invalid.returncode != 0
     assert json.loads(invalid.stdout)['ok'] is False
     assert 'Traceback' not in invalid.stderr
+    # The opt-in broker declaration must also work without the router package.
+    from tests.connect.test_portal_host import router_keys_manifest
+    manifest = tmp_path / 'router-keys.json'
+    manifest.write_text(json.dumps(router_keys_manifest()))
+    checked = subprocess.run([sys.executable, '-I', '-c',
+        'import sys,json;sys.path.insert(0,sys.argv[1]);from anvil_serving.connect.config import validate_manifest;validate_manifest(json.load(open(sys.argv[2])))',
+        str(output), str(manifest)], cwd=tmp_path, capture_output=True, text=True)
+    assert checked.returncode == 0, checked.stderr
 
 
 @requires_posix

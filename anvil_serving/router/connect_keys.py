@@ -16,6 +16,7 @@ import time
 from urllib.parse import urlsplit
 
 from .keys import KeyStoreError, _POST_PATHS
+from ..connect.config import service_url
 
 BROKER_PATH = "/v1/connect/keys"
 HOME_PATH = "/_anvil-connect/home"
@@ -27,23 +28,6 @@ _GENERATION = re.compile(r"[1-9][0-9]{0,19}\Z")
 
 class Denied(KeyStoreError):
     pass
-
-
-def service_url(value):
-    """Fixed HTTPS authority, or explicit loopback HTTP, without ambient proxies."""
-    if not isinstance(value, str) or len(value) > 2048 or any(c.isspace() for c in value):
-        raise ValueError("invalid Connect service URL")
-    parsed = urlsplit(value)
-    if (parsed.username is not None or parsed.password is not None or not parsed.hostname
-            or parsed.path not in ("", "/") or parsed.query or parsed.fragment
-            or "?" in value or "#" in value or "\\" in value
-            or parsed.scheme not in ("http", "https")
-            or parsed.hostname == "localhost" or parsed.hostname.endswith(".localhost")
-            or (parsed.scheme == "http" and parsed.hostname != "127.0.0.1")):
-        raise ValueError("Connect service requires HTTPS or explicit loopback HTTP")
-    if parsed.port is not None and not 1 <= parsed.port <= 65535:
-        raise ValueError("invalid service port")
-    return value.rstrip("/")
 
 
 def home_url(value):
