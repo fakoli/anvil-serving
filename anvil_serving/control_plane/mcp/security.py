@@ -74,6 +74,14 @@ def require_scope(scope: str) -> CallerContext:
     return caller
 
 
+def authenticated_caller() -> CallerContext:
+    """Return the transport-supplied caller without accepting request identity."""
+    caller = _CALLER_CONTEXT.get()
+    if caller is None:
+        raise ToolError("authentication_required", "authenticated caller context is required")
+    return caller
+
+
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 PROBE_API_KEY_ENVS = frozenset({"ANVIL_ROUTER_TOKEN"})
 RAW_COMMAND_KEYS = frozenset(

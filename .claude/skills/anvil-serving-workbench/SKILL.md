@@ -67,9 +67,11 @@ narration.
   `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.
-- Inert propagation declaration: `propagation_capabilities` is a scoped
-  read-only declaration (`propagation:status`); it does not start, dispatch,
-  or execute propagation.
+- Propagation: `propagation_capabilities` reports scoped owner operations.
+  The default controller has no execution profile. A constructor-bound service
+  exposes approved admission, dispatch and bounded fleet operations; inspect
+  each operation's availability and required scope before use. See
+  `docs/PROPAGATION-NATIVE-WRITES.md` for the controlled integration boundary.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
   `benchmark_artifact`, `benchmark_harness_prepare`, `benchmark_harness_status`,
   `benchmark_harness_cleanup`, `benchmark_job_preflight`, `benchmark_job_submit`, `benchmark_job_status`, `benchmark_job_list`,

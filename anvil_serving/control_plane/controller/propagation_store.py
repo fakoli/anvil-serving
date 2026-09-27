@@ -372,6 +372,35 @@ class PropagationIntentStore:
                 break
         return {"intents": page_rows, "next_cursor": next_cursor}
 
+    def contract_bytes(self, intent_id: str) -> bytes:
+        """Return the immutable admitted bytes for a non-pruned owner operation."""
+        intent_id = _token(intent_id)
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT canonical_payload FROM propagation_intents WHERE intent_id = ?", (intent_id,),
+            ).fetchone()
+        if row is None:
+            raise PropagationIntentError("intent_not_found")
+        value = row["canonical_payload"]
+        if not isinstance(value, bytes):
+            raise PropagationIntentError("storage_unavailable")
+        return value
+
+    def assert_current(self, intent_id: str) -> None:
+        """Fence admission against the owner's current scope generation."""
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT i.generation, i.terminal_at, h.generation AS current_generation "
+                "FROM propagation_intents i JOIN propagation_scope_high_water h ON i.scope=h.scope "
+                "WHERE i.intent_id=?", (_token(intent_id),),
+            ).fetchone()
+        if row is None:
+            raise PropagationIntentError("intent_not_found")
+        if row["generation"] != row["current_generation"]:
+            raise PropagationIntentError("stale_generation")
+        if row["terminal_at"] is not None:
+            raise PropagationIntentError("intent_terminal")
+
     def acknowledge(self, intent_id: str, *, workflow_id: str, contract_digest: str, now: datetime) -> bool:
         """Persist an observed deterministic workflow binding; no execution occurs."""
 
