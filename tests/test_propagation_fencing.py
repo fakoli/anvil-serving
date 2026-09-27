@@ -58,7 +58,6 @@ def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
     fence, target = _fence(tmp_path)
     with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
         journal.begin_effect("catalog", target, target.read_bytes(), b"after")
-        journal.bind_backup("catalog", "backup-1")
         target.write_bytes(b"after")
         journal.observe_bytes("catalog", target.read_bytes())
 
@@ -68,7 +67,7 @@ def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
         "path": str(target.resolve()),
         "before_digest": hashlib.sha256(b"before").hexdigest(),
         "desired_digest": hashlib.sha256(b"after").hexdigest(),
-        "backup_id": "backup-1",
+        "backup_id": None,
         "state": "verified",
         "observed_digest": hashlib.sha256(b"after").hexdigest(),
     }
@@ -223,10 +222,9 @@ def test_later_generation_keeps_completed_operation_and_original_backup_identity
     first = _grant(fence, target)
     with fence.transaction(first, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
         journal.begin_effect("catalog", target, b"before", b"after")
-        journal.bind_backup("catalog", "backup-original")
         journal.observe_bytes("catalog", b"after")
     original = fence.lookup(first)
-    assert original and original["effects"]["catalog"]["backup_id"] == "backup-original"
+    assert original and original["effects"]["catalog"]["backup_id"] is None
     second = _grant(fence, target, 2)
     with fence.transaction(second, canonical_contract=_CONTRACT2, target_paths=(target,)) as journal:
         journal.begin_effect("catalog", target, b"after", b"later")
@@ -254,3 +252,62 @@ def test_journal_write_is_portable_when_fchmod_is_not_available(tmp_path, monkey
         journal.begin_effect("catalog", target, b"before", b"after")
         journal.observe_bytes("catalog", b"after")
     assert fence.journal()["status"] == "completed"
+
+
+def test_new_effects_require_catalog_effect_and_current_trusted_clock(tmp_path):
+    import json
+    from datetime import datetime, timezone
+
+    target = tmp_path / "catalog.json"; target.write_bytes(b"before")
+    expired_owner = TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path,
+        clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
+    )
+    expired = NativeMutationFence(expired_owner, tmp_path / "ignored")
+    grant = expired.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
+    with pytest.raises(PropagationFenceError, match="approval_expired"):
+        with expired.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)):
+            pass
+    value = json.loads(_CONTRACT)
+    value["targets"][0]["effects"] = ["monitoring-apply"]
+    value["effect_set_digest"] = effect_scope_digest(value)
+    monitoring_only = parse_contract(value).canonical
+    effect_root = tmp_path / "catalog-effect"; effect_root.mkdir()
+    fence, target = _fence(effect_root)
+    with pytest.raises(PropagationFenceError, match="effect_not_approved"):
+        fence.grant(canonical_contract=monitoring_only, generation=1, effects=("catalog",), target_paths=(target,))
+
+
+def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
+    root = tmp_path / "root"; root.mkdir()
+    target = root / "a"; other = root / "b"; target.write_bytes(b"before"); other.write_bytes(b"before")
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", root), root / "ignored")
+    grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target, other), effect_targets={"catalog": target})
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target, other)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        journal.observe_bytes("catalog", b"after")
+    remapped = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target, other), effect_targets={"catalog": other})
+    assert fence.lookup(remapped) is None
+    outside = tmp_path / "outside"; outside.mkdir()
+    import shutil
+    shutil.rmtree(root / ".anvil-serving")
+    (root / ".anvil-serving").symlink_to(outside, target_is_directory=True)
+    fresh = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", root), root / "ignored")
+    next_contract = _CONTRACT2
+    next_grant = fresh.grant(canonical_contract=next_contract, generation=2, effects=("catalog",), target_paths=(target,))
+    with pytest.raises(PropagationFenceError, match="unsafe_custody_path"):
+        with fresh.transaction(next_grant, canonical_contract=next_contract, target_paths=(target,)):
+            pass
+
+
+def test_backup_manifest_must_bind_the_recorded_before_bytes(tmp_path):
+    import json
+
+    fence, target = _fence(tmp_path)
+    bundle = tmp_path / "backup-1"; bundle.mkdir()
+    (bundle / "00-catalog.json").write_bytes(b"different")
+    (bundle / "manifest.json").write_text(json.dumps({"files": [{"source": str(target.resolve()), "backup": "00-catalog.json", "existed": True, "sha256": hashlib.sha256(b"different").hexdigest()}]}))
+    with pytest.raises(PropagationFenceError, match="backup_binding_mismatch"):
+        with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            journal.bind_backup("catalog", bundle)

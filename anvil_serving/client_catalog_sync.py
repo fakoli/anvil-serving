@@ -750,7 +750,7 @@ def _sync_pi_media(
         journal.begin_effect("pi-media", path, source, desired_bytes)
     backup = _backup([path], Path(os.path.expanduser(backup_root)), _sha256_bytes(desired_bytes))
     if journal is not None:
-        journal.bind_backup("pi-media", backup.name)
+        journal.bind_backup("pi-media", backup)
     _, observed_source, _ = _read_json_document(path)
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
@@ -1954,7 +1954,7 @@ def _sync_hermes_media(
         )
         if journal is not None:
             for effect in journal.started_effects:
-                journal.bind_backup(effect, backup.name)
+                journal.bind_backup(effect, backup)
         try:
             if "skill" in changed:
                 if journal is not None:
@@ -2025,7 +2025,7 @@ def _sync_hermes_media(
                             timeout_seconds=timeout_seconds, run=run, required=True,
                         )
                         journal.observe_semantic(
-                            "hermes-" + row["profile"], row["config"].read_bytes(), _json_bytes(observed),
+                            "hermes-" + row["profile"], row["config"].read_bytes(), _json_bytes(server),
                         )
         except Exception:
             if journal is not None:
@@ -2209,6 +2209,10 @@ def _sync_clients(
         "pi_settings": Path(os.path.expanduser(pi_settings)),
         "state": Path(os.path.expanduser(state_path)),
     }
+    # These are the controlled before-images used for both effect identity and
+    # the immediate pre-write comparison.  Later rendering must not adopt a
+    # concurrent edit as an approved original.
+    before_images = {name: path.read_bytes() if path.exists() else None for name, path in paths.items()}
     desired = {}
     hermes_rows: list[dict] = []
     hermes_configs: dict[str, Path] = {}
@@ -2221,6 +2225,7 @@ def _sync_clients(
             _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve, exclude_aliases=openclaw_exclude_aliases, allow_aliases=openclaw_allow_aliases)
         )
         paths["openclaw_env"] = paths["openclaw"].parent / ".env"
+        before_images["openclaw_env"] = paths["openclaw_env"].read_bytes() if paths["openclaw_env"].exists() else None
         desired["openclaw_env"] = _render_openclaw_state_env(
             _read_optional_text_file(paths["openclaw_env"]),
             name=openclaw_secret_env_name,
@@ -2372,7 +2377,7 @@ def _sync_clients(
         )
         if journal is not None:
             for effect in journal.started_effects:
-                journal.bind_backup(effect, backup.name)
+                journal.bind_backup(effect, backup)
         try:
             for name in desired:
                 if name not in changed:
@@ -2565,14 +2570,14 @@ def _sync_clients(
     if journal is not None:
         journal.begin_effect(
             "catalog-state", paths["state"],
-            paths["state"].read_bytes() if paths["state"].exists() else None,
+            before_images["state"],
             state_bytes,
         )
         # State bookkeeping is a separate controlled effect.  Capture its
         # own original bytes after the journal's before image, then recheck
         # that they still match before writing.
         state_backup = _backup([paths["state"]], Path(os.path.expanduser(backup_root)), catalog["config_sha256"])
-        journal.bind_backup("catalog-state", state_backup.name)
+        journal.bind_backup("catalog-state", state_backup)
         if backup is None:
             backup = state_backup
         journal.require_before_bytes(

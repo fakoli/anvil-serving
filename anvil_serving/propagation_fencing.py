@@ -23,9 +23,11 @@ from pathlib import Path
 import re
 import stat
 import tempfile
-from typing import Iterable, Iterator, Mapping
+from typing import Callable, Iterable, Iterator, Mapping
 
 from .control_plane.propagation import parse_contract
+from .control_plane import bootstrap_shim
+from .control_plane.mcp import auth_file
 
 
 _TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
@@ -70,6 +72,7 @@ class TrustedNativeOwner:
     storage_root: Path
     epoch: str = "epoch-1"
     catalog_digest: str | None = None
+    clock: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc), repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _token(self.owner_id)
@@ -77,6 +80,8 @@ class TrustedNativeOwner:
         _token(self.epoch)
         if self.catalog_digest is not None:
             _digest(self.catalog_digest)
+        if not callable(self.clock):
+            raise PropagationFenceError("malformed_owner_context")
         object.__setattr__(self, "storage_root", Path(self.storage_root).resolve())
 
 
@@ -136,6 +141,7 @@ class NativeMutationJournal:
         raw-file digest match.
         """
         effect_id = _token(effect_id)
+        self._fence._require_effect_authority(self._state)
         selected = self._fence._trusted_path(path)
         if (effect_id not in self._state["allowed_effects"]
                 or self._state["effect_targets"].get(effect_id) != str(selected)):
@@ -170,13 +176,29 @@ class NativeMutationJournal:
         effects[effect_id] = effect
         self._save()
 
-    def bind_backup(self, effect_id: str, backup_id: str) -> None:
+    def bind_backup(self, effect_id: str, backup_path: str | Path) -> None:
+        """Bind a verified manifest entry to this exact durable before image."""
         effect = self._effect(effect_id)
-        effect["backup_id"] = _token(backup_id)
+        bundle = Path(backup_path)
+        try:
+            manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+            entries = manifest["files"]
+            entry = next(item for item in entries if item.get("source") == effect["path"])
+            if entry.get("existed"):
+                stored = (bundle / entry["backup"]).read_bytes()
+                if (_sha256(stored) != entry.get("sha256")
+                        or entry.get("sha256") != effect["before_digest"]):
+                    raise ValueError
+            elif effect["before_digest"] is not None:
+                raise ValueError
+        except (OSError, TypeError, KeyError, StopIteration, ValueError, json.JSONDecodeError) as exc:
+            raise PropagationFenceError("backup_binding_mismatch") from exc
+        effect["backup_id"] = _token(bundle.name)
         self._save()
 
     def require_before_bytes(self, effect_id: str, observed: bytes | None) -> None:
         effect = self._effect(effect_id)
+        self._fence._assert_custody(Path(effect["path"]), leaf_may_be_missing=effect["before_digest"] is None)
         digest = None if observed is None else _sha256(observed)
         if digest != effect["before_digest"]:
             effect["observed_digest"] = digest
@@ -262,7 +284,7 @@ class NativeMutationFence:
             if self.owner.resource_id in target["resource_keys"]
         ]
         declared = {effect for target in approved_targets for effect in target["effects"]}
-        if not approved_targets or not declared.intersection({"catalog-apply", "monitoring-apply"}):
+        if not approved_targets or "catalog-apply" not in declared:
             raise PropagationFenceError("effect_not_approved")
         catalog_digest = contract.value["inputs"]["catalog_digest"]
         if self.owner.catalog_digest is not None and self.owner.catalog_digest != catalog_digest:
@@ -278,14 +300,14 @@ class NativeMutationFence:
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets)
-            reservation_id = _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest]))
+            reservation_id = self._reservation_id(grant)
             index = self._read_index()
             self._validate_generation(index, grant, reservation_id)
             path = self._operation_path(reservation_id)
             state = {
                 "schema": _SCHEMA, "owner_id": self.owner.owner_id, "resource_id": self.owner.resource_id,
                 "epoch": grant.epoch, "contract_digest": grant.contract_digest, "generation": grant.generation,
-                "catalog_digest": grant.catalog_digest, "effect_targets": dict(grant.effect_targets),
+                "catalog_digest": grant.catalog_digest, "deadline_at": self._contract_deadline(canonical_contract).isoformat().replace("+00:00", "Z"), "effect_targets": dict(grant.effect_targets),
                 "targets_digest": grant.targets_digest, "allowed_effects": list(grant.effects),
                 "reservation_id": reservation_id, "status": "active", "effects": {}, "updated_at": self._now(),
             }
@@ -330,7 +352,7 @@ class NativeMutationFence:
         """Resolve an exact completed identity without allocating a replacement."""
         if not isinstance(grant, NativeMutationGrant) or grant._seal is not self._seal:
             raise PropagationFenceError("untrusted_grant")
-        reservation_id = _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest]))
+        reservation_id = self._reservation_id(grant)
         return self.journal(reservation_id)
 
     def _set_operation_status(self, index: dict, reservation_id: str, status: str) -> None:
@@ -352,6 +374,38 @@ class NativeMutationFence:
                 or grant.catalog_digest != parsed.value["inputs"]["catalog_digest"]
                 or grant.targets_digest != _sha256(_canonical(targets))):
             raise PropagationFenceError("grant_binding_mismatch")
+        self._require_current_authority(parsed.value)
+
+    def _reservation_id(self, grant: NativeMutationGrant) -> str:
+        return _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest, list(grant.effects), list(grant.effect_targets)]))
+
+    def _contract_deadline(self, canonical_contract: bytes) -> datetime:
+        value = parse_contract(canonical_contract).value
+        return self._parse_utc(value["deadline_at"])
+
+    def _require_current_authority(self, value: Mapping[str, object]) -> None:
+        now = self.owner.clock()
+        if not isinstance(now, datetime) or now.tzinfo != timezone.utc or now.utcoffset() != timezone.utc.utcoffset(now):
+            raise PropagationFenceError("malformed_owner_clock")
+        issued = self._parse_utc(value["issued_at"])
+        deadline = self._parse_utc(value["deadline_at"])
+        if issued > now or now >= deadline:
+            raise PropagationFenceError("approval_expired")
+
+    @staticmethod
+    def _parse_utc(value: object) -> datetime:
+        if type(value) is not str or not value.endswith("Z"):
+            raise PropagationFenceError("malformed_grant")
+        try:
+            parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+        except ValueError as exc:
+            raise PropagationFenceError("malformed_grant") from exc
+        if parsed.tzinfo != timezone.utc or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+            raise PropagationFenceError("malformed_grant")
+        return parsed
+
+    def _require_effect_authority(self, state: Mapping[str, object]) -> None:
+        self._require_current_authority({"issued_at": "1970-01-01T00:00:00Z", "deadline_at": state["deadline_at"]})
 
     @staticmethod
     def _validate_generation(index: dict, grant: NativeMutationGrant, reservation_id: str) -> None:
@@ -376,11 +430,53 @@ class NativeMutationFence:
             selected.relative_to(self.owner.storage_root)
         except ValueError as exc:
             raise PropagationFenceError("untrusted_target_path") from exc
+        self._assert_custody(selected, leaf_may_be_missing=True)
         return selected
+
+    def _assert_custody(self, path: Path, *, leaf_may_be_missing: bool) -> None:
+        """Reject symlink/reparse ancestry before a native write can follow it."""
+        try:
+            relative = path.relative_to(self.owner.storage_root)
+        except ValueError as exc:
+            raise PropagationFenceError("untrusted_target_path") from exc
+        current = self.owner.storage_root
+        for index, component in enumerate(relative.parts):
+            if current.is_symlink() or not current.exists() or not current.is_dir():
+                raise PropagationFenceError("unsafe_custody_path")
+            current = current / component
+            if not current.exists() and leaf_may_be_missing:
+                break
+            if current.is_symlink() or not current.exists():
+                raise PropagationFenceError("unsafe_custody_path")
+
+
+    def _ensure_journal_root(self) -> None:
+        parent = self.owner.storage_root / ".anvil-serving"
+        self._assert_custody(parent, leaf_may_be_missing=True)
+        self.journal_root.mkdir(mode=0o777 if os.name == "nt" else 0o700, parents=True, exist_ok=True)
+        if os.name != "nt":
+            os.chmod(parent, 0o700)
+            os.chmod(self.journal_root, 0o700)
+        self._assert_custody(self.journal_root, leaf_may_be_missing=False)
+        for directory in (parent, self.journal_root):
+            try:
+                descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+                try:
+                    if os.name == "nt":
+                        is_directory, _identity, _links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
+                        if not is_directory:
+                            raise ValueError
+                        auth_file._require_windows_private_descriptor(descriptor)
+                    elif stat.S_IMODE(os.fstat(descriptor).st_mode) & 0o077:
+                        raise ValueError
+                finally:
+                    os.close(descriptor)
+            except (OSError, ValueError, auth_file.AuthFileError) as exc:
+                raise PropagationFenceError("unsafe_journal_root") from exc
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        self.journal_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self._ensure_journal_root()
         if self.journal_root.is_symlink() or not self.journal_root.is_dir():
             raise PropagationFenceError("unsafe_journal_root")
         lock_path = self.journal_root / (self.owner.resource_id + ".lock")
@@ -399,7 +495,7 @@ class NativeMutationFence:
                 import fcntl
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             yield
-        except BlockingIOError as exc:
+        except (BlockingIOError, PermissionError) as exc:
             raise PropagationFenceError("operation_in_progress") from exc
         finally:
             os.close(fd)
@@ -434,7 +530,7 @@ class NativeMutationFence:
 
     def _read_state(self, path: Path) -> dict:
         value = self._read_json(path)
-        required = {"schema", "owner_id", "resource_id", "epoch", "contract_digest", "generation", "catalog_digest", "effect_targets", "targets_digest", "allowed_effects", "reservation_id", "status", "effects", "updated_at"}
+        required = {"schema", "owner_id", "resource_id", "epoch", "contract_digest", "generation", "catalog_digest", "deadline_at", "effect_targets", "targets_digest", "allowed_effects", "reservation_id", "status", "effects", "updated_at"}
         if (set(value) != required or value["schema"] != _SCHEMA or value["owner_id"] != self.owner.owner_id
                 or value["resource_id"] != self.owner.resource_id or value["epoch"] != self.owner.epoch
                 or type(value["generation"]) is not int or value["generation"] < 1
@@ -455,6 +551,16 @@ class NativeMutationFence:
         if (not stat.S_ISREG(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid())
                 or (os.name != "nt" and stat.S_IMODE(info.st_mode) & 0o077)):
             raise PropagationFenceError("unsafe_journal")
+        try:
+            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            try:
+                verdict = bootstrap_shim.inspect_opened_permissions(descriptor, ancestor=False)
+            finally:
+                os.close(descriptor)
+        except OSError as exc:
+            raise PropagationFenceError("unsafe_journal") from exc
+        if verdict.name not in {"OWNER_READONLY", "OWNER_WRITABLE"}:
+            raise PropagationFenceError("unsafe_journal")
         if type(value) is not dict:
             raise PropagationFenceError("unsafe_journal")
         return value
@@ -467,7 +573,7 @@ class NativeMutationFence:
         self._write_json(path, value)
 
     def _write_json(self, path: Path, value: dict) -> None:
-        self.journal_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self._ensure_journal_root()
         encoded = _canonical(value)
         fd, temporary = tempfile.mkstemp(prefix=".journal-", dir=self.journal_root)
         try:
