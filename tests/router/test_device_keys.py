@@ -43,6 +43,8 @@ def running(store, **kwargs):
     server = make_server("127.0.0.1", 0, backend, auth_token=MASTER,
         model_routes=["llm.primary", "llm.private"],
         server_config=ServerConfig(api_keys_path=str(store.path)), **kwargs)
+    # Join handlers, including post-response audit writes, before deleting SQLite.
+    server.daemon_threads = False
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     connection = http.client.HTTPConnection(*server.server_address, timeout=5)

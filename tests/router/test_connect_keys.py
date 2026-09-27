@@ -133,6 +133,8 @@ def running(portal,monkeypatch):
     monkeypatch.setattr(connect_keys,"principal_checker",lambda *args: p.store.owner_check)
     config = ServerConfig(api_keys_path=str(p.store.path),connect_keys_env="CONNECT_SIGNING_TEST",connect_check_env="CONNECT_CHECK_TEST",connect_home_url="https://home.example.test")
     server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config)
+    # Join handlers, including post-response audit writes, before deleting SQLite.
+    server.daemon_threads = False
     thread = threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     try: yield server.server_address,secret,check_secret,master
     finally: server.shutdown();server.server_close();thread.join(5)
