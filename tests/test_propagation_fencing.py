@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 import time
@@ -39,17 +40,24 @@ _CONTRACT = _canonical_contract()
 _CONTRACT2 = _canonical_contract(2)
 
 
+def _trusted_test_clock() -> datetime:
+    return datetime(2026, 9, 27, 13, tzinfo=timezone.utc)
+
+
 @pytest.fixture(autouse=True)
-def _native_fixture_custody(tmp_path):
+def _native_fixture_custody(tmp_path, tmp_path_factory):
     """Make controlled fixture roots match the native owner custody contract."""
     if sys.platform == "win32":
         from tests.bootstrap_windows_fixtures import WindowsFixtureTree
 
+        base_tree = WindowsFixtureTree(tmp_path_factory.getbasetemp())
+        base_tree.establish_full_control(tmp_path)
         tree = WindowsFixtureTree(tmp_path)
         try:
             yield
         finally:
             tree.restore_full_control(tmp_path)
+            base_tree.restore_full_control(base_tree.root)
     else:
         os.chmod(tmp_path, 0o700)
         yield
@@ -69,7 +77,10 @@ def _fence(tmp_path: Path) -> tuple[NativeMutationFence, Path]:
     target = tmp_path / "catalog.json"
     target.write_bytes(b"before")
     _private_file(target)
-    owner = TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups")
+    owner = TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    )
     return NativeMutationFence(owner, tmp_path / "journal"), target
 
 
@@ -137,11 +148,15 @@ def test_dead_process_reservation_cannot_be_released_by_timeout_or_supersession(
     fence, target = _fence(tmp_path)
     script = """
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from anvil_serving.propagation_fencing import NativeMutationFence, TrustedNativeOwner
 root = Path(os.environ['FENCE_ROOT'])
 target = root / 'catalog.json'
-fence = NativeMutationFence(TrustedNativeOwner('owner-1', 'catalog-1', root), root / 'journal')
+fence = NativeMutationFence(TrustedNativeOwner(
+    'owner-1', 'catalog-1', root, backup_root=root / 'backups',
+    clock=lambda: datetime(2026, 9, 27, 13, tzinfo=timezone.utc),
+), root / 'journal')
 contract = os.environ['FENCE_CONTRACT'].encode('ascii')
 grant = fence.grant(canonical_contract=contract, generation=1, effects=('catalog',), target_paths=(target,))
 with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)) as journal:
@@ -185,12 +200,16 @@ def test_separate_process_overlap_fails_before_it_can_mutate(tmp_path):
     ready = tmp_path / "ready"
     script = """
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 import time
 from anvil_serving.propagation_fencing import NativeMutationFence, TrustedNativeOwner
 root = Path(os.environ['FENCE_ROOT'])
 target = root / 'catalog.json'
-fence = NativeMutationFence(TrustedNativeOwner('owner-1', 'catalog-1', root), root / 'journal')
+fence = NativeMutationFence(TrustedNativeOwner(
+    'owner-1', 'catalog-1', root, backup_root=root / 'backups',
+    clock=lambda: datetime(2026, 9, 27, 13, tzinfo=timezone.utc),
+), root / 'journal')
 contract = os.environ['FENCE_CONTRACT'].encode('ascii')
 grant = fence.grant(canonical_contract=contract, generation=1, effects=('catalog',), target_paths=(target,))
 with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)) as journal:
@@ -317,7 +336,10 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
     _private_directory(root)
     target = root / "a"; other = root / "b"; target.write_bytes(b"before"); other.write_bytes(b"before")
     _private_file(target); _private_file(other)
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", root, backup_root=root / "backups"), root / "ignored")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", root, backup_root=root / "backups",
+        clock=_trusted_test_clock,
+    ), root / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target, other), effect_targets={"catalog": target})
     with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target, other)) as journal:
         journal.begin_effect("catalog", target, b"before", b"after")
@@ -329,7 +351,10 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
     import shutil
     shutil.rmtree(root / ".anvil-serving")
     (root / ".anvil-serving").symlink_to(outside, target_is_directory=True)
-    fresh = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", root, backup_root=root / "backups"), root / "ignored")
+    fresh = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", root, backup_root=root / "backups",
+        clock=_trusted_test_clock,
+    ), root / "ignored")
     next_contract = _CONTRACT2
     next_grant = fresh.grant(canonical_contract=next_contract, generation=2, effects=("catalog",), target_paths=(target,))
     with pytest.raises(PropagationFenceError, match="unsafe_custody_path"):
@@ -379,7 +404,10 @@ def test_fenced_write_refuses_target_parent_swap_without_touching_redirect(tmp_p
     target = client / "catalog.json"; target.write_bytes(b"before"); _private_file(target)
     outside = tmp_path / "outside"; outside.mkdir(mode=0o700)
     redirected = outside / target.name; redirected.write_bytes(b"outside-before"); _private_file(redirected)
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", owned, backup_root=owned / "backups"), owned / "ignored")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", owned, backup_root=owned / "backups",
+        clock=_trusted_test_clock,
+    ), owned / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
     with pytest.raises(PropagationFenceError):
         with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
@@ -425,7 +453,10 @@ def test_windows_fence_refuses_reparse_parent_and_pins_held_parent(tmp_path):
     target = parent / "catalog.json"; target.write_bytes(b"before"); tree.establish_full_control(target)
     outside = tmp_path / "outside"; outside.mkdir(); tree.establish_full_control(outside)
     redirected = outside / target.name; redirected.write_bytes(b"outside-before"); tree.establish_full_control(redirected)
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", root, backup_root=root / "backups"), root / "ignored")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", root, backup_root=root / "backups",
+        clock=_trusted_test_clock,
+    ), root / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
     with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)):
         with pytest.raises(PermissionError):
@@ -504,7 +535,10 @@ def test_windows_fence_refuses_junction_at_canonical_lock_leaf(tmp_path):
     target = root / "catalog.json"; target.write_bytes(b"before"); tree.establish_full_control(target)
     outside = tmp_path / "outside-lock"; outside.mkdir(); tree.establish_full_control(outside)
     fence = NativeMutationFence(
-        TrustedNativeOwner("owner-1", "catalog-1", root, backup_root=root / "backups"),
+        TrustedNativeOwner(
+            "owner-1", "catalog-1", root, backup_root=root / "backups",
+            clock=_trusted_test_clock,
+        ),
         root / "ignored",
     )
     grant = fence.grant(

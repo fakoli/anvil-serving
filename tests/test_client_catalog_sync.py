@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,17 +27,24 @@ from anvil_serving.client_catalog_sync import (
 CONFIG_SHA = "a" * 64
 
 
+def _trusted_test_clock() -> datetime:
+    return datetime(2026, 9, 27, 13, tzinfo=timezone.utc)
+
+
 @pytest.fixture(autouse=True)
-def _native_fixture_custody(tmp_path):
+def _native_fixture_custody(tmp_path, tmp_path_factory):
     """Use a private controlled root for fenced native-file tests."""
     if sys.platform == "win32":
         from tests.bootstrap_windows_fixtures import WindowsFixtureTree
 
+        base_tree = WindowsFixtureTree(tmp_path_factory.getbasetemp())
+        base_tree.establish_full_control(tmp_path)
         tree = WindowsFixtureTree(tmp_path)
         try:
             yield
         finally:
             tree.restore_full_control(tmp_path)
+            base_tree.restore_full_control(base_tree.root)
     else:
         os.chmod(tmp_path, 0o700)
         yield
@@ -542,7 +550,10 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
     state = tmp_path / "state.json"
     contract = _fenced_contract()
     fence = NativeMutationFence(
-        TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal",
+        TrustedNativeOwner(
+            "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+            clock=_trusted_test_clock,
+        ), tmp_path / "journal",
     )
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
@@ -575,7 +586,10 @@ def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
     contract = _fenced_contract()
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -1551,7 +1565,10 @@ def test_fenced_hermes_media_sync_refuses_before_lock_or_runner_side_effects(tmp
     configs = tuple(home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml" for profile in profiles)
     skill = home / "skills" / "anvil-media" / "SKILL.md"
     contract = _fenced_contract("media-1")
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "media-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "media-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    ), tmp_path / "journal")
     grant = fence.grant(
         canonical_contract=contract, generation=1,
         effects=("hermes-skill", "hermes-default", "hermes-anvil-primary"),
@@ -2000,7 +2017,10 @@ def test_fenced_catalog_rejects_router_snapshot_that_differs_from_contract(tmp_p
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
     contract = _fenced_contract()
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2023,7 +2043,10 @@ def test_fenced_catalog_rejects_drift_found_immediately_before_write(tmp_path, m
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
     contract = _fenced_contract()
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2057,7 +2080,10 @@ def test_fenced_catalog_preserves_an_edit_made_after_render_before_effect_prepar
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
     contract = _fenced_contract()
-    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"), tmp_path / "journal")
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock,
+    ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2090,7 +2116,10 @@ def test_fenced_hermes_profile_sync_refuses_before_runner_or_journal(tmp_path):
     config = home / "config.yaml"
     contract = _fenced_contract()
     fence = NativeMutationFence(
-        TrustedNativeOwner("owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups"),
+        TrustedNativeOwner(
+            "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+            clock=_trusted_test_clock,
+        ),
         tmp_path / "journal",
     )
     grant = fence.grant(
