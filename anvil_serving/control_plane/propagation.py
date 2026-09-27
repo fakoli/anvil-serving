@@ -460,9 +460,14 @@ def _intent_row() -> dict[str, Any]:
         "intent_id": _identifier(),
         "workflow_id": _identifier(),
         "contract_digest": _digest_schema(),
-        "scope": _identifier(),
-        "revision": _identifier(),
-        "generation": {"type": "integer", "minimum": 1},
+        "target_set_digest": _digest_schema(),
+        "effect_set_digest": _digest_schema(),
+        "issued_at": _timestamp(),
+        "deadline_at": _timestamp(),
+        "targets": _array(_object({
+            "target_id": _identifier(),
+            "check_set_digest": _digest_schema(),
+        }), MAX_TARGETS),
     })
 
 

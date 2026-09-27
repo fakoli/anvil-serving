@@ -123,7 +123,8 @@ def test_capability_schemas_have_bounded_semantic_rows_and_scalar_types():
     intent_rows = pending["result_schema"]["properties"]["intents"]
     assert intent_rows["maxItems"] == 100
     assert intent_rows["items"]["properties"]["contract_digest"]["pattern"] == "^[0-9a-f]{64}$"
-    assert intent_rows["items"]["properties"]["generation"] == {"type": "integer", "minimum": 1}
+    assert intent_rows["items"]["properties"]["effect_set_digest"]["pattern"] == "^[0-9a-f]{64}$"
+    assert intent_rows["items"]["properties"]["targets"]["maxItems"] == 128
     assert pending["result_schema"]["properties"]["next_cursor"]["type"] == ["string", "null"]
 
     recorded = operations["propagation.dispatch.record.v1"]["result_schema"]
@@ -181,7 +182,10 @@ def _matches_declared_schema(value, declaration):
 def test_capability_result_samples_match_their_declared_bounded_schemas():
     operations = {operation["name"]: operation for operation in capability_declaration()["operations"]}
     pending = {
-        "intents": [{"intent_id": "intent-1", "workflow_id": "workflow-1", "contract_digest": _DIGEST, "scope": "scope-1", "revision": "revision-1", "generation": 1}],
+        "intents": [{"intent_id": "intent-1", "workflow_id": "workflow-1", "contract_digest": _DIGEST,
+                     "target_set_digest": _DIGEST, "effect_set_digest": _DIGEST,
+                     "issued_at": "2026-09-27T12:00:00Z", "deadline_at": "2026-09-28T12:00:00Z",
+                     "targets": [{"target_id": "target-1", "check_set_digest": _DIGEST}]}],
         "next_cursor": None,
     }
     status = {**_page_context(), "outcomes": [_offline_row()], "receipt_refs": []}
