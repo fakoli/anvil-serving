@@ -44,23 +44,17 @@ def _trusted_test_clock() -> datetime:
     return datetime(2026, 9, 27, 13, tzinfo=timezone.utc)
 
 
-@pytest.fixture(autouse=True)
-def _native_fixture_custody(tmp_path, tmp_path_factory):
-    """Make controlled fixture roots match the native owner custody contract."""
+@pytest.fixture
+def tmp_path(tmp_path):
+    """Use the shared protected Windows tree, independent of pytest temp ACLs."""
     if sys.platform == "win32":
-        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+        from tests.bootstrap_windows_fixtures import windows_fixture_tree
 
-        base_tree = WindowsFixtureTree(tmp_path_factory.getbasetemp())
-        base_tree.establish_full_control(tmp_path)
-        tree = WindowsFixtureTree(tmp_path)
-        try:
-            yield
-        finally:
-            tree.restore_full_control(tmp_path)
-            base_tree.restore_full_control(base_tree.root)
+        with windows_fixture_tree() as tree:
+            yield tree.root
     else:
         os.chmod(tmp_path, 0o700)
-        yield
+        yield tmp_path
 
 
 def _private_file(path: Path) -> None:
