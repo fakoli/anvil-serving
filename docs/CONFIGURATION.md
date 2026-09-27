@@ -597,6 +597,10 @@ MCP image content up to six binary MiB. Base64 expansion remains below the
 ten-MiB controller/SDK framing bound; larger images and all video remain
 authenticated resource-only.
 
+This command remains a legacy pre-cutover writer. The propagation foundation
+refuses fenced Hermes CLI-backed profile/media writes until its bounded owner
+writer is available; see [native propagation writes](PROPAGATION-NATIVE-WRITES.md).
+
 When `[server].media_principal` enables the gateway surfaces, the process reads
 the media runtime only from environment variables:
 

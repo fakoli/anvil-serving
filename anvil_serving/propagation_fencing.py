@@ -14,15 +14,17 @@ never acquire this lock or create a reservation.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
+import errno
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import stat
-import tempfile
 from typing import Callable, Iterable, Iterator, Mapping
 
 from .control_plane.propagation import parse_contract
@@ -63,6 +65,197 @@ def _canonical(value: object) -> bytes:
     return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
 
 
+_UNCHECKED = object()
+
+
+class _HeldFiles:
+    """Native directory custody for one lock lifetime; no pathname-only writes."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.directories: dict[Path, int] = {}
+
+    def close(self) -> None:
+        try:
+            for descriptor in reversed(self.directories.values()):
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+        finally:
+            self.directories.clear()
+
+    def check(self) -> None:
+        # Windows handles deny directory deletion/rename. POSIX handles anchor
+        # relative writes, and this check detects detached/replaced namespaces.
+        if os.name != "nt":
+            for path, descriptor in self.directories.items():
+                parent = None if path == path.parent else self.directories.get(path.parent)
+                info = os.stat(path.name if parent is not None else path,
+                               dir_fd=parent, follow_symlinks=False)
+                if not os.path.samestat(info, os.fstat(descriptor)):
+                    raise PropagationFenceError("unsafe_custody_path")
+
+    @staticmethod
+    def _permissions(descriptor: int, *, directory: bool, private: bool) -> None:
+        try:
+            if os.name == "nt":
+                is_dir, _identity, links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
+                if is_dir != directory or (not directory and links != 1):
+                    raise PropagationFenceError("unsafe_custody_path")
+                if private:
+                    auth_file._require_windows_private_descriptor(descriptor)
+                elif bootstrap_shim.inspect_opened_permissions(descriptor, ancestor=directory).name not in {
+                    "OWNER_READONLY", "OWNER_WRITABLE",
+                }:
+                    raise PropagationFenceError("unsafe_custody_path")
+            else:
+                info = os.fstat(descriptor)
+                if directory:
+                    auth_file._require_posix_private_ancestor(descriptor)
+                    if private and (info.st_uid != os.geteuid() or info.st_mode & 0o077):
+                        raise PropagationFenceError("unsafe_journal_root")
+                elif private:
+                    auth_file._require_posix_private_descriptor(descriptor)
+                elif (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                      or info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o022):
+                    raise PropagationFenceError("unsafe_custody_path")
+                if not directory:
+                    auth_file._require_macos_no_extended_acl(descriptor)
+        except (OSError, auth_file.AuthFileError) as exc:
+            raise PropagationFenceError("unsafe_custody_path") from exc
+
+    def directory(self, path: Path, *, create: bool = False, private: bool = False) -> int:
+        self.check()
+        if path not in self.directories:
+            if path == path.parent:
+                descriptor = (bootstrap_shim._windows_open_prefix(str(path), directory=True)
+                              if os.name == "nt" else os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+            else:
+                parent = self.directory(path.parent, create=create)
+                if create and path.is_relative_to(self.root):
+                    try:
+                        if os.name == "nt":
+                            path.mkdir(mode=0o777)
+                        else:
+                            os.mkdir(path.name, mode=0o700, dir_fd=parent)
+                            os.fsync(parent)
+                    except FileExistsError:
+                        pass
+                descriptor = (bootstrap_shim._windows_open_prefix(str(path), directory=True)
+                              if os.name == "nt" else os.open(path.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent))
+            try:
+                self._permissions(descriptor, directory=True, private=private)
+            except BaseException:
+                os.close(descriptor)
+                raise
+            self.directories[path] = descriptor
+        descriptor = self.directories[path]
+        self._permissions(descriptor, directory=True, private=private)
+        return descriptor
+
+    def read(self, path: Path, *, private: bool = False) -> bytes | None:
+        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+            raise PropagationFenceError("untrusted_target_path")
+        try:
+            parent = self.directory(path.parent)
+        except (OSError, auth_file.AuthFileError) as exc:
+            raise PropagationFenceError("unsafe_custody_path") from exc
+        try:
+            descriptor = (bootstrap_shim._windows_open_prefix(str(path), directory=False)
+                          if os.name == "nt" else os.open(path.name, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW, dir_fd=parent))
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            # CreateFileW's existing helper reports an untyped OSError. Missing
+            # leaves are allowed only while their parent remains held/validated.
+            if os.name == "nt":
+                try:
+                    os.lstat(path)
+                except FileNotFoundError:
+                    self.check()
+                    return None
+            raise PropagationFenceError("unsafe_custody_path") from exc
+        try:
+            self._permissions(descriptor, directory=False, private=private)
+            # ponytail: bound local documents/journals to 2 MiB; split the
+            # permanent index if actual lifetime volume reaches this ceiling.
+            with os.fdopen(os.dup(descriptor), "rb") as stream:
+                content = stream.read(2 * 1024 * 1024 + 1)
+            if len(content) > 2 * 1024 * 1024:
+                raise PropagationFenceError("document_too_large")
+            self.check()
+            return content
+        finally:
+            os.close(descriptor)
+
+    def mode(self, path: Path) -> int:
+        if os.name == "nt":
+            return 0o600  # Windows custody is an ACL contract, not POSIX mode bits.
+        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+            raise PropagationFenceError("untrusted_target_path")
+        parent = self.directory(path.parent)
+        info = os.stat(path if os.name == "nt" else path.name, follow_symlinks=False,
+                       **({} if os.name == "nt" else {"dir_fd": parent}))
+        if not stat.S_ISREG(info.st_mode):
+            raise PropagationFenceError("unsafe_custody_path")
+        return stat.S_IMODE(info.st_mode)
+
+    def write(self, path: Path, data: bytes, *, mode: int = 0o600,
+              private: bool = False, expected: bytes | None | object = _UNCHECKED,
+              pre_replace: Callable[[], None] | None = None) -> None:
+        if len(data) > 2 * 1024 * 1024:
+            raise PropagationFenceError("document_too_large")
+        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+            raise PropagationFenceError("untrusted_target_path")
+        parent = self.directory(path.parent, private=private)
+        if expected is not _UNCHECKED and self.read(path) != expected:
+            raise PropagationFenceError("external_drift")
+        temporary = ".propagation-" + secrets.token_hex(12)
+        descriptor = os.open(path.parent / temporary if os.name == "nt" else temporary,
+                             os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+                             | getattr(os, "O_BINARY", 0), 0o600,
+                             **({} if os.name == "nt" else {"dir_fd": parent}))
+        try:
+            self._permissions(descriptor, directory=False, private=True)
+            with os.fdopen(descriptor, "wb") as stream:
+                descriptor = -1
+                stream.write(data)
+                stream.flush()
+                if os.name != "nt":
+                    if hasattr(os, "fchmod"):
+                        os.fchmod(stream.fileno(), mode)
+                    else:
+                        os.chmod(stream.fileno(), mode)
+                os.fsync(stream.fileno())
+            self.check()
+            if expected is not _UNCHECKED and self.read(path) != expected:
+                raise PropagationFenceError("external_drift")
+            if pre_replace is not None:
+                pre_replace()
+            if os.name == "nt":
+                import ctypes
+                from ctypes import wintypes
+                move = ctypes.WinDLL("kernel32", use_last_error=True).MoveFileExW
+                move.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
+                move.restype = wintypes.BOOL
+                if not move(str(path.parent / temporary), str(path), 0x1 | 0x8):
+                    raise OSError(ctypes.get_last_error(), "native replacement failed")
+            else:
+                os.replace(temporary, path.name, src_dir_fd=parent, dst_dir_fd=parent)
+                os.fsync(parent)
+            if self.read(path, private=private) != data:
+                raise PropagationFenceError("external_drift")
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+            try:
+                os.unlink(path.parent / temporary if os.name == "nt" else temporary,
+                          **({} if os.name == "nt" else {"dir_fd": parent}))
+            except FileNotFoundError:
+                pass
+
+
 @dataclass(frozen=True, slots=True)
 class TrustedNativeOwner:
     """Private bootstrap data; public callers must not derive it from paths."""
@@ -71,6 +264,7 @@ class TrustedNativeOwner:
     resource_id: str
     storage_root: Path
     epoch: str = "epoch-1"
+    backup_root: Path | None = None
     catalog_digest: str | None = None
     clock: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc), repr=False, compare=False)
 
@@ -82,7 +276,14 @@ class TrustedNativeOwner:
             _digest(self.catalog_digest)
         if not callable(self.clock):
             raise PropagationFenceError("malformed_owner_context")
-        object.__setattr__(self, "storage_root", Path(self.storage_root).resolve())
+        root = Path(self.storage_root).absolute()
+        if ".." in root.parts or (os.name == "nt" and root.drive.startswith("\\\\")):
+            raise PropagationFenceError("malformed_owner_context")
+        backup = root / ".anvil-serving" / "backups" / "propagation" if self.backup_root is None else Path(self.backup_root).absolute()
+        if ".." in backup.parts or not backup.is_relative_to(root):
+            raise PropagationFenceError("malformed_owner_context")
+        object.__setattr__(self, "storage_root", root)
+        object.__setattr__(self, "backup_root", backup)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +299,7 @@ class NativeMutationGrant:
     effect_targets: tuple[tuple[str, str], ...]
     targets_digest: str
     catalog_digest: str
+    backup_root: str
     _seal: object = field(repr=False, compare=False)
 
 
@@ -130,16 +332,8 @@ class NativeMutationJournal:
         path: str | Path,
         before: bytes | None,
         desired: bytes | None,
-        *,
-        semantic_expected: bytes | None = None,
     ) -> None:
-        """Record an exact raw before image before a mutation can begin.
-
-        Hermes owns whole YAML files but verifies a normalized key.  For that
-        case ``desired`` is deliberately absent and the semantic proof is kept
-        separately, so a valid environment reference never masquerades as a
-        raw-file digest match.
-        """
+        """Record an exact raw before image before a mutation can begin."""
         effect_id = _token(effect_id)
         self._fence._require_effect_authority(self._state)
         selected = self._fence._trusted_path(path)
@@ -148,18 +342,14 @@ class NativeMutationJournal:
             raise PropagationFenceError("effect_not_granted")
         if desired is not None and not isinstance(desired, bytes):
             raise PropagationFenceError("malformed_effect")
-        if semantic_expected is not None and not isinstance(semantic_expected, bytes):
-            raise PropagationFenceError("malformed_effect")
         effects = self._state["effects"]
         existing = effects.get(effect_id)
         original_digest = None if before is None else _sha256(before)
         desired_digest = None if desired is None else _sha256(desired)
-        semantic_digest = None if semantic_expected is None else _sha256(semantic_expected)
         if existing is not None:
             if (existing.get("path") != str(selected)
                     or existing.get("before_digest") != original_digest
-                    or existing.get("desired_digest") != desired_digest
-                    or existing.get("semantic_expected_digest") != semantic_digest):
+                    or existing.get("desired_digest") != desired_digest):
                 raise PropagationFenceError("effect_identity_conflict")
             return
         effect = {
@@ -170,22 +360,28 @@ class NativeMutationJournal:
             "state": "prepared",
             "observed_digest": None,
         }
-        if semantic_digest is not None:
-            effect["semantic_expected_digest"] = semantic_digest
-            effect["semantic_observed_digest"] = None
         effects[effect_id] = effect
         self._save()
 
     def bind_backup(self, effect_id: str, backup_path: str | Path) -> None:
         """Bind a verified manifest entry to this exact durable before image."""
         effect = self._effect(effect_id)
-        bundle = Path(backup_path)
+        bundle = self._fence._trusted_path(backup_path)
+        if bundle.parent != self._fence.owner.backup_root:
+            raise PropagationFenceError("backup_root_mismatch")
         try:
-            manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+            raw_manifest = self._fence._held().read(bundle / "manifest.json", private=True)
+            manifest = json.loads(raw_manifest)
             entries = manifest["files"]
-            entry = next(item for item in entries if item.get("source") == effect["path"])
+            matches = [item for item in entries if item.get("source") == effect["path"]]
+            if len(matches) != 1:
+                raise ValueError
+            entry = matches[0]
             if entry.get("existed"):
-                stored = (bundle / entry["backup"]).read_bytes()
+                name = entry["backup"]
+                if type(name) is not str or Path(name).name != name:
+                    raise ValueError
+                stored = self._fence._held().read(bundle / name, private=True)
                 if (_sha256(stored) != entry.get("sha256")
                         or entry.get("sha256") != effect["before_digest"]):
                     raise ValueError
@@ -193,12 +389,19 @@ class NativeMutationJournal:
                 raise ValueError
         except (OSError, TypeError, KeyError, StopIteration, ValueError, json.JSONDecodeError) as exc:
             raise PropagationFenceError("backup_binding_mismatch") from exc
-        effect["backup_id"] = _token(bundle.name)
+        binding = {"backup_id": _token(bundle.name), "backup_path": str(bundle),
+                   "backup_manifest_digest": _sha256(raw_manifest)}
+        if effect["backup_id"] is not None and any(effect.get(k) != v for k, v in binding.items()):
+            raise PropagationFenceError("backup_identity_conflict")
+        effect.update(binding)
         self._save()
 
     def require_before_bytes(self, effect_id: str, observed: bytes | None) -> None:
         effect = self._effect(effect_id)
-        self._fence._assert_custody(Path(effect["path"]), leaf_may_be_missing=effect["before_digest"] is None)
+        self._fence._require_effect_authority(self._state)
+        actual = self.read(Path(effect["path"]))
+        if actual != observed:
+            raise PropagationFenceError("external_drift")
         digest = None if observed is None else _sha256(observed)
         if digest != effect["before_digest"]:
             effect["observed_digest"] = digest
@@ -206,25 +409,34 @@ class NativeMutationJournal:
             self._save()
             raise PropagationFenceError("external_drift")
 
+    def read(self, path: str | Path) -> bytes | None:
+        return self._fence._held().read(self._fence._trusted_path(path))
+
+    @property
+    def files(self) -> _HeldFiles:
+        """The same custody used by the existing native backup transaction."""
+        return self._fence._held()
+
+    def write(self, effect_id: str, data: bytes, *, mode: int = 0o600) -> None:
+        effect = self._effect(effect_id)
+        self._fence._require_effect_authority(self._state)
+        before = self.read(effect["path"])
+        self.require_before_bytes(effect_id, before)
+        if effect["backup_id"] is None:
+            raise PropagationFenceError("backup_required")
+        self.bind_backup(effect_id, effect["backup_path"])
+        if effect["desired_digest"] != _sha256(data):
+            raise PropagationFenceError("effect_identity_conflict")
+        self._fence._held().write(Path(effect["path"]), data, mode=mode, expected=before,
+                                  pre_replace=lambda: self._fence._require_effect_authority(self._state))
+
     def observe_bytes(self, effect_id: str, observed: bytes | None) -> None:
         effect = self._effect(effect_id)
+        if self.read(effect["path"]) != observed:
+            raise PropagationFenceError("external_drift")
         digest = None if observed is None else _sha256(observed)
         effect["observed_digest"] = digest
         effect["state"] = "verified" if digest == effect["desired_digest"] else "drift"
-        self._save()
-
-    def observe_semantic(self, effect_id: str, after: bytes | None, observed: bytes) -> None:
-        """Store raw file readback and separately prove normalized semantics."""
-        effect = self._effect(effect_id)
-        if "semantic_expected_digest" not in effect:
-            raise PropagationFenceError("semantic_proof_not_granted")
-        effect["observed_digest"] = None if after is None else _sha256(after)
-        effect["semantic_observed_digest"] = _sha256(observed)
-        effect["state"] = (
-            "verified"
-            if effect["semantic_observed_digest"] == effect["semantic_expected_digest"]
-            else "drift"
-        )
         self._save()
 
     def mark_uncertain(self, effect_id: str) -> None:
@@ -252,6 +464,7 @@ class NativeMutationFence:
         self.owner = owner
         self.journal_root = owner.storage_root / ".anvil-serving" / "propagation-fencing"
         self._seal = object()
+        self._files: ContextVar[_HeldFiles | None] = ContextVar("propagation_files", default=None)
 
     def grant(
         self, *, canonical_contract: bytes, generation: int, effects: Iterable[str],
@@ -290,7 +503,7 @@ class NativeMutationFence:
         if self.owner.catalog_digest is not None and self.owner.catalog_digest != catalog_digest:
             raise PropagationFenceError("catalog_expectation_mismatch")
         return NativeMutationGrant(self.owner.owner_id, self.owner.resource_id, self.owner.epoch,
-            contract.digest, generation, allowed, mapped, _sha256(_canonical(targets)), catalog_digest, self._seal)
+            contract.digest, generation, allowed, mapped, _sha256(_canonical(targets)), catalog_digest, str(self.owner.backup_root), self._seal)
 
     @contextmanager
     def transaction(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
@@ -300,6 +513,8 @@ class NativeMutationFence:
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets)
+            for target in targets:
+                self._held().read(Path(target))
             reservation_id = self._reservation_id(grant)
             index = self._read_index()
             self._validate_generation(index, grant, reservation_id)
@@ -372,12 +587,13 @@ class NativeMutationFence:
                 or grant.epoch != self.owner.epoch or grant.contract_digest != parsed.digest
                 or grant.generation != parsed.value["generation"]
                 or grant.catalog_digest != parsed.value["inputs"]["catalog_digest"]
+                or grant.backup_root != str(self.owner.backup_root)
                 or grant.targets_digest != _sha256(_canonical(targets))):
             raise PropagationFenceError("grant_binding_mismatch")
         self._require_current_authority(parsed.value)
 
     def _reservation_id(self, grant: NativeMutationGrant) -> str:
-        return _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest, list(grant.effects), list(grant.effect_targets)]))
+        return _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest, list(grant.effects), list(grant.effect_targets), grant.backup_root]))
 
     def _contract_deadline(self, canonical_contract: bytes) -> datetime:
         value = parse_contract(canonical_contract).value
@@ -421,84 +637,89 @@ class NativeMutationFence:
         if index["high_water_generation"] == grant.generation:
             raise PropagationFenceError("generation_reused")
 
+    def validate_backup_root(self, path: str | Path) -> None:
+        if self._trusted_path(path) != self.owner.backup_root:
+            raise PropagationFenceError("backup_root_mismatch")
+
     def validate_owner_path(self, path: str | Path) -> Path:
         return self._trusted_path(path)
 
     def _trusted_path(self, path: str | Path) -> Path:
-        selected = Path(path).resolve()
-        try:
-            selected.relative_to(self.owner.storage_root)
-        except ValueError as exc:
-            raise PropagationFenceError("untrusted_target_path") from exc
-        self._assert_custody(selected, leaf_may_be_missing=True)
+        selected = Path(path).absolute()
+        if ".." in selected.parts or not selected.is_relative_to(self.owner.storage_root):
+            raise PropagationFenceError("untrusted_target_path")
         return selected
 
-    def _assert_custody(self, path: Path, *, leaf_may_be_missing: bool) -> None:
-        """Reject symlink/reparse ancestry before a native write can follow it."""
+    def _held(self) -> _HeldFiles:
+        files = self._files.get()
+        if files is None:
+            raise PropagationFenceError("native_lock_required")
+        return files
+
+    @staticmethod
+    def _open_windows_lock(path: Path) -> int:
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        create = kernel.CreateFileW
+        create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                           wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        create.restype = wintypes.HANDLE
+        # Read/write, share reads/writes (never delete), OPEN_ALWAYS,
+        # FILE_FLAG_OPEN_REPARSE_POINT. Validate this exact handle before use.
+        handle = create(str(path), 0x80000000 | 0x40000000, 0x1 | 0x2,
+                        None, 4, 0x00200000, None)
+        if handle in (None, ctypes.c_void_p(-1).value):
+            raise OSError(ctypes.get_last_error(), "native lock open failed")
         try:
-            relative = path.relative_to(self.owner.storage_root)
-        except ValueError as exc:
-            raise PropagationFenceError("untrusted_target_path") from exc
-        current = self.owner.storage_root
-        for index, component in enumerate(relative.parts):
-            if current.is_symlink() or not current.exists() or not current.is_dir():
-                raise PropagationFenceError("unsafe_custody_path")
-            current = current / component
-            if not current.exists() and leaf_may_be_missing:
-                break
-            if current.is_symlink() or not current.exists():
-                raise PropagationFenceError("unsafe_custody_path")
-
-
-    def _ensure_journal_root(self) -> None:
-        parent = self.owner.storage_root / ".anvil-serving"
-        self._assert_custody(parent, leaf_may_be_missing=True)
-        self.journal_root.mkdir(mode=0o777 if os.name == "nt" else 0o700, parents=True, exist_ok=True)
-        if os.name != "nt":
-            os.chmod(parent, 0o700)
-            os.chmod(self.journal_root, 0o700)
-        self._assert_custody(self.journal_root, leaf_may_be_missing=False)
-        for directory in (parent, self.journal_root):
-            try:
-                descriptor = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
-                try:
-                    if os.name == "nt":
-                        is_directory, _identity, _links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
-                        if not is_directory:
-                            raise ValueError
-                        auth_file._require_windows_private_descriptor(descriptor)
-                    elif stat.S_IMODE(os.fstat(descriptor).st_mode) & 0o077:
-                        raise ValueError
-                finally:
-                    os.close(descriptor)
-            except (OSError, ValueError, auth_file.AuthFileError) as exc:
-                raise PropagationFenceError("unsafe_journal_root") from exc
+            descriptor = msvcrt.open_osfhandle(int(handle), os.O_RDWR | os.O_BINARY)
+        except BaseException:
+            close = kernel.CloseHandle
+            close.argtypes = [wintypes.HANDLE]
+            close.restype = wintypes.BOOL
+            close(handle)
+            raise
+        os.set_inheritable(descriptor, False)
+        return descriptor
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        self._ensure_journal_root()
-        if self.journal_root.is_symlink() or not self.journal_root.is_dir():
-            raise PropagationFenceError("unsafe_journal_root")
-        lock_path = self.journal_root / (self.owner.resource_id + ".lock")
-        fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        files = _HeldFiles(self.owner.storage_root)
+        token = self._files.set(files)
+        fd = None
         try:
-            info = os.fstat(fd)
-            if not stat.S_ISREG(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid()):
-                raise PropagationFenceError("unsafe_lock")
-            if os.name == "nt":
-                import msvcrt
-                if info.st_size == 0:
-                    os.write(fd, b"0")
-                os.lseek(fd, 0, 0)
-                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            try:
+                files.directory(self.owner.storage_root)
+                files.directory(self.journal_root.parent, create=True, private=True)
+                parent = files.directory(self.journal_root, create=True, private=True)
+                lock_path = self.journal_root / (self.owner.resource_id + ".lock")
+                fd = (self._open_windows_lock(lock_path) if os.name == "nt" else
+                      os.open(lock_path.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=parent))
+                files._permissions(fd, directory=False, private=True)
+                try:
+                    if os.name == "nt":
+                        import msvcrt
+                        if os.fstat(fd).st_size == 0:
+                            os.write(fd, b"0")
+                            os.fsync(fd)
+                        os.lseek(fd, 0, 0)
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    else:
+                        import fcntl
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except OSError as exc:
+                    if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                        raise PropagationFenceError("operation_in_progress") from exc
+                    raise
+            except (OSError, auth_file.AuthFileError) as exc:
+                raise PropagationFenceError("unsafe_custody_path") from exc
             yield
-        except (BlockingIOError, PermissionError) as exc:
-            raise PropagationFenceError("operation_in_progress") from exc
         finally:
-            os.close(fd)
+            if fd is not None:
+                os.close(fd)
+            self._files.reset(token)
+            files.close()
 
     @property
     def _index_path(self) -> Path:
@@ -508,7 +729,7 @@ class NativeMutationFence:
         return self.journal_root / (self.owner.resource_id + "." + _token(reservation_id) + ".json")
 
     def _read_index(self) -> dict:
-        if not self._index_path.exists():
+        if self._held().read(self._index_path, private=True) is None:
             return {"schema": _SCHEMA + ".index", "owner_id": self.owner.owner_id,
                     "resource_id": self.owner.resource_id, "epoch": self.owner.epoch,
                     "high_water_generation": 0, "latest_reservation_id": None, "operations": {}}
@@ -541,26 +762,10 @@ class NativeMutationFence:
         return value
 
     def _read_json(self, path: Path) -> dict:
-        if path.is_symlink() or not path.is_file():
-            raise PropagationFenceError("unsafe_journal")
         try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-            info = path.stat()
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            value = json.loads(self._held().read(path, private=True))
+        except (OSError, TypeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise PropagationFenceError("unsafe_journal") from exc
-        if (not stat.S_ISREG(info.st_mode) or (hasattr(os, "getuid") and info.st_uid != os.getuid())
-                or (os.name != "nt" and stat.S_IMODE(info.st_mode) & 0o077)):
-            raise PropagationFenceError("unsafe_journal")
-        try:
-            descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-            try:
-                verdict = bootstrap_shim.inspect_opened_permissions(descriptor, ancestor=False)
-            finally:
-                os.close(descriptor)
-        except OSError as exc:
-            raise PropagationFenceError("unsafe_journal") from exc
-        if verdict.name not in {"OWNER_READONLY", "OWNER_WRITABLE"}:
-            raise PropagationFenceError("unsafe_journal")
         if type(value) is not dict:
             raise PropagationFenceError("unsafe_journal")
         return value
@@ -573,24 +778,7 @@ class NativeMutationFence:
         self._write_json(path, value)
 
     def _write_json(self, path: Path, value: dict) -> None:
-        self._ensure_journal_root()
-        encoded = _canonical(value)
-        fd, temporary = tempfile.mkstemp(prefix=".journal-", dir=self.journal_root)
-        try:
-            if hasattr(os, "fchmod"):
-                os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "wb") as handle:
-                handle.write(encoded); handle.flush(); os.fsync(handle.fileno())
-            os.replace(temporary, path)
-            if os.name != "nt":
-                directory_fd = os.open(self.journal_root, os.O_RDONLY)
-                try:
-                    os.fsync(directory_fd)
-                finally:
-                    os.close(directory_fd)
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+        self._held().write(path, _canonical(value), private=True)
 
     @staticmethod
     def _now() -> str:
