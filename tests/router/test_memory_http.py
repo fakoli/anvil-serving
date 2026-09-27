@@ -31,6 +31,11 @@ def server(tmp_path, *, models=None):
                           env={"MEMORY_TOKEN": "upstream-token"}, transport=transport)
     httpd = make_server("127.0.0.1", 0, StaticBackend(["unused"]), auth_token=MASTER,
                         memory=memory, server_config=ServerConfig(api_keys_path=str(store.path)))
+    # The front door uses daemon request threads in production so an abandoned
+    # keep-alive connection cannot delay shutdown.  These tests close every
+    # client connection, so wait for their final credential-audit writes before
+    # the Windows-private temporary database is removed.
+    httpd.daemon_threads = False
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
@@ -45,9 +50,9 @@ def request(address, token, path, body, headers=None):
     connection = http.client.HTTPConnection(*address, timeout=5)
     request_headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
     request_headers.update(headers or {})
-    connection.request("POST", path, json.dumps(body), request_headers)
-    response = connection.getresponse()
     try:
+        connection.request("POST", path, json.dumps(body), request_headers)
+        response = connection.getresponse()
         return response.status, json.loads(response.read() or b"{}")
     finally:
         connection.close()
