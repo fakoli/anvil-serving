@@ -1,6 +1,6 @@
 ---
 name: anvil-serving-workbench
-description: Operate anvil-serving from an agent harness using MCP/controller-backed playbooks, CLI fallbacks, and sub-agent evidence packets. Use when asked to inspect Anvil Serving status, choose models, run preflight or benchmarks, sync OpenClaw/Codex/Claude Code workbench config, collect promotion evidence, or coordinate small-model sub-agents for anvil-serving operations.
+description: Operate anvil-serving from an agent harness using MCP/controller-backed playbooks, CLI fallbacks, and sub-agent evidence packets. Use when asked to inspect Anvil Serving status, choose models, run preflight or benchmarks, sync OpenClaw/Codex/Claude Code workbench config, collect promotion evidence, coordinate small-model sub-agents, or find the command to restart, rebuild, deploy, or check any managed service (including Pi Web lifecycle).
 ---
 
 # Anvil Serving Workbench
@@ -42,6 +42,27 @@ narration.
    Mini/Dark path is down.
 6. Pass credentials by environment variable name only. Never place literal keys
    in configs, fixtures, packets, logs, or prompts.
+
+## Managed Service Lifecycle (Pi Web)
+
+For "restart / bring back up / give me a command" requests about Pi Web or any
+managed service, resolve the command surface first — never improvise `kill`,
+`pkill`, `nohup`, or raw `systemctl`:
+
+- Lifecycle verbs: `anvil-serving workbench pi-web-status` (read),
+  `pi-web-logs` (read), `pi-web-down --confirm` (mutate),
+  `pi-web-up --confirm` (mutate), and `pi-web-install --confirm` (mutate).
+  `down`/`up` require the confirmation gate and host authorization; the
+  systemd unit is `anvil-pi-web.service`.
+- Discover any other command surface with `anvil-serving --help` and
+  `anvil-serving --command-manifest` (machine-readable: per-command
+  `mutation_class`, confirmation options, and `docs_anchor`).
+- Pi Web lifecycle docs: `docs/WORKBENCH-PORTAL.md#pi-web`.
+- Rebuild + restart of Pi Web is not a tested single transaction: the
+  supervising agent session and the service can share a cgroup, so stopping
+  the service can terminate the session that would perform the recovery. Use
+  an independently running executor, verify readiness after recovery, and do
+  not publish a `down → build → up` sequence as a tested workflow.
 
 ## MCP Tool Map
 
