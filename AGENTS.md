@@ -78,7 +78,9 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 - **Discover the command surface before improvising shell.** `anvil-serving
   --help` lists verbs; `anvil-serving --command-manifest` prints the
   machine-readable registry (per-command mutation class, confirmation gates,
-  docs anchors). Use managed verbs for service lifecycle; never improvise
+  docs anchors). Verify exact gates in the command's focused `--help` —
+  registry confirmation metadata may lag flag-gated mutations. Use managed
+  verbs for service lifecycle; never improvise
   `kill`/`pkill`/`nohup`/`systemctl` for managed services.
 - **Make user workflows short commands.** If routine execution needs more than
   a couple of lines, implement a supported command instead of handing the user

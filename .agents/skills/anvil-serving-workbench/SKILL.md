@@ -56,7 +56,9 @@ managed service, resolve the command surface first — never improvise `kill`,
   systemd unit is `anvil-pi-web.service`.
 - Discover any other command surface with `anvil-serving --help` and
   `anvil-serving --command-manifest` (machine-readable: per-command
-  `mutation_class`, confirmation options, and `docs_anchor`).
+  `mutation_class`, confirmation options, and `docs_anchor`). Registry
+  confirmation metadata can lag flag-gated mutations — verify the exact gate
+  in the command's focused `--help` and the owning docs before relying on it.
 - Pi Web lifecycle docs: `docs/WORKBENCH-PORTAL.md#pi-web`.
 - Rebuild + restart of Pi Web is not a tested single transaction: the
   supervising agent session and the service can share a cgroup, so stopping
