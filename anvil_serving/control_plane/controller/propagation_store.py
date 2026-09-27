@@ -267,14 +267,11 @@ class PropagationIntentStore:
                     if original is None:
                         connection.execute("ROLLBACK")
                         raise PropagationIntentError("storage_unavailable")
-                    if self._database_bytes() + 256 > self.max_database_bytes:
-                        connection.execute("ROLLBACK")
-                        raise PropagationIntentError("storage_capacity")
                     connection.execute(
                         "INSERT INTO propagation_request_tombstones VALUES (?, ?, ?, ?)",
                         (caller_id, request_id, contract.digest, scope_existing["intent_id"]),
                     )
-                    connection.execute("COMMIT")
+                    self._commit_if_within_capacity(connection)
                     return AcceptedIntent(
                         scope_existing["intent_id"], original["workflow_id"], contract.digest, True,
                     )
@@ -287,7 +284,7 @@ class PropagationIntentStore:
                 active_count = connection.execute(
                     "SELECT COUNT(*) AS count FROM propagation_intents WHERE terminal_at IS NULL"
                 ).fetchone()["count"]
-                if active_count >= self.max_active_intents or self._database_bytes() + len(canonical) + len(projected) > self.max_database_bytes:
+                if active_count >= self.max_active_intents:
                     connection.execute("ROLLBACK")
                     raise PropagationIntentError("storage_capacity")
 
@@ -319,7 +316,7 @@ class PropagationIntentStore:
                     "ON CONFLICT(scope) DO UPDATE SET generation = excluded.generation",
                     (value["scope"], value["generation"]),
                 )
-                connection.execute("COMMIT")
+                self._commit_if_within_capacity(connection)
         except PropagationIntentError:
             raise
         except sqlite3.Error as exc:
@@ -499,14 +496,14 @@ class PropagationIntentStore:
                 original = connection.execute(
                     "SELECT workflow_id FROM propagation_intents WHERE intent_id = ?", (scope["intent_id"],),
                 ).fetchone()
-                if original is None or self._database_bytes() + 256 > self.max_database_bytes:
+                if original is None:
                     connection.execute("ROLLBACK")
-                    raise PropagationIntentError("storage_unavailable" if original is None else "storage_capacity")
+                    raise PropagationIntentError("storage_unavailable")
                 connection.execute(
                     "INSERT INTO propagation_request_tombstones VALUES (?, ?, ?, ?)",
                     (caller_id, request_id, parsed.digest, scope["intent_id"]),
                 )
-                connection.execute("COMMIT")
+                self._commit_if_within_capacity(connection)
                 return AcceptedIntent(scope["intent_id"], original["workflow_id"], parsed.digest, True)
         except PropagationIntentError:
             raise
@@ -537,11 +534,21 @@ class PropagationIntentStore:
                     and row["workflow_id"] == workflow_id
                     and row["contract_digest"] == contract_digest)
 
-    def _database_bytes(self) -> int:
-        try:
-            return self.path.stat().st_size
-        except FileNotFoundError:
-            return 0
+    def _commit_if_within_capacity(self, connection: sqlite3.Connection) -> None:
+        """Commit only when this transaction's allocated SQLite pages fit.
+
+        SQLite allocates pages for table and index writes together, so byte
+        estimates from payload lengths leave a gap at page boundaries.  Query
+        the transaction's actual allocation after every durable write, then
+        roll every linked row back before the commit when it exceeds the cap.
+        """
+
+        page_count = connection.execute("PRAGMA page_count").fetchone()[0]
+        page_size = connection.execute("PRAGMA page_size").fetchone()[0]
+        if page_count * page_size > self.max_database_bytes:
+            connection.execute("ROLLBACK")
+            raise PropagationIntentError("storage_capacity")
+        connection.execute("COMMIT")
 
     @staticmethod
     def _encode_cursor(sequence: int) -> str:
@@ -556,7 +563,10 @@ class PropagationIntentStore:
         matched = _CURSOR.fullmatch(cursor)
         if matched is None:
             raise PropagationIntentError("invalid_cursor")
-        return int(matched.group(1))
+        value = int(matched.group(1))
+        if value > _SQLITE_MAX_INTEGER:
+            raise PropagationIntentError("invalid_cursor")
+        return value
 
     @staticmethod
     def _decode_projection(payload: bytes | None) -> dict[str, Any]:

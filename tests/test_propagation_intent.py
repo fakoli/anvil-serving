@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import json
+import sqlite3
 import threading
 
 import pytest
@@ -226,14 +227,27 @@ def test_scope_duplicate_recovers_after_expiry_without_new_admission(tmp_path):
         _admit(store, _contract(revision="new-revision", generation=2), "request-3", now=_NOW + timedelta(days=2))
 
 
-def test_scope_duplicate_does_not_allocate_tombstone_under_capacity_pressure(tmp_path):
+def test_scope_duplicate_refuses_real_page_growth_without_tombstone_eviction(tmp_path):
     path = tmp_path / "propagation.sqlite3"
     first_store = PropagationIntentStore(path)
     accepted = _admit(first_store, _contract())
-    constrained = PropagationIntentStore(path, max_database_bytes=path.stat().st_size)
-    with pytest.raises(PropagationIntentError, match="storage_capacity"):
-        _admit(constrained, _contract(), request_id="request-2", caller_id="caller-2")
-    assert _admit(first_store, _contract()).intent_id == accepted.intent_id
+    page_size = sqlite3.connect(path).execute("PRAGMA page_size").fetchone()[0]
+
+    for number in range(1, 513):
+        before = path.stat().st_size
+        constrained = PropagationIntentStore(path, max_database_bytes=before + page_size - 1)
+        try:
+            _admit(constrained, _contract(), request_id=f"request-{number + 1}", caller_id=f"caller-{number + 1}")
+        except PropagationIntentError as exc:
+            assert exc.code == "storage_capacity"
+            assert path.stat().st_size == before
+            recovered = _admit(first_store, _contract(), request_id=f"request-{number + 1}", caller_id=f"caller-{number + 1}")
+            assert recovered.intent_id == accepted.intent_id and recovered.duplicate
+            break
+        else:
+            assert path.stat().st_size <= before + page_size - 1
+    else:  # pragma: no cover - SQLite must eventually allocate a tombstone page
+        pytest.fail("scope tombstones did not reach a page boundary")
 
 
 def test_pending_page_counts_the_returned_cursor_and_large_projections(tmp_path):
@@ -252,3 +266,28 @@ def test_generation_beyond_sqlite_integer_range_is_rejected(tmp_path):
     store = PropagationIntentStore(tmp_path / "propagation.sqlite3")
     with pytest.raises(PropagationIntentError, match="malformed_generation"):
         _admit(store, _contract(generation=1 << 63))
+
+
+def test_new_intent_refuses_actual_page_growth_and_rolls_back_every_binding(tmp_path):
+    path = tmp_path / "propagation.sqlite3"
+    first_store = PropagationIntentStore(path)
+    first = _admit(first_store, _contract())
+    before = path.stat().st_size
+    page_size = sqlite3.connect(path).execute("PRAGMA page_size").fetchone()[0]
+    constrained = PropagationIntentStore(path, max_database_bytes=before + page_size - 1)
+    second_value = _contract(scope="scope-2", revision="revision-2", generation=2)
+
+    with pytest.raises(PropagationIntentError, match="storage_capacity"):
+        _admit(constrained, second_value, "request-2")
+    assert path.stat().st_size == before
+    assert _admit(constrained, _contract()).intent_id == first.intent_id
+    admitted = _admit(first_store, second_value, "request-2")
+    assert admitted.duplicate is False
+    assert len(first_store.pending()["intents"]) == 2
+
+
+def test_pending_rejects_cursor_outside_sqlite_signed_range(tmp_path):
+    store = PropagationIntentStore(tmp_path / "propagation.sqlite3")
+    with pytest.raises(PropagationIntentError, match="invalid_cursor"):
+        store.pending("p1:9999999999999999999")
+    assert store.pending("p1:9223372036854775807") == {"intents": [], "next_cursor": None}
