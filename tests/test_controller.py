@@ -2124,6 +2124,47 @@ def test_scoped_controller_policy_keeps_legacy_and_new_operations_separate(tmp_p
     assert calls == ["workloads.read", "legacy.operation"]
 
 
+def test_propagation_status_scope_is_authenticated_but_cannot_gain_other_operations(tmp_path):
+    status_token = "scoped-propagation-status-token"
+    policy = _authorization_policy(
+        tmp_path,
+        [{"id": "status", "scopes": ["propagation:status"], "credential_env": "STATUS"}],
+    )
+    tools = [
+        {"name": "propagation_capabilities", "_meta": {"anvil/requiredScope": "propagation:status"}},
+        {"name": "propagation_admit", "_meta": {"anvil/requiredScope": "propagation:admission"}},
+        {"name": "legacy.operation", "_meta": {"anvil/requiredScope": None}},
+    ]
+    calls = []
+    with running_controller(
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "STATUS": status_token}, authorization_policy=policy,
+        list_tools_func=lambda: tools, call_tool_func=lambda name, arguments=None: calls.append(name) or {"ok": True},
+    ) as (host, port):
+        headers = {"Authorization": "Bearer " + status_token}
+        status, _, body, _ = _request(host, port, "GET", "/tools/list", headers=headers)
+        assert status == 200 and [tool["name"] for tool in body["tools"]] == ["propagation_capabilities"]
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_admit"}, headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, headers)
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+    assert calls == []
+
+
+def test_unauthenticated_loopback_does_not_bypass_protected_propagation_scope():
+    calls = []
+    with running_controller(
+        list_tools_func=lambda: [
+            {"name": "propagation_capabilities", "_meta": {"anvil/requiredScope": "propagation:status"}},
+        ],
+        call_tool_func=lambda *args: calls.append(args) or {"ok": True},
+    ) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list")
+        assert status == 200 and body["tools"] == []
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities"})
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+    assert calls == []
+
+
 def test_scoped_discovery_and_operations_are_principal_filtered(tmp_path):
     scoped_token = "scoped-workload-token"
     policy = _authorization_policy(

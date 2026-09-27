@@ -6,9 +6,10 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from ..authorization import ALLOWED_SCOPES
 from ...commands import CommandNode
 from .errors import ToolError
-from .security import caller_context
+from .security import MEDIA_SCOPES, caller_context
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,9 @@ def build_catalog(specifications: Mapping[str, Mapping[str, Any]]) -> dict[str, 
         if audience is not None and audience not in {"media"}:
             raise RuntimeError("MCP tool %r has an invalid audience" % name)
         if required_scope is not None and (
-            audience != "media" or not isinstance(required_scope, str) or not required_scope
+            not isinstance(required_scope, str)
+            or required_scope not in ALLOWED_SCOPES | MEDIA_SCOPES
+            or (required_scope in MEDIA_SCOPES and audience != "media")
         ):
             raise RuntimeError("MCP tool %r has an invalid required scope" % name)
         catalog[name] = dict(raw_spec)
@@ -159,7 +162,7 @@ def list_tools(
             granted_scopes is None
             or spec.get("requiredScope") is None
             or spec.get("requiredScope") in granted_scopes
-            or "operator:media" in granted_scopes
+            or (spec.get("audience") == "media" and "operator:media" in granted_scopes)
         )
     ]
 

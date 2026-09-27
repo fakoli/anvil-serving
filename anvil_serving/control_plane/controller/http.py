@@ -443,9 +443,7 @@ def make_handler(
             if legacy_match:
                 self._principal_kind = "legacy"
                 return True
-            workload = check_scope(authorization_policy, supplied, WORKLOADS_READ)
-            bootstrap = check_scope(authorization_policy, supplied, NODE_ADMIN_BOOTSTRAP)
-            if workload.allowed or bootstrap.allowed:
+            if any(check_scope(authorization_policy, supplied, scope).allowed for scope in ALLOWED_SCOPES):
                 self._principal_kind = "scoped"
                 self._presented_token = supplied
                 return True

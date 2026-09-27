@@ -49,6 +49,7 @@ from .control_plane.mcp.protocol import (
 from .control_plane.mcp.runtime import run_argv as _run_argv
 from .control_plane.mcp.node_bridge import run_node_bridge as _run_node_bridge
 from .control_plane.mcp.security import (
+    MEDIA_SCOPES as _MEDIA_SCOPES,
     redact_error_details as _redact_error_details,
     redact_text as _redact_text,
     safe_controller_url as _safe_controller_url,
@@ -127,7 +128,7 @@ def list_tools(
     caller: Mapping[str, Any] | None = None,
     audience: str | None = None,
 ) -> list[dict]:
-    scopes = None
+    scopes = _MEDIA_SCOPES
     if caller is not None:
         raw_scopes = caller.get("scopes", ())
         scopes = frozenset(raw_scopes) if isinstance(raw_scopes, (list, tuple, set, frozenset)) else frozenset()
