@@ -60,14 +60,18 @@ def test_effect_scope_digest_binds_authority_but_not_execution_window_observatio
         parse_contract(forged)
 
 
-@pytest.mark.parametrize("raw, code", [
-    ('{"schema":"anvil-propagation/v1","schema":"anvil-propagation/v1"}', "malformed_payload"),
-    (json.dumps(_contract(generation=0)), "malformed_payload"),
-    (json.dumps(_contract(generation=True)), "malformed_payload"),
-    (json.dumps(_contract(targets=[])), "malformed_payload"),
-    (json.dumps(_contract(unknown=True)), "malformed_payload"),
-    (b"{" + b"x" * MAX_CONTRACT_BYTES + b"}", "payload_too_large"),
-])
+@pytest.mark.parametrize(
+    "raw, code",
+    [
+        ('{"schema":"anvil-propagation/v1","schema":"anvil-propagation/v1"}', "malformed_payload"),
+        (json.dumps(_contract(generation=0)), "malformed_payload"),
+        (json.dumps(_contract(generation=True)), "malformed_payload"),
+        (json.dumps(_contract(targets=[])), "malformed_payload"),
+        (json.dumps(_contract(unknown=True)), "malformed_payload"),
+        (b"{" + b"x" * MAX_CONTRACT_BYTES + b"}", "payload_too_large"),
+    ],
+    ids=("duplicate-schema", "zero-generation", "boolean-generation", "empty-targets", "unknown-field", "oversized-payload"),
+)
 def test_contract_rejects_unapproved_shapes(raw, code):
     with pytest.raises(PropagationContractError, match=code):
         parse_contract(raw)
