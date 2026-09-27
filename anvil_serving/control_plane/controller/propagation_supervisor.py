@@ -289,6 +289,10 @@ def _child(argv: list[str]) -> int:
             children.close()
     except PropagationJobError as exc:
         if exc.code == "cancellation_requested":
+            # The durable gate can reject before begin_execution creates a
+            # profile child. Preserve that exact no-child cancellation for a
+            # fresh controller, which cannot recover this process's stdout.
+            store.record_pre_profile_cancellation(job_id, identity)
             _write({"outcome": "cancelled", "native_effects": [], "quiescent": True})
             return 0
         _write({"outcome": "uncertain", "native_effects": [], "quiescent": False})

@@ -367,6 +367,60 @@ def test_durable_cancel_before_signal_refuses_pre_popen_profile(tmp_path: Path, 
             child.wait(timeout=3)
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_durable_cancel_before_begin_execution_is_recoverable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    marker, entered = tmp_path / "effect", tmp_path / "begin-entered"
+    store, job = _submitted(tmp_path, "import pathlib; pathlib.Path(" + repr(str(marker)) + ").write_text('effect')")
+    token = store.prepare_launch(job["job_id"])
+    shim = (
+        "import pathlib,sys,time; "
+        "from anvil_serving.control_plane.controller.propagation_job_store import JobStore; "
+        "from anvil_serving.control_plane.controller.propagation_supervisor import _child; "
+        "original=JobStore.begin_execution\n"
+        "def wait_for_cancel(self, job_id, token, identity, *args):\n"
+        " pathlib.Path(" + repr(str(entered)) + ").write_text('entered')\n"
+        " deadline=time.monotonic()+3\n"
+        " while self.lookup_internal(job_id)['state'] != 'cancellation_requested' and time.monotonic() < deadline: time.sleep(.001)\n"
+        " return original(self, job_id, token, identity, *args)\n"
+        "JobStore.begin_execution=wait_for_cancel\n"
+        "raise SystemExit(_child(['--child',sys.argv[1],sys.argv[2]]))"
+    )
+    child = subprocess.Popen(
+        (sys.executable, "-c", shim, store.path, job["job_id"]),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        identity = supervisor_module._identity(child.pid)
+        assert identity is not None and child.stdin is not None
+        store.register_launch(job["job_id"], token, identity)
+        child.stdin.write(token.encode("ascii"))
+        child.stdin.close()
+        child.stdin = None
+        for _ in range(300):
+            if entered.exists():
+                break
+            time.sleep(0.01)
+        assert entered.exists()
+        fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: "cancelled" if result["outcome"] == "cancelled" else "uncertain")
+        original_identity = supervisor_module._identity
+
+        def after_cancel_before_signal(pid: int) -> dict[str, object] | None:
+            child.wait(timeout=3)
+            return original_identity(pid)
+
+        monkeypatch.setattr(supervisor_module, "_identity", after_cancel_before_signal)
+        assert fresh.cancel(job["job_id"])["state"] == "confirmed"
+        assert fresh.observe(job["job_id"])["state"] == "cancelled"
+        assert not marker.exists()
+        assert store.pending_effects(job["job_id"]) == []
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=3)
+
+
 def test_pre_profile_cancellation_refuses_an_existing_child_reservation(tmp_path: Path):
     store, job = _submitted(tmp_path, "pass")
     now = _now()
