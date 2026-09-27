@@ -365,9 +365,10 @@ def make_handler(
 
     audit = audit_logger or _default_audit_logger
     allowlist_enabled = allowed_operations is not None
+    catalog_func = mcp.controller_tools if list_tools_func is mcp.list_tools else list_tools_func
     declared_tools, declared_name_by_normalized = _validated_tool_catalog(
         _tools_with_workloads(
-            list_tools_func,
+            catalog_func,
             enabled={
                 name for name, collector in (
                     (NODE_WORKLOADS_TOOL_NAME, workload_collector),
@@ -428,6 +429,8 @@ def make_handler(
         def _authenticated(self) -> bool:
             self._principal_kind = None
             self._presented_token = None
+            self._principal_id = None
+            self._granted_scopes = frozenset()
             if auth_token is None:
                 self._principal_kind = "legacy"
                 return True
@@ -443,9 +446,13 @@ def make_handler(
             if legacy_match:
                 self._principal_kind = "legacy"
                 return True
-            if any(check_scope(authorization_policy, supplied, scope).allowed for scope in ALLOWED_SCOPES):
+            decisions = [check_scope(authorization_policy, supplied, scope) for scope in ALLOWED_SCOPES]
+            granted = frozenset(scope for scope, decision in zip(ALLOWED_SCOPES, decisions) if decision.allowed)
+            if granted:
                 self._principal_kind = "scoped"
                 self._presented_token = supplied
+                self._granted_scopes = granted
+                self._principal_id = next((decision.client_id for decision in decisions if decision.allowed), None)
                 return True
             return False
 
@@ -771,9 +778,23 @@ def make_handler(
                     "confirmed mutation operations require an idempotency key",
                     status=409,
                 )
+            def invoke() -> dict:
+                if call_tool_func is mcp.call_tool:
+                    # Legacy controller calls retain the established absent-caller
+                    # semantics for media tools.  Only a policy-authenticated
+                    # scoped principal receives an out-of-band caller projection.
+                    caller = None
+                    if self._principal_kind == "scoped":
+                        caller = {
+                            "principal": self._principal_id,
+                            "scopes": self._granted_scopes,
+                        }
+                    return call_tool_func(tool_name, arguments, caller=caller)
+                return call_tool_func(tool_name, arguments)
+
             if idempotency_key is None:
                 return self._sanitize_response(
-                    _response_with_request_id(call_tool_func(tool_name, arguments), request_id, auth_token)
+                    _response_with_request_id(invoke(), request_id, auth_token)
                 ), 200
 
             context = _idempotency_context(idempotency_context)
@@ -828,11 +849,11 @@ def make_handler(
                     if is_confirmed_mutation(arguments):
                         with controller_operation_context(idempotency_key, context):
                             envelope = self._sanitize_response(_response_with_request_id(
-                                call_tool_func(tool_name, arguments), request_id, auth_token
+                                invoke(), request_id, auth_token
                             ))
                     else:
                         envelope = self._sanitize_response(_response_with_request_id(
-                            call_tool_func(tool_name, arguments), request_id, auth_token
+                            invoke(), request_id, auth_token
                         ))
                     if not isinstance(envelope, dict):
                         raise TypeError("MCP tool result must be an object")

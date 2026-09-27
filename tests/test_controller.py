@@ -2165,6 +2165,30 @@ def test_unauthenticated_loopback_does_not_bypass_protected_propagation_scope():
     assert calls == []
 
 
+def test_default_mcp_catalog_keeps_propagation_internal_and_scopes_real_dispatch(tmp_path):
+    token = "scoped-propagation-status-token"
+    policy = _authorization_policy(tmp_path, [{"id": "status", "scopes": ["propagation:status"], "credential_env": "STATUS"}])
+    with running_controller(env={"ANVIL_CONTROLLER_TOKEN": TOKEN, "STATUS": token}, authorization_policy=policy) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list", headers={"Authorization": "Bearer " + token})
+        assert status == 200 and "propagation_capabilities" in [tool["name"] for tool in body["tools"]]
+        status, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}, {"Authorization": "Bearer " + token})
+        assert status == 200 and "propagation_capabilities" in [tool["name"] for tool in body["result"]["tools"]]
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities"}, {"Authorization": "Bearer " + token})
+        assert status == 200 and body["ok"] is True
+        status, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "propagation_capabilities", "arguments": {}}}, {"Authorization": "Bearer " + token})
+        assert status == 200 and body["result"]["structuredContent"]["ok"] is True
+        status, _, body, _ = _request(host, port, "GET", "/tools/list", headers={"Authorization": "Bearer " + TOKEN})
+        assert status == 200 and "propagation_capabilities" not in [tool["name"] for tool in body["tools"]]
+        status, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "propagation_capabilities", "arguments": {}}}, {"Authorization": "Bearer " + TOKEN})
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities"}, {"Authorization": "Bearer " + TOKEN})
+        assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
+        status, _, body, _ = _request(host, port, "GET", "/tools/list")
+        assert status == 401 and body["error"]["code"] == "authentication_error"
+        status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities"})
+        assert status == 401 and body["error"]["code"] == "authentication_error"
+
+
 def test_scoped_discovery_and_operations_are_principal_filtered(tmp_path):
     scoped_token = "scoped-workload-token"
     policy = _authorization_policy(

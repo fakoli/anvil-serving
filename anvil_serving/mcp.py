@@ -140,6 +140,11 @@ def list_tools(
     )
 
 
+def controller_tools() -> list[dict]:
+    """Return the full internal catalogue; HTTP applies its own scope checks."""
+    return _list_catalog_tools(TOOLS, TARGET_CONTEXT_SCHEMA)
+
+
 def call_tool(
     name: str,
     arguments: Optional[dict] = None,

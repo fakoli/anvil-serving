@@ -191,6 +191,11 @@ def call_tool(
             "tool arguments must be an object",
             None,
         )
+    required_scope = spec.get("requiredScope")
+    if required_scope in ALLOWED_SCOPES:
+        scopes = caller.get("scopes", ()) if isinstance(caller, Mapping) else ()
+        if not isinstance(scopes, (list, tuple, set, frozenset)) or required_scope not in scopes:
+            return fail("scope_denied", "caller is not authorized for this operation", {"requiredScope": required_scope})
     try:
         validated = validate_arguments(name, arguments)
         with caller_context(caller):

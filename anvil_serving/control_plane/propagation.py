@@ -16,6 +16,7 @@ MAX_RECEIPT_BYTES = 64 * 1024
 MAX_TARGETS = 128
 MAX_RECEIPT_AGE = timedelta(minutes=5)
 MAX_DEADLINE = timedelta(days=7)
+_UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _CONTRACT_FIELDS = frozenset(("schema", "scope", "revision", "generation", "approval_ref", "approval_digest", "activation_ref", "activation_digest", "inputs", "effect_set_digest", "targets", "execution_profile_ref", "execution_profile_digest", "session_policy", "preview_policy", "issued_at", "deadline_at"))
@@ -23,8 +24,13 @@ _INPUT_FIELDS = frozenset(("catalog_digest", "monitoring_inventory_digest", "exe
 _TARGET_FIELDS = frozenset(("target_id", "installation_id", "profile_id", "runtime_id", "resource_keys", "expected_identity_ref", "expected_identity_digest", "checks", "effects"))
 _SESSION_FIELDS = frozenset(("preserve_active_conversations", "loaded_state_required", "idle_reload"))
 _PREVIEW_FIELDS = frozenset(("all_required_targets", "web_runtime_required", "monitoring_required"))
+_EFFECT_SCOPE_FIELDS = (
+    "schema", "scope", "revision", "generation", "activation_ref", "activation_digest", "inputs", "targets",
+    "execution_profile_ref", "execution_profile_digest", "session_policy", "preview_policy",
+)
 _RECEIPT_FIELDS = frozenset(("schema", "contract_digest", "revision", "generation", "job_id", "effect_id", "target_id", "installation_id", "profile_id", "runtime_id", "before_digest", "after_digest", "applied", "verified", "observed_at", "check_set_digest", "outcome", "failure_code", "evidence_ref", "evidence_digest", "issuer"))
 _OUTCOMES = frozenset(("pending", "success", "failed", "uncertain", "unsupported"))
+_FAILURES = frozenset(("verification-failed", "transport-unavailable", "receipt-rejected", "session-acceptance-pending", "unsupported-capability"))
 _EFFECTS = frozenset(("catalog-apply", "monitoring-apply", "session-idle-reload"))
 
 ADMISSION_SCOPE = "propagation:admission"
@@ -66,6 +72,8 @@ class ReceiptContext:
     generation: int
     job_id: str
     effect_id: str
+    target_id: str
+    check_set_digest: str
     identity: ReceiptIdentity
 
 
@@ -99,13 +107,33 @@ def _float(_: str) -> object:
 def _canonical(value: Any) -> bytes:
     try:
         return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("ascii")
-    except (TypeError, ValueError, UnicodeError):
+    except (TypeError, ValueError, UnicodeError, RecursionError):
         _refuse()
+
+
+def effect_scope_digest(value: Mapping[str, Any]) -> str:
+    """Digest only stable approved authority, never refreshable observations.
+
+    The full contract digest still binds the execution window.  This projection
+    deliberately omits execution-window timestamps and approval identity.  The
+    approval artifact binds this digest, so including its own identity would
+    create a circular dependency.  A fresh observation cannot expand approved
+    resources, effects, pins, or session policy.
+    """
+
+    try:
+        projection = {field: value[field] for field in _EFFECT_SCOPE_FIELDS}
+    except (KeyError, TypeError):
+        _refuse()
+    return hashlib.sha256(_canonical(projection)).hexdigest()
 
 
 def _load(raw: bytes | str | Mapping[str, Any], maximum: int) -> dict[str, Any]:
     if isinstance(raw, Mapping):
-        value = json.loads(_canonical(dict(raw)).decode("ascii"), object_pairs_hook=_duplicate, parse_float=_float)
+        try:
+            value = json.loads(_canonical(dict(raw)).decode("ascii"), object_pairs_hook=_duplicate, parse_float=_float)
+        except (TypeError, ValueError, RecursionError, PropagationContractError):
+            _refuse()
     else:
         if isinstance(raw, str):
             raw = raw.encode("utf-8")
@@ -153,7 +181,7 @@ def _declared_set(value: Any, *, allowed: frozenset[str] | None = None) -> list[
 
 
 def _utc(value: Any) -> datetime:
-    if type(value) is not str or not value.endswith("Z"):
+    if type(value) is not str or _UTC.fullmatch(value) is None:
         _refuse()
     try:
         parsed = datetime.fromisoformat(value[:-1] + "+00:00")
@@ -198,6 +226,8 @@ def _validate_contract(value: dict[str, Any]) -> None:
             _refuse()
     if not value["session_policy"]["preserve_active_conversations"] or not value["session_policy"]["loaded_state_required"] or not all(value["preview_policy"].values()):
         _refuse()
+    if value["effect_set_digest"] != effect_scope_digest(value):
+        _refuse("effect_scope_mismatch")
     issued, deadline = _utc(value["issued_at"]), _utc(value["deadline_at"])
     if deadline <= issued or deadline - issued > MAX_DEADLINE:
         _refuse()
@@ -210,9 +240,16 @@ def parse_contract(raw: bytes | str | Mapping[str, Any]) -> PropagationContract:
     return PropagationContract(canonical, hashlib.sha256(canonical).hexdigest())
 
 
-def admit_contract(raw: bytes | str | Mapping[str, Any], approval_lookup: Callable[[str], ApprovedAuthority | None], active_identity: ActiveIdentity) -> PropagationContract:
+def admit_contract(raw: bytes | str | Mapping[str, Any], approval_lookup: Callable[[str], ApprovedAuthority | None], active_identity: ActiveIdentity, now: datetime) -> PropagationContract:
     contract = parse_contract(raw)
     value = contract.value
+    issued, deadline = _utc(value["issued_at"]), _utc(value["deadline_at"])
+    if not isinstance(now, datetime) or now.tzinfo != timezone.utc or now.utcoffset() != timedelta(0):
+        _refuse("malformed_payload")
+    if issued > now or now >= deadline:
+        _refuse("approval_expired")
+    if not value["session_policy"]["idle_reload"] and any("session-idle-reload" in target["effects"] for target in value["targets"]):
+        _refuse("policy_mismatch")
     try:
         approved = approval_lookup(value["approval_ref"])
     except Exception:
@@ -227,19 +264,23 @@ def admit_contract(raw: bytes | str | Mapping[str, Any], approval_lookup: Callab
 def parse_receipt(raw: bytes | str | Mapping[str, Any], *, context: ReceiptContext, authenticated_issuer: str, now: datetime) -> dict[str, Any]:
     value = _load(raw, MAX_RECEIPT_BYTES)
     _exact(value, _RECEIPT_FIELDS)
-    if value["schema"] != SCHEMA or type(value["generation"]) is not int or isinstance(value["generation"], bool) or value["generation"] <= 0 or type(value["applied"]) is not bool or type(value["verified"]) is not bool or value["outcome"] not in _OUTCOMES:
+    if value["schema"] != SCHEMA or type(value["generation"]) is not int or isinstance(value["generation"], bool) or value["generation"] <= 0 or type(value["applied"]) is not bool or type(value["verified"]) is not bool or type(value["outcome"]) is not str or value["outcome"] not in _OUTCOMES:
         _refuse()
     for field in ("revision", "job_id", "effect_id", "target_id", "installation_id", "profile_id", "runtime_id", "evidence_ref", "issuer"):
         _id(value[field])
     for field in ("contract_digest", "before_digest", "after_digest", "check_set_digest", "evidence_digest"):
         _digest(value[field])
-    if value["failure_code"] is not None:
-        _id(value["failure_code"])
+    if value["failure_code"] is not None and (type(value["failure_code"]) is not str or value["failure_code"] not in _FAILURES):
+        _refuse()
+    if (value["outcome"] == "success") != (value["failure_code"] is None) or (value["verified"] and value["outcome"] != "success"):
+        _refuse("receipt_outcome_mismatch")
     observed = _utc(value["observed_at"])
-    if now.tzinfo != timezone.utc or observed > now or now - observed > MAX_RECEIPT_AGE:
+    if not isinstance(now, datetime) or now.tzinfo != timezone.utc or now.utcoffset() != timedelta(0):
+        _refuse("malformed_payload")
+    if observed > now or now - observed > MAX_RECEIPT_AGE:
         _refuse("stale_receipt")
     identity = context.identity
-    if (value["contract_digest"], value["revision"], value["generation"], value["job_id"], value["effect_id"], value["installation_id"], value["profile_id"], value["runtime_id"]) != (context.contract_digest, context.revision, context.generation, context.job_id, context.effect_id, identity.installation_id, identity.profile_id, identity.runtime_id) or value["issuer"] != _id(authenticated_issuer):
+    if (value["contract_digest"], value["revision"], value["generation"], value["job_id"], value["effect_id"], value["target_id"], value["check_set_digest"], value["installation_id"], value["profile_id"], value["runtime_id"]) != (context.contract_digest, context.revision, context.generation, context.job_id, context.effect_id, context.target_id, context.check_set_digest, identity.installation_id, identity.profile_id, identity.runtime_id) or value["issuer"] != _id(authenticated_issuer):
         _refuse("receipt_identity_mismatch")
     return json.loads(_canonical(value).decode("ascii"))
 
@@ -265,8 +306,131 @@ _OPERATIONS = (
 )
 
 
+def _object(properties: dict[str, Any], required: tuple[str, ...] | list[str] | None = None) -> dict[str, Any]:
+    """Produce one closed, bounded JSON-schema object declaration."""
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "maxProperties": len(properties),
+        "properties": properties,
+        "required": list(properties) if required is None else list(required),
+    }
+
+
+def _identifier() -> dict[str, Any]:
+    return {"type": "string", "minLength": 1, "maxLength": 128, "pattern": _ID.pattern}
+
+
+def _digest_schema() -> dict[str, Any]:
+    return {"type": "string", "pattern": _SHA256.pattern}
+
+
+def _cursor() -> dict[str, Any]:
+    # null is the explicit end-of-page marker; it is never an omitted field.
+    return {"type": ["string", "null"], "maxLength": 128}
+
+
+def _array(item: dict[str, Any], maximum: int) -> dict[str, Any]:
+    return {"type": "array", "maxItems": maximum, "items": item}
+
+
+def _target_row() -> dict[str, Any]:
+    return _object({
+        "target_id": _identifier(),
+        "installation_id": _identifier(),
+        "profile_id": _identifier(),
+        "runtime_id": _identifier(),
+    })
+
+
+def _receipt_ref() -> dict[str, Any]:
+    return _object({
+        "target_id": _identifier(),
+        "effect_id": _identifier(),
+        "issuer": _identifier(),
+        "receipt_digest": _digest_schema(),
+    })
+
+
+def _outcome_row() -> dict[str, Any]:
+    return _object({
+        **_target_row()["properties"],
+        "outcome": {"type": "string", "enum": sorted(_OUTCOMES)},
+        "applied": {"type": "boolean"},
+        "verified": {"type": "boolean"},
+        "observed_at": {"type": "string", "pattern": _UTC.pattern},
+        "receipt_ref": _receipt_ref(),
+    })
+
+
+def _check_row() -> dict[str, Any]:
+    return _object({
+        "target_id": _identifier(),
+        "check_id": _identifier(),
+        "outcome": {"type": "string", "enum": sorted(_OUTCOMES)},
+        "evidence_ref": _identifier(),
+        "evidence_digest": _digest_schema(),
+    })
+
+
+def _intent_row() -> dict[str, Any]:
+    return _object({
+        "intent_id": _identifier(),
+        "workflow_id": _identifier(),
+        "contract_digest": _digest_schema(),
+        "scope": _identifier(),
+        "revision": _identifier(),
+        "generation": {"type": "integer", "minimum": 1},
+    })
+
+
+def _input_schema(name: str, fields: tuple[str, ...]) -> dict[str, Any]:
+    properties: dict[str, Any] = {
+        field: _cursor() if field == "cursor" else _digest_schema() if field.endswith("digest") else _identifier()
+        for field in fields
+    }
+    return _object(properties)
+
+
+def _result_schema(name: str) -> dict[str, Any]:
+    if name == "propagation.accept.v1":
+        return _object({"intent_id": _identifier(), "workflow_id": _identifier(), "contract_digest": _digest_schema()})
+    if name == "propagation.status.v1":
+        return _object({"targets": _array(_outcome_row(), MAX_TARGETS), "observed_at": {"type": "string", "pattern": _UTC.pattern}})
+    if name == "propagation.resume.v1":
+        return _object({"attempt_id": _identifier(), "state": {"type": "string", "enum": ["accepted", "refused", "reconciling"]}})
+    if name == "propagation.cancel.v1":
+        return _object({"state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
+    if name == "propagation.dispatch.pending.v1":
+        return _object({"intents": _array(_intent_row(), 100), "next_cursor": _cursor()})
+    if name == "propagation.dispatch.record.v1":
+        return _object({"recorded": {"type": "boolean"}})
+    if name == "fleet.propagation.preview.v1":
+        return _object({"preview_digest": _digest_schema(), "targets": _array(_target_row(), MAX_TARGETS)})
+    if name == "fleet.propagation.submit.v1":
+        return _object({"job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
+    if name == "fleet.propagation.status.v1":
+        return _object({"outcomes": _array(_outcome_row(), MAX_TARGETS), "receipt_refs": _array(_receipt_ref(), MAX_TARGETS)})
+    if name == "fleet.propagation.verify.v1":
+        return _object({"checks": _array(_check_row(), MAX_TARGETS), "receipts": _array(_receipt_ref(), MAX_TARGETS)})
+    if name == "fleet.propagation.convergence.v1":
+        return _object({"changed": {"type": "integer", "minimum": 0}, "reloads": {"type": "integer", "minimum": 0}, "checks": _array(_check_row(), MAX_TARGETS)})
+    if name == "fleet.propagation.cancel.v1":
+        return _object({"state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
+    raise AssertionError("unknown propagation operation")
+
+
 def capability_declaration() -> dict[str, Any]:
     return {"schema": CAPABILITY_SCHEMA, "operations": [
-        {"name": name, "required_scope": scope, "input_fields": fields, "result_fields": result, "max_input_bytes": MAX_RECEIPT_BYTES, "available": False}
-        for name, scope, fields, result in _OPERATIONS
+        {
+            "name": name,
+            "required_scope": scope,
+            "input_schema": _input_schema(name, fields),
+            "result_schema": _result_schema(name),
+            "max_input_bytes": MAX_RECEIPT_BYTES,
+            "max_result_bytes": MAX_RECEIPT_BYTES,
+            "available": False,
+        }
+        for name, scope, fields, _result in _OPERATIONS
     ]}
