@@ -152,6 +152,7 @@ def deployment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, d
         return info
 
     monkeypatch.setattr(Path, "lstat", root_owned_environment_lstat)
+    monkeypatch.setattr(manage, "_safe_consumed_file", lambda *_, **__: None)
     monkeypatch.setattr(manage, "_validate_isolated_runtime", lambda *_: None)
     monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
     monkeypatch.setattr(manage, "_role_service_identity", lambda *_: None)
@@ -1263,6 +1264,7 @@ def test_unchanged_healthy_gateway_converges_without_restart(tmp_path, monkeypat
     result = manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
     assert not result["activated"] and result["restarted_units"] == []
     assert not any(call[1] in {"restart", "enable", "stop", "disable"} for call in runner.calls)
+    assert not any(manage._OIDC_PROBE in call for call in runner.calls)
     assert manage._activation_record(Path(value["config_root"])).read_bytes() == record
 
 
@@ -1876,3 +1878,143 @@ def test_failed_local_activation_recovers_prior_trust_and_registrations(tmp_path
     assert (root / "gateway.json").read_bytes() == previous
     assert manage._activation_record(root).read_bytes() == receipt
     assert runner.registered
+
+
+@pytest.mark.parametrize("ready", [True, False])
+def test_oidc_dependency_precedes_gateway_activation(tmp_path, monkeypatch, ready):
+    manifest, _, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    synthetic = SyntheticRunner()
+    synthetic.unit_root = units
+    events = []
+    attempts = 0
+    def runner(argv, timeout, identity):
+        nonlocal attempts
+        if manage._OIDC_PROBE in argv:
+            attempts += 1
+            events.append("discovery")
+            assert 0 < timeout <= 2
+            return manage.RunResult(0 if ready and attempts == 3 else 1)
+        if argv[0] == manage._SYSTEMCTL and argv[1] in {"enable", "restart"}:
+            events.append(argv[-1])
+        return synthetic(argv, timeout, identity)
+    if ready:
+        manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+        assert events == ["anvil-connect-authelia.service", "anvil-connect-caddy.service",
+                          "discovery", "discovery", "discovery", "anvil-connect-gateway.service"]
+    else:
+        with pytest.raises(manage.ManageError, match="identity provider discovery"):
+            manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+        assert attempts == 30 and "anvil-connect-gateway.service" not in events
+        assert not Path(json.loads(manifest.read_text())["config_root"]).exists()
+
+
+def test_oidc_gate_uses_total_deadline_and_edge_identity(monkeypatch):
+    now = [0.0]
+    identity = manage.ServiceIdentity(1201, 2201)
+    monkeypatch.setattr(manage.time, "monotonic", lambda: now[0])
+    calls = []
+    def runner(argv, timeout, selected):
+        assert selected == identity and argv[-3:] == ("https://auth.example.test", "127.0.0.1:443", "")
+        now[0] += timeout
+        calls.append(argv)
+        return manage.RunResult(1)
+    with pytest.raises(manage.ManageError, match="identity provider discovery"):
+        manage._oidc_ready("https://auth.example.test", ":443", runner, identity)
+    assert now[0] == 30 and len(calls) == 15
+    for issuer, listen in [("https://auth.example.test/path", ":443"), ("https://auth.example.test", "127.0.0.1:99999")]:
+        with pytest.raises(manage.ManageError, match="authority"):
+            manage._oidc_ready(issuer, listen, runner, identity)
+    assert len(calls) == 15
+
+
+def test_oidc_probe_exact_program_tls_and_json_contract(tmp_path):
+    import http.server
+    import shutil
+    import ssl
+    import subprocess
+    import threading
+    openssl = shutil.which("openssl")
+    if not openssl:
+        pytest.skip("openssl is required for isolated TLS fixture")
+    cert, key = tmp_path / "cert.pem", tmp_path / "key.pem"
+    subprocess.run([openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+                    "-keyout", str(key), "-out", str(cert), "-subj", "/CN=auth.example.test",
+                    "-addext", "subjectAltName=DNS:auth.example.test"], check=True, capture_output=True)
+    issuer = "https://auth.example.test"
+    replies = [(200, json.dumps({"issuer": issuer}).encode()), (302, b""), (502, b""),
+               (200, b"{"), (200, b"[]"), (200, b"x" * 65537),
+               (200, b'{"issuer":"https://wrong.example.test"}'),
+               (200, ('{"issuer":"' + issuer + '","issuer":"' + issuer + '"}').encode()),
+               (200, ('{"issuer":"' + issuer + '","value":NaN}').encode())]
+    observed, names = [], []
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            observed.append((self.path, self.headers["Host"], self.headers["Connection"]))
+            status, body = replies.pop(0)
+            self.send_response(status)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        def log_message(self, *_):
+            pass
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(cert, key)
+    context.set_servername_callback(lambda _sock, name, _context: names.append(name))
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    address = f"127.0.0.1:{server.server_port}"
+    env = {"HTTPS_PROXY": "http://127.0.0.1:1"}
+    try:
+        for index in range(len(replies)):
+            result = subprocess.run([sys.executable, "-I", "-c", manage._OIDC_PROBE, issuer, address, str(cert)],
+                                    env=env, capture_output=True, timeout=3)
+            assert result.returncode == (0 if index == 0 else 1)
+            assert result.stdout == result.stderr == b""
+        assert observed == [("/.well-known/openid-configuration", "auth.example.test", "close")] * 9
+        for authority, trust in [("https://wrong.example.test", env), (issuer, {})]:
+            result = subprocess.run([sys.executable, "-I", "-c", manage._OIDC_PROBE, authority, address, str(cert) if trust else ""],
+                                    env=trust, capture_output=True, timeout=3)
+            assert result.returncode == 1 and result.stdout == result.stderr == b""
+        assert names[:9] == ["auth.example.test"] * 9
+        assert names[-2:] == ["wrong.example.test", "auth.example.test"]
+        assert len(observed) == 9  # failed certificate checks send no HTTP request
+        # A bundle trusting the server CA must still pin its first leaf.
+        other_key, other_csr, other_cert = (tmp_path / name for name in ("other.key", "other.csr", "other.pem"))
+        subprocess.run([openssl, "req", "-new", "-newkey", "rsa:2048", "-nodes", "-keyout", str(other_key),
+                        "-out", str(other_csr), "-subj", "/CN=auth.example.test"], check=True, capture_output=True)
+        subprocess.run([openssl, "x509", "-req", "-in", str(other_csr), "-CA", str(cert), "-CAkey", str(key),
+                        "-CAcreateserial", "-days", "1", "-out", str(other_cert)], check=True, capture_output=True)
+        bundle = tmp_path / "bundle.pem"
+        for pem in (other_cert.read_bytes() + cert.read_bytes(), b"", b"not a certificate"):
+            bundle.write_bytes(pem)
+            result = subprocess.run([sys.executable, "-I", "-c", manage._OIDC_PROBE, issuer, address, str(bundle)],
+                                    env=env, capture_output=True, timeout=3)
+            assert result.returncode == 1 and result.stdout == result.stderr == b""
+        assert len(observed) == 9
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def test_restored_oidc_gate_uses_prior_owned_edge_and_issuer(tmp_path, monkeypatch):
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / "units"
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner()
+    runner.unit_root = units
+    manage.up(manifest, manage.Target("gateway"), apply=True, runner=runner, unit_root=units)
+    expected = (value["gateway"]["oidc"]["issuer"], value["caddy"].get("listen", ":443"), value["caddy"]["tls"]["certificate_file"])
+    value["gateway"]["oidc"]["issuer"] = "https://changed.example.test"
+    value["caddy"].update(listen="127.0.0.1:19444", tls={"certificate_file": "/changed.pem"})
+    sources, probes = [], []
+    identity = manage.ServiceIdentity(1202, 2202)
+    monkeypatch.setattr(manage, "_prior_gateway_identity", lambda _data, source: sources.append(source) or identity)
+    monkeypatch.setattr(manage, "_oidc_ready", lambda issuer, listen, selected, account, cert: probes.append((issuer, listen, cert, account)))
+    manage._restored_gateway_ready(value, Path(value["config_root"]), runner, before_start=True)
+    assert probes == [(*expected, identity)]
+    assert b"Caddy" in sources[-1] and b"User=1202" in sources[-1]
