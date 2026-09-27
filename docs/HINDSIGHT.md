@@ -110,6 +110,18 @@ disabled until its authenticated exposure is independently verified. Anvil
 Connect exposure must retain both its resource authorization and the router
 device-key check; do not expose the upstream admin origin as a client shortcut.
 
+Connect edge publication preserves the existing tunnel configuration and verifies
+DNS, ingress and a healthy connected tunnel after applying changes. HTTPS origins
+use the resource hostname for TLS SNI unless an explicit override is declared.
+
+Managed gateway startup waits for the declared identity provider through the local
+Caddy listener before starting the gateway. This bounded check uses verified TLS,
+exact issuer discovery and the declared edge identity. Provided certificates are
+pinned to the declared leaf; ACME uses system trust. Rollback checks the restored
+generation before restarting its gateway. The resolved Python interpreter must
+be executable by the edge service account; private development environments may
+not meet that requirement. Existing healthy services remain running on a no-op.
+
 Use upstream-consistent backups and verify recovery in a fresh isolated volume.
 Retain exact image, configuration and archive hashes. Do not restore a snapshot
 over active memory storage to test recovery. A package rollback also needs the

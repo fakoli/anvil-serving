@@ -20,12 +20,13 @@ import secrets
 import socket
 import stat
 import subprocess
+import sys
 import tempfile
 import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import ManifestError, canonical_manifest, read_manifest, require_isolated, role_identity
+from .config import _issuer, _loopback, ManifestError, canonical_manifest, read_manifest, require_isolated, role_identity
 from .render import (MAX_OWNED_FILES, NOTIFICATION_TEMPLATE_DIRECTORY,
                      notification_template_path, plan, plan_for_inspection,
                      render as render_config, stage)
@@ -1581,8 +1582,94 @@ def _unit_state(runner: Runner | None, unit: str) -> tuple[bool, str]:
     return fields["ActiveState"] == "active", state
 
 
+
+# Run under the edge identity with the existing hard process/output bounds.
+# The socket is local, but TLS and HTTP retain the declared issuer authority.
+_OIDC_PROBE = r"""
+import http.client, json, os, re, socket, ssl, stat, sys
+from urllib.parse import urlsplit
+issuer, address, certificate = sys.argv[1:]
+endpoint = urlsplit(issuer)
+host, port = address.rsplit(":", 1)
+def invalid_constant(value):
+    raise ValueError("invalid JSON constant")
+def unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate field")
+        result[key] = value
+    return result
+try:
+    pinned = None
+    if certificate:
+        with os.fdopen(os.open(certificate, os.O_RDONLY | os.O_NOFOLLOW), "rb") as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 1048576:
+                raise ValueError("invalid certificate file")
+            pem = source.read(1048577).decode("ascii")
+        if len(pem) > 1048576:
+            raise ValueError("certificate too large")
+        match = re.match(r"\s*(-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)", pem, re.S)
+        if match is None:
+            raise ValueError("missing certificate")
+        pinned = ssl.PEM_cert_to_DER_cert(match.group(1))
+        context = ssl.create_default_context(cadata=pem)
+        context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
+    else:
+        context = ssl.create_default_context()
+    connection = http.client.HTTPSConnection(endpoint.hostname, endpoint.port or 443, timeout=1, context=context)
+    with socket.create_connection((host, int(port)), timeout=1) as raw:
+        connection.sock = context.wrap_socket(raw, server_hostname=endpoint.hostname)
+        try:
+            if pinned is not None and connection.sock.getpeercert(binary_form=True) != pinned:
+                raise ValueError("certificate mismatch")
+            connection.request("GET", endpoint.path.rstrip("/") + "/.well-known/openid-configuration", headers={"Connection": "close"})
+            response = connection.getresponse()
+            body = response.read(65537)
+            if response.status != 200 or len(body) > 65536:
+                raise ValueError("discovery unavailable")
+            value = json.loads(body, object_pairs_hook=unique, parse_constant=invalid_constant)
+            if not isinstance(value, dict) or value.get("issuer") != issuer:
+                raise ValueError("issuer mismatch")
+        finally:
+            connection.close()
+except (OSError, http.client.HTTPException, ValueError):
+    sys.exit(1)
+"""
+
+
+def _oidc_ready(issuer: str, listen: str, runner: Runner | None, identity: ServiceIdentity | None,
+                certificate: str = "") -> None:
+    # Manifests allow only :443 or an explicit IPv4 loopback Caddy listener.
+    address = "127.0.0.1:443" if listen == ":443" else listen
+    try:
+        _loopback(address, "identity provider listener")
+        _issuer(issuer, "identity provider issuer")
+    except ManifestError as exc:
+        raise ManageError("owned identity provider authority is invalid") from exc
+    if certificate:
+        _safe_consumed_file(Path(certificate), identity.uid if identity else os.geteuid(),
+                            identity.gid if identity else os.getegid(), public=True)
+    command = (str(Path(sys.executable).resolve()), "-I", "-c", _OIDC_PROBE, issuer, address, certificate)
+    deadline = time.monotonic() + 30
+    for attempt in range(30):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            if _run(runner, command, min(2, remaining), identity).returncode == 0:
+                return
+        except ManageError:
+            pass
+        if attempt < 29:
+            time.sleep(max(0, min(0.2, deadline - time.monotonic())))
+    raise ManageError("identity provider discovery did not become ready before gateway activation")
+
+
 def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[str, tuple[bool, str]],
-                     gateway_ready: Callable[[], None] | None = None) -> None:
+                     gateway_ready: Callable[[], None] | None = None,
+                     gateway_dependency: Callable[[], None] | None = None) -> None:
     """Restore observed units in dependency order after owned bytes are restored."""
     failure: ManageError | None = None
     mutated = False
@@ -1615,6 +1702,8 @@ def _restore_running(runner: Runner | None, units: tuple[str, ...], prior: dict[
         try:
             # Restart under the restored generation but do not turn a manually
             # running, disabled unit into an enabled unit.
+            if unit == "anvil-connect-gateway.service" and gateway_dependency is not None:
+                gateway_dependency()
             mutated = True
             _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit restoration failed")
             if unit == "anvil-connect-gateway.service" and gateway_ready is not None:
@@ -1795,7 +1884,7 @@ def _prior_gateway_identity(data: dict[str, Any], source: bytes) -> ServiceIdent
     return _legacy_recovery_identity({**data, "service_user": user})
 
 
-def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | None) -> None:
+def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | None, *, before_start: bool = False) -> None:
     """Probe a restored gateway using only its prior owned binary and identity."""
     generation, _ = _verify_owned_tree(root)
     raw = _read_regular(_activation_record(root), _MAX_OUTPUT)
@@ -1815,6 +1904,17 @@ def _restored_gateway_ready(data: dict[str, Any], root: Path, runner: Runner | N
     if not socket.is_absolute() or ".." in socket.parts:
         raise ManageError("owned prior gateway declaration is invalid")
     identity = _prior_gateway_identity(data, source)
+    if before_start:
+        caddy = _strict_json(_read_regular(root / "caddy.json", _MAX_OUTPUT) or b"", "owned prior edge declaration is invalid")
+        listen = caddy["apps"]["http"]["servers"]["anvil_connect"]["listen"][0]
+        edge_source = _unit_sources(root).get("anvil-connect-caddy.service")
+        if edge_source is None:
+            raise ManageError("owned prior edge unit is unavailable")
+        edge_identity = _prior_gateway_identity(data, edge_source)
+        certificates = caddy.get("apps", {}).get("tls", {}).get("certificates", {}).get("load_files", [])
+        certificate = certificates[0]["certificate"] if certificates else ""
+        _oidc_ready(gateway["oidc"]["issuer"], listen, runner, edge_identity, certificate)
+        return
     _safe_dir(root.parent)
     with tempfile.TemporaryDirectory(prefix=".anvil-connect-status-", dir=root.parent) as temporary:
         request = Path(temporary) / "status.json"
@@ -2185,6 +2285,9 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                 changed = bool(_unit_required_files(unit, targets).intersection(report["changes"]))
                 if active and not changed and _runtime_healthy(data, targets, unit, runner, system_root):
                     continue
+                if unit == "anvil-connect-gateway.service":
+                    _oidc_ready(data["gateway"]["oidc"]["issuer"], data["caddy"].get("listen", ":443"),
+                                runner, _role_service_identity(data, "edge"), data["caddy"]["tls"]["certificate_file"])
                 touched[unit] = prior[unit]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
@@ -2295,6 +2398,7 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                             units,
                             touched,
                             (lambda: _restored_gateway_ready(data, root, runner)) if selected_gateway else None,
+                            (lambda: _restored_gateway_ready(data, root, runner, before_start=True)) if selected_gateway else None,
                         )
                         restored_connectors = tuple(prior_connectors[c["id"]] for c in readiness_connectors
                                                     if c["id"] in prior_connectors and prior.get(_units(Target("connector", c["id"]))[0], (True, "enabled"))[0])

@@ -80,23 +80,26 @@ def _manifest(tmp_path: Path, hosts: tuple[str, ...]) -> str:
 class ScriptedCloudflare:
     """Record API calls and answer from a mutable state table."""
 
-    def __init__(self, *, ingress: list[dict], dns: dict[str, dict] | None = None, tunnel_status: str = "connected") -> None:
+    def __init__(self, *, ingress: list[dict], dns: dict[str, dict] | None = None, tunnel_status: str = "healthy") -> None:
         self.calls: list[tuple[str, str]] = []
         self.ingress = ingress
         self.dns = dns if dns is not None else {}
         self.tunnel_status = tunnel_status
         self.counter = 0
+        self.settings = {"warp-routing": {"enabled": False}, "originRequest": {"connectTimeout": 15}}
 
     def __call__(self, url: str, method: str, body: bytes | None, token: str) -> object:
         self.calls.append((method, url.split("?")[0]))
         if url.endswith("/zones?name=example.test"):
             return {"success": True, "result": [{"id": ZONE_ID, "name": "example.test"}]}
         if "/cfd_tunnel/" in url and url.endswith(f"/cfd_tunnel/{TUNNEL_ID}"):
-            return {"success": True, "result": {"status": self.tunnel_status, "connections": [1] if self.tunnel_status == "connected" else []}}
+            return {"success": True, "result": {"status": self.tunnel_status, "connections": [1] if self.tunnel_status == "healthy" else []}}
         if url.endswith("/configurations") and method == "GET":
-            return {"success": True, "result": {"ingress": self.ingress}}
+            return {"success": True, "result": {"tunnel_id": TUNNEL_ID, "version": 12, "config": {**self.settings, "ingress": self.ingress}}}
         if url.endswith("/configurations") and method == "PUT":
-            self.ingress = json.loads(body)["config"]["ingress"]  # type: ignore[union-attr]
+            config = json.loads(body)["config"]  # type: ignore[arg-type]
+            self.ingress = config.pop("ingress")
+            self.settings = config
             return {"success": True, "result": self.ingress}
         if "/dns_records" in url and method == "GET":
             from urllib.parse import parse_qs, urlparse
@@ -195,7 +198,7 @@ def test_plan_reports_missing_dns_and_changed_ingress(tmp_path: Path) -> None:
     assert report["dns"] == {"a.example.test": "create", "b.example.test": "create"}
     assert report["ingress"]["managed_hosts"] == ["a.example.test", "b.example.test"]
     assert report["ingress"]["changed"] is True
-    assert report["tunnel"]["status"] == "connected"
+    assert report["tunnel"]["status"] == "healthy"
 
 
 def test_plan_preserves_foreign_rules_and_catch_all_last(tmp_path: Path) -> None:
@@ -210,6 +213,7 @@ def test_plan_preserves_foreign_rules_and_catch_all_last(tmp_path: Path) -> None
     assert merged[-1] == {"service": "http_status:503"}  # existing catch-all stays last
     assert merged[0]["service"] == "https://127.0.0.1:19443"
     assert result["applied"] == ["tunnel_ingress", "dns:a.example.test"]
+    assert api.settings == {"warp-routing": {"enabled": False}, "originRequest": {"connectTimeout": 15}}
 
 
 def test_apply_is_idempotent_on_repetition(tmp_path: Path) -> None:
@@ -323,6 +327,7 @@ def test_withdrawn_host_keeps_routing_until_deliberate_retirement(tmp_path: Path
     assert "dns_orphan_deleted:old.example.test" in retired["applied"]
     assert "old.example.test" not in [rule.get("hostname") for rule in api.ingress if isinstance(rule, dict)]
     assert "old.example.test" not in api.dns
+    assert api.settings == {"warp-routing": {"enabled": False}, "originRequest": {"connectTimeout": 15}}
 
 
 def test_retirement_never_touches_foreign_service_rules(tmp_path: Path) -> None:
@@ -376,3 +381,76 @@ def test_connector_failure_reports_all_completed_mutations(tmp_path: Path) -> No
         edge.apply(config, manifest, confirm=True, fetch=api)
     assert raised.value.failed_step == "connector_verification"
     assert set(raised.value.applied) == {"tunnel_ingress", "dns:a.example.test"}
+
+
+@pytest.mark.parametrize("invalid", [None, {}, {"ingress": []}, {"config": None},
+                                        {"config": {"ingress": [None]}}])
+def test_invalid_tunnel_response_never_becomes_an_empty_configuration(tmp_path: Path, invalid: object) -> None:
+    api = ScriptedCloudflare(ingress=[])
+
+    def fetch(url: str, method: str, body: bytes | None, token: str) -> object:
+        if url.endswith("/configurations") and method == "GET":
+            return {"success": True, "result": invalid}
+        return api(url, method, body, token)
+
+    with pytest.raises(EdgeError, match="invalid"):
+        edge.apply(_config(tmp_path), _manifest(tmp_path, ("a.example.test",)), confirm=True, fetch=fetch)
+    assert all(method == "GET" for method, _ in api.calls)
+
+
+def test_default_origin_sni_matches_each_declared_hostname(tmp_path: Path) -> None:
+    api = ScriptedCloudflare(ingress=[])
+    edge.apply(_config(tmp_path, origin_server_name=None),
+               _manifest(tmp_path, ("a.example.test", "b.example.test")), confirm=True, fetch=api)
+    assert [(rule["hostname"], rule["originRequest"]["originServerName"])
+            for rule in api.ingress[:-1]] == [("a.example.test", "a.example.test"), ("b.example.test", "b.example.test")]
+
+
+def test_successful_api_write_requires_matching_readback(tmp_path: Path) -> None:
+    api = ScriptedCloudflare(ingress=[{"service": "http_status:404"}])
+
+    def fetch(url: str, method: str, body: bytes | None, token: str) -> object:
+        if url.endswith("/configurations") and method == "PUT":
+            return {"success": True, "result": {}}
+        return api(url, method, body, token)
+
+    with pytest.raises(EdgeError) as raised:
+        edge.apply(_config(tmp_path), _manifest(tmp_path, ("a.example.test",)), confirm=True, fetch=fetch)
+    assert raised.value.failed_step == "edge_verification"
+    assert raised.value.applied == ("tunnel_ingress", "dns:a.example.test")
+
+
+@pytest.mark.parametrize("status,connections", [("down", []), ("degraded", [1]), ("unknown", [1]), ("healthy", [])])
+def test_apply_requires_healthy_connected_tunnel(tmp_path, status, connections):
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+    api = ScriptedCloudflare(ingress=[])
+    def fetch(url, method, body, token):
+        response = api(url, method, body, token)
+        if url.endswith(f"/cfd_tunnel/{TUNNEL_ID}"):
+            response["result"].update(status=status, connections=connections)
+        return response
+    with pytest.raises(EdgeError) as caught:
+        edge.apply(config, manifest, confirm=True, fetch=fetch)
+    assert caught.value.failed_step == "connector_verification"
+
+
+def test_apply_preserves_sibling_added_after_plan(tmp_path):
+    config = _config(tmp_path)
+    manifest = _manifest(tmp_path, ("a.example.test",))
+    api = ScriptedCloudflare(ingress=[])
+    reads = 0
+    def fetch(url, method, body, token):
+        nonlocal reads
+        if url.endswith("/configurations") and method == "GET":
+            reads += 1
+            if reads == 2:
+                api.settings["new-setting"] = {"future": True}
+        return api(url, method, body, token)
+    edge.apply(config, manifest, confirm=True, fetch=fetch)
+    assert api.settings["new-setting"] == {"future": True}
+
+
+def test_http_origin_omits_tls_only_options(tmp_path):
+    config = _config(tmp_path, origin_service="http://127.0.0.1:19443")
+    assert edge._ingress_rule(config, "a.example.test")["originRequest"] == {}

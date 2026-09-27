@@ -211,14 +211,25 @@ def _default_opener(url: str, method: str, body: bytes | None, token: str) -> ob
 def _ingress_rule(
     config: EdgeConfig, host: str
 ) -> dict[str, object]:
-    origin_request: dict[str, object] = {"caPool": str(config.ca_pool), "noTLSVerify": False}
-    if config.origin_server_name:
-        origin_request["originServerName"] = config.origin_server_name
+    origin_request: dict[str, object] = {}
+    if config.origin_service.startswith("https://"):
+        origin_request = {"caPool": str(config.ca_pool), "noTLSVerify": False,
+                          "originServerName": config.origin_server_name or host}
     return {"hostname": host, "service": config.origin_service, "originRequest": origin_request}
 
 
 def _owned_zone_host(host: str, zone_name: str) -> bool:
     return host == zone_name or host.endswith("." + zone_name)
+
+
+def _tunnel_configuration(value: object) -> dict[str, object]:
+    """Unwrap Cloudflare's versioned response without losing other settings."""
+    config = value.get("config") if isinstance(value, Mapping) else None
+    if not isinstance(config, Mapping) or not isinstance(config.get("ingress"), list):
+        raise EdgeError("Cloudflare tunnel configuration is unavailable or invalid")
+    if any(not isinstance(rule, Mapping) for rule in config["ingress"]):
+        raise EdgeError("Cloudflare tunnel ingress is invalid")
+    return dict(config)
 
 
 def _managed_ingress(
@@ -354,14 +365,12 @@ def plan(
     current_config = _fetch_json(
         fetch, config, "GET", f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations"
     )
-    current_mapping = current_config if isinstance(current_config, Mapping) else {}
+    current_mapping = _tunnel_configuration(current_config)
     desired, preserved = _managed_ingress(config, hosts, current_mapping)
     ingress_orphans = _ingress_orphans(config, hosts, current_mapping)
     dns_orphan_hosts, _dns_orphan_records = _dns_orphans(fetch, config, zone_id, hosts)
     dns_state = _dns_state(fetch, config, zone_id, hosts)
-    ingress_changed = desired != (
-        current_config.get("ingress") if isinstance(current_config, Mapping) else None
-    )
+    ingress_changed = desired != current_mapping["ingress"]
     return {
         "schema": "anvil-connect.edge-plan/v1",
         "zone": config.zone_name,
@@ -422,7 +431,7 @@ def apply(
             current_config = _fetch_json(
                 fetch, config, "GET", f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations"
             )
-            current_mapping = current_config if isinstance(current_config, Mapping) else {}
+            current_mapping = _tunnel_configuration(current_config)
             desired, _ = _managed_ingress(config, hosts, current_mapping)
             if retire_orphans:
                 orphan_rules = set(report["orphans"]["ingress_hosts"])  # type: ignore[index]
@@ -446,7 +455,7 @@ def apply(
             _fetch_json(
                 fetch, config, "PUT",
                 f"/accounts/{config.account_id}/cfd_tunnel/{config.tunnel_id}/configurations",
-                {"config": {"ingress": desired}},
+                {"config": {**current_mapping, "ingress": desired}},
             )
             applied.append("tunnel_ingress")
             if retire_orphans and report["orphans"]["ingress_hosts"]:  # type: ignore[index]
@@ -486,12 +495,19 @@ def apply(
         raise _failed("edge apply", exc) from exc
     verified = plan(config, manifest_path, fetch=fetch)
     tunnel = verified["tunnel"]  # type: ignore[index]
-    if tunnel["status"] != "connected" or not tunnel["connections"]:  # type: ignore[index]
+    if tunnel["status"] != "healthy" or not tunnel["connections"]:  # type: ignore[index]
         raise EdgeError(
             "edge applied but the tunnel is not reporting an active connector; "
             "verify the cloudflared agent is running with this tunnel's token",
             applied=tuple(applied),
             failed_step="connector_verification",
+        )
+    if verified["ingress"]["changed"] or any(  # type: ignore[index]
+        action != "unchanged" for action in verified["dns"].values()  # type: ignore[union-attr]
+    ):
+        raise EdgeError(
+            "Cloudflare edge readback does not match the declaration",
+            applied=tuple(applied), failed_step="edge_verification",
         )
     return {
         "schema": "anvil-connect.edge-apply/v1",

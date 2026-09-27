@@ -19,7 +19,7 @@ Compose service on the fleet's service host, provisioned by ai-infra in the
 Grafana/Open WebUI pattern. Its LLM extraction runs through this repo's
 Capability Gateway router (OpenAI-compatible endpoint). Consumers currently
 reach its memory surface through the private router; public Anvil Connect
-publication is pending. Two memory
+REST and MCP recall now pass; final infrastructure acceptance remains pending. Two memory
 backends then exist in the fleet:
 
 - **hermes** — pi-hermes-memory: local markdown/SQLite FTS stores, curated,
@@ -128,6 +128,24 @@ Evidence classes are separate; none substitutes for another:
 - The importer resumes only documents with matching content, provenance and a
   completion marker. Original curated sources remain unchanged. Bulk migration
   completion is an infrastructure acceptance gate, not a router test result.
+
+## Connect publication repair
+
+Live publication exposed two existing product defects. Cloudflare returns ingress
+inside `result.config` and reports active connectors as `healthy`; the publisher
+previously read a flat ingress field and could discard sibling configuration.
+Publication now preserves the complete configuration and verifies readback.
+
+Activating an updated edge certificate also exposed an identity-provider startup
+race: the gateway attempted OIDC discovery before the local provider was ready,
+then entered its restart interval while the manager's readiness deadline expired.
+A guarded recovery restored the running deployment. The durable manager now waits
+for verified local issuer discovery before starting or restoring the gateway.
+This is a dependency check, not a longer gateway readiness timeout.
+
+Native Connect REST and MCP recall return the expected imported facts through
+public DNS and TLS. Resource, authentication and bank-boundary probes accompany
+that evidence. The bulk import and its final backup/restore remain separate gates.
 
 ## Out of scope
 
