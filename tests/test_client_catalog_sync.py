@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 import anvil_serving.client_catalog_sync as client_catalog_sync
 
+from anvil_serving.propagation_fencing import NativeMutationFence, TrustedNativeOwner
 from anvil_serving.client_catalog_sync import (
     ClientCatalogError,
     sync_clients,
@@ -498,6 +499,72 @@ def test_preview_is_sanitized_and_never_writes(tmp_path):
     assert "secret-never-returned" not in json.dumps(result)
     assert before == [path.read_bytes() for path in paths]
     assert not (tmp_path / "state.json").exists()
+
+
+def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_restart(tmp_path):
+    openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
+    state = tmp_path / "state.json"
+    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    fence = NativeMutationFence(
+        TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal",
+    )
+    targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
+    grant = fence.grant(
+        canonical_contract=contract, generation=1,
+        effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
+        target_paths=targets,
+    )
+    result = sync_clients(
+        base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+        openclaw_config=str(openclaw), hermes_config=str(tmp_path / "hermes.yaml"),
+        pi_models=str(pi_models), pi_settings=str(pi_settings), state_path=str(state),
+        backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"},
+        opener=_Opener(*_catalog()), fence=fence, grant=grant,
+        canonical_contract=contract,
+    )
+    assert result["dry_run"] is False
+    assert all(row["state"] == "verified" for row in fence.journal()["effects"].values())
+    with pytest.raises(ClientCatalogError, match="no blind session restart"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            openclaw_config=str(openclaw), pi_models=str(pi_models), pi_settings=str(pi_settings),
+            state_path=str(state), dry_run=False, confirm=True, restart_openclaw_on_change=True,
+            fence=fence, grant=grant, canonical_contract=contract,
+        )
+
+
+def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp_path, monkeypatch):
+    openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
+    state = tmp_path / "state.json"
+    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal")
+    targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
+    grant = fence.grant(
+        canonical_contract=contract, generation=1,
+        effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
+        target_paths=targets,
+    )
+    atomic_write = client_catalog_sync._atomic_write
+
+    def fail_pi(candidate, value, *, mode=None):
+        if Path(candidate) == pi_models:
+            raise OSError("controlled write failure")
+        atomic_write(candidate, value, mode=mode)
+
+    monkeypatch.setattr(client_catalog_sync, "_atomic_write", fail_pi)
+    with pytest.raises(ClientCatalogError, match="fenced recovery"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            openclaw_config=str(openclaw), pi_models=str(pi_models), pi_settings=str(pi_settings),
+            state_path=str(state), backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+            environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
+            fence=fence, grant=grant, canonical_contract=contract,
+        )
+    effects = fence.journal()["effects"]
+    assert fence.journal()["status"] == "recovery_required"
+    assert effects["catalog-openclaw"]["state"] == "verified"
+    assert effects["catalog-pi_models"]["state"] == "uncertain"
 
 
 def test_apply_preserves_credentials_and_compaction_and_is_idempotent(tmp_path):
@@ -1438,6 +1505,28 @@ def test_hermes_media_sync_installs_scoped_mcp_and_packaged_skill_idempotently(
     assert second["changed"] == []
     assert second["backupCreated"] is False
     assert second["hermesRestarted"] is False
+
+
+def test_fenced_hermes_media_sync_journals_skill_and_profile_effects(tmp_path):
+    home, _ = _write_hermes_profiles(tmp_path)
+    profiles = ("default", "anvil-primary")
+    configs = tuple(home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml" for profile in profiles)
+    skill = home / "skills" / "anvil-media" / "SKILL.md"
+    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "media-1", tmp_path), tmp_path / "journal")
+    grant = fence.grant(
+        canonical_contract=contract, generation=1,
+        effects=("hermes-skill", "hermes-default", "hermes-anvil-primary"),
+        target_paths=(skill, *configs),
+    )
+    result = sync_hermes_media(
+        hermes_bin="hermes", hermes_home=str(home), hermes_profiles=",".join(profiles),
+        skill_path=str(skill), backup_root=str(tmp_path / "backups"),
+        dry_run=False, confirm=True, run=_HermesMediaRunner(profiles),
+        fence=fence, grant=grant, canonical_contract=contract,
+    )
+    assert result["backupCreated"]
+    assert all(row["state"] == "verified" for row in fence.journal()["effects"].values())
 
 
 def test_hermes_media_sync_accepts_resolved_values_only_with_raw_env_references(

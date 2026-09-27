@@ -681,6 +681,39 @@ def sync_pi_media(
     withdraw: bool = False,
     dry_run: bool = True,
     confirm: bool = False,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Withdraw Pi media config, optionally under an owner native fence."""
+
+    if fence is None or dry_run or not confirm:
+        return _sync_pi_media(
+            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+            dry_run=dry_run, confirm=confirm,
+        )
+    if canonical_contract is None:
+        raise ClientCatalogError("fenced Pi media sync requires an owner contract")
+    selected_path = DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config
+    target = Path(os.path.expanduser(selected_path))
+    fence.validate_owner_path(Path(os.path.expanduser(backup_root)))
+    with fence.transaction(
+        grant, canonical_contract=canonical_contract, target_paths=(target,),
+    ) as journal:
+        return _sync_pi_media(
+            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+            dry_run=dry_run, confirm=confirm, journal=journal,
+        )
+
+
+def _sync_pi_media(
+    *,
+    mcp_config: str | None = None,
+    backup_root: str = DEFAULT_PI_MEDIA_BACKUP_ROOT,
+    withdraw: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    journal=None,
 ) -> dict:
     """Withdraw only Pi's retired direct Anvil media MCP entry."""
     if not withdraw:
@@ -714,7 +747,11 @@ def sync_pi_media(
     _, observed_source, _ = _read_json_document(path)
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
+    if journal is not None:
+        journal.begin_effect("pi-media", path, source, desired_bytes)
     backup = _backup([path], Path(os.path.expanduser(backup_root)), _sha256_bytes(desired_bytes))
+    if journal is not None:
+        journal.bind_backup("pi-media", backup.name)
     _, observed_source, _ = _read_json_document(path)
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
@@ -725,7 +762,12 @@ def sync_pi_media(
             raise ClientCatalogError("Pi MCP config verification hash did not match")
         if key in checked.get("mcpServers", {}):
             raise ClientCatalogError("Pi media withdrawal did not remove owned entry")
+        if journal is not None:
+            journal.observe_bytes("pi-media", checked_bytes)
     except (ClientCatalogError, OSError) as exc:
+        if journal is not None:
+            journal.mark_uncertain("pi-media")
+            raise ClientCatalogError("Pi media withdrawal requires fenced recovery") from exc
         try:
             _, current_bytes, _ = _read_json_document(path)
             if current_bytes == desired_bytes:
@@ -1753,6 +1795,56 @@ def sync_hermes_media(
     timeout_seconds: int = 15,
     run=subprocess.run,
     restart_hermes: Callable[[], int] | None = None,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Reconcile Hermes media, optionally inside the owner native guard."""
+
+    if fence is None or dry_run or not confirm:
+        return _sync_hermes_media(
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
+            mcp_url_env=mcp_url_env, token_env=token_env,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds, run=run,
+            restart_hermes=restart_hermes,
+        )
+    if canonical_contract is None or restart_hermes_on_change:
+        raise ClientCatalogError("fenced Hermes media sync requires a contract and no blind session restart")
+    configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+    target = _hermes_media_skill_path(hermes_home, skill_path)
+    fence.validate_owner_path(Path(os.path.expanduser(backup_root)))
+    with fence.transaction(
+        grant, canonical_contract=canonical_contract, target_paths=(target, *configs.values()),
+    ) as journal:
+        return _sync_hermes_media(
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
+            mcp_url_env=mcp_url_env, token_env=token_env,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds, run=run,
+            restart_hermes=restart_hermes, journal=journal,
+        )
+
+
+def _sync_hermes_media(
+    *,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str = "default",
+    skill_path: str = DEFAULT_HERMES_MEDIA_SKILL,
+    backup_root: str = DEFAULT_HERMES_MEDIA_BACKUP_ROOT,
+    anvil_command: str = "anvil-serving",
+    mcp_url_env: str = "ANVIL_MEDIA_MCP_URL",
+    token_env: str = "ANVIL_ROUTER_TOKEN",
+    restart_hermes_on_change: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    timeout_seconds: int = 15,
+    run=subprocess.run,
+    restart_hermes: Callable[[], int] | None = None,
+    journal=None,
 ) -> dict:
     """Reconcile the narrow Anvil media MCP server and packaged Hermes skill."""
 
@@ -1827,11 +1919,26 @@ def sync_hermes_media(
         if "skill" in changed:
             backup_paths.append(target)
         backup_paths.extend(row["config"] for row in rows if row["changed"])
+        if journal is not None:
+            if "skill" in changed:
+                journal.begin_effect(
+                    "hermes-skill", target,
+                    target.read_bytes() if target.exists() else None, skill,
+                )
+            for row in rows:
+                if row["changed"]:
+                    journal.begin_effect(
+                        "hermes-" + row["profile"], row["config"],
+                        row["config"].read_bytes(), _json_bytes(server),
+                    )
         backup = _backup(
             backup_paths,
             Path(os.path.expanduser(backup_root)),
             desired_sha256,
         )
+        if journal is not None:
+            for effect in journal.started_effects:
+                journal.bind_backup(effect, backup.name)
         try:
             if "skill" in changed:
                 _atomic_write(target, skill, mode=0o644)
@@ -1888,7 +1995,22 @@ def sync_hermes_media(
                 raise ClientCatalogError(
                     "Hermes media skill verification still reports file drift"
                 )
+            if journal is not None:
+                if "skill" in changed:
+                    journal.observe_bytes("hermes-skill", target.read_bytes())
+                for row in rows:
+                    if row["changed"]:
+                        observed = _read_hermes_profile_key(
+                            hermes_bin, row["profile"], "mcp_servers.anvil-media",
+                            timeout_seconds=timeout_seconds, run=run, required=True,
+                        )
+                        journal.observe_bytes("hermes-" + row["profile"], _json_bytes(observed))
         except Exception:
+            if journal is not None:
+                for effect in journal.started_effects:
+                    if not journal.is_verified(effect):
+                        journal.mark_uncertain(effect)
+                raise ClientCatalogError("Hermes media sync requires fenced recovery") from None
             _restore_backup(backup)
             raise
     restarted = False
@@ -1943,6 +2065,91 @@ def sync_clients(
     refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Reconcile selected clients, using a native owner fence when enrolled."""
+
+    if fence is None or dry_run or not confirm:
+        return _sync_clients(
+            base_url=base_url, api_key_env=api_key_env, clients=clients,
+            openclaw_config=openclaw_config, hermes_config=hermes_config,
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            pi_models=pi_models, pi_settings=pi_settings, state_path=state_path,
+            backup_root=backup_root, restart_openclaw_on_change=restart_openclaw_on_change,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds,
+            expected_config_sha256=expected_config_sha256,
+            align_compaction_reserve=align_compaction_reserve,
+            pi_exclude_aliases=pi_exclude_aliases,
+            openclaw_exclude_aliases=openclaw_exclude_aliases,
+            openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
+            restart=restart, refresh_openclaw_service=refresh_openclaw_service,
+            restart_hermes=restart_hermes, hermes_run=hermes_run,
+        )
+    if (canonical_contract is None or restart_openclaw_on_change
+            or restart_hermes_on_change or hermes_profiles):
+        raise ClientCatalogError("fenced client sync requires a contract, direct files, and no blind session restart")
+    selected = _normalize_clients(clients)
+    fence.validate_owner_path(Path(os.path.expanduser(backup_root)))
+    targets = [Path(os.path.expanduser(state_path))]
+    if "openclaw" in selected:
+        targets.extend((Path(os.path.expanduser(openclaw_config)), Path(os.path.expanduser(openclaw_config)).parent / ".env"))
+    if "hermes" in selected:
+        targets.append(Path(os.path.expanduser(hermes_config)))
+    if "pi" in selected:
+        targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+    with fence.transaction(grant, canonical_contract=canonical_contract, target_paths=targets) as journal:
+        return _sync_clients(
+            base_url=base_url, api_key_env=api_key_env, clients=clients,
+            openclaw_config=openclaw_config, hermes_config=hermes_config,
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            pi_models=pi_models, pi_settings=pi_settings, state_path=state_path,
+            backup_root=backup_root, restart_openclaw_on_change=restart_openclaw_on_change,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds,
+            expected_config_sha256=expected_config_sha256,
+            align_compaction_reserve=align_compaction_reserve,
+            pi_exclude_aliases=pi_exclude_aliases,
+            openclaw_exclude_aliases=openclaw_exclude_aliases,
+            openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
+            restart=restart, refresh_openclaw_service=refresh_openclaw_service,
+            restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
+        )
+
+
+def _sync_clients(
+    *,
+    base_url: str,
+    api_key_env: str = "ANVIL_ROUTER_TOKEN",
+    clients: str = "openclaw,pi",
+    openclaw_config: str = DEFAULT_OPENCLAW_CONFIG,
+    hermes_config: str = DEFAULT_HERMES_CONFIG,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str | None = None,
+    pi_models: str = DEFAULT_PI_MODELS,
+    pi_settings: str = DEFAULT_PI_SETTINGS,
+    state_path: str = DEFAULT_STATE,
+    backup_root: str = DEFAULT_BACKUP_ROOT,
+    restart_openclaw_on_change: bool = False,
+    restart_hermes_on_change: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    timeout_seconds: int = 15,
+    expected_config_sha256: str | None = None,
+    align_compaction_reserve: bool = False,
+    pi_exclude_aliases: str = "",
+    openclaw_exclude_aliases: str = "",
+    openclaw_allow_aliases: str = "",
+    environ: Mapping[str, str] | None = None,
+    opener=None,
+    restart: Callable[[], int] | None = None,
+    refresh_openclaw_service: Callable[[], int] | None = None,
+    restart_hermes: Callable[[], int] | None = None,
+    hermes_run=subprocess.run,
+    journal=None,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
@@ -2118,6 +2325,14 @@ def sync_clients(
 
     backup = None
     if changed:
+        if journal is not None:
+            for name in desired:
+                if name in changed:
+                    journal.begin_effect(
+                        "catalog-" + name, paths[name],
+                        paths[name].read_bytes() if paths[name].exists() else None,
+                        desired[name],
+                    )
         backup_paths = [
             (
                 hermes_configs[name.split(":", 1)[1]]
@@ -2131,6 +2346,9 @@ def sync_clients(
             Path(os.path.expanduser(backup_root)),
             catalog["config_sha256"],
         )
+        if journal is not None:
+            for effect in journal.started_effects:
+                journal.bind_backup(effect, backup.name)
         try:
             for name in desired:
                 if name not in changed:
@@ -2143,6 +2361,8 @@ def sync_clients(
                     else 0o600
                 )
                 _atomic_write(paths[name], desired[name], mode=mode)
+                if journal is not None:
+                    journal.observe_bytes("catalog-" + name, paths[name].read_bytes())
             if hermes_rows:
                 _apply_hermes_profile_plans(
                     hermes_rows,
@@ -2163,6 +2383,11 @@ def sync_clients(
                         "Hermes profile verification still reports configuration drift"
                     )
         except Exception:
+            if journal is not None:
+                for effect in journal.started_effects:
+                    if not journal.is_verified(effect):
+                        journal.mark_uncertain(effect)
+                raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             _restore_backup(backup)
             raise
 
@@ -2302,7 +2527,16 @@ def sync_clients(
             # Client writes/reloads may have completed, but this run cannot certify them.
             restore_prior_state()
             raise
-    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
+    state_bytes = _json_bytes(state)
+    if journal is not None:
+        journal.begin_effect(
+            "catalog-state", paths["state"],
+            paths["state"].read_bytes() if paths["state"].exists() else None,
+            state_bytes,
+        )
+    _atomic_write(paths["state"], state_bytes, mode=0o600)
+    if journal is not None:
+        journal.observe_bytes("catalog-state", paths["state"].read_bytes())
     return _summary(
         catalog,
         clients=selected_clients,
