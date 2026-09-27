@@ -8,7 +8,6 @@ import ipaddress
 import json
 import os
 from pathlib import Path
-import shutil
 import stat
 import subprocess
 import tempfile
@@ -756,6 +755,8 @@ def _sync_pi_media(
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
     try:
+        if journal is not None:
+            journal.require_before_bytes("pi-media", _read_json_document(path)[1])
         _atomic_write(path, desired_bytes, mode=0o600)
         checked, checked_bytes, _ = _read_json_document(path)
         if checked_bytes != desired_bytes or _sha256_bytes(checked_bytes) != _sha256_bytes(desired_bytes):
@@ -1539,17 +1540,31 @@ def _backup(paths: list[Path], root: Path, config_sha256: str) -> Path:
             entries.append({"source": str(source), "backup": None, "existed": False})
             continue
         target = candidate / ("%02d-%s" % (index, source.name))
-        shutil.copy2(source, target)
+        # Capture and verify the exact bytes before any mutation can rely on this
+        # backup.  copy2 may otherwise race a concurrent writer after its copy.
+        source_bytes = source.read_bytes()
         mode = stat.S_IMODE(source.stat().st_mode)
+        _atomic_write(target, source_bytes, mode=mode)
+        if target.read_bytes() != source_bytes:
+            raise ClientCatalogError("backup verification did not preserve original bytes")
         entries.append({
             "source": str(source),
             "backup": target.name,
             "existed": True,
-            "sha256": _file_sha256(source),
+            "sha256": _sha256_bytes(source_bytes),
             "mode": mode,
         })
     manifest = {"config_sha256": config_sha256, "files": entries}
-    _atomic_write(candidate / "manifest.json", _json_bytes(manifest), mode=0o600)
+    manifest_path = candidate / "manifest.json"
+    _atomic_write(manifest_path, _json_bytes(manifest), mode=0o600)
+    if _read_json_file(manifest_path) != manifest:
+        raise ClientCatalogError("backup manifest verification did not match")
+    if os.name != "nt":
+        descriptor = os.open(candidate, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
     return candidate
 
 
@@ -1929,7 +1944,8 @@ def _sync_hermes_media(
                 if row["changed"]:
                     journal.begin_effect(
                         "hermes-" + row["profile"], row["config"],
-                        row["config"].read_bytes(), _json_bytes(server),
+                        row["config"].read_bytes(), None,
+                        semantic_expected=_json_bytes(server),
                     )
         backup = _backup(
             backup_paths,
@@ -1941,10 +1957,14 @@ def _sync_hermes_media(
                 journal.bind_backup(effect, backup.name)
         try:
             if "skill" in changed:
+                if journal is not None:
+                    journal.require_before_bytes("hermes-skill", target.read_bytes() if target.exists() else None)
                 _atomic_write(target, skill, mode=0o644)
             for row in rows:
                 if not row["changed"]:
                     continue
+                if journal is not None:
+                    journal.require_before_bytes("hermes-" + row["profile"], row["config"].read_bytes())
                 completed = _run_hermes(
                     hermes_bin,
                     row["profile"],
@@ -2004,7 +2024,9 @@ def _sync_hermes_media(
                             hermes_bin, row["profile"], "mcp_servers.anvil-media",
                             timeout_seconds=timeout_seconds, run=run, required=True,
                         )
-                        journal.observe_bytes("hermes-" + row["profile"], _json_bytes(observed))
+                        journal.observe_semantic(
+                            "hermes-" + row["profile"], row["config"].read_bytes(), _json_bytes(observed),
+                        )
         except Exception:
             if journal is not None:
                 for effect in journal.started_effects:
@@ -2166,6 +2188,8 @@ def _sync_clients(
         environ=environ,
         opener=opener,
     )
+    if journal is not None and catalog["config_sha256"] != journal.catalog_digest:
+        raise ClientCatalogError("router catalog differs from the fenced contract")
     if expected_config_sha256 is not None:
         if catalog["config_sha256"] != expected_config_sha256:
             raise ClientCatalogError("router configuration differs from the approved promotion")
@@ -2360,6 +2384,11 @@ def _sync_clients(
                     if paths[name].exists()
                     else 0o600
                 )
+                if journal is not None:
+                    journal.require_before_bytes(
+                        "catalog-" + name,
+                        paths[name].read_bytes() if paths[name].exists() else None,
+                    )
                 _atomic_write(paths[name], desired[name], mode=mode)
                 if journal is not None:
                     journal.observe_bytes("catalog-" + name, paths[name].read_bytes())
@@ -2524,7 +2553,12 @@ def _sync_clients(
             if current.get("config_sha256") != expected_config_sha256:
                 raise ClientCatalogError("router configuration changed during client reconciliation")
         except Exception:
-            # Client writes/reloads may have completed, but this run cannot certify them.
+            # A fenced run records uncertainty and never overwrites concurrent
+            # state merely to make bookkeeping look rolled back.
+            if journal is not None:
+                for effect in journal.started_effects:
+                    journal.mark_uncertain(effect)
+                raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             restore_prior_state()
             raise
     state_bytes = _json_bytes(state)
@@ -2534,9 +2568,24 @@ def _sync_clients(
             paths["state"].read_bytes() if paths["state"].exists() else None,
             state_bytes,
         )
+        # State bookkeeping is a separate controlled effect.  Capture its
+        # own original bytes after the journal's before image, then recheck
+        # that they still match before writing.
+        state_backup = _backup([paths["state"]], Path(os.path.expanduser(backup_root)), catalog["config_sha256"])
+        journal.bind_backup("catalog-state", state_backup.name)
+        if backup is None:
+            backup = state_backup
+        journal.require_before_bytes(
+            "catalog-state", paths["state"].read_bytes() if paths["state"].exists() else None,
+        )
     _atomic_write(paths["state"], state_bytes, mode=0o600)
     if journal is not None:
         journal.observe_bytes("catalog-state", paths["state"].read_bytes())
+        for name in desired:
+            observed = paths[name].read_bytes() if paths[name].exists() else None
+            if observed != desired[name]:
+                journal.mark_uncertain("catalog-" + name)
+                raise ClientCatalogError("client catalog changed during fenced readback")
     return _summary(
         catalog,
         clients=selected_clients,

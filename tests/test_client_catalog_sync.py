@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 import anvil_serving.client_catalog_sync as client_catalog_sync
 
+from anvil_serving.control_plane.propagation import effect_scope_digest, parse_contract
 from anvil_serving.propagation_fencing import NativeMutationFence, TrustedNativeOwner
 from anvil_serving.client_catalog_sync import (
     ClientCatalogError,
@@ -17,6 +18,12 @@ from anvil_serving.client_catalog_sync import (
 
 
 CONFIG_SHA = "a" * 64
+
+
+def _fenced_contract(resource_key: str = "catalog-1") -> bytes:
+    value = {"schema": "anvil-propagation/v1", "scope": "scope-1", "revision": "revision-1", "generation": 1, "approval_ref": "approval-1", "approval_digest": CONFIG_SHA, "activation_ref": "activation-1", "activation_digest": CONFIG_SHA, "inputs": {"catalog_digest": CONFIG_SHA, "monitoring_inventory_digest": CONFIG_SHA, "execution_profile_digest": CONFIG_SHA, "artifact_digest": CONFIG_SHA, "installation_inventory_digest": CONFIG_SHA}, "effect_set_digest": CONFIG_SHA, "targets": [{"target_id": "target-1", "installation_id": "installation-1", "profile_id": "profile-1", "runtime_id": "runtime-1", "resource_keys": [resource_key], "expected_identity_ref": "identity-1", "expected_identity_digest": CONFIG_SHA, "checks": ["catalog-equal"], "effects": ["catalog-apply"]}], "execution_profile_ref": "profile-1", "execution_profile_digest": CONFIG_SHA, "session_policy": {"preserve_active_conversations": True, "loaded_state_required": True, "idle_reload": False}, "preview_policy": {"all_required_targets": True, "web_runtime_required": True, "monitoring_required": True}, "issued_at": "2026-09-27T12:00:00Z", "deadline_at": "2026-09-28T12:00:00Z"}
+    value["effect_set_digest"] = effect_scope_digest(value)
+    return parse_contract(value).canonical
 
 
 def test_pi_media_withdraw_preview_apply_and_idempotence(tmp_path, monkeypatch):
@@ -504,7 +511,7 @@ def test_preview_is_sanitized_and_never_writes(tmp_path):
 def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_restart(tmp_path):
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
-    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    contract = _fenced_contract()
     fence = NativeMutationFence(
         TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal",
     )
@@ -513,6 +520,7 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
         canonical_contract=contract, generation=1,
         effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
         target_paths=targets,
+        effect_targets={"catalog-openclaw": openclaw, "catalog-openclaw_env": openclaw.parent / ".env", "catalog-pi_models": pi_models, "catalog-pi_settings": pi_settings, "catalog-state": state},
     )
     result = sync_clients(
         base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
@@ -537,13 +545,14 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
 def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp_path, monkeypatch):
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"
-    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    contract = _fenced_contract()
     fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
         effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
         target_paths=targets,
+        effect_targets={"catalog-openclaw": openclaw, "catalog-openclaw_env": openclaw.parent / ".env", "catalog-pi_models": pi_models, "catalog-pi_settings": pi_settings, "catalog-state": state},
     )
     atomic_write = client_catalog_sync._atomic_write
 
@@ -1512,12 +1521,13 @@ def test_fenced_hermes_media_sync_journals_skill_and_profile_effects(tmp_path):
     profiles = ("default", "anvil-primary")
     configs = tuple(home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml" for profile in profiles)
     skill = home / "skills" / "anvil-media" / "SKILL.md"
-    contract = b'{"schema":"anvil-propagation/v1","generation":1}'
+    contract = _fenced_contract("media-1")
     fence = NativeMutationFence(TrustedNativeOwner("owner-1", "media-1", tmp_path), tmp_path / "journal")
     grant = fence.grant(
         canonical_contract=contract, generation=1,
         effects=("hermes-skill", "hermes-default", "hermes-anvil-primary"),
         target_paths=(skill, *configs),
+        effect_targets={"hermes-skill": skill, "hermes-default": configs[0], "hermes-anvil-primary": configs[1]},
     )
     result = sync_hermes_media(
         hermes_bin="hermes", hermes_home=str(home), hermes_profiles=",".join(profiles),
@@ -1945,3 +1955,60 @@ def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing
         assert json.loads(state_path.read_text()) == prior
     else:
         assert not state_path.exists()
+
+
+def test_fenced_catalog_rejects_router_snapshot_that_differs_from_contract(tmp_path):
+    openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal")
+    targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
+    grant = fence.grant(
+        canonical_contract=contract, generation=1,
+        effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
+        target_paths=targets,
+        effect_targets={"catalog-openclaw": openclaw, "catalog-openclaw_env": openclaw.parent / ".env", "catalog-pi_models": pi_models, "catalog-pi_settings": pi_settings, "catalog-state": state},
+    )
+    with pytest.raises(ClientCatalogError, match="fenced contract"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            openclaw_config=str(openclaw), pi_models=str(pi_models), pi_settings=str(pi_settings), state_path=str(state),
+            backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+            environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog(config_sha="b" * 64)),
+            fence=fence, grant=grant, canonical_contract=contract,
+        )
+    assert fence.journal()["effects"] == {}
+
+
+def test_fenced_catalog_rejects_drift_found_immediately_before_write(tmp_path, monkeypatch):
+    openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path), tmp_path / "journal")
+    targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
+    grant = fence.grant(
+        canonical_contract=contract, generation=1,
+        effects=("catalog-openclaw", "catalog-openclaw_env", "catalog-pi_models", "catalog-pi_settings", "catalog-state"),
+        target_paths=targets,
+        effect_targets={"catalog-openclaw": openclaw, "catalog-openclaw_env": openclaw.parent / ".env", "catalog-pi_models": pi_models, "catalog-pi_settings": pi_settings, "catalog-state": state},
+    )
+    from anvil_serving.propagation_fencing import NativeMutationJournal
+    original = NativeMutationJournal.require_before_bytes
+
+    def drift_at_last_read(self, effect_id, observed):
+        if effect_id == "catalog-pi_models":
+            pi_models.write_bytes(b'{"external":true}')
+            observed = pi_models.read_bytes()
+        return original(self, effect_id, observed)
+
+    monkeypatch.setattr(NativeMutationJournal, "require_before_bytes", drift_at_last_read)
+    with pytest.raises(ClientCatalogError, match="fenced recovery"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            openclaw_config=str(openclaw), pi_models=str(pi_models), pi_settings=str(pi_settings), state_path=str(state),
+            backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+            environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
+            fence=fence, grant=grant, canonical_contract=contract,
+        )
+    assert pi_models.read_bytes() == b'{"external":true}'
+    assert fence.journal()["effects"]["catalog-pi_models"]["state"] == "uncertain"
