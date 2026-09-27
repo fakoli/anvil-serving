@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import pytest
 
 from anvil_serving.router.config import ConfigError, load
 from anvil_serving.router.keys import KeyStore
+from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 _BASE = '''
@@ -28,7 +30,7 @@ llm.primary = "primary"
 def _config(tmp_path: Path, memory: str = "", server: bool = True) -> Path:
     path = tmp_path / "router.toml"
     server_text = (
-        f'\n[server]\nauth_env = "ROUTER_TOKEN"\napi_keys_path = "{tmp_path / "keys.sqlite3"}"\n'
+        f'\n[server]\nauth_env = "ROUTER_TOKEN"\napi_keys_path = {json.dumps(str(tmp_path / "keys.sqlite3"))}\n'
         if server else ""
     )
     path.write_text(_BASE + memory + server_text, encoding="utf-8")

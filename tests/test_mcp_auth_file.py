@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import ctypes
+import errno
 import os
 import stat
 import struct
+import subprocess
 import sys
 from types import SimpleNamespace
 
@@ -118,37 +120,83 @@ class _NativeCall:
 
 
 class _MacAclLibrary:
-    def __init__(self, *, pointer=1, entries=0, free_result=0):
-        self.acl_get_fd_np = _NativeCall(lambda _descriptor, _kind: pointer)
-        self.acl_entries = _NativeCall(lambda _acl: entries)
+    def __init__(self, *, pointer=1, get_errno=None, valid_result=0, entry_result=-1,
+                 entry_errno=None, free_result=0):
+        def get_acl(_descriptor, _kind):
+            if get_errno is not None:
+                ctypes.set_errno(get_errno)
+            return pointer
+
+        def get_entry(_acl, _entry_id, _entry):
+            if entry_errno is not None:
+                ctypes.set_errno(entry_errno)
+            return entry_result
+
+        self.acl_get_fd_np = _NativeCall(get_acl)
+        self.acl_valid = _NativeCall(lambda _acl: valid_result)
+        self.acl_get_entry = _NativeCall(get_entry)
         self.acl_free = _NativeCall(lambda _acl: free_result)
 
 
-@pytest.mark.parametrize("entries", (0, 1, 3))
-def test_macos_acl_ctypes_boundary_counts_extended_entries(monkeypatch, entries):
-    library = _MacAclLibrary(entries=entries)
+@pytest.mark.parametrize(
+    "pointer, entry_result, errno_value, expected",
+    ((0, -1, errno.ENOENT, 0), (1, -1, errno.EINVAL, 0), (1, 0, 0, 1)),
+)
+def test_macos_acl_ctypes_boundary_counts_extended_entries(monkeypatch, pointer, entry_result, errno_value, expected):
+    library = _MacAclLibrary(pointer=pointer, get_errno=errno_value if not pointer else None,
+                             entry_result=entry_result, entry_errno=errno_value if pointer else None)
     monkeypatch.setattr(
         auth_file,
         "_macos_acl_library",
         lambda: (ctypes, library),
     )
-
-    assert auth_file._macos_extended_acl_entries(7) == entries
+    assert auth_file._macos_extended_acl_entries(7) == expected
     assert library.acl_get_fd_np.argtypes
-    assert library.acl_entries.restype is ctypes.c_int
+    assert library.acl_valid.restype is ctypes.c_int
+    assert library.acl_get_entry.restype is ctypes.c_int
     assert library.acl_free.argtypes
 
 
-@pytest.mark.parametrize("library", (_MacAclLibrary(pointer=0), _MacAclLibrary(entries=-1), _MacAclLibrary(free_result=-1)))
-def test_macos_acl_ctypes_boundary_fails_closed(monkeypatch, library):
+@pytest.mark.parametrize(
+    "library, errno_value",
+    ((_MacAclLibrary(pointer=0, get_errno=errno.EPERM), 0), (_MacAclLibrary(valid_result=-1), 0),
+     (_MacAclLibrary(entry_result=-1, entry_errno=errno.EPERM), 0), (_MacAclLibrary(free_result=-1), 0)),
+)
+def test_macos_acl_ctypes_boundary_fails_closed(monkeypatch, library, errno_value):
     monkeypatch.setattr(
         auth_file,
         "_macos_acl_library",
         lambda: (ctypes, library),
     )
+    ctypes.set_errno(errno_value)
 
     with pytest.raises(auth_file.AuthFileError, match="inspection is unavailable"):
         auth_file._macos_extended_acl_entries(7)
+
+
+@pytest.mark.parametrize("pointer, entry_errno", ((0, None), (1, None)))
+def test_macos_acl_ctypes_boundary_clears_stale_errno(monkeypatch, pointer, entry_errno):
+    library = _MacAclLibrary(pointer=pointer, entry_result=-1, entry_errno=entry_errno)
+    monkeypatch.setattr(auth_file, "_macos_acl_library", lambda: (ctypes, library))
+    ctypes.set_errno(errno.ENOENT if not pointer else errno.EINVAL)
+
+    with pytest.raises(auth_file.AuthFileError, match="inspection is unavailable"):
+        auth_file._macos_extended_acl_entries(7)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="native Darwin extended ACL validation")
+def test_macos_native_private_file_accepts_no_acl_and_rejects_extended_acl(tmp_path):
+    candidate = tmp_path / "controller.token"
+    candidate.write_bytes(b"credential")
+    candidate.chmod(0o600)
+    descriptor = os.open(candidate, os.O_RDONLY)
+    try:
+        auth_file._require_posix_private_descriptor(descriptor)
+        subprocess.run(["chmod", "+a", "everyone allow read", str(candidate)], check=True)
+        with pytest.raises(auth_file.AuthFileError, match="extended ACL"):
+            auth_file._require_posix_private_descriptor(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux executes the macOS-style held-fd walker")

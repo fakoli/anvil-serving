@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 from pathlib import Path
 import shutil
@@ -184,6 +185,32 @@ def test_upstream_rejection_is_safe_and_never_changes_source(tmp_path, source_ro
     assert path.read_text(encoding="utf-8") == original
 
 
+def test_http_rejection_reports_status_without_upstream_payload(tmp_path, source_root, monkeypatch):
+    source = source_root
+    private_payload = "private upstream error body"
+    (source / "MEMORY.md").write_text("safe", encoding="utf-8")
+    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
+
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            raise memory_import.urllib.error.HTTPError(
+                "http://127.0.0.1:8888/retain", 422, "rejected", {}, io.BytesIO(private_payload.encode())
+            )
+
+    monkeypatch.setattr(memory_import.urllib.request, "build_opener", lambda *_args: Opener())
+
+    def transport(method, url, token, payload=None):
+        if url.endswith("/config"):
+            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
+        if method == "GET":
+            return 404, {}
+        return memory_import._http(method, url, token, payload)
+
+    report = memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
+    assert report["failed_chunk_metadata"] == [{"document_id": report["failed_chunks"][0], "http_status": 422}]
+    assert private_payload not in json.dumps(report)
+
+
 def test_transport_failure_stops_before_the_next_chunk(tmp_path, source_root, monkeypatch):
     source = source_root
     (source / "MEMORY.md").write_text("x" * (memory_import.MAX_CHUNK_CHARS + 1), encoding="utf-8")
@@ -201,6 +228,7 @@ def test_transport_failure_stops_before_the_next_chunk(tmp_path, source_root, mo
     report = memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
     assert len(post_ids) == 1
     assert report["imported"] == 0 and report["failed_chunks"] == post_ids
+    assert report["failed_chunk_metadata"] == [{"document_id": post_ids[0], "http_status": None}]
 
 
 def test_partial_import_is_a_nonzero_cli_result(monkeypatch):

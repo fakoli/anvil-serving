@@ -36,6 +36,12 @@ _DEFENSE = {"enabled": True, "rules": [{"on": "sensitive_data", "action": "block
 class MemoryImportError(ValueError):
     """A safe import failure that never carries source content or credentials."""
 
+    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+        super().__init__(message)
+        if http_status is not None and (type(http_status) is not int or not 100 <= http_status <= 599):
+            raise ValueError("http_status must be an HTTP status code or None")
+        self.http_status = http_status
+
 
 @dataclass(frozen=True)
 class Source:
@@ -270,7 +276,7 @@ def _http(method: str, url: str, token: str, payload: dict | None = None) -> tup
     except urllib.error.HTTPError as exc:
         if exc.code == 404:
             return 404, {}
-        raise MemoryImportError("Hindsight request was rejected") from None
+        raise MemoryImportError("Hindsight request was rejected", http_status=exc.code) from None
     except (OSError, urllib.error.URLError, ValueError):
         raise MemoryImportError("Hindsight request failed") from None
     if len(body) > 256 * 1024:
@@ -330,7 +336,7 @@ def import_memories(config_path: str | Path, *, confirm: bool = False, transport
             or not isinstance(policy.get("config"), dict)
             or policy["config"].get("memory_defense") != _DEFENSE):
         raise MemoryImportError("target bank does not enforce block_sensitive_data defense")
-    imported, skipped, failed = 0, 0, []
+    imported, skipped, failed, failure_metadata = 0, 0, [], []
     for chunk in chunks:
         try:
             status, existing = transport("GET", _document_url(config, chunk.document_id), token)
@@ -350,13 +356,14 @@ def import_memories(config_path: str | Path, *, confirm: bool = False, transport
             if status != 200 or not isinstance(response, dict) or response.get("success") is not True:
                 raise MemoryImportError("Hindsight rejected a memory chunk")
             imported += 1
-        except MemoryImportError:
+        except MemoryImportError as exc:
             failed.append(chunk.document_id)
+            failure_metadata.append({"document_id": chunk.document_id, "http_status": exc.http_status})
             # An interrupted synchronous retain can still be running upstream.
             # Stop here rather than accumulating requests behind an uncertain write.
             break
     return {"apply": True, "changed": bool(imported), "imported": imported, "skipped": skipped,
-            "failed_chunks": failed, **report}
+            "failed_chunks": failed, "failed_chunk_metadata": failure_metadata, **report}
 
 
 def _parser() -> argparse.ArgumentParser:

@@ -10,6 +10,7 @@ from anvil_serving.router.front_door import MEMORY_MCP_PATH, MEMORY_PATH, make_s
 from anvil_serving.router.keys import KeyStore
 from anvil_serving.router.memory import MemoryRouter
 from tests.router.helpers import StaticBackend
+from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 MASTER = "test-master-credential"

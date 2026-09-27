@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import errno
 import stat
 import sys
 from contextlib import contextmanager
@@ -17,6 +18,7 @@ class AuthFileError(ValueError):
 
 
 _MACOS_ACL_TYPE_EXTENDED = 0x00000100
+_MACOS_ACL_FIRST_ENTRY = 0
 
 
 def _macos_acl_library():
@@ -41,21 +43,35 @@ def _macos_extended_acl_entries(descriptor: int) -> int:
         get_acl = libc.acl_get_fd_np
         get_acl.argtypes = [ctypes.c_int, ctypes.c_int]
         get_acl.restype = ctypes.c_void_p
-        entries = libc.acl_entries
-        entries.argtypes = [ctypes.c_void_p]
-        entries.restype = ctypes.c_int
+        valid_acl = libc.acl_valid
+        valid_acl.argtypes = [ctypes.c_void_p]
+        valid_acl.restype = ctypes.c_int
+        get_entry = libc.acl_get_entry
+        get_entry.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
+        get_entry.restype = ctypes.c_int
         free_acl = libc.acl_free
         free_acl.argtypes = [ctypes.c_void_p]
         free_acl.restype = ctypes.c_int
+        ctypes.set_errno(0)
         acl = get_acl(descriptor, _MACOS_ACL_TYPE_EXTENDED)
         if not acl:
+            if ctypes.get_errno() == errno.ENOENT:
+                return 0
             raise OSError
         try:
-            count = entries(acl)
-            if count < 0:
+            ctypes.set_errno(0)
+            if valid_acl(acl) != 0:
                 raise OSError
-            return count
+            entry = ctypes.c_void_p()
+            ctypes.set_errno(0)
+            result = get_entry(acl, _MACOS_ACL_FIRST_ENTRY, ctypes.byref(entry))
+            if result == 0:
+                return 1
+            if result == -1 and ctypes.get_errno() == errno.EINVAL:
+                return 0
+            raise OSError
         finally:
+            ctypes.set_errno(0)
             if free_acl(acl) != 0:
                 raise OSError
     except (AttributeError, OSError, OverflowError, ValueError):
