@@ -10,6 +10,7 @@ from .media_worker import FAMILY as MEDIA_WORKER
 from .media import FAMILY as MEDIA
 from .models import FAMILY as MODELS
 from .openclaw import FAMILY as OPENCLAW
+from .propagation import FAMILY as PROPAGATION
 from .operations import build_family as build_operations_family
 from .router import FAMILY as ROUTER
 from .runtime_experiment import FAMILY as RUNTIME_EXPERIMENTS
@@ -33,6 +34,7 @@ TOOL_FAMILIES = (
     SERVICES,
     MODELS,
     OPENCLAW,
+    PROPAGATION,
     BENCHMARKS,
     WORKFLOW,
     EXTERNAL_BENCHMARKS,

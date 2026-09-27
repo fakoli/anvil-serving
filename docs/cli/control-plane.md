@@ -254,6 +254,12 @@ profile reached Anvil.
 
 ## MCP
 
+Propagation v1 currently exposes only a scoped capability declaration. Its
+twelve typed admission, dispatch, activity, and status operations are marked
+unavailable; it does not accept approvals, dispatch work, or apply changes.
+Later owner tasks add those effects behind their separate authorization and
+durable-intent gates.
+
 Inspect the exact management surface before connecting a client:
 
 ```bash

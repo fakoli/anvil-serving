@@ -87,6 +87,7 @@ TOOL_NAMES = [
     "client_catalog_sync",
     "routed_eval",
     "hermes_media_sync",
+    "propagation_capabilities",
     "benchmark_harness_prepare",
     "benchmark_harness_status",
     "benchmark_harness_cleanup",
@@ -136,7 +137,11 @@ def _canonical_sha256(value) -> str:
 
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
-    assert _canonical_sha256(mcp.list_tools()) == PUBLIC_CATALOG_SHA256
+    # The propagation declaration is deliberately scoped and absent from legacy
+    # public discovery.  Keep the pre-propagation public compatibility digest.
+    public_tools = mcp.list_tools()
+    assert "propagation_capabilities" not in [tool["name"] for tool in public_tools]
+    assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
 
 
 def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
@@ -254,11 +259,15 @@ def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():
     handlers = [
         (name, specification["handler"].__name__)
         for name, specification in mcp.TOOLS.items()
+        if name != "propagation_capabilities"
     ]
 
     assert type(mcp.TOOLS) is dict
     assert _canonical_sha256(handlers) == HANDLER_MAP_SHA256
     assert all(callable(mcp.TOOLS[name]["handler"]) for name in TOOL_NAMES)
+    propagation = mcp.TOOLS["propagation_capabilities"]
+    assert propagation["handler"].__name__ == "_capabilities"
+    assert propagation["requiredScope"] == "propagation:status"
 
 
 def test_explicit_ordered_families_compose_the_public_catalog():
@@ -274,6 +283,7 @@ def test_explicit_ordered_families_compose_the_public_catalog():
         "services",
         "models",
         "openclaw",
+        "propagation",
         "benchmarks",
         "workflow",
         "external_benchmarks",

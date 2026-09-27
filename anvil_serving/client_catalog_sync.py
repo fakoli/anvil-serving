@@ -8,7 +8,6 @@ import ipaddress
 import json
 import os
 from pathlib import Path
-import shutil
 import stat
 import subprocess
 import tempfile
@@ -652,8 +651,23 @@ def _read_json_file(path: Path, *, required: bool = True) -> dict:
     return payload
 
 
-def _read_json_document(path: Path, *, required: bool = True) -> tuple[dict, bytes | None, int | None]:
+def _read_json_document(path: Path, *, required: bool = True, journal=None) -> tuple[dict, bytes | None, int | None]:
     """Read one regular JSON document and retain its exact source bytes."""
+    if journal is not None:
+        source = journal.read(path)
+        if source is None:
+            if required:
+                raise ClientCatalogError("required client config is unavailable")
+            return {}, None, None
+        if len(source) > DEFAULT_MAX_RESPONSE_BYTES:
+            raise ClientCatalogError("client config exceeds the size limit")
+        try:
+            payload = json.loads(source)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise ClientCatalogError("client config is not valid UTF-8 JSON") from None
+        if not isinstance(payload, dict):
+            raise ClientCatalogError("client config must contain a JSON object")
+        return payload, source, journal.files.mode(path)
     if path.is_symlink():
         raise ClientCatalogError("refusing symbolic-link client config: %s" % path)
     if not path.exists():
@@ -681,6 +695,39 @@ def sync_pi_media(
     withdraw: bool = False,
     dry_run: bool = True,
     confirm: bool = False,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Withdraw Pi media config, optionally under an owner native fence."""
+
+    if fence is None or dry_run or not confirm:
+        return _sync_pi_media(
+            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+            dry_run=dry_run, confirm=confirm,
+        )
+    if canonical_contract is None:
+        raise ClientCatalogError("fenced Pi media sync requires an owner contract")
+    selected_path = DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config
+    target = Path(os.path.expanduser(selected_path))
+    fence.validate_backup_root(Path(os.path.expanduser(backup_root)))
+    with fence.transaction(
+        grant, canonical_contract=canonical_contract, target_paths=(target,),
+    ) as journal:
+        return _sync_pi_media(
+            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+            dry_run=dry_run, confirm=confirm, journal=journal,
+        )
+
+
+def _sync_pi_media(
+    *,
+    mcp_config: str | None = None,
+    backup_root: str = DEFAULT_PI_MEDIA_BACKUP_ROOT,
+    withdraw: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    journal=None,
 ) -> dict:
     """Withdraw only Pi's retired direct Anvil media MCP entry."""
     if not withdraw:
@@ -688,7 +735,7 @@ def sync_pi_media(
     implicit_default = mcp_config is None
     selected_path = DEFAULT_PI_MEDIA_MCP if implicit_default else mcp_config
     path = Path(os.path.expanduser(selected_path))
-    payload, source, mode = _read_json_document(path, required=not implicit_default)
+    payload, source, mode = _read_json_document(path, required=not implicit_default, journal=journal)
     servers = payload.get("mcpServers", {})
     if not isinstance(servers, Mapping):
         raise ClientCatalogError("Pi MCP mcpServers must be an object")
@@ -711,23 +758,34 @@ def sync_pi_media(
     desired = json.loads(json.dumps(payload))
     del desired["mcpServers"][key]
     desired_bytes = _json_bytes(desired)
-    _, observed_source, _ = _read_json_document(path)
+    _, observed_source, _ = _read_json_document(path, journal=journal)
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
-    backup = _backup([path], Path(os.path.expanduser(backup_root)), _sha256_bytes(desired_bytes))
-    _, observed_source, _ = _read_json_document(path)
+    if journal is not None:
+        journal.begin_effect("pi-media", path, source, desired_bytes)
+    backup = _backup([path], Path(os.path.expanduser(backup_root)), _sha256_bytes(desired_bytes), **({"journal": journal} if journal is not None else {}))
+    if journal is not None:
+        journal.bind_backup("pi-media", backup)
+    _, observed_source, _ = _read_json_document(path, journal=journal)
     if observed_source != source:
         raise ClientCatalogError("Pi MCP config changed before withdrawal; retry")
     try:
-        _atomic_write(path, desired_bytes, mode=0o600)
-        checked, checked_bytes, _ = _read_json_document(path)
+        if journal is not None:
+            journal.require_before_bytes("pi-media", _read_json_document(path, journal=journal)[1])
+        _atomic_write(path, desired_bytes, mode=0o600, **({"journal": journal, "effect_id": "pi-media"} if journal is not None else {}))
+        checked, checked_bytes, _ = _read_json_document(path, journal=journal)
         if checked_bytes != desired_bytes or _sha256_bytes(checked_bytes) != _sha256_bytes(desired_bytes):
             raise ClientCatalogError("Pi MCP config verification hash did not match")
         if key in checked.get("mcpServers", {}):
             raise ClientCatalogError("Pi media withdrawal did not remove owned entry")
+        if journal is not None:
+            journal.observe_bytes("pi-media", checked_bytes)
     except (ClientCatalogError, OSError) as exc:
+        if journal is not None:
+            journal.mark_uncertain("pi-media")
+            raise ClientCatalogError("Pi media withdrawal requires fenced recovery") from exc
         try:
-            _, current_bytes, _ = _read_json_document(path)
+            _, current_bytes, _ = _read_json_document(path, journal=journal)
             if current_bytes == desired_bytes:
                 _atomic_write(path, source, mode=mode)
             elif current_bytes != source:
@@ -1466,7 +1524,11 @@ def _file_sha256(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _atomic_write(path: Path, value: bytes, *, mode: int | None = None) -> None:
+def _atomic_write(path: Path, value: bytes, *, mode: int | None = None,
+                  journal=None, effect_id: str | None = None) -> None:
+    if journal is not None:
+        journal.write(effect_id, value, mode=mode if mode is not None else 0o600)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=".%s." % path.name, dir=path.parent)
     try:
@@ -1481,33 +1543,60 @@ def _atomic_write(path: Path, value: bytes, *, mode: int | None = None) -> None:
             os.unlink(temporary)
 
 
-def _backup(paths: list[Path], root: Path, config_sha256: str) -> Path:
-    root.mkdir(parents=True, exist_ok=True)
-    os.chmod(root, 0o700)
+def _backup(paths: list[Path], root: Path, config_sha256: str, *, journal=None) -> Path:
+    files = journal.files if journal is not None else None
+    if files is not None:
+        files.directory(root, create=True, private=True)
+    else:
+        root.mkdir(parents=True, exist_ok=True)
+        os.chmod(root, 0o700)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     candidate = root / (stamp + "-" + config_sha256[:12])
     suffix = 1
     while candidate.exists():
         candidate = root / (stamp + "-" + config_sha256[:12] + "-%d" % suffix)
         suffix += 1
-    candidate.mkdir(mode=0o700)
+    if files is not None:
+        files.directory(candidate, create=True, private=True)
+    else:
+        candidate.mkdir(mode=0o700)
     entries = []
     for index, source in enumerate(paths):
-        if not source.exists():
+        source_bytes = files.read(source) if files is not None else source.read_bytes() if source.exists() else None
+        if source_bytes is None:
             entries.append({"source": str(source), "backup": None, "existed": False})
             continue
         target = candidate / ("%02d-%s" % (index, source.name))
-        shutil.copy2(source, target)
-        mode = stat.S_IMODE(source.stat().st_mode)
+        # Capture and verify the exact bytes before any mutation can rely on this
+        # backup.  copy2 may otherwise race a concurrent writer after its copy.
+        mode = files.mode(source) if files is not None else stat.S_IMODE(source.stat().st_mode)
+        if files is not None:
+            files.write(target, source_bytes, private=True, expected=None)
+        else:
+            _atomic_write(target, source_bytes, mode=mode)
+        if (files.read(target, private=True) if files is not None else target.read_bytes()) != source_bytes:
+            raise ClientCatalogError("backup verification did not preserve original bytes")
         entries.append({
             "source": str(source),
             "backup": target.name,
             "existed": True,
-            "sha256": _file_sha256(source),
+            "sha256": _sha256_bytes(source_bytes),
             "mode": mode,
         })
     manifest = {"config_sha256": config_sha256, "files": entries}
-    _atomic_write(candidate / "manifest.json", _json_bytes(manifest), mode=0o600)
+    manifest_path = candidate / "manifest.json"
+    if files is not None:
+        files.write(manifest_path, _json_bytes(manifest), private=True, expected=None)
+    else:
+        _atomic_write(manifest_path, _json_bytes(manifest), mode=0o600)
+    if (json.loads(files.read(manifest_path, private=True)) if files is not None else _read_json_file(manifest_path)) != manifest:
+        raise ClientCatalogError("backup manifest verification did not match")
+    if os.name != "nt" and files is None:
+        descriptor = os.open(candidate, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
     return candidate
 
 
@@ -1753,6 +1842,40 @@ def sync_hermes_media(
     timeout_seconds: int = 15,
     run=subprocess.run,
     restart_hermes: Callable[[], int] | None = None,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Legacy media path; fenced profile writes await the bounded owner writer."""
+    if fence is not None:
+        from .propagation_fencing import PropagationFenceError
+        raise PropagationFenceError("UnsupportedCapability")
+    return _sync_hermes_media(
+        hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+        skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
+        mcp_url_env=mcp_url_env, token_env=token_env,
+        restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+        confirm=confirm, timeout_seconds=timeout_seconds, run=run,
+        restart_hermes=restart_hermes,
+    )
+
+
+def _sync_hermes_media(
+    *,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str = "default",
+    skill_path: str = DEFAULT_HERMES_MEDIA_SKILL,
+    backup_root: str = DEFAULT_HERMES_MEDIA_BACKUP_ROOT,
+    anvil_command: str = "anvil-serving",
+    mcp_url_env: str = "ANVIL_MEDIA_MCP_URL",
+    token_env: str = "ANVIL_ROUTER_TOKEN",
+    restart_hermes_on_change: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    timeout_seconds: int = 15,
+    run=subprocess.run,
+    restart_hermes: Callable[[], int] | None = None,
 ) -> dict:
     """Reconcile the narrow Anvil media MCP server and packaged Hermes skill."""
 
@@ -1943,6 +2066,95 @@ def sync_clients(
     refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
+    fence=None,
+    grant=None,
+    canonical_contract: bytes | None = None,
+) -> dict:
+    """Reconcile selected clients, using a native owner fence when enrolled."""
+    if fence is not None and hermes_profiles and "hermes" in _normalize_clients(clients):
+        from .propagation_fencing import PropagationFenceError
+        raise PropagationFenceError("UnsupportedCapability")
+
+
+    if fence is None or dry_run or not confirm:
+        return _sync_clients(
+            base_url=base_url, api_key_env=api_key_env, clients=clients,
+            openclaw_config=openclaw_config, hermes_config=hermes_config,
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            pi_models=pi_models, pi_settings=pi_settings, state_path=state_path,
+            backup_root=backup_root, restart_openclaw_on_change=restart_openclaw_on_change,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds,
+            expected_config_sha256=expected_config_sha256,
+            align_compaction_reserve=align_compaction_reserve,
+            pi_exclude_aliases=pi_exclude_aliases,
+            openclaw_exclude_aliases=openclaw_exclude_aliases,
+            openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
+            restart=restart, refresh_openclaw_service=refresh_openclaw_service,
+            restart_hermes=restart_hermes, hermes_run=hermes_run,
+        )
+    if (canonical_contract is None or restart_openclaw_on_change
+            or restart_hermes_on_change):
+        raise ClientCatalogError("fenced client sync requires a contract, direct files, and no blind session restart")
+    selected = _normalize_clients(clients)
+    fence.validate_backup_root(Path(os.path.expanduser(backup_root)))
+    targets = [Path(os.path.expanduser(state_path))]
+    if "openclaw" in selected:
+        targets.extend((Path(os.path.expanduser(openclaw_config)), Path(os.path.expanduser(openclaw_config)).parent / ".env"))
+    if "hermes" in selected:
+        targets.append(Path(os.path.expanduser(hermes_config)))
+    if "pi" in selected:
+        targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+    with fence.transaction(grant, canonical_contract=canonical_contract, target_paths=targets) as journal:
+        return _sync_clients(
+            base_url=base_url, api_key_env=api_key_env, clients=clients,
+            openclaw_config=openclaw_config, hermes_config=hermes_config,
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            pi_models=pi_models, pi_settings=pi_settings, state_path=state_path,
+            backup_root=backup_root, restart_openclaw_on_change=restart_openclaw_on_change,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds,
+            expected_config_sha256=expected_config_sha256,
+            align_compaction_reserve=align_compaction_reserve,
+            pi_exclude_aliases=pi_exclude_aliases,
+            openclaw_exclude_aliases=openclaw_exclude_aliases,
+            openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
+            restart=restart, refresh_openclaw_service=refresh_openclaw_service,
+            restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
+        )
+
+
+def _sync_clients(
+    *,
+    base_url: str,
+    api_key_env: str = "ANVIL_ROUTER_TOKEN",
+    clients: str = "openclaw,pi",
+    openclaw_config: str = DEFAULT_OPENCLAW_CONFIG,
+    hermes_config: str = DEFAULT_HERMES_CONFIG,
+    hermes_bin: str = DEFAULT_HERMES_BIN,
+    hermes_home: str = DEFAULT_HERMES_HOME,
+    hermes_profiles: str | None = None,
+    pi_models: str = DEFAULT_PI_MODELS,
+    pi_settings: str = DEFAULT_PI_SETTINGS,
+    state_path: str = DEFAULT_STATE,
+    backup_root: str = DEFAULT_BACKUP_ROOT,
+    restart_openclaw_on_change: bool = False,
+    restart_hermes_on_change: bool = False,
+    dry_run: bool = True,
+    confirm: bool = False,
+    timeout_seconds: int = 15,
+    expected_config_sha256: str | None = None,
+    align_compaction_reserve: bool = False,
+    pi_exclude_aliases: str = "",
+    openclaw_exclude_aliases: str = "",
+    openclaw_allow_aliases: str = "",
+    environ: Mapping[str, str] | None = None,
+    opener=None,
+    restart: Callable[[], int] | None = None,
+    refresh_openclaw_service: Callable[[], int] | None = None,
+    restart_hermes: Callable[[], int] | None = None,
+    hermes_run=subprocess.run,
+    journal=None,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
@@ -1959,6 +2171,8 @@ def sync_clients(
         environ=environ,
         opener=opener,
     )
+    if journal is not None and catalog["config_sha256"] != journal.catalog_digest:
+        raise ClientCatalogError("router catalog differs from the fenced contract")
     if expected_config_sha256 is not None:
         if catalog["config_sha256"] != expected_config_sha256:
             raise ClientCatalogError("router configuration differs from the approved promotion")
@@ -1978,20 +2192,43 @@ def sync_clients(
         "pi_settings": Path(os.path.expanduser(pi_settings)),
         "state": Path(os.path.expanduser(state_path)),
     }
+    # These are the controlled before-images used for both effect identity and
+    # the immediate pre-write comparison.  Later rendering must not adopt a
+    # concurrent edit as an approved original.
+    before_images = {}
+
+    def read_json(name, *, required=True):
+        value, raw, _ = _read_json_document(paths[name], required=required, journal=journal)
+        before_images[name] = raw
+        return value
+
+    def read_text(name, *, required=True):
+        if journal is None:
+            return _read_text_file(paths[name]) if required else _read_optional_text_file(paths[name])
+        raw = journal.read(paths[name])
+        if raw is None and required:
+            raise ClientCatalogError("required client config is unavailable")
+        before_images[name] = raw
+        if raw is not None and len(raw) > DEFAULT_MAX_RESPONSE_BYTES:
+            raise ClientCatalogError("client config exceeds the size limit")
+        try:
+            return "" if raw is None else raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ClientCatalogError("client config is not valid UTF-8 text") from None
     desired = {}
     hermes_rows: list[dict] = []
     hermes_configs: dict[str, Path] = {}
     openclaw_service_tracking = False
     openclaw_service_env_matches = True
     if "openclaw" in selected_clients:
-        current_openclaw = _read_json_file(paths["openclaw"])
+        current_openclaw = read_json("openclaw")
         openclaw_secret_env_name = _openclaw_secret_env_name(current_openclaw)
         desired["openclaw"] = _json_bytes(
             _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve, exclude_aliases=openclaw_exclude_aliases, allow_aliases=openclaw_allow_aliases)
         )
         paths["openclaw_env"] = paths["openclaw"].parent / ".env"
         desired["openclaw_env"] = _render_openclaw_state_env(
-            _read_optional_text_file(paths["openclaw_env"]),
+            read_text("openclaw_env", required=False),
             name=openclaw_secret_env_name,
             value=environ[api_key_env],
         )
@@ -2004,7 +2241,7 @@ def sync_clients(
         if openclaw_service_tracking:
             openclaw_service_env_matches = (
                 _dotenv_assignment_value(
-                    _read_optional_text_file(paths["openclaw_service_env"]),
+                    read_text("openclaw_service_env", required=False),
                     name=openclaw_secret_env_name,
                     label="OpenClaw generated service env",
                 )
@@ -2022,13 +2259,13 @@ def sync_clients(
             )
         else:
             desired["hermes"] = _render_hermes_document(
-                catalog, _read_text_file(paths["hermes"])
+                catalog, read_text("hermes")
             )
     if "pi" in selected_clients:
         rendered_pi = _render_pi_documents(
             catalog,
-            _read_json_file(paths["pi_models"]),
-            _read_json_file(paths["pi_settings"]),
+            read_json("pi_models"),
+            read_json("pi_settings"),
             align_compaction_reserve=align_compaction_reserve,
             exclude_aliases=pi_exclude_aliases,
             base_url=base_url,
@@ -2039,12 +2276,14 @@ def sync_clients(
     changed = [
         name
         for name in desired
-        if _file_sha256(paths[name]) != _sha256_bytes(desired[name])
+        if (before_images[name] != desired[name] if journal is not None
+            else _file_sha256(paths[name]) != _sha256_bytes(desired[name]))
         or (
             name == "openclaw_env"
             and os.name != "nt"
             and paths[name].exists()
-            and stat.S_IMODE(paths[name].stat().st_mode) != 0o600
+            and (journal.files.mode(paths[name]) if journal is not None
+                 else stat.S_IMODE(paths[name].stat().st_mode)) != 0o600
         )
     ]
     changed.extend(
@@ -2053,7 +2292,7 @@ def sync_clients(
         if row.get("changed_keys")
     )
     prior_state_exists = paths["state"].exists()
-    prior_state = _read_json_file(paths["state"], required=False)
+    prior_state = read_json("state", required=False)
     prior_exclusions = prior_state.get("client_excluded_aliases", {})
     if not isinstance(prior_exclusions, Mapping):
         raise ClientCatalogError("prior client alias policy state must be an object")
@@ -2118,6 +2357,14 @@ def sync_clients(
 
     backup = None
     if changed:
+        if journal is not None:
+            for name in desired:
+                if name in changed:
+                    journal.begin_effect(
+                        "catalog-" + name, paths[name],
+                        before_images[name],
+                        desired[name],
+                    )
         backup_paths = [
             (
                 hermes_configs[name.split(":", 1)[1]]
@@ -2130,19 +2377,29 @@ def sync_clients(
             backup_paths,
             Path(os.path.expanduser(backup_root)),
             catalog["config_sha256"],
+            **({"journal": journal} if journal is not None else {}),
         )
+        if journal is not None:
+            for effect in journal.started_effects:
+                journal.bind_backup(effect, backup)
         try:
             for name in desired:
                 if name not in changed:
                     continue
-                mode = (
-                    0o600
-                    if name == "openclaw_env"
-                    else stat.S_IMODE(paths[name].stat().st_mode)
-                    if paths[name].exists()
-                    else 0o600
-                )
-                _atomic_write(paths[name], desired[name], mode=mode)
+                mode = 0o600
+                if name != "openclaw_env":
+                    if journal is not None and before_images[name] is not None:
+                        mode = journal.files.mode(paths[name])
+                    elif journal is None and paths[name].exists():
+                        mode = stat.S_IMODE(paths[name].stat().st_mode)
+                if journal is not None:
+                    journal.require_before_bytes(
+                        "catalog-" + name,
+                        journal.read(paths[name]),
+                    )
+                _atomic_write(paths[name], desired[name], mode=mode, **({"journal": journal, "effect_id": "catalog-" + name} if journal is not None else {}))
+                if journal is not None:
+                    journal.observe_bytes("catalog-" + name, journal.read(paths[name]))
             if hermes_rows:
                 _apply_hermes_profile_plans(
                     hermes_rows,
@@ -2162,7 +2419,15 @@ def sync_clients(
                     raise ClientCatalogError(
                         "Hermes profile verification still reports configuration drift"
                     )
-        except Exception:
+        except Exception as exc:
+            if journal is not None:
+                from .propagation_fencing import PropagationFenceError
+                if isinstance(exc, PropagationFenceError):
+                    raise
+                for effect in journal.started_effects:
+                    if not journal.is_verified(effect):
+                        journal.mark_uncertain(effect)
+                raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             _restore_backup(backup)
             raise
 
@@ -2182,7 +2447,8 @@ def sync_clients(
     file_hashes = dict(prior_hashes) if isinstance(prior_hashes, Mapping) else {}
     file_hashes.update(
         {
-            name: _file_sha256(paths[name])
+            name: (_sha256_bytes(journal.read(paths[name])) if journal is not None
+                   else _file_sha256(paths[name]))
             for name in desired
             if name != "openclaw_env"
         }
@@ -2237,7 +2503,7 @@ def sync_clients(
         if refresh_ok and openclaw_service_tracking:
             refresh_ok = (
                 _dotenv_assignment_value(
-                    _read_optional_text_file(paths["openclaw_service_env"]),
+                    read_text("openclaw_service_env", required=False),
                     name=openclaw_secret_env_name,
                     label="OpenClaw generated service env",
                 )
@@ -2299,10 +2565,34 @@ def sync_clients(
             if current.get("config_sha256") != expected_config_sha256:
                 raise ClientCatalogError("router configuration changed during client reconciliation")
         except Exception:
-            # Client writes/reloads may have completed, but this run cannot certify them.
+            # A fenced run records uncertainty and never overwrites concurrent
+            # state merely to make bookkeeping look rolled back.
+            if journal is not None:
+                for effect in journal.started_effects:
+                    journal.mark_uncertain(effect)
+                raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             restore_prior_state()
             raise
-    _atomic_write(paths["state"], _json_bytes(state), mode=0o600)
+    state_bytes = _json_bytes(state)
+    if journal is not None:
+        if before_images["state"] != state_bytes:
+            journal.begin_effect("catalog-state", paths["state"], before_images["state"], state_bytes)
+            state_backup = _backup([paths["state"]], Path(os.path.expanduser(backup_root)), catalog["config_sha256"], journal=journal)
+            journal.bind_backup("catalog-state", state_backup)
+            if backup is None:
+                backup = state_backup
+            _atomic_write(paths["state"], state_bytes, mode=0o600, journal=journal, effect_id="catalog-state")
+            journal.observe_bytes("catalog-state", journal.read(paths["state"]))
+        if journal.read(paths["state"]) != state_bytes:
+            raise ClientCatalogError("client catalog state changed during fenced readback")
+        for name in desired:
+            observed = journal.read(paths[name])
+            if observed != desired[name]:
+                if "catalog-" + name in journal.started_effects:
+                    journal.mark_uncertain("catalog-" + name)
+                raise ClientCatalogError("client catalog changed during fenced readback")
+    else:
+        _atomic_write(paths["state"], state_bytes, mode=0o600)
     return _summary(
         catalog,
         clients=selected_clients,
