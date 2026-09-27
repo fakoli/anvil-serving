@@ -1,7 +1,9 @@
 # Ticket: Hindsight memory capability + multiplexing in the Capability Gateway
 
-Date: 2026-09-27. Status: implementation in progress; source boundary tests and
-independent gateway review pass. Live client acceptance and merge remain pending.
+Date: 2026-09-27. Status: implemented and independently reviewed; native Pi,
+Hermes, OpenClaw and Codex memory continuations pass. Merge remains pending.
+Private infrastructure tracks the ongoing curated-memory import and public
+Connect publication separately.
 
 Source PRD: `ai-infra` `modern/docs/hindsight-prd.md` (F007 / T008). Reference
 design: `ai-infra` `modern/docs/hindsight-design.md` (§6–§8). This ticket
@@ -15,8 +17,9 @@ operator state.
 A Hindsight memory service (vectorize-io/hindsight) runs as a hardened
 Compose service on the fleet's service host, provisioned by ai-infra in the
 Grafana/Open WebUI pattern. Its LLM extraction runs through this repo's
-Capability Gateway router (OpenAI-compatible endpoint), and the service is
-exposed to one consumer host over Tailscale and Anvil Connect. Two memory
+Capability Gateway router (OpenAI-compatible endpoint). Consumers currently
+reach its memory surface through the private router; public Anvil Connect
+publication is pending. Two memory
 backends then exist in the fleet:
 
 - **hermes** — pi-hermes-memory: local markdown/SQLite FTS stores, curated,
@@ -107,6 +110,21 @@ Evidence classes are separate; none substitutes for another:
 4. **Boundary review**: lifecycle stays in the existing Control Plane family;
    memory routing stays in Capability Gateway. Curated imports use a confirmed
    operator command, with provenance and no source-store writes.
+
+## Verified implementation
+
+- Native Pi completed retain, recall and reflect; Hermes, OpenClaw and Codex
+  recalled facts through their configured memory tools without provider or
+  native-memory replacement.
+- Recall disables upstream entity expansion and returns complete ranked facts
+  within a 32 KiB JSON budget, with explicit truncation metadata. MCP sends one
+  result representation; recall and reflect advertise read-only annotations.
+- Managed service status, logs and restart pass. Recall after restart confirms
+  persisted memory, and an isolated nonempty backup restore matches table counts
+  and bank defense settings.
+- The importer resumes only documents with matching content, provenance and a
+  completion marker. Original curated sources remain unchanged. Bulk migration
+  completion is an infrastructure acceptance gate, not a router test result.
 
 ## Out of scope
 
