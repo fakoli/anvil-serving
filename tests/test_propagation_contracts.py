@@ -192,7 +192,9 @@ def test_capability_result_samples_match_their_declared_bounded_schemas():
                      "targets": [{"target_id": "target-1", "check_set_digest": _DIGEST}]}],
         "next_cursor": None,
     }
-    status = {**_page_context(), "outcomes": [_offline_row()], "receipt_refs": []}
+    status = {**_page_context(), "job_id": "job-1", "state": "running",
+              "heartbeat_at": "2026-09-27T12:00:00Z", "completed_at": None,
+              "outcomes": [_offline_row()], "receipt_refs": []}
     assert _matches_declared_schema(pending, operations["propagation.dispatch.pending.v1"]["result_schema"])
     assert _matches_declared_schema(status, operations["fleet.propagation.status.v1"]["result_schema"])
 
@@ -208,6 +210,7 @@ def _offline_row():
     return {
         "target_id": "target-1", "installation_id": "installation-1",
         "profile_id": "profile-1", "runtime_id": "runtime-1",
+        "check_set_digest": _DIGEST,
         "outcome": "pending", "applied": False, "verified": False,
         "desired_revision": "revision-1", "applied_revision": None,
         "verified_revision": None, "last_contact_at": None, "observed_at": None,
@@ -242,7 +245,9 @@ def test_preview_and_verification_can_report_unavailable_targets_without_evidenc
                             "pending_reason": "offline", "observed_at": None,
                             "observed_digest": None, "permitted_effects": ["catalog-apply"]}]}
     assert _matches_declared_schema(preview, operations["fleet.propagation.preview.v1"]["result_schema"])
-    verification = {**_page_context(), "all_targets_verified": False, "receipts": [],
+    verification = {**_page_context(), "job_id": "job-1", "verification_id": "pass-1",
+                    "kind": "verify", "changed": 0, "reloads": 0, "outcomes": [_offline_row()],
+                    "all_targets_verified": False, "receipts": [],
                     "checks": [{"target_id": "target-1", "check_id": "catalog-equal",
                                 "outcome": "pending", "pending_reason": "offline",
                                 "observed_at": None, "evidence_ref": None, "evidence_digest": None}]}

@@ -12,13 +12,19 @@ from http.server import ThreadingHTTPServer
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ... import mcp
+from ..propagation_jobs import PropagationService
+from ..mcp.arguments import validate_tool_arguments
+from ..mcp.catalog import build_family_catalog, call_tool as catalog_call_tool, list_tools as catalog_list_tools
+from ..mcp.security import redact_text
+from ..mcp.tools import TOOL_FAMILIES
+from ..mcp.tools.propagation import OPERATION_NAMES, build_family as build_propagation_family
 from ..authorization import AuthorizationError, AuthorizationPolicy, load_authorization_policy
 from ...graceful import DEFAULT_DRAIN_SECONDS, serve_until_signal
 from ...observability.node_workload_collector import NodeWorkloadCollector
 from ...observability.fleet_workload_collector import FleetWorkloadCollector
 from ...observability.fleet_workload_sources import create_fleet_workload_collector
 from ...observability.workloads import WorkloadQuery
-from .catalog import CallToolFunc, ListToolsFunc
+from .catalog import CallerAwareCall, CallToolFunc, ListToolsFunc
 from .http import (
     AuditLogger,
     FileAuditLogger,
@@ -97,6 +103,7 @@ def make_server(
     workload_fleet_topology: Optional[str] = None,
     workload_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     workload_monotonic: Callable[[], object] = time.monotonic,
+    propagation_service: PropagationService | None = None,
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server."""
     # ``env=None`` stays None: the real process environment may fall back to
@@ -149,6 +156,18 @@ def make_server(
         )
     collector: Optional[NodeWorkloadCollector] = None
     fleet_collector: Optional[FleetWorkloadCollector] = None
+    if propagation_service is not None:
+        families = tuple(family for family in TOOL_FAMILIES if family.name != "propagation") + (build_propagation_family(propagation_service),)
+        propagation_tools = build_family_catalog(families)
+        def local_list() -> list[dict]:
+            return catalog_list_tools(propagation_tools, mcp.TARGET_CONTEXT_SCHEMA)
+        def local_call(name: str, arguments: dict | None, *, caller: Mapping[str, Any] | None = None) -> dict:
+            return catalog_call_tool(
+                propagation_tools, name, arguments,
+                validate_arguments=lambda tool, args: validate_tool_arguments(tool, args, propagation_tools),
+                fail=mcp._fail, redact_text=redact_text, caller=caller,
+            )
+        list_tools_func, call_tool_func = local_list, CallerAwareCall(local_call, OPERATION_NAMES)
     try:
         valid_node = type(node_id) is str and WorkloadQuery(host=node_id).host == node_id
     except Exception:

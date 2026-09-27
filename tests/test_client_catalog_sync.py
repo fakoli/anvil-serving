@@ -547,6 +547,7 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
         TrustedNativeOwner(
             "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
             clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog-openclaw": ("catalog-apply", openclaw), "catalog-openclaw_env": ("catalog-apply", openclaw.parent / ".env"), "catalog-pi_models": ("catalog-apply", pi_models), "catalog-pi_settings": ("catalog-apply", pi_settings), "catalog-state": ("catalog-apply", state)},
         ), tmp_path / "journal",
     )
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
@@ -583,7 +584,8 @@ def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
-    ), tmp_path / "journal")
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog-openclaw": ("catalog-apply", openclaw), "catalog-openclaw_env": ("catalog-apply", openclaw.parent / ".env"), "catalog-pi_models": ("catalog-apply", pi_models), "catalog-pi_settings": ("catalog-apply", pi_settings), "catalog-state": ("catalog-apply", state)},
+        ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -1562,7 +1564,8 @@ def test_fenced_hermes_media_sync_refuses_before_lock_or_runner_side_effects(tmp
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "media-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
-    ), tmp_path / "journal")
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"hermes-skill": ("catalog-apply", skill), "hermes-default": ("catalog-apply", configs[0]), "hermes-anvil-primary": ("catalog-apply", configs[1])},
+        ), tmp_path / "journal")
     grant = fence.grant(
         canonical_contract=contract, generation=1,
         effects=("hermes-skill", "hermes-default", "hermes-anvil-primary"),
@@ -2014,7 +2017,8 @@ def test_fenced_catalog_rejects_router_snapshot_that_differs_from_contract(tmp_p
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
-    ), tmp_path / "journal")
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog-openclaw": ("catalog-apply", openclaw), "catalog-openclaw_env": ("catalog-apply", openclaw.parent / ".env"), "catalog-pi_models": ("catalog-apply", pi_models), "catalog-pi_settings": ("catalog-apply", pi_settings), "catalog-state": ("catalog-apply", state)},
+        ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2040,7 +2044,8 @@ def test_fenced_catalog_rejects_drift_found_immediately_before_write(tmp_path, m
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
-    ), tmp_path / "journal")
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog-openclaw": ("catalog-apply", openclaw), "catalog-openclaw_env": ("catalog-apply", openclaw.parent / ".env"), "catalog-pi_models": ("catalog-apply", pi_models), "catalog-pi_settings": ("catalog-apply", pi_settings), "catalog-state": ("catalog-apply", state)},
+        ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2077,7 +2082,8 @@ def test_fenced_catalog_preserves_an_edit_made_after_render_before_effect_prepar
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
-    ), tmp_path / "journal")
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog-openclaw": ("catalog-apply", openclaw), "catalog-openclaw_env": ("catalog-apply", openclaw.parent / ".env"), "catalog-pi_models": ("catalog-apply", pi_models), "catalog-pi_settings": ("catalog-apply", pi_settings), "catalog-state": ("catalog-apply", state)},
+        ), tmp_path / "journal")
     targets = (openclaw, openclaw.parent / ".env", pi_models, pi_settings, state)
     grant = fence.grant(
         canonical_contract=contract, generation=1,
@@ -2113,6 +2119,7 @@ def test_fenced_hermes_profile_sync_refuses_before_runner_or_journal(tmp_path):
         TrustedNativeOwner(
             "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
             clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"hermes-default": ("catalog-apply", config)},
         ),
         tmp_path / "journal",
     )

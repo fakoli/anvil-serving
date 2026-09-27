@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 import os
 import sys
 from datetime import datetime, timezone
@@ -77,6 +78,7 @@ def _fence(tmp_path: Path) -> tuple[NativeMutationFence, Path]:
     owner = TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
     )
     return NativeMutationFence(owner, tmp_path / "journal"), target
 
@@ -153,6 +155,7 @@ target = root / 'catalog.json'
 fence = NativeMutationFence(TrustedNativeOwner(
     'owner-1', 'catalog-1', root, backup_root=root / 'backups',
     clock=lambda: datetime(2026, 9, 27, 13, tzinfo=timezone.utc),
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target)},
 ), root / 'journal')
 contract = os.environ['FENCE_CONTRACT'].encode('ascii')
 grant = fence.grant(canonical_contract=contract, generation=1, effects=('catalog',), target_paths=(target,))
@@ -206,6 +209,7 @@ target = root / 'catalog.json'
 fence = NativeMutationFence(TrustedNativeOwner(
     'owner-1', 'catalog-1', root, backup_root=root / 'backups',
     clock=lambda: datetime(2026, 9, 27, 13, tzinfo=timezone.utc),
+    current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target)},
 ), root / 'journal')
 contract = os.environ['FENCE_CONTRACT'].encode('ascii')
 grant = fence.grant(canonical_contract=contract, generation=1, effects=('catalog',), target_paths=(target,))
@@ -312,6 +316,7 @@ def test_new_effects_require_catalog_effect_and_current_trusted_clock(tmp_path):
         "owner-1", "catalog-1", tmp_path,
         backup_root=tmp_path / "backups",
         clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target)},
     )
     expired = NativeMutationFence(expired_owner, tmp_path / "ignored")
     grant = expired.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
@@ -336,14 +341,15 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", root, backup_root=root / "backups",
         clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
     ), root / "ignored")
-    grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target, other), effect_targets={"catalog": target})
-    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target, other)) as journal:
+    grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,), effect_targets={"catalog": target})
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
         journal.begin_effect("catalog", target, b"before", b"after")
         target.write_bytes(b"after")
         journal.observe_bytes("catalog", b"after")
-    remapped = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target, other), effect_targets={"catalog": other})
-    assert fence.lookup(remapped) is None
+    with pytest.raises(PropagationFenceError, match="grant_target_mismatch"):
+        fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(other,), effect_targets={"catalog": other})
     outside = tmp_path / "outside"; outside.mkdir()
     import shutil
     shutil.rmtree(root / ".anvil-serving")
@@ -351,6 +357,7 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
     fresh = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", root, backup_root=root / "backups",
         clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
     ), root / "ignored")
     next_contract = _CONTRACT2
     next_grant = fresh.grant(canonical_contract=next_contract, generation=2, effects=("catalog",), target_paths=(target,))
@@ -404,6 +411,7 @@ def test_fenced_write_refuses_target_parent_swap_without_touching_redirect(tmp_p
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", owned, backup_root=owned / "backups",
         clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
     ), owned / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
     with pytest.raises(PropagationFenceError):
@@ -419,6 +427,8 @@ def test_fenced_write_refuses_target_parent_swap_without_touching_redirect(tmp_p
 def test_missing_target_parent_refuses_without_creating_a_client_directory(tmp_path):
     fence, _ = _fence(tmp_path)
     missing = tmp_path / "not-enrolled" / "catalog.json"
+    fence = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path,
+        clock=_trusted_test_clock, current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", missing)}), tmp_path / "ignored")
     grant = fence.grant(
         canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(missing,),
     )
@@ -453,6 +463,7 @@ def test_windows_fence_refuses_reparse_parent_and_pins_held_parent(tmp_path):
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", root, backup_root=root / "backups",
         clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
     ), root / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
     with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)):
@@ -503,6 +514,7 @@ def test_expiry_is_rechecked_at_pre_replace_boundary(tmp_path):
     owner = TrustedNativeOwner(
         "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
         clock=lambda: now[0],
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target)},
     )
     fence = NativeMutationFence(owner, tmp_path / "ignored")
     grant = fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
@@ -535,6 +547,7 @@ def test_windows_fence_refuses_junction_at_canonical_lock_leaf(tmp_path):
         TrustedNativeOwner(
             "owner-1", "catalog-1", root, backup_root=root / "backups",
             clock=_trusted_test_clock,
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"catalog": ("catalog-apply", target), "pi-media": ("catalog-apply", target)},
         ),
         root / "ignored",
     )
@@ -558,3 +571,147 @@ def test_windows_fence_refuses_junction_at_canonical_lock_leaf(tmp_path):
         assert target.read_bytes() == b"before"
     finally:
         lock_leaf.rmdir()
+
+
+def test_grant_cannot_expand_private_effect_or_target_bindings(tmp_path):
+    fence, target = _fence(tmp_path)
+    unrelated = tmp_path / "unrelated.json"
+    unrelated.write_bytes(b"preserve")
+    cases = [
+        (("unapproved-effect",), (target,), None, "effect_not_approved"),
+        (("catalog",), (unrelated,), None, "grant_target_mismatch"),
+        (("catalog",), (target, unrelated), {"catalog": target}, "grant_target_mismatch"),
+        (("catalog",), (target,), {"catalog": unrelated}, "grant_target_mismatch"),
+    ]
+    for effects, paths, mapping, code in cases:
+        with pytest.raises(PropagationFenceError, match=code):
+            fence.grant(canonical_contract=_CONTRACT, generation=1, effects=effects,
+                        target_paths=paths, effect_targets=mapping)
+    assert unrelated.read_bytes() == b"preserve"
+    assert not fence.journal_root.exists()
+
+
+def test_private_bindings_are_snapshotted_and_permission_kind_is_checked(tmp_path):
+    target = tmp_path / "catalog.json"
+    original = {"catalog": ("monitoring-apply", target)}
+    owner = TrustedNativeOwner("owner-1", "catalog-1", tmp_path,
+        clock=_trusted_test_clock, current_authority=lambda _digest, _generation, _epoch: True, effect_bindings=original)
+    original["catalog"] = ("catalog-apply", target)
+    fence = NativeMutationFence(owner, tmp_path / "ignored")
+    with pytest.raises(TypeError):
+        owner.effect_bindings["catalog"] = original["catalog"]
+    with pytest.raises(PropagationFenceError, match="effect_not_approved"):
+        fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
+    empty = NativeMutationFence(TrustedNativeOwner("owner-1", "catalog-1", tmp_path,
+        clock=_trusted_test_clock), tmp_path / "ignored")
+    with pytest.raises(PropagationFenceError, match="effect_not_approved"):
+        empty.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(target,))
+    assert not fence.journal_root.exists()
+
+
+def _interrupted_backup(fence, target, *, write=False):
+    from anvil_serving.client_catalog_sync import _backup
+    grant = _grant(fence, target)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            backup = _backup([target], fence.owner.backup_root, "a" * 64, journal=journal)
+            journal.bind_backup("catalog", backup)
+            if write:
+                journal.write("catalog", b"after")
+            raise RuntimeError("interrupted")
+    return fence.journal()
+
+
+def test_resume_reconciles_desired_bytes_after_expiry_without_new_write(tmp_path):
+    fence, target = _fence(tmp_path)
+    original = _interrupted_backup(fence, target, write=True)
+    mtime = target.stat().st_mtime_ns
+    checks = []
+    def quiescent(reservation, digest, generation):
+        checks.append((reservation, digest, generation))
+        return (reservation, digest, generation) == (original["reservation_id"], original["contract_digest"], 1)
+    owner = replace(fence.owner, recovery_quiescent=quiescent,
+                    clock=lambda: datetime(2026, 9, 29, tzinfo=timezone.utc),
+                    current_authority=lambda *args: False)
+    restarted = NativeMutationFence(owner, tmp_path / "ignored")
+    with restarted.resume(_grant(restarted, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        assert journal.is_verified("catalog")
+        assert journal.reservation_id == original["reservation_id"]
+    assert checks == [(original["reservation_id"], original["contract_digest"], 1)]
+    assert target.stat().st_mtime_ns == mtime
+    assert restarted.journal()["status"] == "completed"
+    assert restarted.journal()["effects"]["catalog"]["backup_id"] == original["effects"]["catalog"]["backup_id"]
+
+
+def test_resume_retries_original_effect_only_with_current_authority_and_backup(tmp_path):
+    fence, target = _fence(tmp_path)
+    original = _interrupted_backup(fence, target)
+    owner = replace(fence.owner, recovery_quiescent=lambda *args: True)
+    restarted = NativeMutationFence(owner, tmp_path / "ignored")
+    with restarted.resume(_grant(restarted, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        assert not journal.is_verified("catalog")
+        journal.write("catalog", b"after")
+        journal.observe_bytes("catalog", journal.read(target))
+    assert target.read_bytes() == b"after"
+    assert restarted.journal()["reservation_id"] == original["reservation_id"]
+    assert set(restarted.journal()["effects"]) == {"catalog"}
+    assert restarted.journal()["effects"]["catalog"]["backup_id"] == original["effects"]["catalog"]["backup_id"]
+
+
+@pytest.mark.parametrize("failure", ["unknown-process", "expired", "stale", "drift", "backup"])
+def test_resume_refuses_unknown_custody_expired_writes_drift_and_bad_backup(tmp_path, failure):
+    fence, target = _fence(tmp_path)
+    original = _interrupted_backup(fence, target)
+    owner = replace(fence.owner, recovery_quiescent=lambda *args: failure != "unknown-process",
+                    current_authority=lambda *args: failure != "stale")
+    if failure == "expired":
+        owner = replace(owner, clock=lambda: datetime(2026, 9, 29, tzinfo=timezone.utc))
+    if failure == "drift":
+        target.write_bytes(b"external")
+    if failure == "backup":
+        (Path(original["effects"]["catalog"]["backup_path"]) / "manifest.json").write_bytes(b"{}")
+    restarted = NativeMutationFence(owner, tmp_path / "ignored")
+    with pytest.raises(PropagationFenceError):
+        with restarted.resume(_grant(restarted, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.write("catalog", b"after")
+    assert target.read_bytes() == (b"external" if failure == "drift" else b"before")
+    assert restarted.journal()["status"] == "recovery_required"
+
+
+def test_current_authority_is_rechecked_before_replacement(tmp_path):
+    from anvil_serving.client_catalog_sync import _backup
+    fence, target = _fence(tmp_path)
+    current = [True]
+    fence = NativeMutationFence(replace(fence.owner, current_authority=lambda *args: current[0]), tmp_path)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            backup = _backup([target], fence.owner.backup_root, "a" * 64, journal=journal)
+            journal.bind_backup("catalog", backup)
+            current[0] = False
+            journal.write("catalog", b"after")
+    assert target.read_bytes() == b"before"
+    missing = NativeMutationFence(replace(fence.owner, current_authority=None), tmp_path)
+    with pytest.raises(PropagationFenceError, match="owner_authority_unavailable"):
+        with missing.transaction(_grant(missing, target), canonical_contract=_CONTRACT, target_paths=(target,)):
+            pytest.fail("missing authority entered transaction")
+
+
+def test_resume_does_not_reuse_verified_state_when_bytes_returned_to_before(tmp_path):
+    from anvil_serving.client_catalog_sync import _backup
+    fence, target = _fence(tmp_path)
+    with pytest.raises(RuntimeError):
+        with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            journal.bind_backup("catalog", _backup([target], fence.owner.backup_root, "a" * 64, journal=journal))
+            journal.write("catalog", b"after")
+            journal.observe_bytes("catalog", b"after")
+            raise RuntimeError("later interruption")
+    target.write_bytes(b"before")
+    fence = NativeMutationFence(replace(fence.owner, recovery_quiescent=lambda *args: True), tmp_path)
+    with pytest.raises(PropagationFenceError, match="recovery_required"):
+        with fence.resume(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            assert not journal.is_verified("catalog")
+    assert fence.journal()["status"] == "recovery_required"
+    assert target.read_bytes() == b"before"

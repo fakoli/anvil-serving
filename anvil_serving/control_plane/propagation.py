@@ -302,9 +302,9 @@ _OPERATIONS = (
     ("propagation.resume.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("attempt_id", "state")),
     ("propagation.cancel.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("state",)),
     ("propagation.dispatch.pending.v1", DISPATCH_SCOPE, ("cursor",), ("intents", "next_cursor")),
-    ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id"), ("recorded",)),
+    ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id", "contract_digest"), ("recorded",)),
     ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
-    ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("job_id", "state")),
+    ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("contract_digest", "operation_id", "job_id", "state")),
     ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
     ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
     ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
@@ -392,6 +392,7 @@ def _receipt_ref() -> dict[str, Any]:
 def _outcome_row() -> dict[str, Any]:
     return _object({
         **_target_row()["properties"],
+        "check_set_digest": _digest_schema(),
         "outcome": {"type": "string", "enum": sorted(_OUTCOMES)},
         "applied": {"type": "boolean"},
         "verified": {"type": "boolean"},
@@ -500,21 +501,33 @@ def _result_schema(name: str) -> dict[str, Any]:
                       "all_required_ready": {"type": "boolean"},
                       "targets": _array(_preview_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.submit.v1":
-        return _object({"job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
+        return _object({"contract_digest": _digest_schema(), "operation_id": _identifier(), "job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
     if name == "fleet.propagation.status.v1":
-        return _page({"outcomes": _array(_outcome_row(), MAX_PAGE_ITEMS),
+        return _page({"job_id": _identifier(),
+                      "state": {"type": "string", "enum": ["running", "applied", "failed", "cancelled", "recovery_required"]},
+                      "heartbeat_at": _timestamp(), "completed_at": _nullable(_timestamp()),
+                      "outcomes": _array(_outcome_row(), MAX_PAGE_ITEMS),
                       "receipt_refs": _array(_receipt_ref(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.verify.v1":
-        return _page({"checks": _array(_check_row(), MAX_PAGE_ITEMS),
+        return _page({"job_id": _identifier(), "verification_id": _identifier(),
+                      "kind": {"type": "string", "enum": ["verify"]},
+                      "changed": {"type": "integer", "minimum": 0},
+                      "reloads": {"type": "integer", "minimum": 0},
+                      "outcomes": _array(_outcome_row(), MAX_PAGE_ITEMS),
+                      "checks": _array(_check_row(), MAX_PAGE_ITEMS),
                       "receipts": _array(_receipt_ref(), MAX_PAGE_ITEMS),
                       "all_targets_verified": {"type": "boolean"}})
     if name == "fleet.propagation.convergence.v1":
-        return _page({"changed": {"type": "integer", "minimum": 0},
+        return _page({"job_id": _identifier(), "verification_id": _identifier(),
+                      "kind": {"type": "string", "enum": ["convergence"]},
+                      "outcomes": _array(_outcome_row(), MAX_PAGE_ITEMS),
+                      "receipts": _array(_receipt_ref(), MAX_PAGE_ITEMS),
+                      "changed": {"type": "integer", "minimum": 0},
                       "reloads": {"type": "integer", "minimum": 0},
                       "all_targets_verified": {"type": "boolean"},
                       "checks": _array(_check_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.cancel.v1":
-        return _object({"state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
+        return _object({"job_id": _identifier(), "state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
     raise AssertionError("unknown propagation operation")
 
 

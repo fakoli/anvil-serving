@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Callable, Optional, Sequence
 
 from ... import mcp
@@ -11,6 +12,17 @@ from .tool_names import mcp_tool_name as _mcp_tool_name
 
 ListToolsFunc = Callable[[], list[dict]]
 CallToolFunc = Callable[[str, Optional[dict]], dict]
+
+
+@dataclass(frozen=True)
+class CallerAwareCall:
+    """Explicit server-local dispatch which preserves the authenticated caller."""
+
+    invoke: Callable
+    durable_tools: frozenset[str]
+
+    def __call__(self, name: str, arguments: Optional[dict], *, caller=None) -> dict:
+        return self.invoke(name, arguments, caller=caller)
 
 def _validated_tool_catalog(
     list_tools_func: ListToolsFunc,

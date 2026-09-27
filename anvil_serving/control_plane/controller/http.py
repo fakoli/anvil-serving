@@ -36,6 +36,7 @@ from ..authorization import (
 )
 from ..mcp import protocol as mcp_protocol
 from .catalog import (
+    CallerAwareCall,
     CallToolFunc,
     ListToolsFunc,
     _mcp_tool_name,
@@ -789,9 +790,17 @@ def make_handler(
                             "scopes": self._granted_scopes,
                         }
                     return call_tool_func(tool_name, arguments, caller=caller)
+                if isinstance(call_tool_func, CallerAwareCall):
+                    caller = None
+                    if self._principal_kind == "scoped":
+                        caller = {"principal": self._principal_id, "scopes": self._granted_scopes}
+                    return call_tool_func(tool_name, arguments, caller=caller)
                 return call_tool_func(tool_name, arguments)
 
-            if idempotency_key is None:
+            # Durable propagation identity lives in its owner ledger. A caller's
+            # generic cache key must never replay an old verification observation.
+            durable = isinstance(call_tool_func, CallerAwareCall) and tool_name in call_tool_func.durable_tools
+            if idempotency_key is None or durable:
                 return self._sanitize_response(
                     _response_with_request_id(invoke(), request_id, auth_token)
                 ), 200
