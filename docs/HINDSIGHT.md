@@ -138,12 +138,17 @@ Preview reads no credentials and makes no network requests.
 
 The importer requires the target bank's `block_sensitive_data` defense, then
 retains deterministic chunks with source identity and SHA-256 provenance.
-Identical reruns verify and skip existing documents. Changed files create new
+A completion tag is written only after synchronous extraction succeeds.
+Identical reruns verify provenance, content hash and that tag before skipping;
+unmarked matches resume retention with the same document ID. Changed files create new
 versions; neither old Hindsight documents nor original harness files are
 deleted or rewritten. A rejected chunk produces a nonzero result with its
 document ID, without printing memory content. Investigate failures before
 retrying; do not disable the bank defense to force an import.
 
 Import uses an operator credential directly against the private upstream.
+Bulk retain calls have an 1,800-second deadline because a chunk can require
+several serialized extraction calls; lookups and completion updates allow
+30 seconds. This does not extend the gateway's 300-second interactive limit.
 Consumers receive only principal-bound router access to the imported bank.
 Back up and verify recovery after migration before treating it as complete.

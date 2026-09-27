@@ -27,6 +27,14 @@ const SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo";
 const PROTOCOL_KEY = "io.modelcontextprotocol/protocolVersion";
 const MAX_NATIVE_IMAGE_BASE64_BYTES = 8 * 1024 * 1024;
 
+test("memory calls allow the gateway deadline without changing controller budgets", async () => {
+  const { requestTimeout } = await import(BRIDGE);
+  assert.equal(requestTimeout({}, "/v1/memory/mcp"), 310_000);
+  assert.equal(requestTimeout({ timeout_seconds: 1800 }, "/v1/memory/mcp"), 310_000);
+  assert.equal(requestTimeout({}), 120_000);
+  assert.equal(requestTimeout({ timeout_seconds: 300 }), 330_000);
+});
+
 function controllerResult(id, result) {
   return {
     jsonrpc: "2.0",

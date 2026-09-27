@@ -23,11 +23,14 @@ from .transports import _NoRedirectHandler
 
 
 IMPORTER_VERSION = "1"
+COMPLETION_TAG = "memory-import-complete-v1"
 MAX_SOURCES = 32
 MAX_FILES = 128
 MAX_FILE_BYTES = 4 * 1024 * 1024
 MAX_TOTAL_BYTES = 16 * 1024 * 1024
 MAX_CHUNK_CHARS = 12_000
+READ_REQUEST_TIMEOUT_SECONDS = 30
+RETAIN_REQUEST_TIMEOUT_SECONDS = 1800
 _IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _HARNESS = frozenset({"codex", "pi", "hermes", "openclaw", "claude"})
 _DEFENSE = {"enabled": True, "rules": [{"on": "sensitive_data", "action": "block"}]}
@@ -263,14 +266,15 @@ def plan_import(config: ImportConfig) -> tuple[Chunk, ...]:
     return tuple(chunks)
 
 
-def _http(method: str, url: str, token: str, payload: dict | None = None) -> tuple[int, dict]:
+def _http(method: str, url: str, token: str, payload: dict | None = None, *,
+          timeout: float = READ_REQUEST_TIMEOUT_SECONDS) -> tuple[int, dict]:
     data = None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8")
     request = urllib.request.Request(url, data=data, headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}, method=method)
     opener = urllib.request.build_opener(
         urllib.request.ProxyHandler({}), _NoRedirectHandler()
     )
     try:
-        with opener.open(request, timeout=300) as response:
+        with opener.open(request, timeout=timeout) as response:
             body = response.read(256 * 1024 + 1)
             status = response.status
     except urllib.error.HTTPError as exc:
@@ -296,7 +300,7 @@ def _document_url(config: ImportConfig, document_id: str) -> str:
     )
 
 
-def _matches(chunk: Chunk, body: dict) -> bool:
+def _provenance_matches(chunk: Chunk, body: dict) -> bool:
     metadata = body.get("document_metadata")
     return (isinstance(metadata, dict)
             and metadata.get("source_id") == chunk.source_id
@@ -306,6 +310,25 @@ def _matches(chunk: Chunk, body: dict) -> bool:
             and metadata.get("chunk_index") == str(chunk.index)
             and metadata.get("importer_version") == IMPORTER_VERSION
             and body.get("content_hash") == chunk.content_sha256)
+
+
+def _matches(chunk: Chunk, body: dict) -> bool:
+    return (_provenance_matches(chunk, body)
+            and isinstance(body.get("tags"), list)
+            and COMPLETION_TAG in body["tags"])
+
+
+def _metadata(chunk: Chunk) -> dict[str, str]:
+    return {"source_id": chunk.source_id, "harness": chunk.harness,
+            "source_file": chunk.source_file, "source_sha256": chunk.source_sha256,
+            "chunk_index": str(chunk.index), "importer_version": IMPORTER_VERSION}
+
+
+def _tags(chunk: Chunk, *, complete: bool) -> list[str]:
+    tags = ["memory-import", chunk.harness]
+    if complete:
+        tags.append(COMPLETION_TAG)
+    return tags
 
 
 def _summary(config: ImportConfig, chunks: tuple[Chunk, ...]) -> dict:
@@ -331,30 +354,41 @@ def import_memories(config_path: str | Path, *, confirm: bool = False, transport
     if not token_bytes or any(byte < 0x21 or byte > 0x7E for byte in token_bytes):
         raise MemoryImportError("auth_file is not a usable private credential")
     token = token_bytes.decode("ascii")
-    status, policy = transport("GET", "%s/v1/default/banks/%s/config" % (config.base_url, urllib.parse.quote(config.bank, safe="")), token)
+
+    def request(method: str, url: str, payload: dict | None = None) -> tuple[int, dict]:
+        if transport is _http:
+            timeout = RETAIN_REQUEST_TIMEOUT_SECONDS if method == "POST" else READ_REQUEST_TIMEOUT_SECONDS
+            return _http(method, url, token, payload, timeout=timeout)
+        return transport(method, url, token, payload)
+
+    status, policy = request("GET", "%s/v1/default/banks/%s/config" % (config.base_url, urllib.parse.quote(config.bank, safe="")))
     if (status != 200 or not isinstance(policy, dict)
             or not isinstance(policy.get("config"), dict)
             or policy["config"].get("memory_defense") != _DEFENSE):
         raise MemoryImportError("target bank does not enforce block_sensitive_data defense")
     imported, skipped, failed, failure_metadata = 0, 0, [], []
+    retained_success = False
     for chunk in chunks:
         try:
-            status, existing = transport("GET", _document_url(config, chunk.document_id), token)
+            status, existing = request("GET", _document_url(config, chunk.document_id))
             if status == 200:
-                if not isinstance(existing, dict) or not _matches(chunk, existing):
+                if not isinstance(existing, dict) or not _provenance_matches(chunk, existing):
                     raise MemoryImportError("existing document provenance does not match")
-                skipped += 1
-                continue
-            if status != 404:
+                if _matches(chunk, existing):
+                    skipped += 1
+                    continue
+            if status not in (200, 404):
                 raise MemoryImportError("Hindsight document lookup failed")
             payload = {"async": False, "items": [{"content": chunk.content, "document_id": chunk.document_id,
-                       "metadata": {"source_id": chunk.source_id, "harness": chunk.harness,
-                                    "source_file": chunk.source_file, "source_sha256": chunk.source_sha256,
-                                    "chunk_index": str(chunk.index), "importer_version": IMPORTER_VERSION},
-                       "tags": ["memory-import", chunk.harness]}]}
-            status, response = transport("POST", "%s/v1/default/banks/%s/memories" % (config.base_url, urllib.parse.quote(config.bank, safe="")), token, payload)
+                       "metadata": _metadata(chunk), "tags": _tags(chunk, complete=False)}]}
+            status, response = request("POST", "%s/v1/default/banks/%s/memories" % (config.base_url, urllib.parse.quote(config.bank, safe="")), payload)
             if status != 200 or not isinstance(response, dict) or response.get("success") is not True:
                 raise MemoryImportError("Hindsight rejected a memory chunk")
+            retained_success = True
+            status, response = request("PATCH", _document_url(config, chunk.document_id),
+                                       {"tags": _tags(chunk, complete=True)})
+            if status != 200 or not isinstance(response, dict) or response.get("success") is not True:
+                raise MemoryImportError("Hindsight document completion update failed")
             imported += 1
         except MemoryImportError as exc:
             failed.append(chunk.document_id)
@@ -362,7 +396,7 @@ def import_memories(config_path: str | Path, *, confirm: bool = False, transport
             # An interrupted synchronous retain can still be running upstream.
             # Stop here rather than accumulating requests behind an uncertain write.
             break
-    return {"apply": True, "changed": bool(imported), "imported": imported, "skipped": skipped,
+    return {"apply": True, "changed": bool(imported or retained_success), "imported": imported, "skipped": skipped,
             "failed_chunks": failed, "failed_chunk_metadata": failure_metadata, **report}
 
 

@@ -5,8 +5,6 @@ import json
 import io
 import os
 from pathlib import Path
-import shutil
-import uuid
 import urllib.parse
 
 import pytest
@@ -44,12 +42,10 @@ def source_root(tmp_path):
         root.mkdir()
         yield root
         return
-    root = Path.cwd() / ("memory-import-source-" + uuid.uuid4().hex)
-    root.mkdir()
-    try:
-        yield root
-    finally:
-        shutil.rmtree(root, ignore_errors=True)
+    from tests.bootstrap_windows_fixtures import windows_fixture_tree
+
+    with windows_fixture_tree() as tree:
+        yield tree.root
 
 
 def _defense_transport(documents, calls):
@@ -65,7 +61,12 @@ def _defense_transport(documents, calls):
             documents[item["document_id"]] = {
                 "document_metadata": item["metadata"],
                 "content_hash": memory_import.hashlib.sha256(item["content"].encode()).hexdigest(),
+                "tags": item["tags"],
             }
+            return 200, {"success": True}
+        if method == "PATCH":
+            document_id = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+            documents[document_id]["tags"] = payload["tags"]
             return 200, {"success": True}
         raise AssertionError((method, url))
     return transport
@@ -152,7 +153,140 @@ def test_content_addressed_retry_skips_and_changed_source_versions(tmp_path, sou
     assert (first["imported"], second["skipped"], third["imported"]) == (1, 1, 1)
     assert len(documents) == 2 and first_id in documents
     posted = [payload for method, _, payload in calls if method == "POST"]
+    completed = [payload for method, _, payload in calls if method == "PATCH"]
     assert posted and all(isinstance(value, str) for value in posted[0]["items"][0]["metadata"].values())
+    assert completed and completed[0]["tags"][-1] == memory_import.COMPLETION_TAG
+
+
+def test_default_transport_uses_retain_and_read_deadlines(tmp_path, source_root, monkeypatch):
+    source = source_root
+    (source / "MEMORY.md").write_text("safe", encoding="utf-8")
+    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
+    observed = []
+
+    class Response:
+        status = 200
+
+        def __init__(self, body):
+            self._body = json.dumps(body).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return self._body
+
+    class Opener:
+        def open(self, request, *, timeout):
+            observed.append((request.get_method(), timeout))
+            if request.get_method() == "GET" and request.full_url.endswith("/config"):
+                return Response({"config": {"memory_defense": memory_import._DEFENSE}})
+            if request.get_method() == "GET":
+                response = Response({})
+                response.status = 404
+                return response
+            return Response({"success": True})
+
+    monkeypatch.setattr(memory_import.urllib.request, "build_opener", lambda *_args: Opener())
+    report = memory_import.import_memories(_config(tmp_path, source), confirm=True)
+
+    assert report["imported"] == 1
+    assert observed == [
+        ("GET", memory_import.READ_REQUEST_TIMEOUT_SECONDS),
+        ("GET", memory_import.READ_REQUEST_TIMEOUT_SECONDS),
+        ("POST", memory_import.RETAIN_REQUEST_TIMEOUT_SECONDS),
+        ("PATCH", memory_import.READ_REQUEST_TIMEOUT_SECONDS),
+    ]
+
+
+def test_unmarked_document_retries_after_timeout_then_completed_rerun_skips(tmp_path, source_root, monkeypatch):
+    source = source_root
+    (source / "MEMORY.md").write_text("safe", encoding="utf-8")
+    config = _config(tmp_path, source)
+    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
+    chunk = memory_import.plan_import(memory_import.load_config(config))[0]
+    documents = {chunk.document_id: {
+        "document_metadata": memory_import._metadata(chunk),
+        "content_hash": chunk.content_sha256,
+        "tags": memory_import._tags(chunk, complete=False),
+    }}
+    attempts = {"post": 0, "patch": 0}
+    post_document_ids = []
+
+    def transport(method, url, token, payload=None):
+        if url.endswith("/config"):
+            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
+        if method == "GET":
+            document_id = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+            return (200, documents[document_id]) if document_id in documents else (404, {})
+        if method == "POST":
+            attempts["post"] += 1
+            post_document_ids.append(payload["items"][0]["document_id"])
+            if attempts["post"] == 1:
+                raise memory_import.MemoryImportError("Hindsight request failed")
+            item = payload["items"][0]
+            documents[item["document_id"]] = {
+                "document_metadata": item["metadata"],
+                "content_hash": memory_import.hashlib.sha256(item["content"].encode()).hexdigest(),
+                "tags": item["tags"],
+            }
+            return 200, {"success": True}
+        if method == "PATCH":
+            attempts["patch"] += 1
+            document_id = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+            documents[document_id]["tags"] = payload["tags"]
+            return 200, {"success": True}
+        raise AssertionError((method, url))
+
+    timed_out = memory_import.import_memories(config, confirm=True, transport=transport)
+    assert attempts == {"post": 1, "patch": 0}
+    recovered = memory_import.import_memories(config, confirm=True, transport=transport)
+    rerun = memory_import.import_memories(config, confirm=True, transport=transport)
+
+    assert timed_out["skipped"] == 0 and timed_out["failed_chunks"] == [chunk.document_id]
+    assert timed_out["failed_chunk_metadata"] == [{"document_id": chunk.document_id, "http_status": None}]
+    assert recovered["imported"] == 1 and recovered["failed_chunks"] == []
+    assert rerun["skipped"] == 1 and rerun["imported"] == 0
+    assert attempts == {"post": 2, "patch": 1}
+    assert post_document_ids == [chunk.document_id, chunk.document_id]
+
+
+def test_completion_patch_rejection_reports_retained_change_and_stops(tmp_path, source_root, monkeypatch):
+    source = source_root
+    (source / "MEMORY.md").write_text("x" * (memory_import.MAX_CHUNK_CHARS + 1), encoding="utf-8")
+    config = _config(tmp_path, source)
+    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
+    private_payload = "private completion error"
+    posted = []
+
+    class Opener:
+        def open(self, request, *_args, **_kwargs):
+            assert request.get_method() == "PATCH"
+            raise memory_import.urllib.error.HTTPError(
+                request.full_url, 503, "rejected", {}, io.BytesIO(private_payload.encode())
+            )
+
+    monkeypatch.setattr(memory_import.urllib.request, "build_opener", lambda *_args: Opener())
+
+    def transport(method, url, token, payload=None):
+        if url.endswith("/config"):
+            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
+        if method == "GET":
+            return 404, {}
+        if method == "POST":
+            posted.append(payload["items"][0]["document_id"])
+            return 200, {"success": True}
+        return memory_import._http(method, url, token, payload)
+
+    report = memory_import.import_memories(config, confirm=True, transport=transport)
+
+    assert report["changed"] is True and report["imported"] == 0
+    assert report["failed_chunks"] == posted and len(posted) == 1
+    assert report["failed_chunk_metadata"] == [{"document_id": posted[0], "http_status": 503}]
+    assert private_payload not in json.dumps(report)
 
 
 def test_defense_refusal_happens_before_any_write(tmp_path, source_root, monkeypatch):
