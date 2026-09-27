@@ -24,6 +24,7 @@ from .request_control import RequestControl, RequestControlError
 
 
 _MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+_MAX_RECALL_BYTES = 32 * 1024
 _MAX_CONCURRENCY = 4
 _TAG_RE = re.compile(r"^[A-Za-z0-9._:/=-]+$")
 _PATHS = {
@@ -136,6 +137,8 @@ class MemoryRouter:
             result = json.loads(raw.decode("utf-8"))
             if not isinstance(result, dict):
                 raise ValueError("response is not an object")
+            if operation == "recall":
+                result = _recall_result(result)
         except (RequestControlError, RelayTimeoutError, TimeoutError):
             raise MemoryError(504, "memory_timeout", "selected memory route timed out") from None
         except BackendClientError as exc:
@@ -171,17 +174,17 @@ def tool_schemas(aliases: Sequence[str]) -> tuple[dict, ...]:
         "content": {"type": "string", "minLength": 1, "maxLength": 32768},
         "context": {"type": "string", "minLength": 1, "maxLength": 1024},
     })
-    def query_schema(max_tokens: int, default_budget: str) -> dict:
+    def query_schema(max_tokens: int, default_budget: str, default_tokens: int) -> dict:
         return dict(common, required=["alias", "query"], properties={
             **common["properties"],
             "query": {"type": "string", "minLength": 1, "maxLength": 4096},
             "budget": {"type": "string", "enum": ["low", "mid", "high"], "default": default_budget},
-            "max_tokens": {"type": "integer", "minimum": 1, "maximum": max_tokens, "default": 4096},
+            "max_tokens": {"type": "integer", "minimum": 1, "maximum": max_tokens, "default": default_tokens},
         })
     return (
         {"type": "function", "function": {"name": "memory_retain", "parameters": retain}},
-        {"type": "function", "function": {"name": "memory_recall", "parameters": query_schema(8192, "mid")}},
-        {"type": "function", "function": {"name": "memory_reflect", "parameters": query_schema(4096, "low")}},
+        {"type": "function", "function": {"name": "memory_recall", "parameters": query_schema(8192, "mid", 1024)}},
+        {"type": "function", "function": {"name": "memory_reflect", "parameters": query_schema(4096, "low", 4096)}},
     )
 
 
@@ -206,13 +209,36 @@ def _payload(operation: str, arguments: Any) -> dict:
     if not isinstance(budget, str) or budget not in {"low", "mid", "high"}:
         raise MemoryError(422, "invalid_request", "memory budget must be low, mid, or high")
     max_limit = 8192 if operation == "recall" else 4096
-    max_tokens = arguments.get("max_tokens", 4096)
+    max_tokens = arguments.get("max_tokens", 1024 if operation == "recall" else 4096)
     if isinstance(max_tokens, bool) or not isinstance(max_tokens, int) or not 1 <= max_tokens <= max_limit:
         raise MemoryError(422, "invalid_request", "memory max_tokens is out of range")
     result = {"query": query, "budget": budget, "max_tokens": max_tokens}
+    if operation == "recall":
+        result["include"] = {"entities": None, "chunks": None, "source_facts": None}
     if "tags" in arguments:
         result["tags"] = _tags(arguments["tags"])
     return result
+
+
+def _recall_result(result: dict) -> dict:
+    """Keep a ranked prefix of complete facts, including their source references."""
+    facts = result.get("results")
+    if not isinstance(facts, list) or any(
+        not isinstance(fact, dict) or not isinstance(fact.get("id"), str)
+        or not isinstance(fact.get("text"), str) for fact in facts
+    ):
+        raise ValueError("invalid recall results")
+    bounded: dict[str, Any] = {"results": [], "truncated": False, "omitted_results": len(facts)}
+    size = len(json.dumps(bounded).encode("utf-8"))
+    for fact in facts:
+        fact_size = len(json.dumps(fact).encode("utf-8")) + (2 if bounded["results"] else 0)
+        if size + fact_size > _MAX_RECALL_BYTES:
+            break
+        bounded["results"].append(fact)
+        size += fact_size
+    bounded["omitted_results"] = len(facts) - len(bounded["results"])
+    bounded["truncated"] = bounded["omitted_results"] > 0
+    return bounded
 
 
 def _exact_keys(arguments: Mapping[str, Any], allowed: set[str]) -> None:

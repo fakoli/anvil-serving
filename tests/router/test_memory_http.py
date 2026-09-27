@@ -25,7 +25,7 @@ def server(tmp_path, *, models=None):
 
     def transport(url, **kwargs):
         calls.append((url, kwargs))
-        return b'{"ok":true}'
+        return b'{"ok":true,"results":[]}'
 
     memory = MemoryRouter((MemoryRoute(ALIAS, metadata["key_id"], "hindsight", "bank", "http://127.0.0.1:9010", "MEMORY_TOKEN"),),
                           env={"MEMORY_TOKEN": "upstream-token"}, transport=transport)
@@ -77,7 +77,11 @@ def test_memory_mcp_is_stateless_and_never_executes_tool_notifications(tmp_path)
         assert status == 200
         assert {tool["name"] for tool in listed["result"]["tools"]} == {"memory_retain", "memory_recall", "memory_reflect"}
         call = current_request(2, "tools/call", {"name": "memory_recall", "arguments": {"alias": ALIAS, "query": "find"}})
-        assert request(address, key, MEMORY_MCP_PATH, call)[1]["result"]["isError"] is False
+        for headers in ({}, {"MCP-Protocol-Version": "2025-11-25"}):
+            response = request(address, key, MEMORY_MCP_PATH, call, headers)[1]["result"]
+            assert response["isError"] is False
+            assert "structuredContent" not in response
+            assert json.loads(response["content"][0]["text"])["result"]["results"] == []
         before = len(calls)
         notification = current_request(3, "tools/call", {"name": "memory_retain", "arguments": {"alias": ALIAS, "content": "nope"}})
         notification.pop("id")
@@ -99,7 +103,7 @@ def test_normalized_alias_cannot_bypass_device_model_grant(tmp_path):
                     call["params"].pop("_meta")
                 status, result = request(address, key, MEMORY_MCP_PATH, call, headers)
                 assert status == 200 and result["result"]["isError"] is True
-                assert result["result"]["structuredContent"]["code"] == "key_access_denied"
+                assert json.loads(result["result"]["content"][0]["text"])["code"] == "key_access_denied"
         assert calls == []
 
 

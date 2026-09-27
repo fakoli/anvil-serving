@@ -39,8 +39,13 @@ class MemoryMCP:
             return None
         version = headers.get("MCP-Protocol-Version")
         if version == _LEGACY or (version is None and self._legacy_request(request)):
-            return self._legacy(request)
-        return self._current(request, version)
+            response = self._legacy(request)
+        else:
+            response = self._current(request, version)
+        # No outputSchema: text carries the complete result without duplicating memory.
+        if request["method"] == "tools/call" and "result" in response:
+            response["result"].pop("structuredContent", None)
+        return response
 
     @staticmethod
     def _legacy_request(request: Mapping[str, Any]) -> bool:

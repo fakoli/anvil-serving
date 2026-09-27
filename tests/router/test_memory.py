@@ -60,7 +60,7 @@ def test_retain_is_sync_and_principal_bound_with_literal_pinned_payload():
 
 
 def test_recall_and_reflect_defaults_use_fixed_paths_and_bounds():
-    transport = CaptureTransport()
+    transport = CaptureTransport(b'{"results":[]}')
     memory = router(transport)
     memory.dispatch(request("recall", {"query": "where?"}), principal="pi")
     memory.dispatch(request("reflect", {"query": "why?", "max_tokens": 2}), principal="pi")
@@ -69,9 +69,34 @@ def test_recall_and_reflect_defaults_use_fixed_paths_and_bounds():
         "http://127.0.0.1:31100/v1/default/banks/pi-bank/reflect",
     ]
     assert [json.loads(call["data"]) for call in transport.calls] == [
-        {"query": "where?", "budget": "mid", "max_tokens": 4096},
+        {"query": "where?", "budget": "mid", "max_tokens": 1024,
+         "include": {"entities": None, "chunks": None, "source_facts": None}},
         {"query": "why?", "budget": "low", "max_tokens": 2},
     ]
+
+
+@pytest.mark.parametrize("text_size", [200, 40000])
+def test_recall_caps_whole_ranked_records_without_losing_provenance(text_size):
+    facts = [{"id": str(i), "text": "é" * text_size,
+              "document_id": "source", "metadata": {"sha256": "provenance"}}
+             for i in range(80)]
+    transport = CaptureTransport(json.dumps({"results": facts, "entities": {"ignored": "x" * 50000}}).encode())
+    result = router(transport).dispatch(request("recall", {"query": "x", "max_tokens": 8192}), principal="pi")["result"]
+    assert len(json.dumps(result).encode()) <= 32768
+    assert result["results"] == facts[:len(result["results"])]
+    assert result["truncated"] is True
+    assert result["omitted_results"] == 80 - len(result["results"])
+    assert "entities" not in result
+    assert json.loads(transport.calls[0]["data"])["max_tokens"] == 8192
+    assert bool(result["results"]) == (text_size == 200)
+
+
+@pytest.mark.parametrize("facts", [None, {}, [{}], [{"id": 1, "text": []}]])
+def test_malformed_recall_facts_fail_closed(facts):
+    transport = CaptureTransport(json.dumps({"results": facts}).encode())
+    with pytest.raises(MemoryError) as error:
+        router(transport).dispatch(request("recall", {"query": "x"}), principal="pi")
+    assert error.value.code == "memory_unavailable"
 
 
 @pytest.mark.parametrize("body,principal,status", [

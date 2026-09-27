@@ -62,6 +62,15 @@ are rejected. The response names the selected alias, backend, operation, and
 upstream result. A content rejection stays a rejection without echoing the
 rejected material in the error.
 
+Recall defaults to 1,024 fact-text tokens. It excludes entity summaries, raw
+chunks and source-fact expansion, and returns a ranked prefix of whole facts
+within 32 KiB of serialized JSON, preserving each fact's source references.
+`truncated` and `omitted_results` report facts excluded by this byte cap; an
+oversized first fact produces an empty, explicitly truncated result. Narrow
+the query when results are truncated. The cap also applies with an explicit
+token override because upstream token budgets exclude metadata. MCP returns
+one text representation of the result instead of duplicating memory content.
+
 The gateway bounds request bodies to 64 KiB, upstream responses to 2 MiB,
 concurrent memory requests to four, and total upstream duration to the route
 timeout (1–300 seconds). Deadline expiration returns 504 and releases the
