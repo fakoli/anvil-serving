@@ -68,6 +68,7 @@ type Resource struct {
 }
 
 type Gateway struct {
+	RouterKeys            *RouterKeys            `json:"router_keys,omitempty"`
 	Schema                string                 `json:"schema"`
 	Listen                string                 `json:"listen"`
 	MaxConcurrent         int                    `json:"max_concurrent"`
@@ -269,6 +270,9 @@ func LoopbackAddress(address string) bool {
 }
 
 func (g Gateway) Validate() error {
+	if g.RouterKeys != nil && (g.RouterKeys.Validate() != nil || g.PortalHost == "" || g.BrowserAdministration == nil) {
+		return errors.New("router key management requires Home and explicit operators")
+	}
 	if g.Schema != "anvil-connect.gateway/v1" || !LoopbackAddress(g.Listen) || g.MaxConcurrent < 1 || g.MaxConcurrent > 512 || len(g.Resources) < 1 || len(g.Resources) > 64 {
 		return errors.New("invalid gateway declaration")
 	}
@@ -295,6 +299,9 @@ func (g Gateway) Validate() error {
 		}
 		ids[resource.Rule.ID], hosts[resource.Rule.Host], addresses[resource.TunnelAddress] = true, true, true
 		resources[resource.Rule.ID] = resource
+	}
+	if keys := g.RouterKeys; keys != nil && (identityEnvs[keys.SecretEnv] || identityEnvs[keys.CheckEnv]) {
+		return errors.New("router key secrets must be distinct from resource identity secrets")
 	}
 	if (g.portalHostPresent && g.PortalHost == "") || (g.PortalHost != "" && (!ValidHost(g.PortalHost) || hosts[g.PortalHost])) {
 		return errors.New("invalid or conflicting portal host")

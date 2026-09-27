@@ -285,6 +285,13 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		if err != nil {
 			return nil, ErrUnavailable
 		}
+		if settings := declaration.Gateway.RouterKeys; settings != nil {
+			secret, present := secrets(settings.SecretEnv)
+			checkSecret, checkPresent := secrets(settings.CheckEnv)
+			if !present || !checkPresent || distinctRouterSecrets(declaration, secrets, secret, checkSecret) != nil || homeHandler.ConfigureRouterKeys(*settings, secret, checkSecret) != nil {
+				return nil, ErrUnavailable
+			}
+		}
 	}
 	pathToken, err := randomHex()
 	if err != nil {
@@ -408,4 +415,21 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		}
 	}()
 	return g, nil
+}
+
+// Reject value reuse even when a hand-restored declaration uses different names.
+func distinctRouterSecrets(declaration GatewayConfig, source SecretSource, signing, checking string) error {
+	refs := []string{declaration.OIDC.ClientSecretEnv}
+	for _, resource := range declaration.Gateway.Resources {
+		if resource.IdentityKeyEnv != "" {
+			refs = append(refs, resource.IdentityKeyEnv)
+		}
+	}
+	for _, ref := range refs {
+		value, present := source(ref)
+		if !present || value == signing || value == checking {
+			return ErrUnavailable
+		}
+	}
+	return nil
 }

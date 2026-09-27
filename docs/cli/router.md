@@ -130,7 +130,7 @@ api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
 For the standard Compose deployment, use the dedicated durable
 `anvil-router-keys:/var/lib/anvil-serving/router-keys` mount from the updated
 Compose template. The image seeds it with the router user and private permissions.
-For an existing installation, update only the router image to `anvil-serving:1.4.0`
+For an existing installation, update only the router image to `anvil-serving:1.5.0`
 and add the following entries to the existing operator-home `docker-compose.yml`
 once, retaining its other services, ports, and settings. Do not rerun `init` over
 customized configuration to acquire this mount.
@@ -146,7 +146,7 @@ volumes:
 
 This is a partial configuration delta; merge these entries into the existing
 `services.router.volumes` list and top-level `volumes` mapping. After building or
-installing the 1.4.0 image, preview and recreate the router while retaining its
+installing the 1.5.0 image, preview and recreate the router while retaining its
 current installed router configuration:
 
 ```bash
@@ -157,11 +157,11 @@ anvil-serving router up --recreate --confirm
 Then run these commands against the host candidate `router.toml` shown above:
 
 ```bash
-anvil-serving router keys init --container anvil-router
-anvil-serving router keys create --container anvil-router --name laptop --model llm.primary --path /v1/chat/completions --rpm 60 --expires-days 90 --out ~/.config/anvil-serving/device-secrets/laptop.key
-anvil-serving router keys list --container anvil-router
-anvil-serving router keys usage --container anvil-router --key-id KEY_ID
-anvil-serving router keys revoke --container anvil-router --key-id KEY_ID
+anvil-serving router keys init --config PATH --container anvil-router
+anvil-serving router keys create --config PATH --container anvil-router --name laptop --model llm.primary --path /v1/chat/completions --rpm 60 --expires-days 90 --out ~/.config/anvil-serving/device-secrets/laptop.key
+anvil-serving router keys list --config PATH --container anvil-router
+anvil-serving router keys usage --config PATH --container anvil-router --key-id KEY_ID
+anvil-serving router keys revoke --config PATH --container anvil-router --key-id KEY_ID
 ```
 
 The commands select the normal operator-home `router.toml`; `--config PATH`

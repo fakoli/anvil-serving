@@ -14,6 +14,7 @@ import re
 import stat
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import urlsplit
 
 SCHEMA = "anvil-connect.deployment/v1"
 # Connect may declare up to this many connectors and clients. Render/lifecycle
@@ -120,6 +121,23 @@ def _env(value: Any, path: str) -> str:
     if not _ENV.fullmatch(text):
         raise _error(path, "must be an environment variable name")
     return text
+
+
+def service_url(value):
+    """Fixed HTTPS authority, or explicit loopback HTTP, without ambient proxies."""
+    if not isinstance(value, str) or len(value) > 2048 or any(c.isspace() for c in value):
+        raise ValueError("invalid Connect service URL")
+    parsed = urlsplit(value)
+    if (parsed.username is not None or parsed.password is not None or not parsed.hostname
+            or parsed.path not in ("", "/") or parsed.query or parsed.fragment
+            or "?" in value or "#" in value or "\\" in value
+            or parsed.scheme not in ("http", "https")
+            or parsed.hostname == "localhost" or parsed.hostname.endswith(".localhost")
+            or (parsed.scheme == "http" and parsed.hostname != "127.0.0.1")):
+        raise ValueError("Connect service requires HTTPS or explicit loopback HTTP")
+    if parsed.port is not None and not 1 <= parsed.port <= 65535:
+        raise ValueError("invalid service port")
+    return value.rstrip("/")
 
 
 def _client_id(value: Any, path: str) -> str:
@@ -662,6 +680,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         embedded_fields.add("browser_administration")
     if isinstance(gateway_raw["gateway"], dict) and "portal_host" in gateway_raw["gateway"]:
         embedded_fields.add("portal_host")
+    if isinstance(gateway_raw["gateway"], dict) and "router_keys" in gateway_raw["gateway"]:
+        embedded_fields.add("router_keys")
     embedded = _mapping(gateway_raw["gateway"], "$.gateway.gateway", embedded_fields)
     if embedded["schema"] != "anvil-connect.gateway/v1":
         raise _error("$.gateway.gateway.schema", "must equal anvil-connect.gateway/v1")
@@ -772,6 +792,17 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         gateway_embedded["device_authorizations"] = device_authorizations
     if browser_administration is not None:
         gateway_embedded["browser_administration"] = browser_administration
+    if "router_keys" in embedded:
+        fields = _mapping(embedded["router_keys"], "$.gateway.gateway.router_keys", {"url", "secret_env", "check_env"})
+        try:
+            broker_url = service_url(fields["url"])
+        except ValueError:
+            raise _error("$.gateway.gateway.router_keys.url", "requires fixed HTTPS or loopback HTTP") from None
+        signing_env = _env(fields["secret_env"], "$.gateway.gateway.router_keys.secret_env")
+        check_env = _env(fields["check_env"], "$.gateway.gateway.router_keys.check_env")
+        if "portal_host" not in gateway_embedded or browser_administration is None or signing_env == check_env or {signing_env, check_env} & (identity_envs | {oidc["client_secret_env"]}):
+            raise _error("$.gateway.gateway.router_keys", "requires Home, operators and distinct secret references")
+        gateway_embedded["router_keys"] = {"url": broker_url, "secret_env": signing_env, "check_env": check_env}
     gateway = {
         "schema": gateway_raw["schema"],
         "gateway": gateway_embedded,
