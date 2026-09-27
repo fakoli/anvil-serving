@@ -122,6 +122,7 @@ def _tools(aliases: Sequence[str]) -> dict[str, dict]:
             "name": tool["function"]["name"],
             "description": "Supplemental memory; existing harness memory remains authoritative.",
             "inputSchema": tool["function"]["parameters"],
+            "annotations": {"readOnlyHint": tool["function"]["name"] in {"memory_recall", "memory_reflect"}},
         }
         for tool in tool_schemas(aliases)
     }

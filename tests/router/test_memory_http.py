@@ -76,6 +76,9 @@ def test_memory_mcp_is_stateless_and_never_executes_tool_notifications(tmp_path)
                                  {"MCP-Protocol-Version": "2026-07-28"})
         assert status == 200
         assert {tool["name"] for tool in listed["result"]["tools"]} == {"memory_retain", "memory_recall", "memory_reflect"}
+        assert {tool["name"]: tool["annotations"]["readOnlyHint"] for tool in listed["result"]["tools"]} == {
+            "memory_retain": False, "memory_recall": True, "memory_reflect": True,
+        }
         call = current_request(2, "tools/call", {"name": "memory_recall", "arguments": {"alias": ALIAS, "query": "find"}})
         for headers in ({}, {"MCP-Protocol-Version": "2025-11-25"}):
             response = request(address, key, MEMORY_MCP_PATH, call, headers)[1]["result"]
