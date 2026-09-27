@@ -1,7 +1,7 @@
 # Ticket: Hindsight memory capability + multiplexing in the Capability Gateway
 
 Date: 2026-09-27. Status: implemented and independently reviewed; native Pi,
-Hermes, OpenClaw and Codex memory continuations pass. Merge remains pending.
+Hermes, OpenClaw and Codex memory continuations pass. Product PR #584 is merged.
 Private infrastructure tracks the ongoing curated-memory import and public
 Connect publication separately.
 
@@ -113,9 +113,12 @@ Evidence classes are separate; none substitutes for another:
 
 ## Verified implementation
 
-- Native Pi completed retain, recall and reflect; Hermes, OpenClaw and Codex
-  recalled facts through their configured memory tools without provider or
-  native-memory replacement.
+- Native Pi completed retain, recall and reflect; Pi on a companion host,
+  Hermes, OpenClaw and Codex recalled facts through their configured memory
+  tools without provider or native-memory replacement.
+- The final product head passed 9,821 local tests (56 skipped), both Linux and
+  Windows CI matrices, and independent review. A test-only HTTP teardown fix
+  joins request threads before SQLite cleanup on Windows.
 - Recall disables upstream entity expansion and returns complete ranked facts
   within a 32 KiB JSON budget, with explicit truncation metadata. MCP sends one
   result representation; recall and reflect advertise read-only annotations.
