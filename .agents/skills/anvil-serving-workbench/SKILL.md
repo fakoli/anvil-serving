@@ -90,6 +90,9 @@ managed service, resolve the command surface first — never improvise `kill`,
   `cache_prune_plan`.
 - Harness: `openclaw_sync`, `client_catalog_sync`, `routed_eval`, `hermes_media_sync`,
   `openclaw_gateway_status`, and `openclaw_gateway_restart`.
+- Inert propagation declaration: `propagation_capabilities` is a scoped
+  read-only declaration (`propagation:status`); it does not start, dispatch,
+  or execute propagation.
 - Evaluation and evidence: `preflight_probe`, `benchmark_probe`,
   `benchmark_artifact`, `benchmark_harness_prepare`, `benchmark_harness_status`,
   `benchmark_harness_cleanup`, `benchmark_job_preflight`, `benchmark_job_submit`, `benchmark_job_status`, `benchmark_job_list`,

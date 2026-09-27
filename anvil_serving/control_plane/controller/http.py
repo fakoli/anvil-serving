@@ -30,7 +30,6 @@ from ...observability.workload_tools import (
 )
 from ..authorization import (
     ALLOWED_SCOPES,
-    NODE_ADMIN_BOOTSTRAP,
     WORKLOADS_READ,
     AuthorizationPolicy,
     check_scope,
