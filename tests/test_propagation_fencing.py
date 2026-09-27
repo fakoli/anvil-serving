@@ -69,7 +69,10 @@ def _private_file(path: Path) -> None:
 
 
 def _private_directory(path: Path) -> None:
-    if os.name != "nt":
+    if os.name == "nt":
+        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+        WindowsFixtureTree(path)
+    else:
         os.chmod(path, 0o700)
 
 

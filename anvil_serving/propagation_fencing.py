@@ -122,7 +122,7 @@ class _HeldFiles:
                     raise PropagationFenceError("unsafe_custody_path")
                 if not directory:
                     auth_file._require_macos_no_extended_acl(descriptor)
-        except (OSError, auth_file.AuthFileError) as exc:
+        except (OSError, auth_file.AuthFileError, bootstrap_shim._UnsafeObject) as exc:
             raise PropagationFenceError("unsafe_custody_path") from exc
 
     def directory(self, path: Path, *, create: bool = False, private: bool = False) -> int:
