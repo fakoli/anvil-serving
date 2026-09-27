@@ -97,3 +97,9 @@ test('denied, unavailable, and changed-account states give a safe next action',a
   unavailable=true;await page.locator('#refresh-keys').click();await expect(page.locator('#key-notice')).toHaveAttribute('role','alert');await expect(page.locator('#key-notice')).toContainText('temporarily unavailable');
   unavailable=false;await page.locator('#refresh-keys').click();await expect(page.locator('#key-notice')).toContainText('up to date');
 });
+
+test('a changed account cannot present old keys as active',async({page})=>{
+  state.keys=[{key_id:'key_old',name:'Old laptop',models:['llm.primary'],paths:['/v1/chat/completions'],rpm:60,expires_at:Math.floor(Date.now()/1000)+86400,revoked_at:null}];
+  await page.goto(base);await expect(page.locator('#key-list')).toContainText('Access inactive');await expect(page.locator('#key-count')).toHaveText('0 active');await expect(page.locator('#open-create-key')).toBeHidden();
+  await page.getByRole('button',{name:'Request router access'}).click();await expect(page.locator('#key-status')).toHaveText('Awaiting approval');await expect(page.locator('#key-list')).toContainText('Access inactive');
+});

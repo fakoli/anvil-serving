@@ -67,6 +67,9 @@ func (m *Manager) routerPrincipal(id string, generation uint64, fence string) (H
 			}
 			return ErrUnavailable
 		}
+		if human.Username != "" && !ValidUsername(human.Username) {
+			return ErrUnavailable
+		}
 		if human.ID != id || human.Disabled || human.DeletionRequest != "" || human.Generation != generation || !validBinding(human.RouterIncarnation) || routerFence(tx.Epoch(), human.RouterIncarnation) != fence {
 			return ErrDenied
 		}

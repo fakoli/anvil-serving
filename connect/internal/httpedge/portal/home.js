@@ -156,7 +156,7 @@ function keyChoices(container,values,selected) {
 }
 function selectedKeys(container) { return [...container.querySelectorAll("input:checked")].map(input=>input.value); }
 function formatKeyTime(seconds) { return seconds?new Date(seconds*1000).toLocaleString():"Never"; }
-function activeKey(key) { return !key.revoked_at&&(!key.expires_at||key.expires_at>Date.now()/1000); }
+function activeKey(key) { return keyState?.account?.status==="approved"&&!key.revoked_at&&(!key.expires_at||key.expires_at>Date.now()/1000); }
 function keyBadge(text,state) { const badge=element("span",text,"key-badge");badge.dataset.state=state;return badge; }
 function showCreateKey(show) {
   byID("create-key-panel").hidden=!show; byID("open-create-key").setAttribute("aria-expanded",String(show));
@@ -171,9 +171,10 @@ function showCreateKey(show) {
 }
 function keyRow(key,usage) {
   const row=element("article",undefined,"key-row"),heading=element("div",undefined,"key-row-heading"),identity=element("div");
-  const status=key.revoked_at?"Revoked":activeKey(key)?"Active":"Expired";
+  const expired=key.expires_at&&key.expires_at<=Date.now()/1000;
+  const status=key.revoked_at?"Revoked":expired?"Expired":activeKey(key)?"Active":"Access inactive";
   identity.append(element("h3",key.name),keyBadge(status,status.toLowerCase()));heading.append(identity);
-  if(activeKey(key)) {
+  if(!key.revoked_at&&!expired) {
     const revoke=element("button","Revoke key");revoke.type="button";revoke.setAttribute("aria-label","Revoke key for "+key.name);
     revoke.addEventListener("click",async()=>{
       if(!await confirmKeyAction("Revoke “"+key.name+"”?","Apps using this key will lose access. Requests already running may finish. Create a replacement first if you need uninterrupted access.","Revoke key")) return;

@@ -270,5 +270,9 @@ func (h *Home) routerAccountNames(raw []byte) ([]byte, error) {
 		account["available"], _ = json.Marshal(available)
 	}
 	envelope["accounts"], _ = json.Marshal(accounts)
-	return json.Marshal(envelope)
+	encoded, err := json.Marshal(envelope)
+	if len(encoded) > 4*1024*1024 {
+		return nil, ErrBrowserConfiguration
+	}
+	return encoded, err
 }

@@ -1,6 +1,10 @@
 package session
 
-import "testing"
+import (
+	"errors"
+	"github.com/fakoli/anvil-serving/connect/internal/store"
+	"testing"
+)
 
 func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 	m, idp := portalSessionFixture(t)
@@ -58,6 +62,26 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 	}
 	if m.CheckRouterPrincipal(human.ID, 1, newFence) != nil {
 		t.Fatal("replacement account denied")
+	}
+	for _, username := range []string{"invalid username", "router-person"} {
+		if err := m.state.Update(func(tx *store.Tx) error {
+			var record Human
+			if err := tx.Get("principals", human.ID, &record); err != nil {
+				return err
+			}
+			record.Username = username
+			return tx.Put("principals", human.ID, record)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		name, err := m.RouterAccountName(human.ID, 1, newFence)
+		if username == "invalid username" {
+			if name != "" || !errors.Is(err, ErrUnavailable) {
+				t.Fatal("malformed username exposed", err)
+			}
+		} else if err != nil || name != username {
+			t.Fatal("restored username unavailable", err)
+		}
 	}
 	if err := m.state.ResetAuthority(); err != nil {
 		t.Fatal(err)
