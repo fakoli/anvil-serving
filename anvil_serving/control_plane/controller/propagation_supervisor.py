@@ -126,7 +126,15 @@ def _run_profile(profile: ExecutionProfile, job: Mapping[str, Any], cancelled: C
     profile.verify_executable()
     if cancelled():
         return {"outcome": "cancelled", "native_effects": [], "quiescent": True}
-    uncertain_effects = prepare_child()
+    try:
+        uncertain_effects = prepare_child()
+    except PropagationJobError:
+        # Cancellation may be committed after the first flag check but before
+        # the pre-Popen child custody transaction. No native profile exists in
+        # that branch, so the supervisor can report its own empty custody.
+        if cancelled():
+            return {"outcome": "cancelled", "native_effects": [], "quiescent": True}
+        raise
     config = {"job_id": job["job_id"], "operation_id": job["operation_id"],
               "intent_id": job["intent_id"], "contract_digest": job["contract_digest"],
               "profile_id": profile.profile_id, "profile_digest": profile.digest,
@@ -196,8 +204,11 @@ def _run_profile(profile: ExecutionProfile, job: Mapping[str, Any], cancelled: C
         if active or exceeded or not empty or limited:
             return {"outcome": "uncertain", "native_effects": uncertain_effects, "quiescent": False}
         if code != 0:
-            return {"outcome": "failed" if result["quiescent"] else "uncertain", "native_effects": result["native_effects"], "quiescent": result["quiescent"]}
-        return result
+            return {"outcome": "failed" if result["outcome"] == "failed" else "uncertain",
+                    "native_effects": result["native_effects"], "quiescent": True}
+        # Child output cannot attest that the native process tree is gone. The
+        # bounded scan and cleanup above are the supervisor-owned fact.
+        return {**result, "quiescent": True}
     except (OSError, subprocess.SubprocessError, TypeError, ValueError, PropagationJobError):
         try:
             signal.pidfd_send_signal(descriptor, signal.SIGKILL)
@@ -241,13 +252,30 @@ def _child(argv: list[str]) -> int:
         profile = ExecutionProfile.from_private_value(job["profile"])
         children = Children()
         try:
-            if cancelled:
-                _write({"outcome": "cancelled", "native_effects": [], "quiescent": True})
+            def cancellation_requested() -> bool:
+                return cancelled or store.lookup_internal(job_id)["state"] == "cancellation_requested"
+
+            if cancellation_requested():
+                result = {"outcome": "cancelled", "native_effects": [], "quiescent": True}
+                store.record_pre_profile_cancellation(job_id, identity)
+                _write(result)
                 return 0
-            result = _run_profile(profile, job, lambda: cancelled, children,
+            result = _run_profile(profile, job, cancellation_requested, children,
                                   lambda: store.heartbeat(job_id, identity),
                                   lambda: store.prepare_profile_child(job_id, identity),
                                   lambda child_identity: store.register_profile_child(job_id, child_identity))
+            if result == {"outcome": "cancelled", "native_effects": [], "quiescent": True}:
+                # The durable cancellation gate refused before profile Popen, so
+                # this native supervisor can persist the empty-custody outcome.
+                # If a profile child was already reserved, preserve that custody
+                # through the ordinary child-result path below instead.
+                try:
+                    store.record_pre_profile_cancellation(job_id, identity)
+                except PropagationJobError:
+                    pass
+                else:
+                    _write(result)
+                    return 0
             try:
                 _write_reference(store.child_result_reference(job_id, store.record_child_result(job_id, result)))
             except PropagationJobError:
@@ -279,6 +307,11 @@ class PropagationSupervisor:
         self.store, self.reconcile = store, reconcile
         self._children: dict[str, subprocess.Popen[bytes]] = {}
         self._pidfds: dict[str, int] = {}
+
+    def _release_pidfd(self, job_id: str) -> None:
+        descriptor = self._pidfds.pop(job_id, None)
+        if descriptor is not None:
+            os.close(descriptor)
 
     def launch(self, job_id: str) -> dict[str, Any]:
         token = self.store.prepare_launch(job_id)
@@ -315,23 +348,62 @@ class PropagationSupervisor:
             self.store.recovery_required(job_id)
             raise PropagationJobError("launch_reconciliation_required") from None
 
+    def _reconcile_completed_result(self, job_id: str, job: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Resolve a durable child result using the current durable job phase."""
+        identity = {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": job["boot_id"]}
+        try:
+            result = self.store.completed_child_result(job_id, identity)
+        except PropagationJobError:
+            result = None
+        if result is None:
+            return None
+        if self.reconcile is None or job["state"] not in {"executing", "cancellation_requested"}:
+            return None
+        try:
+            self.store.record_result(job_id, identity, result, self.reconcile(job, result))
+        except Exception:
+            self.store.recovery_required(job_id)
+        self._release_pidfd(job_id)
+        return self.store.lookup(job_id)
+
+    def _cancel_recovery_or_completion(self, job_id: str) -> dict[str, str]:
+        """Prefer an owner-reconciled completion over a permanent cancel failure."""
+        refreshed = self.store.lookup_internal(job_id)
+        if refreshed["state"] in {"applied", "failed", "cancelled"}:
+            self._release_pidfd(job_id)
+            return {"job_id": job_id, "state": "confirmed"}
+        completed = self._reconcile_completed_result(job_id, refreshed)
+        if completed is not None and completed["state"] in {"applied", "failed", "cancelled"}:
+            return {"job_id": job_id, "state": "confirmed"}
+        self.store.recovery_required(job_id)
+        self._release_pidfd(job_id)
+        return {"job_id": job_id, "state": "uncertain"}
+
     def observe(self, job_id: str) -> dict[str, Any]:
         job = self.store.lookup_internal(job_id)
         process = self._children.get(job_id)
         if process is None:
-            identity = {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": job["boot_id"]}
-            try:
-                result = self.store.completed_child_result(job_id, identity)
-            except PropagationJobError:
-                result = None
-            if result is not None and self.reconcile is not None and job["state"] in {"executing", "cancellation_requested"}:
-                try:
-                    self.store.record_result(job_id, identity, result, self.reconcile(job, result))
-                except Exception:
+            completed = self._reconcile_completed_result(job_id, job)
+            if completed is not None:
+                return completed
+            if job["state"] in {"registered", "executing", "cancellation_requested"}:
+                identity = {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": job["boot_id"]}
+                observed = _identity(job["pid"])
+                if observed is None or observed != identity:
+                    # A child can commit its durable result and exit between the
+                    # first result lookup and native identity observation. Refresh
+                    # both the job phase and result before making that failure
+                    # permanent, so an old registered snapshot cannot win that race.
+                    refreshed = self.store.lookup_internal(job_id)
+                    completed = self._reconcile_completed_result(job_id, refreshed)
+                    if completed is not None:
+                        return completed
                     self.store.recovery_required(job_id)
-                return self.store.lookup(job_id)
-            if job["state"] in {"registered", "executing", "cancellation_requested", "launch_custody"}:
+                    self._release_pidfd(job_id)
+                    return self.store.lookup(job_id)
+            if job["state"] == "launch_custody":
                 self.store.recovery_required(job_id)
+                self._release_pidfd(job_id)
             return self.store.lookup(job_id)
         if process.poll() is None:
             identity = _identity(process.pid)
@@ -375,24 +447,35 @@ class PropagationSupervisor:
     def cancel(self, job_id: str) -> dict[str, Any]:
         job = self.store.request_cancel(job_id)
         if job["state"] in {"applied", "failed", "cancelled"}:
+            self._release_pidfd(job_id)
             return {"job_id": job_id, "state": "confirmed"}
         if job["state"] == "recovery_required":
+            self._release_pidfd(job_id)
             return {"job_id": job_id, "state": "uncertain"}
         process = self._children.get(job_id)
-        if process is None:
-            return {"job_id": job_id, "state": "uncertain"}
-        identity = _identity(process.pid)
+        pid = process.pid if process is not None else job["pid"]
+        identity = _identity(pid)
         if identity is None or (identity["pid"], identity["start_ticks"], identity["boot_id"]) != (job["pid"], job["start_ticks"], job["boot_id"]):
-            self.store.recovery_required(job_id)
-            return {"job_id": job_id, "state": "uncertain"}
+            return self._cancel_recovery_or_completion(job_id)
         descriptor = self._pidfds.get(job_id)
         if descriptor is None:
-            self.store.recovery_required(job_id)
-            return {"job_id": job_id, "state": "uncertain"}
+            try:
+                descriptor = os.pidfd_open(pid, 0)
+            except OSError:
+                return self._cancel_recovery_or_completion(job_id)
+            # A PID can exit and be reused between the first identity read and
+            # pidfd_open. Retain this descriptor only after a second exact read.
+            verified = _identity(pid)
+            if verified is None or verified != identity:
+                os.close(descriptor)
+                return self._cancel_recovery_or_completion(job_id)
+            self._pidfds[job_id] = descriptor
         try:
             signal.pidfd_send_signal(descriptor, signal.SIGTERM)
         except ProcessLookupError:
+            self._release_pidfd(job_id)
             return {"job_id": job_id, "state": "uncertain"}
+        self._release_pidfd(job_id)
         return {"job_id": job_id, "state": "requested"}
 
 

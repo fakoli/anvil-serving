@@ -5,9 +5,16 @@ client catalog writes and Pi media withdrawal. It is not a deployed fleet writer
 Legacy callers remain unenrolled until the reviewed single-writer cutover.
 
 The owner supplies a canonical approved contract, generation, catalog digest,
-resource identity and exact effect-to-file mapping. A private permanent index and
+resource identity and an immutable `TrustedNativeOwner.effect_bindings` mapping
+from each native effect name to its approved effect kind and exact file path.
+Installation resolves this mapping; request paths or effect names cannot create
+it. An absent mapping refuses grants. Grants must match these paths and the
+contract's permitted effect kinds, including at the actual fenced write boundary.
+A private permanent index and
 operation journal share one owner/resource lock across callers. Expired authority,
 stale generations, conflicting identities and unresolved operations fail closed.
+The installed `current_authority` callback checks admitted contract/generation/epoch
+at lock entry and immediately before replacement. It is required for writes.
 An interrupted transaction retains its original effect records for recovery;
 it does not automatically compensate or claim that an external effect stopped.
 
@@ -66,3 +73,24 @@ bounded per-profile writer and its capability/readback evidence before Hermes
 integration or cutover is accepted. That writer must preserve unrelated provider,
 credential, account and session state and use the same effect/backup custody.
 Loaded-session observation and idle-gated reload remain separate requirements.
+
+## Explicit recovery
+
+`NativeMutationFence.resume` reopens only the deterministic original reservation.
+The installed owner's `recovery_quiescent` callback must bind the reservation,
+contract and generation to conclusive custody evidence for the original job and
+process. Missing or unknown custody refuses recovery. The lock protects exact
+grant/journal comparison, backup revalidation and target readback. Desired bytes
+are reconciled without a write even after authority expires. Original before bytes
+can retry only the same effect with a valid backup and current authority; a third
+state fails closed. Never-started effects retain their approved identities and
+need current authority. Every granted effect must be read back before completion.
+
+The supervisor establishes quiescence from owned process/descendant custody,
+including after a native crash; a profile's assertion is insufficient. Job
+reconciliation retains the original child result and accepts only a matching
+completed result with durable quiescence plus installed-owner readback of all
+original effects. It never clears launch custody or creates a second job. Resource
+custody is released only after this transition. Verification/convergence still
+refuse a superseded intent. Public operator recovery commands and actual client
+recovery adapters remain later release work.

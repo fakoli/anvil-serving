@@ -135,10 +135,251 @@ def test_restart_or_lost_ack_requires_recovery_not_relaunch(tmp_path: Path):
     first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     first.launch(job["job_id"])
     second = PropagationSupervisor(JobStore(store.path))
-    assert second.observe(job["job_id"])["state"] == "recovery_required"
+    assert second.observe(job["job_id"])["state"] == "running"
     with pytest.raises(PropagationJobError, match="launch_reconciliation_required"):
         second.launch(job["job_id"])
     first.cancel(job["job_id"])
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_fresh_supervisor_keeps_matching_live_child_and_reconciles_result(tmp_path: Path):
+    script = "import json,sys,time; c=json.load(sys.stdin); time.sleep(.3); print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
+    store, job = _submitted(tmp_path, script, budget_seconds=3)
+    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
+    first.launch(job["job_id"])
+    fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
+    assert fresh.observe(job["job_id"])["state"] == "running"
+    first._children[job["job_id"]].wait(timeout=3)
+    assert _wait(fresh, job["job_id"])["state"] == "applied"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_restart_rechecks_durable_result_after_native_child_exits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    release, effects = tmp_path / "release", tmp_path / "effects"
+    script = (
+        "import json,pathlib,sys,time; c=json.load(sys.stdin); root=pathlib.Path(" + repr(str(tmp_path)) + "); "
+        "(root/'started').write_text('yes');\n"
+        "while not (root/'release').exists(): time.sleep(.01)\n"
+        "with (root/'effects').open('a') as handle: handle.write('one\\n')\n"
+        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
+    )
+    store, job = _submitted(tmp_path, script, budget_seconds=5, heartbeat_seconds=1)
+    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
+    first.launch(job["job_id"])
+    for _ in range(100):
+        if (tmp_path / "started").exists():
+            break
+        time.sleep(0.01)
+    assert (tmp_path / "started").exists()
+    fresh_store = JobStore(store.path)
+    fresh = PropagationSupervisor(fresh_store, reconcile=lambda _job, result: result["outcome"])
+    original = fresh_store.completed_child_result
+    lookups = 0
+
+    def complete_after_snapshot(job_id: str, identity: dict[str, object]) -> dict[str, object] | None:
+        nonlocal lookups
+        lookups += 1
+        if lookups == 1:
+            assert original(job_id, identity) is None
+            release.write_text("go")
+            first._children[job["job_id"]].wait(timeout=3)
+            assert original(job_id, identity)["outcome"] == "applied"
+            return None
+        return original(job_id, identity)
+
+    monkeypatch.setattr(fresh_store, "completed_child_result", complete_after_snapshot)
+    assert fresh.observe(job["job_id"])["state"] == "applied"
+    assert lookups == 2
+    assert fresh.observe(job["job_id"])["state"] == "applied"
+    assert effects.read_text() == "one\n"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_restart_refreshes_registered_snapshot_before_reconciling_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    marker = tmp_path / "effect"
+    script = (
+        "import json,pathlib,sys; c=json.load(sys.stdin); pathlib.Path(" + repr(str(marker)) + ").write_text('one'); "
+        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
+    )
+    store, job = _submitted(tmp_path, script, budget_seconds=5)
+    token = store.prepare_launch(job["job_id"])
+    process = subprocess.Popen(
+        (sys.executable, "-m", "anvil_serving.control_plane.controller.propagation_supervisor", "--child", store.path, job["job_id"]),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        identity = supervisor_module._identity(process.pid)
+        assert identity is not None
+        store.register_launch(job["job_id"], token, identity)
+        fresh_store = JobStore(store.path)
+        fresh = PropagationSupervisor(fresh_store, reconcile=lambda _job, result: result["outcome"])
+        original = fresh_store.lookup_internal
+        snapshots = 0
+
+        def registered_snapshot(job_id: str) -> dict[str, object]:
+            nonlocal snapshots
+            snapshots += 1
+            if snapshots == 1:
+                stale = original(job_id)
+                assert stale["state"] == "registered"
+                assert process.stdin is not None
+                process.stdin.write(token.encode("ascii"))
+                process.stdin.close()
+                process.stdin = None
+                process.wait(timeout=3)
+                assert fresh_store.completed_child_result(job_id, identity)["outcome"] == "applied"
+                return stale
+            return original(job_id)
+
+        monkeypatch.setattr(fresh_store, "lookup_internal", registered_snapshot)
+        assert fresh.observe(job["job_id"])["state"] == "applied"
+        assert snapshots >= 2
+        assert fresh.observe(job["job_id"])["state"] == "applied"
+        assert marker.read_text() == "one"
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=3)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_fresh_supervisor_adopts_verified_pidfd_for_cancellation(tmp_path: Path):
+    effects = tmp_path / "effects"
+    script = (
+        "import json,pathlib,sys,time; c=json.load(sys.stdin); root=pathlib.Path(" + repr(str(tmp_path)) + ")\n"
+        "with (root/'effects').open('a') as handle: handle.write('one\\n'); (root/'first').write_text('yes')\n"
+        "while not (root/'release').exists(): time.sleep(.01)\n"
+        "with (root/'effects').open('a') as handle: handle.write('two\\n')\n"
+        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
+    )
+    store, job = _submitted(tmp_path, script, budget_seconds=5, heartbeat_seconds=1)
+    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
+    first.launch(job["job_id"])
+    try:
+        for _ in range(100):
+            if (tmp_path / "first").exists():
+                break
+            time.sleep(0.01)
+        assert (tmp_path / "first").exists()
+        fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
+        assert fresh.cancel(job["job_id"])["state"] == "requested"
+        assert job["job_id"] not in fresh._pidfds
+        assert _wait(fresh, job["job_id"])["state"] == "cancelled"
+        assert effects.read_text() == "one\n"
+        assert job["job_id"] not in fresh._pidfds
+    finally:
+        (tmp_path / "release").write_text("cleanup")
+        process = first._children[job["job_id"]]
+        if process.poll() is None:
+            process.wait(timeout=3)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_cancel_reconciles_completed_child_before_identity_recovery(tmp_path: Path):
+    marker = tmp_path / "effect"
+    script = (
+        "import json,pathlib,sys; c=json.load(sys.stdin); pathlib.Path(" + repr(str(marker)) + ").write_text('one'); "
+        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
+    )
+    store, job = _submitted(tmp_path, script, budget_seconds=4)
+    first = PropagationSupervisor(store)
+    first.launch(job["job_id"])
+    first._children[job["job_id"]].wait(timeout=3)
+    fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
+    assert fresh.cancel(job["job_id"])["state"] == "confirmed"
+    assert fresh.observe(job["job_id"])["state"] == "applied"
+    assert marker.read_text() == "one"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_cancellation_between_flag_check_and_child_custody_is_quiescent():
+    profile = _profile((sys.executable, "-c", "pass"))
+    children = supervisor_module.Children()
+    cancelled = False
+
+    def prepare_child() -> list[dict[str, str]]:
+        nonlocal cancelled
+        cancelled = True
+        raise PropagationJobError("launch_reconciliation_required")
+
+    try:
+        result = supervisor_module._run_profile(
+            profile, {}, lambda: cancelled, children, lambda: None, prepare_child, lambda _identity: None,
+        )
+    finally:
+        children.close()
+    assert result == {"outcome": "cancelled", "native_effects": [], "quiescent": True}
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_durable_cancel_before_signal_refuses_pre_popen_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    marker, entered = tmp_path / "effect", tmp_path / "prepare-entered"
+    store, job = _submitted(tmp_path, "import pathlib; pathlib.Path(" + repr(str(marker)) + ").write_text('effect')")
+    token = store.prepare_launch(job["job_id"])
+    shim = (
+        "import pathlib,sys,time; "
+        "from anvil_serving.control_plane.controller.propagation_job_store import JobStore; "
+        "from anvil_serving.control_plane.controller.propagation_supervisor import _child; "
+        "original=JobStore.prepare_profile_child\n"
+        "def wait_for_cancel(self, job_id, identity, *args):\n"
+        " pathlib.Path(" + repr(str(entered)) + ").write_text('entered')\n"
+        " deadline=time.monotonic()+3\n"
+        " while self.lookup_internal(job_id)['state'] != 'cancellation_requested' and time.monotonic() < deadline: time.sleep(.001)\n"
+        " return original(self, job_id, identity, *args)\n"
+        "JobStore.prepare_profile_child=wait_for_cancel\n"
+        "raise SystemExit(_child(['--child',sys.argv[1],sys.argv[2]]))"
+    )
+    child = subprocess.Popen(
+        (sys.executable, "-c", shim, store.path, job["job_id"]),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        identity = supervisor_module._identity(child.pid)
+        assert identity is not None and child.stdin is not None
+        store.register_launch(job["job_id"], token, identity)
+        child.stdin.write(token.encode("ascii"))
+        child.stdin.close()
+        child.stdin = None
+        for _ in range(300):
+            if entered.exists():
+                break
+            time.sleep(0.01)
+        assert entered.exists()
+        fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: "cancelled" if result["outcome"] == "cancelled" else "uncertain")
+        original_identity = supervisor_module._identity
+
+        def after_cancel_before_signal(pid: int) -> dict[str, object] | None:
+            child.wait(timeout=3)
+            return original_identity(pid)
+
+        monkeypatch.setattr(supervisor_module, "_identity", after_cancel_before_signal)
+        assert fresh.cancel(job["job_id"])["state"] == "confirmed"
+        assert fresh.observe(job["job_id"])["state"] == "cancelled"
+        assert not marker.exists()
+        assert store.pending_effects(job["job_id"]) == []
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=3)
+
+
+def test_pre_profile_cancellation_refuses_an_existing_child_reservation(tmp_path: Path):
+    store, job = _submitted(tmp_path, "pass")
+    now = _now()
+    identity = {"pid": 1234, "start_ticks": "ticks-1", "boot_id": "boot-1"}
+    token = store.prepare_launch(job["job_id"], now)
+    store.register_launch(job["job_id"], token, identity, now)
+    store.begin_execution(job["job_id"], token, identity, now)
+    store.prepare_profile_child(job["job_id"], identity, now)
+    store.request_cancel(job["job_id"], now)
+    with pytest.raises(PropagationJobError, match="launch_reconciliation_required"):
+        store.record_pre_profile_cancellation(job["job_id"], identity, now)
+    assert store.pending_effects(job["job_id"])
+    assert store.lookup_internal(job["job_id"])["state"] == "cancellation_requested"
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
@@ -164,6 +405,40 @@ def test_oversized_or_untruthful_result_stays_recovery_required(tmp_path: Path):
     supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     supervisor.launch(job["job_id"])
     assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_native_crash_with_empty_custody_has_supervisor_quiescence(tmp_path: Path):
+    store, job = _submitted(tmp_path, "import json,sys; json.load(sys.stdin); raise SystemExit(1)")
+    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
+    supervisor.launch(job["job_id"])
+    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
+    observed = store.lookup_internal(job["job_id"])
+    result = store.completed_child_result(
+        job["job_id"], {key: observed[key] for key in ("pid", "start_ticks", "boot_id")},
+    )
+    assert result["outcome"] == "uncertain"
+    assert result["quiescent"] is True
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_unknown_descendant_custody_never_claims_quiescence():
+    class UnknownChildren:
+        def scan(self):
+            return [object()], False
+
+        def cleanup(self, _timeout: float):
+            return True, False, False
+
+    now = _now()
+    result = supervisor_module._run_profile(
+        _profile((sys.executable, "-c", "import json,sys; json.load(sys.stdin); print('{\"outcome\":\"applied\",\"native_effects\":[],\"quiescent\":true}')")),
+        {"job_id": "job-1", "operation_id": "operation-1", "intent_id": "intent-1", "contract_digest": DIGEST,
+         "resources": [], "deadline_at": (now + timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+         "canonical_contract": b"{}"},
+        lambda: False, UnknownChildren(), lambda: None, lambda: [], lambda _identity: None,
+    )
+    assert result == {"outcome": "uncertain", "native_effects": [], "quiescent": False}
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")

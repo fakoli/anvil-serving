@@ -227,6 +227,13 @@ class PropagationService:
 
     def status(self, job_id):
         job = self.supervisor.observe(job_id)
+        if job["state"] == "recovery_required" and self.supervisor.reconcile is not None:
+            original = self.jobs.lookup_internal(job_id)
+            identity = {key: original[key] for key in ("pid", "start_ticks", "boot_id")}
+            result = self.jobs.completed_child_result(job_id, identity)
+            if (result is not None and result["quiescent"] is True
+                    and self.supervisor.reconcile(original, result) == "applied"):
+                job = self.jobs.reconcile_applied(job_id, _hash(result))
         contract = self._contract(job["intent_id"])
         observation = self._observation(contract, job, "status")
         return {**self._context(contract), "observed_at": observation["observed_at"],
@@ -237,6 +244,7 @@ class PropagationService:
     def _verification(self, intent_id, job, kind, verification_id=None):
         if job["intent_id"] != intent_id or job["state"] != "applied" or not job["completed_at"]:
             raise PropagationJobError("job_not_applied")
+        self.intents.assert_current(intent_id)
         contract = self._contract(intent_id)
         ended = contract_api._utc(job["completed_at"])
         # Wait BEFORE observation, never restamp a cached read or invent future UTC.

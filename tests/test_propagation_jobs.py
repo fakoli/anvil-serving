@@ -367,3 +367,44 @@ def test_concurrent_duplicate_submit_returns_one_durable_job(tmp_path, monkeypat
             break
         time.sleep(.02)
     assert status["state"] == "applied" and owner.marker.read_text() == "accepted"
+
+
+def test_same_job_reconciliation_requires_durable_quiescence_and_exact_owner_readback(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    owner.supervisor.reconcile = lambda job, result: "uncertain"
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", accepted["contract_digest"], "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    for _ in range(200):
+        job = owner.supervisor.observe(submitted["job_id"])
+        if job["state"] == "recovery_required":
+            break
+        time.sleep(.02)
+    assert job["state"] == "recovery_required"
+    original = owner.jobs.lookup_internal(job["job_id"])
+    with pytest.raises(PropagationJobError, match="launch_reconciliation_required"):
+        owner.jobs.reconcile_applied(job["job_id"], "0" * 64)
+    assert owner.service.status(job["job_id"])["state"] == "recovery_required"
+    owner.supervisor.reconcile = owner.reconcile
+    assert owner.service.status(job["job_id"])["state"] == "applied"
+    final = owner.jobs.lookup_internal(job["job_id"])
+    assert final["operation_id"] == operation and final["result"] == original["result"]
+    assert all(final[key] == original[key] for key in ("pid", "start_ticks", "boot_id", "job_id"))
+    with pytest.raises(PropagationJobError, match="launch_reconciliation_required"):
+        owner.jobs.reconcile_applied(job["job_id"], original["result"]["result_digest"])
+
+
+def test_superseded_historical_apply_cannot_receive_fresh_acceptance(tmp_path):
+    from anvil_serving.control_plane.controller.propagation_store import PropagationIntentError
+    owner = ControlledOwner(tmp_path)
+    accepted, job, _ = owner.submit()
+    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["effect_set_digest"] = effect_scope_digest(value)
+    newer = parse_contract(value)
+    owner.intents.admit(newer.canonical,
+        approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
+        active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission", request_id="request-2", now=_now())
+    with pytest.raises(PropagationIntentError, match="stale_generation"):
+        owner.service.verify(accepted["intent_id"], job["job_id"])
+    assert owner.reads == []

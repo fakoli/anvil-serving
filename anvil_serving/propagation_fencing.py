@@ -26,8 +26,9 @@ import re
 import secrets
 import stat
 from typing import Callable, Iterable, Iterator, Mapping
+from types import MappingProxyType
 
-from .control_plane.propagation import parse_contract
+from .control_plane.propagation import parse_contract, _EFFECTS
 from .control_plane import bootstrap_shim
 from .control_plane.mcp import auth_file
 
@@ -267,6 +268,9 @@ class TrustedNativeOwner:
     backup_root: Path | None = None
     catalog_digest: str | None = None
     clock: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc), repr=False, compare=False)
+    effect_bindings: Mapping[str, tuple[str, Path]] = field(default_factory=dict, repr=False)
+    current_authority: Callable[[str, int, str], bool] | None = field(default=None, repr=False, compare=False)
+    recovery_quiescent: Callable[[str, str, int], bool] | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _token(self.owner_id)
@@ -282,6 +286,18 @@ class TrustedNativeOwner:
         backup = root / ".anvil-serving" / "backups" / "propagation" if self.backup_root is None else Path(self.backup_root).absolute()
         if ".." in backup.parts or not backup.is_relative_to(root):
             raise PropagationFenceError("malformed_owner_context")
+        if not isinstance(self.effect_bindings, Mapping):
+            raise PropagationFenceError("malformed_owner_context")
+        bindings = {}
+        for effect, binding in self.effect_bindings.items():
+            _token(effect)
+            if type(binding) is not tuple or len(binding) != 2 or type(binding[0]) is not str or binding[0] not in _EFFECTS:
+                raise PropagationFenceError("malformed_owner_context")
+            path = Path(binding[1]).absolute()
+            if ".." in path.parts or not path.is_relative_to(root) or path == root:
+                raise PropagationFenceError("untrusted_target_path")
+            bindings[effect] = (binding[0], path)
+        object.__setattr__(self, "effect_bindings", MappingProxyType(bindings))
         object.__setattr__(self, "storage_root", root)
         object.__setattr__(self, "backup_root", backup)
 
@@ -497,8 +513,14 @@ class NativeMutationFence:
             if self.owner.resource_id in target["resource_keys"]
         ]
         declared = {effect for target in approved_targets for effect in target["effects"]}
-        if not approved_targets or "catalog-apply" not in declared:
+        # Installation owns these bindings. Requests cannot choose a new effect,
+        # relabel one permission as another, or widen a resource to its whole home.
+        bindings = self.owner.effect_bindings
+        if not approved_targets or any(effect not in bindings or bindings[effect][0] not in declared for effect in allowed):
             raise PropagationFenceError("effect_not_approved")
+        expected = tuple((effect, str(bindings[effect][1])) for effect in allowed)
+        if mapped != expected or set(targets) != {path for _, path in expected}:
+            raise PropagationFenceError("grant_target_mismatch")
         catalog_digest = contract.value["inputs"]["catalog_digest"]
         if self.owner.catalog_digest is not None and self.owner.catalog_digest != catalog_digest:
             raise PropagationFenceError("catalog_expectation_mismatch")
@@ -563,6 +585,79 @@ class NativeMutationFence:
             state = self._read_state(self._operation_path(chosen))
             return json.loads(_canonical(state).decode("ascii"))
 
+    @contextmanager
+    def resume(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+               target_paths: Iterable[str | Path]) -> Iterator[NativeMutationJournal]:
+        """Reconcile the original reservation; never infer that a process stopped.
+
+        Installed owner custody must prove the original execution quiescent.
+        Exact desired bytes can be acknowledged after expiry. Every new/retried
+        write still checks live authority, deadline and the original backup.
+        """
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            reservation_id = self._reservation_id(grant)
+            index = self._read_index()
+            row = index["operations"].get(reservation_id)
+            if row is None or row["generation"] != grant.generation:
+                raise PropagationFenceError("unresolved_reservation")
+            if row["status"] == "completed":
+                raise PropagationFenceError("already_completed")
+            if index["latest_reservation_id"] != reservation_id or index["high_water_generation"] != grant.generation:
+                raise PropagationFenceError("stale_generation")
+            try:
+                quiescent = self.owner.recovery_quiescent(reservation_id, grant.contract_digest, grant.generation)
+            except Exception:
+                quiescent = False
+            if quiescent is not True:
+                raise PropagationFenceError("quiescence_unproven")
+            path = self._operation_path(reservation_id)
+            state = self._read_state(path)
+            expected = {"reservation_id": reservation_id, "contract_digest": grant.contract_digest,
+                        "generation": grant.generation, "catalog_digest": grant.catalog_digest,
+                        "targets_digest": grant.targets_digest, "allowed_effects": list(grant.effects),
+                        "effect_targets": dict(grant.effect_targets),
+                        "deadline_at": self._contract_deadline(canonical_contract).isoformat().replace("+00:00", "Z")}
+            if any(state[key] != value for key, value in expected.items()):
+                raise PropagationFenceError("grant_binding_mismatch")
+            journal = NativeMutationJournal(self, state, path)
+            try:
+                for effect_id, effect in state["effects"].items():
+                    if (effect_id not in grant.effects or type(effect) is not dict
+                            or effect.get("path") != dict(grant.effect_targets)[effect_id]
+                            or effect.get("state") not in {"prepared", "verified", "drift", "uncertain"}
+                            or any(effect.get(key) is not None and (type(effect[key]) is not str or _DIGEST.fullmatch(effect[key]) is None)
+                                   for key in ("before_digest", "desired_digest", "observed_digest"))):
+                        raise PropagationFenceError("unsafe_journal")
+                    if not effect.get("backup_id") or not effect.get("backup_path"):
+                        raise PropagationFenceError("backup_required")
+                    journal.bind_backup(effect_id, effect["backup_path"])
+                    observed = journal.read(effect["path"])
+                    actual = None if observed is None else _sha256(observed)
+                    if actual == effect["desired_digest"]:
+                        journal.observe_bytes(effect_id, observed)
+                    elif actual != effect["before_digest"]:
+                        raise PropagationFenceError("external_drift")
+                    else:
+                        effect["state"] = "prepared"
+                        effect["observed_digest"] = actual
+                        journal._save()
+                yield journal
+                for effect_id, effect in state["effects"].items():
+                    journal.observe_bytes(effect_id, journal.read(effect["path"]))
+                if (set(state["effects"]) != set(grant.effects)
+                        or any(effect["state"] != "verified" for effect in state["effects"].values())):
+                    raise PropagationFenceError("recovery_required")
+            except BaseException:
+                state["status"] = "recovery_required"
+                self._write_state(path, state)
+                self._set_operation_status(index, reservation_id, "recovery_required")
+                raise
+            state["status"] = "completed"
+            self._write_state(path, state)
+            self._set_operation_status(index, reservation_id, "completed")
+
     def lookup(self, grant: NativeMutationGrant) -> dict | None:
         """Resolve an exact completed identity without allocating a replacement."""
         if not isinstance(grant, NativeMutationGrant) or grant._seal is not self._seal:
@@ -574,7 +669,7 @@ class NativeMutationFence:
         index["operations"][reservation_id]["status"] = status
         self._write_index(index)
 
-    def _validate_grant(self, grant: NativeMutationGrant, canonical_contract: bytes, targets: tuple[str, ...]) -> None:
+    def _validate_grant(self, grant: NativeMutationGrant, canonical_contract: bytes, targets: tuple[str, ...], *, require_fresh=True) -> None:
         if not isinstance(grant, NativeMutationGrant) or grant._seal is not self._seal:
             raise PropagationFenceError("untrusted_grant")
         try:
@@ -583,6 +678,10 @@ class NativeMutationFence:
             raise PropagationFenceError("malformed_grant") from exc
         if parsed.canonical != canonical_contract:
             raise PropagationFenceError("noncanonical_contract")
+        expected_grant = self.grant(canonical_contract=canonical_contract, generation=grant.generation,
+                                    effects=grant.effects, target_paths=targets, effect_targets=dict(grant.effect_targets))
+        if grant != expected_grant:
+            raise PropagationFenceError("grant_binding_mismatch")
         if (grant.owner_id != self.owner.owner_id or grant.resource_id != self.owner.resource_id
                 or grant.epoch != self.owner.epoch or grant.contract_digest != parsed.digest
                 or grant.generation != parsed.value["generation"]
@@ -590,7 +689,9 @@ class NativeMutationFence:
                 or grant.backup_root != str(self.owner.backup_root)
                 or grant.targets_digest != _sha256(_canonical(targets))):
             raise PropagationFenceError("grant_binding_mismatch")
-        self._require_current_authority(parsed.value)
+        if require_fresh:
+            self._require_current_authority(parsed.value)
+            self._check_authority(grant.contract_digest, grant.generation)
 
     def _reservation_id(self, grant: NativeMutationGrant) -> str:
         return _sha256(_canonical(["native-reservation/v1", grant.contract_digest, grant.generation, grant.targets_digest, list(grant.effects), list(grant.effect_targets), grant.backup_root]))
@@ -620,8 +721,20 @@ class NativeMutationFence:
             raise PropagationFenceError("malformed_grant")
         return parsed
 
+    def _check_authority(self, contract_digest: str, generation: int) -> None:
+        check = self.owner.current_authority
+        if not callable(check):
+            raise PropagationFenceError("owner_authority_unavailable")
+        try:
+            accepted = check(contract_digest, generation, self.owner.epoch)
+        except Exception:
+            accepted = False
+        if accepted is not True:
+            raise PropagationFenceError("stale_generation")
+
     def _require_effect_authority(self, state: Mapping[str, object]) -> None:
         self._require_current_authority({"issued_at": "1970-01-01T00:00:00Z", "deadline_at": state["deadline_at"]})
+        self._check_authority(state["contract_digest"], state["generation"])
 
     @staticmethod
     def _validate_generation(index: dict, grant: NativeMutationGrant, reservation_id: str) -> None:

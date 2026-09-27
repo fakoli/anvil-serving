@@ -497,6 +497,66 @@ class JobStore:
             db.execute("COMMIT")
         return self._row(row)
 
+    def record_pre_profile_cancellation(self, job_id: str, identity: Mapping[str, Any], now: datetime | None = None) -> dict[str, Any]:
+        """Close a cancellation that the durable pre-Popen gate refused.
+
+        This narrow transition is not a substitute for uncertain native-child
+        recovery: it is valid only when the registered supervisor identity is
+        exact and no profile-child reservation was ever recorded.
+        """
+        stamp = _stamp(now or datetime.now(timezone.utc))
+        if (not isinstance(identity, Mapping) or set(identity) != {"pid", "start_ticks", "boot_id"}
+                or type(identity["pid"]) is not int or identity["pid"] < 1
+                or type(identity["start_ticks"]) is not str or not identity["start_ticks"]
+                or type(identity["boot_id"]) is not str or not identity["boot_id"]):
+            raise PropagationJobError("malformed_process_identity")
+        result = {"outcome": "cancelled", "native_effects": [], "quiescent": True}
+        result_digest = hashlib.sha256(_json(result, limit=_MAX_CHILD_RESULT).encode("ascii")).hexdigest()
+        payload = _json({"outcome": "cancelled", "quiescent": True, "native_effect_count": 0,
+                         "result_digest": result_digest})
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self._job(db, job_id)
+            child = db.execute("SELECT 1 FROM propagation_native_children WHERE job_id=?", (_id(job_id),)).fetchone()
+            if (row["state"] != "cancellation_requested" or row["result_json"] is not None or child is not None
+                    or (row["pid"], row["start_ticks"], row["boot_id"])
+                    != (identity["pid"], identity["start_ticks"], identity["boot_id"])):
+                db.execute("ROLLBACK")
+                raise PropagationJobError("launch_reconciliation_required")
+            db.execute("UPDATE propagation_native_jobs SET state=?,result_json=?,completed_at=?,heartbeat_at=? WHERE job_id=?",
+                       ("cancelled", payload, stamp, stamp, job_id))
+            db.execute("DELETE FROM propagation_native_resources WHERE job_id=?", (job_id,))
+            row = self._job(db, job_id)
+            db.execute("COMMIT")
+        return self._row(row)
+
+    def reconcile_applied(self, job_id: str, result_digest: str, now: datetime | None = None) -> dict[str, Any]:
+        """Record installed-owner readback after the original execution stopped.
+
+        This does not launch or retry anything. Keep the original child result,
+        effect IDs and process custody as evidence; release resource custody only
+        after a matching durable quiescence fact and exact owner reconciliation.
+        """
+        stamp = _stamp(now or datetime.now(timezone.utc))
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = self._job(db, job_id)
+            summary = json.loads(row["result_json"]) if row["result_json"] else {}
+            child = db.execute("SELECT state,result_digest,result_json FROM propagation_native_children WHERE job_id=?", (job_id,)).fetchone()
+            if (row["state"] != "recovery_required" or summary.get("quiescent") is not True
+                    or summary.get("result_digest") != result_digest or child is None
+                    or child["state"] != "completed" or child["result_digest"] != result_digest
+                    or hashlib.sha256(child["result_json"].encode("ascii")).hexdigest() != result_digest
+                    or json.loads(child["result_json"]).get("quiescent") is not True):
+                raise PropagationJobError("launch_reconciliation_required")
+            convergence = hashlib.sha256(_json(["convergence/v1", row["contract_digest"], 1]).encode("ascii")).hexdigest()
+            db.execute("UPDATE propagation_native_jobs SET state='applied',completed_at=?,heartbeat_at=?,convergence_ref=? WHERE job_id=?",
+                       (stamp, stamp, convergence, job_id))
+            db.execute("DELETE FROM propagation_native_resources WHERE job_id=?", (job_id,))
+            row = self._job(db, job_id)
+            db.execute("COMMIT")
+        return self._public(row)
+
     def request_cancel(self, job_id: str, now: datetime | None = None) -> dict[str, Any]:
         _stamp(now or datetime.now(timezone.utc))
         with self._connection() as db:
