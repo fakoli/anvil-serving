@@ -14,6 +14,7 @@ CAPABILITY_SCHEMA = "anvil-propagation-capabilities/v1"
 MAX_CONTRACT_BYTES = 256 * 1024
 MAX_RECEIPT_BYTES = 64 * 1024
 MAX_TARGETS = 128
+MAX_PAGE_ITEMS = 8
 MAX_RECEIPT_AGE = timedelta(minutes=5)
 MAX_DEADLINE = timedelta(days=7)
 _UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
@@ -136,7 +137,10 @@ def _load(raw: bytes | str | Mapping[str, Any], maximum: int) -> dict[str, Any]:
             _refuse()
     else:
         if isinstance(raw, str):
-            raw = raw.encode("utf-8")
+            try:
+                raw = raw.encode("utf-8")
+            except UnicodeError:
+                _refuse()
         if not isinstance(raw, bytes):
             _refuse()
         if len(raw) > maximum:
@@ -218,7 +222,9 @@ def _validate_contract(value: dict[str, Any]) -> None:
         _declared_set(target["checks"])
         _declared_set(target["effects"], allowed=_EFFECTS)
         identities.append((target["installation_id"], target["profile_id"], target["runtime_id"]))
-    if identities != sorted(identities) or len(set(identities)) != len(identities):
+    target_ids = [target["target_id"] for target in targets]
+    if (identities != sorted(identities) or len(set(identities)) != len(identities)
+            or len(set(target_ids)) != len(target_ids)):
         _refuse("malformed_identity")
     for policy, fields in ((value["session_policy"], _SESSION_FIELDS), (value["preview_policy"], _PREVIEW_FIELDS)):
         _exact(policy, fields)
@@ -292,16 +298,16 @@ def authorize_receipt_lookup(identity: ReceiptIdentity, caller: ReceiptIdentity)
 
 _OPERATIONS = (
     ("propagation.accept.v1", ADMISSION_SCOPE, ("approval_ref", "request_id"), ("intent_id", "workflow_id", "contract_digest")),
-    ("propagation.status.v1", STATUS_SCOPE, ("intent_id",), ("targets", "observed_at")),
+    ("propagation.status.v1", STATUS_SCOPE, ("intent_id", "cursor"), ("targets", "observed_at")),
     ("propagation.resume.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("attempt_id", "state")),
     ("propagation.cancel.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("state",)),
     ("propagation.dispatch.pending.v1", DISPATCH_SCOPE, ("cursor",), ("intents", "next_cursor")),
     ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id"), ("recorded",)),
-    ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id",), ("preview_digest", "targets")),
+    ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
     ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("job_id", "state")),
-    ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id",), ("outcomes", "receipt_refs")),
-    ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id"), ("checks", "receipts")),
-    ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id"), ("changed", "reloads", "checks")),
+    ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
+    ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
+    ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
     ("fleet.propagation.cancel.v1", ACTIVITY_SCOPE, ("job_id",), ("state",)),
 )
 
@@ -323,12 +329,41 @@ def _identifier() -> dict[str, Any]:
 
 
 def _digest_schema() -> dict[str, Any]:
-    return {"type": "string", "pattern": _SHA256.pattern}
+    return {"type": "string", "minLength": 64, "maxLength": 64, "pattern": _SHA256.pattern}
+
+
+def _nullable(schema: dict[str, Any]) -> dict[str, Any]:
+    result = {**schema, "type": [schema["type"], "null"]}
+    if "enum" in schema:
+        result["enum"] = [*schema["enum"], None]
+    return result
+
+
+def _timestamp() -> dict[str, Any]:
+    return {"type": "string", "minLength": 20, "maxLength": 20, "pattern": _UTC.pattern}
+
+
+def _pending_reason() -> dict[str, Any]:
+    return _nullable({"type": "string", "enum": sorted(_FAILURES | {
+        "not-started", "offline", "job-running", "preview-pending",
+        "cancellation-pending", "recovery-required", "deadline-expired",
+        "stale-revision", "identity-mismatch", "drift-detected",
+    })})
+
+
+def _session_state() -> dict[str, Any]:
+    return _object({name: {"type": "string", "enum": [
+        "pending", "accepted", "unsupported", "not-required",
+    ]} for name in ("files", "new_session", "existing_session")})
 
 
 def _cursor() -> dict[str, Any]:
-    # null is the explicit end-of-page marker; it is never an omitted field.
-    return {"type": ["string", "null"], "maxLength": 128}
+    return {**_nullable(_identifier()), "description": (
+        "Null starts a read or marks the final response page. Non-null cursors "
+        "are owner-issued and bind the operation, caller scope and immutable "
+        "snapshot. Continuation only reads that snapshot; it never starts "
+        "another verification or convergence pass. Expired snapshots refuse."
+    )}
 
 
 def _array(item: dict[str, Any], maximum: int) -> dict[str, Any]:
@@ -346,6 +381,7 @@ def _target_row() -> dict[str, Any]:
 
 def _receipt_ref() -> dict[str, Any]:
     return _object({
+        "receipt_id": _identifier(),
         "target_id": _identifier(),
         "effect_id": _identifier(),
         "issuer": _identifier(),
@@ -359,8 +395,17 @@ def _outcome_row() -> dict[str, Any]:
         "outcome": {"type": "string", "enum": sorted(_OUTCOMES)},
         "applied": {"type": "boolean"},
         "verified": {"type": "boolean"},
-        "observed_at": {"type": "string", "pattern": _UTC.pattern},
-        "receipt_ref": _receipt_ref(),
+        "desired_revision": _identifier(),
+        "applied_revision": _nullable(_identifier()),
+        "verified_revision": _nullable(_identifier()),
+        "last_contact_at": _nullable(_timestamp()),
+        "observed_at": _nullable(_timestamp()),
+        "age_seconds": {"type": ["integer", "null"], "minimum": 0},
+        "freshness": {"type": "string", "enum": ["fresh", "stale", "unknown"]},
+        "pending_reason": _pending_reason(),
+        "session_state": _session_state(),
+        "metric_coverage": {"type": "string", "enum": ["pending", "supported", "partial", "unsupported"]},
+        "receipt_ref": _nullable(_receipt_ref()),
     })
 
 
@@ -369,9 +414,45 @@ def _check_row() -> dict[str, Any]:
         "target_id": _identifier(),
         "check_id": _identifier(),
         "outcome": {"type": "string", "enum": sorted(_OUTCOMES)},
-        "evidence_ref": _identifier(),
-        "evidence_digest": _digest_schema(),
+        "pending_reason": _pending_reason(),
+        "observed_at": _nullable(_timestamp()),
+        "evidence_ref": _nullable(_identifier()),
+        "evidence_digest": _nullable(_digest_schema()),
     })
+
+
+def _preview_row() -> dict[str, Any]:
+    return _object({
+        **_target_row()["properties"],
+        "ready": {"type": "boolean"},
+        "pending_reason": _pending_reason(),
+        "observed_at": _nullable(_timestamp()),
+        "observed_digest": _nullable(_digest_schema()),
+        "permitted_effects": _array({"type": "string", "enum": sorted(_EFFECTS)}, len(_EFFECTS)),
+    })
+
+
+def _page(properties: dict[str, Any]) -> dict[str, Any]:
+    result = _object({
+        "contract_digest": _digest_schema(),
+        "target_set_digest": _digest_schema(),
+        "target_count": {"type": "integer", "minimum": 1, "maximum": MAX_TARGETS},
+        "snapshot_id": _identifier(),
+        "observed_at": _timestamp(),
+        "total_items": {"type": "integer", "minimum": 0},
+        "next_cursor": _cursor(),
+        **properties,
+    })
+    result["description"] = (
+        "All pages retain the same contract, complete target denominator, "
+        "snapshot, observation time and total item count. Rows are ordered by "
+        "target and then check/effect identity; total_items counts all row "
+        "collections together. The owner bounds serialized bytes as well as "
+        "row counts. Read through next_cursor=null and reject mixed, missing "
+        "or duplicate rows before evaluating whole-fleet completion. A partial "
+        "page or an empty receipt collection never removes a required target."
+    )
+    return result
 
 
 def _intent_row() -> dict[str, Any]:
@@ -397,7 +478,9 @@ def _result_schema(name: str) -> dict[str, Any]:
     if name == "propagation.accept.v1":
         return _object({"intent_id": _identifier(), "workflow_id": _identifier(), "contract_digest": _digest_schema()})
     if name == "propagation.status.v1":
-        return _object({"targets": _array(_outcome_row(), MAX_TARGETS), "observed_at": {"type": "string", "pattern": _UTC.pattern}})
+        return _page({"targets": _array(_outcome_row(), MAX_PAGE_ITEMS),
+                      "state": {"type": "string", "enum": ["pending", "running", "completed", "failed", "cancelled", "recovery_required"]},
+                      "all_targets_verified": {"type": "boolean"}})
     if name == "propagation.resume.v1":
         return _object({"attempt_id": _identifier(), "state": {"type": "string", "enum": ["accepted", "refused", "reconciling"]}})
     if name == "propagation.cancel.v1":
@@ -407,15 +490,24 @@ def _result_schema(name: str) -> dict[str, Any]:
     if name == "propagation.dispatch.record.v1":
         return _object({"recorded": {"type": "boolean"}})
     if name == "fleet.propagation.preview.v1":
-        return _object({"preview_digest": _digest_schema(), "targets": _array(_target_row(), MAX_TARGETS)})
+        return _page({"preview_digest": _nullable(_digest_schema()),
+                      "effect_set_digest": _digest_schema(), "expires_at": _timestamp(),
+                      "all_required_ready": {"type": "boolean"},
+                      "targets": _array(_preview_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.submit.v1":
         return _object({"job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
     if name == "fleet.propagation.status.v1":
-        return _object({"outcomes": _array(_outcome_row(), MAX_TARGETS), "receipt_refs": _array(_receipt_ref(), MAX_TARGETS)})
+        return _page({"outcomes": _array(_outcome_row(), MAX_PAGE_ITEMS),
+                      "receipt_refs": _array(_receipt_ref(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.verify.v1":
-        return _object({"checks": _array(_check_row(), MAX_TARGETS), "receipts": _array(_receipt_ref(), MAX_TARGETS)})
+        return _page({"checks": _array(_check_row(), MAX_PAGE_ITEMS),
+                      "receipts": _array(_receipt_ref(), MAX_PAGE_ITEMS),
+                      "all_targets_verified": {"type": "boolean"}})
     if name == "fleet.propagation.convergence.v1":
-        return _object({"changed": {"type": "integer", "minimum": 0}, "reloads": {"type": "integer", "minimum": 0}, "checks": _array(_check_row(), MAX_TARGETS)})
+        return _page({"changed": {"type": "integer", "minimum": 0},
+                      "reloads": {"type": "integer", "minimum": 0},
+                      "all_targets_verified": {"type": "boolean"},
+                      "checks": _array(_check_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.cancel.v1":
         return _object({"state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
     raise AssertionError("unknown propagation operation")
