@@ -2,7 +2,7 @@
 
 from .family import command_family
 from .common import CONFIRM_OPTIONS
-from .spec import CommandNode, _node, _remote, _resource_node
+from .spec import CommandNode, _handler, _node, _option, _remote, _resource_node
 
 
 @command_family(category="Control plane & integrations")
@@ -11,6 +11,20 @@ def commands() -> CommandNode:
         "harness",
         "Manage harness integration.",
         children=(
+            _node(
+                "memory-import",
+                "Preview or import explicitly listed curated Markdown into Hindsight.",
+                handler=_handler(
+                    "anvil_serving.memory_import", attribute="dispatch",
+                    argv_prefix=(),
+                    forward_confirm_flag=True,
+                ),
+                options=(
+                    _option("--config", summary="Exact TOML import configuration.", value_name="PATH"),
+                    _option("--confirm", summary="Confirm the guarded import.", requires_confirmation=True),
+                ),
+                mutation_class="mutate",
+            ),
             _node(
                 "sync",
                 "Synchronize harness configuration",

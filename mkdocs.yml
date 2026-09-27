@@ -118,6 +118,7 @@ nav:
           - Router delivery roadmap: ROUTER-ROADMAP.md
           - Embeddings and reranking: PURPOSE-MODELS.md
       - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
+      - Supplemental memory: HINDSIGHT.md
       - Agent workbench: WORKBENCH.md
       - Workbench portal: WORKBENCH-PORTAL.md
       - Optional Jev assistance: JEV-ASSISTANCE.md

@@ -85,6 +85,7 @@ from .model_metadata import (
     build_router_status,
 )
 from .purpose import PurposeRouter
+from .memory import MemoryRouter
 from .request_control import (
     RequestCancelledError,
     RequestControl,
@@ -1959,6 +1960,9 @@ def build_server(
                 transport=audio_transport,
                 decision_log=routing._decision_log,
             )
+        memory: Optional[MemoryRouter] = None
+        if config.memory_routes:
+            memory = MemoryRouter(config.memory_routes, env=environ)
         gateway: Optional[ProtocolGateway] = None
         media_worker: Optional[MediaReconciliationLoop] = None
         if server_config.media_principal is not None:
@@ -2022,7 +2026,7 @@ def build_server(
         httpd = make_server(
             host, port, routing, timeout=timeout, model_routes=config.model_routes,
             exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-            purpose=purpose, audio=audio, gateway=gateway,
+            purpose=purpose, audio=audio, gateway=gateway, memory=memory,
             authorization_policy=scoped_policy,
             operator_routes=operator_routes,
             workload_host=server_config.workload_host,
@@ -2038,6 +2042,7 @@ def build_server(
         httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
         httpd.anvil_purpose = purpose  # type: ignore[attr-defined]
         httpd.anvil_audio = audio  # type: ignore[attr-defined]
+        httpd.anvil_memory = memory  # type: ignore[attr-defined]
         httpd.anvil_gateway = gateway  # type: ignore[attr-defined]
         httpd.anvil_media_worker = media_worker  # type: ignore[attr-defined]
         original_server_close = httpd.server_close

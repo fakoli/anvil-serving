@@ -116,6 +116,7 @@ _HANDLER_PROGS = {
     "anvil_serving.gpus": "anvil-serving host gpus",
     "anvil_serving.gpu_sharing": "anvil-serving host gpu-sharing inspect",
     "anvil_serving.harness": "anvil-serving harness",
+    "anvil_serving.memory_import": "anvil-serving harness memory-import",
     "anvil_serving.host": "anvil-serving host",
     "anvil_serving.init": "anvil-serving init",
     "anvil_serving.mcp": "anvil-serving mcp serve",

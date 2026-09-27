@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Principal-bound supplemental Hindsight memory through bounded REST and MCP
+  routes, with device-key grants, fixed bank bindings and no backend fallback.
+- Preview-first curated Markdown memory import with source provenance, preserving
+  existing Codex, Pi, Hermes, OpenClaw and Claude memory stores.
+
 ## [1.5.0] - 2026-09-26
 
 ### Added

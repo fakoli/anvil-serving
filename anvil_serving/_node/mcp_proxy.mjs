@@ -36033,7 +36033,8 @@ function parseOptions(argv, env) {
   }
   return { controllerUrl, authEnv, token, serverVersion };
 }
-function requestTimeout(argumentsValue) {
+function requestTimeout(argumentsValue, path = "/mcp") {
+  if (path === "/v1/memory/mcp") return 31e4;
   if (typeof argumentsValue === "object" && argumentsValue !== null && "timeout_seconds" in argumentsValue) {
     const seconds = argumentsValue.timeout_seconds;
     if (typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0) {
@@ -36141,8 +36142,8 @@ async function buildBridge(options) {
               arguments: jsonObject(argumentsValue)
             },
             {
-              timeout: requestTimeout(argumentsValue),
-              maxTotalTimeout: requestTimeout(argumentsValue),
+              timeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
+              maxTotalTimeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               toolDefinition: tool
             }
           );
@@ -36195,5 +36196,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
 }
 export {
-  main
+  main,
+  requestTimeout
 };

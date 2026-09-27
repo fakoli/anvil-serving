@@ -45,6 +45,75 @@ class Supervisor:
         return subprocess.CompletedProcess(argv, 0, "", "")
 
 
+class DockerSupervisor:
+    def __init__(self):
+        self.inspections = []
+
+    def verify_context(self):
+        return None
+
+    def discover(self):
+        return [
+            {
+                "container": "hindsight",
+                "image_id": "sha256:" + "a" * 64,
+                "identity_labels": {"io.anvil-serving.managed-by": "fixture"},
+            }
+        ]
+
+    def describe(self, binding):
+        return {"identity": binding["container"], "engine_hint": "none", "ports": []}
+
+    def inspect(self, binding):
+        self.inspections.append(binding["id"])
+        return {
+            "manager": "docker",
+            "registered": True,
+            "running": True,
+            "enabled": True,
+            "identity": binding["container"],
+            "pid": 456,
+            "state": "running",
+        }
+
+
+def native_docker_topology():
+    return parse_topology(
+        {
+            "schema_version": 1,
+            "id": "local",
+            "command_host": "host:dark",
+            "command_runtime": "runtime:dark-native",
+            "hosts": [{"id": "dark", "os": "linux", "roles": ["operator"]}],
+            "runtimes": [
+                {"id": "dark-native", "host": "dark", "role": "native"},
+                {"id": "dark-docker", "host": "dark", "role": "docker"},
+            ],
+            "resources": [
+                {
+                    "id": "hindsight",
+                    "role": "memory",
+                    "host": "dark",
+                    "runtime": "dark-docker",
+                    "workload": "service",
+                }
+            ],
+        }
+    )
+
+
+def docker_binding():
+    return {
+        "id": "hindsight",
+        "resource": "hindsight",
+        "manager": "docker",
+        "engine": "none",
+        "container": "hindsight",
+        "image_id": "sha256:" + "a" * 64,
+        "identity_labels": {"io.anvil-serving.managed-by": "fixture"},
+    }
+
+
 @pytest.fixture
 def setup(tmp_path, monkeypatch):
     from itertools import count
@@ -336,6 +405,96 @@ def test_docker_linux_guest_preserves_declared_physical_host(host_os):
     assert owner.host == "machine"
 
 
+def test_native_identity_operates_same_host_docker_service(tmp_path):
+    from anvil_serving.service_runtime.operations import execute
+
+    manifest = tmp_path / "services.toml"
+    save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
+    docker = DockerSupervisor()
+
+    result = execute(
+        "status",
+        "hindsight",
+        manifest=manifest,
+        topology=native_docker_topology(),
+        _adapters={"docker": docker},
+        _host_os="linux",
+    )
+
+    assert result["services"][0]["id"] == "hindsight"
+    assert docker.inspections == ["hindsight"]
+
+
+def test_native_identity_adopts_same_host_docker_service(tmp_path):
+    from anvil_serving.service_runtime.operations import execute
+
+    docker = DockerSupervisor()
+    result = execute(
+        "adopt",
+        "hindsight",
+        manifest=tmp_path / "services.toml",
+        topology=native_docker_topology(),
+        binding={key: value for key, value in docker_binding().items() if key not in {"image_id", "identity_labels"}},
+        _adapters={"docker": docker},
+        _host_os="linux",
+    )
+
+    assert result["applied"] is False
+    assert result["services"][0]["id"] == "hindsight"
+    assert docker.inspections == ["hindsight"]
+
+
+@pytest.mark.parametrize(
+    ("command_role", "resource_role", "manager"),
+    [
+        ("native", "wsl", "docker"),
+        ("docker", "native", "launchd"),
+        ("native", "docker", "launchd"),
+    ],
+)
+def test_only_native_docker_bindings_cross_supervisor_runtime(
+    command_role, resource_role, manager
+):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import _owner
+    from anvil_serving.topology import resolve_command_identity
+
+    topo = parse_topology(
+        {
+            "schema_version": 1,
+            "id": "local",
+            "command_host": "host:dark",
+            "command_runtime": "runtime:command",
+            "hosts": [{"id": "dark", "os": "linux", "roles": ["operator"]}],
+            "runtimes": [
+                {"id": "command", "host": "dark", "role": command_role},
+                {"id": "resource", "host": "dark", "role": resource_role},
+            ],
+            "resources": [
+                {
+                    "id": "service",
+                    "role": "service",
+                    "host": "dark",
+                    "runtime": "resource",
+                    "workload": "service",
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(ServiceError, match="exact supervisor") as raised:
+        _owner(
+            {"resource": "service", "manager": manager, "engine": "none"},
+            topo,
+            resolve_command_identity(topo),
+            None,
+            "linux",
+            "status",
+        )
+
+    assert raised.value.code == "owner_mismatch"
+
+
 def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     from dataclasses import replace
     from anvil_serving.topology import Runtime, Resource
@@ -350,11 +509,17 @@ def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     rows["container"] = dict(id="container", resource="container", manager="docker", engine="none",
         container="aux", image_id="sha256:" + "a" * 64, identity_labels={"io.anvil-serving.managed-by": "fixture"})
     save_manifest(path, rows, expected_digest=digest(path))
+    docker = DockerSupervisor()
+    docker.describe = lambda binding: {"identity": binding["container"], "engine_hint": "none", "ports": []}
+    docker.inspect = lambda binding: {
+        "manager": "docker", "registered": True, "running": True, "enabled": True,
+        "identity": binding["container"], "pid": 789, "state": "running",
+    }
+    options["_adapters"]["docker"] = docker
     assert execute("up", "events", confirm=True, dry_run=False, **options)["applied"]
     status = execute("status", **options)
-    foreign = next(row for row in status["services"] if row["id"] == "container")
-    assert foreign["supervisor"]["running"] is None
-    assert foreign["supervisor"]["state"] == "requires_owner_runtime"
+    container = next(row for row in status["services"] if row["id"] == "container")
+    assert container["supervisor"]["running"] is True
 
 
 def test_known_engine_hint_cannot_be_relabelled_during_adoption(setup, tmp_path):

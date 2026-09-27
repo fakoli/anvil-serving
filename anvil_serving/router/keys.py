@@ -34,6 +34,7 @@ _MAX_AUDIT = 10_000
 _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
     "/v1/embeddings", "/v1/rerank",
+    "/v1/memory", "/v1/memory/mcp",
 })
 _MODELS_PATH = "/v1/models"
 

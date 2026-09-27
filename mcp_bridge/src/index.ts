@@ -86,7 +86,9 @@ function parseOptions(argv: string[], env: NodeJS.ProcessEnv): BridgeOptions {
   return { controllerUrl, authEnv, token, serverVersion };
 }
 
-function requestTimeout(argumentsValue: unknown): number {
+export function requestTimeout(argumentsValue: unknown, path = "/mcp"): number {
+  // Let the memory gateway return its bounded 300-second outcome first.
+  if (path === "/v1/memory/mcp") return 310_000;
   if (
     typeof argumentsValue === "object" &&
     argumentsValue !== null &&
@@ -213,8 +215,8 @@ async function buildBridge(options: BridgeOptions): Promise<McpServer> {
               arguments: jsonObject(argumentsValue),
             },
             {
-              timeout: requestTimeout(argumentsValue),
-              maxTotalTimeout: requestTimeout(argumentsValue),
+              timeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
+              maxTotalTimeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               toolDefinition: tool,
             },
           );

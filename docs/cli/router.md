@@ -405,6 +405,7 @@ backing serves had been off for hours with no signal anywhere. See
 
 ## Related references
 
+- [Supplemental memory](../HINDSIGHT.md)
 - [Capability meta-router](../META-ROUTER.md)
 - [Meta-router request path](../THIN-CAPABILITY-GATEWAY.md)
 - [Configuration](../CONFIGURATION.md)

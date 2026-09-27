@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import errno
 import stat
 import sys
 from contextlib import contextmanager
@@ -17,6 +18,11 @@ class AuthFileError(ValueError):
 
 
 _MACOS_ACL_TYPE_EXTENDED = 0x00000100
+_MACOS_ACL_EXTENDED_ALLOW = 1
+_MACOS_ACL_EXTENDED_DENY = 2
+_MACOS_ACL_FIRST_ENTRY = 0
+_MACOS_ACL_NEXT_ENTRY = -1
+_MACOS_ACL_MAX_ENTRIES = 128
 
 
 def _macos_acl_library():
@@ -27,13 +33,16 @@ def _macos_acl_library():
     return ctypes, ctypes.CDLL(None, use_errno=True)
 
 
-def _macos_extended_acl_entries(descriptor: int) -> int:
+def _macos_extended_acl_entries(
+    descriptor: int, *, ancestor_allow_deny_only: bool = False
+) -> int:
     """Count extended ACL entries on one held macOS descriptor.
 
-    The credential policy treats every extended entry as a confidentiality
-    risk. This intentionally avoids attempting to reproduce macOS's ACL
-    evaluator in Python. The native boundary is mocked in regression tests;
-    native macOS proof must be collected on a macOS operator host.
+    Credential leaves reject every extended entry. Ancestor directories may
+    carry only deny entries, such as macOS's standard ``everyone deny delete``
+    home-directory protection. A deny cannot expand access to the credential;
+    every allow, unknown tag, malformed enumeration, or unavailable inspection
+    remains fail-closed.
     """
 
     try:
@@ -41,29 +50,69 @@ def _macos_extended_acl_entries(descriptor: int) -> int:
         get_acl = libc.acl_get_fd_np
         get_acl.argtypes = [ctypes.c_int, ctypes.c_int]
         get_acl.restype = ctypes.c_void_p
-        entries = libc.acl_entries
-        entries.argtypes = [ctypes.c_void_p]
-        entries.restype = ctypes.c_int
+        valid_acl = libc.acl_valid
+        valid_acl.argtypes = [ctypes.c_void_p]
+        valid_acl.restype = ctypes.c_int
+        get_entry = libc.acl_get_entry
+        get_entry.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
+        get_entry.restype = ctypes.c_int
+        get_tag = libc.acl_get_tag_type
+        get_tag.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+        get_tag.restype = ctypes.c_int
         free_acl = libc.acl_free
         free_acl.argtypes = [ctypes.c_void_p]
         free_acl.restype = ctypes.c_int
+        ctypes.set_errno(0)
         acl = get_acl(descriptor, _MACOS_ACL_TYPE_EXTENDED)
         if not acl:
+            if ctypes.get_errno() == errno.ENOENT:
+                return 0
             raise OSError
         try:
-            count = entries(acl)
-            if count < 0:
+            ctypes.set_errno(0)
+            if valid_acl(acl) != 0:
                 raise OSError
-            return count
+            count = 0
+            entry_id = _MACOS_ACL_FIRST_ENTRY
+            while True:
+                entry = ctypes.c_void_p()
+                ctypes.set_errno(0)
+                result = get_entry(acl, entry_id, ctypes.byref(entry))
+                if result == -1:
+                    if ctypes.get_errno() == errno.EINVAL:
+                        return count
+                    raise OSError
+                if result != 0 or not entry.value or count >= _MACOS_ACL_MAX_ENTRIES:
+                    raise OSError
+                if ancestor_allow_deny_only:
+                    tag = ctypes.c_int()
+                    ctypes.set_errno(0)
+                    if get_tag(entry, ctypes.byref(tag)) != 0:
+                        raise OSError
+                    if tag.value != _MACOS_ACL_EXTENDED_DENY:
+                        raise AuthFileError(
+                            "auth file ancestor has an access-expanding extended ACL"
+                        )
+                count += 1
+                entry_id = _MACOS_ACL_NEXT_ENTRY
         finally:
+            ctypes.set_errno(0)
             if free_acl(acl) != 0:
                 raise OSError
+    except AuthFileError:
+        raise
     except (AttributeError, OSError, OverflowError, ValueError):
         raise AuthFileError("auth file extended ACL inspection is unavailable") from None
 
 
-def _require_macos_no_extended_acl(descriptor: int) -> None:
-    if sys.platform == "darwin" and _macos_extended_acl_entries(descriptor):
+def _require_macos_no_extended_acl(
+    descriptor: int, *, ancestor_allow_deny_only: bool = False
+) -> None:
+    if sys.platform == "darwin" and _macos_extended_acl_entries(
+        descriptor, ancestor_allow_deny_only=ancestor_allow_deny_only
+    ):
+        if ancestor_allow_deny_only:
+            return
         raise AuthFileError("auth file has an extended ACL")
 
 
@@ -203,7 +252,7 @@ def _require_posix_private_ancestor(descriptor: int) -> tuple[int, int]:
         )
     ):
         raise AuthFileError("auth file ancestor is not a private trusted directory")
-    _require_macos_no_extended_acl(descriptor)
+    _require_macos_no_extended_acl(descriptor, ancestor_allow_deny_only=True)
     return metadata.st_dev, metadata.st_ino
 
 

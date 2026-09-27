@@ -55,6 +55,18 @@ def _lock(path):
         os.close(fd)
 
 
+def _binding_matches_identity(binding, resource, runtime, identity):
+    """Return whether this host identity may operate the declared binding."""
+    return resource.host == identity.host.id and (
+        identity.runtime.id == runtime.id
+        or (
+            binding["manager"] == "docker"
+            and identity.runtime.role == "native"
+            and runtime.role == "docker"
+        )
+    )
+
+
 def _owner(binding, topo, identity, target, host_os, action):
     try:
         resource = topo.resource(binding["resource"])
@@ -68,7 +80,7 @@ def _owner(binding, topo, identity, target, host_os, action):
     docker_guest = host.os in {"windows", "macos"} and host_os == "linux" and runtime.role == "docker" and binding["manager"] == "docker"
     if host.os and host.os != host_os and not (wsl or docker_guest):
         raise ServiceError("owner_mismatch", "declared host OS differs from execution OS")
-    if identity.runtime.id != runtime.id:
+    if not _binding_matches_identity(binding, resource, runtime, identity):
         raise ServiceError("owner_mismatch", "service requires its exact supervisor execution runtime")
     if binding["manager"] == "launchd" and runtime.role != "native":
         raise ServiceError("owner_mismatch", "launchd requires its native runtime")
@@ -378,7 +390,8 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
         selected = []
         for name, row in bindings.items():
             resource = topo.resource(row["resource"])
-            if (resource.host, resource.runtime) == (identity.host.id, identity.runtime.id):
+            runtime = topo.runtime(resource.runtime)
+            if _binding_matches_identity(row, resource, runtime, identity):
                 selected.append(name)
             else:
                 deferred.append({"id": name, "owner": {"host": resource.host, "runtime": resource.runtime},
@@ -390,9 +403,11 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
     # Inspect other local bindings for dependencies and admission, never remote ones.
     relevant = set(selected)
     if action in MUTATING_ACTIONS:
-        relevant.update(name for name, row in bindings.items()
-            if (topo.resource(row["resource"]).host, topo.resource(row["resource"]).runtime)
-            == (identity.host.id, identity.runtime.id))
+        for name, row in bindings.items():
+            resource = topo.resource(row["resource"])
+            runtime = topo.runtime(resource.runtime)
+            if _binding_matches_identity(row, resource, runtime, identity):
+                relevant.add(name)
     for name in sorted(relevant):
         row = bindings[name]
         owners[name] = _owner(row, topo, identity, target, host_os, action if name in selected else "status")
