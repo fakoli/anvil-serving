@@ -307,6 +307,7 @@ required operands, choices, and defaults.
 | `fleet version` | Report anvil-serving version skew across declared fleet hosts. | `read` / `bounded` | `--host`<br>`--timeout` |
 | `fleet drift` | Compare each host's live operator home against its repository snapshot. | `read` / `bounded` | `--repo`<br>`--host`<br>`--home`<br>`--timeout` |
 | `harness` | Manage harness integration. | `read` / `bounded` | - |
+| `harness memory-import` | Preview or import explicitly listed curated Markdown into Hindsight. | `mutate` / `bounded` | `--config`<br>`--confirm` |
 | `harness sync` | Synchronize harness configuration | `read` / `bounded` | - |
 | `harness sync openclaw` | Synchronize harness configuration for OpenClaw. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `harness sync clients` | Reconcile OpenClaw, Hermes profiles, and Pi from authenticated router metadata. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

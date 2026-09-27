@@ -57,7 +57,7 @@ from .audio import (
     TRANSCRIPTIONS_PATH,
     audio_purpose_for_path,
 )
-from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK
+from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK, normalize_model_alias
 from .front_door_runtime import ClientAdmission, DeliveryWorker
 from .request_control import RequestControl, RequestControlError, RequestDeadlineExceeded
 from .decision_log import safe_correlation, summarize_decisions
@@ -82,6 +82,8 @@ from .internal import (
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
 from .keys import KeyStore, KeyStoreError
+from .memory import MemoryError, MemoryRouter
+from .memory_mcp import MemoryMCP
 from ..control_plane.authorization import (
     AuthorizationPolicy,
     INFERENCE_USE,
@@ -144,6 +146,10 @@ _PURPOSE_PATHS = {
 # Request/response voice gateway paths. They are active only when an
 # AudioGateway is injected from configured ``[[router.audio_routes]]``.
 _AUDIO_PATHS = (TRANSCRIPTIONS_PATH, SPEECH_PATH)
+MEMORY_PATH = "/v1/memory"
+MEMORY_MCP_PATH = "/v1/memory/mcp"
+_MEMORY_PATHS = (MEMORY_PATH, MEMORY_MCP_PATH)
+_MEMORY_MAX_BODY_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -254,6 +260,7 @@ def _validated_operator_routes(
         TRANSITION_ENDPOINT,
         WORKLOADS_ENDPOINT,
         MCP_PATH,
+        *_MEMORY_PATHS,
         A2A_PATH,
         AGENT_CARD_PATH,
     } | set(_PURPOSE_PATHS) | set(_AUDIO_PATHS)
@@ -455,6 +462,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   purpose: Optional[PurposeRouter] = None,
                   audio: Optional[AudioGateway] = None,
                   gateway: Optional[ProtocolGateway] = None,
+                  memory: Optional[MemoryRouter] = None,
                   authorization_policy: Optional[AuthorizationPolicy] = None,
                   operator_routes: Sequence[OperatorRoute] | None = None,
                   workload_host: Optional[str] = None,
@@ -607,6 +615,54 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return True
             self._device_error(403, "key_access_denied", "API key does not grant this model")
             return False
+
+        def _memory_device_allowed(self) -> bool:
+            if self._anvil_device is not None:
+                return True
+            self._error(403, "key_access_denied", "memory requires a device API key")
+            return False
+
+        def _memory_aliases(self) -> tuple[str, ...]:
+            if self._anvil_device is None or memory is None:
+                return ()
+            return tuple(
+                alias for alias in memory.aliases(self._anvil_device.key_id)
+                if self._anvil_device.allows_model(alias)
+            )
+
+        def _memory_header_override(self) -> bool:
+            forbidden = {"x-bank-id", "x-consumer-id", "x-memory-bank", "x-memory-principal"}
+            return any(name.lower() in forbidden for name in self.headers)
+
+        def _handle_memory(self, path: str, body: dict) -> None:
+            if not self._memory_device_allowed():
+                return
+            if self._memory_header_override():
+                self._error(400, "invalid_request", "memory route overrides are not allowed")
+                return
+            if path == MEMORY_MCP_PATH:
+                result = MemoryMCP(memory, self._anvil_device.key_id, self._memory_aliases()).handle(
+                    body, self.headers
+                )
+                if result is None:
+                    self.send_response(202)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                else:
+                    self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+                return
+            alias = body.get("alias")
+            if isinstance(alias, str):
+                alias = normalize_model_alias(alias)
+            configured = memory.aliases(self._anvil_device.key_id)
+            if isinstance(alias, str) and alias in configured and not self._anvil_device.allows_model(alias):
+                self._error(403, "key_access_denied", "API key does not grant this model")
+                return
+            try:
+                self._json(200, memory.dispatch(body, principal=self._anvil_device.key_id),
+                           extra_headers={"Cache-Control": "no-store"})
+            except MemoryError as exc:
+                self._error(exc.status, exc.code, exc.message)
 
         def _reset_request_correlation(self) -> None:
             """Clear per-request state on a reused HTTP/1.1 handler."""
@@ -1869,7 +1925,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         summary = summarize_decisions(getattr(decision_log, "records", ()), limit=limit)
                     self._json(200, summary)
-                elif route in _ROUTES or (
+                elif route in _ROUTES or (memory is not None and route in _MEMORY_PATHS) or (
                     purpose is not None and route in _PURPOSE_PATHS
                 ) or (audio is not None and route in audio.paths):
                     # Known POST-only route requested with GET → 405 Method Not
@@ -2033,6 +2089,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         _CONCURRENCY_LIMIT.release()
 
+        def do_DELETE(self) -> None:
+            if api_keys is None:
+                self._reset_request_correlation()
+            route = self.path.split("?", 1)[0].rstrip("/")
+            if memory is None or route not in _MEMORY_PATHS:
+                self._error(404, "not_found", f"no route {route}")
+                return
+            if not self._authenticated():
+                self._error(401, "authentication_error", "invalid or missing API key")
+                return
+            self._json(405, {"error": {"type": "method_not_allowed", "message": "this route only accepts POST requests"}},
+                       extra_headers={"Allow": "POST"})
+
         def _post_inner(self) -> None:
             """Core POST dispatch, called under the concurrency semaphore."""
             # Normalize exactly like do_GET (query split + trailing-slash strip)
@@ -2040,6 +2109,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # of 404ing on the slash.
             path = self.path.split("?", 1)[0].rstrip("/")
             is_transition = path == TRANSITION_ENDPOINT
+            is_memory = memory is not None and path in _MEMORY_PATHS
 
             # --- Strict framing: gather and validate headers -----------------
             #
@@ -2112,7 +2182,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if dialect is None and audio_kind is not None:
                 dialect = _OPENAI_DIALECT
             if (
-                dialect is None and not is_transition
+                dialect is None and not is_transition and not is_memory
             ):
                 # Unknown route — drain body if well-framed to keep the
                 # keep-alive socket in sync, then 404.
@@ -2179,6 +2249,40 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._handle_audio(audio_kind, body)
                 finally:
                     audio.release()
+                return
+
+            if is_memory:
+                if has_te:
+                    self._fail_framing(411, "invalid_request", "chunked request bodies are unsupported; send Content-Length",
+                                       drainable=False, n=0)
+                    return
+                if dup_cl:
+                    self._fail_framing(400, "invalid_request", "duplicate Content-Length headers",
+                                       drainable=False, n=0)
+                    return
+                if cl_invalid:
+                    self._fail_framing(400, "invalid_request", "invalid Content-Length",
+                                       drainable=False, n=0)
+                    return
+                if n > _MEMORY_MAX_BODY_BYTES:
+                    self._fail_framing(413, "payload_too_large", "memory request body too large",
+                                       drainable=False, n=0)
+                    self._flush_closing_response()
+                    return
+                raw = self.rfile.read(n) if n else b""
+                if len(raw) != n:
+                    self.close_connection = True
+                    self._error(400, "invalid_request", "incomplete request body")
+                    return
+                try:
+                    body = json.loads(raw or b"{}")
+                except Exception:
+                    self._error(400, "invalid_request", "body must be valid JSON")
+                    return
+                if not isinstance(body, dict):
+                    self._error(400, "invalid_request", "body must be a JSON object")
+                    return
+                self._handle_memory(path, body)
                 return
 
             # --- Reject any Transfer-Encoding header (411) -------------------
@@ -2529,6 +2633,7 @@ def make_server(host: str, port: int,
                 workload_registry=None,
                 workload_clock: Optional[Callable[[], datetime]] = None,
                 server_config=None,
+                memory: Optional[MemoryRouter] = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -2562,6 +2667,8 @@ def make_server(host: str, port: int,
         raise ValueError("an AudioGateway requires a resolved front-door auth token")
     if gateway is not None and auth_token is None:
         raise ValueError("a ProtocolGateway requires a resolved front-door auth token")
+    if memory is not None and (auth_token is None or server_config is None or server_config.api_keys_path is None):
+        raise ValueError("a MemoryRouter requires front-door auth and device API keys")
     api_keys = None
     if server_config is not None and server_config.api_keys_path is not None:
         if auth_token is None:
@@ -2593,7 +2700,7 @@ def make_server(host: str, port: int,
         (host, port),
         _make_handler(
             backend, timeout, model_routes, exhaustion_status, auth_token,
-            purpose, audio, gateway, authorization_policy, validated_operator_routes,
+            purpose, audio, gateway, memory, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
         ),

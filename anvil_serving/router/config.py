@@ -154,7 +154,12 @@ _ROUTER_KEYS = frozenset({
     "audio_max_output_bytes",
     "audio_max_text_chars",
     "audio_max_concurrency",
+    "memory_routes",
 })
+_MEMORY_ROUTE_KEYS = frozenset({
+    "alias", "principal", "backend", "bank", "base_url", "auth_env", "timeout",
+})
+_MEMORY_ALIAS_RE = re.compile(r"^[a-z][a-z0-9._-]{0,127}$")
 
 
 def _reject_unknown_keys(
@@ -359,6 +364,19 @@ class AudioRoute:
 
 
 @dataclass(frozen=True)
+class MemoryRoute:
+    """One device-bound memory bank behind the authenticated router."""
+
+    alias: str
+    principal: str
+    backend: str  # "hindsight" | "hermes"
+    bank: str
+    base_url: str
+    auth_env: str
+    timeout: float = 120.0
+
+
+@dataclass(frozen=True)
 class RouterConfig:
     """Validated Capability Gateway configuration.
 
@@ -394,6 +412,8 @@ class RouterConfig:
     audio_max_output_bytes: int = 4 * 1024 * 1024
     audio_max_text_chars: int = 16 * 1024
     audio_max_concurrency: int = 4
+    # Device-bound memory routes are additive; no entry leaves memory unavailable.
+    memory_routes: tuple[MemoryRoute, ...] = ()
 
     @cached_property
     def _tiers_by_id(self) -> Mapping[str, Tier]:
@@ -1497,8 +1517,107 @@ def _parse_audio_route(raw: object) -> AudioRoute:
     )
 
 
+def _parse_memory_route(raw: object) -> MemoryRoute:
+    """Parse one explicit, device-bound ``[[router.memory_routes]]`` table."""
+    if not isinstance(raw, dict):
+        raise ConfigError(
+            f"memory_routes entry must be a table, got {type(raw).__name__}"
+        )
+    _reject_unknown_keys(raw, _MEMORY_ROUTE_KEYS, "memory route")
+
+    alias = raw.get("alias")
+    if not isinstance(alias, str):
+        raise ConfigError(f"memory route alias must be a string, got {alias!r}")
+    alias = normalize_model_alias(alias)
+    if _MEMORY_ALIAS_RE.fullmatch(alias) is None:
+        raise ConfigError(
+            "memory route alias must start with a letter and contain only "
+            "ASCII letters, digits, dots, hyphens, or underscores (up to 128 characters)"
+        )
+
+    principal = raw.get("principal")
+    if (
+        not isinstance(principal, str)
+        or principal == "_legacy"
+        or _REPLICA_ID_RE.fullmatch(principal) is None
+    ):
+        raise ConfigError("memory route principal must be a device key_id, never _legacy")
+
+    backend = raw.get("backend")
+    if not isinstance(backend, str) or backend not in {"hindsight", "hermes"}:
+        raise ConfigError("memory route backend must be 'hindsight' or 'hermes'")
+
+    bank = raw.get("bank")
+    if not isinstance(bank, str) or _REPLICA_ID_RE.fullmatch(bank) is None:
+        raise ConfigError("memory route bank must be an identifier")
+
+    base_url = raw.get("base_url")
+    if not isinstance(base_url, str) or not base_url.lower().startswith(("http://", "https://")) or any(ord(c) < 33 or ord(c) > 126 for c in base_url):
+        raise ConfigError("memory route base_url must be an http:// or https:// URL")
+    parsed_url = urllib.parse.urlparse(base_url)
+    try:
+        port = parsed_url.port
+    except ValueError as exc:
+        raise ConfigError("memory route base_url has an invalid port") from exc
+    hostname = (parsed_url.hostname or "").lower()
+    if (
+        not hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+        or parsed_url.path not in {"", "/"}
+        or parsed_url.params
+    ):
+        raise ConfigError(
+            "memory route base_url must name a credential-free origin without query strings or fragments"
+        )
+    if port is not None and not (1 <= port <= 65535):
+        raise ConfigError("memory route base_url port must be from 1 through 65535")
+    if hostname == "localhost":
+        raise ConfigError("memory route base_url must use 127.0.0.1 or host.docker.internal, never localhost")
+    if hostname != "host.docker.internal":
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            raise ConfigError(
+                "memory route base_url host must be host.docker.internal or a literal private/tailnet IP address"
+            ) from None
+        allowed_networks = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("100.64.0.0/10"),
+        )
+        if str(address) != "127.0.0.1" and not any(address in network for network in allowed_networks):
+            raise ConfigError(
+                "memory route base_url host must be 127.0.0.1, RFC1918, or tailnet"
+            )
+
+    auth_env = raw.get("auth_env")
+    _validate_auth_env(auth_env, f"memory route {alias!r}: auth_env", detailed=False)
+    timeout = raw.get("timeout", 120.0)
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not math.isfinite(timeout)
+        or not 1 <= timeout <= 300
+    ):
+        raise ConfigError("memory route timeout must be a finite number from 1 through 300 seconds")
+    return MemoryRoute(
+        alias=alias,
+        principal=principal,
+        backend=backend,
+        bank=bank,
+        base_url=base_url,
+        auth_env=auth_env,
+        timeout=float(timeout),
+    )
+
+
 def _parse_router_config(
-    data: Mapping[str, Any], path: str, *, media_gateway_enabled: bool = False
+    data: Mapping[str, Any], path: str, *, media_gateway_enabled: bool = False,
+    server_config: ServerConfig | None = None,
 ) -> RouterConfig:
     router = data.get("router")
     if not isinstance(router, dict):
@@ -1719,6 +1838,27 @@ def _parse_router_config(
             f"in {path}"
         )
 
+    raw_memory = router.get("memory_routes", [])
+    if not isinstance(raw_memory, list) or len(raw_memory) > 128:
+        raise ConfigError("[router].memory_routes must be a list of at most 128 tables")
+    memory_routes: list[MemoryRoute] = []
+    seen_memory_routes: set[tuple[str, str]] = set()
+    for raw in raw_memory:
+        memory_route = _parse_memory_route(raw)
+        route_key = (memory_route.alias, memory_route.principal)
+        if route_key in seen_memory_routes:
+            raise ConfigError(
+                "duplicate memory route alias and principal (case-insensitive alias)"
+            )
+        seen_memory_routes.add(route_key)
+        memory_routes.append(memory_route)
+    if memory_routes and (
+        server_config is None
+        or server_config.auth_env is None
+        or server_config.api_keys_path is None
+    ):
+        raise ConfigError("memory routes require [server].auth_env and [server].api_keys_path")
+
     availability_probe_interval = _positive_seconds(
         "availability_probe_interval", 5.0
     )
@@ -1750,6 +1890,7 @@ def _parse_router_config(
         audio_max_output_bytes=audio_max_output_bytes,
         audio_max_text_chars=audio_max_text_chars,
         audio_max_concurrency=raw_audio_max_concurrency,
+        memory_routes=tuple(memory_routes),
     )
 
 
@@ -1770,6 +1911,7 @@ def _load_bytes(raw: bytes, path: str) -> RouterConfig:
         data,
         path,
         media_gateway_enabled=server_config.media_principal is not None,
+        server_config=server_config,
     )
 
 

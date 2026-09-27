@@ -1,7 +1,7 @@
 # Ticket: Hindsight memory capability + multiplexing in the Capability Gateway
 
-Date: 2026-09-27. Status: proposed (pre-implementation PRD; specifies required
-behavior and evidence; does not claim implementation or live acceptance).
+Date: 2026-09-27. Status: implementation in progress; source boundary tests and
+independent gateway review pass. Live client acceptance and merge remain pending.
 
 Source PRD: `ai-infra` `modern/docs/hindsight-prd.md` (F007 / T008). Reference
 design: `ai-infra` `modern/docs/hindsight-design.md` (§6–§8). This ticket
@@ -23,7 +23,7 @@ backends then exist in the fleet:
   zero external services, authoritative for pi sessions. There is no network
   API for it today.
 - **hindsight** — the new semantic memory service (isolated banks,
-  retain/recall/reflect, per-bank MCP endpoints).
+  retain/recall/reflect through the principal-bound router MCP endpoint).
 
 Callers should not need to know which backend serves a memory request, and
 the fleet must not gain a hidden second brain. The Capability Gateway is the
@@ -32,7 +32,8 @@ explicit place for that boundary.
 ## Proposal
 
 A **memory-capability alias** in the Capability Gateway fronting the two
-tiers, plus read-only fleet awareness of the Hindsight service:
+tiers, plus managed fleet awareness of the Hindsight service. The explicitly
+authorized implementation expands the original read-only lifecycle proposal:
 
 1. **Explicit alias, explicit tiers.** Callers use a stable memory
    capability alias; operators map that alias to exactly one tier (hermes or
@@ -56,16 +57,13 @@ tiers, plus read-only fleet awareness of the Hindsight service:
    unsupported-operation errors, host/store selection declared per consumer,
    and zero writes to pi-hermes-memory. Until then the alias maps only to
    the hindsight tier.
-5. **Alias vs direct access, stated.** Declared consumers (pi, hermes,
-   openclaw) connect directly to their bank's Hindsight MCP endpoint for
-   hindsight memory; those direct paths are themselves exposure-declared and
-   enforce the same principal → bank binding (see the source PRD's
-   authorization requirement). The memory alias serves backend-agnostic
-   callers and is exercised by this ticket's routed acceptance contract.
-6. **Read-only awareness.** Control-plane/topology state carries the
-   Hindsight service as a declared integration (read-only). Lifecycle
-   ownership stays with ai-infra Ansible; no lifecycle verb for it exists in
-   this repo's manifest.
+5. **All consumers use the router.** Pi, Hermes, OpenClaw and Codex use
+   `/v1/memory/mcp` with individual device keys and explicit alias grants.
+   Native upstream MCP is disabled; its administrative API remains private.
+6. **Existing managed lifecycle.** Infrastructure provisions the service,
+   then the existing external-Compose `host services` contract adopts it.
+   Control-plane operations execute at its declared owner. No new lifecycle
+   implementation or product family is introduced.
 7. **Output-cap reconciliation.** The extraction alias's output budget is
    reconciled and recorded as
    `configured_chunk_size < retain_completion_limit <= effective_output_cap`
@@ -83,9 +81,8 @@ tiers, plus read-only fleet awareness of the Hindsight service:
 - While the hermes tier is unadapted, the alias maps only to the hindsight
   tier; hermes-tier selection returns an explicit unsupported-operation
   error, not a silent substitute.
-- Control-plane/topology state shows the Hindsight service as read-only
-  awareness; no lifecycle verb for it exists in this repo's command
-  manifest.
+- Control-plane/topology state shows the adopted service, and existing managed
+  status/log/lifecycle operations preserve its container and volume ownership.
 - The extraction alias's output-cap inequality is recorded and holds.
 - Boundary review against the family table (ADR-0042) confirms the memory
   capability does not blur Model Serving / Capability Gateway / Control
@@ -107,12 +104,13 @@ Evidence classes are separate; none substitutes for another:
    declared principal, backend-identification facts present, and the
    negative tests above (unauthenticated, wrong-principal, cross-bank,
    override rejection).
-4. **Boundary review**: family table and command manifest unchanged in
-   lifecycle ownership; awareness entries are read-only.
+4. **Boundary review**: lifecycle stays in the existing Control Plane family;
+   memory routing stays in Capability Gateway. Curated imports use a confirmed
+   operator command, with provenance and no source-store writes.
 
 ## Out of scope
 
-- Owning the Hindsight service lifecycle (ai-infra Ansible owns it).
+- A new Hindsight-specific lifecycle engine (existing adoption is sufficient).
 - Hidden fallback, semantic routing, or quality-profile routing between
   memory tiers; multi-provider failover inside the memory service.
 - LongMemEval benchmark profile (source PRD T009; requires this alias to
