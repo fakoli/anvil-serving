@@ -147,6 +147,22 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
         _private_directory(directory)
     legacy_lock.write_bytes(b"")
     _private_file(legacy_lock)
+    if os.name != "nt":
+        import fcntl
+        with open(legacy_lock, "r+") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            with pytest.raises(PropagationFenceError, match="operation_in_progress"):
+                with NativeMutationFence.legacy_catalog_write(tmp_path):
+                    pytest.fail("direct writer passed the Pi lock")
+            with NativeMutationFence.legacy_catalog_write(tmp_path, catalog_lock_fd=held.fileno()):
+                pass
+            other = tmp_path / "other.lock"
+            other.write_bytes(b"")
+            _private_file(other)
+            with open(other, "r+") as wrong:
+                with pytest.raises(PropagationFenceError, match="owner_lock_unavailable"):
+                    with NativeMutationFence.legacy_catalog_write(tmp_path, catalog_lock_fd=wrong.fileno()):
+                        pytest.fail("wrong lock descriptor entered")
     with NativeMutationFence.legacy_catalog_write(tmp_path):
         with NativeMutationFence.legacy_catalog_write(tmp_path):
             pass

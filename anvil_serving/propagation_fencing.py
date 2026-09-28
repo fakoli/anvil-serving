@@ -564,7 +564,7 @@ class NativeMutationFence:
 
     @classmethod
     @contextmanager
-    def legacy_catalog_write(cls, storage_root: str | Path) -> Iterator[None]:
+    def legacy_catalog_write(cls, storage_root: str | Path, *, catalog_lock_fd: int | None = None) -> Iterator[None]:
         """Serialize existing direct writers with cutover; refuse once retired."""
         root = Path(storage_root).absolute()
         held = _LEGACY_CATALOG_ROOT.get()
@@ -575,7 +575,7 @@ class NativeMutationFence:
             return
         owner = TrustedNativeOwner("legacy-client-catalog", "client-catalog", root)
         fence = cls(owner, root)
-        with fence._lock():
+        with fence._installed_catalog_lock(borrowed_fd=catalog_lock_fd, create=True), fence._lock():
             if fence._read_catalog_cutover() is not None:
                 raise PropagationFenceError("stale_generation")
             token = _LEGACY_CATALOG_ROOT.set(root)
@@ -922,16 +922,25 @@ class NativeMutationFence:
         return descriptor
 
     @contextmanager
-    def _installed_catalog_lock(self) -> Iterator[None]:
+    def _installed_catalog_lock(self, *, borrowed_fd: int | None = None, create: bool = False) -> Iterator[None]:
         """Drain Pi adoption and credential writers before generation activation."""
         path = self.owner.storage_root / ".config" / "anvil-serving" / "pi" / "catalog.lock"
         files = _HeldFiles(self.owner.storage_root)
         fd = None
         try:
             files.directory(self.owner.storage_root)
-            parent = files.directory(path.parent, private=True)
-            fd = (self._open_windows_lock(path) if os.name == "nt" else
-                  os.open(path.name, os.O_RDWR | os.O_NOFOLLOW, dir_fd=parent))
+            parent = files.directory(path.parent, create=create, private=True)
+            if borrowed_fd is not None:
+                if os.name == "nt" or type(borrowed_fd) is not int or borrowed_fd < 0:
+                    raise PropagationFenceError("owner_lock_unavailable")
+                fd = borrowed_fd
+                actual = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+                if not os.path.samestat(actual, os.fstat(fd)):
+                    raise PropagationFenceError("owner_lock_unavailable")
+            else:
+                fd = (self._open_windows_lock(path) if os.name == "nt" else
+                      os.open(path.name, os.O_RDWR | (os.O_CREAT if create else 0) | os.O_NOFOLLOW,
+                              0o600, dir_fd=parent))
             files._permissions(fd, directory=False, private=True)
             try:
                 if os.name == "nt":
@@ -952,7 +961,7 @@ class NativeMutationFence:
         except (OSError, auth_file.AuthFileError) as exc:
             raise PropagationFenceError("owner_lock_unavailable") from exc
         finally:
-            if fd is not None:
+            if fd is not None and borrowed_fd is None:
                 os.close(fd)
             files.close()
 
