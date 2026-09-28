@@ -1516,6 +1516,43 @@ def _apply_hermes_profile_plans(
                 )
 
 
+def _render_fenced_hermes_profiles(rows, configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
+    """Let Hermes render YAML only in a disposable home; return exact bytes."""
+    selected = ",".join(configs)
+    if _normalize_hermes_profiles(selected) != tuple(configs):
+        raise ClientCatalogError("Hermes profile names cannot bind a scratch render")
+    with tempfile.TemporaryDirectory(prefix="anvil-hermes-render-") as temporary:
+        root = Path(temporary)
+        for profile in configs:
+            target = root / "config.yaml" if profile == "default" else root / "profiles" / profile / "config.yaml"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            before = originals[profile]
+            if before is None:
+                raise ClientCatalogError("Hermes profile changed before scratch render")
+            target.write_bytes(before)
+            target.chmod(0o600)
+
+        def scratch_run(argv, **kwargs):
+            return run(argv, env={**os.environ, "HERMES_HOME": str(root)}, **kwargs)
+
+        _apply_hermes_profile_plans(rows, hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=scratch_run)
+        verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
+            hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
+            run=scratch_run)
+        if set(discovered) != set(configs) or any(row.get("changed_keys") for row in verified):
+            raise ClientCatalogError("Hermes scratch render failed verification")
+        rendered = {}
+        for profile, path in discovered.items():
+            if path.is_symlink() or not path.is_file():
+                raise ClientCatalogError("Hermes scratch render is not a regular file")
+            with path.open("rb") as stream:
+                raw = stream.read(DEFAULT_MAX_RESPONSE_BYTES + 1)
+            if len(raw) > DEFAULT_MAX_RESPONSE_BYTES:
+                raise ClientCatalogError("Hermes scratch render exceeds native file limit")
+            rendered[profile] = raw
+        return rendered
+
+
 def _json_bytes(payload: Mapping) -> bytes:
     return (json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
 
@@ -2077,11 +2114,6 @@ def sync_clients(
     canonical_contract: bytes | None = None,
 ) -> dict:
     """Reconcile selected clients, using a native owner fence when enrolled."""
-    if fence is not None and hermes_profiles and "hermes" in _normalize_clients(clients):
-        from .propagation_fencing import PropagationFenceError
-        raise PropagationFenceError("UnsupportedCapability")
-
-
     if fence is None or dry_run or not confirm:
         from .propagation_fencing import NativeMutationFence
         selected = _normalize_clients(clients)
@@ -2120,7 +2152,11 @@ def sync_clients(
     if "openclaw" in selected:
         targets.extend((Path(os.path.expanduser(openclaw_config)), Path(os.path.expanduser(openclaw_config)).parent / ".env"))
     if "hermes" in selected:
-        targets.append(Path(os.path.expanduser(hermes_config)))
+        if hermes_profiles:
+            hermes_targets = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+            targets.extend(hermes_targets.values())
+        else:
+            targets.append(Path(os.path.expanduser(hermes_config)))
     if "pi" in selected:
         targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
     with fence.transaction(grant, canonical_contract=canonical_contract, target_paths=targets) as journal:
@@ -2139,6 +2175,7 @@ def sync_clients(
             openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
             restart=restart, refresh_openclaw_service=refresh_openclaw_service,
             restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
+            expected_hermes_configs=hermes_targets if "hermes" in selected and hermes_profiles else None,
         )
 
 
@@ -2173,6 +2210,7 @@ def _sync_clients(
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
     journal=None,
+    expected_hermes_configs=None,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
@@ -2267,6 +2305,12 @@ def _sync_clients(
             )
     if "hermes" in selected_clients:
         if hermes_profiles:
+            if journal is not None:
+                pinned_configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+                if pinned_configs != expected_hermes_configs:
+                    raise ClientCatalogError("Hermes profile set changed before apply")
+                for profile, path in pinned_configs.items():
+                    before_images["hermes:" + profile] = journal.read(path)
             hermes_rows, hermes_configs = plan_hermes_profiles(
                 catalog,
                 hermes_bin=hermes_bin,
@@ -2275,6 +2319,20 @@ def _sync_clients(
                 timeout_seconds=timeout_seconds,
                 run=hermes_run,
             )
+            if journal is not None:
+                if hermes_configs != pinned_configs:
+                    raise ClientCatalogError("Hermes profile set changed before apply")
+                originals = {profile: before_images["hermes:" + profile] for profile in hermes_configs}
+                if any(journal.read(path) != originals[profile] for profile, path in hermes_configs.items()):
+                    raise ClientCatalogError("Hermes profile changed during preview")
+                rendered = _render_fenced_hermes_profiles(hermes_rows, hermes_configs, originals, catalog,
+                    hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=hermes_run)
+                if _discover_hermes_profile_configs(hermes_home, hermes_profiles) != pinned_configs:
+                    raise ClientCatalogError("Hermes profile set changed during preview")
+                for profile, path in hermes_configs.items():
+                    name = "hermes:" + profile
+                    paths[name] = path
+                    desired[name] = rendered[profile]
         else:
             desired["hermes"] = _render_hermes_document(
                 catalog, read_text("hermes")
@@ -2304,11 +2362,8 @@ def _sync_clients(
                  else stat.S_IMODE(paths[name].stat().st_mode)) != 0o600
         )
     ]
-    changed.extend(
-        "hermes:" + row["profile"]
-        for row in hermes_rows
-        if row.get("changed_keys")
-    )
+    if journal is None:
+        changed.extend("hermes:" + row["profile"] for row in hermes_rows if row.get("changed_keys"))
     prior_state_exists = paths["state"].exists()
     prior_state = read_json("state", required=False)
     prior_exclusions = prior_state.get("client_excluded_aliases", {})
@@ -2418,7 +2473,7 @@ def _sync_clients(
                 _atomic_write(paths[name], desired[name], mode=mode, **({"journal": journal, "effect_id": "catalog-" + name} if journal is not None else {}))
                 if journal is not None:
                     journal.observe_bytes("catalog-" + name, journal.read(paths[name]))
-            if hermes_rows:
+            if hermes_rows and journal is None:
                 _apply_hermes_profile_plans(
                     hermes_rows,
                     hermes_bin=hermes_bin,
@@ -2593,6 +2648,8 @@ def _sync_clients(
             raise
     state_bytes = _json_bytes(state)
     if journal is not None:
+        if hermes_profiles and "hermes" in selected_clients and _discover_hermes_profile_configs(hermes_home, hermes_profiles) != expected_hermes_configs:
+            raise ClientCatalogError("Hermes profile set changed during apply")
         if before_images["state"] != state_bytes:
             journal.begin_effect("catalog-state", paths["state"], before_images["state"], state_bytes)
             state_backup = _backup([paths["state"]], Path(os.path.expanduser(backup_root)), catalog["config_sha256"], journal=journal)
