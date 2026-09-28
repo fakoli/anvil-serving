@@ -624,6 +624,8 @@ def test_fenced_preview_refuses_swapped_openclaw_parent_before_read(tmp_path, mo
                    backup_root=str(tmp_path / "backups"), dry_run=True, confirm=False,
                    environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"},
                    fence=fence, grant=grant, canonical_contract=contract)
+    with pytest.raises(ClientCatalogError, match="requires a grant and contract"):
+        sync_clients(**{**options, "grant": None})
     assert sync_clients(**options, opener=_Opener(*_catalog()))["dry_run"] is True
     (tmp_path / "openclaw.json").write_bytes(openclaw.read_bytes())
     (tmp_path / ".env").write_text("synthetic-private-value")

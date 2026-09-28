@@ -8,7 +8,9 @@ refuses before entering a legacy writer; previews remain read-only.
 Fenced Pi/OpenClaw previews and repeat readback use the same native directory
 custody as apply, with an exact grant and current owner authority. A preview
 does not reserve a generation or authorize a write. Unfenced preview is legacy
-behavior and is not propagation evidence.
+behavior and is not propagation evidence. OpenClaw's optional service-env file
+is a read-only path derived from the bound OpenClaw directory; it is never a
+catalog-write effect.
 The native journal uses the user's protected `.config/anvil-serving/propagation-fencing`
 directory; the separate operator home may be a symlink and is not journal custody.
 
