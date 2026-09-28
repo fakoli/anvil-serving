@@ -41,6 +41,17 @@ no-follow relative opens. Windows retains non-reparse directory handles and
 validates native permissions. Unknown or unsafe custody is refused. A successful
 file readback does not establish that an existing client session loaded the file.
 
+`sync_client_catalog_batch` groups distinct Pi/OpenClaw installation paths in
+one `client-catalog` generation. The owner derives native effect bindings from
+each exact approved target identity and must check current authority for the
+whole protected target set. Preview and repeat readback use held custody; apply
+uses one union grant, namespaced journal effects and separate backups for each
+installation. Overlapping file paths and a derived shared-home `.env` refuse.
+The call returns target summaries only after every path set verifies. A later
+target failure retains the original reservation for recovery and returns no
+partial success rows. This source interface is not yet installed by fleet apply;
+Hermes, loaded sessions and monitoring remain separate gates.
+
 ## Bounded controller jobs
 
 The controller can bind a `PropagationService` at construction. The default

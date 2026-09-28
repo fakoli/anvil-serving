@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,6 +20,9 @@ from anvil_serving.propagation_fencing import (
 )
 from anvil_serving.client_catalog_sync import (
     ClientCatalogError,
+    NativeCatalogTarget,
+    native_catalog_effect_targets,
+    sync_client_catalog_batch,
     sync_clients,
     sync_hermes_media,
     sync_pi_media,
@@ -640,6 +644,118 @@ def test_fenced_preview_refuses_swapped_openclaw_parent_before_read(tmp_path, mo
     with pytest.raises(PropagationFenceError, match="unsafe_custody_path"):
         sync_clients(**options, opener=_Opener(*_catalog()))
     assert fence.journal() is None
+
+
+def _native_three_client_batch(tmp_path, monkeypatch):
+    value = json.loads(_fenced_contract("client-catalog"))
+    second = dict(value["targets"][0])
+    second.update(target_id="target-2", installation_id="installation-2",
+                  profile_id="profile-2", runtime_id="runtime-2",
+                  expected_identity_ref="identity-2")
+    value["targets"].append(second)
+    third = dict(second)
+    third.update(target_id="target-3", installation_id="installation-3",
+                 profile_id="profile-3", runtime_id="runtime-3",
+                 expected_identity_ref="identity-3")
+    value["targets"].append(third)
+    value["effect_set_digest"] = effect_scope_digest(value)
+    contract = parse_contract(value).canonical
+    targets = []
+    for index in (1, 2, 3):
+        directory = tmp_path / f"client-{index}"
+        directory.mkdir(mode=0o700)
+        openclaw, models, settings = _write_inputs(directory)
+        identity = {field: value["targets"][index - 1][field] for field in (
+            "target_id", "installation_id", "profile_id", "runtime_id",
+            "expected_identity_ref", "expected_identity_digest")}
+        if index == 3:
+            targets.append(NativeCatalogTarget(**identity, client="openclaw",
+                state_path=str(directory / "state.json"), openclaw_config=str(openclaw)))
+        else:
+            targets.append(NativeCatalogTarget(**identity, client="pi",
+                state_path=str(directory / "state.json"),
+                pi_models=str(models), pi_settings=str(settings)))
+    bindings = {name: ("catalog-apply", path)
+                for target in targets for name, path in native_catalog_effect_targets(target).items()}
+    lock = tmp_path / ".config" / "anvil-serving" / "pi"
+    lock.mkdir(parents=True, mode=0o700)
+    for parent in (tmp_path / ".config", lock.parent, lock):
+        parent.chmod(0o700)
+    (lock / "catalog.lock").write_bytes(b"")
+    (lock / "catalog.lock").chmod(0o600)
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "client-catalog", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        catalog_digest=CONFIG_SHA, effect_bindings=bindings), tmp_path)
+    effect_targets = {name: path for name, (_, path) in bindings.items()}
+    grant = fence.grant(canonical_contract=contract, generation=1,
+                        effects=tuple(bindings), target_paths=tuple(effect_targets.values()),
+                        effect_targets=effect_targets)
+    status, capabilities = _catalog()
+    monkeypatch.setattr(client_catalog_sync, "_fetch_json",
+                        lambda _base, endpoint, **_kwargs:
+                        status if endpoint == "/router/status" else capabilities)
+    options = dict(targets=tuple(targets), base_url="https://router.example.ts.net/v1",
+                   backup_root=str(tmp_path / "backups"),
+                   expected_config_sha256=CONFIG_SHA,
+                   environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"}, fence=fence,
+                   grant=grant, canonical_contract=contract)
+    return options, targets, bindings, fence
+
+
+def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_path, monkeypatch):
+    options, targets, bindings, fence = _native_three_client_batch(tmp_path, monkeypatch)
+    with pytest.raises(ClientCatalogError, match="target is not approved"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], replace(targets[1], runtime_id="other-runtime"))})
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], replace(targets[1], state_path=targets[0].state_path))})
+    with pytest.raises(ClientCatalogError, match="shared home environment"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], targets[1], replace(targets[2], openclaw_config=str(tmp_path / "openclaw.json")))})
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == ["target-1", "target-2", "target-3"]
+    applied = sync_client_catalog_batch(**options, dry_run=False)
+    assert [row["target_id"] for row in applied] == ["target-1", "target-2", "target-3"]
+    assert all(row["result"]["dry_run"] is False for row in applied)
+    assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
+    with pytest.raises(PropagationFenceError, match="already_completed"):
+        sync_client_catalog_batch(**options, dry_run=False)
+    assert set(fence.journal()["effects"]) == set(bindings)
+    assert all(effect["state"] == "verified" for effect in fence.journal()["effects"].values())
+    for target in targets[:2]:
+        models = json.loads(Path(target.pi_models).read_text())
+        assert models["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
+    openclaw = json.loads(Path(targets[2].openclaw_config).read_text())
+    assert openclaw["models"]["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
+
+
+def test_native_catalog_batch_second_failure_retains_original_reservation(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(tmp_path, monkeypatch)
+    original_second = Path(targets[1].pi_models).read_bytes()
+    status, capabilities = _catalog()
+    status_calls = 0
+
+    def stale_second(_base, endpoint, **_kwargs):
+        nonlocal status_calls
+        if endpoint != "/router/status":
+            return capabilities
+        status_calls += 1
+        return status if status_calls < 4 else {**status, "config_sha256": "0" * 64}
+
+    monkeypatch.setattr(client_catalog_sync, "_fetch_json", stale_second)
+    with pytest.raises(ClientCatalogError):
+        sync_client_catalog_batch(**options, dry_run=False)
+    assert status_calls >= 4
+    assert Path(targets[1].pi_models).read_bytes() == original_second
+    assert Path(targets[0].pi_models).read_bytes() != original_second
+    journal = fence.journal()
+    assert journal["status"] == "recovery_required"
+    assert all(journal["effects"][name]["state"] == "verified"
+               for name in native_catalog_effect_targets(targets[0]))
+    assert not set(native_catalog_effect_targets(targets[1])) & set(journal["effects"])
+    with pytest.raises(PropagationFenceError, match="unresolved_reservation"):
+        sync_client_catalog_batch(**options, dry_run=False)
 
 
 def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp_path, monkeypatch):

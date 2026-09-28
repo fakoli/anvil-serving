@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from contextlib import nullcontext
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import ipaddress
@@ -2088,6 +2089,160 @@ def _sync_hermes_media(
         "hermesRestarted": restarted,
         "dryRun": False,
     }
+
+
+@dataclass(frozen=True)
+class NativeCatalogTarget:
+    """One protected Pi or OpenClaw installation in a home-level catalog batch."""
+
+    target_id: str
+    installation_id: str
+    profile_id: str
+    runtime_id: str
+    expected_identity_ref: str
+    expected_identity_digest: str
+    client: str
+    state_path: str
+    openclaw_config: str | None = None
+    pi_models: str | None = None
+    pi_settings: str | None = None
+    pi_exclude_aliases: str = ""
+    openclaw_exclude_aliases: str = ""
+    openclaw_allow_aliases: str = ""
+    align_compaction_reserve: bool = False
+
+
+def native_catalog_effect_targets(target: NativeCatalogTarget) -> dict[str, Path]:
+    """Derive exact native effect names and paths for one installed target."""
+    from .control_plane.propagation import _id
+
+    if not isinstance(target, NativeCatalogTarget):
+        raise ClientCatalogError("invalid native catalog target")
+    _id(target.target_id)
+    if (target.client not in {"pi", "openclaw"}
+            or type(target.state_path) is not str
+            or type(target.align_compaction_reserve) is not bool
+            or any(type(value) is not str for value in (
+                target.pi_exclude_aliases, target.openclaw_exclude_aliases,
+                target.openclaw_allow_aliases))):
+        raise ClientCatalogError("invalid native catalog target")
+    paths = {"state": target.state_path}
+    if target.client == "pi":
+        if (type(target.pi_models) is not str or type(target.pi_settings) is not str
+                or target.openclaw_config is not None):
+            raise ClientCatalogError("invalid native Pi paths")
+        paths.update(pi_models=target.pi_models, pi_settings=target.pi_settings)
+    else:
+        if (type(target.openclaw_config) is not str or target.pi_models is not None
+                or target.pi_settings is not None):
+            raise ClientCatalogError("invalid native OpenClaw path")
+        paths["openclaw"] = target.openclaw_config
+        paths["openclaw_env"] = str(Path(target.openclaw_config).parent / ".env")
+    suffix = hashlib.sha256(target.target_id.encode("ascii")).hexdigest()
+    effects = {"catalog-" + suffix + "-" + name: Path(value) for name, value in paths.items()}
+    if any(not path.is_absolute() or ".." in path.parts for path in effects.values()):
+        raise ClientCatalogError("native catalog path must be absolute")
+    return effects
+
+
+class _ScopedCatalogJournal:
+    def __init__(self, journal, target_id: str) -> None:
+        self.journal = journal
+        self.prefix = "catalog-" + hashlib.sha256(target_id.encode("ascii")).hexdigest() + "-"
+        self.files = journal.files
+        self.catalog_digest = journal.catalog_digest
+
+    def _name(self, effect: str) -> str:
+        if not effect.startswith("catalog-"):
+            raise ClientCatalogError("invalid scoped catalog effect")
+        return self.prefix + effect[len("catalog-"):]
+
+    @property
+    def started_effects(self) -> tuple[str, ...]:
+        return tuple("catalog-" + name[len(self.prefix):]
+                     for name in self.journal.started_effects if name.startswith(self.prefix))
+
+    def read(self, path):
+        return self.journal.read(path)
+
+    def begin_effect(self, effect, path, before, desired):
+        return self.journal.begin_effect(self._name(effect), path, before, desired)
+
+    def bind_backup(self, effect, backup):
+        return self.journal.bind_backup(self._name(effect), backup)
+
+    def require_before_bytes(self, effect, observed):
+        return self.journal.require_before_bytes(self._name(effect), observed)
+
+    def write(self, effect, value, *, mode=0o600):
+        return self.journal.write(self._name(effect), value, mode=mode)
+
+    def observe_bytes(self, effect, observed):
+        return self.journal.observe_bytes(self._name(effect), observed)
+
+    def mark_uncertain(self, effect):
+        return self.journal.mark_uncertain(self._name(effect))
+
+    def is_verified(self, effect):
+        return self.journal.is_verified(self._name(effect))
+
+
+def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
+                              base_url: str, backup_root: str, expected_config_sha256: str,
+                              environ: Mapping[str, str], fence, grant,
+                              canonical_contract: bytes, dry_run: bool = True,
+                              opener=None) -> list[dict]:
+    """Reconcile distinct installations in one owner reservation."""
+    from .control_plane.propagation import MAX_TARGETS, parse_contract
+
+    if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
+            or any(type(target) is not NativeCatalogTarget for target in targets)
+            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"):
+        raise ClientCatalogError("invalid native catalog batch")
+    targets = tuple(sorted(targets, key=lambda target: target.target_id))
+    bindings = [native_catalog_effect_targets(target) for target in targets]
+    contract = parse_contract(canonical_contract)
+    approved = {row["target_id"]: row for row in contract.value["targets"]
+                if fence.owner.resource_id in row["resource_keys"]
+                and "catalog-apply" in row["effects"]}
+    identity_fields = ("target_id", "installation_id", "profile_id", "runtime_id",
+                       "expected_identity_ref", "expected_identity_digest")
+    if (len({target.target_id for target in targets}) != len(targets)
+            or any(target.target_id not in approved or any(
+                getattr(target, field) != approved[target.target_id][field]
+                for field in identity_fields) for target in targets)):
+        raise ClientCatalogError("native catalog target is not approved")
+    paths = [path for binding in bindings for path in binding.values()]
+    home = fence.owner.storage_root.resolve(strict=True)
+    if any(path.name == ".env" and path.parent.resolve() == home for path in paths):
+        raise ClientCatalogError("shared home environment is not a catalog target")
+    if (len(set(paths)) != len(paths)
+            or expected_config_sha256 != grant.catalog_digest
+            or dict(grant.effect_targets) != {name: str(path) for binding in bindings
+                                              for name, path in binding.items()}):
+        raise ClientCatalogError("native catalog file binding differs")
+    fence.validate_backup_root(Path(backup_root))
+    context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
+               if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
+                                                 target_paths=paths))
+    results = []
+    with context as journal:
+        for target in targets:
+            result = _sync_clients(
+                base_url=base_url, clients=target.client,
+                openclaw_config=target.openclaw_config or DEFAULT_OPENCLAW_CONFIG,
+                pi_models=target.pi_models or DEFAULT_PI_MODELS,
+                pi_settings=target.pi_settings or DEFAULT_PI_SETTINGS,
+                state_path=target.state_path, backup_root=backup_root,
+                expected_config_sha256=expected_config_sha256, environ=environ,
+                pi_exclude_aliases=target.pi_exclude_aliases,
+                openclaw_exclude_aliases=target.openclaw_exclude_aliases,
+                openclaw_allow_aliases=target.openclaw_allow_aliases,
+                align_compaction_reserve=target.align_compaction_reserve,
+                dry_run=dry_run, confirm=not dry_run, opener=opener,
+                journal=_ScopedCatalogJournal(journal, target.target_id))
+            results.append({"target_id": target.target_id, "result": result})
+    return results
 
 
 def sync_clients(
