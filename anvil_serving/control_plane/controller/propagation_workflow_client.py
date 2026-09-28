@@ -101,7 +101,7 @@ class WorkflowControlClient:
             if type(value) is not dict or set(value) != {"ok", "result"} or value["ok"] is not True or type(value["result"]) is not dict:
                 raise ValueError()
             return value["result"]
-        except (OSError, ValueError, TypeError, UnicodeError):
+        except (OSError, ValueError, TypeError, UnicodeError, RuntimeError):
             raise PropagationJobError("workflow_service_unavailable") from None
 
     def status(self, workflow_id: str, contract_digest: str):
