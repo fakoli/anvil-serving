@@ -2750,7 +2750,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     if operation == "operators-ensure-resource":
         resources, roles = value.get("resources"), value.get("application_roles")
         if (set(value) != {"operation", "resources", "application_roles"} or type(resources) is not list
-                or len(resources) != 1 or not isinstance(resources[0], str) or type(roles) is not dict
+                or len(resources) != 1 or not isinstance(resources[0], str) or _ID.fullmatch(resources[0]) is None or type(roles) is not dict
                 or roles != {resources[0]: "admin"}):
             raise ManageError("administrative request is invalid")
     fingerprint = value.get("fingerprint")

@@ -1024,8 +1024,9 @@ def test_admin_preview_accepts_only_the_closed_operator_resource_union_request(t
     request.write_text(json.dumps({"operation": "operators-ensure-resource", "resources": ["dashboard"],
                                    "application_roles": {"dashboard": "admin"}}), encoding="utf-8")
     assert manage._admin_preview(request) == {"operation": "operators-ensure-resource", "scope": "principal"}
-    for extra in ({"disabled": False}, {"principal": "human:" + "a" * 64}, {"resources": ["dashboard", "other"]},
-                  {"application_roles": {"dashboard": "member"}}):
+    for extra in ({"disabled": False}, {"principal": "human:" + "a" * 64}, {"principal": ""}, {"unexpected": False},
+                  {"resources": ["dashboard", "other"]}, {"resources": [""]}, {"resources": [None]}, {"resources": None},
+                  {"application_roles": {"dashboard": "member"}}, {"application_roles": None}):
         value = {"operation": "operators-ensure-resource", "resources": ["dashboard"],
                  "application_roles": {"dashboard": "admin"}} | extra
         request.write_text(json.dumps(value), encoding="utf-8")
