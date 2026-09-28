@@ -193,8 +193,9 @@ def _run_profile(profile: ExecutionProfile, job: Mapping[str, Any], cancelled: C
                 except ProcessLookupError:
                     pass
                 process.wait(timeout=_CHILD_TIMEOUT)
-            empty, _, limited = children.cleanup(_CHILD_TIMEOUT)
-            return {"outcome": "cancelled" if cancelled() else "uncertain", "native_effects": uncertain_effects, "quiescent": empty and not limited}
+            children.cleanup(_CHILD_TIMEOUT)
+            # Reaping local children does not prove a dispatched remote job stopped.
+            return {"outcome": "cancelled" if cancelled() else "uncertain", "native_effects": uncertain_effects, "quiescent": False}
         code = process.wait(timeout=_CHILD_TIMEOUT)
         result = _profile_result(bytes(output))
         if result["outcome"] == "uncertain" and not result["native_effects"]:
@@ -205,10 +206,9 @@ def _run_profile(profile: ExecutionProfile, job: Mapping[str, Any], cancelled: C
             return {"outcome": "uncertain", "native_effects": uncertain_effects, "quiescent": False}
         if code != 0:
             return {"outcome": "failed" if result["outcome"] == "failed" else "uncertain",
-                    "native_effects": result["native_effects"], "quiescent": True}
-        # Child output cannot attest that the native process tree is gone. The
-        # bounded scan and cleanup above are the supervisor-owned fact.
-        return {**result, "quiescent": True}
+                    "native_effects": result["native_effects"], "quiescent": result["quiescent"]}
+        # The profile owns remote quiescence; the scan above owns local custody.
+        return result
     except (OSError, subprocess.SubprocessError, TypeError, ValueError, PropagationJobError):
         try:
             signal.pidfd_send_signal(descriptor, signal.SIGKILL)
@@ -219,10 +219,10 @@ def _run_profile(profile: ExecutionProfile, job: Mapping[str, Any], cancelled: C
         except subprocess.SubprocessError:
             pass
         try:
-            empty, _, limited = children.cleanup(_CHILD_TIMEOUT)
+            children.cleanup(_CHILD_TIMEOUT)
         except (ProcFailure, RuntimeError):
-            empty, limited = False, True
-        return {"outcome": "uncertain", "native_effects": uncertain_effects, "quiescent": empty and not limited}
+            pass
+        return {"outcome": "uncertain", "native_effects": uncertain_effects, "quiescent": False}
     finally:
         os.close(descriptor)
         process.stdout.close()
