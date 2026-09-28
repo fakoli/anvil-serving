@@ -45,7 +45,7 @@ There is no idle reload implementation: an idle snapshot cannot prevent new work
 from arriving. CLI and Hermes owners without this observation interface remain
 explicitly pending. Every observer reports zero reloads; no active conversation,
 account or cloud-provider setting is changed. T009 supplies the native fleet
-execution-profile integration; T012 supplies real client continuation checks.
+execution-profile integration; T021 verifies real client continuation at live acceptance.
 Live installation and acceptance retain their separate authorization gates.
 
 The execution-profile adapter maps detailed reasons to the owner status schema
