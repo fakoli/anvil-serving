@@ -54,8 +54,8 @@ class PropagationProfile:
     preview: Callable[[bytes], Mapping[str, Any]]
     observe: Callable[[bytes, Mapping[str, Any], str, str | None], Mapping[str, Any]]
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
-    resume_workflow: Callable[[str, str, str], Mapping[str, Any]] | None = None
-    cancel_workflow: Callable[[str, str, str], Mapping[str, Any]] | None = None
+    resume_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
+    cancel_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     recovery_evidence: Callable[[str, str], Mapping[str, Any]] | None = None
     workflow_status: Callable[[str, str], Mapping[str, Any]] | None = None
 
@@ -345,7 +345,8 @@ class PropagationService:
         callback = self.profile.resume_workflow if resume else self.profile.cancel_workflow
         if callback is None:
             raise PropagationJobError("workflow_service_unavailable")
-        result = json.loads(_json(callback(arguments["intent_id"], contract.digest, caller_id)))
+        workflow_id = logical_workflow_id(contract.value["scope"], contract.value["revision"])
+        result = json.loads(_json(callback(workflow_id, arguments["intent_id"], contract.digest, caller_id)))
         validate_schema_value(result, contract_api._result_schema(operation), "workflow result")
         if resume:
             contract_api._id(result["attempt_id"])

@@ -209,7 +209,7 @@ def test_resume_and_cancel_keep_owner_authority_and_original_identity(tmp_path):
         "attempt_id": "attempt-1", "state": "accepted"}
     assert owner.service.handle("propagation.cancel.v1", args, caller_id="operator") == {
         "state": "requested"}
-    assert seen == [(verb, (accepted["intent_id"], accepted["contract_digest"], "operator"))
+    assert seen == [(verb, (accepted["workflow_id"], accepted["intent_id"], accepted["contract_digest"], "operator"))
                     for verb in ("resume", "cancel")]
     with pytest.raises(PropagationJobError, match="intent_conflict"):
         owner.service.handle("propagation.resume.v1", {**args, "expected_digest": "a" * 64}, caller_id="operator")
