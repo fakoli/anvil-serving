@@ -39,16 +39,33 @@ file readback does not establish that an existing client session loaded the file
 
 The controller can bind a `PropagationService` at construction. The default
 controller has no execution profile and declares propagation unavailable.
-Installation and the operator start/status commands are separate release work;
-these internal interfaces do not establish deployment readiness.
+An opt-in `controller serve --propagation-profile PATH
+--propagation-profile-sha256 SHA256` path constructs the service only from one
+mode-0600, custody-checked JSON profile and a separately reviewed exact digest.
+Both options and a valid scoped authorization policy are required. The profile
+binds one protected ledger, pinned approved contract, active identity, fixed
+apply and readback execution profiles, executor issuer and protected Workflows
+control socket/token references. The ledger must already exist with mode 0600
+inside an owner-only mode-0700 directory.
+Executable and artifact paths need protected ancestry; their hashes are checked
+at startup and before execution.
+
+The pinned readback executable receives bounded JSON on stdin with schema
+`anvil-serving.propagation-reader/v1` and one of `probe`, `preview`, `status`,
+`verify`, `convergence`, `recovery` or `reconcile`. It returns one bounded JSON
+object; failures, timeouts, excess output and concurrent readback fail closed.
+The startup probe binds the installed profile and approved contract digest with
+the complete mode list. It authorizes no effect. ai-infra still needs to supply
+the reviewed fixed readback and fleet apply executables, and the private
+installer must bind their exact artifacts and controller mounts.
 
 The owner can resolve one canonical approved contract through
 `PinnedApprovedContract`. Its expected SHA-256 must come from a separately
 reviewed, protected installation profile; it cannot be computed from the
 incoming request or the file at runtime. Every lookup rechecks the file pin,
-ownership and path custody, so replacement or revocation fails closed. This
-resolver is not yet wired into `controller serve` and does not itself establish
-active model identity or authorization to apply a fleet effect.
+ownership and path custody, so replacement or revocation fails closed. The
+resolver is wired only through the protected opt-in profile; it does not itself
+establish active model identity or authorize a fleet effect.
 
 `ObservedActiveIdentity` is a separate read-only owner input. It compares the
 authenticated router's current catalog digest with the installed expectation,
@@ -57,8 +74,8 @@ digest (image, recipe labels, arguments, mounts, ports and GPU requests), checks
 Docker's requested and observed loopback port binding, then asks that endpoint
 for the exact served ID. Only a complete match returns the deterministic
 activation fingerprint. The protected installation profile must supply and pin
-the activation receipt and its runtime digest before this input can be bound to
-`controller serve`; the default controller remains unavailable. Environment
+the activation receipt and its runtime digest before production admission;
+the default controller remains unavailable. Environment
 values are omitted from the public fingerprint; the exact container ID pins
 the immutable Docker environment from the approved activation.
 The activation receipt must also prove the selected model artifact/revision and

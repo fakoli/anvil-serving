@@ -48,6 +48,7 @@ from .store import (
     OperationStore,
 )
 from .workload_sources import build_workload_readers
+from .errors import ControllerError
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -134,6 +135,9 @@ def make_server(
             # A bad optional policy disables only new scoped surfaces.  The
             # established controller token remains available for legacy APIs.
             scoped_policy = None
+    if propagation_service is not None and scoped_policy is None:
+        raise ControllerError("propagation_authorization_unavailable",
+                              "scoped propagation authorization is unavailable")
     store = operation_store or OperationStore(
         idempotency_db_path,
         retention_seconds=idempotency_retention_seconds,
@@ -263,8 +267,18 @@ def serve(
     workload_router_resource: Optional[str] = None,
     workload_router_auth_env: Optional[str] = None,
     workload_fleet_topology: Optional[str] = None,
+    propagation_profile_path: Optional[str] = None,
+    propagation_profile_sha256: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
+    if (propagation_profile_path is None) != (propagation_profile_sha256 is None):
+        raise ControllerError("propagation_profile_unavailable",
+                              "protected propagation owner profile is unavailable")
+    extra = {}
+    if propagation_profile_path is not None:
+        from .propagation_bootstrap import build_propagation_service
+        extra["propagation_service"] = build_propagation_service(
+            propagation_profile_path, propagation_profile_sha256)
     httpd = server_factory(
         host=host,
         port=port,
@@ -284,6 +298,7 @@ def serve(
         workload_router_resource=workload_router_resource,
         workload_router_auth_env=workload_router_auth_env,
         workload_fleet_topology=workload_fleet_topology,
+        **extra,
     )
     actual_host, actual_port = httpd.server_address[:2]
     print(

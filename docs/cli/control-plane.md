@@ -57,6 +57,15 @@ authority.
 | `controller inspect` | Inspect bounded metadata for one explicitly selected controller container. |
 | `controller logs` | Read bounded allowlisted audit events for that verified controller identity. |
 
+The installer may opt in to propagation owner operations by passing both
+`--propagation-profile` and `--propagation-profile-sha256` to `controller serve`.
+The first names a mode-0600 private owner profile; the second pins its exact
+reviewed bytes. A valid scoped authorization policy, protected ledger, approved
+contract, fixed execution/readback profiles and Workflows control binding are
+also required before those operations are advertised. The default controller
+remains unchanged. The current source does not include the fixed native fleet
+adapter or an admitted private installation profile.
+
 ### Workflows
 
 The `workflows` commands use the authenticated controller and the approved
