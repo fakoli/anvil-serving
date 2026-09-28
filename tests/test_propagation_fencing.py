@@ -203,6 +203,22 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
             pytest.fail("restored writer entered without cutover")
 
 
+@pytest.mark.parametrize(("name", "kwargs"), [
+    ("sync_clients", {"base_url": "http://127.0.0.1:8000/v1"}),
+    ("sync_pi_media", {"withdraw": True}),
+    ("sync_hermes_media", {}),
+])
+@pytest.mark.parametrize("hint", ("canonical_contract", "grant"))
+def test_owner_apply_hint_never_falls_through_to_legacy_writer(name, kwargs, hint):
+    from anvil_serving import client_catalog_sync
+
+    with pytest.raises(client_catalog_sync.ClientCatalogError, match="owner apply requires a native fence"):
+        getattr(client_catalog_sync, name)(
+            **kwargs, dry_run=False, confirm=True,
+            **{hint: _CONTRACT if hint == "canonical_contract" else object()},
+        )
+
+
 def test_drift_and_interruption_remain_recovery_required_without_rollback_claim(tmp_path):
     fence, target = _fence(tmp_path)
     with pytest.raises(RuntimeError, match="simulated interruption"):

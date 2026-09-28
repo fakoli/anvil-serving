@@ -3,6 +3,8 @@
 The propagation foundation provides an in-process owner fence around direct
 client catalog writes and Pi media withdrawal. It is not a deployed fleet writer.
 Legacy callers remain unenrolled until the reviewed single-writer cutover.
+An apply that supplies an owner contract or grant but omits the native fence
+refuses before entering a legacy writer; previews remain read-only.
 The native journal uses the user's protected `.config/anvil-serving/propagation-fencing`
 directory; the separate operator home may be a symlink and is not journal custody.
 

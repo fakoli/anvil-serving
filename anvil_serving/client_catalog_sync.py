@@ -702,6 +702,9 @@ def sync_pi_media(
 ) -> dict:
     """Withdraw Pi media config, optionally under an owner native fence."""
 
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
+
     if fence is None or dry_run or not confirm:
         from .propagation_fencing import NativeMutationFence
         target = Path(os.path.expanduser(DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config))
@@ -1893,6 +1896,8 @@ def sync_hermes_media(
     canonical_contract: bytes | None = None,
 ) -> dict:
     """Legacy media path; fenced profile writes await the bounded owner writer."""
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
     if fence is not None:
         from .propagation_fencing import PropagationFenceError
         raise PropagationFenceError("UnsupportedCapability")
@@ -2120,6 +2125,8 @@ def sync_clients(
     canonical_contract: bytes | None = None,
 ) -> dict:
     """Reconcile selected clients, using a native owner fence when enrolled."""
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
     if fence is None or dry_run or not confirm:
         from .propagation_fencing import NativeMutationFence
         selected = _normalize_clients(clients)
