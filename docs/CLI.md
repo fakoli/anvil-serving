@@ -442,6 +442,7 @@ required operands, choices, and defaults.
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |
 | `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | - |
 | `workflows` | Operate approved propagation through the authenticated owner. | `read` / `bounded` | - |
+| `workflows capabilities` | Require the installed owner to expose this release's complete contract. | `read` / `bounded` | - |
 | `workflows start` | Accept one approved propagation contract. | `mutate` / `bounded` | `--approval-ref`<br>`--request-id`<br>`--confirm` |
 | `workflows status` | Read complete owner and workflow progress. | `read` / `bounded` | `--intent-id` |
 | `workflows resume` | Resume retained work under the same approved revision. | `mutate` / `bounded` | `--intent-id`<br>`--expected-digest`<br>`--confirm` |

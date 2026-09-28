@@ -83,6 +83,26 @@ def test_start_uses_bounded_authenticated_owner_operation(monkeypatch):
     assert seen[0][3]["timeout"] == 15 and seen[0][3]["max_response_bytes"] == 131_072
 
 
+def test_capability_preflight_requires_exact_available_owner_contract(monkeypatch):
+    monkeypatch.setattr(workflows_cli, "_config", lambda: ("https://127.0.0.1:8765", "synthetic-token"))
+    declaration = capability_declaration()
+    for operation in declaration["operations"]:
+        operation["available"] = True
+    calls = []
+    def request(_url, body, _token, **_options):
+        calls.append(body["params"])
+        return {"result": {"structuredContent": {"ok": True, "data": declaration}}}
+    monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
+    ready = workflows_cli.main(["capabilities"])
+    assert ready.exit_code == 0 and ready.data["state"] == "ready"
+    assert len(ready.data["operations"]) == 14 and ready.data["effects"] == []
+    assert calls == [{"name": "propagation_capabilities", "arguments": {},
+                      "_meta": {"io.modelcontextprotocol/protocolVersion": workflows_cli.mcp.PROTOCOL_VERSION}}]
+    declaration["operations"][0]["available"] = False
+    refused = workflows_cli.main(["capabilities"])
+    assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")
 def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monkeypatch):
     artifact = tmp_path / "worker.whl"

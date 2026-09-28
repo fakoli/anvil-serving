@@ -141,7 +141,7 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         action, rest = argv[0] + "_" + argv[1], argv[2:]
     else:
         action, rest = argv[0], argv[1:]
-    if action not in {*_OPERATIONS, "deployment_preview", "deployment_verify", "recovery_verify", "recovery_snapshot-journal"}:
+    if action not in {*_OPERATIONS, "capabilities", "deployment_preview", "deployment_verify", "recovery_verify", "recovery_snapshot-journal"}:
         raise UsageError("unsupported workflow action", code="workflow_action_required")
     parser = _Parser(add_help=False, allow_abbrev=False)
     if action == "start":
@@ -154,12 +154,12 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
     elif action == "recovery_snapshot-journal":
         parser.add_argument("--profile", required=True)
         parser.add_argument("--output", required=True)
-    else:
+    elif action != "capabilities":
         parser.add_argument("--profile", required=True)
-    if action not in {"status", "deployment_preview", "deployment_verify", "recovery_verify"}:
+    if action not in {"status", "capabilities", "deployment_preview", "deployment_verify", "recovery_verify"}:
         parser.add_argument("--confirm", action="store_true")
     values = vars(parser.parse_args(rest))
-    if action not in {"status", "deployment_preview", "deployment_verify", "recovery_verify"} and not values.pop("confirm"):
+    if action not in {"status", "capabilities", "deployment_preview", "deployment_verify", "recovery_verify"} and not values.pop("confirm"):
         raise SafetyError("confirm the approved owner request", code="confirmation_required")
     try:
         for key, value in values.items():
@@ -171,6 +171,8 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         arguments = {"approval_ref": values["approval_ref"], "request_id": values["request_id"]}
     elif action == "status":
         arguments = {"intent_id": values["intent_id"], "cursor": None}
+    elif action == "capabilities":
+        arguments = {}
     elif action in {"deployment_preview", "deployment_verify", "recovery_verify"}:
         if values["profile"] != "propagation-v1":
             raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
@@ -198,6 +200,14 @@ def _call(url: str, token: str, name: str, arguments: dict) -> dict:
     if not isinstance(content, dict) or content.get("ok") is not True or not isinstance(content.get("data"), dict):
         raise SafetyError("workflow owner refused the operation", code="workflow_owner_refused")
     data = content["data"]
+    if name == "propagation_capabilities":
+        expected = capability_declaration()
+        for operation in expected["operations"]:
+            operation["available"] = True
+        if data != expected:
+            raise SafetyError("workflow owner capabilities differ from this release", code="workflow_owner_capabilities_missing")
+        return {"schema": data["schema"], "state": "ready",
+                "operations": [operation["name"] for operation in data["operations"]], "effects": []}
     validate_schema_value(data, _SCHEMAS[name]["result_schema"], "result")
     return data
 
@@ -252,7 +262,8 @@ def main(argv: list[str] | None = None) -> CommandResult:
         else:
             url, token = _config(recovery=True) if action == "recovery_verify" else _config()
             result = (_status(url, token, arguments) if action == "status"
-                      else _call(url, token, "propagation.recovery.verify.v1" if action == "recovery_verify"
+                      else _call(url, token, "propagation_capabilities" if action == "capabilities"
+                                 else "propagation.recovery.verify.v1" if action == "recovery_verify"
                                  else _OPERATIONS[action], arguments))
             if (action == "recovery_verify" and result["state"] != "passed"
                     or action == "resume" and result["state"] == "refused"

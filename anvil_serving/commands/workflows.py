@@ -17,6 +17,7 @@ def workflow_command():
     return _node(
         "workflows", "Operate approved propagation through the authenticated owner.",
         children=(
+            _leaf("capabilities", "Require the installed owner to expose this release's complete contract."),
             _leaf("start", "Accept one approved propagation contract.", mutate=True,
                   options=(_option("--approval-ref", summary="Approved contract reference.", value_name="REF"),
                            _option("--request-id", summary="Stable request identity.", value_name="ID"))),

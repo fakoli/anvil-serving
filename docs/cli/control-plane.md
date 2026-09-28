@@ -83,6 +83,7 @@ identity. Loopback in this example means the machine running
 the command. No credential is accepted on the command line.
 
 ```bash
+anvil-serving workflows capabilities --json
 anvil-serving workflows start --approval-ref approved-revision --request-id stable-request --confirm
 anvil-serving workflows status --intent-id accepted-intent --json
 anvil-serving workflows resume --intent-id accepted-intent --expected-digest SHA256 --confirm
