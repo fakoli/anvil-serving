@@ -532,7 +532,7 @@ class NativeMutationFence:
         digest = contract.digest
         value = {"schema": "anvil-serving.catalog-cutover/v1", "contract_digest": digest,
                  "generation": generation, "epoch": self.owner.epoch}
-        with self._lock():
+        with self._installed_catalog_lock(), self._lock():
             self._require_current_authority(contract.value)
             self._check_authority(digest, generation)
             index = self._read_index()
@@ -908,6 +908,41 @@ class NativeMutationFence:
             raise
         os.set_inheritable(descriptor, False)
         return descriptor
+
+    @contextmanager
+    def _installed_catalog_lock(self) -> Iterator[None]:
+        """Drain Pi adoption and credential writers before generation activation."""
+        path = self.owner.storage_root / ".config" / "anvil-serving" / "pi" / "catalog.lock"
+        files = _HeldFiles(self.owner.storage_root)
+        fd = None
+        try:
+            files.directory(self.owner.storage_root)
+            parent = files.directory(path.parent, private=True)
+            fd = (self._open_windows_lock(path) if os.name == "nt" else
+                  os.open(path.name, os.O_RDWR | os.O_NOFOLLOW, dir_fd=parent))
+            files._permissions(fd, directory=False, private=True)
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    if os.fstat(fd).st_size == 0:
+                        os.write(fd, b"0")
+                        os.fsync(fd)
+                    os.lseek(fd, 0, 0)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                    raise PropagationFenceError("operation_in_progress") from exc
+                raise
+            yield
+        except (OSError, auth_file.AuthFileError) as exc:
+            raise PropagationFenceError("owner_lock_unavailable") from exc
+        finally:
+            if fd is not None:
+                os.close(fd)
+            files.close()
 
     @contextmanager
     def _lock(self) -> Iterator[None]:

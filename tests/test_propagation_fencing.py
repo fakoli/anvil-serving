@@ -141,6 +141,12 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
         effect_bindings={"catalog": ("catalog-apply", target)},
     )
     fence = NativeMutationFence(owner, tmp_path)
+    legacy_lock = tmp_path / ".config/anvil-serving/pi/catalog.lock"
+    legacy_lock.parent.mkdir(parents=True, mode=0o700)
+    for directory in (tmp_path / ".config", legacy_lock.parent.parent, legacy_lock.parent):
+        _private_directory(directory)
+    legacy_lock.write_bytes(b"")
+    _private_file(legacy_lock)
     with NativeMutationFence.legacy_catalog_write(tmp_path):
         with NativeMutationFence.legacy_catalog_write(tmp_path):
             pass
