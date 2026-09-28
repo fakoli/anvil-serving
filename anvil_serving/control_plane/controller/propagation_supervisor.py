@@ -415,6 +415,7 @@ class PropagationSupervisor:
                 if process.poll() is None:
                     self._children.pop(job_id, None)
                     self.store.recovery_required(job_id)
+                    self._release_pidfd(job_id)
                     return self.store.lookup(job_id)
                 # The child can exit between the first poll and /proc identity
                 # observation. Resolve its durable result below before failing.

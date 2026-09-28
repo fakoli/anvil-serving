@@ -5,6 +5,7 @@ from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
 from pathlib import Path
 import sys
 from threading import Barrier
@@ -280,7 +281,7 @@ def test_invalid_owner_observations_cannot_enable_convergence(tmp_path, corrupt)
 
 
 def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path, monkeypatch):
-    owner = ControlledOwner(tmp_path, runner_wait=.3)
+    owner = ControlledOwner(tmp_path)
     accepted = owner.accept()
     preview = owner.service.preview(accepted["intent_id"])
     operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
@@ -294,7 +295,8 @@ def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path
         nonlocal first
         if first:
             first = False
-            assert original_poll() is None
+            # Model a liveness poll immediately before exit, then cross the
+            # scheduling gap before identity lookup without a timing sleep.
             assert child.wait(timeout=10) == 0
             return None
         return original_poll()
@@ -305,6 +307,30 @@ def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path
     assert job_id not in owner.supervisor._children
     assert job_id not in owner.supervisor._pidfds
     assert owner.marker.read_text() == "accepted"
+
+
+@pytest.mark.parametrize("observed", [lambda job: None,
+    lambda job: {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": "other"}],
+    ids=["missing", "mismatched"])
+def test_running_child_identity_failure_releases_pidfd(tmp_path, monkeypatch, observed):
+    owner = ControlledOwner(tmp_path, runner_wait=3)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    job_id = submitted["job_id"]
+    child = owner.supervisor._children[job_id]
+    descriptor = owner.supervisor._pidfds[job_id]
+    job = owner.jobs.lookup_internal(job_id)
+    assert child.poll() is None
+    monkeypatch.setattr("anvil_serving.control_plane.controller.propagation_supervisor._identity",
+                        lambda _pid: observed(job))
+    assert owner.supervisor.observe(job_id)["state"] == "recovery_required"
+    assert job_id not in owner.supervisor._children
+    assert job_id not in owner.supervisor._pidfds
+    with pytest.raises(OSError):
+        os.fstat(descriptor)
+    child.wait(timeout=10)
 
 
 def test_http_idempotency_header_cannot_replay_verification_or_convergence(tmp_path):
