@@ -4,6 +4,8 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
+import signal
+import subprocess
 import sys
 import time
 
@@ -78,3 +80,58 @@ def test_reader_bounds_concurrent_children(tmp_path):
         with pytest.raises(PropagationJobError, match="reader_unavailable"):
             reader.preview(b"{}")
         assert first.result(timeout=2) == {}
+
+
+def test_reader_refuses_detached_descendant_and_reaps_it(tmp_path):
+    marker = tmp_path / "descendant-pid"
+    child_source = f"from pathlib import Path;import os,time;Path({str(marker)!r}).write_text(str(os.getpid()));time.sleep(10)"
+    reader, _ = _reader(tmp_path,
+        "import subprocess,sys\n"
+        f"subprocess.Popen([sys.executable,'-c',{child_source!r}],"
+        "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,"
+        "start_new_session=True)\nprint('{}')\n", budget=2)
+    try:
+        with pytest.raises(PropagationJobError, match="reader_unavailable"):
+            reader.preview(b"{}")
+        assert marker.exists()
+        pid = int(marker.read_text())
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+    finally:
+        if marker.exists():
+            try:
+                os.kill(int(marker.read_text()), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def test_interrupted_reader_cleans_up_owned_descendant(tmp_path, monkeypatch):
+    marker = tmp_path / "reader-pid"
+    reader, _ = _reader(tmp_path,
+        f"from pathlib import Path\nimport os,time\nPath({str(marker)!r}).write_text(str(os.getpid()))\n"
+        "time.sleep(10)\n", budget=2)
+    def interrupted(process, *args, **kwargs):
+        assert process.stdin is not None
+        process.stdin.write(args[0])
+        process.stdin.close()
+        for _ in range(200):
+            if marker.exists():
+                raise KeyboardInterrupt()
+            time.sleep(0.01)
+        raise AssertionError("reader child did not start")
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(subprocess.Popen, "communicate", interrupted)
+            with pytest.raises(KeyboardInterrupt):
+                reader.preview(b"{}")
+        assert marker.exists()
+        pid = int(marker.read_text())
+        with pytest.raises(ProcessLookupError):
+            os.kill(pid, 0)
+    finally:
+        if marker.exists():
+            try:
+                os.kill(int(marker.read_text()), signal.SIGKILL)
+            except ProcessLookupError:
+                pass

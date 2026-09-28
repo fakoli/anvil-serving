@@ -41,11 +41,44 @@ class FixedFleetReader:
         if not self._slot.acquire(blocking=False):
             raise PropagationJobError("reader_unavailable")
         try:
-            return self._run_owned(request)
+            return self._run_supervised(request)
         finally:
             self._slot.release()
 
+    def _run_supervised(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        """Keep descendant custody in a short-lived subreaper, never the controller."""
+        process = None
+        try:
+            payload = json.dumps({"profile": self.profile.private_value(), "request": request},
+                                 sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+            if len(payload) > _MAX_REQUEST * 2:
+                raise ValueError()
+            process = subprocess.Popen(
+                (sys.executable, "-m", "anvil_serving.control_plane.controller._propagation_reader_runner"),
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                close_fds=True, start_new_session=True,
+            )
+            output, _ = process.communicate(payload, timeout=self.profile.budget_seconds + 4)
+            if process.returncode != 0 or len(output) > self.profile.output_limit:
+                raise ValueError()
+            result = json.loads(output)
+            if type(result) is not dict:
+                raise ValueError()
+            return result
+        except (OSError, ValueError, TypeError, TimeoutError, subprocess.SubprocessError, PropagationJobError):
+            raise PropagationJobError("reader_unavailable") from None
+        finally:
+            if process is not None and process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+
     def _run_owned(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        process = None
+        complete = False
         try:
             raw = json.dumps(request, sort_keys=True, separators=(",", ":"),
                              ensure_ascii=True, allow_nan=False).encode("ascii") + b"\n"
@@ -100,20 +133,21 @@ class FixedFleetReader:
             result = json.loads(output)
             if type(result) is not dict:
                 raise ValueError()
+            complete = True
             return result
         except (OSError, ValueError, TypeError, TimeoutError, subprocess.SubprocessError, PropagationJobError):
-            if "process" in locals():
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except OSError:
-                    pass
-                try:
-                    process.wait(timeout=2)
-                except subprocess.SubprocessError:
-                    pass
             raise PropagationJobError("reader_unavailable") from None
         finally:
-            if "process" in locals():
+            if process is not None:
+                if not complete:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except OSError:
+                        pass
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.SubprocessError:
+                        pass
                 for pipe in (process.stdin, process.stdout):
                     if pipe is not None and not pipe.closed:
                         pipe.close()
