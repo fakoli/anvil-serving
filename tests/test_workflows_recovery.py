@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from anvil_serving.control_plane.propagation import effect_scope_digest, parse_contract
 from anvil_serving.propagation_fencing import NativeMutationFence, PropagationFenceError, TrustedNativeOwner
 from anvil_serving.commands.workflows_recovery import snapshot_journal
-from tests.test_propagation_fencing import _CONTRACT, _CONTRACT2, _fence as catalog_fence, _grant
+from tests.test_propagation_fencing import _CONTRACT, _CONTRACT2, _fence as catalog_fence, _grant, _trusted_test_clock
 
 
 pytestmark = pytest.mark.skipif(not hasattr(os, "O_NOFOLLOW"), reason="native no-follow open is required")
@@ -102,6 +103,39 @@ def test_restored_epoch_requires_quiescence_approval_and_exact_bytes(tmp_path):
         target.write_bytes(b"next")
         journal.observe_bytes("catalog", target.read_bytes())
     assert recovered.journal()["status"] == "completed"
+
+
+def test_catalog_cutover_is_bound_to_recovery_and_survives_later_epochs(tmp_path):
+    tmp_path.chmod(0o700)
+    target = tmp_path / "catalog.json"
+    target.write_bytes(b"before")
+    target.chmod(0o600)
+    value = parse_contract(_CONTRACT).value
+    value["targets"][0]["resource_keys"] = ["client-catalog"]
+    value["effect_set_digest"] = effect_scope_digest(value)
+    contract = parse_contract(value).canonical
+    owner = TrustedNativeOwner("owner-1", "client-catalog", tmp_path,
+        clock=_trusted_test_clock,
+        current_authority=lambda *_: True, recovery_quiescent=lambda *_: True,
+        recovery_authority=lambda *_: True,
+        effect_bindings={"catalog": ("catalog-apply", target)})
+    with NativeMutationFence.legacy_catalog_write(tmp_path):
+        pass  # Install the native catalog lock before owner activation.
+    fence = NativeMutationFence(owner, tmp_path)
+    grant = fence.grant(canonical_contract=contract, generation=1, effects=("catalog",), target_paths=(target,))
+    with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    marker = fence._catalog_cutover_path.read_bytes()
+    fence.advance_recovery_epoch("epoch-2", "a" * 64, "b" * 64)
+    recovered = NativeMutationFence(replace(owner, epoch="epoch-2"), tmp_path)
+    recovered.advance_recovery_epoch("epoch-3", "a" * 64, "b" * 64)
+    assert recovered._catalog_cutover_path.read_bytes() == marker
+    latest = NativeMutationFence(replace(owner, epoch="epoch-3"), tmp_path)
+    latest._catalog_cutover_path.write_bytes(marker.replace(b'"generation":1', b'"generation":2'))
+    with pytest.raises(PropagationFenceError, match="unindexed_journal"):
+        latest.advance_recovery_epoch("epoch-4", "a" * 64, "b" * 64)
 
 
 def test_recovery_refuses_journal_missing_from_restored_index(tmp_path):

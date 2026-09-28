@@ -810,8 +810,29 @@ class NativeMutationFence:
             index = self._read_index()
             parent = self._held().directory(self.journal_root, private=True)
             prefix = self.owner.resource_id + "."
+            cutover_digest = None
+            cutover_epoch = None
+            if self.owner.resource_id == "client-catalog":
+                marker = self._held().read(self._catalog_cutover_path, private=True)
+                if marker is not None:
+                    cutover = self._read_catalog_cutover()
+                    cutover_digest = _sha256(marker)
+                    cutover_epoch = cutover["epoch"]
+                    if cutover_epoch == self.owner.epoch:
+                        matching = [reservation for reservation, row in index["operations"].items()
+                            if row["status"] == "completed" and row["generation"] == cutover["generation"]
+                            and self._read_state(self._operation_path(reservation))["contract_digest"] == cutover["contract_digest"]]
+                        if len(matching) != 1:
+                            raise PropagationFenceError("unindexed_journal")
+                    elif (index.get("recovery", {}).get("cutover_epoch") != cutover_epoch
+                          or index["recovery"].get("cutover_digest") != cutover_digest):
+                        raise PropagationFenceError("unindexed_journal")
+                elif index["operations"] or index.get("recovery", {}).get("cutover_digest"):
+                    raise PropagationFenceError("unindexed_journal")
             for name in os.listdir(self.journal_root if os.name == "nt" else parent):
-                if not name.startswith(prefix) or not name.endswith(".json") or name == prefix + "index.json":
+                if (not name.startswith(prefix) or not name.endswith(".json")
+                        or name == prefix + "index.json"
+                        or (name == "client-catalog.cutover.json" and cutover_digest is not None)):
                     continue
                 reservation = name[len(prefix):-5]
                 if reservation in index["operations"]:
@@ -844,9 +865,12 @@ class NativeMutationFence:
                 observed = self._held().read(self._trusted_path(name))
                 if observed is None or _sha256(observed) != digest:
                     raise PropagationFenceError("external_drift")
-            evidence_digest = _sha256(_canonical({"old_epoch": self.owner.epoch, "new_epoch": new_epoch,
+            evidence = {"old_epoch": self.owner.epoch, "new_epoch": new_epoch,
                 "approval_digest": approval_digest, "target_set_digest": target_set_digest,
-                "high_water_generation": index["high_water_generation"], "observed": expected}))
+                "high_water_generation": index["high_water_generation"], "observed": expected}
+            if cutover_digest is not None:
+                evidence["cutover_digest"] = cutover_digest
+            evidence_digest = _sha256(_canonical(evidence))
             try:
                 approved = self.owner.recovery_authority(self.owner.epoch, new_epoch, approval_digest,
                                                           target_set_digest, evidence_digest)
@@ -854,9 +878,12 @@ class NativeMutationFence:
                 approved = False
             if approved is not True:
                 raise PropagationFenceError("recovery_not_approved")
-            index.update(epoch=new_epoch, latest_reservation_id=None, operations={}, recovery={
+            recovery = {
                 "old_epoch": self.owner.epoch, "approval_digest": approval_digest,
-                "target_set_digest": target_set_digest, "evidence_digest": evidence_digest})
+                "target_set_digest": target_set_digest, "evidence_digest": evidence_digest}
+            if cutover_digest is not None:
+                recovery.update(cutover_epoch=cutover_epoch, cutover_digest=cutover_digest)
+            index.update(epoch=new_epoch, latest_reservation_id=None, operations={}, recovery=recovery)
             self._write_index(index)
             return evidence_digest
 
@@ -1170,12 +1197,16 @@ class NativeMutationFence:
             raise PropagationFenceError("unsafe_journal")
         if "recovery" in value:
             recovery = value["recovery"]
-            if (type(recovery) is not dict or set(recovery) != {"old_epoch", "approval_digest", "target_set_digest", "evidence_digest"}
+            basic = {"old_epoch", "approval_digest", "target_set_digest", "evidence_digest"}
+            if (type(recovery) is not dict or set(recovery) not in (basic, basic | {"cutover_epoch", "cutover_digest"})
                     or recovery["old_epoch"] == value["epoch"]):
                 raise PropagationFenceError("unsafe_journal")
             _token(recovery["old_epoch"])
             for key in ("approval_digest", "target_set_digest", "evidence_digest"):
                 _digest(recovery[key])
+            if "cutover_epoch" in recovery:
+                _token(recovery["cutover_epoch"])
+                _digest(recovery["cutover_digest"])
         for reservation, row in value["operations"].items():
             _token(reservation)
             if (type(row) is not dict or set(row) != {"generation", "status"}
