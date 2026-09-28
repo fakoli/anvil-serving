@@ -2093,7 +2093,7 @@ def _sync_hermes_media(
 
 @dataclass(frozen=True)
 class NativeCatalogTarget:
-    """One protected Pi or OpenClaw installation in a home-level catalog batch."""
+    """One protected client installation or Hermes profile in a catalog batch."""
 
     target_id: str
     installation_id: str
@@ -2106,6 +2106,10 @@ class NativeCatalogTarget:
     openclaw_config: str | None = None
     pi_models: str | None = None
     pi_settings: str | None = None
+    hermes_home: str | None = None
+    hermes_bin: str | None = None
+    hermes_profile: str | None = None
+    hermes_config: str | None = None
     pi_exclude_aliases: str = ""
     openclaw_exclude_aliases: str = ""
     openclaw_allow_aliases: str = ""
@@ -2119,7 +2123,7 @@ def native_catalog_effect_targets(target: NativeCatalogTarget) -> dict[str, Path
     if not isinstance(target, NativeCatalogTarget):
         raise ClientCatalogError("invalid native catalog target")
     _id(target.target_id)
-    if (target.client not in {"pi", "openclaw"}
+    if (target.client not in {"pi", "openclaw", "hermes"}
             or type(target.state_path) is not str
             or type(target.align_compaction_reserve) is not bool
             or any(type(value) is not str for value in (
@@ -2129,15 +2133,37 @@ def native_catalog_effect_targets(target: NativeCatalogTarget) -> dict[str, Path
     paths = {"state": target.state_path}
     if target.client == "pi":
         if (type(target.pi_models) is not str or type(target.pi_settings) is not str
-                or target.openclaw_config is not None):
+                or target.openclaw_config is not None
+                or any(value is not None for value in (
+                    target.hermes_home, target.hermes_bin, target.hermes_profile,
+                    target.hermes_config))):
             raise ClientCatalogError("invalid native Pi paths")
         paths.update(pi_models=target.pi_models, pi_settings=target.pi_settings)
-    else:
+    elif target.client == "openclaw":
         if (type(target.openclaw_config) is not str or target.pi_models is not None
-                or target.pi_settings is not None):
+                or target.pi_settings is not None
+                or any(value is not None for value in (
+                    target.hermes_home, target.hermes_bin, target.hermes_profile,
+                    target.hermes_config))):
             raise ClientCatalogError("invalid native OpenClaw path")
         paths["openclaw"] = target.openclaw_config
         paths["openclaw_env"] = str(Path(target.openclaw_config).parent / ".env")
+    else:
+        profile = target.hermes_profile
+        home = target.hermes_home
+        binary = target.hermes_bin
+        config = target.hermes_config
+        if (type(profile) is not str or _normalize_hermes_profiles(profile) != (profile,)
+                or type(home) is not str or type(binary) is not str or type(config) is not str
+                or not Path(binary).is_absolute() or ".." in Path(binary).parts
+                or Path(config) != Path(home) / ("config.yaml" if profile == "default"
+                                               else "profiles/" + profile + "/config.yaml")
+                or any(value is not None for value in (
+                    target.openclaw_config, target.pi_models, target.pi_settings))
+                or target.pi_exclude_aliases or target.openclaw_exclude_aliases
+                or target.openclaw_allow_aliases or target.align_compaction_reserve):
+            raise ClientCatalogError("invalid native Hermes profile")
+        paths["hermes:" + profile] = config
     suffix = hashlib.sha256(target.target_id.encode("ascii")).hexdigest()
     effects = {"catalog-" + suffix + "-" + name: Path(value) for name, value in paths.items()}
     if any(not path.is_absolute() or ".." in path.parts for path in effects.values()):
@@ -2195,7 +2221,7 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               base_url: str, backup_root: str, expected_config_sha256: str,
                               environ: Mapping[str, str], fence, grant,
                               canonical_contract: bytes, dry_run: bool = True,
-                              opener=None) -> list[dict]:
+                              opener=None, hermes_run=subprocess.run) -> list[dict]:
     """Reconcile distinct installations in one owner reservation."""
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
@@ -2247,6 +2273,13 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                 openclaw_exclude_aliases=target.openclaw_exclude_aliases,
                 openclaw_allow_aliases=target.openclaw_allow_aliases,
                 align_compaction_reserve=target.align_compaction_reserve,
+                hermes_home=target.hermes_home or DEFAULT_HERMES_HOME,
+                hermes_bin=target.hermes_bin or DEFAULT_HERMES_BIN,
+                hermes_profiles=target.hermes_profile,
+                expected_hermes_configs=(
+                    {target.hermes_profile: Path(target.hermes_config)}
+                    if target.client == "hermes" else None),
+                hermes_run=hermes_run,
                 dry_run=dry_run, confirm=not dry_run, opener=opener,
                 journal=_ScopedCatalogJournal(journal, target.target_id))
             results.append({"target_id": target.target_id, "result": result})

@@ -646,7 +646,7 @@ def test_fenced_preview_refuses_swapped_openclaw_parent_before_read(tmp_path, mo
     assert fence.journal() is None
 
 
-def _native_three_client_batch(tmp_path, monkeypatch):
+def _native_three_client_batch(tmp_path, monkeypatch, *, include_hermes=False):
     value = json.loads(_fenced_contract("client-catalog"))
     second = dict(value["targets"][0])
     second.update(target_id="target-2", installation_id="installation-2",
@@ -658,6 +658,13 @@ def _native_three_client_batch(tmp_path, monkeypatch):
                  profile_id="profile-3", runtime_id="runtime-3",
                  expected_identity_ref="identity-3")
     value["targets"].append(third)
+    if include_hermes:
+        for index in (4, 5):
+            row = dict(third)
+            row.update(target_id=f"target-{index}", installation_id=f"installation-{index}",
+                       profile_id=f"profile-{index}", runtime_id=f"runtime-{index}",
+                       expected_identity_ref=f"identity-{index}")
+            value["targets"].append(row)
     value["effect_set_digest"] = effect_scope_digest(value)
     contract = parse_contract(value).canonical
     targets = []
@@ -675,6 +682,27 @@ def _native_three_client_batch(tmp_path, monkeypatch):
             targets.append(NativeCatalogTarget(**identity, client="pi",
                 state_path=str(directory / "state.json"),
                 pi_models=str(models), pi_settings=str(settings)))
+    hermes_runner = None
+    if include_hermes:
+        directory = tmp_path / "client-4"
+        home, states = _write_hermes_profiles(directory)
+        hermes_runner = _HermesRunner(states)
+        for profile, index in (("default", 4), ("anvil-primary", 5)):
+            identity = {field: value["targets"][index - 1][field] for field in (
+                "target_id", "installation_id", "profile_id", "runtime_id",
+                "expected_identity_ref", "expected_identity_digest")}
+            config = home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml"
+            targets.append(NativeCatalogTarget(**identity, client="hermes",
+                state_path=str(tmp_path / f"hermes-{profile}-state.json"),
+                hermes_home=str(home), hermes_bin=str(tmp_path / "hermes-bin"),
+                hermes_profile=profile, hermes_config=str(config)))
+        if os.name != "nt":
+            directory.chmod(0o700)
+            home.chmod(0o700)
+            (home / "profiles").chmod(0o700)
+            for config in client_catalog_sync._discover_hermes_profile_configs(str(home), "all").values():
+                config.parent.chmod(0o700)
+                config.chmod(0o600)
     bindings = {name: ("catalog-apply", path)
                 for target in targets for name, path in native_catalog_effect_targets(target).items()}
     lock = tmp_path / ".config" / "anvil-serving" / "pi"
@@ -706,6 +734,8 @@ def _native_three_client_batch(tmp_path, monkeypatch):
                    expected_config_sha256=CONFIG_SHA,
                    environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"}, fence=fence,
                    grant=grant, canonical_contract=contract)
+    if hermes_runner is not None:
+        options["hermes_run"] = hermes_runner
     return options, targets, bindings, fence
 
 
@@ -745,6 +775,30 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
         assert models["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
     openclaw = json.loads(Path(targets[2].openclaw_config).read_text())
     assert openclaw["models"]["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
+
+
+def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch):
+    options, targets, bindings, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    for wrong in (replace(targets[3], hermes_profile="all"),
+                  replace(targets[3], hermes_config=targets[4].hermes_config),
+                  replace(targets[3], hermes_bin="hermes")):
+        with pytest.raises(ClientCatalogError, match="invalid native Hermes profile"):
+            native_catalog_effect_targets(wrong)
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
+    before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
+              for target in targets[3:]}
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == [
+        f"target-{index}" for index in range(1, 6)]
+    applied = sync_client_catalog_batch(**options, dry_run=False)
+    assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
+    assert options["hermes_run"].sets == []
+    assert Path(targets[3].hermes_config).read_bytes() != before["default"]
+    assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
+    assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
+    assert set(fence.journal()["effects"]) == set(bindings)
 
 
 def test_native_catalog_batch_second_failure_retains_original_reservation(tmp_path, monkeypatch):
