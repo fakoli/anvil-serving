@@ -80,6 +80,37 @@ func testAdmin(t *testing.T) (*store.Store, *access.Keys, *identity.Manager, str
 	return state, keys, identities, pinned.Path()
 }
 
+func serveAdmin(t *testing.T, handler *Handler) string {
+	t.Helper()
+	directory, err := privatefiles.Open(filepath.Join(t.TempDir(), "runtime"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = directory.Close() })
+	listener, err := localhttp.Listen(directory, "admin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned, err := directory.PinPath("admin.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: time.Second}
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(listener) }()
+	t.Cleanup(func() {
+		_ = server.Close()
+		_ = listener.Close()
+		_ = pinned.Close()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Error("local admin server did not stop")
+		}
+	})
+	return pinned.Path()
+}
+
 func TestCallIssuesAndRevokesKey(t *testing.T) {
 	_, keys, _, socket := testAdmin(t)
 	context := context.Background()
@@ -171,14 +202,28 @@ func TestOperatorEnsureResourceReturnsPerOperatorChangeMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	socket := serveAdmin(t, handler)
 	request := Request{Operation: "operators-ensure-resource", Resources: []string{"hindsight-ui"}, ApplicationRoles: map[string]string{"hindsight-ui": "admin"}}
-	response, err := handler.apply(request)
+	response, err := Call(context.Background(), socket, request)
 	if err != nil || len(response.OperatorResults) != 1 || response.OperatorResults[0] != (session.OperatorEnsureResult{Principal: owner.ID, Generation: owner.Generation + 1, Changed: true}) {
 		t.Fatalf("changed operator response = %#v, %v", response, err)
 	}
-	response, err = handler.apply(request)
+	response, err = Call(context.Background(), socket, request)
 	if err != nil || len(response.OperatorResults) != 1 || response.OperatorResults[0].Changed || response.OperatorResults[0].Generation != owner.Generation+1 {
 		t.Fatalf("no-op operator response = %#v, %v", response, err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"operators-ensure-resource","resources":["hindsight-ui"],"application_roles":{"hindsight-ui":"admin"},"grants":[]}`),
+		[]byte(`{"operation":"operators-ensure-resource","resources":["hindsight-ui"],"application_roles":{"hindsight-ui":"admin"},"disabled":false}`),
+		[]byte(`{"operation":"operators-ensure-resource","resources":["hindsight-ui"],"application_roles":{"hindsight-ui":"admin"},"extra":true}`),
+	} {
+		var rejected Request
+		if err := json.Unmarshal(raw, &rejected); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Call(context.Background(), socket, rejected); !errors.Is(err, ErrAdmin) {
+			t.Fatalf("open request accepted through local client: %s, %v", raw, err)
+		}
 	}
 }
 
