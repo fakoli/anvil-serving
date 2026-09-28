@@ -8,6 +8,15 @@ import (
 	"math"
 )
 
+// OperatorEnsureResult records whether the local authority changed one
+// configured browser-administration operator. It contains no credential or
+// identity-provider material.
+type OperatorEnsureResult struct {
+	Principal  string `json:"principal"`
+	Generation uint64 `json:"generation"`
+	Changed    bool   `json:"changed"`
+}
+
 // ConfigureAdministration installs an immutable startup policy. It is called
 // before the manager is exposed to either HTTP or local authority commands.
 func (m *Manager) ConfigureAdministration(settings config.BrowserAdministration) error {
@@ -53,6 +62,71 @@ func (m *Manager) preserveAdministrators(tx *store.Tx, proposed Human) error {
 		}
 	}
 	return ErrConflict
+}
+
+// EnsureOperatorsResource atomically grants one browser resource and its
+// application role to every configured, enabled browser-administration
+// operator. It never creates, enables, or otherwise repairs an operator.
+func (m *Manager) EnsureOperatorsResource(resource, role string) ([]OperatorEnsureResult, error) {
+	if m.administration == nil || role != "admin" {
+		return nil, ErrDenied
+	}
+	rule, ok := m.rules[resource]
+	if !ok || rule.Access != "browser" {
+		return nil, ErrDenied
+	}
+	results := make([]OperatorEnsureResult, 0, len(m.administration.Operators))
+	err := m.state.Update(func(tx *store.Tx) error {
+		type pending struct {
+			human Human
+		}
+		changes := make([]pending, 0, len(m.administration.Operators))
+		results = results[:0]
+		for _, id := range m.administration.Operators {
+			var human Human
+			if tx.Get("principals", id, &human) != nil || human.ID != id || human.Generation == 0 || human.Disabled || human.DeletionRequest != "" || (human.Username != "" && !ValidUsername(human.Username)) {
+				return ErrDenied
+			}
+			resources, valid := m.validateResources(human.Resources)
+			roles, rolesValid := m.validateApplicationRoles(resources, human.ApplicationRoles)
+			if !valid || !rolesValid {
+				return ErrUnavailable
+			}
+			present := hasResource(resources, resource)
+			changed := !present || roles[resource] != role
+			if changed {
+				if human.Generation == math.MaxUint64 {
+					return ErrUnavailable
+				}
+				if !present {
+					resources = append(resources, resource)
+				}
+				resources, valid = m.validateResources(resources)
+				if !valid {
+					return ErrUnavailable
+				}
+				roles = maps.Clone(roles)
+				if roles == nil {
+					roles = map[string]string{}
+				}
+				roles[resource] = role
+				human.Generation++
+				human.Resources, human.ApplicationRoles = resources, roles
+				changes = append(changes, pending{human: human})
+			}
+			results = append(results, OperatorEnsureResult{Principal: id, Generation: human.Generation, Changed: changed})
+		}
+		for _, change := range changes {
+			if err := tx.Put("principals", change.human.ID, change.human); err != nil {
+				return ErrUnavailable
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 // UpdateHumanTx updates one existing human in the caller's transaction. Both

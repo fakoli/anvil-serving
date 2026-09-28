@@ -675,6 +675,18 @@ placeholder before applying:
 The subject is not the username. An invitation for the example connector names
 its exact resource set:
 
+For managed provisioning, `operators-ensure-resource` atomically adds one
+declared browser resource with the `admin` application role to every enabled
+configured browser-administration operator. It retains each operator's other
+grants and roles. The request contains only the operation, one resource, and
+the matching role; it does not create, enable, or repair accounts. Repeating
+an already-satisfied request leaves operator generations and Connect sessions
+unchanged.
+
+```json
+{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"}}
+```
+
 ```json
 {"operation":"invite","installation":"dashboard","role":"connector","resources":["dashboard","dashboard-api"],"lifetime_seconds":300}
 ```

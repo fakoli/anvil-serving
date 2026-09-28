@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -101,8 +102,83 @@ func TestCallIssuesAndRevokesKey(t *testing.T) {
 }
 
 func TestAdministrativeOperationVocabularyIsClosed(t *testing.T) {
-	if !ValidOperation("human-suspend") || !ValidOperation("human-revoke-sessions") || ValidOperation("human-delete") {
+	if !ValidOperation("operators-ensure-resource") || !ValidOperation("human-suspend") || !ValidOperation("human-revoke-sessions") || ValidOperation("human-delete") {
 		t.Fatal("administrative operation vocabulary changed")
+	}
+}
+
+func TestOperatorEnsureResourceRequestIsClosed(t *testing.T) {
+	good := []byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"}}`)
+	var request Request
+	if err := json.Unmarshal(good, &request); err != nil || !validOperatorEnsureRequest(request) {
+		t.Fatalf("valid request rejected: %#v, %v", request, err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"},"disabled":false}`),
+		[]byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"},"principal":"human:` + strings.Repeat("a", 64) + `"}`),
+		[]byte(`{"operation":"operators-ensure-resource","resources":["dashboard","other"],"application_roles":{"dashboard":"admin"}}`),
+		[]byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"member"}}`),
+	} {
+		var rejected Request
+		if err := json.Unmarshal(raw, &rejected); err != nil || validOperatorEnsureRequest(rejected) {
+			t.Fatalf("open request accepted: %s, %#v, %v", raw, rejected, err)
+		}
+	}
+	var explicitFalse Request
+	if err := json.Unmarshal([]byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"},"disabled":false}`), &explicitFalse); err != nil {
+		t.Fatal(err)
+	}
+	relayed, err := json.Marshal(explicitFalse)
+	if err != nil || !bytes.Contains(relayed, []byte(`"disabled":false`)) {
+		t.Fatalf("explicit false was lost during relay: %s, %v", relayed, err)
+	}
+	var unknown Request
+	if err := json.Unmarshal([]byte(`{"operation":"operators-ensure-resource","resources":["dashboard"],"application_roles":{"dashboard":"admin"},"unexpected":true}`), &unknown); err != nil {
+		t.Fatal(err)
+	}
+	relayed, err = json.Marshal(unknown)
+	if err != nil || !bytes.Contains(relayed, []byte(`"unexpected":null`)) {
+		t.Fatalf("unknown field was lost during relay: %s, %v", relayed, err)
+	}
+}
+
+func TestOperatorEnsureResourceReturnsPerOperatorChangeMetadata(t *testing.T) {
+	state, keys, identities, _ := testAdmin(t)
+	var issuer *httptest.Server
+	issuer = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer.URL, "authorization_endpoint": issuer.URL + "/authorize", "token_endpoint": issuer.URL + "/token", "jwks_uri": issuer.URL + "/keys"})
+	}))
+	t.Cleanup(issuer.Close)
+	limits := config.Limits{RequestBytes: 4096, Concurrent: 1, BufferBytes: 4096, IdleSeconds: 1, DurationSeconds: 1}
+	rules := []config.Rule{
+		{ID: "dashboard", Host: "dash.example.test", PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: limits},
+		{ID: "hindsight-ui", Host: "ui.example.test", PathPrefix: "/", Methods: []string{"GET", "POST"}, Access: "browser", NativeAuth: "none", Limits: limits},
+	}
+	sessions, err := session.New(context.Background(), state, rules, session.Config{Issuer: issuer.URL, ClientID: "test-client", ClientSecret: "test-secret", CallbackPath: "/_connect/callback", TransactionLifetime: time.Minute, SessionLifetime: time.Hour, MaxTransactions: 8, MaxPerBrowser: 2, HTTPClient: issuer.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(sessions.Close)
+	owner, err := sessions.SetHuman(issuer.URL, "owner", []string{"dashboard"}, false, map[string]string{"dashboard": "member"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sessions.ConfigureAdministration(config.BrowserAdministration{BrowserResource: "dashboard", Operators: []string{owner.ID}}); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(state, keys, identities, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := Request{Operation: "operators-ensure-resource", Resources: []string{"hindsight-ui"}, ApplicationRoles: map[string]string{"hindsight-ui": "admin"}}
+	response, err := handler.apply(request)
+	if err != nil || len(response.OperatorResults) != 1 || response.OperatorResults[0] != (session.OperatorEnsureResult{Principal: owner.ID, Generation: owner.Generation + 1, Changed: true}) {
+		t.Fatalf("changed operator response = %#v, %v", response, err)
+	}
+	response, err = handler.apply(request)
+	if err != nil || len(response.OperatorResults) != 1 || response.OperatorResults[0].Changed || response.OperatorResults[0].Generation != owner.Generation+1 {
+		t.Fatalf("no-op operator response = %#v, %v", response, err)
 	}
 }
 
