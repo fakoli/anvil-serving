@@ -9,7 +9,8 @@ dead process and blocks recovery until an owner reconciles partial effects.
 
 No public entry point infers this owner context.  Until T010 enrolls legacy
 writers, calls without a trusted fence retain their existing behavior; previews
-never acquire this lock or create a reservation.
+without a fence do not acquire this lock. Fenced previews take the lock but do
+not reserve a generation or create an effect journal.
 """
 from __future__ import annotations
 
