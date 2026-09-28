@@ -451,6 +451,7 @@ required operands, choices, and defaults.
 | `workflows deployment verify` | Compare pinned release and installed owner profile. | `read` / `bounded` | `--profile` |
 | `workflows recovery` | Inspect isolated recovery evidence through the owner. | `read` / `bounded` | - |
 | `workflows recovery verify` | Read verified isolated-restore evidence. | `read` / `bounded` | `--profile` |
+| `workflows recovery snapshot-journal` | Copy the guarded native operation journal for encrypted backup. | `mutate` / `bounded` | `--profile`<br>`--output`<br>`--confirm` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ## Migration from legacy commands

@@ -72,6 +72,7 @@ auth_file = "/path/to/protected/operator-token"
 recovery_auth_file = "/path/to/protected/recovery-token"
 release_dir = "/path/to/pinned-release"
 release_digest = "0000000000000000000000000000000000000000000000000000000000000000"
+native_storage_root = "/path/to/owner-storage"
 ```
 
 The file and token reference must pass the existing private-file checks. The
@@ -89,7 +90,13 @@ anvil-serving workflows cancel --intent-id accepted-intent --expected-digest SHA
 anvil-serving workflows deployment preview --profile propagation-v1 --json
 anvil-serving workflows deployment verify --profile propagation-v1 --json
 anvil-serving workflows recovery verify --profile propagation-v1 --json
+anvil-serving workflows recovery snapshot-journal --profile propagation-v1 --output /path/to/new/private-export --confirm --json
 ```
+
+The journal snapshot command is a local, read-only owner export into a new
+protected directory. It shares the native writer lock, so an active mutation
+causes a refusal. The backup installer encrypts the export; this command does
+not authorize a restore or a new propagation effect.
 
 Start accepts owner intent; dispatch remains a separate recoverable service.
 Status reads every required target and preserves age, partial and recovery

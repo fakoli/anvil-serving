@@ -830,6 +830,79 @@ class NativeMutationFence:
         return descriptor
 
     @contextmanager
+    def _snapshot_gate(self, files: _HeldFiles, *, exclusive: bool) -> Iterator[None]:
+        parent = files.directory(self.journal_root, create=True, private=True)
+        path = self.journal_root / ".snapshot.lock"
+        descriptor = (self._open_windows_lock(path) if os.name == "nt" else
+                      os.open(path.name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=parent))
+        try:
+            files._permissions(descriptor, directory=False, private=True)
+            if os.name == "nt":
+                import msvcrt
+                if os.fstat(descriptor).st_size == 0:
+                    os.write(descriptor, b"0")
+                    os.fsync(descriptor)
+                os.lseek(descriptor, 0, 0)
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(descriptor, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
+            yield
+        except OSError as exc:
+            if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                raise PropagationFenceError("operation_in_progress") from exc
+            raise
+        finally:
+            os.close(descriptor)
+
+    def snapshot_journal(self, destination: str | Path) -> dict[str, object]:
+        """Copy one stable native journal generation under the writer gate."""
+        if not hasattr(os, "O_NOFOLLOW"):
+            raise PropagationFenceError("snapshot_unsupported")
+        selected = Path(destination).absolute()
+        if ".." in selected.parts or any(path.is_symlink() for path in (selected, *selected.parents)):
+            raise PropagationFenceError("unsafe_custody_path")
+        try:
+            parent_info = selected.parent.stat()
+        except OSError as exc:
+            raise PropagationFenceError("unsafe_custody_path") from exc
+        if parent_info.st_uid != os.geteuid() or parent_info.st_mode & 0o077:
+            raise PropagationFenceError("unsafe_custody_path")
+        files = _HeldFiles(self.owner.storage_root)
+        try:
+            files.directory(self.owner.storage_root)
+            with self._snapshot_gate(files, exclusive=True):
+                parent = files.directory(self.journal_root, private=True)
+                names = sorted(name for name in os.listdir(parent) if name.endswith(".json"))
+                if len(names) > 10_000:
+                    raise PropagationFenceError("snapshot_too_large")
+                selected.mkdir(mode=0o700)
+                if selected.stat().st_uid != os.geteuid() or selected.stat().st_mode & 0o077:
+                    raise PropagationFenceError("unsafe_custody_path")
+                manifest: dict[str, str] = {}
+                size = 0
+                for name in names:
+                    if name in {".", ".."} or "/" in name or "\\" in name:
+                        raise PropagationFenceError("unsafe_custody_path")
+                    data = files.read(self.journal_root / name, private=True)
+                    if data is None:
+                        raise PropagationFenceError("external_drift")
+                    size += len(data)
+                    if size > 256 * 1024 * 1024:
+                        raise PropagationFenceError("snapshot_too_large")
+                    descriptor = os.open(selected / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+                    with os.fdopen(descriptor, "wb") as output:
+                        output.write(data)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    manifest[name] = _sha256(data)
+                return {"schema": "anvil-serving.native-journal-snapshot/v1", "files": manifest}
+        except (OSError, auth_file.AuthFileError) as exc:
+            raise PropagationFenceError("unsafe_custody_path") from exc
+        finally:
+            files.close()
+
+    @contextmanager
     def _lock(self) -> Iterator[None]:
         files = _HeldFiles(self.owner.storage_root)
         token = self._files.set(files)
@@ -860,7 +933,8 @@ class NativeMutationFence:
                     raise
             except (OSError, auth_file.AuthFileError) as exc:
                 raise PropagationFenceError("unsafe_custody_path") from exc
-            yield
+            with self._snapshot_gate(files, exclusive=False):
+                yield
         finally:
             if fd is not None:
                 os.close(fd)

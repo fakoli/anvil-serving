@@ -49,7 +49,7 @@ def _read_config() -> dict:
         value = tomllib.loads(read_private_auth_file(path, max_bytes=4096).decode("utf-8"))
         if (not {"schema", "controller_url", "auth_file"} <= set(value)
                 or set(value) - {"schema", "controller_url", "auth_file", "recovery_auth_file",
-                                 "release_dir", "release_digest"}
+                                 "release_dir", "release_digest", "native_storage_root"}
                 or value["schema"] != "anvil-serving.workflows-operator/v1"
                 or type(value["controller_url"]) is not str
                 or type(value["auth_file"]) is not str
@@ -132,6 +132,24 @@ def _local_preview(profile: str) -> dict:
         raise SafetyError("local workflow release is unavailable", code="workflow_release_unavailable") from None
 
 
+def _snapshot_journal(profile: str, output: str) -> dict:
+    if profile != "propagation-v1":
+        raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
+    from .propagation_fencing import NativeMutationFence, PropagationFenceError, TrustedNativeOwner
+
+    try:
+        root = Path(_read_config()["native_storage_root"])
+        destination = Path(output)
+        if not root.is_absolute() or not destination.is_absolute():
+            raise ValueError()
+        owner = TrustedNativeOwner("backup", "backup", root)
+        manifest = NativeMutationFence(owner, root / ".anvil-serving/propagation-fencing").snapshot_journal(destination)
+        digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        return {"profile_id": profile, "file_count": len(manifest["files"]), "manifest_digest": digest}
+    except (KeyError, OSError, ValueError, TypeError, PropagationFenceError):
+        raise SafetyError("native journal snapshot is unavailable", code="workflow_recovery_unavailable") from None
+
+
 def _arguments(argv: list[str]) -> tuple[str, dict]:
     if not argv:
         raise UsageError("choose a workflow action", code="workflow_action_required")
@@ -141,7 +159,7 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         action, rest = argv[0] + "_" + argv[1], argv[2:]
     else:
         action, rest = argv[0], argv[1:]
-    if action not in {*_OPERATIONS, "deployment_preview", "deployment_verify", "recovery_verify"}:
+    if action not in {*_OPERATIONS, "deployment_preview", "deployment_verify", "recovery_verify", "recovery_snapshot-journal"}:
         raise UsageError("unsupported workflow action", code="workflow_action_required")
     parser = _Parser(add_help=False, allow_abbrev=False)
     if action == "start":
@@ -151,6 +169,9 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         parser.add_argument("--intent-id", required=True)
         if action in {"resume", "cancel"}:
             parser.add_argument("--expected-digest", required=True)
+    elif action == "recovery_snapshot-journal":
+        parser.add_argument("--profile", required=True)
+        parser.add_argument("--output", required=True)
     else:
         parser.add_argument("--profile", required=True)
     if action not in {"status", "deployment_preview", "deployment_verify", "recovery_verify"}:
@@ -160,7 +181,8 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         raise SafetyError("confirm the approved owner request", code="confirmation_required")
     try:
         for key, value in values.items():
-            (_digest if key == "expected_digest" else _id)(value)
+            if key != "output":
+                (_digest if key == "expected_digest" else _id)(value)
     except PropagationContractError:
         raise UsageError("invalid workflow identity", code="invalid_workflow_arguments") from None
     if action == "start":
@@ -171,6 +193,8 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         if values["profile"] != "propagation-v1":
             raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
         arguments = {"profile_id": values["profile"]}
+    elif action == "recovery_snapshot-journal":
+        arguments = {"profile_id": values["profile"], "output": values["output"]}
     else:
         arguments = {"intent_id": values["intent_id"], "expected_digest": values["expected_digest"]}
     if action in _OPERATIONS:
@@ -226,6 +250,8 @@ def main(argv: list[str] | None = None) -> CommandResult:
         action, arguments = _arguments(list(argv or []))
         if action == "deployment_preview":
             result = _local_preview(arguments["profile_id"])
+        elif action == "recovery_snapshot-journal":
+            result = _snapshot_journal(arguments["profile_id"], arguments["output"])
         elif action == "deployment_verify":
             result = _local_preview(arguments["profile_id"])
             url, token = _config()
