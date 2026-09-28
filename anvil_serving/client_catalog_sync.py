@@ -1896,14 +1896,17 @@ def sync_hermes_media(
     if fence is not None:
         from .propagation_fencing import PropagationFenceError
         raise PropagationFenceError("UnsupportedCapability")
-    return _sync_hermes_media(
-        hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
-        skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
-        mcp_url_env=mcp_url_env, token_env=token_env,
-        restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
-        confirm=confirm, timeout_seconds=timeout_seconds, run=run,
-        restart_hermes=restart_hermes,
-    )
+    from .propagation_fencing import NativeMutationFence
+    guard = NativeMutationFence.legacy_catalog_write(Path.home()) if not dry_run and confirm else nullcontext()
+    with guard:
+        return _sync_hermes_media(
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
+            mcp_url_env=mcp_url_env, token_env=token_env,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds, run=run,
+            restart_hermes=restart_hermes,
+        )
 
 
 def _sync_hermes_media(

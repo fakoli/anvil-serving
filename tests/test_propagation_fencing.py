@@ -186,13 +186,17 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
     touched = []
     monkeypatch.setattr(client_catalog_sync, "_sync_clients", lambda **_kwargs: touched.append("catalog"))
     monkeypatch.setattr(client_catalog_sync, "_sync_pi_media", lambda **_kwargs: touched.append("media"))
+    monkeypatch.setattr(client_catalog_sync, "_sync_hermes_media", lambda **_kwargs: touched.append("hermes-media"))
     with pytest.raises(PropagationFenceError, match="stale_generation"):
         client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=False, confirm=True)
     with pytest.raises(PropagationFenceError, match="stale_generation"):
         client_catalog_sync.sync_pi_media(withdraw=True, dry_run=False, confirm=True)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_hermes_media(dry_run=False, confirm=True)
     assert touched == []
     client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=True)
-    assert touched == ["catalog"]
+    client_catalog_sync.sync_hermes_media(dry_run=True)
+    assert touched == ["catalog", "hermes-media"]
     fence._catalog_cutover_path.unlink()  # Simulate an incomplete local restore.
     with pytest.raises(PropagationFenceError, match="stale_generation"):
         with fence.resume(grant, canonical_contract=contract, target_paths=(target,)):
