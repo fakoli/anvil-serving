@@ -115,7 +115,7 @@ def test_capabilities_match_the_versioned_inert_owner_operations():
         "propagation.accept.v1", "propagation.profile.v1", "propagation.status.v1",
         "propagation.resume.v1", "propagation.cancel.v1", "propagation.recovery.verify.v1",
         "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
-        "fleet.propagation.preview.v1", "fleet.propagation.submit.v1",
+        "fleet.propagation.preview.v1", "fleet.propagation.submit.v1", "fleet.propagation.current.v1",
         "fleet.propagation.status.v1", "fleet.propagation.verify.v1",
         "fleet.propagation.convergence.v1", "fleet.propagation.cancel.v1",
     ]
@@ -143,6 +143,9 @@ def test_capability_schemas_have_bounded_semantic_rows_and_scalar_types():
     convergence = operations["fleet.propagation.convergence.v1"]["result_schema"]
     assert convergence["properties"]["changed"] == {"type": "integer", "minimum": 0}
     assert convergence["properties"]["reloads"] == {"type": "integer", "minimum": 0}
+    current = operations["fleet.propagation.current.v1"]
+    assert current["input_schema"]["properties"]["generation"] == {"type": "integer", "minimum": 1}
+    assert current["result_schema"]["properties"]["current"] == {"type": "boolean"}
 
     status = operations["fleet.propagation.status.v1"]["result_schema"]
     outcome = status["properties"]["outcomes"]

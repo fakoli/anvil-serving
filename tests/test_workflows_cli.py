@@ -96,7 +96,7 @@ def test_capability_preflight_requires_exact_available_owner_contract(monkeypatc
     monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
     ready = workflows_cli.main(["capabilities"])
     assert ready.exit_code == 0 and ready.data["state"] == "ready"
-    assert len(ready.data["operations"]) == 14 and ready.data["effects"] == []
+    assert len(ready.data["operations"]) == 15 and ready.data["effects"] == []
     assert calls == [{"name": "propagation_capabilities", "arguments": {},
                       "_meta": {workflows_cli.PROTOCOL_VERSION_META_KEY: workflows_cli.mcp.PROTOCOL_VERSION,
                                 workflows_cli.CLIENT_CAPABILITIES_META_KEY: {},

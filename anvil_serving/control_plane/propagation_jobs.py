@@ -129,6 +129,8 @@ class PropagationService:
                 return result
             if operation == "fleet.propagation.submit.v1":
                 return self.submit(**arguments)
+            if operation == "fleet.propagation.current.v1":
+                return self.current_authority(**arguments)
             if operation == "fleet.propagation.cancel.v1":
                 job = self.supervisor.cancel(arguments["job_id"])
                 return {"job_id": arguments["job_id"], "state": job["state"] if job["state"] in {"requested", "confirmed", "uncertain"} else self._cancel_state(job)}
@@ -163,6 +165,24 @@ class PropagationService:
         value = contract.value
         if (value["execution_profile_ref"], value["execution_profile_digest"]) != (self.profile.profile_id, self.profile.profile_digest):
             raise PropagationJobError("profile_mismatch")
+
+    def current_authority(self, intent_id, job_id, contract_digest, generation, target_id, resource_id):
+        """Read the current approved reservation at a native write boundary."""
+        contract = self._contract(intent_id, current=True)
+        value = contract.value
+        if (contract.digest != contract_digest or type(generation) is not int
+                or value["generation"] != generation):
+            raise PropagationJobError("stale_generation")
+        if not any(target["target_id"] == target_id and resource_id in target["resource_keys"]
+                   and target["effects"] for target in value["targets"]):
+            raise PropagationJobError("resource_binding_mismatch")
+        self.supervisor.observe(job_id)
+        job = self.jobs.lookup_internal(job_id)
+        if (job["intent_id"] != intent_id or job["contract_digest"] != contract.digest
+                or job["state"] != "executing" or resource_id not in job["resources"]
+                or job["canonical_contract"] != contract.canonical):
+            raise PropagationJobError("stale_generation")
+        return {"current": True, "observed_at": _stamp(self.profile.now())}
 
     def _contract(self, intent_id, *, current=False):
         parsed = contract_api.parse_contract(self.intents.contract_bytes(intent_id))

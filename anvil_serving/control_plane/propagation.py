@@ -308,6 +308,7 @@ _OPERATIONS = (
     ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id", "contract_digest"), ("recorded",)),
     ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
     ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("contract_digest", "operation_id", "job_id", "state")),
+    ("fleet.propagation.current.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("current", "observed_at")),
     ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
     ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
     ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
@@ -477,7 +478,7 @@ def _intent_row() -> dict[str, Any]:
 
 def _input_schema(name: str, fields: tuple[str, ...]) -> dict[str, Any]:
     properties: dict[str, Any] = {
-        field: _cursor() if field == "cursor" else _digest_schema() if field.endswith("digest") else _identifier()
+        field: _cursor() if field == "cursor" else _digest_schema() if field.endswith("digest") else {"type": "integer", "minimum": 1} if field == "generation" else _identifier()
         for field in fields
     }
     return _object(properties)
@@ -522,6 +523,8 @@ def _result_schema(name: str) -> dict[str, Any]:
                       "targets": _array(_preview_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.submit.v1":
         return _object({"contract_digest": _digest_schema(), "operation_id": _identifier(), "job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
+    if name == "fleet.propagation.current.v1":
+        return _object({"current": {"type": "boolean"}, "observed_at": _timestamp()})
     if name == "fleet.propagation.status.v1":
         return _page({"job_id": _identifier(),
                       "state": {"type": "string", "enum": ["running", "applied", "failed", "cancelled", "recovery_required"]},

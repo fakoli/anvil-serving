@@ -40,7 +40,7 @@ def _stamp(value):
 
 
 class ControlledOwner:
-    def __init__(self, root, count=1):
+    def __init__(self, root, count=1, runner_wait=0):
         self.root = root
         self.marker = root / "catalog"
         self.reads = []
@@ -52,7 +52,9 @@ class ControlledOwner:
         value["effect_set_digest"] = effect_scope_digest(value)
         self.contract = parse_contract(value)
         runner = root / "native.py"
-        runner.write_text("import json,pathlib,sys\nj=json.load(sys.stdin)\np=pathlib.Path(sys.argv[1])\np.write_text('accepted')\ne=[{**item,'state':'applied'} for item in j['planned_effects']]\nprint(json.dumps({'outcome':'applied','native_effects':e,'quiescent':True}))\n")
+        runner.write_text("import json,pathlib,sys,time\nj=json.load(sys.stdin)\n"
+            + f"time.sleep({runner_wait})\n"
+            + "p=pathlib.Path(sys.argv[1])\np.write_text('accepted')\ne=[{**item,'state':'applied'} for item in j['planned_effects']]\nprint(json.dumps({'outcome':'applied','native_effects':e,'quiescent':True}))\n")
         profile = ExecutionProfile("profile-1", DIGEST, (sys.executable, str(runner), str(self.marker)),
             hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
             artifact_pins=((str(runner), hashlib.sha256(runner.read_bytes()).hexdigest()),), budget_seconds=10, heartbeat_seconds=1)
@@ -159,6 +161,55 @@ def test_actual_http_preserves_caller_and_composes_per_server(tmp_path):
     with running_controller(env=env, authorization_policy=policy) as (host, port):
         _, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities", "arguments": {}}, {"Authorization": "Bearer " + env["READER"]})
         assert all(not op["available"] for op in body["data"]["operations"])
+
+
+def test_current_authority_is_bound_to_executing_job_and_declared_resource(tmp_path):
+    owner = ControlledOwner(tmp_path, runner_wait=3)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    arguments = {"intent_id": accepted["intent_id"], "job_id": submitted["job_id"],
+                 "contract_digest": owner.contract.digest, "generation": 1,
+                 "target_id": "target-000", "resource_id": "catalog-000"}
+    try:
+        for _ in range(100):
+            if owner.jobs.lookup_internal(submitted["job_id"])["state"] == "executing":
+                break
+            time.sleep(.01)
+        else:
+            pytest.fail("native job never entered execution")
+        current = owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
+        assert current["current"] is True
+        policy = _authorization_policy(tmp_path, [
+            {"id": "activity", "scopes": ["propagation:activity"], "credential_env": "ACTIVITY"},
+            {"id": "reader", "scopes": ["propagation:status"], "credential_env": "READER"},
+        ])
+        env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy-controller",
+               "ACTIVITY": "synthetic-activity", "READER": "synthetic-reader"}
+        with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
+            def request(token):
+                _, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 1,
+                    "method": "tools/call", "params": {"name": "fleet.propagation.current.v1", "arguments": arguments}},
+                    {"Authorization": "Bearer " + token})
+                return body
+            assert request(env["ACTIVITY"])["result"]["structuredContent"]["data"]["current"] is True
+            denied = request(env["READER"])
+            assert "result" not in denied or denied["result"].get("isError")
+        for changed in ({"generation": 2}, {"contract_digest": "b" * 64},
+                        {"resource_id": "other"}, {"target_id": "other"}):
+            with pytest.raises(PropagationJobError):
+                owner.service.handle("fleet.propagation.current.v1", {**arguments, **changed}, caller_id="activity")
+        owner.supervisor.cancel(submitted["job_id"])
+        with pytest.raises(PropagationJobError, match="stale_generation"):
+            owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
+    finally:
+        for _ in range(500):
+            if owner.supervisor.observe(submitted["job_id"])["state"] != "running":
+                break
+            time.sleep(.01)
+    with pytest.raises(PropagationJobError, match="stale_generation"):
+        owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
 
 
 def test_lost_submit_ack_and_expired_preview_resolve_original_job(tmp_path):

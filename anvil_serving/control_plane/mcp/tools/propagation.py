@@ -17,6 +17,7 @@ OPERATION_NAMES = frozenset({
     "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
     *("fleet.propagation." + verb + ".v1" for verb in (
         "preview", "submit", "status", "verify", "convergence", "cancel",
+        "current",
     )),
 })
 

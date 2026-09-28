@@ -92,11 +92,17 @@ loopback listener; an installed cross-namespace proof remains required.
 The bound service exposes `propagation.accept.v1`,
 `propagation.dispatch.pending.v1`, `propagation.dispatch.record.v1`, and
 `fleet.propagation.preview.v1`, `fleet.propagation.submit.v1`,
+`fleet.propagation.current.v1`,
 `fleet.propagation.status.v1`, `fleet.propagation.verify.v1`,
 `fleet.propagation.convergence.v1`, `fleet.propagation.cancel.v1`.
 Admission, dispatch, activity and status credentials have separate scopes.
 Requests contain opaque owner references; profiles, executable pins, transport
 credentials and approval resolution come from the installed owner configuration.
+The activity-scoped `current` read checks the exact contract digest, generation,
+declared target/resource and an executing job against the owner's current
+approval and activation. A native client uses it inside its file fence's
+current-authority callback; the read grants no file path or effect by itself.
+Transport failure or a superseded, cancelled or completed job refuses a write.
 
 Submit requires a complete current preview and retains one durable job identity.
 An expired preview cannot authorize a new effect, but a repeated submission can
