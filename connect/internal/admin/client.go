@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
 	"golang.org/x/sys/unix"
 )
@@ -24,8 +24,8 @@ func Call(ctx context.Context, socketPath string, input Request) (Response, erro
 	if ctx == nil || !ValidOperation(input.Operation) || !validSocket(socketPath) {
 		return Response{}, ErrAdmin
 	}
-	input.Grants = append([]access.Grant{}, input.Grants...)
-	input.Resources = append([]string{}, input.Resources...)
+	input.Grants = slices.Clone(input.Grants)
+	input.Resources = slices.Clone(input.Resources)
 	body, err := json.Marshal(input)
 	if err != nil || len(body) > maxBody {
 		return Response{}, ErrAdmin
