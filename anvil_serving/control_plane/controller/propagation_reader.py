@@ -54,7 +54,7 @@ class FixedFleetReader:
             if len(payload) > _MAX_REQUEST * 2:
                 raise ValueError()
             process = subprocess.Popen(
-                (sys.executable, "-m", "anvil_serving.control_plane.controller._propagation_reader_runner"),
+                (sys.executable, "-I", "-m", "anvil_serving.control_plane.controller._propagation_reader_runner"),
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                 close_fds=True, start_new_session=True,
             )

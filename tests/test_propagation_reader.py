@@ -135,3 +135,17 @@ def test_interrupted_reader_cleans_up_owned_descendant(tmp_path, monkeypatch):
                 os.kill(int(marker.read_text()), signal.SIGKILL)
             except ProcessLookupError:
                 pass
+
+
+def test_reader_supervisor_ignores_shadow_package(tmp_path, monkeypatch):
+    reader, _ = _reader(tmp_path, "print('{\"trusted\":true}')\n")
+    shadow = tmp_path / "shadow"
+    package = shadow / "anvil_serving" / "control_plane" / "controller"
+    package.mkdir(parents=True)
+    for directory in (package, package.parent, package.parent.parent):
+        (directory / "__init__.py").write_text("", encoding="utf-8")
+    (package / "_propagation_reader_runner.py").write_text(
+        "print('{\"forged\":true}')\n", encoding="utf-8")
+    monkeypatch.chdir(shadow)
+    monkeypatch.setenv("PYTHONPATH", str(shadow))
+    assert reader.preview(b"{}") == {"trusted": True}
