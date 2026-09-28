@@ -57,6 +57,7 @@ type Request struct {
 	RequestID          string            `json:"request_id,omitempty"`
 	ExpectedGeneration uint64            `json:"expected_generation,omitempty"`
 	usernamePresent    bool
+	fieldsPresent      map[string]bool
 }
 
 // UnmarshalJSON distinguishes an omitted username (retain legacy metadata)
@@ -73,6 +74,10 @@ func (r *Request) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*r = Request(decoded)
+	r.fieldsPresent = make(map[string]bool, len(raw))
+	for name := range raw {
+		r.fieldsPresent[name] = true
+	}
 	if value, present := raw["username"]; present {
 		r.usernamePresent = true
 		if bytes.Equal(bytes.TrimSpace(value), []byte("null")) || r.Username == "" {
@@ -80,6 +85,68 @@ func (r *Request) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return nil
+}
+
+// MarshalJSON retains field presence from a decoded local request. This lets
+// the authority distinguish an omitted zero value from an explicitly supplied
+// one after the native CLI relays the request over its Unix socket.
+func (r Request) MarshalJSON() ([]byte, error) {
+	value := map[string]any{"operation": r.Operation}
+	include := func(name string, nonzero bool) bool { return r.fieldsPresent[name] || nonzero }
+	if include("principal", r.Principal != "") {
+		value["principal"] = r.Principal
+	}
+	if include("grants", r.Grants != nil) {
+		value["grants"] = r.Grants
+	}
+	if include("disabled", r.Disabled) {
+		value["disabled"] = r.Disabled
+	}
+	if include("key_id", r.KeyID != "") {
+		value["key_id"] = r.KeyID
+	}
+	if include("installation", r.Installation != "") {
+		value["installation"] = r.Installation
+	}
+	if include("role", r.Role != "") {
+		value["role"] = r.Role
+	}
+	if include("resources", r.Resources != nil) {
+		value["resources"] = r.Resources
+	}
+	if include("application_roles", r.ApplicationRoles != nil) {
+		value["application_roles"] = r.ApplicationRoles
+	}
+	if include("lifetime_seconds", r.LifetimeSeconds != 0) {
+		value["lifetime_seconds"] = r.LifetimeSeconds
+	}
+	if include("fingerprint", r.Fingerprint != "") {
+		value["fingerprint"] = r.Fingerprint
+	}
+	if include("issuer", r.Issuer != "") {
+		value["issuer"] = r.Issuer
+	}
+	if include("subject", r.Subject != "") {
+		value["subject"] = r.Subject
+	}
+	if include("username", r.usernamePresent || r.Username != "") {
+		value["username"] = r.Username
+	}
+	if include("request_id", r.RequestID != "") {
+		value["request_id"] = r.RequestID
+	}
+	if include("expected_generation", r.ExpectedGeneration != 0) {
+		value["expected_generation"] = r.ExpectedGeneration
+	}
+	// Preserve an unknown input name through the local relay so the authority
+	// can reject it under the operation's closed grammar instead of accepting a
+	// request after the native CLI has normalized it away.
+	for name := range r.fieldsPresent {
+		if _, known := value[name]; !known {
+			value[name] = nil
+		}
+	}
+	return json.Marshal(value)
 }
 
 // InstallationStatus intentionally excludes public-key bodies and all prior
@@ -114,16 +181,17 @@ type Response struct {
 	// the root lifecycle can distinguish a proven absent principal from a
 	// malformed or unavailable native authority response without changing other
 	// administrative operation contracts.
-	Found       *bool              `json:"found,omitempty"`
-	Username    string             `json:"username,omitempty"`
-	ControlHost string             `json:"control_host,omitempty"`
-	TunnelHost  string             `json:"tunnel_host,omitempty"`
-	InnerCAPEM  string             `json:"inner_ca_pem,omitempty"`
-	Status      InstallationStatus `json:"status"`
-	Entries     []EntryStatus      `json:"entries,omitempty"`
-	Human       *session.Human     `json:"human,omitempty"`
-	Deletion    *session.Deletion  `json:"deletion,omitempty"`
-	Deletions   []session.Deletion `json:"deletions,omitzero"`
+	Found           *bool                          `json:"found,omitempty"`
+	Username        string                         `json:"username,omitempty"`
+	ControlHost     string                         `json:"control_host,omitempty"`
+	TunnelHost      string                         `json:"tunnel_host,omitempty"`
+	InnerCAPEM      string                         `json:"inner_ca_pem,omitempty"`
+	Status          InstallationStatus             `json:"status"`
+	Entries         []EntryStatus                  `json:"entries,omitempty"`
+	Human           *session.Human                 `json:"human,omitempty"`
+	Deletion        *session.Deletion              `json:"deletion,omitempty"`
+	Deletions       []session.Deletion             `json:"deletions,omitzero"`
+	OperatorResults []session.OperatorEnsureResult `json:"operator_results,omitempty"`
 }
 
 // Handler invokes only existing authority managers. keys and sessions can be
@@ -378,6 +446,11 @@ func (h *Handler) apply(input Request) (Response, error) {
 		if err == nil {
 			response.Principal, response.Username, response.Generation, response.Resources, response.ApplicationRoles = human.ID, human.Username, human.Generation, append([]string(nil), human.Resources...), maps.Clone(human.ApplicationRoles)
 		}
+	case "operators-ensure-resource":
+		if h.sessions == nil || !validOperatorEnsureRequest(input) {
+			return Response{}, ErrAdmin
+		}
+		response.OperatorResults, err = h.sessions.EnsureOperatorsResource(input.Resources[0], input.ApplicationRoles[input.Resources[0]])
 	case "human-suspend":
 		if h.sessions == nil || input.Issuer == "" || input.Subject == "" || input.Principal != "" || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
 			return Response{}, ErrAdmin
@@ -406,6 +479,18 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	return response, nil
+}
+
+func validOperatorEnsureRequest(input Request) bool {
+	if input.fieldsPresent != nil {
+		if len(input.fieldsPresent) != 3 || !input.fieldsPresent["operation"] || !input.fieldsPresent["resources"] || !input.fieldsPresent["application_roles"] {
+			return false
+		}
+	}
+	if len(input.Resources) != 1 || input.Resources[0] == "" || len(input.ApplicationRoles) != 1 || input.ApplicationRoles[input.Resources[0]] != "admin" {
+		return false
+	}
+	return input.Principal == "" && len(input.Grants) == 0 && !input.Disabled && input.KeyID == "" && input.Installation == "" && input.Role == "" && input.LifetimeSeconds == 0 && input.Fingerprint == "" && input.Issuer == "" && input.Subject == "" && input.Username == "" && !input.usernamePresent && input.RequestID == "" && input.ExpectedGeneration == 0
 }
 
 func validInspection(principal string, human session.Human) bool {
@@ -437,7 +522,7 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 // ValidOperation is the closed native administrative operation vocabulary.
 func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
 		return true
 	default:
 		return false
