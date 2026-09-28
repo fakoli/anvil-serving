@@ -28,6 +28,7 @@ function serviceTile(service) {
     grafana: "M3 3v18h18 M7 16v-5 M12 16V6 M17 16v-8",
     pi: "M4 7h16 M9 7v13 M16 7v10q0 3 4 3",
     "pi-web": "M4 7h16 M9 7v13 M16 7v10q0 3 4 3",
+    "hindsight-ui": "M2.5 9.5S6 4 12 4s9.5 5.5 9.5 5.5S18 15 12 15 2.5 9.5 2.5 9.5Z M12 7a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5 M19 15a7.5 7.5 0 0 1-7 4H6 M9 16l-3 3 3 3",
   };
   path.setAttribute("d", icons[service.id] || "M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z");
   icon.append(path);
