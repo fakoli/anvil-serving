@@ -152,7 +152,13 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
             pass
         with pytest.raises(PropagationFenceError, match="operation_in_progress"):
             fence.activate_catalog_cutover(contract)
-    fence.activate_catalog_cutover(contract)
+    with pytest.raises(PropagationFenceError, match="untrusted_grant"):
+        with fence.transaction(None, canonical_contract=contract, target_paths=(target,)):
+            pytest.fail("untrusted writer entered")
+    assert not fence._catalog_cutover_path.exists()
+    grant = fence.grant(canonical_contract=contract, generation=1, effects=("catalog",), target_paths=(target,))
+    with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)):
+        assert fence._catalog_cutover_path.exists()
     fence.activate_catalog_cutover(contract)
     with pytest.raises(PropagationFenceError, match="stale_generation"):
         with NativeMutationFence.legacy_catalog_write(tmp_path):

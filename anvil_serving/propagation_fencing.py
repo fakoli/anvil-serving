@@ -635,13 +635,19 @@ class NativeMutationFence:
         if not isinstance(canonical_contract, bytes):
             raise PropagationFenceError("malformed_grant")
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        if self.owner.resource_id == "client-catalog":
+            # Validate before retiring legacy writers. Activation takes the
+            # installed Pi lock first, so it cannot run inside _lock().
+            with self._lock():
+                self._validate_grant(grant, canonical_contract, targets)
+            self.activate_catalog_cutover(canonical_contract)
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets)
             if self.owner.resource_id == "client-catalog":
                 cutover = self._read_catalog_cutover()
-                if cutover is not None and (cutover["contract_digest"] != grant.contract_digest
-                                            or cutover["generation"] != grant.generation
-                                            or cutover["epoch"] != grant.epoch):
+                if cutover is None or (cutover["contract_digest"] != grant.contract_digest
+                                   or cutover["generation"] != grant.generation
+                                   or cutover["epoch"] != grant.epoch):
                     raise PropagationFenceError("stale_generation")
             for target in targets:
                 self._held().read(Path(target))
