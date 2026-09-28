@@ -683,6 +683,12 @@ def _native_three_client_batch(tmp_path, monkeypatch):
         parent.chmod(0o700)
     (lock / "catalog.lock").write_bytes(b"")
     (lock / "catalog.lock").chmod(0o600)
+    if os.name == "nt":
+        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+
+        tree = WindowsFixtureTree(tmp_path)
+        for path in sorted(tmp_path.rglob("*"), key=lambda path: len(path.parts)):
+            tree.establish_full_control(path)
     fence = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "client-catalog", tmp_path, backup_root=tmp_path / "backups",
         clock=_trusted_test_clock, current_authority=lambda *_: True,
