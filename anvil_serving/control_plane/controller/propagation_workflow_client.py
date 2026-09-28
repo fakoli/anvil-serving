@@ -6,9 +6,20 @@ from pathlib import Path
 import re
 import socket
 import stat
+import struct
+import time
 
 from ..propagation import _digest, _id
 from .propagation_job_store import PropagationJobError
+
+_EXCHANGE_SECONDS = 10
+
+
+def _remaining(deadline: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise ValueError()
+    return remaining
 
 
 def _token(path: Path) -> str:
@@ -24,6 +35,28 @@ def _token(path: Path) -> str:
         return value
     except (OSError, ValueError, UnicodeError):
         raise PropagationJobError("workflow_service_unavailable") from None
+
+
+def _socket_identity(path: Path) -> tuple[int, int, int]:
+    parent = path.parent
+    if parent.resolve(strict=True) != parent:
+        raise ValueError()
+    for ancestor in (parent, *parent.parents):
+        info = os.lstat(ancestor)
+        if not stat.S_ISDIR(info.st_mode):
+            raise ValueError()
+        if info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX):
+            raise ValueError()
+    directory = os.lstat(parent)
+    endpoint = os.lstat(path)
+    private = (directory.st_uid == os.geteuid() and stat.S_IMODE(directory.st_mode) == 0o700
+               and stat.S_IMODE(endpoint.st_mode) == 0o600)
+    shared = (directory.st_gid in (*os.getgroups(), os.getegid()) and stat.S_IMODE(directory.st_mode) == 0o710
+              and stat.S_IMODE(endpoint.st_mode) == 0o660)
+    if (not stat.S_ISSOCK(endpoint.st_mode) or endpoint.st_uid != directory.st_uid
+            or endpoint.st_gid != directory.st_gid or not (private or shared)):
+        raise ValueError()
+    return endpoint.st_ino, endpoint.st_uid, endpoint.st_gid
 
 
 class WorkflowControlClient:
@@ -45,17 +78,24 @@ class WorkflowControlClient:
                    "contract_digest": contract_digest, "token": self.secret}
         raw = json.dumps(request, sort_keys=True, separators=(",", ":")).encode("ascii") + b"\n"
         try:
+            endpoint = _socket_identity(self.path)
+            deadline = time.monotonic() + _EXCHANGE_SECONDS
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
-                conn.settimeout(10)
+                conn.settimeout(_remaining(deadline))
                 conn.connect(str(self.path))
+                pid, uid, gid = struct.unpack("3i", conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i")))
+                if (pid < 1 or (uid, gid) != endpoint[1:] or _socket_identity(self.path) != endpoint):
+                    raise ValueError()
+                conn.settimeout(_remaining(deadline))
                 conn.sendall(raw)
                 response = bytearray()
                 while len(response) <= 4096 and not response.endswith(b"\n"):
+                    conn.settimeout(_remaining(deadline))
                     part = conn.recv(4097 - len(response))
                     if not part:
                         break
                     response.extend(part)
-            if len(response) > 4096 or not response.endswith(b"\n"):
+            if time.monotonic() > deadline or len(response) > 4096 or not response.endswith(b"\n"):
                 raise ValueError()
             value = json.loads(response)
             if type(value) is not dict or set(value) != {"ok", "result"} or value["ok"] is not True or type(value["result"]) is not dict:
