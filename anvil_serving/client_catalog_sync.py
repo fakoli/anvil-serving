@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import nullcontext
 from datetime import datetime, timezone
 import hashlib
 import ipaddress
@@ -702,10 +703,15 @@ def sync_pi_media(
     """Withdraw Pi media config, optionally under an owner native fence."""
 
     if fence is None or dry_run or not confirm:
-        return _sync_pi_media(
-            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
-            dry_run=dry_run, confirm=confirm,
-        )
+        from .propagation_fencing import NativeMutationFence
+        target = Path(os.path.expanduser(DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config))
+        root = Path.home() if target.is_relative_to(Path.home()) else target.parent
+        guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
+        with guard:
+            return _sync_pi_media(
+                mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+                dry_run=dry_run, confirm=confirm,
+            )
     if canonical_contract is None:
         raise ClientCatalogError("fenced Pi media sync requires an owner contract")
     selected_path = DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config
@@ -2077,7 +2083,19 @@ def sync_clients(
 
 
     if fence is None or dry_run or not confirm:
-        return _sync_clients(
+        from .propagation_fencing import NativeMutationFence
+        selected = _normalize_clients(clients)
+        paths = [Path(os.path.expanduser(state_path))]
+        if "openclaw" in selected:
+            paths.append(Path(os.path.expanduser(openclaw_config)))
+        if "hermes" in selected:
+            paths.append(Path(os.path.expanduser(hermes_config)))
+        if "pi" in selected:
+            paths.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+        root = Path.home() if any(path.is_relative_to(Path.home()) for path in paths) else paths[0].parent
+        guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
+        with guard:
+            return _sync_clients(
             base_url=base_url, api_key_env=api_key_env, clients=clients,
             openclaw_config=openclaw_config, hermes_config=hermes_config,
             hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
@@ -2092,7 +2110,7 @@ def sync_clients(
             openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
             restart=restart, refresh_openclaw_service=refresh_openclaw_service,
             restart_hermes=restart_hermes, hermes_run=hermes_run,
-        )
+            )
     if (canonical_contract is None or restart_openclaw_on_change
             or restart_hermes_on_change):
         raise ClientCatalogError("fenced client sync requires a contract, direct files, and no blind session restart")

@@ -294,7 +294,7 @@ def tool_client_catalog_sync(args: dict) -> dict:
                 timeout_seconds=harness.DEFAULT_TRANSPORT_TIMEOUT_SECONDS,
             ),
         )
-    except (OSError, ClientCatalogError) as exc:
+    except (OSError, ClientCatalogError, ValueError) as exc:
         raise ToolError("client_catalog_sync_failed", str(exc)) from exc
     return _ok(result)
 

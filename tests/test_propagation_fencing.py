@@ -125,6 +125,48 @@ def test_stale_or_reused_generation_fails_under_the_shared_lock(tmp_path):
             pass
 
 
+def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, monkeypatch):
+    from anvil_serving import client_catalog_sync
+
+    value = parse_contract(_CONTRACT).value
+    value["targets"][0]["resource_keys"] = ["client-catalog"]
+    value["effect_set_digest"] = effect_scope_digest(value)
+    contract = parse_contract(value).canonical
+    target = tmp_path / "catalog.json"
+    target.write_bytes(b"before")
+    _private_file(target)
+    owner = TrustedNativeOwner(
+        "owner-1", "client-catalog", tmp_path, clock=_trusted_test_clock,
+        current_authority=lambda *_args: True,
+        effect_bindings={"catalog": ("catalog-apply", target)},
+    )
+    fence = NativeMutationFence(owner, tmp_path)
+    with NativeMutationFence.legacy_catalog_write(tmp_path):
+        with NativeMutationFence.legacy_catalog_write(tmp_path):
+            pass
+        with pytest.raises(PropagationFenceError, match="operation_in_progress"):
+            fence.activate_catalog_cutover(contract)
+    fence.activate_catalog_cutover(contract)
+    fence.activate_catalog_cutover(contract)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        with NativeMutationFence.legacy_catalog_write(tmp_path):
+            pytest.fail("retired writer entered")
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    touched = []
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", lambda **_kwargs: touched.append("catalog"))
+    monkeypatch.setattr(client_catalog_sync, "_sync_pi_media", lambda **_kwargs: touched.append("media"))
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=False, confirm=True)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_pi_media(withdraw=True, dry_run=False, confirm=True)
+    assert touched == []
+    client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=True)
+    assert touched == ["catalog"]
+
+
 def test_drift_and_interruption_remain_recovery_required_without_rollback_claim(tmp_path):
     fence, target = _fence(tmp_path)
     with pytest.raises(RuntimeError, match="simulated interruption"):
@@ -352,8 +394,8 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
         fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(other,), effect_targets={"catalog": other})
     outside = tmp_path / "outside"; outside.mkdir()
     import shutil
-    shutil.rmtree(root / ".anvil-serving")
-    (root / ".anvil-serving").symlink_to(outside, target_is_directory=True)
+    shutil.rmtree(root / ".config" / "anvil-serving")
+    (root / ".config" / "anvil-serving").symlink_to(outside, target_is_directory=True)
     fresh = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", root, backup_root=root / "backups",
         clock=_trusted_test_clock,

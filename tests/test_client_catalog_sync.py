@@ -44,6 +44,13 @@ def tmp_path(tmp_path):
         yield tmp_path
 
 
+@pytest.fixture(autouse=True)
+def isolated_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+
 def _private_file(path: Path) -> None:
     if os.name != "nt":
         os.chmod(path, 0o600)
@@ -1897,7 +1904,7 @@ def test_promotion_binding_refuses_drift_before_client_files(tmp_path, observed,
             pi_settings=str(tmp_path / "settings.json"),
             environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
         )
-    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir() if p.is_file()} == before
 
 
 def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):

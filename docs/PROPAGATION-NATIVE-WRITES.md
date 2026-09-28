@@ -3,6 +3,8 @@
 The propagation foundation provides an in-process owner fence around direct
 client catalog writes and Pi media withdrawal. It is not a deployed fleet writer.
 Legacy callers remain unenrolled until the reviewed single-writer cutover.
+The native journal uses the user's protected `.config/anvil-serving/propagation-fencing`
+directory; the separate operator home may be a symlink and is not journal custody.
 
 The owner supplies a canonical approved contract, generation, catalog digest,
 resource identity and an immutable `TrustedNativeOwner.effect_bindings` mapping
@@ -15,6 +17,12 @@ operation journal share one owner/resource lock across callers. Expired authorit
 stale generations, conflicting identities and unresolved operations fail closed.
 The installed `current_authority` callback checks admitted contract/generation/epoch
 at lock entry and immediately before replacement. It is required for writes.
+For the `client-catalog` resource, the admitted owner first calls
+`activate_catalog_cutover` under that same lock. Existing direct CLI/MCP, scheduled
+and manual catalog/media writes then refuse `stale_generation` at their shared
+mutation entry. Installation must drain old binaries and disable their triggers
+before activation; an old binary cannot be retroactively fenced. The cutover
+marker retires legacy writes but does not itself approve a new effect.
 An interrupted transaction retains its original effect records for recovery;
 it does not automatically compensate or claim that an external effect stopped.
 
