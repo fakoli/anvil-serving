@@ -321,7 +321,7 @@ required operands, choices, and defaults.
 | `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--controller-url`<br>`--auth-env`<br>`--auth-file` |
 | `mcp tools` | List bounded MCP tools. | `read` / `bounded` | - |
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
-| `controller serve` | Run the private controller. | `process` / `foreground` | - |
+| `controller serve` | Run the private controller. | `process` / `foreground` | `--propagation-profile`<br>`--propagation-profile-sha256` |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `controller inspect` | Read-only metadata inspection for one controller container. | `read` / `bounded` | `--container` |
 | `controller logs` | Read bounded metadata-only controller audit events. | `read` / `bounded` | `--container`<br>`--tail` |

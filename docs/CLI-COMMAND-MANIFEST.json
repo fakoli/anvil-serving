@@ -31367,6 +31367,24 @@
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--propagation-profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protected installed owner profile.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--propagation-profile-sha256"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Reviewed exact profile SHA-256.",
+          "value_name": "SHA256"
         }
       ],
       "output_policy": "foreground",
