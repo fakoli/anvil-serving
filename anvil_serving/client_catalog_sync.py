@@ -1520,8 +1520,8 @@ def _apply_hermes_profile_plans(
                 )
 
 
-def _render_fenced_hermes_profiles(rows, configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
-    """Let Hermes render YAML only in a disposable home; return exact bytes."""
+def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
+    """Read and render Hermes only from journal bytes in a disposable home."""
     selected = ",".join(configs)
     if _normalize_hermes_profiles(selected) != tuple(configs):
         raise ClientCatalogError("Hermes profile names cannot bind a scratch render")
@@ -1542,6 +1542,9 @@ def _render_fenced_hermes_profiles(rows, configs, originals, catalog, *, hermes_
                    "XDG_CACHE_HOME": str(root / "cache")}
             return run(argv, env=env, **kwargs)
 
+        rows, _ = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
+            hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
+            run=scratch_run)
         _apply_hermes_profile_plans(rows, hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=scratch_run)
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
             hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
@@ -1557,7 +1560,7 @@ def _render_fenced_hermes_profiles(rows, configs, originals, catalog, *, hermes_
             if len(raw) > DEFAULT_MAX_RESPONSE_BYTES:
                 raise ClientCatalogError("Hermes scratch render exceeds native file limit")
             rendered[profile] = raw
-        return rendered
+        return rows, rendered
 
 
 def _json_bytes(payload: Mapping) -> bytes:
@@ -2533,28 +2536,24 @@ def _sync_clients(
                     raise ClientCatalogError("Hermes profile set changed before apply")
                 for profile, path in pinned_configs.items():
                     before_images["hermes:" + profile] = journal.read(path)
-            hermes_rows, hermes_configs = plan_hermes_profiles(
-                catalog,
-                hermes_bin=hermes_bin,
-                hermes_home=hermes_home,
-                hermes_profiles=hermes_profiles,
-                timeout_seconds=timeout_seconds,
-                run=hermes_run,
-            )
-            if journal is not None:
-                if hermes_configs != pinned_configs:
-                    raise ClientCatalogError("Hermes profile set changed before apply")
-                originals = {profile: before_images["hermes:" + profile] for profile in hermes_configs}
-                if any(journal.read(path) != originals[profile] for profile, path in hermes_configs.items()):
+                originals = {profile: before_images["hermes:" + profile] for profile in pinned_configs}
+                hermes_rows, rendered = _render_fenced_hermes_profiles(
+                    pinned_configs, originals, catalog, hermes_bin=hermes_bin,
+                    timeout_seconds=timeout_seconds, run=hermes_run)
+                if any(journal.read(path) != originals[profile] for profile, path in pinned_configs.items()):
                     raise ClientCatalogError("Hermes profile changed during preview")
-                rendered = _render_fenced_hermes_profiles(hermes_rows, hermes_configs, originals, catalog,
-                    hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=hermes_run)
                 if _discover_hermes_profile_configs(hermes_home, hermes_profiles) != pinned_configs:
                     raise ClientCatalogError("Hermes profile set changed during preview")
-                for profile, path in hermes_configs.items():
+                hermes_configs = pinned_configs
+                for profile, path in pinned_configs.items():
                     name = "hermes:" + profile
                     paths[name] = path
                     desired[name] = rendered[profile]
+            else:
+                hermes_rows, hermes_configs = plan_hermes_profiles(
+                    catalog, hermes_bin=hermes_bin, hermes_home=hermes_home,
+                    hermes_profiles=hermes_profiles, timeout_seconds=timeout_seconds,
+                    run=hermes_run)
         else:
             desired["hermes"] = _render_hermes_document(
                 catalog, read_text("hermes")
@@ -2748,12 +2747,9 @@ def _sync_clients(
             if name != "openclaw_env"
         }
     )
-    file_hashes.update(
-        {
-            "hermes:" + profile: _file_sha256(path)
-            for profile, path in hermes_configs.items()
-        }
-    )
+    if journal is None:
+        file_hashes.update({"hermes:" + profile: _file_sha256(path)
+                            for profile, path in hermes_configs.items()})
     state = {
         "config_sha256": catalog["config_sha256"],
         "client_excluded_aliases": {**prior_exclusions, **exclusions},

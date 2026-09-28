@@ -182,6 +182,7 @@ class _HermesRunner:
     def __init__(self, states):
         self.states = states
         self.sets = []
+        self.homes = []
 
     @staticmethod
     def _completed(*, returncode=0, stdout="", stderr=""):
@@ -193,6 +194,7 @@ class _HermesRunner:
 
     def __call__(self, argv, **_kwargs):
         scratch = _kwargs.get("env", {}).get("HERMES_HOME")
+        self.homes.append(scratch)
         if scratch:
             assert _kwargs["env"]["HOME"] == scratch
             assert all(_kwargs["env"][key].startswith(scratch + os.sep)
@@ -790,11 +792,22 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
             *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
     before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
               for target in targets[3:]}
+    original_file_sha256 = client_catalog_sync._file_sha256
+
+    def no_unfenced_hermes_hash(path):
+        if Path(path) in {Path(target.hermes_config) for target in targets[3:]}:
+            raise AssertionError("fenced Hermes must hash journal bytes")
+        return original_file_sha256(path)
+
+    monkeypatch.setattr(client_catalog_sync, "_file_sha256", no_unfenced_hermes_hash)
     assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == [
         f"target-{index}" for index in range(1, 6)]
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
     assert options["hermes_run"].sets == []
+    assert options["hermes_run"].homes
+    assert all(home is not None and Path(home).name.startswith("anvil-hermes-render-")
+               for home in options["hermes_run"].homes)
     assert Path(targets[3].hermes_config).read_bytes() != before["default"]
     assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
