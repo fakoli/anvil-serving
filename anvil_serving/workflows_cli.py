@@ -132,24 +132,6 @@ def _local_preview(profile: str) -> dict:
         raise SafetyError("local workflow release is unavailable", code="workflow_release_unavailable") from None
 
 
-def _snapshot_journal(profile: str, output: str) -> dict:
-    if profile != "propagation-v1":
-        raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
-    from .propagation_fencing import NativeMutationFence, PropagationFenceError, TrustedNativeOwner
-
-    try:
-        root = Path(_read_config()["native_storage_root"])
-        destination = Path(output)
-        if not root.is_absolute() or not destination.is_absolute():
-            raise ValueError()
-        owner = TrustedNativeOwner("backup", "backup", root)
-        manifest = NativeMutationFence(owner, root / ".anvil-serving/propagation-fencing").snapshot_journal(destination)
-        digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        return {"profile_id": profile, "file_count": len(manifest["files"]), "manifest_digest": digest}
-    except (KeyError, OSError, ValueError, TypeError, PropagationFenceError):
-        raise SafetyError("native journal snapshot is unavailable", code="workflow_recovery_unavailable") from None
-
-
 def _arguments(argv: list[str]) -> tuple[str, dict]:
     if not argv:
         raise UsageError("choose a workflow action", code="workflow_action_required")
@@ -251,7 +233,11 @@ def main(argv: list[str] | None = None) -> CommandResult:
         if action == "deployment_preview":
             result = _local_preview(arguments["profile_id"])
         elif action == "recovery_snapshot-journal":
-            result = _snapshot_journal(arguments["profile_id"], arguments["output"])
+            from .commands.workflows_recovery import snapshot_journal
+            try:
+                result = snapshot_journal(_read_config()["native_storage_root"], arguments["profile_id"], arguments["output"])
+            except (KeyError, OSError, ValueError, TypeError):
+                raise SafetyError("native journal snapshot is unavailable", code="workflow_recovery_unavailable") from None
         elif action == "deployment_verify":
             result = _local_preview(arguments["profile_id"])
             url, token = _config()

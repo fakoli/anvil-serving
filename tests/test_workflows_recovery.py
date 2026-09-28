@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.propagation_fencing import NativeMutationFence, PropagationFenceError, TrustedNativeOwner
-from anvil_serving.workflows_cli import _snapshot_journal
+from anvil_serving.commands.workflows_recovery import snapshot_journal
 
 
 pytestmark = pytest.mark.skipif(not hasattr(os, "O_NOFOLLOW"), reason="native no-follow open is required")
@@ -47,13 +47,12 @@ def test_snapshot_rejects_existing_or_symlink_destination(tmp_path):
         fence.snapshot_journal(linked)
 
 
-def test_operator_snapshot_uses_protected_configured_root(tmp_path, monkeypatch):
+def test_operator_snapshot_uses_protected_configured_root(tmp_path):
     fence = _fence(tmp_path)
     with fence._lock():
         path = fence.journal_root / "resource-1.index.json"
         path.write_text("{}")
         path.chmod(0o600)
-    monkeypatch.setattr("anvil_serving.workflows_cli._read_config", lambda: {"native_storage_root": str(tmp_path)})
-    result = _snapshot_journal("propagation-v1", str(tmp_path / "operator-export"))
+    result = snapshot_journal(str(tmp_path), "propagation-v1", str(tmp_path / "operator-export"))
     assert result["file_count"] == 1
     assert len(result["manifest_digest"]) == 64
