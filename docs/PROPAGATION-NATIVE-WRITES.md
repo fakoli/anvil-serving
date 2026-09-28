@@ -40,6 +40,14 @@ controller has no execution profile and declares propagation unavailable.
 Installation and the operator start/status commands are separate release work;
 these internal interfaces do not establish deployment readiness.
 
+The owner can resolve one canonical approved contract through
+`PinnedApprovedContract`. Its expected SHA-256 must come from a separately
+reviewed, protected installation profile; it cannot be computed from the
+incoming request or the file at runtime. Every lookup rechecks the file pin,
+ownership and path custody, so replacement or revocation fails closed. This
+resolver is not yet wired into `controller serve` and does not itself establish
+active model identity or authorization to apply a fleet effect.
+
 The bound service exposes `propagation.accept.v1`,
 `propagation.dispatch.pending.v1`, `propagation.dispatch.record.v1`, and
 `fleet.propagation.preview.v1`, `fleet.propagation.submit.v1`,
