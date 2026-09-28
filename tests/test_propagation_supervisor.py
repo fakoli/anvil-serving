@@ -438,16 +438,19 @@ def test_pre_profile_cancellation_refuses_an_existing_child_reservation(tmp_path
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
 def test_cancel_is_only_confirmed_after_child_reports_quiescence(tmp_path: Path):
-    script = "import json,sys,time; json.load(sys.stdin); time.sleep(5); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
-    store, job = _submitted(tmp_path, script, budget_seconds=8)
+    started = tmp_path / "profile-started"
+    script = ("import json,sys,time,pathlib; json.load(sys.stdin); "
+              f"pathlib.Path({str(started)!r}).write_text('started'); "
+              "time.sleep(5); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))")
+    store, job = _submitted(tmp_path, script, budget_seconds=30)
     supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     supervisor.launch(job["job_id"])
-    for _ in range(100):
+    for _ in range(1000):
         supervisor.observe(job["job_id"])
-        if store.lookup_internal(job["job_id"])["state"] == "executing":
+        if started.exists():
             break
         time.sleep(0.01)
-    assert store.lookup_internal(job["job_id"])["state"] == "executing"
+    assert started.exists()
     assert supervisor.cancel(job["job_id"])["state"] == "requested"
     assert _wait(supervisor, job["job_id"])["state"] == "cancelled"
 

@@ -125,6 +125,7 @@ class PiWebConfig:
     bridge_source: Path | None = None
     bridge_parent_origin: str | None = None
     bridge_token_env_file: Path | None = None
+    observer_token_env_file: Path | None = None
 
 
 def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
@@ -138,6 +139,7 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         "version", "port", "hostname", "allowed_hosts", "idle_timeout_ms",
         "password_env_file", "service_user", "install_root", "node_path",
         "bridge_source", "bridge_parent_origin", "bridge_token_env_file",
+        "observer_token_env_file",
     }
     if set(declared) - allowed:
         raise PiWebError("Pi Web configuration has unsupported fields")
@@ -180,6 +182,7 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
     bridge_source = declared.get("bridge_source")
     bridge_parent_origin = declared.get("bridge_parent_origin")
     bridge_token_env_file = declared.get("bridge_token_env_file")
+    observer_token_env_file = declared.get("observer_token_env_file")
     bridge_values = (bridge_source, bridge_parent_origin, bridge_token_env_file)
     if any(value is not None for value in bridge_values):
         if any(value is None for value in bridge_values):
@@ -188,6 +191,14 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         bridge_token_env_file = _absolute_path(bridge_token_env_file, "pi_web.bridge_token_env_file")
         if not _valid_bridge_origin(bridge_parent_origin):
             raise PiWebError("pi_web.bridge_parent_origin must be one exact HTTPS origin")
+    if observer_token_env_file is not None:
+        observer_token_env_file = _absolute_path(
+            observer_token_env_file, "pi_web.observer_token_env_file",
+        )
+        if bridge_source is None or version != "0.9.2":
+            raise PiWebError(
+                "pi_web.observer_token_env_file requires the reviewed Pi Web 0.9.2 bridge"
+            )
     return PiWebConfig(
         version=version,
         port=_integer(declared.get("port", DEFAULT_PORT), "pi_web.port", 1024, 65535),
@@ -201,6 +212,7 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         bridge_source=bridge_source,
         bridge_parent_origin=bridge_parent_origin,
         bridge_token_env_file=bridge_token_env_file,
+        observer_token_env_file=observer_token_env_file,
     )
 
 
@@ -299,15 +311,23 @@ def install_root_for(config: PiWebConfig) -> Path:
     return config.install_root or default_install_root()
 
 
-def _password_file_proof(path: Path) -> None:
+def _protected_env_file_proof(path: Path, label: str) -> None:
     try:
         details = os.stat(path, follow_symlinks=False)
     except OSError as exc:
-        raise PiWebError(f"declared pi_web.password_env_file does not exist: {path}") from exc
+        raise PiWebError(f"declared {label} does not exist: {path}") from exc
     if not stat_module.S_ISREG(details.st_mode):
-        raise PiWebError("pi_web.password_env_file must be a regular file")
+        raise PiWebError(f"{label} must be a regular file")
     if details.st_mode & 0o077:
-        raise PiWebError("pi_web.password_env_file must not be group- or world-readable")
+        raise PiWebError(f"{label} must not be group- or world-readable")
+
+
+def _password_file_proof(path: Path) -> None:
+    _protected_env_file_proof(path, "pi_web.password_env_file")
+
+
+def _observer_token_file_proof(path: Path) -> None:
+    _protected_env_file_proof(path, "pi_web.observer_token_env_file")
 
 
 def unit_content(
@@ -345,6 +365,8 @@ def unit_content(
         lines.append(f"EnvironmentFile={_unit_value(config.password_env_file)}")
     if config.bridge_token_env_file is not None:
         lines.append(f"EnvironmentFile={_unit_value(config.bridge_token_env_file)}")
+    if config.observer_token_env_file is not None:
+        lines.append(f"EnvironmentFile={_unit_value(config.observer_token_env_file)}")
     lines.extend(
         [
             "NoNewPrivileges=yes",
@@ -385,6 +407,8 @@ def plan(config: PiWebConfig, *, node_path: str | None = None) -> dict[str, obje
     _, user_home = _service_identity(config.service_user)
     if config.password_env_file is not None:
         _password_file_proof(config.password_env_file)
+    if config.observer_token_env_file is not None:
+        _observer_token_file_proof(config.observer_token_env_file)
     bridge = config.bridge_source is not None
     entry = version_dir / ("bin/pi-web.js" if bridge else PACKAGE_BIN)
     prefix = ["runuser", "-u", config.service_user, "--", *_build_env(
@@ -1055,6 +1079,8 @@ class PiWebInstaller:
             _password_file_proof(config.password_env_file)
         if config.bridge_token_env_file is not None:
             _password_file_proof(config.bridge_token_env_file)
+        if config.observer_token_env_file is not None:
+            _observer_token_file_proof(config.observer_token_env_file)
         root = install_root_for(config)
         _safe_install_root(root)
         import fcntl
