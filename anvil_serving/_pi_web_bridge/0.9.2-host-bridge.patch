@@ -288,3 +288,216 @@ index 0bc12b4..9f60107 100644
      // proxy.ts matches /api/:path*, and Next buffers the request body whenever
      // a proxy is present, capped at 10 MB by default. The upload route accepts
      // up to 100 MB per request, so raise the buffer above that or large uploads
+diff --git a/lib/propagation-observer-auth.ts b/lib/propagation-observer-auth.ts
+new file mode 100644
+--- /dev/null
++++ b/lib/propagation-observer-auth.ts
+@@ -0,0 +1,14 @@
++import { timingSafeEqual } from "node:crypto";
++
++const OBSERVER_TOKEN = /^[A-Za-z0-9_-]{32,256}$/;
++
++export function propagationObserverAuthorized(value: string | null): boolean {
++  const observer = process.env.PI_WEB_PROPAGATION_OBSERVER_TOKEN;
++  const bridge = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
++  const password = process.env.PI_WEB_PASSWORD;
++  if (!observer || !OBSERVER_TOKEN.test(observer) || observer === bridge || observer === password
++      || !value || !value.startsWith("Bearer ")) return false;
++  const supplied = Buffer.from(value.slice(7));
++  const expected = Buffer.from(observer);
++  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
++}
+diff --git a/lib/propagation-observer.ts b/lib/propagation-observer.ts
+new file mode 100644
+--- /dev/null
++++ b/lib/propagation-observer.ts
+@@ -0,0 +1,137 @@
++import { createHash } from "node:crypto";
++import { getRpcSession } from "./rpc-manager";
++
++const NATIVE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
++const MAX_MODEL_STRING_BYTES = 4096;
++const MAX_CATALOG_MODELS = 4096;
++const MAX_CONTEXT_TOKENS = 16_777_216;
++
++type ManagedModel = {
++  provider: "anvil";
++  id: string;
++  contextWindow: number;
++  maxTokens: number;
++};
++
++type ObservedModel = {
++  model: ManagedModel;
++  digest: string;
++};
++
++type ObserverResponse = {
++  v: 1;
++  observed_at: string;
++  native_id: string;
++  loaded: boolean;
++  busy: boolean;
++  model: ManagedModel | null;
++  model_digest: string | null;
++  catalog_digest: string | null;
++};
++
++function boundedString(value: unknown): string | null {
++  return typeof value === "string" && value.length > 0
++    && Buffer.byteLength(value, "utf8") <= MAX_MODEL_STRING_BYTES ? value : null;
++}
++
++function boundedTokenCount(value: unknown): number | null {
++  return typeof value === "number" && Number.isSafeInteger(value)
++    && value > 0 && value <= MAX_CONTEXT_TOKENS ? value : null;
++}
++
++function digest(parts: readonly unknown[]): string {
++  return createHash("sha256").update(JSON.stringify(parts), "utf8").digest("hex");
++}
++
++function observedManagedModel(value: unknown): ObservedModel | null {
++  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
++  const record = value as Record<string, unknown>;
++  if (record.provider !== "anvil") return null;
++  const id = boundedString(record.id);
++  const api = boundedString(record.api);
++  const baseUrl = boundedString(record.baseUrl);
++  const contextWindow = boundedTokenCount(record.contextWindow);
++  const maxTokens = boundedTokenCount(record.maxTokens);
++  if (!id || !api || !baseUrl || contextWindow === null || maxTokens === null) return null;
++  const model: ManagedModel = { provider: "anvil", id, contextWindow, maxTokens };
++  return { model, digest: digest(["pi-session-model/v1", "anvil", id, api, baseUrl, contextWindow, maxTokens]) };
++}
++
++function catalogDigest(modelRuntime: unknown): string | null {
++  if (!modelRuntime || typeof modelRuntime !== "object") return null;
++  const getAvailableSnapshot = (modelRuntime as { getAvailableSnapshot?: unknown }).getAvailableSnapshot;
++  if (typeof getAvailableSnapshot !== "function") return null;
++  let snapshot: unknown;
++  try {
++    snapshot = getAvailableSnapshot.call(modelRuntime);
++  } catch {
++    return null;
++  }
++  if (!Array.isArray(snapshot) || snapshot.length > MAX_CATALOG_MODELS) return null;
++  const seenIds = new Set<string>();
++  const seenDigests = new Set<string>();
++  const digests: string[] = [];
++  for (const entry of snapshot) {
++    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
++    const record = entry as Record<string, unknown>;
++    if (typeof record.provider !== "string") return null;
++    if (record.provider !== "anvil") continue;
++    const observed = observedManagedModel(record);
++    if (!observed || seenIds.has(observed.model.id) || seenDigests.has(observed.digest)) return null;
++    seenIds.add(observed.model.id);
++    seenDigests.add(observed.digest);
++    digests.push(observed.digest);
++  }
++  digests.sort();
++  return digest(["pi-session-catalog/v1", digests]);
++}
++
++function utcSeconds(): string {
++  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
++}
++
++export function validPropagationNativeId(value: string | null): value is string {
++  return typeof value === "string" && NATIVE_ID.test(value);
++}
++
++export function observePropagationSession(nativeId: string): ObserverResponse {
++  let session: ReturnType<typeof getRpcSession>;
++  try {
++    session = getRpcSession(nativeId);
++  } catch {
++    session = undefined;
++  }
++  let loaded = false;
++  let busy = false;
++  let model: ManagedModel | null = null;
++  let modelDigest: string | null = null;
++  let catalogDigestValue: string | null = null;
++  try {
++    loaded = Boolean(session?.isAlive()) && session?.inner.sessionId === nativeId;
++    if (loaded) {
++      busy = Boolean(session?.isRunning());
++      const observed = observedManagedModel(session?.inner.model);
++      if (observed) {
++        model = observed.model;
++        modelDigest = observed.digest;
++      }
++      catalogDigestValue = catalogDigest(session?.inner.modelRuntime);
++    }
++  } catch {
++    loaded = false;
++    busy = false;
++    model = null;
++    modelDigest = null;
++    catalogDigestValue = null;
++  }
++  return {
++    v: 1,
++    observed_at: utcSeconds(),
++    native_id: nativeId,
++    loaded,
++    busy,
++    model,
++    model_digest: modelDigest,
++    catalog_digest: catalogDigestValue,
++  };
++}
+diff --git a/app/api/propagation/session-state/route.ts b/app/api/propagation/session-state/route.ts
+new file mode 100644
+--- /dev/null
++++ b/app/api/propagation/session-state/route.ts
+@@ -0,0 +1,20 @@
++import { NextResponse } from "next/server";
++import {
++  observePropagationSession,
++  validPropagationNativeId,
++} from "@/lib/propagation-observer";
++import { propagationObserverAuthorized } from "@/lib/propagation-observer-auth";
++
++export const runtime = "nodejs";
++
++export function GET(request: Request) {
++  if (!propagationObserverAuthorized(request.headers.get("authorization"))) {
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++  const search = new URL(request.url).searchParams;
++  const nativeId = search.get("id");
++  if (search.size !== 1 || !validPropagationNativeId(nativeId)) {
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++  return NextResponse.json(observePropagationSession(nativeId), { headers: { "Cache-Control": "no-store" } });
++}
+diff --git a/proxy.ts b/proxy.ts
+index bb9a32c..cc27f23 100644
+--- a/proxy.ts
++++ b/proxy.ts
+@@ -3,6 +3,7 @@ import {
+   isApiRequestAllowed,
+   isApiRequestHostAllowed,
+ } from "@/lib/request-security";
++import { propagationObserverAuthorized } from "@/lib/propagation-observer-auth";
+ import {
+   isValidWebSessionToken,
+   isValidBasicAuthorization,
+@@ -24,2 +25,14 @@ export function proxy(request: NextRequest) {
+    return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
+  }
++  const isPropagationObserverRequest = request.method === "GET"
++    && request.nextUrl.pathname === "/api/propagation/session-state";
++  if (isPropagationObserverRequest) {
++    if (propagationObserverAuthorized(request.headers.get("authorization"))) {
++      return NextResponse.next();
++    }
++    return new NextResponse("Authentication required", {
++      status: 401,
++      headers: { "Cache-Control": "no-store" },
++    });
++  }
++
