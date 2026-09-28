@@ -84,6 +84,27 @@ def test_start_uses_bounded_authenticated_owner_operation(monkeypatch):
     assert seen[0][3]["timeout"] == 15 and seen[0][3]["max_response_bytes"] == 131_072
 
 
+def test_native_current_read_uses_closed_owner_operation(monkeypatch):
+    seen = []
+    result = {"current": True, "observed_at": "2026-09-28T00:00:00Z"}
+    def request(url, body, token, **options):
+        seen.append((url, body["params"]["name"], body["params"]["arguments"], token, options))
+        return {"result": {"structuredContent": {"ok": True, "data": result}}}
+    monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
+    args = {"intent_id": "intent-1", "job_id": "job-1", "contract_digest": "a" * 64,
+            "generation": 1, "target_id": "target-1", "resource_id": "catalog-1"}
+    assert workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    assert seen == [("https://127.0.0.1:8765", "fleet.propagation.current.v1", args,
+                     "synthetic-token", {"timeout": 15, "max_response_bytes": 131_072})]
+    result["current"] = False
+    assert not workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    result.pop("observed_at")
+    with pytest.raises(workflows_cli.ToolError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    with pytest.raises(workflows_cli.ToolError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **{**args, "generation": True})
+
+
 def test_capability_preflight_requires_exact_available_owner_contract(monkeypatch):
     monkeypatch.setattr(workflows_cli, "_config", lambda: ("https://127.0.0.1:8765", "synthetic-token"))
     declaration = capability_declaration()

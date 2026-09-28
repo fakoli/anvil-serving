@@ -217,6 +217,18 @@ def _call(url: str, token: str, name: str, arguments: dict) -> dict:
     return data
 
 
+def native_current_authority(url: str, token: str, *, intent_id: str, job_id: str,
+                             contract_digest: str, generation: int, target_id: str,
+                             resource_id: str) -> bool:
+    """Read the authenticated owner inside a native file fence callback."""
+    name = "fleet.propagation.current.v1"
+    arguments = {"intent_id": intent_id, "job_id": job_id,
+                 "contract_digest": contract_digest, "generation": generation,
+                 "target_id": target_id, "resource_id": resource_id}
+    validate_schema_value(arguments, _SCHEMAS[name]["input_schema"], "arguments")
+    return _call(url, token, name, arguments)["current"] is True
+
+
 def _status(url: str, token: str, arguments: dict) -> dict:
     targets, seen_cursors = [], set()
     first = None

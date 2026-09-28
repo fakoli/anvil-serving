@@ -123,19 +123,21 @@ It uses synthetic native effects and scoped loopback HTTP, not live fleet state.
 
 ## Hermes capability boundary
 
-Direct catalog rendering of a declared Hermes YAML file uses the bounded file
-writer. Hermes CLI-backed profile/media mutation is unavailable under the fence:
-it returns `UnsupportedCapability` before creating a lock, reservation, journal,
-backup, runner or restart. This refusal also applies to fenced preview calls.
-The orchestration layer must retain each declared profile as unsupported or
-pending, with its pinned identity; it cannot omit it or claim convergence.
+Fenced Hermes profile catalog rendering runs CLI reads and writes in a disposable
+home, then journals the exact proposed YAML bytes under the native file fence.
+Synthetic tests prove byte custody and refusal after a concurrent edit; installed
+profile behavior and loaded-session acceptance remain unverified. Hermes media
+mutation remains `UnsupportedCapability` under the fence, including preview.
+The orchestration layer must retain each declared profile as pending until its
+installed identity and session state are verified; it cannot omit it or claim
+convergence.
 
 The existing unfenced Hermes path is legacy pre-cutover behavior. It is not
-fenced propagation evidence. Release task T011 must deliver an owner-resolved,
-bounded per-profile writer and its capability/readback evidence before Hermes
-integration or cutover is accepted. That writer must preserve unrelated provider,
-credential, account and session state and use the same effect/backup custody.
-Loaded-session observation and idle-gated reload remain separate requirements.
+fenced propagation evidence. Release task T011 must provide installed
+per-profile capability/readback evidence before Hermes integration or cutover
+is accepted. The writer must preserve unrelated provider, credential, account
+and session state. Loaded-session observation and idle-gated reload remain
+separate requirements.
 
 ## Explicit recovery
 
