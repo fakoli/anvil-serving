@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from time import monotonic
 import urllib.request
 
 from ...controller_diagnostics import _capture_fixed_child, local_docker_prefix
@@ -16,6 +17,7 @@ from .propagation_job_store import PropagationJobError
 
 _CONTAINER_ID = re.compile(r"[0-9a-f]{64}\Z")
 _OWNER_FIELDS = frozenset({"container_id", "runtime_digest", "served_identity", "bound_port"})
+_OBSERVATION_DEADLINE_SECONDS = 20
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -96,14 +98,24 @@ class ObservedActiveIdentity:
 
     def __call__(self) -> ActiveIdentity:
         try:
+            deadline = monotonic() + _OBSERVATION_DEADLINE_SECONDS
+            def remaining() -> float:
+                value = deadline - monotonic()
+                if value <= 0:
+                    raise ValueError()
+                return value
+
             catalog = fetch_client_catalog(base_url=self.router_base_url,
                                            api_key_env=self.router_token_env, timeout_seconds=5)
+            remaining()
             if catalog["config_sha256"] != self.catalog_sha256:
                 raise ValueError()
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
             for owner in self.owners:
+                remaining()
                 capture = _capture_fixed_child(local_docker_prefix() + ("inspect", owner["container_id"]),
                                                merged=False)
+                remaining()
                 if capture.state != "ok" or capture.truncated:
                     raise ValueError()
                 rows = json.loads(capture.stdout)
@@ -116,17 +128,19 @@ class ObservedActiveIdentity:
                     raise ValueError()
                 _bound_port(row, owner["bound_port"])
                 request = urllib.request.Request(f"http://127.0.0.1:{owner['bound_port']}/v1/models")
-                with opener.open(request, timeout=5) as response:
+                with opener.open(request, timeout=min(5, remaining())) as response:
                     if response.status != 200:
                         raise ValueError()
                     raw = response.read(65537)
                 if len(raw) > 65536:
                     raise ValueError()
+                remaining()
                 payload = json.loads(raw)
                 if (type(payload) is not dict or type(payload.get("data")) is not list
                         or len(payload["data"]) != 1 or type(payload["data"][0]) is not dict
                         or payload["data"][0].get("id") != owner["served_identity"]):
                     raise ValueError()
+            remaining()
             return ActiveIdentity(self.ref, self.digest)
         except Exception:
             raise PropagationJobError("active_identity_unavailable") from None

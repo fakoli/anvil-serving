@@ -84,8 +84,8 @@ not prove the loaded weight bytes. Missing artifact evidence refuses production
 binding.
 The observation is point-in-time evidence, not a mutation-boundary fence;
 native effects still require a fresh current-authority check under their lock.
-Production binding also needs one aggregate observation deadline; the HTTP
-socket timeouts here are per exchange, not a whole-call deadline.
+The observer refuses success after a 20-second aggregate acceptance deadline;
+individual HTTP and Docker calls retain their own bounded timeouts and cleanup.
 Its container must share the intended host network namespace with the model
 loopback listener; an installed cross-namespace proof remains required.
 

@@ -83,3 +83,46 @@ def test_active_identity_refuses_unapproved_container_and_redirect():
                                         "served_identity": "model-a-exact", "bound_port": 9123}],
                                       "http://127.0.0.1:8000/v1", "ROUTER_TOKEN")
     assert active._NoRedirect().redirect_request(None, None, 302, "redirect", {}, "https://example.test") is None
+
+
+def test_active_identity_refuses_observation_after_aggregate_deadline(monkeypatch):
+    approved = _inspect()
+    clock = [0.0]
+    monkeypatch.setattr(active, "monotonic", lambda: clock[0])
+    def slow_catalog(**_kwargs):
+        clock[0] = 21.0
+        return {"config_sha256": "d" * 64}
+    monkeypatch.setattr(active, "fetch_client_catalog", slow_catalog)
+    monkeypatch.setattr(active, "_capture_fixed_child", lambda *_args, **_kwargs: pytest.fail("late Docker observation"))
+    observer = active.ObservedActiveIdentity(
+        "activation-1", "d" * 64,
+        [{"container_id": approved["Id"], "runtime_digest": active._runtime_digest(approved),
+          "served_identity": "model-a-exact", "bound_port": 9123}],
+        "http://127.0.0.1:8000/v1", "ROUTER_TOKEN")
+    with pytest.raises(PropagationJobError, match="active_identity_unavailable"):
+        observer()
+
+
+def test_active_identity_refuses_late_served_identity(monkeypatch):
+    approved = _inspect()
+    clock = [0.0]
+    monkeypatch.setattr(active, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(active, "fetch_client_catalog", lambda **_kwargs: {"config_sha256": "d" * 64})
+    monkeypatch.setattr(active, "_capture_fixed_child", lambda *_args, **_kwargs:
+                        ChildCapture("ok", json.dumps([approved]).encode(), b"", False))
+    class SlowResponse(Response):
+        def read(self, *_args):
+            clock[0] = 21.0
+            return b'{"data":[{"id":"model-a-exact"}]}'
+    class SlowOpener:
+        def open(self, _request, timeout):
+            assert timeout == 5
+            return SlowResponse()
+    monkeypatch.setattr(active.urllib.request, "build_opener", lambda *_handlers: SlowOpener())
+    observer = active.ObservedActiveIdentity(
+        "activation-1", "d" * 64,
+        [{"container_id": approved["Id"], "runtime_digest": active._runtime_digest(approved),
+          "served_identity": "model-a-exact", "bound_port": 9123}],
+        "http://127.0.0.1:8000/v1", "ROUTER_TOKEN")
+    with pytest.raises(PropagationJobError, match="active_identity_unavailable"):
+        observer()
