@@ -97,10 +97,29 @@ def test_capability_preflight_requires_exact_available_owner_contract(monkeypatc
     assert ready.exit_code == 0 and ready.data["state"] == "ready"
     assert len(ready.data["operations"]) == 14 and ready.data["effects"] == []
     assert calls == [{"name": "propagation_capabilities", "arguments": {},
-                      "_meta": {"io.modelcontextprotocol/protocolVersion": workflows_cli.mcp.PROTOCOL_VERSION}}]
+                      "_meta": {workflows_cli.PROTOCOL_VERSION_META_KEY: workflows_cli.mcp.PROTOCOL_VERSION,
+                                workflows_cli.CLIENT_CAPABILITIES_META_KEY: {},
+                                workflows_cli.CLIENT_INFO_META_KEY: {"name": "anvil-workflows-cli",
+                                                               "version": workflows_cli.mcp.SERVER_INFO["version"]}}}]
     declaration["operations"][0]["available"] = False
     refused = workflows_cli.main(["capabilities"])
     assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")
+def test_capability_preflight_reads_actual_authenticated_controller(tmp_path, monkeypatch):
+    owner = ControlledOwner(tmp_path)
+    policy = _authorization_policy(tmp_path, [
+        {"id": "reader", "scopes": ["propagation:status"], "credential_env": "READER"},
+    ])
+    env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-controller", "READER": "synthetic-reader"}
+    with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
+        monkeypatch.setattr(workflows_cli, "_config", lambda: (f"http://{host}:{port}", env["READER"]))
+        assert workflows_cli.main(["capabilities"]).data["state"] == "ready"
+    with running_controller(env=env, authorization_policy=policy) as (host, port):
+        monkeypatch.setattr(workflows_cli, "_config", lambda: (f"http://{host}:{port}", env["READER"]))
+        result = workflows_cli.main(["capabilities"])
+        assert result.exit_code != 0 and result.error.code == "workflow_owner_capabilities_missing"
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")

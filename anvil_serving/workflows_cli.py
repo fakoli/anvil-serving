@@ -15,6 +15,7 @@ from .control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
 from .control_plane.mcp.arguments import validate_schema_value
 from .control_plane.mcp.controller_client import remote_controller_request, resolve_controller_token_file
 from .control_plane.mcp.errors import ToolError
+from .control_plane.mcp.protocol import CLIENT_CAPABILITIES_META_KEY, CLIENT_INFO_META_KEY, PROTOCOL_VERSION_META_KEY
 from .control_plane.propagation import (
     MAX_TARGETS, PropagationContractError, _digest, _id, capability_declaration,
 )
@@ -193,7 +194,9 @@ def _call(url: str, token: str, name: str, arguments: dict) -> dict:
     response = remote_controller_request(url, {
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",
         "params": {"name": name, "arguments": arguments,
-                   "_meta": {"io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION}},
+                   "_meta": {PROTOCOL_VERSION_META_KEY: mcp.PROTOCOL_VERSION,
+                             CLIENT_CAPABILITIES_META_KEY: {},
+                             CLIENT_INFO_META_KEY: {"name": "anvil-workflows-cli", "version": mcp.SERVER_INFO["version"]}}},
     }, token, timeout=15, max_response_bytes=131_072)
     result = response.get("result")
     content = result.get("structuredContent") if isinstance(result, dict) else None
