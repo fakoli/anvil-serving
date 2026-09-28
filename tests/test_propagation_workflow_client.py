@@ -103,7 +103,7 @@ def test_control_client_has_one_exchange_deadline(tmp_path, monkeypatch):
     token.write_text("a" * 64)
     token.chmod(0o600)
     path = tmp_path / "control.sock"
-    monkeypatch.setattr(callback_client, "_EXCHANGE_SECONDS", 0.15)
+    monkeypatch.setattr(callback_client, "_EXCHANGE_SECONDS", 0.4)
     def slow_reply():
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
             server.bind(str(path))
@@ -111,10 +111,12 @@ def test_control_client_has_one_exchange_deadline(tmp_path, monkeypatch):
             server.listen(1)
             with server.accept()[0] as conn:
                 conn.recv(4096)
-                conn.sendall(b'{"ok":true,')
+                conn.sendall(b'{"ok":')
                 time.sleep(0.25)
                 try:
-                    conn.sendall(b'"result":{"state":"requested"}}\n')
+                    conn.sendall(b'true,"result":')
+                    time.sleep(0.25)
+                    conn.sendall(b'{"state":"requested"}}\n')
                 except BrokenPipeError:
                     pass
     server = Thread(target=slow_reply)
