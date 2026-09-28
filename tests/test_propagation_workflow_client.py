@@ -1,7 +1,6 @@
 """The controller callback uses a bounded authenticated local transport."""
 
 import json
-from pathlib import Path
 import socket
 import sys
 from threading import Thread
