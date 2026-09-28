@@ -103,6 +103,10 @@ declared target/resource and an executing job against the owner's current
 approval and activation. A native client uses it inside its file fence's
 current-authority callback; the read grants no file path or effect by itself.
 Transport failure or a superseded, cancelled or completed job refuses a write.
+The native client helper requires a closed success response and an observation
+within five seconds, with at most two seconds of future clock skew. It refuses
+responses that finish after a five-second acceptance window. The parent native
+supervisor still owns the hard execution budget if a transport stalls.
 
 Submit requires a complete current preview and retains one durable job identity.
 An expired preview cannot authorize a new effect, but a repeated submission can

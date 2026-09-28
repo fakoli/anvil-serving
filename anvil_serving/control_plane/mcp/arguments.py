@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -283,6 +284,8 @@ def validate_schema_value(
                 code,
                 f"{field!r} must be one of {schema_value['enum']!r}",
             )
+        if "pattern" in schema_value and re.fullmatch(schema_value["pattern"], value) is None:
+            raise ToolError("bad_argument", f"{field!r} does not match its required pattern")
     if isinstance(value, int) and not isinstance(value, bool):
         if "minimum" in schema_value and value < schema_value["minimum"]:
             raise ToolError(

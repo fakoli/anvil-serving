@@ -86,23 +86,53 @@ def test_start_uses_bounded_authenticated_owner_operation(monkeypatch):
 
 def test_native_current_read_uses_closed_owner_operation(monkeypatch):
     seen = []
-    result = {"current": True, "observed_at": "2026-09-28T00:00:00Z"}
+    result = {"current": True, "observed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+    envelope = {"result": {"structuredContent": {"ok": True, "data": result}}}
     def request(url, body, token, **options):
         seen.append((url, body["params"]["name"], body["params"]["arguments"], token, options))
-        return {"result": {"structuredContent": {"ok": True, "data": result}}}
+        return envelope
     monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
     args = {"intent_id": "intent-1", "job_id": "job-1", "contract_digest": "a" * 64,
             "generation": 1, "target_id": "target-1", "resource_id": "catalog-1"}
     assert workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
     assert seen == [("https://127.0.0.1:8765", "fleet.propagation.current.v1", args,
-                     "synthetic-token", {"timeout": 15, "max_response_bytes": 131_072})]
+                     "synthetic-token", {"timeout": 5, "max_response_bytes": 131_072})]
     result["current"] = False
     assert not workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    result["current"] = True
+    result["observed_at"] = "2000-01-01T00:00:00Z"
+    assert not workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    result["observed_at"] = "x" * 20
+    with pytest.raises(workflows_cli.ToolError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    result["observed_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    envelope["result"]["isError"] = True
+    with pytest.raises(workflows_cli.SafetyError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    envelope["result"].pop("isError")
+    envelope["error"] = {"code": -32000, "message": "refused"}
+    with pytest.raises(workflows_cli.SafetyError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
+    envelope.pop("error")
     result.pop("observed_at")
     with pytest.raises(workflows_cli.ToolError):
         workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **args)
     with pytest.raises(workflows_cli.ToolError):
         workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **{**args, "generation": True})
+    with pytest.raises(workflows_cli.ToolError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **{**args, "target_id": "../outside"})
+    with pytest.raises(workflows_cli.ToolError):
+        workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **{**args, "contract_digest": "x" * 64})
+
+
+def test_native_current_read_rejects_late_success(monkeypatch):
+    monkeypatch.setattr(workflows_cli, "_call", lambda *_args, **_kwargs: {
+        "current": True, "observed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+    ticks = iter((0.0, 5.01))
+    monkeypatch.setattr(workflows_cli.time, "monotonic", lambda: next(ticks))
+    assert not workflows_cli.native_current_authority("https://127.0.0.1:8765", "token",
+        intent_id="intent-1", job_id="job-1", contract_digest="a" * 64,
+        generation=1, target_id="target-1", resource_id="catalog-1")
 
 
 def test_capability_preflight_requires_exact_available_owner_contract(monkeypatch):

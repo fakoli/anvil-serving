@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 import stat
+import time
 import tomllib
 
 from . import mcp
@@ -192,15 +194,17 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
     return action, arguments
 
 
-def _call(url: str, token: str, name: str, arguments: dict) -> dict:
+def _call(url: str, token: str, name: str, arguments: dict, *, timeout: int = 15) -> dict:
     response = remote_controller_request(url, {
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",
         "params": {"name": name, "arguments": arguments,
                    "_meta": {PROTOCOL_VERSION_META_KEY: mcp.PROTOCOL_VERSION,
                              CLIENT_CAPABILITIES_META_KEY: {},
                              CLIENT_INFO_META_KEY: {"name": "anvil-workflows-cli", "version": mcp.SERVER_INFO["version"]}}},
-    }, token, timeout=15, max_response_bytes=131_072)
+    }, token, timeout=timeout, max_response_bytes=131_072)
     result = response.get("result")
+    if "error" in response or (isinstance(result, dict) and "isError" in result and result["isError"] is not False):
+        raise SafetyError("workflow owner refused the operation", code="workflow_owner_refused")
     content = result.get("structuredContent") if isinstance(result, dict) else None
     if not isinstance(content, dict) or content.get("ok") is not True or not isinstance(content.get("data"), dict):
         raise SafetyError("workflow owner refused the operation", code="workflow_owner_refused")
@@ -226,7 +230,16 @@ def native_current_authority(url: str, token: str, *, intent_id: str, job_id: st
                  "contract_digest": contract_digest, "generation": generation,
                  "target_id": target_id, "resource_id": resource_id}
     validate_schema_value(arguments, _SCHEMAS[name]["input_schema"], "arguments")
-    return _call(url, token, name, arguments)["current"] is True
+    started = time.monotonic()
+    data = _call(url, token, name, arguments, timeout=5)
+    if time.monotonic() - started > 5:
+        return False
+    try:
+        observed = datetime.strptime(data["observed_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    age = datetime.now(timezone.utc) - observed
+    return data["current"] is True and -timedelta(seconds=2) <= age <= timedelta(seconds=5)
 
 
 def _status(url: str, token: str, arguments: dict) -> dict:
