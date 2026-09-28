@@ -1522,6 +1522,72 @@ def _apply_hermes_profile_plans(
 
 def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
     """Read and render Hermes only from journal bytes in a disposable home."""
+    try:
+        import yaml
+    except ImportError as exc:
+        raise ClientCatalogError("fenced Hermes requires the pinned YAML renderer") from exc
+
+    class UniqueLoader(yaml.SafeLoader):
+        pass
+
+    def unique_mapping(loader, node):
+        loader.flatten_mapping(node)
+        result = {}
+        for key_node, value_node in node.value:
+            key = loader.construct_object(key_node, deep=True)
+            try:
+                if key in result:
+                    raise ClientCatalogError("Hermes config contains duplicate keys")
+                result[key] = loader.construct_object(value_node, deep=True)
+            except TypeError as exc:
+                raise ClientCatalogError("Hermes config contains an invalid mapping key") from exc
+        return result
+
+    UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
+
+    def path_for(document, key):
+        if key == "custom_providers":
+            return (key,)
+        if key.startswith("providers.anvil.") and key.removeprefix("providers.anvil.") in {
+                "default_model", "context_length", "models", "extra_body"}:
+            return ("providers", "anvil", key.removeprefix("providers.anvil."))
+        if key in {"model.context_length", "model.max_tokens",
+                   "auxiliary.compression.context_length", "auxiliary.vision.provider",
+                   "auxiliary.vision.model", "auxiliary.vision"}:
+            for section in ("auxiliary.compression", "auxiliary.vision"):
+                if section in document and (key == section or key.startswith(section + ".")):
+                    return (section, *key[len(section) + 1:].split(".")) if key != section else (section,)
+            return tuple(key.split("."))
+        raise ClientCatalogError("unsupported fenced Hermes update")
+
+    def change(document, key, value, *, remove=False):
+        path = path_for(document, key)
+        parent = document
+        for part in path[:-1]:
+            if not isinstance(parent, dict):
+                raise ClientCatalogError("Hermes config section is not a mapping")
+            if part not in parent:
+                if remove:
+                    return
+                parent[part] = {}
+            parent = parent[part]
+        if not isinstance(parent, dict):
+            raise ClientCatalogError("Hermes config section is not a mapping")
+        if remove:
+            parent.pop(path[-1], None)
+        else:
+            parent[path[-1]] = value
+
+    def configured(document, key):
+        if key in document:
+            return document[key]
+        value = document
+        for part in key.split("."):
+            if not isinstance(value, dict):
+                return None
+            value = value.get(part)
+        return value
+
     selected = ",".join(configs)
     if _normalize_hermes_profiles(selected) != tuple(configs):
         raise ClientCatalogError("Hermes profile names cannot bind a scratch render")
@@ -1542,10 +1608,41 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
                    "XDG_CACHE_HOME": str(root / "cache")}
             return run(argv, env=env, **kwargs)
 
-        rows, _ = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
-            hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
-            run=scratch_run)
-        _apply_hermes_profile_plans(rows, hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=scratch_run)
+        rows = []
+        for profile in configs:
+            path = root / ("config.yaml" if profile == "default"
+                           else "profiles/" + profile + "/config.yaml")
+            try:
+                document = yaml.load(path.read_bytes(), Loader=UniqueLoader)
+            except yaml.YAMLError as exc:
+                raise ClientCatalogError("Hermes config cannot be parsed safely") from exc
+            if not isinstance(document, dict):
+                raise ClientCatalogError("Hermes config is not a mapping")
+            row = render_hermes_profile_plan(catalog,
+                {key: configured(document, key) for key in HERMES_PROFILE_KEYS}, profile=profile)
+            rows.append(row)
+            if not row.get("changed_keys"):
+                continue
+            try:
+                for key in row.get("unsets", ()):
+                    change(document, key, None, remove=True)
+                for key, value in row.get("updates", {}).items():
+                    change(document, key, value)
+                rendered = yaml.safe_dump(document, sort_keys=False,
+                                          allow_unicode=True).encode("utf-8")
+                if yaml.safe_load(rendered) != document:
+                    raise ClientCatalogError("Hermes config did not round-trip")
+                if render_hermes_profile_plan(catalog,
+                        {key: configured(document, key) for key in HERMES_PROFILE_KEYS},
+                        profile=profile)["changed_keys"]:
+                    raise ClientCatalogError("Hermes source render did not converge")
+                path.write_bytes(rendered)
+            except yaml.YAMLError as exc:
+                raise ClientCatalogError("Hermes config cannot be rendered safely") from exc
+            if _run_hermes(hermes_bin, row["profile"],
+                    ["config", "check"], timeout_seconds=timeout_seconds,
+                    run=scratch_run).returncode:
+                raise ClientCatalogError("Hermes scratch config failed validation")
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
             hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
             run=scratch_run)

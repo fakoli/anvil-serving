@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 import anvil_serving.client_catalog_sync as client_catalog_sync
 
 from anvil_serving.control_plane.propagation import effect_scope_digest, parse_contract
@@ -183,6 +184,7 @@ class _HermesRunner:
         self.states = states
         self.sets = []
         self.homes = []
+        self.arguments = []
 
     @staticmethod
     def _completed(*, returncode=0, stdout="", stderr=""):
@@ -193,6 +195,7 @@ class _HermesRunner:
         )
 
     def __call__(self, argv, **_kwargs):
+        self.arguments.append(argv)
         scratch = _kwargs.get("env", {}).get("HERMES_HOME")
         self.homes.append(scratch)
         if scratch:
@@ -202,6 +205,9 @@ class _HermesRunner:
             if not hasattr(self, "scratch_runners"):
                 self.scratch_runners = {}
             runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))
+            profile = argv[2]
+            path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
+            runner.states[profile] = yaml.safe_load(path.read_bytes())
             result = runner(argv)
             if argv[3:5] in (["config", "set"], ["config", "unset"]):
                 profile = argv[2]
@@ -214,6 +220,12 @@ class _HermesRunner:
             key = command[2]
             if key not in self.states[profile]:
                 return self._completed(returncode=1, stderr="missing")
+            if key == "custom_providers" and "--raw" not in command:
+                masked = copy.deepcopy(self.states[profile][key])
+                for provider in masked:
+                    if "api_key" in provider:
+                        provider["api_key"] = "MASKED"
+                return self._completed(stdout=json.dumps(masked))
             return self._completed(stdout=json.dumps(self.states[profile][key]))
         if command[:2] == ["config", "set"]:
             key, raw = command[2:4]
@@ -381,6 +393,12 @@ def _write_hermes_profiles(root: Path):
         },
     }
     return home, states
+
+
+def _materialize_hermes_states(home, states):
+    for profile, state in states.items():
+        path = home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml"
+        path.write_text(json.dumps(state), encoding="utf-8")
 
 
 def _catalog(
@@ -688,6 +706,9 @@ def _native_three_client_batch(tmp_path, monkeypatch, *, include_hermes=False):
     if include_hermes:
         directory = tmp_path / "client-4"
         home, states = _write_hermes_profiles(directory)
+        states["default"]["custom_providers"].append(
+            {"name": "cloud-preserved", "model": "cloud-model", "api_key": "synthetic-secret-never-argv"})
+        _materialize_hermes_states(home, states)
         hermes_runner = _HermesRunner(states)
         for profile, index in (("default", 4), ("anvil-primary", 5)):
             identity = {field: value["targets"][index - 1][field] for field in (
@@ -792,6 +813,10 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
             *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
     before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
               for target in targets[3:]}
+    Path(targets[3].hermes_config).write_bytes(b"model: {}\nmodel: {}\n")
+    with pytest.raises(ClientCatalogError, match="duplicate keys"):
+        sync_client_catalog_batch(**options)
+    Path(targets[3].hermes_config).write_bytes(before["default"])
     original_file_sha256 = client_catalog_sync._file_sha256
 
     def no_unfenced_hermes_hash(path):
@@ -805,11 +830,15 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
     assert options["hermes_run"].sets == []
+    assert all("synthetic-secret-never-argv" not in repr(argv)
+               for argv in options["hermes_run"].arguments)
+    assert all(argv[3:5] != ["config", "set"] for argv in options["hermes_run"].arguments)
     assert options["hermes_run"].homes
     assert all(home is not None and Path(home).name.startswith("anvil-hermes-render-")
                for home in options["hermes_run"].homes)
     assert Path(targets[3].hermes_config).read_bytes() != before["default"]
     assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
+    assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
     assert set(fence.journal()["effects"]) == set(bindings)
 
@@ -2378,6 +2407,7 @@ def test_fenced_catalog_preserves_an_edit_made_after_render_before_effect_prepar
 
 def test_fenced_hermes_profile_sync_renders_in_scratch_then_journals_exact_bytes(tmp_path):
     home, states = _write_hermes_profiles(tmp_path)
+    _materialize_hermes_states(home, states)
     home.chmod(0o700)
     configs = client_catalog_sync._discover_hermes_profile_configs(str(home), "all")
     (home / "profiles").chmod(0o700)
@@ -2424,6 +2454,7 @@ def test_fenced_hermes_profile_sync_renders_in_scratch_then_journals_exact_bytes
 
 def test_fenced_hermes_profile_sync_preserves_external_edit_during_preview(tmp_path, monkeypatch):
     home, states = _write_hermes_profiles(tmp_path)
+    _materialize_hermes_states(home, states)
     home.chmod(0o700)
     config = home / "config.yaml"
     config.chmod(0o600)
