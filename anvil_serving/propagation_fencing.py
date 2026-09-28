@@ -711,6 +711,12 @@ class NativeMutationFence:
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            if self.owner.resource_id == "client-catalog":
+                cutover = self._read_catalog_cutover()
+                if cutover is None or (cutover["contract_digest"] != grant.contract_digest
+                                   or cutover["generation"] != grant.generation
+                                   or cutover["epoch"] != grant.epoch):
+                    raise PropagationFenceError("stale_generation")
             reservation_id = self._reservation_id(grant)
             index = self._read_index()
             row = index["operations"].get(reservation_id)
