@@ -599,6 +599,47 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
         )
 
 
+def test_fenced_preview_refuses_swapped_openclaw_parent_before_read(tmp_path, monkeypatch):
+    if os.name == "nt":
+        pytest.skip("POSIX directory-symlink probe")
+    client_dir = tmp_path / "clients"
+    client_dir.mkdir(mode=0o700)
+    openclaw, _, _ = _write_inputs(client_dir)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    env_path = client_dir / ".env"
+    bindings = {"catalog-openclaw": ("catalog-apply", openclaw),
+                "catalog-openclaw_env": ("catalog-apply", env_path),
+                "catalog-state": ("catalog-apply", state)}
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        effect_bindings=bindings), tmp_path / "journal")
+    targets = (openclaw, env_path, state)
+    grant = fence.grant(canonical_contract=contract, generation=1,
+                        effects=tuple(bindings), target_paths=targets,
+                        effect_targets={name: path for name, (_, path) in bindings.items()})
+    options = dict(base_url="https://router.example.ts.net/v1", clients="openclaw",
+                   openclaw_config=str(openclaw), state_path=str(state),
+                   backup_root=str(tmp_path / "backups"), dry_run=True, confirm=False,
+                   environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"},
+                   fence=fence, grant=grant, canonical_contract=contract)
+    assert sync_clients(**options, opener=_Opener(*_catalog()))["dry_run"] is True
+    (tmp_path / "openclaw.json").write_bytes(openclaw.read_bytes())
+    (tmp_path / ".env").write_text("synthetic-private-value")
+    original_fetch = client_catalog_sync.fetch_client_catalog
+
+    def swap_after_lock(**kwargs):
+        client_dir.rename(tmp_path / "original-clients")
+        client_dir.symlink_to(tmp_path, target_is_directory=True)
+        return original_fetch(**kwargs)
+
+    monkeypatch.setattr(client_catalog_sync, "fetch_client_catalog", swap_after_lock)
+    with pytest.raises(PropagationFenceError, match="unsafe_custody_path"):
+        sync_clients(**options, opener=_Opener(*_catalog()))
+    assert fence.journal() is None
+
+
 def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp_path, monkeypatch):
     openclaw, pi_models, pi_settings = _write_inputs(tmp_path)
     state = tmp_path / "state.json"

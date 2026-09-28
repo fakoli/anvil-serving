@@ -705,6 +705,8 @@ def sync_pi_media(
     if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
         raise ClientCatalogError("owner apply requires a native fence")
 
+    if fence is not None and (dry_run == confirm or grant is None or canonical_contract is None):
+        raise ClientCatalogError("fenced preview or apply requires a grant and contract")
     if fence is None or dry_run or not confirm:
         from .propagation_fencing import NativeMutationFence
         target = Path(os.path.expanduser(DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config))
@@ -2138,8 +2140,19 @@ def sync_clients(
         if "pi" in selected:
             paths.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
         root = Path.home() if any(path.is_relative_to(Path.home()) for path in paths) else paths[0].parent
-        guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
-        with guard:
+        if fence is not None:
+            if "hermes" in selected:
+                raise ClientCatalogError("fenced Hermes preview is not supported")
+            targets = [Path(os.path.expanduser(state_path))]
+            if "openclaw" in selected:
+                openclaw_path = Path(os.path.expanduser(openclaw_config))
+                targets.extend((openclaw_path, openclaw_path.parent / ".env"))
+            if "pi" in selected:
+                targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+            guard = fence.preview(grant, canonical_contract=canonical_contract, target_paths=targets)
+        else:
+            guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
+        with guard as journal:
             return _sync_clients(
             base_url=base_url, api_key_env=api_key_env, clients=clients,
             openclaw_config=openclaw_config, hermes_config=hermes_config,
@@ -2154,7 +2167,7 @@ def sync_clients(
             openclaw_exclude_aliases=openclaw_exclude_aliases,
             openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
             restart=restart, refresh_openclaw_service=refresh_openclaw_service,
-            restart_hermes=restart_hermes, hermes_run=hermes_run,
+            restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
             )
     if (canonical_contract is None or restart_openclaw_on_change
             or restart_hermes_on_change):

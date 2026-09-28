@@ -631,6 +631,18 @@ class NativeMutationFence:
             contract.digest, generation, allowed, mapped, _sha256(_canonical(targets)), catalog_digest, str(self.owner.backup_root), self._seal)
 
     @contextmanager
+    def preview(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                target_paths: Iterable[str | Path]) -> Iterator[object]:
+        """Read client documents under native directory custody without reserving a generation."""
+        from types import SimpleNamespace
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets)
+            files = self._held()
+            yield SimpleNamespace(read=lambda path: files.read(self._trusted_path(path)),
+                                  files=files, catalog_digest=grant.catalog_digest)
+
+    @contextmanager
     def transaction(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
                     target_paths: Iterable[str | Path]) -> Iterator[NativeMutationJournal]:
         if not isinstance(canonical_contract, bytes):
