@@ -296,8 +296,15 @@ class PropagationService:
         else:
             observed = self.status(job["job_id"])
             targets = observed["outcomes"]
+            with self.intents._connection() as db:
+                verification = db.execute(
+                    "SELECT verified FROM propagation_verification_passes WHERE job_id=?",
+                    (job["job_id"],)).fetchone()
             state = observed["state"] if observed["state"] in {
-                "failed", "cancelled", "recovery_required"} else "running"
+                "failed", "cancelled", "recovery_required"} else (
+                    "completed" if observed["state"] == "applied" and verification is not None
+                    and verification["verified"] and all(
+                        row["verified"] for row in targets) else "running")
             job_id = job["job_id"]
         workflow_id = logical_workflow_id(value["scope"], value["revision"])
         progress, progress_at, progress_age = "unavailable", None, None

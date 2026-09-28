@@ -44,6 +44,9 @@ def test_owner_status_keeps_every_target_without_temporal(tmp_path):
     assert active["job_id"] == job["job_id"] and active["state"] == "running"
     assert active["workflow_progress"] == "unavailable"
     assert [row["target_id"] for row in active["targets"]] == [row["target_id"] for row in pending["targets"]]
+    owner.service.verify(accepted["intent_id"], job["job_id"])
+    complete = owner.service.handle("propagation.status.v1", args, caller_id="reader")
+    assert complete["state"] == "completed" and complete["all_targets_verified"]
     owner.service.profile = replace(owner.profile, workflow_status=lambda workflow_id, digest: {
         "state": "running", "observed_at": datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")})
     live = owner.service.handle("propagation.status.v1", args, caller_id="reader")
@@ -113,6 +116,19 @@ def test_deployed_profile_verify_requires_exact_installed_digest(monkeypatch):
         "profile_id": "propagation-v1", "profile_digest": "a" * 64,
         "installed": True, "observed_at": "2026-09-28T05:00:00Z"})
     assert workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"]).data["state"] == "matched"
+
+
+@pytest.mark.parametrize(("action", "state"), [
+    ("resume", "refused"), ("cancel", "uncertain"),
+    ("recovery", "failed"), ("recovery", "recovery_required"),
+])
+def test_attention_outcomes_exit_nonzero_with_owner_data(monkeypatch, action, state):
+    monkeypatch.setattr(workflows_cli, "_config", lambda **_: ("owner", "token"))
+    monkeypatch.setattr(workflows_cli, "_call", lambda *_: {"state": state})
+    argv = (["recovery", "verify", "--profile", "propagation-v1"] if action == "recovery"
+            else [action, "--intent-id", "intent-1", "--expected-digest", "a" * 64, "--confirm"])
+    result = workflows_cli.main(argv)
+    assert result.exit_code != 0 and result.data["state"] == state
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")

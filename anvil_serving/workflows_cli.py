@@ -242,6 +242,11 @@ def main(argv: list[str] | None = None) -> CommandResult:
             result = (_status(url, token, arguments) if action == "status"
                       else _call(url, token, "propagation.recovery.verify.v1" if action == "recovery_verify"
                                  else _OPERATIONS[action], arguments))
+            if (action == "recovery_verify" and result["state"] != "passed"
+                    or action == "resume" and result["state"] == "refused"
+                    or action == "cancel" and result["state"] == "uncertain"):
+                return CommandResult(data=result, error=PartialResultError(
+                    "workflow operation requires attention", code="workflow_outcome_incomplete"))
         return CommandResult(data=result)
     except (SafetyError, UsageError, TransportError, PartialResultError) as error:
         return CommandResult(error=error)
