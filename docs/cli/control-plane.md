@@ -57,6 +57,55 @@ authority.
 | `controller inspect` | Inspect bounded metadata for one explicitly selected controller container. |
 | `controller logs` | Read bounded allowlisted audit events for that verified controller identity. |
 
+### Workflows
+
+The `workflows` commands use the authenticated controller and the approved
+propagation contract. They do not select or activate a model. Place this
+nonsecret routing configuration in the invoking user's protected
+`$XDG_CONFIG_HOME/anvil-serving/workflows.toml` (or the usual user config
+directory when `XDG_CONFIG_HOME` is unset):
+
+```toml
+schema = "anvil-serving.workflows-operator/v1"
+controller_url = "https://127.0.0.1:8765"
+auth_file = "/path/to/protected/operator-token"
+recovery_auth_file = "/path/to/protected/recovery-token"
+release_dir = "/path/to/pinned-release"
+release_digest = "0000000000000000000000000000000000000000000000000000000000000000"
+```
+
+The file and token reference must pass the existing private-file checks. The
+zero digest above is a placeholder for the reviewed manifest's SHA-256.
+The operator credential needs admission/status scopes. Recovery verification
+uses its separate recovery credential; the worker retains a separate activity
+identity. Loopback in this example means the machine running
+the command. No credential is accepted on the command line.
+
+```bash
+anvil-serving workflows start --approval-ref approved-revision --request-id stable-request --confirm
+anvil-serving workflows status --intent-id accepted-intent --json
+anvil-serving workflows resume --intent-id accepted-intent --expected-digest SHA256 --confirm
+anvil-serving workflows cancel --intent-id accepted-intent --expected-digest SHA256 --confirm
+anvil-serving workflows deployment preview --profile propagation-v1 --json
+anvil-serving workflows deployment verify --profile propagation-v1 --json
+anvil-serving workflows recovery verify --profile propagation-v1 --json
+```
+
+Start accepts owner intent; dispatch remains a separate recoverable service.
+Status reads every required target and preserves age, partial and recovery
+outcomes. If Temporal progress cannot be observed, it says `unavailable` while
+owner identity and target custody remain visible. Resume and cancel require a
+configured workflow service binding and fail closed when it is absent. Neither
+command changes the approved revision or grants a new effect identity.
+Deployment preview hashes the protected local release manifest and each declared
+component without contacting the controller or installing anything. The manifest
+uses `anvil-workflows.release/v1`, names the `propagation-v1` profile and its
+digest, and lists one to eight `{name, file, sha256}` components; each file is a
+single local basename. Deployment verify additionally compares that pin with the
+installed owner profile. Recovery verify reads retained isolated-restore evidence
+under the separate recovery scope; it never launches a restore. T015/T016 own
+the actual isolated test and evidence writer. Missing evidence refuses the command.
+
 ### Integrate read-only telemetry
 
 | Command | Purpose |

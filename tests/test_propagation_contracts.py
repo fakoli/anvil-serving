@@ -109,9 +109,16 @@ def test_receipt_binds_context_transport_identity_and_full_lookup_identity():
         authorize_receipt_lookup(ReceiptIdentity("installation-1", "other", "runtime-1"), _context().identity)
 
 
-def test_capabilities_match_the_twelve_versioned_inert_owner_operations():
+def test_capabilities_match_the_versioned_inert_owner_operations():
     operations = capability_declaration()["operations"]
-    assert [operation["name"] for operation in operations] == ["propagation.accept.v1", "propagation.status.v1", "propagation.resume.v1", "propagation.cancel.v1", "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1", "fleet.propagation.preview.v1", "fleet.propagation.submit.v1", "fleet.propagation.status.v1", "fleet.propagation.verify.v1", "fleet.propagation.convergence.v1", "fleet.propagation.cancel.v1"]
+    assert [operation["name"] for operation in operations] == [
+        "propagation.accept.v1", "propagation.profile.v1", "propagation.status.v1",
+        "propagation.resume.v1", "propagation.cancel.v1", "propagation.recovery.verify.v1",
+        "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
+        "fleet.propagation.preview.v1", "fleet.propagation.submit.v1",
+        "fleet.propagation.status.v1", "fleet.propagation.verify.v1",
+        "fleet.propagation.convergence.v1", "fleet.propagation.cancel.v1",
+    ]
     assert all(
         not operation["available"]
         and operation["input_schema"] != operation["result_schema"]
@@ -223,7 +230,10 @@ def _offline_row():
 def test_pending_and_historical_status_remain_expressible_without_receipt():
     operations = {op["name"]: op for op in capability_declaration()["operations"]}
     schema = operations["propagation.status.v1"]["result_schema"]
-    status = {**_page_context(), "targets": [_offline_row()], "state": "pending", "all_targets_verified": False}
+    status = {**_page_context(), "intent_id": "intent-1", "workflow_id": "workflow-1",
+              "job_id": None, "workflow_progress": "unavailable",
+              "workflow_observed_at": None, "workflow_age_seconds": None,
+              "targets": [_offline_row()], "state": "pending", "all_targets_verified": False}
     assert _matches_declared_schema(status, schema)
     historical = status["targets"][0]
     historical.update(applied=True, verified=True, applied_revision="revision-1",
@@ -276,6 +286,9 @@ def test_full_denominator_fits_bounded_pages_with_maximum_length_identities():
     seen = []
     for offset in range(0, 128, 8):
         page = {**_page_context(), "target_count": 128, "total_items": 128,
+                "intent_id": "intent-1", "workflow_id": "workflow-1", "job_id": "job-1",
+                "workflow_progress": "completed", "workflow_observed_at": None,
+                "workflow_age_seconds": None,
                 "snapshot_id": "s" * 128, "next_cursor": "c" * 128 if offset + 8 < 128 else None,
                 "targets": rows[offset:offset + 8], "state": "completed", "all_targets_verified": True}
         assert _matches_declared_schema(page, schema)

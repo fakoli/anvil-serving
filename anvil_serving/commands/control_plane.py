@@ -3,11 +3,13 @@
 from .family import command_family
 from .common import CONFIRM_OPTIONS
 from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
+from .workflows import workflow_command
 
 
 @command_family(category="Control plane & integrations")
 def commands() -> tuple[CommandNode, ...]:
     return (
+        workflow_command(),
         _node(
             "mcp",
             "Expose bounded MCP management tools.",

@@ -348,6 +348,7 @@ PRODUCT_FAMILIES = (
             "dashboard",
             "edge",
             "workbench",
+            "workflows",
         ),
         docs_anchor="docs/PRODUCT-FAMILIES.md#control-plane-fleet",
         journey=(
