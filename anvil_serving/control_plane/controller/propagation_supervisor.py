@@ -412,10 +412,14 @@ class PropagationSupervisor:
         if process.poll() is None:
             identity = _identity(process.pid)
             if identity is None or (identity["pid"], identity["start_ticks"], identity["boot_id"]) != (job["pid"], job["start_ticks"], job["boot_id"]):
-                self._children.pop(job_id, None)
-                self.store.recovery_required(job_id)
+                if process.poll() is None:
+                    self._children.pop(job_id, None)
+                    self.store.recovery_required(job_id)
+                    return self.store.lookup(job_id)
+                # The child can exit between the first poll and /proc identity
+                # observation. Resolve its durable result below before failing.
+            else:
                 return self.store.lookup(job_id)
-            return self.store.lookup(job_id)
         self._children.pop(job_id, None)
         descriptor = self._pidfds.pop(job_id, None)
         if descriptor is not None:

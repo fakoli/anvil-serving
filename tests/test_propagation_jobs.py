@@ -279,6 +279,34 @@ def test_invalid_owner_observations_cannot_enable_convergence(tmp_path, corrupt)
         owner.service.convergence(accepted["intent_id"], expected)
 
 
+def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path, monkeypatch):
+    owner = ControlledOwner(tmp_path, runner_wait=.3)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    job_id = submitted["job_id"]
+    child = owner.supervisor._children[job_id]
+    original_poll = child.poll
+    first = True
+
+    def exit_after_first_poll():
+        nonlocal first
+        if first:
+            first = False
+            assert original_poll() is None
+            assert child.wait(timeout=10) == 0
+            return None
+        return original_poll()
+
+    monkeypatch.setattr(child, "poll", exit_after_first_poll)
+    assert owner.supervisor.observe(job_id)["state"] == "applied"
+    assert owner.supervisor.observe(job_id)["state"] == "applied"
+    assert job_id not in owner.supervisor._children
+    assert job_id not in owner.supervisor._pidfds
+    assert owner.marker.read_text() == "accepted"
+
+
 def test_http_idempotency_header_cannot_replay_verification_or_convergence(tmp_path):
     owner = ControlledOwner(tmp_path)
     accepted, job, _ = owner.submit()
