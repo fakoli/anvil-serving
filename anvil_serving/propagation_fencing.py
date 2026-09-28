@@ -336,8 +336,36 @@ class NativeMutationJournal:
         return self._state["catalog_digest"]
 
     @property
+    def contract_digest(self) -> str:
+        return self._state["contract_digest"]
+
+    @property
+    def generation(self) -> int:
+        return self._state["generation"]
+
+    def backup(self, paths: Iterable[str | Path]) -> Path:
+        """Capture verified original bytes using the owner's held file custody."""
+        from .client_catalog_sync import _backup
+
+        selected = tuple(self._fence._trusted_path(path) for path in paths)
+        if not selected or len(set(selected)) != len(selected):
+            raise PropagationFenceError("malformed_effect")
+        if any(str(path) not in self._state["effect_targets"].values() for path in selected):
+            raise PropagationFenceError("effect_not_granted")
+        return _backup(list(selected), self._fence.owner.backup_root,
+                       self.contract_digest, journal=self)
+
+    @property
     def started_effects(self) -> tuple[str, ...]:
         return tuple(sorted(self._state["effects"]))
+
+    def effect_identity(self, effect_id: str) -> tuple[Path, str | None]:
+        """Read the durable target and desired digest for restart reconciliation."""
+        effect = self._effect(effect_id)
+        return Path(effect["path"]), effect["desired_digest"]
+
+    def backup_bound(self, effect_id: str) -> bool:
+        return self._effect(effect_id)["backup_id"] is not None
 
     def is_verified(self, effect_id: str) -> bool:
         return self._effect(effect_id)["state"] == "verified"
@@ -630,11 +658,16 @@ class NativeMutationFence:
                             or any(effect.get(key) is not None and (type(effect[key]) is not str or _DIGEST.fullmatch(effect[key]) is None)
                                    for key in ("before_digest", "desired_digest", "observed_digest"))):
                         raise PropagationFenceError("unsafe_journal")
-                    if not effect.get("backup_id") or not effect.get("backup_path"):
-                        raise PropagationFenceError("backup_required")
-                    journal.bind_backup(effect_id, effect["backup_path"])
                     observed = journal.read(effect["path"])
                     actual = None if observed is None else _sha256(observed)
+                    if not effect.get("backup_id") or not effect.get("backup_path"):
+                        # A crash while recording effects or binding backups is
+                        # safe to resume only if no effect could have begun.
+                        if (effect["state"] != "prepared" or effect["observed_digest"] is not None
+                                or actual != effect["before_digest"]):
+                            raise PropagationFenceError("backup_required")
+                        continue
+                    journal.bind_backup(effect_id, effect["backup_path"])
                     if actual == effect["desired_digest"]:
                         journal.observe_bytes(effect_id, observed)
                     elif actual != effect["before_digest"]:

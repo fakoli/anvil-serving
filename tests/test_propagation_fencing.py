@@ -610,12 +610,14 @@ def test_private_bindings_are_snapshotted_and_permission_kind_is_checked(tmp_pat
 
 
 def _interrupted_backup(fence, target, *, write=False):
-    from anvil_serving.client_catalog_sync import _backup
     grant = _grant(fence, target)
     with pytest.raises(RuntimeError, match="interrupted"):
         with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
             journal.begin_effect("catalog", target, b"before", b"after")
-            backup = _backup([target], fence.owner.backup_root, "a" * 64, journal=journal)
+            assert journal.contract_digest == grant.contract_digest
+            assert journal.generation == 1
+            assert journal.effect_identity("catalog") == (target, hashlib.sha256(b"after").hexdigest())
+            backup = journal.backup([target])
             journal.bind_backup("catalog", backup)
             if write:
                 journal.write("catalog", b"after")
@@ -657,6 +659,37 @@ def test_resume_retries_original_effect_only_with_current_authority_and_backup(t
     assert restarted.journal()["reservation_id"] == original["reservation_id"]
     assert set(restarted.journal()["effects"]) == {"catalog"}
     assert restarted.journal()["effects"]["catalog"]["backup_id"] == original["effects"]["catalog"]["backup_id"]
+
+
+def test_resume_can_finish_preparation_only_when_original_bytes_remain(tmp_path):
+    fence, target = _fence(tmp_path)
+    with pytest.raises(RuntimeError, match="interrupted"):
+        with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            raise RuntimeError("interrupted")
+    restarted = NativeMutationFence(replace(fence.owner, recovery_quiescent=lambda *args: True), tmp_path)
+    with restarted.resume(_grant(restarted, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        assert not journal.backup_bound("catalog")
+        journal.begin_effect("catalog", target, journal.read(target), b"after")
+        journal.bind_backup("catalog", journal.backup([target]))
+        journal.write("catalog", b"after")
+        journal.observe_bytes("catalog", b"after")
+    assert restarted.journal()["status"] == "completed"
+    assert target.read_bytes() == b"after"
+
+
+def test_resume_rejects_unbacked_preparation_if_original_bytes_drift(tmp_path):
+    fence, target = _fence(tmp_path)
+    with pytest.raises(RuntimeError):
+        with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            raise RuntimeError("interrupted")
+    target.write_bytes(b"unexpected")
+    restarted = NativeMutationFence(replace(fence.owner, recovery_quiescent=lambda *args: True), tmp_path)
+    with pytest.raises(PropagationFenceError, match="backup_required"):
+        with restarted.resume(_grant(restarted, target), canonical_contract=_CONTRACT, target_paths=(target,)):
+            pass
+    assert target.read_bytes() == b"unexpected"
 
 
 @pytest.mark.parametrize("failure", ["unknown-process", "expired", "stale", "drift", "backup"])
