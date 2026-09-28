@@ -36,6 +36,7 @@ from .control_plane.mcp import auth_file
 _TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 _SCHEMA = "anvil-serving.propagation-native-journal/v1"
+_LEGACY_CATALOG_ROOT: ContextVar[Path | None] = ContextVar("legacy_catalog_root", default=None)
 
 
 class PropagationFenceError(ValueError):
@@ -284,7 +285,7 @@ class TrustedNativeOwner:
         root = Path(self.storage_root).absolute()
         if ".." in root.parts or (os.name == "nt" and root.drive.startswith("\\\\")):
             raise PropagationFenceError("malformed_owner_context")
-        backup = root / ".anvil-serving" / "backups" / "propagation" if self.backup_root is None else Path(self.backup_root).absolute()
+        backup = root / ".config" / "anvil-serving" / "backups" / "propagation" if self.backup_root is None else Path(self.backup_root).absolute()
         if ".." in backup.parts or not backup.is_relative_to(root):
             raise PropagationFenceError("malformed_owner_context")
         if not isinstance(self.effect_bindings, Mapping):
@@ -507,9 +508,82 @@ class NativeMutationFence:
             raise PropagationFenceError("malformed_owner_context")
         # Do not permit a call-specific directory to split custody.
         self.owner = owner
-        self.journal_root = owner.storage_root / ".anvil-serving" / "propagation-fencing"
+        self.journal_root = owner.storage_root / ".config" / "anvil-serving" / "propagation-fencing"
         self._seal = object()
         self._files: ContextVar[_HeldFiles | None] = ContextVar("propagation_files", default=None)
+
+    @property
+    def _catalog_cutover_path(self) -> Path:
+        return self.journal_root / "client-catalog.cutover.json"
+
+    def activate_catalog_cutover(self, canonical_contract: bytes) -> None:
+        """An admitted owner retires legacy client writers before the first effect."""
+        if self.owner.resource_id != "client-catalog":
+            raise PropagationFenceError("resource_mismatch")
+        try:
+            contract = parse_contract(canonical_contract)
+        except (TypeError, ValueError) as exc:
+            raise PropagationFenceError("malformed_grant") from exc
+        if contract.canonical != canonical_contract:
+            raise PropagationFenceError("noncanonical_contract")
+        if not any("client-catalog" in target["resource_keys"] and "catalog-apply" in target["effects"]
+                   for target in contract.value["targets"]):
+            raise PropagationFenceError("effect_not_approved")
+        generation = contract.value["generation"]
+        digest = contract.digest
+        value = {"schema": "anvil-serving.catalog-cutover/v1", "contract_digest": digest,
+                 "generation": generation, "epoch": self.owner.epoch}
+        with self._installed_catalog_lock(), self._lock():
+            self._require_current_authority(contract.value)
+            self._check_authority(digest, generation)
+            index = self._read_index()
+            if any(row["status"] != "completed" for row in index["operations"].values()):
+                raise PropagationFenceError("unresolved_reservation")
+            existing = self._held().read(self._catalog_cutover_path, private=True)
+            if existing is not None:
+                current = self._read_catalog_cutover()
+                if current == value:
+                    return
+                if generation <= current["generation"]:
+                    raise PropagationFenceError("stale_generation")
+            if generation <= index["high_water_generation"]:
+                raise PropagationFenceError("stale_generation")
+            self._write_json(self._catalog_cutover_path, value)
+
+    def _read_catalog_cutover(self) -> dict | None:
+        raw = self._held().read(self._catalog_cutover_path, private=True)
+        if raw is None:
+            return None
+        value = self._read_json(self._catalog_cutover_path)
+        if (set(value) != {"schema", "contract_digest", "generation", "epoch"}
+                or value["schema"] != "anvil-serving.catalog-cutover/v1"
+                or type(value["generation"]) is not int or value["generation"] < 1):
+            raise PropagationFenceError("unsafe_journal")
+        _digest(value["contract_digest"])
+        _token(value["epoch"])
+        return value
+
+    @classmethod
+    @contextmanager
+    def legacy_catalog_write(cls, storage_root: str | Path, *, catalog_lock_fd: int | None = None) -> Iterator[None]:
+        """Serialize existing direct writers with cutover; refuse once retired."""
+        root = Path(storage_root).absolute()
+        held = _LEGACY_CATALOG_ROOT.get()
+        if held is not None:
+            if held != root:
+                raise PropagationFenceError("resource_mismatch")
+            yield
+            return
+        owner = TrustedNativeOwner("legacy-client-catalog", "client-catalog", root)
+        fence = cls(owner, root)
+        with fence._installed_catalog_lock(borrowed_fd=catalog_lock_fd, create=True), fence._lock():
+            if fence._read_catalog_cutover() is not None:
+                raise PropagationFenceError("stale_generation")
+            token = _LEGACY_CATALOG_ROOT.set(root)
+            try:
+                yield
+            finally:
+                _LEGACY_CATALOG_ROOT.reset(token)
 
     def grant(
         self, *, canonical_contract: bytes, generation: int, effects: Iterable[str],
@@ -562,8 +636,20 @@ class NativeMutationFence:
         if not isinstance(canonical_contract, bytes):
             raise PropagationFenceError("malformed_grant")
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        if self.owner.resource_id == "client-catalog":
+            # Validate before retiring legacy writers. Activation takes the
+            # installed Pi lock first, so it cannot run inside _lock().
+            with self._lock():
+                self._validate_grant(grant, canonical_contract, targets)
+            self.activate_catalog_cutover(canonical_contract)
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets)
+            if self.owner.resource_id == "client-catalog":
+                cutover = self._read_catalog_cutover()
+                if cutover is None or (cutover["contract_digest"] != grant.contract_digest
+                                   or cutover["generation"] != grant.generation
+                                   or cutover["epoch"] != grant.epoch):
+                    raise PropagationFenceError("stale_generation")
             for target in targets:
                 self._held().read(Path(target))
             reservation_id = self._reservation_id(grant)
@@ -626,6 +712,12 @@ class NativeMutationFence:
         targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
         with self._lock():
             self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            if self.owner.resource_id == "client-catalog":
+                cutover = self._read_catalog_cutover()
+                if cutover is None or (cutover["contract_digest"] != grant.contract_digest
+                                   or cutover["generation"] != grant.generation
+                                   or cutover["epoch"] != grant.epoch):
+                    raise PropagationFenceError("stale_generation")
             reservation_id = self._reservation_id(grant)
             index = self._read_index()
             row = index["operations"].get(reservation_id)
@@ -970,6 +1062,50 @@ class NativeMutationFence:
         except (OSError, auth_file.AuthFileError) as exc:
             raise PropagationFenceError("unsafe_custody_path") from exc
         finally:
+            files.close()
+
+    @contextmanager
+    def _installed_catalog_lock(self, *, borrowed_fd: int | None = None, create: bool = False) -> Iterator[None]:
+        """Drain Pi adoption and credential writers before generation activation."""
+        path = self.owner.storage_root / ".config" / "anvil-serving" / "pi" / "catalog.lock"
+        files = _HeldFiles(self.owner.storage_root)
+        fd = None
+        try:
+            files.directory(self.owner.storage_root)
+            parent = files.directory(path.parent, create=create, private=True)
+            if borrowed_fd is not None:
+                if os.name == "nt" or type(borrowed_fd) is not int or borrowed_fd < 0:
+                    raise PropagationFenceError("owner_lock_unavailable")
+                fd = borrowed_fd
+                actual = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+                if not os.path.samestat(actual, os.fstat(fd)):
+                    raise PropagationFenceError("owner_lock_unavailable")
+            else:
+                fd = (self._open_windows_lock(path) if os.name == "nt" else
+                      os.open(path.name, os.O_RDWR | (os.O_CREAT if create else 0) | os.O_NOFOLLOW,
+                              0o600, dir_fd=parent))
+            files._permissions(fd, directory=False, private=True)
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    if os.fstat(fd).st_size == 0:
+                        os.write(fd, b"0")
+                        os.fsync(fd)
+                    os.lseek(fd, 0, 0)
+                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                if exc.errno in {errno.EACCES, errno.EAGAIN}:
+                    raise PropagationFenceError("operation_in_progress") from exc
+                raise
+            yield
+        except (OSError, auth_file.AuthFileError) as exc:
+            raise PropagationFenceError("owner_lock_unavailable") from exc
+        finally:
+            if fd is not None and borrowed_fd is None:
+                os.close(fd)
             files.close()
 
     @contextmanager

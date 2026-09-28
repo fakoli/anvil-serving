@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -42,6 +43,13 @@ def tmp_path(tmp_path):
     else:
         os.chmod(tmp_path, 0o700)
         yield tmp_path
+
+
+@pytest.fixture(autouse=True)
+def isolated_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
 
 def _private_file(path: Path) -> None:
@@ -180,6 +188,20 @@ class _HermesRunner:
         )
 
     def __call__(self, argv, **_kwargs):
+        scratch = _kwargs.get("env", {}).get("HERMES_HOME")
+        if scratch:
+            assert _kwargs["env"]["HOME"] == scratch
+            assert all(_kwargs["env"][key].startswith(scratch + os.sep)
+                       for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))
+            if not hasattr(self, "scratch_runners"):
+                self.scratch_runners = {}
+            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))
+            result = runner(argv)
+            if argv[3:5] in (["config", "set"], ["config", "unset"]):
+                profile = argv[2]
+                path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
+                path.write_text(json.dumps(runner.states[profile]), encoding="utf-8")
+            return result
         profile = argv[2]
         command = argv[3:]
         if command[:2] == ["config", "get"]:
@@ -1897,7 +1919,7 @@ def test_promotion_binding_refuses_drift_before_client_files(tmp_path, observed,
             pi_settings=str(tmp_path / "settings.json"),
             environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
         )
-    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir() if p.is_file()} == before
 
 
 def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
@@ -2111,36 +2133,83 @@ def test_fenced_catalog_preserves_an_edit_made_after_render_before_effect_prepar
     assert fence.journal()["status"] == "recovery_required"
 
 
-def test_fenced_hermes_profile_sync_refuses_before_runner_or_journal(tmp_path):
+def test_fenced_hermes_profile_sync_renders_in_scratch_then_journals_exact_bytes(tmp_path):
     home, states = _write_hermes_profiles(tmp_path)
-    config = home / "config.yaml"
+    home.chmod(0o700)
+    configs = client_catalog_sync._discover_hermes_profile_configs(str(home), "all")
+    (home / "profiles").chmod(0o700)
+    for config in configs.values():
+        config.parent.chmod(0o700)
+        config.chmod(0o600)
+    config = configs["default"]
+    state = tmp_path / "state.json"
+    bindings = {"catalog-hermes:" + profile: ("catalog-apply", path) for profile, path in configs.items()}
+    bindings["catalog-state"] = ("catalog-apply", state)
     contract = _fenced_contract()
     fence = NativeMutationFence(
         TrustedNativeOwner(
             "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
             clock=_trusted_test_clock,
-        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"hermes-default": ("catalog-apply", config)},
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings=bindings,
         ),
         tmp_path / "journal",
     )
     grant = fence.grant(
-        canonical_contract=contract, generation=1, effects=("hermes-default",), target_paths=(config,),
+        canonical_contract=contract, generation=1,
+        effects=tuple(bindings), target_paths=(*configs.values(), state),
+        effect_targets={effect: path for effect, (_, path) in bindings.items()},
     )
-    def unexpected_hermes_call(*_args, **_kwargs):
-        raise AssertionError("fenced Hermes profiles must not invoke the CLI or restart callback")
+    runner = _HermesRunner(states)
+    before = {profile: path.read_bytes() for profile, path in configs.items()}
+    result = sync_clients(
+        base_url="https://router.example.ts.net/v1", clients="hermes",
+        hermes_home=str(home), hermes_profiles="all", state_path=str(state),
+        backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
+        hermes_run=runner, fence=fence, grant=grant, canonical_contract=contract,
+    )
+    assert "hermes:default" in result["changed"]
+    assert "hermes:ox-alpha" not in result["changed"]
+    assert config.read_bytes() != before["default"]
+    assert configs["ox-alpha"].read_bytes() == before["ox-alpha"]
+    assert runner.sets == []  # No command was allowed to mutate the real profile.
+    journal = fence.journal()
+    assert journal["status"] == "completed"
+    assert all(journal["effects"]["catalog-" + name]["state"] == "verified"
+               for name in result["changed"] if name.startswith("hermes:"))
 
-    before = config.read_bytes()
-    with pytest.raises(PropagationFenceError, match="UnsupportedCapability"):
-        sync_clients(
-            base_url="https://router.example.ts.net/v1", clients="hermes",
-            hermes_home=str(home), hermes_profiles="default", state_path=str(tmp_path / "state.json"),
+
+def test_fenced_hermes_profile_sync_preserves_external_edit_during_preview(tmp_path, monkeypatch):
+    home, states = _write_hermes_profiles(tmp_path)
+    home.chmod(0o700)
+    config = home / "config.yaml"
+    config.chmod(0o600)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        effect_bindings={"catalog-hermes:default": ("catalog-apply", config),
+                         "catalog-state": ("catalog-apply", state)}), tmp_path / "journal")
+    grant = fence.grant(canonical_contract=contract, generation=1,
+        effects=("catalog-hermes:default", "catalog-state"), target_paths=(config, state),
+        effect_targets={"catalog-hermes:default": config, "catalog-state": state})
+    original_plan = client_catalog_sync.plan_hermes_profiles
+
+    def concurrent_edit(*args, **kwargs):
+        result = original_plan(*args, **kwargs)
+        config.write_bytes(b"external edit\n")
+        return result
+
+    monkeypatch.setattr(client_catalog_sync, "plan_hermes_profiles", concurrent_edit)
+    with pytest.raises(ClientCatalogError, match="changed during preview"):
+        sync_clients(base_url="https://router.example.ts.net/v1", clients="hermes",
+            hermes_home=str(home), hermes_profiles="default", state_path=str(state),
             backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
             environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
-            hermes_run=unexpected_hermes_call, restart_hermes=unexpected_hermes_call,
-            fence=fence, grant=grant, canonical_contract=contract,
-        )
-    assert config.read_bytes() == before
-    assert not fence.journal_root.exists()
+            hermes_run=_HermesRunner(states), fence=fence, grant=grant, canonical_contract=contract)
+    assert config.read_bytes() == b"external edit\n"
+    assert fence.journal()["status"] == "recovery_required"
 
 
 def test_router_metadata_bound_uses_declared_default_not_64k():
