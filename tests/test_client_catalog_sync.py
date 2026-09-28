@@ -190,6 +190,9 @@ class _HermesRunner:
     def __call__(self, argv, **_kwargs):
         scratch = _kwargs.get("env", {}).get("HERMES_HOME")
         if scratch:
+            assert _kwargs["env"]["HOME"] == scratch
+            assert all(_kwargs["env"][key].startswith(scratch + os.sep)
+                       for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))
             if not hasattr(self, "scratch_runners"):
                 self.scratch_runners = {}
             runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))

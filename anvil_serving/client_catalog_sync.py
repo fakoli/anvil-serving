@@ -1533,7 +1533,10 @@ def _render_fenced_hermes_profiles(rows, configs, originals, catalog, *, hermes_
             target.chmod(0o600)
 
         def scratch_run(argv, **kwargs):
-            return run(argv, env={**os.environ, "HERMES_HOME": str(root)}, **kwargs)
+            env = {**os.environ, "HOME": str(root), "HERMES_HOME": str(root),
+                   "XDG_CONFIG_HOME": str(root / "config"), "XDG_DATA_HOME": str(root / "data"),
+                   "XDG_CACHE_HOME": str(root / "cache")}
+            return run(argv, env=env, **kwargs)
 
         _apply_hermes_profile_plans(rows, hermes_bin=hermes_bin, timeout_seconds=timeout_seconds, run=scratch_run)
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
