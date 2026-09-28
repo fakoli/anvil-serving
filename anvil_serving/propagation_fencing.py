@@ -271,6 +271,7 @@ class TrustedNativeOwner:
     effect_bindings: Mapping[str, tuple[str, Path]] = field(default_factory=dict, repr=False)
     current_authority: Callable[[str, int, str], bool] | None = field(default=None, repr=False, compare=False)
     recovery_quiescent: Callable[[str, str, int], bool] | None = field(default=None, repr=False, compare=False)
+    recovery_authority: Callable[[str, str, str, str, str], bool] | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _token(self.owner_id)
@@ -698,6 +699,75 @@ class NativeMutationFence:
         reservation_id = self._reservation_id(grant)
         return self.journal(reservation_id)
 
+    def advance_recovery_epoch(self, new_epoch: str, approval_digest: str, target_set_digest: str) -> str:
+        """Fence restored work after owner-approved, quiescent local reconciliation.
+
+        The caller's protected recovery authority must bind the whole target set.
+        This local transition alone never grants a new mutation.
+        """
+        _token(new_epoch)
+        _digest(approval_digest)
+        _digest(target_set_digest)
+        if new_epoch == self.owner.epoch:
+            raise PropagationFenceError("recovery_epoch_unchanged")
+        if not callable(self.owner.recovery_quiescent) or not callable(self.owner.recovery_authority):
+            raise PropagationFenceError("recovery_authority_unavailable")
+        with self._lock():
+            if self._held().read(self._index_path, private=True) is None:
+                raise PropagationFenceError("unsafe_journal")
+            index = self._read_index()
+            parent = self._held().directory(self.journal_root, private=True)
+            prefix = self.owner.resource_id + "."
+            for name in os.listdir(self.journal_root if os.name == "nt" else parent):
+                if not name.startswith(prefix) or not name.endswith(".json") or name == prefix + "index.json":
+                    continue
+                reservation = name[len(prefix):-5]
+                if reservation in index["operations"]:
+                    continue
+                orphan = self._read_json(self.journal_root / name)
+                if orphan.get("epoch") == self.owner.epoch or "recovery" not in index:
+                    raise PropagationFenceError("unindexed_journal")
+            expected: dict[str, str] = {}
+            for reservation, row in sorted(index["operations"].items(), key=lambda item: item[1]["generation"]):
+                if row["status"] != "completed":
+                    raise PropagationFenceError("unresolved_reservation")
+                state = self._read_state(self._operation_path(reservation))
+                if (state["reservation_id"] != reservation or state["generation"] != row["generation"]
+                        or state["status"] != "completed"
+                        or set(state["effects"]) != set(state["allowed_effects"])):
+                    raise PropagationFenceError("unsafe_journal")
+                try:
+                    quiescent = self.owner.recovery_quiescent(reservation, state["contract_digest"], state["generation"])
+                except Exception:
+                    quiescent = False
+                if quiescent is not True:
+                    raise PropagationFenceError("quiescence_unproven")
+                for effect_id, effect in state["effects"].items():
+                    if (effect.get("state") != "verified" or effect.get("path") != state["effect_targets"].get(effect_id)
+                            or not isinstance(effect.get("observed_digest"), str)):
+                        raise PropagationFenceError("unsafe_journal")
+                    _digest(effect["observed_digest"])
+                    expected[effect["path"]] = effect["observed_digest"]
+            for name, digest in expected.items():
+                observed = self._held().read(self._trusted_path(name))
+                if observed is None or _sha256(observed) != digest:
+                    raise PropagationFenceError("external_drift")
+            evidence_digest = _sha256(_canonical({"old_epoch": self.owner.epoch, "new_epoch": new_epoch,
+                "approval_digest": approval_digest, "target_set_digest": target_set_digest,
+                "high_water_generation": index["high_water_generation"], "observed": expected}))
+            try:
+                approved = self.owner.recovery_authority(self.owner.epoch, new_epoch, approval_digest,
+                                                          target_set_digest, evidence_digest)
+            except Exception:
+                approved = False
+            if approved is not True:
+                raise PropagationFenceError("recovery_not_approved")
+            index.update(epoch=new_epoch, latest_reservation_id=None, operations={}, recovery={
+                "old_epoch": self.owner.epoch, "approval_digest": approval_digest,
+                "target_set_digest": target_set_digest, "evidence_digest": evidence_digest})
+            self._write_index(index)
+            return evidence_digest
+
     def _set_operation_status(self, index: dict, reservation_id: str, status: str) -> None:
         index["operations"][reservation_id]["status"] = status
         self._write_index(index)
@@ -954,13 +1024,22 @@ class NativeMutationFence:
                     "resource_id": self.owner.resource_id, "epoch": self.owner.epoch,
                     "high_water_generation": 0, "latest_reservation_id": None, "operations": {}}
         value = self._read_json(self._index_path)
-        if (set(value) != {"schema", "owner_id", "resource_id", "epoch", "high_water_generation", "latest_reservation_id", "operations"}
+        keys = {"schema", "owner_id", "resource_id", "epoch", "high_water_generation", "latest_reservation_id", "operations"}
+        if (set(value) not in (keys, keys | {"recovery"})
                 or value["schema"] != _SCHEMA + ".index" or value["owner_id"] != self.owner.owner_id
                 or value["resource_id"] != self.owner.resource_id or value["epoch"] != self.owner.epoch
                 or type(value["high_water_generation"]) is not int or value["high_water_generation"] < 0
                 or (value["latest_reservation_id"] is not None and type(value["latest_reservation_id"]) is not str)
                 or type(value["operations"]) is not dict):
             raise PropagationFenceError("unsafe_journal")
+        if "recovery" in value:
+            recovery = value["recovery"]
+            if (type(recovery) is not dict or set(recovery) != {"old_epoch", "approval_digest", "target_set_digest", "evidence_digest"}
+                    or recovery["old_epoch"] == value["epoch"]):
+                raise PropagationFenceError("unsafe_journal")
+            _token(recovery["old_epoch"])
+            for key in ("approval_digest", "target_set_digest", "evidence_digest"):
+                _digest(recovery[key])
         for reservation, row in value["operations"].items():
             _token(reservation)
             if (type(row) is not dict or set(row) != {"generation", "status"}

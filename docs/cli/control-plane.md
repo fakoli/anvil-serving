@@ -98,6 +98,16 @@ protected directory. It shares the native writer lock, so an active mutation
 causes a refusal. The backup installer encrypts the export; this command does
 not authorize a restore or a new propagation effect.
 
+After a restore, the native owner's `advance_recovery_epoch` boundary requires
+the original jobs to be quiescent, every indexed effect to be verified, exact
+current bytes, and protected recovery approval bound to the complete target
+set. It preserves the generation high-water mark and old journal files while
+rejecting old-epoch grants. Unknown target custody must make the protected
+approval callback refuse; matching local bytes alone cannot establish fleet
+custody. No CLI or controller operation currently exposes this transition, so
+the recovery check above remains read-only until an approved operator binding
+is installed and verified.
+
 Start accepts owner intent; dispatch remains a separate recoverable service.
 Status reads every required target and preserves age, partial and recovery
 outcomes. If Temporal progress cannot be observed, it says `unavailable` while
