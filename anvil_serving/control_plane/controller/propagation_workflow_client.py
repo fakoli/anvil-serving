@@ -37,13 +37,13 @@ def _token(path: Path) -> str:
         raise PropagationJobError("workflow_service_unavailable") from None
 
 
-def _socket_identity(path: Path) -> tuple[int, int, int]:
+def _socket_identity(path: Path, expected_uid: int, expected_gid: int) -> int:
     parent = path.parent
     if parent.resolve(strict=True) != parent:
         raise ValueError()
     for ancestor in (parent, *parent.parents):
         info = os.lstat(ancestor)
-        if not stat.S_ISDIR(info.st_mode):
+        if not stat.S_ISDIR(info.st_mode) or info.st_uid not in {0, os.geteuid(), expected_uid}:
             raise ValueError()
         if info.st_mode & 0o022 and not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX):
             raise ValueError()
@@ -51,22 +51,27 @@ def _socket_identity(path: Path) -> tuple[int, int, int]:
     endpoint = os.lstat(path)
     private = (directory.st_uid == os.geteuid() and stat.S_IMODE(directory.st_mode) == 0o700
                and stat.S_IMODE(endpoint.st_mode) == 0o600)
-    shared = (directory.st_gid in (*os.getgroups(), os.getegid()) and stat.S_IMODE(directory.st_mode) == 0o710
+    shared = (expected_gid in (*os.getgroups(), os.getegid()) and stat.S_IMODE(directory.st_mode) == 0o710
               and stat.S_IMODE(endpoint.st_mode) == 0o660)
-    if (not stat.S_ISSOCK(endpoint.st_mode) or endpoint.st_uid != directory.st_uid
-            or endpoint.st_gid != directory.st_gid or not (private or shared)):
+    if (not stat.S_ISSOCK(endpoint.st_mode) or directory.st_uid != expected_uid
+            or directory.st_gid != expected_gid or endpoint.st_uid != expected_uid
+            or endpoint.st_gid != expected_gid or not (private or shared)):
         raise ValueError()
-    return endpoint.st_ino, endpoint.st_uid, endpoint.st_gid
+    return endpoint.st_ino
 
 
 class WorkflowControlClient:
-    def __init__(self, socket_path: str | Path, token_file: str | Path):
+    def __init__(self, socket_path: str | Path, token_file: str | Path, *, expected_peer_uid: int, expected_peer_gid: int):
         self.path = Path(socket_path)
         if not self.path.is_absolute() or len(os.fsencode(self.path)) > 100:
             raise PropagationJobError("workflow_service_unavailable")
         token_path = Path(token_file)
         if not token_path.is_absolute():
             raise PropagationJobError("workflow_service_unavailable")
+        if (type(expected_peer_uid) is not int or expected_peer_uid < 0
+                or type(expected_peer_gid) is not int or expected_peer_gid < 0):
+            raise PropagationJobError("workflow_service_unavailable")
+        self.peer_uid, self.peer_gid = expected_peer_uid, expected_peer_gid
         self.secret = _token(token_path)
 
     def _call(self, action: str, workflow_id: str, intent_id: str, contract_digest: str):
@@ -78,13 +83,14 @@ class WorkflowControlClient:
                    "contract_digest": contract_digest, "token": self.secret}
         raw = json.dumps(request, sort_keys=True, separators=(",", ":")).encode("ascii") + b"\n"
         try:
-            endpoint = _socket_identity(self.path)
+            endpoint = _socket_identity(self.path, self.peer_uid, self.peer_gid)
             deadline = time.monotonic() + _EXCHANGE_SECONDS
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
                 conn.settimeout(_remaining(deadline))
                 conn.connect(str(self.path))
                 pid, uid, gid = struct.unpack("3i", conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i")))
-                if (pid < 1 or (uid, gid) != endpoint[1:] or _socket_identity(self.path) != endpoint):
+                if (pid < 1 or (uid, gid) != (self.peer_uid, self.peer_gid)
+                        or _socket_identity(self.path, self.peer_uid, self.peer_gid) != endpoint):
                     raise ValueError()
                 conn.settimeout(_remaining(deadline))
                 conn.sendall(raw)
