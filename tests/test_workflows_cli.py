@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import os
 
 import pytest
 
@@ -135,6 +136,7 @@ def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monk
         "release_dir": str(tmp_path), "release_digest": hashlib.sha256(raw).hexdigest()})
     preview = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1"])
     assert preview.exit_code == 0 and preview.data["effects"] == []
+    assert preview.data["release_path_digest"] == hashlib.sha256(os.fsencode(tmp_path.resolve())).hexdigest()
     assert preview.data["components"][0]["bytes"] == len(artifact.read_bytes())
     artifact.write_bytes(b"drift")
     refused = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1"])

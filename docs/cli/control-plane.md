@@ -120,7 +120,10 @@ component without contacting the controller or installing anything. The manifest
 uses `anvil-workflows.release/v1`, names the `propagation-v1` profile and its
 digest, and lists one to eight `{name, file, sha256}` components; each file is a
 single local basename. Deployment verify additionally compares that pin with the
-installed owner profile. Recovery verify reads retained isolated-restore evidence
+installed owner profile. The deployment result includes a digest of the canonical release directory
+so an installer can bind the verified manifest to its selected source checkout
+without publishing the private path.
+Recovery verify reads retained isolated-restore evidence
 under the separate recovery scope; it never launches a restore. T015/T016 own
 the actual isolated test and evidence writer. Missing evidence refuses the command.
 

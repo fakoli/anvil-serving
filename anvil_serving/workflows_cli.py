@@ -128,7 +128,9 @@ def _local_preview(profile: str) -> dict:
                 raise ValueError()
             components.append({"name": item["name"], "sha256": expected_file, "bytes": metadata.st_size})
         return {"profile_id": profile, "profile_digest": manifest["profile_digest"],
-                "release_digest": expected, "components": components, "effects": []}
+                "release_digest": expected,
+                "release_path_digest": hashlib.sha256(os.fsencode(directory.resolve(strict=True))).hexdigest(),
+                "components": components, "effects": []}
     except (KeyError, OSError, ValueError, TypeError, UnicodeError, PropagationContractError):
         raise SafetyError("local workflow release is unavailable", code="workflow_release_unavailable") from None
 
