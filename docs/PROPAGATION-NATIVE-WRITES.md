@@ -48,6 +48,28 @@ ownership and path custody, so replacement or revocation fails closed. This
 resolver is not yet wired into `controller serve` and does not itself establish
 active model identity or authorization to apply a fleet effect.
 
+`ObservedActiveIdentity` is a separate read-only owner input. It compares the
+authenticated router's current catalog digest with the installed expectation,
+matches an exact previously approved container ID and pinned Docker start-input
+digest (image, recipe labels, arguments, mounts, ports and GPU requests), checks
+Docker's requested and observed loopback port binding, then asks that endpoint
+for the exact served ID. Only a complete match returns the deterministic
+activation fingerprint. The protected installation profile must supply and pin
+the activation receipt and its runtime digest before this input can be bound to
+`controller serve`; the default controller remains unavailable. Environment
+values are omitted from the public fingerprint; the exact container ID pins
+the immutable Docker environment from the approved activation.
+The activation receipt must also prove the selected model artifact/revision and
+its mount custody; matching container start inputs and a served alias alone do
+not prove the loaded weight bytes. Missing artifact evidence refuses production
+binding.
+The observation is point-in-time evidence, not a mutation-boundary fence;
+native effects still require a fresh current-authority check under their lock.
+Production binding also needs one aggregate observation deadline; the HTTP
+socket timeouts here are per exchange, not a whole-call deadline.
+Its container must share the intended host network namespace with the model
+loopback listener; an installed cross-namespace proof remains required.
+
 The bound service exposes `propagation.accept.v1`,
 `propagation.dispatch.pending.v1`, `propagation.dispatch.record.v1`, and
 `fleet.propagation.preview.v1`, `fleet.propagation.submit.v1`,
