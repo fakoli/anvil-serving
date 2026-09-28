@@ -714,6 +714,17 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
     with pytest.raises(ClientCatalogError, match="shared home environment"):
         sync_client_catalog_batch(**{**options, "targets": (
             targets[0], targets[1], replace(targets[2], openclaw_config=str(tmp_path / "openclaw.json")))})
+    with pytest.raises(ClientCatalogError, match="shared home environment"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            replace(targets[0], state_path=str(tmp_path / ".ENV")), targets[1], targets[2])})
+    service_env = Path(targets[2].openclaw_config).parent / "service-env" / "ai.openclaw.gateway.env"
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            replace(targets[0], state_path=str(service_env)), targets[1], targets[2])})
+    if os.name == "nt":
+        for leaf in ("state. ", "state:stream"):
+            with pytest.raises(ClientCatalogError, match="noncanonical native catalog path"):
+                native_catalog_effect_targets(replace(targets[0], state_path=str(tmp_path / leaf)))
     assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == ["target-1", "target-2", "target-3"]
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == ["target-1", "target-2", "target-3"]

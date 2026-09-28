@@ -2142,6 +2142,10 @@ def native_catalog_effect_targets(target: NativeCatalogTarget) -> dict[str, Path
     effects = {"catalog-" + suffix + "-" + name: Path(value) for name, value in paths.items()}
     if any(not path.is_absolute() or ".." in path.parts for path in effects.values()):
         raise ClientCatalogError("native catalog path must be absolute")
+    if os.name == "nt" and any(
+            part.endswith((" ", ".")) or ":" in part
+            for path in effects.values() for part in path.parts[1:]):
+        raise ClientCatalogError("noncanonical native catalog path")
     return effects
 
 
@@ -2213,10 +2217,14 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                 for field in identity_fields) for target in targets)):
         raise ClientCatalogError("native catalog target is not approved")
     paths = [path for binding in bindings for path in binding.values()]
+    read_only_paths = {Path(target.openclaw_config).parent / "service-env" /
+                       "ai.openclaw.gateway.env" for target in targets
+                       if target.client == "openclaw"}
     home = fence.owner.storage_root.resolve(strict=True)
-    if any(path.name == ".env" and path.parent.resolve() == home for path in paths):
+    if any(path.name.casefold() == ".env" and path.parent.resolve() == home
+           for path in paths):
         raise ClientCatalogError("shared home environment is not a catalog target")
-    if (len(set(paths)) != len(paths)
+    if (len(set(paths)) != len(paths) or set(paths) & read_only_paths
             or expected_config_sha256 != grant.catalog_digest
             or dict(grant.effect_targets) != {name: str(path) for binding in bindings
                                               for name, path in binding.items()}):
