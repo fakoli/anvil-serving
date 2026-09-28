@@ -1613,9 +1613,12 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
             path = root / ("config.yaml" if profile == "default"
                            else "profiles/" + profile + "/config.yaml")
             try:
-                document = yaml.load(path.read_bytes(), Loader=UniqueLoader)
-            except yaml.YAMLError as exc:
-                raise ClientCatalogError("Hermes config cannot be parsed safely") from exc
+                source = path.read_bytes()
+                if any(isinstance(event, yaml.events.AliasEvent) for event in yaml.parse(source)):
+                    raise ClientCatalogError("Hermes config aliases are not supported for fenced writes")
+                document = yaml.load(source, Loader=UniqueLoader)
+            except yaml.YAMLError:
+                raise ClientCatalogError("Hermes config cannot be parsed safely") from None
             if not isinstance(document, dict):
                 raise ClientCatalogError("Hermes config is not a mapping")
             row = render_hermes_profile_plan(catalog,
@@ -1637,8 +1640,8 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
                         profile=profile)["changed_keys"]:
                     raise ClientCatalogError("Hermes source render did not converge")
                 path.write_bytes(rendered)
-            except yaml.YAMLError as exc:
-                raise ClientCatalogError("Hermes config cannot be rendered safely") from exc
+            except yaml.YAMLError:
+                raise ClientCatalogError("Hermes config cannot be rendered safely") from None
             if _run_hermes(hermes_bin, row["profile"],
                     ["config", "check"], timeout_seconds=timeout_seconds,
                     run=scratch_run).returncode:
@@ -1646,7 +1649,13 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
             hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
             run=scratch_run)
-        if set(discovered) != set(configs) or any(row.get("changed_keys") for row in verified):
+        observed_fields = ("profile", "managed", "provider", "model", "context_window",
+                           "max_output_tokens", "compression", "vision_model",
+                           "vision_context_window")
+        if (set(discovered) != set(configs) or len(verified) != len(rows)
+                or any(observed.get("changed_keys") or any(
+                    observed.get(field) != planned.get(field) for field in observed_fields)
+                    for planned, observed in zip(rows, verified))):
             raise ClientCatalogError("Hermes scratch render failed verification")
         rendered = {}
         for profile, path in discovered.items():

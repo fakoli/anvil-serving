@@ -4,6 +4,7 @@ import copy
 import json
 import os
 import sys
+import traceback
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -841,6 +842,46 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
     assert set(fence.journal()["effects"]) == set(bindings)
+
+
+def test_native_hermes_rejects_aliases_and_redacts_parser_errors(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    config = Path(targets[3].hermes_config)
+    original = config.read_bytes()
+    aliased = yaml.safe_dump(yaml.safe_load(original), sort_keys=False).replace(
+        "model:\n", "model: &shared\n", 1) + "unmanaged: *shared\n"
+    config.write_text(aliased, encoding="utf-8")
+    with pytest.raises(ClientCatalogError, match="aliases are not supported"):
+        sync_client_catalog_batch(**options)
+    assert config.read_text(encoding="utf-8") == aliased
+    assert fence.journal() is None
+
+    marker = "synthetic-private-parser-marker"
+    config.write_text("model: [" + marker + "\n", encoding="utf-8")
+    with pytest.raises(ClientCatalogError) as error:
+        sync_client_catalog_batch(**options)
+    assert marker not in "".join(traceback.format_exception(error.value))
+    assert fence.journal() is None
+
+
+def test_native_hermes_rejects_effective_provider_mismatch(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    original = Path(targets[3].hermes_config).read_bytes()
+    run = options["hermes_run"]
+
+    def mismatched_cli(argv, **kwargs):
+        if (kwargs.get("env", {}).get("HERMES_HOME") and argv[2] == "default"
+                and argv[3:6] == ["config", "get", "model"]):
+            return _HermesRunner._completed(stdout=json.dumps({
+                "provider": "cloud-selected", "default": "cloud-model"}))
+        return run(argv, **kwargs)
+
+    with pytest.raises(ClientCatalogError, match="scratch render failed verification"):
+        sync_client_catalog_batch(**{**options, "hermes_run": mismatched_cli})
+    assert Path(targets[3].hermes_config).read_bytes() == original
+    assert fence.journal() is None
 
 
 def test_native_catalog_batch_second_failure_retains_original_reservation(tmp_path, monkeypatch):
