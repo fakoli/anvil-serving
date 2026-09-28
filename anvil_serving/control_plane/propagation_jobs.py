@@ -61,7 +61,7 @@ class PropagationService:
                  supervisor: PropagationSupervisor, profile: PropagationProfile):
         # Admission and job reservation must serialize in one durable ledger.
         # Separate databases permit a newer generation to overtake an active job.
-        if intents.path.resolve() != Path(jobs.path).resolve():
+        if len({intents.path.resolve(), Path(jobs.path).resolve(), Path(supervisor.store.path).resolve()}) != 1:
             raise ValueError("propagation intent and job stores must share one database")
         contract_api._id(profile.profile_id)
         contract_api._digest(profile.profile_digest)

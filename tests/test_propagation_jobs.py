@@ -420,6 +420,7 @@ def test_new_generation_waits_for_durable_job_custody(tmp_path):
         "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
         "deadline": owner.contract.value["deadline_at"]})
     value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["targets"] = [{**value["targets"][0], "resource_keys": ["different-client-catalog"]}]
     value["effect_set_digest"] = effect_scope_digest(value)
     newer = parse_contract(value)
     with pytest.raises(PropagationIntentError, match="resource_conflict"):
@@ -428,6 +429,13 @@ def test_new_generation_waits_for_durable_job_custody(tmp_path):
             active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
             request_id="request-2", now=_now())
     owner.intents.assert_current(accepted["intent_id"])
+
+
+def test_owner_refuses_split_admission_and_job_ledgers(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    other = PropagationIntentStore(tmp_path / "separate.sqlite")
+    with pytest.raises(ValueError, match="share one database"):
+        PropagationService(other, owner.jobs, owner.supervisor, owner.profile)
 
 
 def test_old_job_cannot_reserve_after_new_generation_admission(tmp_path):

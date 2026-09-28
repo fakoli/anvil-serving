@@ -261,11 +261,10 @@ class JobStore:
             if profile is None or profile.digest != profile_digest:
                 db.execute("ROLLBACK")
                 raise PropagationJobError("profile_not_approved")
-            for resource in binding["resources"]:
-                holder = db.execute("SELECT job_id FROM propagation_native_resources WHERE resource_key=?", (resource,)).fetchone()
-                if holder is not None:
-                    db.execute("ROLLBACK")
-                    raise PropagationJobError("resource_conflict")
+            # First release has one fleet writer, including disjoint target sets.
+            if db.execute("SELECT 1 FROM propagation_native_resources LIMIT 1").fetchone():
+                db.execute("ROLLBACK")
+                raise PropagationJobError("resource_conflict")
             db.execute("""INSERT INTO propagation_native_jobs(job_id,intent_id,operation_id,binding_digest,contract_digest,canonical_contract,preview_digest,resources_json,deadline_at,profile_json,state,created_at)
                           VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                        (job_id, intent_id, operation_id, binding_digest, contract.digest, contract.canonical,
