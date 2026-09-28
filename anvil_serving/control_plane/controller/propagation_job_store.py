@@ -248,6 +248,15 @@ class JobStore:
             if deadline <= _parse_stamp(stamp):
                 db.execute("ROLLBACK")
                 raise PropagationJobError("deadline_expired")
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='propagation_intents'").fetchone():
+                current = db.execute(
+                    "SELECT i.generation, i.terminal_at, h.generation AS current_generation "
+                    "FROM propagation_intents i JOIN propagation_scope_high_water h ON i.scope=h.scope "
+                    "WHERE i.intent_id=? AND i.contract_digest=?", (intent_id, contract.digest),
+                ).fetchone()
+                if current is None or current["generation"] != current["current_generation"] or current["terminal_at"] is not None:
+                    db.execute("ROLLBACK")
+                    raise PropagationJobError("stale_generation")
             profile = self.profiles.get(profile_id)
             if profile is None or profile.digest != profile_digest:
                 db.execute("ROLLBACK")

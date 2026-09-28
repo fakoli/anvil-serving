@@ -56,8 +56,8 @@ class ControlledOwner:
         profile = ExecutionProfile("profile-1", DIGEST, (sys.executable, str(runner), str(self.marker)),
             hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
             artifact_pins=((str(runner), hashlib.sha256(runner.read_bytes()).hexdigest()),), budget_seconds=10, heartbeat_seconds=1)
-        self.jobs = JobStore(root / "jobs.sqlite", {"profile-1": profile})
-        self.intents = PropagationIntentStore(root / "intent.sqlite")
+        self.jobs = JobStore(root / "propagation.sqlite", {"profile-1": profile})
+        self.intents = PropagationIntentStore(root / "propagation.sqlite")
         self.supervisor = PropagationSupervisor(self.jobs, reconcile=self.reconcile)
         self.profile = PropagationProfile("profile-1", DIGEST, "executor-1",
             lambda ref: self.contract.canonical if ref == "approval-1" else b"{}",
@@ -408,3 +408,41 @@ def test_superseded_historical_apply_cannot_receive_fresh_acceptance(tmp_path):
     with pytest.raises(PropagationIntentError, match="stale_generation"):
         owner.service.verify(accepted["intent_id"], job["job_id"])
     assert owner.reads == []
+
+
+def test_new_generation_waits_for_durable_job_custody(tmp_path):
+    from anvil_serving.control_plane.controller.propagation_store import PropagationIntentError
+    owner = ControlledOwner(tmp_path)
+    accepted = owner.accept()
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    owner.jobs.submit({"intent_id": accepted["intent_id"], "operation_id": operation,
+        "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
+        "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
+        "deadline": owner.contract.value["deadline_at"]})
+    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["effect_set_digest"] = effect_scope_digest(value)
+    newer = parse_contract(value)
+    with pytest.raises(PropagationIntentError, match="resource_conflict"):
+        owner.intents.admit(newer.canonical,
+            approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
+            active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
+            request_id="request-2", now=_now())
+    owner.intents.assert_current(accepted["intent_id"])
+
+
+def test_old_job_cannot_reserve_after_new_generation_admission(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    accepted = owner.accept()
+    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["effect_set_digest"] = effect_scope_digest(value)
+    newer = parse_contract(value)
+    owner.intents.admit(newer.canonical,
+        approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
+        active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
+        request_id="request-2", now=_now())
+    with pytest.raises(PropagationJobError, match="stale_generation"):
+        owner.jobs.submit({"intent_id": accepted["intent_id"],
+            "operation_id": _hash(["effect/v1", owner.contract.digest, "fleet", "apply"]),
+            "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
+            "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
+            "deadline": owner.contract.value["deadline_at"]})

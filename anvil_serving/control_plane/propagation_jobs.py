@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+from pathlib import Path
 import time
 import threading
 from typing import Callable, Mapping, Any
@@ -58,6 +59,10 @@ class PropagationProfile:
 class PropagationService:
     def __init__(self, intents: PropagationIntentStore, jobs: JobStore,
                  supervisor: PropagationSupervisor, profile: PropagationProfile):
+        # Admission and job reservation must serialize in one durable ledger.
+        # Separate databases permit a newer generation to overtake an active job.
+        if intents.path.resolve() != Path(jobs.path).resolve():
+            raise ValueError("propagation intent and job stores must share one database")
         contract_api._id(profile.profile_id)
         contract_api._digest(profile.profile_digest)
         contract_api._id(profile.executor_issuer)
