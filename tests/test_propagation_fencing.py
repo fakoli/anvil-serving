@@ -634,7 +634,7 @@ def test_windows_fence_refuses_junction_at_canonical_lock_leaf(tmp_path):
     )
     lock_parent = fence.journal_root
     lock_parent.mkdir(parents=True)
-    for path in (root / ".anvil-serving", lock_parent):
+    for path in (root / ".config", lock_parent.parent, lock_parent):
         tree.establish_full_control(path)
     lock_leaf = lock_parent / "catalog-1.lock"
     completed = subprocess.run(
