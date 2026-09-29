@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 
 from ... import mcp
 from ..propagation_jobs import PropagationService
+from .propagation_active_identity import ObservedActiveIdentity
 from ..mcp.arguments import validate_tool_arguments
 from ..mcp.catalog import build_family_catalog, call_tool as catalog_call_tool, list_tools as catalog_list_tools
 from ..mcp.security import redact_text
@@ -105,6 +106,8 @@ def make_server(
     workload_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
     workload_monotonic: Callable[[], object] = time.monotonic,
     propagation_service: PropagationService | None = None,
+    activation_observer: ObservedActiveIdentity | None = None,
+    activation_observer_profile_sha256: str = "",
 ) -> ThreadingHTTPServer:
     """Return an unstarted controller server."""
     # ``env=None`` stays None: the real process environment may fall back to
@@ -135,9 +138,16 @@ def make_server(
             # A bad optional policy disables only new scoped surfaces.  The
             # established controller token remains available for legacy APIs.
             scoped_policy = None
-    if propagation_service is not None and scoped_policy is None:
+    if (propagation_service is not None or activation_observer is not None) and scoped_policy is None:
         raise ControllerError("propagation_authorization_unavailable",
                               "scoped propagation authorization is unavailable")
+    if activation_observer is not None:
+        from ..propagation import _digest, PropagationContractError
+        try:
+            _digest(activation_observer_profile_sha256)
+        except PropagationContractError:
+            raise ControllerError("propagation_observer_unavailable",
+                                  "protected activation observer is unavailable") from None
     store = operation_store or OperationStore(
         idempotency_db_path,
         retention_seconds=idempotency_retention_seconds,
@@ -160,8 +170,10 @@ def make_server(
         )
     collector: Optional[NodeWorkloadCollector] = None
     fleet_collector: Optional[FleetWorkloadCollector] = None
-    if propagation_service is not None:
-        families = tuple(family for family in TOOL_FAMILIES if family.name != "propagation") + (build_propagation_family(propagation_service),)
+    if propagation_service is not None or activation_observer is not None:
+        families = tuple(family for family in TOOL_FAMILIES if family.name != "propagation") + (
+            build_propagation_family(propagation_service, activation_observer,
+                                     activation_observer_profile_sha256),)
         propagation_tools = build_family_catalog(families)
         def local_list() -> list[dict]:
             return catalog_list_tools(propagation_tools, mcp.TARGET_CONTEXT_SCHEMA)
@@ -269,16 +281,26 @@ def serve(
     workload_fleet_topology: Optional[str] = None,
     propagation_profile_path: Optional[str] = None,
     propagation_profile_sha256: Optional[str] = None,
+    activation_observer_profile_path: Optional[str] = None,
+    activation_observer_profile_sha256: Optional[str] = None,
     server_factory: Callable[..., ThreadingHTTPServer] = make_server,
 ) -> int:
     if (propagation_profile_path is None) != (propagation_profile_sha256 is None):
         raise ControllerError("propagation_profile_unavailable",
                               "protected propagation owner profile is unavailable")
+    if (activation_observer_profile_path is None) != (activation_observer_profile_sha256 is None):
+        raise ControllerError("propagation_observer_unavailable",
+                              "protected activation observer is unavailable")
     extra = {}
     if propagation_profile_path is not None:
         from .propagation_bootstrap import build_propagation_service
         extra["propagation_service"] = build_propagation_service(
             propagation_profile_path, propagation_profile_sha256)
+    if activation_observer_profile_path is not None:
+        from .propagation_bootstrap import build_activation_observer
+        extra["activation_observer"] = build_activation_observer(
+            activation_observer_profile_path, activation_observer_profile_sha256)
+        extra["activation_observer_profile_sha256"] = activation_observer_profile_sha256
     httpd = server_factory(
         host=host,
         port=port,

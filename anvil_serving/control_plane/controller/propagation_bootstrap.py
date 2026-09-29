@@ -116,9 +116,17 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
         execution.verify_executable()
         readback.verify_executable()
         identity = value["activation"]
-        if type(identity) is not dict or set(identity) != {
-                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}:
+        if type(identity) is not dict or set(identity) not in ({
+                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}, {
+                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env", "observer"}):
             raise ValueError()
+        if "observer" in identity:
+            from ..mcp.controller_client import resolve_controller_token_file
+            from ..mcp.security import safe_controller_url
+            observer = identity["observer"]
+            _digest(observer["profile_sha256"])
+            safe_controller_url(observer["controller_url"])
+            resolve_controller_token_file(observer["token_file"])
         active = ObservedActiveIdentity(**identity)
         control = value["workflow_control"]
         if type(control) is not dict or set(control) != {
@@ -141,3 +149,25 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
     except Exception:
         raise ControllerError("propagation_profile_unavailable",
                               "protected propagation owner profile is unavailable") from None
+
+
+def build_activation_observer(path: str, sha256: str) -> ObservedActiveIdentity:
+    """Load the exact read-only activation pin into the resource controller."""
+    try:
+        if sys.platform != "linux":
+            raise ValueError()
+        expected = _digest(sha256)
+        raw = _protected(Path(path), private=True, limit=_MAX_PROFILE)
+        if hashlib.sha256(raw).hexdigest() != expected:
+            raise ValueError()
+        value = json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs)
+        if type(value) is not dict or set(value) != {"schema", "activation"} or value["schema"] != "anvil-serving.propagation-activation-observer/v1":
+            raise ValueError()
+        activation = value["activation"]
+        if type(activation) is not dict or set(activation) != {
+                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}:
+            raise ValueError()
+        return ObservedActiveIdentity(**activation)
+    except Exception:
+        raise ControllerError("propagation_observer_unavailable",
+                              "protected activation observer is unavailable") from None

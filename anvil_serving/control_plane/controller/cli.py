@@ -55,6 +55,10 @@ def _build_parser() -> argparse.ArgumentParser:
                               help="protected installed propagation owner profile")
     serve_parser.add_argument("--propagation-profile-sha256", default=None,
                               help="reviewed SHA-256 of the exact owner profile")
+    serve_parser.add_argument("--activation-observer-profile", default=None,
+                              help="protected read-only activation observation profile")
+    serve_parser.add_argument("--activation-observer-profile-sha256", default=None,
+                              help="reviewed SHA-256 of the exact activation observer profile")
     serve_parser.add_argument(
         "--drain-seconds",
         type=float,
@@ -280,6 +284,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 workload_router_auth_env=args.workload_router_auth_env,
                 propagation_profile_path=args.propagation_profile,
                 propagation_profile_sha256=args.propagation_profile_sha256,
+                activation_observer_profile_path=args.activation_observer_profile,
+                activation_observer_profile_sha256=args.activation_observer_profile_sha256,
             )
         except ControllerError as exc:
             print(
