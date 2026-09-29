@@ -130,10 +130,12 @@ checks observation and receipt timestamps against the current owner clock and
 the original job completion time, so stale evidence cannot pass acceptance.
 Deployment preview hashes the protected local release manifest and each declared
 component without contacting the controller or installing anything. The manifest
-uses `anvil-workflows.release/v1`, names the `propagation-v1` profile and its
-digest, and lists one to eight `{name, file, sha256}` components; each file is a
-single local basename. Deployment verify additionally compares that pin with the
-installed owner profile. The deployment result includes a digest of the canonical release directory
+uses `anvil-workflows.release/v1`, names the `propagation-v1` execution profile,
+its digest, the complete pinned owner-profile digest and expected `preview` or
+`effects` owner mode, and lists one to eight
+`{name, file, sha256}` components; each file is a single local basename.
+Deployment verify additionally compares both pins with the installed owner
+profile. The deployment result includes a digest of the canonical release directory
 so an installer can bind the verified manifest to its selected source checkout
 without publishing the private path.
 Recovery verify reads retained isolated-restore evidence

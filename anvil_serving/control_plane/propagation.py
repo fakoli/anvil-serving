@@ -20,7 +20,7 @@ MAX_DEADLINE = timedelta(days=7)
 _UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_CONTRACT_FIELDS = frozenset(("schema", "scope", "revision", "generation", "approval_ref", "approval_digest", "activation_ref", "activation_digest", "inputs", "effect_set_digest", "targets", "execution_profile_ref", "execution_profile_digest", "session_policy", "preview_policy", "issued_at", "deadline_at"))
+_CONTRACT_FIELDS = frozenset(("schema", "authority_mode", "scope", "revision", "generation", "approval_ref", "approval_digest", "activation_ref", "activation_digest", "inputs", "effect_set_digest", "targets", "execution_profile_ref", "execution_profile_digest", "session_policy", "preview_policy", "issued_at", "deadline_at"))
 _INPUT_FIELDS = frozenset(("catalog_digest", "monitoring_inventory_digest", "execution_profile_digest", "artifact_digest", "installation_inventory_digest"))
 _TARGET_FIELDS = frozenset(("target_id", "installation_id", "profile_id", "runtime_id", "resource_keys", "expected_identity_ref", "expected_identity_digest", "checks", "effects"))
 _SESSION_FIELDS = frozenset(("preserve_active_conversations", "loaded_state_required", "idle_reload"))
@@ -39,6 +39,11 @@ DISPATCH_SCOPE = "propagation:dispatch"
 ACTIVITY_SCOPE = "propagation:activity"
 STATUS_SCOPE = "propagation:status"
 RECOVERY_SCOPE = "propagation:recovery"
+PREVIEW_MODE_OPERATIONS = frozenset({
+    "propagation.profile.v1",
+    "propagation.preview.v1",
+    "propagation.recovery.verify.v1",
+})
 
 
 class PropagationContractError(ValueError):
@@ -199,7 +204,10 @@ def _utc(value: Any) -> datetime:
 
 def _validate_contract(value: dict[str, Any]) -> None:
     _exact(value, _CONTRACT_FIELDS)
-    if value["schema"] != SCHEMA or type(value["generation"]) is not int or isinstance(value["generation"], bool) or value["generation"] <= 0:
+    if (value["schema"] != SCHEMA or type(value["authority_mode"]) is not str
+            or value["authority_mode"] not in {"preview", "effects"}
+            or type(value["generation"]) is not int or isinstance(value["generation"], bool)
+            or value["generation"] <= 0):
         _refuse()
     for field in ("scope", "revision", "approval_ref", "activation_ref", "execution_profile_ref"):
         _id(value[field])
@@ -250,6 +258,8 @@ def parse_contract(raw: bytes | str | Mapping[str, Any]) -> PropagationContract:
 def admit_contract(raw: bytes | str | Mapping[str, Any], approval_lookup: Callable[[str], ApprovedAuthority | None], active_identity: ActiveIdentity, now: datetime) -> PropagationContract:
     contract = parse_contract(raw)
     value = contract.value
+    if value["authority_mode"] != "effects":
+        _refuse("execution_not_authorized")
     issued, deadline = _utc(value["issued_at"]), _utc(value["deadline_at"])
     if not isinstance(now, datetime) or now.tzinfo != timezone.utc or now.utcoffset() != timedelta(0):
         _refuse("malformed_payload")
@@ -299,7 +309,8 @@ def authorize_receipt_lookup(identity: ReceiptIdentity, caller: ReceiptIdentity)
 
 _OPERATIONS = (
     ("propagation.accept.v1", ADMISSION_SCOPE, ("approval_ref", "request_id"), ("intent_id", "workflow_id", "contract_digest")),
-    ("propagation.profile.v1", STATUS_SCOPE, (), ("profile_id", "profile_digest", "installed")),
+    ("propagation.profile.v1", STATUS_SCOPE, (), ("profile_id", "profile_digest", "owner_profile_digest", "installed")),
+    ("propagation.preview.v1", STATUS_SCOPE, ("cursor",), ("preview_digest", "targets")),
     ("propagation.status.v1", STATUS_SCOPE, ("intent_id", "cursor"), ("targets", "observed_at")),
     ("propagation.resume.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("attempt_id", "state")),
     ("propagation.cancel.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("state",)),
@@ -489,6 +500,8 @@ def _result_schema(name: str) -> dict[str, Any]:
         return _object({"intent_id": _identifier(), "workflow_id": _identifier(), "contract_digest": _digest_schema()})
     if name == "propagation.profile.v1":
         return _object({"profile_id": _identifier(), "profile_digest": _digest_schema(),
+                        "owner_profile_digest": _digest_schema(),
+                        "mode": {"type": "string", "enum": ["effects", "preview"]},
                         "installed": {"type": "boolean"}, "observed_at": _timestamp()})
     if name == "propagation.status.v1":
         return _page({"intent_id": _identifier(), "workflow_id": _identifier(),
@@ -516,7 +529,7 @@ def _result_schema(name: str) -> dict[str, Any]:
         return _object({"intents": _array(_intent_row(), 100), "next_cursor": _cursor()})
     if name == "propagation.dispatch.record.v1":
         return _object({"recorded": {"type": "boolean"}})
-    if name == "fleet.propagation.preview.v1":
+    if name in {"propagation.preview.v1", "fleet.propagation.preview.v1"}:
         return _page({"preview_digest": _nullable(_digest_schema()),
                       "effect_set_digest": _digest_schema(), "expires_at": _timestamp(),
                       "all_required_ready": {"type": "boolean"},

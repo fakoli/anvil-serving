@@ -11,7 +11,7 @@ from ..security import authenticated_caller
 
 
 OPERATION_NAMES = frozenset({
-    "propagation.accept.v1", "propagation.profile.v1", "propagation.status.v1",
+    "propagation.accept.v1", "propagation.profile.v1", "propagation.preview.v1", "propagation.status.v1",
     "propagation.resume.v1", "propagation.cancel.v1",
     "propagation.recovery.verify.v1",
     "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
@@ -28,7 +28,9 @@ def build_family(service: PropagationService | None = None) -> ToolFamily:
             raise ToolError("bad_argument", "propagation capabilities accepts no arguments")
         declaration = capability_declaration()
         for operation in declaration["operations"]:
-            operation["available"] = service is not None and operation["name"] in OPERATION_NAMES
+            operation["available"] = (service is not None
+                and operation["name"] in OPERATION_NAMES
+                and service.operation_available(operation["name"]))
         return ok(declaration)
 
     tools = {"propagation_capabilities": {
@@ -46,7 +48,7 @@ def build_family(service: PropagationService | None = None) -> ToolFamily:
 
         for operation in capability_declaration()["operations"]:
             name = operation["name"]
-            if name in OPERATION_NAMES:
+            if name in OPERATION_NAMES and service.operation_available(name):
                 tools[name] = {
                     "description": "Run a bounded approved propagation owner operation.",
                     "inputSchema": operation["input_schema"],

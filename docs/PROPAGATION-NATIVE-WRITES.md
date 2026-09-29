@@ -60,7 +60,8 @@ An opt-in `controller serve --propagation-profile PATH
 --propagation-profile-sha256 SHA256` path constructs the service only from one
 mode-0600, custody-checked JSON profile and a separately reviewed exact digest.
 Both options and a valid scoped authorization policy are required. The profile
-binds one protected ledger, pinned approved contract, active identity, fixed
+selects an exact `preview` or `effects` mode and binds one protected ledger,
+pinned approved contract, active identity, fixed
 apply and readback execution profiles, executor issuer and protected Workflows
 control socket/token references. The ledger must already exist with mode 0600
 inside an owner-only mode-0700 directory.
@@ -83,6 +84,11 @@ incoming request or the file at runtime. Every lookup rechecks the file pin,
 ownership and path custody, so replacement or revocation fails closed. The
 resolver is wired only through the protected opt-in profile; it does not itself
 establish active model identity or authorize a fleet effect.
+The contract's `authority_mode` is part of its canonical bytes but intentionally
+outside the stable effect-set digest. A `preview` contract cannot pass admission,
+and the owner refuses a contract whose authority mode differs from its pinned
+profile mode. Enabling effects therefore requires distinct `effects` contract
+bytes while retaining the reviewed effect-set digest.
 
 `ObservedActiveIdentity` is a separate read-only owner input. It compares the
 authenticated router's current catalog digest with the installed expectation,
@@ -106,12 +112,18 @@ individual HTTP and Docker calls retain their own bounded timeouts and cleanup.
 Its container must share the intended host network namespace with the model
 loopback listener; an installed cross-namespace proof remains required.
 
-The bound service exposes `propagation.accept.v1`,
-`propagation.dispatch.pending.v1`, `propagation.dispatch.record.v1`, and
-`fleet.propagation.preview.v1`, `fleet.propagation.submit.v1`,
-`fleet.propagation.current.v1`,
+The bound service declares `propagation.accept.v1`, `propagation.profile.v1`,
+`propagation.preview.v1`, `propagation.status.v1`, `propagation.resume.v1`,
+`propagation.cancel.v1`, `propagation.recovery.verify.v1`,
+`propagation.dispatch.pending.v1`, `propagation.dispatch.record.v1`,
+`fleet.propagation.preview.v1`, `fleet.propagation.submit.v1`, `fleet.propagation.current.v1`,
 `fleet.propagation.status.v1`, `fleet.propagation.verify.v1`,
 `fleet.propagation.convergence.v1`, `fleet.propagation.cancel.v1`.
+An installed preview-mode owner advertises and accepts only profile, recovery
+verification and whole-fleet preview reads. Every admission, dispatch,
+workflow-control, job and current-authority operation fails closed even for a
+broader credential. Enabling effects requires a separately pinned owner profile
+and executable approved contract.
 Admission, dispatch, activity and status credentials have separate scopes.
 Requests contain opaque owner references; profiles, executable pins, transport
 credentials and approval resolution come from the installed owner configuration.

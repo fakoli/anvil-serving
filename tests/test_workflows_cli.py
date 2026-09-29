@@ -147,13 +147,24 @@ def test_capability_preflight_requires_exact_available_owner_contract(monkeypatc
     monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
     ready = workflows_cli.main(["capabilities"])
     assert ready.exit_code == 0 and ready.data["state"] == "ready"
-    assert len(ready.data["operations"]) == 15 and ready.data["effects"] == []
+    assert ready.data["mode"] == "effects"
+    assert len(ready.data["operations"]) == 16 and ready.data["effects"] == []
     assert calls == [{"name": "propagation_capabilities", "arguments": {},
                       "_meta": {workflows_cli.PROTOCOL_VERSION_META_KEY: workflows_cli.mcp.PROTOCOL_VERSION,
                                 workflows_cli.CLIENT_CAPABILITIES_META_KEY: {},
                                 workflows_cli.CLIENT_INFO_META_KEY: {"name": "anvil-workflows-cli",
                                                                "version": workflows_cli.mcp.SERVER_INFO["version"]}}}]
-    declaration["operations"][0]["available"] = False
+    declaration["operations"][0]["available"] = "true"
+    refused = workflows_cli.main(["capabilities"])
+    assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
+    for operation in declaration["operations"]:
+        operation["available"] = operation["name"] in workflows_cli.PREVIEW_MODE_OPERATIONS
+    preview = workflows_cli.main(["capabilities"])
+    assert preview.exit_code == 0 and preview.data["state"] == "ready"
+    assert preview.data["mode"] == "preview"
+    assert set(preview.data["operations"]) == workflows_cli.PREVIEW_MODE_OPERATIONS
+    next(operation for operation in declaration["operations"]
+         if operation["name"] == "propagation.profile.v1")["available"] = False
     refused = workflows_cli.main(["capabilities"])
     assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
 
@@ -167,7 +178,15 @@ def test_capability_preflight_reads_actual_authenticated_controller(tmp_path, mo
     env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-controller", "READER": "synthetic-reader"}
     with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
         monkeypatch.setattr(workflows_cli, "_config", lambda: (f"http://{host}:{port}", env["READER"]))
-        assert workflows_cli.main(["capabilities"]).data["state"] == "ready"
+        result = workflows_cli.main(["capabilities"]).data
+        assert result["state"] == "ready" and result["mode"] == "effects"
+    owner.service.profile = replace(owner.profile, mode="preview")
+    with running_controller(env=env, authorization_policy=policy,
+                            propagation_service=owner.service) as (host, port):
+        monkeypatch.setattr(workflows_cli, "_config",
+                            lambda: (f"http://{host}:{port}", env["READER"]))
+        result = workflows_cli.main(["capabilities"]).data
+        assert result["state"] == "ready" and result["mode"] == "preview"
     with running_controller(env=env, authorization_policy=policy) as (host, port):
         monkeypatch.setattr(workflows_cli, "_config", lambda: (f"http://{host}:{port}", env["READER"]))
         result = workflows_cli.main(["capabilities"])
@@ -179,7 +198,9 @@ def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monk
     artifact = tmp_path / "worker.whl"
     artifact.write_bytes(b"synthetic release")
     manifest = {"schema": "anvil-workflows.release/v1", "profile_id": "propagation-v1",
-                "profile_digest": "a" * 64, "components": [{"name": "worker", "file": artifact.name,
+                "owner_mode": "preview", "owner_profile_digest": "b" * 64,
+                "profile_digest": "a" * 64,
+                "components": [{"name": "worker", "file": artifact.name,
                 "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()}]}
     raw = json.dumps(manifest).encode()
     (tmp_path / "manifest.json").write_bytes(raw)
@@ -187,6 +208,7 @@ def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monk
         "release_dir": str(tmp_path), "release_digest": hashlib.sha256(raw).hexdigest()})
     preview = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1"])
     assert preview.exit_code == 0 and preview.data["effects"] == []
+    assert preview.data["owner_mode"] == "preview"
     assert preview.data["release_path_digest"] == hashlib.sha256(os.fsencode(tmp_path.resolve())).hexdigest()
     assert preview.data["components"][0]["bytes"] == len(artifact.read_bytes())
     artifact.write_bytes(b"drift")
@@ -196,18 +218,37 @@ def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monk
 
 def test_deployed_profile_verify_requires_exact_installed_digest(monkeypatch):
     preview = {"profile_id": "propagation-v1", "profile_digest": "a" * 64,
-               "release_digest": "b" * 64, "components": [], "effects": []}
+               "owner_mode": "preview", "owner_profile_digest": "d" * 64,
+               "release_digest": "b" * 64,
+               "components": [], "effects": []}
     monkeypatch.setattr(workflows_cli, "_local_preview", lambda _: preview)
     monkeypatch.setattr(workflows_cli, "_config", lambda: ("owner", "token"))
     monkeypatch.setattr(workflows_cli, "_call", lambda *_: {
+        "mode": "preview", "owner_profile_digest": "d" * 64,
         "profile_id": "propagation-v1", "profile_digest": "c" * 64,
         "installed": True, "observed_at": "2026-09-28T05:00:00Z"})
     result = workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"])
     assert result.exit_code != 0 and result.data["state"] == "drift"
     monkeypatch.setattr(workflows_cli, "_call", lambda *_: {
+        "mode": "preview", "owner_profile_digest": "c" * 64,
+        "profile_id": "propagation-v1", "profile_digest": "a" * 64,
+        "installed": True, "observed_at": "2026-09-28T05:00:00Z"})
+    result = workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"])
+    assert result.exit_code != 0 and result.data["state"] == "drift"
+    monkeypatch.setattr(workflows_cli, "_call", lambda *_: {
+        "mode": "effects", "owner_profile_digest": "d" * 64,
+        "profile_id": "propagation-v1", "profile_digest": "a" * 64,
+        "installed": True, "observed_at": "2026-09-28T05:00:00Z"})
+    result = workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"])
+    assert result.exit_code != 0 and result.data["state"] == "drift"
+    monkeypatch.setattr(workflows_cli, "_call", lambda *_: {
+        "mode": "preview", "owner_profile_digest": "d" * 64,
         "profile_id": "propagation-v1", "profile_digest": "a" * 64,
         "installed": True, "observed_at": "2026-09-28T05:00:00Z"})
     assert workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"]).data["state"] == "matched"
+    preview["owner_mode"] = "effects"
+    result = workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"])
+    assert result.exit_code != 0 and result.data["state"] == "drift"
 
 
 @pytest.mark.parametrize(("action", "state"), [
