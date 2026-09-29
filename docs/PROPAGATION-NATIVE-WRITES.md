@@ -144,6 +144,14 @@ It uses synthetic native effects and scoped loopback HTTP, not live fleet state.
 
 ## Hermes capability boundary
 
+The pinned executable reader supports native macOS directory descriptors and
+extended-ACL inspection. macOS execution additionally requires root-owned code
+and ancestry with no group/other write access; a mutable user installation is
+refused. The helper retains and rechecks the opened objects through completion.
+Provisioning must pin the interpreter, package and dependencies in that protected
+release. This custody check alone does not prove descendant quiescence or loaded
+session acceptance, and it does not install a Mac controller daemon.
+
 Fenced Hermes profile catalog rendering runs CLI reads and writes in a disposable
 home, then journals the exact proposed YAML bytes under the native file fence.
 Synthetic tests prove byte custody and refusal after a concurrent edit; installed

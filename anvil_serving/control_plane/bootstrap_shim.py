@@ -422,6 +422,14 @@ def inspect_opened_permissions(
 
     if type(descriptor) is not int or descriptor < 0 or type(ancestor) is not bool:
         return BootstrapPermissionVerdict.INDETERMINATE
+    if sys.platform == "darwin":
+        from .mcp.auth_file import AuthFileError, _require_macos_no_extended_acl
+
+        try:
+            _require_macos_no_extended_acl(descriptor, ancestor_allow_deny_only=ancestor)
+        except (OSError, AuthFileError):
+            return BootstrapPermissionVerdict.INDETERMINATE
+        return _inspect_linux(descriptor, ancestor=ancestor)
     if sys.platform == "linux":
         return _inspect_linux(descriptor, ancestor=ancestor)
     if sys.platform == "win32":
@@ -953,7 +961,8 @@ def open_trusted_file(
         raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
     if not 1 <= max_bytes <= MAX_BUNDLE_BYTES:
         raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
-    if sys.platform == "linux":
+    if sys.platform in {"linux", "darwin"}:
+        # The held directory-fd reader uses POSIX APIs on both systems.
         platform = "linux"
     elif sys.platform == "win32":
         platform = "windows"
@@ -990,6 +999,16 @@ def run_pinned_executable(argv: list[str], sha256: str, *, run=subprocess.run, *
         if sys.platform == "win32":
             # Retained file and ancestor handles deny write/delete until launch exits.
             return run(argv, **kwargs)
+        if sys.platform == "darwin":
+            # macOS has no sealed memfd execution. Only an administrator-owned,
+            # non-writable namespace may be executed by path; user installations
+            # must be provisioned into that protected release before use.
+            if any(os.fstat(fd).st_uid != 0 or os.fstat(fd).st_mode & 0o022
+                   for fd in opened._descriptors):
+                raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
+            result = run(argv, **kwargs)
+            opened.read_verified()
+            return result
         if sys.platform != "linux" or not hasattr(os, "memfd_create"):
             raise _reader_refusal(BootstrapErrorCode.UNSUPPORTED_PLATFORM)
         import fcntl

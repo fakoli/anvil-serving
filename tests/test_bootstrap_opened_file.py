@@ -117,6 +117,22 @@ def test_pinned_windows_executable_holds_file_against_replacement() -> None:
             [str(path.with_suffix(".cmd"))], digest, run=held_run))
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="native macOS custody")
+def test_pinned_macos_execution_requires_system_custody(trusted_tmp: Path) -> None:
+    path = Path("/usr/bin/true")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert shim.run_pinned_executable([str(path)], digest, timeout=5).returncode == 0
+    _refusal(BootstrapErrorCode.PRECONDITION_FAILED, lambda: shim.run_pinned_executable(
+        [str(path)], "0" * 64, timeout=5))
+    trusted_tmp.write_bytes(b"#!/bin/sh\nexit 0\n")
+    trusted_tmp.chmod(0o700)
+    if os.geteuid() != 0:
+        def never_run(*_args, **_kwargs):
+            raise AssertionError("a user-owned executable must not run")
+        _refusal(BootstrapErrorCode.PRECONDITION_FAILED, lambda: shim.run_pinned_executable(
+            [str(trusted_tmp)], hashlib.sha256(trusted_tmp.read_bytes()).hexdigest(), run=never_run))
+
+
 def test_empty_and_cap_overflow_are_distinguished(
     trusted_tmp: Path,
 ) -> None:
@@ -374,7 +390,7 @@ def test_partial_open_cleanup_closes_owned_descriptors(
 
 
 def test_unsupported_platform_refuses_before_path_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(shim.sys, "platform", "darwin")
+    monkeypatch.setattr(shim.sys, "platform", "unsupported-os")
     _refusal(
         BootstrapErrorCode.UNSUPPORTED_PLATFORM,
         lambda: shim.open_trusted_file("/not/read", max_bytes=1, require_readonly=False).__enter__(),
