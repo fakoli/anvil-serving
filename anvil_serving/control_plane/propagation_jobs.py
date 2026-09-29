@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+from pathlib import Path
 import time
 import threading
 from typing import Callable, Mapping, Any
 import uuid
 
 from . import propagation as contract_api
-from .controller.propagation_store import PropagationIntentStore, PropagationIntentError
+from .controller.propagation_store import PropagationIntentStore, PropagationIntentError, logical_workflow_id
 from .controller.propagation_job_store import PropagationJobError, JobStore
 from .controller.propagation_supervisor import PropagationSupervisor
 from .mcp.arguments import validate_schema_value
@@ -53,11 +54,19 @@ class PropagationProfile:
     preview: Callable[[bytes], Mapping[str, Any]]
     observe: Callable[[bytes, Mapping[str, Any], str, str | None], Mapping[str, Any]]
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    resume_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
+    cancel_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
+    recovery_evidence: Callable[[str, str], Mapping[str, Any]] | None = None
+    workflow_status: Callable[[str, str], Mapping[str, Any]] | None = None
 
 
 class PropagationService:
     def __init__(self, intents: PropagationIntentStore, jobs: JobStore,
                  supervisor: PropagationSupervisor, profile: PropagationProfile):
+        # Admission and job reservation must serialize in one durable ledger.
+        # Separate databases permit a newer generation to overtake an active job.
+        if len({intents.path.resolve(), Path(jobs.path).resolve(), Path(supervisor.store.path).resolve()}) != 1:
+            raise ValueError("propagation intent and job stores must share one database")
         contract_api._id(profile.profile_id)
         contract_api._digest(profile.profile_digest)
         contract_api._id(profile.executor_issuer)
@@ -84,12 +93,44 @@ class PropagationService:
                     request_id=arguments["request_id"], now=self.profile.now())
                 return {"intent_id": accepted.intent_id, "workflow_id": accepted.workflow_id,
                         "contract_digest": accepted.contract_digest}
+            if operation == "propagation.profile.v1":
+                installed = self.jobs.profiles.get(self.profile.profile_id)
+                return {"profile_id": self.profile.profile_id,
+                        "profile_digest": self.profile.profile_digest,
+                        "installed": installed is not None and installed.digest == self.profile.profile_digest,
+                        "observed_at": _stamp(self.profile.now())}
             if operation == "propagation.dispatch.pending.v1":
                 return self.intents.pending(arguments["cursor"])
             if operation == "propagation.dispatch.record.v1":
                 return {"recorded": self.intents.acknowledge(**arguments, now=self.profile.now())}
+            if operation == "propagation.status.v1":
+                identity = _hash({"intent_id": arguments["intent_id"]})
+                if arguments["cursor"] is not None:
+                    return self._page(operation, identity, caller_id, cursor=arguments["cursor"])
+                return self._page(operation, identity, caller_id,
+                                  payload=self.intent_status(arguments["intent_id"]))
+            if operation in {"propagation.resume.v1", "propagation.cancel.v1"}:
+                return self.control_workflow(operation, arguments, caller_id)
+            if operation == "propagation.recovery.verify.v1":
+                if arguments["profile_id"] != self.profile.profile_id:
+                    raise PropagationJobError("profile_mismatch")
+                if self.profile.recovery_evidence is None:
+                    raise PropagationJobError("recovery_verifier_unavailable")
+                result = json.loads(_json(self.profile.recovery_evidence(arguments["profile_id"], caller_id)))
+                validate_schema_value(result, contract_api._result_schema(operation), "recovery result")
+                if (result["profile_id"] != self.profile.profile_id
+                        or result["state"] == "passed" and (
+                            result["evidence_digest"] is None or result["verified_at"] is None)):
+                    raise PropagationJobError("invalid_recovery_result")
+                if result["evidence_digest"] is not None:
+                    contract_api._digest(result["evidence_digest"])
+                if result["verified_at"] is not None:
+                    _fresh(result["verified_at"], self.profile.now())
+                return result
             if operation == "fleet.propagation.submit.v1":
                 return self.submit(**arguments)
+            if operation == "fleet.propagation.current.v1":
+                return self.current_authority(**arguments)
             if operation == "fleet.propagation.cancel.v1":
                 job = self.supervisor.cancel(arguments["job_id"])
                 return {"job_id": arguments["job_id"], "state": job["state"] if job["state"] in {"requested", "confirmed", "uncertain"} else self._cancel_state(job)}
@@ -124,6 +165,24 @@ class PropagationService:
         value = contract.value
         if (value["execution_profile_ref"], value["execution_profile_digest"]) != (self.profile.profile_id, self.profile.profile_digest):
             raise PropagationJobError("profile_mismatch")
+
+    def current_authority(self, intent_id, job_id, contract_digest, generation, target_id, resource_id):
+        """Read the current approved reservation at a native write boundary."""
+        contract = self._contract(intent_id, current=True)
+        value = contract.value
+        if (contract.digest != contract_digest or type(generation) is not int
+                or value["generation"] != generation):
+            raise PropagationJobError("stale_generation")
+        if not any(target["target_id"] == target_id and resource_id in target["resource_keys"]
+                   and target["effects"] for target in value["targets"]):
+            raise PropagationJobError("resource_binding_mismatch")
+        self.supervisor.observe(job_id)
+        job = self.jobs.lookup_internal(job_id)
+        if (job["intent_id"] != intent_id or job["contract_digest"] != contract.digest
+                or job["state"] != "executing" or resource_id not in job["resources"]
+                or job["canonical_contract"] != contract.canonical):
+            raise PropagationJobError("stale_generation")
+        return {"current": True, "observed_at": _stamp(self.profile.now())}
 
     def _contract(self, intent_id, *, current=False):
         parsed = contract_api.parse_contract(self.intents.contract_bytes(intent_id))
@@ -241,6 +300,78 @@ class PropagationService:
                 "completed_at": job["completed_at"], "outcomes": observation["outcomes"],
                 "receipt_refs": observation["receipts"]}
 
+    def intent_status(self, intent_id):
+        """Keep owner identity and target custody visible without Temporal."""
+        contract = self._contract(intent_id)
+        value = contract.value
+        job = self.jobs.lookup_by_intent(intent_id)
+        if job is None:
+            targets = [{**{key: target[key] for key in (
+                "target_id", "installation_id", "profile_id", "runtime_id")},
+                "check_set_digest": _hash(target["checks"]), "outcome": "pending",
+                "applied": False, "verified": False, "desired_revision": value["revision"],
+                "applied_revision": None, "verified_revision": None,
+                "last_contact_at": None, "observed_at": None, "age_seconds": None,
+                "freshness": "unknown", "pending_reason": "not-started",
+                "session_state": {key: "pending" for key in (
+                    "files", "new_session", "existing_session")},
+                "metric_coverage": "pending", "receipt_ref": None,
+            } for target in sorted(value["targets"], key=lambda row: row["target_id"])]
+            state, job_id = "pending", None
+        else:
+            observed = self.status(job["job_id"])
+            targets = observed["outcomes"]
+            with self.intents._connection() as db:
+                verification = db.execute(
+                    "SELECT verified FROM propagation_verification_passes WHERE job_id=?",
+                    (job["job_id"],)).fetchone()
+            state = observed["state"] if observed["state"] in {
+                "failed", "cancelled", "recovery_required"} else (
+                    "completed" if observed["state"] == "applied" and verification is not None
+                    and verification["verified"] and all(
+                        row["verified"] for row in targets) else "running")
+            job_id = job["job_id"]
+        workflow_id = logical_workflow_id(value["scope"], value["revision"])
+        progress, progress_at, progress_age = "unavailable", None, None
+        if self.profile.workflow_status is not None:
+            try:
+                projection = self.profile.workflow_status(workflow_id, contract.digest)
+                if (type(projection) is not dict or set(projection) != {"state", "observed_at"}
+                        or projection["state"] not in {"pending", "running", "completed", "failed",
+                                                   "cancelled", "recovery_required"}):
+                    raise ValueError()
+                observed = contract_api._utc(projection["observed_at"])
+                age = int((self.profile.now() - observed).total_seconds())
+                if age < 0:
+                    raise ValueError()
+                progress_at, progress_age = projection["observed_at"], age
+                if age <= 300:
+                    progress = projection["state"]
+            except Exception:
+                pass  # Owner custody remains readable when Temporal is unavailable.
+        return {**self._context(contract), "intent_id": intent_id,
+                "workflow_id": workflow_id,
+                "job_id": job_id, "workflow_progress": progress,
+                "workflow_observed_at": progress_at, "workflow_age_seconds": progress_age,
+                "observed_at": _stamp(self.profile.now()), "state": state,
+                "targets": targets, "all_targets_verified": bool(job) and all(
+                    row["verified"] for row in targets)}
+
+    def control_workflow(self, operation, arguments, caller_id):
+        resume = operation == "propagation.resume.v1"
+        contract = self._contract(arguments["intent_id"], current=resume)
+        if arguments["expected_digest"] != contract.digest:
+            raise PropagationJobError("intent_conflict")
+        callback = self.profile.resume_workflow if resume else self.profile.cancel_workflow
+        if callback is None:
+            raise PropagationJobError("workflow_service_unavailable")
+        workflow_id = logical_workflow_id(contract.value["scope"], contract.value["revision"])
+        result = json.loads(_json(callback(workflow_id, arguments["intent_id"], contract.digest, caller_id)))
+        validate_schema_value(result, contract_api._result_schema(operation), "workflow result")
+        if resume:
+            contract_api._id(result["attempt_id"])
+        return result
+
     def _verification(self, intent_id, job, kind, verification_id=None):
         if job["intent_id"] != intent_id or job["state"] != "applied" or not job["completed_at"]:
             raise PropagationJobError("job_not_applied")
@@ -357,7 +488,10 @@ class PropagationService:
                 if row["age_seconds"] is not None or row["freshness"] != "unknown":
                     raise PropagationJobError("invalid_freshness")
             else:
-                age = int((now - contract_api._utc(row["observed_at"])).total_seconds())
+                # The reader reports age at its snapshot, before transport and
+                # validation. Fresh verification above still uses the owner clock.
+                age = int((contract_api._utc(observed["observed_at"])
+                           - contract_api._utc(row["observed_at"])).total_seconds())
                 if age < 0 or row["age_seconds"] != age or row["freshness"] != ("fresh" if age <= 300 else "stale"):
                     raise PropagationJobError("invalid_freshness")
             if row["last_contact_at"] is not None and contract_api._utc(row["last_contact_at"]) > now:

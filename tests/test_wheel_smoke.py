@@ -70,7 +70,8 @@ def test_run_smoke_is_checkout_independent_bounded_and_always_cleans_up(
             return subprocess.CompletedProcess(argv, 9, "", "synthetic failure")
         if index == 1:
             installed = temporary_roots[0] / "venv" / "lib" / "anvil_serving" / "__init__.py"
-            return subprocess.CompletedProcess(argv, 0, f"{installed}\npackage-data-ok\n", "")
+            versions = '{"PyYAML":"6.0.3","anvil-serving":"1","module":"1"}'
+            return subprocess.CompletedProcess(argv, 0, f"{installed}\n{versions}\npackage-data-ok\n", "")
         if index == 2:
             return subprocess.CompletedProcess(argv, 0, "usage: anvil-serving router run\n", "")
         return subprocess.CompletedProcess(argv, 0, "installed\n", "")
@@ -91,7 +92,7 @@ def test_run_smoke_is_checkout_independent_bounded_and_always_cleans_up(
 
     assert temporary_roots and not temporary_roots[0].exists()
     install = calls[0]
-    assert install[0][1:7] == ["-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)]
+    assert install[0][1:6] == ["-m", "pip", "install", "--force-reinstall", str(wheel) + "[hermes]"]
     assert install[1]["cwd"] != ROOT
     assert install[1]["timeout"] == 17
     assert "PYTHONPATH" not in install[1]["environment"]
@@ -115,7 +116,9 @@ def test_run_smoke_rejects_checkout_import(tmp_path):
         calls += 1
         if calls == 2:
             return subprocess.CompletedProcess(
-                argv, 0, f"{ROOT / 'anvil_serving' / '__init__.py'}\npackage-data-ok\n", ""
+                argv, 0, (f"{ROOT / 'anvil_serving' / '__init__.py'}\n"
+                          '{"PyYAML":"6.0.3","anvil-serving":"1","module":"1"}\n'
+                          "package-data-ok\n"), ""
             )
         return subprocess.CompletedProcess(argv, 0, "installed\n", "")
 

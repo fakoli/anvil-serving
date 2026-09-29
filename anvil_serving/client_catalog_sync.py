@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import nullcontext
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import ipaddress
@@ -701,11 +703,19 @@ def sync_pi_media(
 ) -> dict:
     """Withdraw Pi media config, optionally under an owner native fence."""
 
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
+
     if fence is None or dry_run or not confirm:
-        return _sync_pi_media(
-            mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
-            dry_run=dry_run, confirm=confirm,
-        )
+        from .propagation_fencing import NativeMutationFence
+        target = Path(os.path.expanduser(DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config))
+        root = Path.home() if target.is_relative_to(Path.home()) else target.parent
+        guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
+        with guard:
+            return _sync_pi_media(
+                mcp_config=mcp_config, backup_root=backup_root, withdraw=withdraw,
+                dry_run=dry_run, confirm=confirm,
+            )
     if canonical_contract is None:
         raise ClientCatalogError("fenced Pi media sync requires an owner contract")
     selected_path = DEFAULT_PI_MEDIA_MCP if mcp_config is None else mcp_config
@@ -1510,6 +1520,155 @@ def _apply_hermes_profile_plans(
                 )
 
 
+def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
+    """Read and render Hermes only from journal bytes in a disposable home."""
+    try:
+        import yaml
+    except ImportError as exc:
+        raise ClientCatalogError("fenced Hermes requires the pinned YAML renderer") from exc
+
+    class UniqueLoader(yaml.SafeLoader):
+        pass
+
+    def unique_mapping(loader, node):
+        loader.flatten_mapping(node)
+        result = {}
+        for key_node, value_node in node.value:
+            key = loader.construct_object(key_node, deep=True)
+            try:
+                if key in result:
+                    raise ClientCatalogError("Hermes config contains duplicate keys")
+                result[key] = loader.construct_object(value_node, deep=True)
+            except TypeError as exc:
+                raise ClientCatalogError("Hermes config contains an invalid mapping key") from exc
+        return result
+
+    UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
+
+    def path_for(document, key):
+        if key == "custom_providers":
+            return (key,)
+        if key.startswith("providers.anvil.") and key.removeprefix("providers.anvil.") in {
+                "default_model", "context_length", "models", "extra_body"}:
+            return ("providers", "anvil", key.removeprefix("providers.anvil."))
+        if key in {"model.context_length", "model.max_tokens",
+                   "auxiliary.compression.context_length", "auxiliary.vision.provider",
+                   "auxiliary.vision.model", "auxiliary.vision"}:
+            for section in ("auxiliary.compression", "auxiliary.vision"):
+                if section in document and (key == section or key.startswith(section + ".")):
+                    return (section, *key[len(section) + 1:].split(".")) if key != section else (section,)
+            return tuple(key.split("."))
+        raise ClientCatalogError("unsupported fenced Hermes update")
+
+    def change(document, key, value, *, remove=False):
+        path = path_for(document, key)
+        parent = document
+        for part in path[:-1]:
+            if not isinstance(parent, dict):
+                raise ClientCatalogError("Hermes config section is not a mapping")
+            if part not in parent:
+                if remove:
+                    return
+                parent[part] = {}
+            parent = parent[part]
+        if not isinstance(parent, dict):
+            raise ClientCatalogError("Hermes config section is not a mapping")
+        if remove:
+            parent.pop(path[-1], None)
+        else:
+            parent[path[-1]] = value
+
+    def configured(document, key):
+        if key in document:
+            return document[key]
+        value = document
+        for part in key.split("."):
+            if not isinstance(value, dict):
+                return None
+            value = value.get(part)
+        return value
+
+    selected = ",".join(configs)
+    if _normalize_hermes_profiles(selected) != tuple(configs):
+        raise ClientCatalogError("Hermes profile names cannot bind a scratch render")
+    with tempfile.TemporaryDirectory(prefix="anvil-hermes-render-") as temporary:
+        root = Path(temporary)
+        for profile in configs:
+            target = root / "config.yaml" if profile == "default" else root / "profiles" / profile / "config.yaml"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            before = originals[profile]
+            if before is None:
+                raise ClientCatalogError("Hermes profile changed before scratch render")
+            target.write_bytes(before)
+            target.chmod(0o600)
+
+        def scratch_run(argv, **kwargs):
+            env = {**os.environ, "HOME": str(root), "HERMES_HOME": str(root),
+                   "XDG_CONFIG_HOME": str(root / "config"), "XDG_DATA_HOME": str(root / "data"),
+                   "XDG_CACHE_HOME": str(root / "cache")}
+            return run(argv, env=env, **kwargs)
+
+        rows = []
+        for profile in configs:
+            path = root / ("config.yaml" if profile == "default"
+                           else "profiles/" + profile + "/config.yaml")
+            try:
+                source = path.read_bytes()
+                if any(isinstance(event, yaml.events.AliasEvent) for event in yaml.parse(source)):
+                    raise ClientCatalogError("Hermes config aliases are not supported for fenced writes")
+                document = yaml.load(source, Loader=UniqueLoader)
+            except yaml.YAMLError:
+                raise ClientCatalogError("Hermes config cannot be parsed safely") from None
+            if not isinstance(document, dict):
+                raise ClientCatalogError("Hermes config is not a mapping")
+            row = render_hermes_profile_plan(catalog,
+                {key: configured(document, key) for key in HERMES_PROFILE_KEYS}, profile=profile)
+            rows.append(row)
+            if not row.get("changed_keys"):
+                continue
+            try:
+                for key in row.get("unsets", ()):
+                    change(document, key, None, remove=True)
+                for key, value in row.get("updates", {}).items():
+                    change(document, key, value)
+                rendered = yaml.safe_dump(document, sort_keys=False,
+                                          allow_unicode=True).encode("utf-8")
+                if yaml.safe_load(rendered) != document:
+                    raise ClientCatalogError("Hermes config did not round-trip")
+                if render_hermes_profile_plan(catalog,
+                        {key: configured(document, key) for key in HERMES_PROFILE_KEYS},
+                        profile=profile)["changed_keys"]:
+                    raise ClientCatalogError("Hermes source render did not converge")
+                path.write_bytes(rendered)
+            except yaml.YAMLError:
+                raise ClientCatalogError("Hermes config cannot be rendered safely") from None
+            if _run_hermes(hermes_bin, row["profile"],
+                    ["config", "check"], timeout_seconds=timeout_seconds,
+                    run=scratch_run).returncode:
+                raise ClientCatalogError("Hermes scratch config failed validation")
+        verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
+            hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
+            run=scratch_run)
+        observed_fields = ("profile", "managed", "provider", "model", "context_window",
+                           "max_output_tokens", "compression", "vision_model",
+                           "vision_context_window")
+        if (set(discovered) != set(configs) or len(verified) != len(rows)
+                or any(observed.get("changed_keys") or any(
+                    observed.get(field) != planned.get(field) for field in observed_fields)
+                    for planned, observed in zip(rows, verified))):
+            raise ClientCatalogError("Hermes scratch render failed verification")
+        rendered = {}
+        for profile, path in discovered.items():
+            if path.is_symlink() or not path.is_file():
+                raise ClientCatalogError("Hermes scratch render is not a regular file")
+            with path.open("rb") as stream:
+                raw = stream.read(DEFAULT_MAX_RESPONSE_BYTES + 1)
+            if len(raw) > DEFAULT_MAX_RESPONSE_BYTES:
+                raise ClientCatalogError("Hermes scratch render exceeds native file limit")
+            rendered[profile] = raw
+        return rows, rendered
+
+
 def _json_bytes(payload: Mapping) -> bytes:
     return (json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
 
@@ -1847,17 +2006,22 @@ def sync_hermes_media(
     canonical_contract: bytes | None = None,
 ) -> dict:
     """Legacy media path; fenced profile writes await the bounded owner writer."""
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
     if fence is not None:
         from .propagation_fencing import PropagationFenceError
         raise PropagationFenceError("UnsupportedCapability")
-    return _sync_hermes_media(
-        hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
-        skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
-        mcp_url_env=mcp_url_env, token_env=token_env,
-        restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
-        confirm=confirm, timeout_seconds=timeout_seconds, run=run,
-        restart_hermes=restart_hermes,
-    )
+    from .propagation_fencing import NativeMutationFence
+    guard = NativeMutationFence.legacy_catalog_write(Path.home()) if not dry_run and confirm else nullcontext()
+    with guard:
+        return _sync_hermes_media(
+            hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
+            skill_path=skill_path, backup_root=backup_root, anvil_command=anvil_command,
+            mcp_url_env=mcp_url_env, token_env=token_env,
+            restart_hermes_on_change=restart_hermes_on_change, dry_run=dry_run,
+            confirm=confirm, timeout_seconds=timeout_seconds, run=run,
+            restart_hermes=restart_hermes,
+        )
 
 
 def _sync_hermes_media(
@@ -2036,6 +2200,214 @@ def _sync_hermes_media(
     }
 
 
+@dataclass(frozen=True)
+class NativeCatalogTarget:
+    """One protected client installation or Hermes profile in a catalog batch."""
+
+    target_id: str
+    installation_id: str
+    profile_id: str
+    runtime_id: str
+    expected_identity_ref: str
+    expected_identity_digest: str
+    client: str
+    state_path: str
+    openclaw_config: str | None = None
+    pi_models: str | None = None
+    pi_settings: str | None = None
+    hermes_home: str | None = None
+    hermes_bin: str | None = None
+    hermes_profile: str | None = None
+    hermes_config: str | None = None
+    pi_exclude_aliases: str = ""
+    openclaw_exclude_aliases: str = ""
+    openclaw_allow_aliases: str = ""
+    align_compaction_reserve: bool = False
+
+
+def native_catalog_effect_targets(target: NativeCatalogTarget) -> dict[str, Path]:
+    """Derive exact native effect names and paths for one installed target."""
+    from .control_plane.propagation import _id
+
+    if not isinstance(target, NativeCatalogTarget):
+        raise ClientCatalogError("invalid native catalog target")
+    _id(target.target_id)
+    if (target.client not in {"pi", "openclaw", "hermes"}
+            or type(target.state_path) is not str
+            or type(target.align_compaction_reserve) is not bool
+            or any(type(value) is not str for value in (
+                target.pi_exclude_aliases, target.openclaw_exclude_aliases,
+                target.openclaw_allow_aliases))):
+        raise ClientCatalogError("invalid native catalog target")
+    paths = {"state": target.state_path}
+    if target.client == "pi":
+        if (type(target.pi_models) is not str or type(target.pi_settings) is not str
+                or target.openclaw_config is not None
+                or any(value is not None for value in (
+                    target.hermes_home, target.hermes_bin, target.hermes_profile,
+                    target.hermes_config))):
+            raise ClientCatalogError("invalid native Pi paths")
+        paths.update(pi_models=target.pi_models, pi_settings=target.pi_settings)
+    elif target.client == "openclaw":
+        if (type(target.openclaw_config) is not str or target.pi_models is not None
+                or target.pi_settings is not None
+                or any(value is not None for value in (
+                    target.hermes_home, target.hermes_bin, target.hermes_profile,
+                    target.hermes_config))):
+            raise ClientCatalogError("invalid native OpenClaw path")
+        paths["openclaw"] = target.openclaw_config
+        paths["openclaw_env"] = str(Path(target.openclaw_config).parent / ".env")
+    else:
+        profile = target.hermes_profile
+        home = target.hermes_home
+        binary = target.hermes_bin
+        config = target.hermes_config
+        if (type(profile) is not str or _normalize_hermes_profiles(profile) != (profile,)
+                or type(home) is not str or type(binary) is not str or type(config) is not str
+                or not Path(binary).is_absolute() or ".." in Path(binary).parts
+                or Path(config) != Path(home) / ("config.yaml" if profile == "default"
+                                               else "profiles/" + profile + "/config.yaml")
+                or any(value is not None for value in (
+                    target.openclaw_config, target.pi_models, target.pi_settings))
+                or target.pi_exclude_aliases or target.openclaw_exclude_aliases
+                or target.openclaw_allow_aliases or target.align_compaction_reserve):
+            raise ClientCatalogError("invalid native Hermes profile")
+        paths["hermes:" + profile] = config
+    suffix = hashlib.sha256(target.target_id.encode("ascii")).hexdigest()
+    effects = {"catalog-" + suffix + "-" + name: Path(value) for name, value in paths.items()}
+    if any(not path.is_absolute() or ".." in path.parts for path in effects.values()):
+        raise ClientCatalogError("native catalog path must be absolute")
+    if os.name == "nt" and any(
+            part.endswith((" ", ".")) or ":" in part
+            for path in effects.values() for part in path.parts[1:]):
+        raise ClientCatalogError("noncanonical native catalog path")
+    return effects
+
+
+class _ScopedCatalogJournal:
+    def __init__(self, journal, target_id: str) -> None:
+        self.journal = journal
+        self.prefix = "catalog-" + hashlib.sha256(target_id.encode("ascii")).hexdigest() + "-"
+        self.files = journal.files
+        self.catalog_digest = journal.catalog_digest
+
+    def _name(self, effect: str) -> str:
+        if not effect.startswith("catalog-"):
+            raise ClientCatalogError("invalid scoped catalog effect")
+        return self.prefix + effect[len("catalog-"):]
+
+    @property
+    def started_effects(self) -> tuple[str, ...]:
+        return tuple("catalog-" + name[len(self.prefix):]
+                     for name in self.journal.started_effects if name.startswith(self.prefix))
+
+    def read(self, path):
+        return self.journal.read(path)
+
+    def begin_effect(self, effect, path, before, desired):
+        return self.journal.begin_effect(self._name(effect), path, before, desired)
+
+    def bind_backup(self, effect, backup):
+        return self.journal.bind_backup(self._name(effect), backup)
+
+    def require_before_bytes(self, effect, observed):
+        return self.journal.require_before_bytes(self._name(effect), observed)
+
+    def write(self, effect, value, *, mode=0o600):
+        return self.journal.write(self._name(effect), value, mode=mode)
+
+    def observe_bytes(self, effect, observed):
+        return self.journal.observe_bytes(self._name(effect), observed)
+
+    def mark_uncertain(self, effect):
+        return self.journal.mark_uncertain(self._name(effect))
+
+    def is_verified(self, effect):
+        return self.journal.is_verified(self._name(effect))
+
+
+def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
+                              base_url: str, backup_root: str, expected_config_sha256: str,
+                              environ: Mapping[str, str], fence, grant,
+                              canonical_contract: bytes, dry_run: bool = True,
+                              opener=None, hermes_run=subprocess.run,
+                              read_only: str | None = None,
+                              completed_job: tuple[str, str] | None = None) -> list[dict]:
+    """Reconcile distinct installations in one owner reservation."""
+    from .control_plane.propagation import MAX_TARGETS, parse_contract
+
+    if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
+            or any(type(target) is not NativeCatalogTarget for target in targets)
+            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"
+            or read_only not in {None, "inspect", "completed"}
+            or read_only is not None and not dry_run
+            or read_only == "completed" and (type(completed_job) is not tuple
+                or len(completed_job) != 2 or any(type(value) is not str for value in completed_job))
+            or read_only != "completed" and completed_job is not None):
+        raise ClientCatalogError("invalid native catalog batch")
+    targets = tuple(sorted(targets, key=lambda target: target.target_id))
+    bindings = [native_catalog_effect_targets(target) for target in targets]
+    contract = parse_contract(canonical_contract)
+    approved = {row["target_id"]: row for row in contract.value["targets"]
+                if fence.owner.resource_id in row["resource_keys"]
+                and "catalog-apply" in row["effects"]}
+    identity_fields = ("target_id", "installation_id", "profile_id", "runtime_id",
+                       "expected_identity_ref", "expected_identity_digest")
+    if (len({target.target_id for target in targets}) != len(targets)
+            or any(target.target_id not in approved or any(
+                getattr(target, field) != approved[target.target_id][field]
+                for field in identity_fields) for target in targets)):
+        raise ClientCatalogError("native catalog target is not approved")
+    paths = [path for binding in bindings for path in binding.values()]
+    read_only_paths = {Path(target.openclaw_config).parent / "service-env" /
+                       "ai.openclaw.gateway.env" for target in targets
+                       if target.client == "openclaw"}
+    home = fence.owner.storage_root.resolve(strict=True)
+    if any(path.name.casefold() == ".env" and path.parent.resolve() == home
+           for path in paths):
+        raise ClientCatalogError("shared home environment is not a catalog target")
+    if (len(set(paths)) != len(paths) or set(paths) & read_only_paths
+            or expected_config_sha256 != grant.catalog_digest
+            or dict(grant.effect_targets) != {name: str(path) for binding in bindings
+                                              for name, path in binding.items()}):
+        raise ClientCatalogError("native catalog file binding differs")
+    fence.validate_backup_root(Path(backup_root))
+    if read_only == "inspect":
+        context = fence.inspect(grant, canonical_contract=canonical_contract, target_paths=paths)
+    elif read_only == "completed":
+        context = fence.observe_completed(grant, canonical_contract=canonical_contract,
+            target_paths=paths, job_id=completed_job[0], job_digest=completed_job[1])
+    else:
+        context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
+                   if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
+                                                     target_paths=paths))
+    results = []
+    with context as journal:
+        for target in targets:
+            result = _sync_clients(
+                base_url=base_url, clients=target.client,
+                openclaw_config=target.openclaw_config or DEFAULT_OPENCLAW_CONFIG,
+                pi_models=target.pi_models or DEFAULT_PI_MODELS,
+                pi_settings=target.pi_settings or DEFAULT_PI_SETTINGS,
+                state_path=target.state_path, backup_root=backup_root,
+                expected_config_sha256=expected_config_sha256, environ=environ,
+                pi_exclude_aliases=target.pi_exclude_aliases,
+                openclaw_exclude_aliases=target.openclaw_exclude_aliases,
+                openclaw_allow_aliases=target.openclaw_allow_aliases,
+                align_compaction_reserve=target.align_compaction_reserve,
+                hermes_home=target.hermes_home or DEFAULT_HERMES_HOME,
+                hermes_bin=target.hermes_bin or DEFAULT_HERMES_BIN,
+                hermes_profiles=target.hermes_profile,
+                expected_hermes_configs=(
+                    {target.hermes_profile: Path(target.hermes_config)}
+                    if target.client == "hermes" else None),
+                hermes_run=hermes_run,
+                dry_run=dry_run, confirm=not dry_run, opener=opener,
+                journal=_ScopedCatalogJournal(journal, target.target_id))
+            results.append({"target_id": target.target_id, "result": result})
+    return results
+
+
 def sync_clients(
     *,
     base_url: str,
@@ -2071,13 +2443,35 @@ def sync_clients(
     canonical_contract: bytes | None = None,
 ) -> dict:
     """Reconcile selected clients, using a native owner fence when enrolled."""
-    if fence is not None and hermes_profiles and "hermes" in _normalize_clients(clients):
-        from .propagation_fencing import PropagationFenceError
-        raise PropagationFenceError("UnsupportedCapability")
-
-
+    if not dry_run and confirm and fence is None and (grant is not None or canonical_contract is not None):
+        raise ClientCatalogError("owner apply requires a native fence")
+    if fence is not None and (dry_run == confirm or grant is None or canonical_contract is None):
+        raise ClientCatalogError("fenced preview or apply requires a grant and contract")
     if fence is None or dry_run or not confirm:
-        return _sync_clients(
+        from .propagation_fencing import NativeMutationFence
+        selected = _normalize_clients(clients)
+        paths = [Path(os.path.expanduser(state_path))]
+        if "openclaw" in selected:
+            paths.append(Path(os.path.expanduser(openclaw_config)))
+        if "hermes" in selected:
+            paths.append(Path(os.path.expanduser(hermes_config)))
+        if "pi" in selected:
+            paths.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+        root = Path.home() if any(path.is_relative_to(Path.home()) for path in paths) else paths[0].parent
+        if fence is not None:
+            if "hermes" in selected:
+                raise ClientCatalogError("fenced Hermes preview is not supported")
+            targets = [Path(os.path.expanduser(state_path))]
+            if "openclaw" in selected:
+                openclaw_path = Path(os.path.expanduser(openclaw_config))
+                targets.extend((openclaw_path, openclaw_path.parent / ".env"))
+            if "pi" in selected:
+                targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
+            guard = fence.preview(grant, canonical_contract=canonical_contract, target_paths=targets)
+        else:
+            guard = NativeMutationFence.legacy_catalog_write(root) if not dry_run and confirm else nullcontext()
+        with guard as journal:
+            return _sync_clients(
             base_url=base_url, api_key_env=api_key_env, clients=clients,
             openclaw_config=openclaw_config, hermes_config=hermes_config,
             hermes_bin=hermes_bin, hermes_home=hermes_home, hermes_profiles=hermes_profiles,
@@ -2091,8 +2485,8 @@ def sync_clients(
             openclaw_exclude_aliases=openclaw_exclude_aliases,
             openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
             restart=restart, refresh_openclaw_service=refresh_openclaw_service,
-            restart_hermes=restart_hermes, hermes_run=hermes_run,
-        )
+            restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
+            )
     if (canonical_contract is None or restart_openclaw_on_change
             or restart_hermes_on_change):
         raise ClientCatalogError("fenced client sync requires a contract, direct files, and no blind session restart")
@@ -2102,7 +2496,11 @@ def sync_clients(
     if "openclaw" in selected:
         targets.extend((Path(os.path.expanduser(openclaw_config)), Path(os.path.expanduser(openclaw_config)).parent / ".env"))
     if "hermes" in selected:
-        targets.append(Path(os.path.expanduser(hermes_config)))
+        if hermes_profiles:
+            hermes_targets = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+            targets.extend(hermes_targets.values())
+        else:
+            targets.append(Path(os.path.expanduser(hermes_config)))
     if "pi" in selected:
         targets.extend((Path(os.path.expanduser(pi_models)), Path(os.path.expanduser(pi_settings))))
     with fence.transaction(grant, canonical_contract=canonical_contract, target_paths=targets) as journal:
@@ -2121,6 +2519,7 @@ def sync_clients(
             openclaw_allow_aliases=openclaw_allow_aliases, environ=environ, opener=opener,
             restart=restart, refresh_openclaw_service=refresh_openclaw_service,
             restart_hermes=restart_hermes, hermes_run=hermes_run, journal=journal,
+            expected_hermes_configs=hermes_targets if "hermes" in selected and hermes_profiles else None,
         )
 
 
@@ -2155,6 +2554,7 @@ def _sync_clients(
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
     journal=None,
+    expected_hermes_configs=None,
 ) -> dict:
     """Reconcile selected Mini clients from one authenticated router snapshot."""
     selected_clients = _normalize_clients(clients)
@@ -2249,14 +2649,30 @@ def _sync_clients(
             )
     if "hermes" in selected_clients:
         if hermes_profiles:
-            hermes_rows, hermes_configs = plan_hermes_profiles(
-                catalog,
-                hermes_bin=hermes_bin,
-                hermes_home=hermes_home,
-                hermes_profiles=hermes_profiles,
-                timeout_seconds=timeout_seconds,
-                run=hermes_run,
-            )
+            if journal is not None:
+                pinned_configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
+                if pinned_configs != expected_hermes_configs:
+                    raise ClientCatalogError("Hermes profile set changed before apply")
+                for profile, path in pinned_configs.items():
+                    before_images["hermes:" + profile] = journal.read(path)
+                originals = {profile: before_images["hermes:" + profile] for profile in pinned_configs}
+                hermes_rows, rendered = _render_fenced_hermes_profiles(
+                    pinned_configs, originals, catalog, hermes_bin=hermes_bin,
+                    timeout_seconds=timeout_seconds, run=hermes_run)
+                if any(journal.read(path) != originals[profile] for profile, path in pinned_configs.items()):
+                    raise ClientCatalogError("Hermes profile changed during preview")
+                if _discover_hermes_profile_configs(hermes_home, hermes_profiles) != pinned_configs:
+                    raise ClientCatalogError("Hermes profile set changed during preview")
+                hermes_configs = pinned_configs
+                for profile, path in pinned_configs.items():
+                    name = "hermes:" + profile
+                    paths[name] = path
+                    desired[name] = rendered[profile]
+            else:
+                hermes_rows, hermes_configs = plan_hermes_profiles(
+                    catalog, hermes_bin=hermes_bin, hermes_home=hermes_home,
+                    hermes_profiles=hermes_profiles, timeout_seconds=timeout_seconds,
+                    run=hermes_run)
         else:
             desired["hermes"] = _render_hermes_document(
                 catalog, read_text("hermes")
@@ -2286,13 +2702,10 @@ def _sync_clients(
                  else stat.S_IMODE(paths[name].stat().st_mode)) != 0o600
         )
     ]
-    changed.extend(
-        "hermes:" + row["profile"]
-        for row in hermes_rows
-        if row.get("changed_keys")
-    )
-    prior_state_exists = paths["state"].exists()
+    if journal is None:
+        changed.extend("hermes:" + row["profile"] for row in hermes_rows if row.get("changed_keys"))
     prior_state = read_json("state", required=False)
+    prior_state_exists = before_images["state"] is not None if journal is not None else paths["state"].exists()
     prior_exclusions = prior_state.get("client_excluded_aliases", {})
     if not isinstance(prior_exclusions, Mapping):
         raise ClientCatalogError("prior client alias policy state must be an object")
@@ -2342,7 +2755,7 @@ def _sync_clients(
         if current.get("config_sha256") != expected_config_sha256:
             raise ClientCatalogError("router configuration changed before client reconciliation")
     if dry_run or not confirm:
-        return _summary(
+        summary = _summary(
             catalog,
             clients=selected_clients,
             changed=changed,
@@ -2354,6 +2767,19 @@ def _sync_clients(
             exclusions=exclusions,
             openclaw_allowed_aliases=additions,
         )
+        if journal is not None:
+            recorded = prior_state.get("file_sha256")
+            summary["state_converged"] = (
+                prior_state_exists
+                and prior_state.get("config_sha256") == catalog["config_sha256"]
+                and prior_exclusions == {**prior_exclusions, **exclusions}
+                and ("openclaw" not in selected_clients
+                     or prior_state.get("openclaw_allowed_aliases") == list(additions))
+                and isinstance(recorded, Mapping)
+                and all(recorded.get(name) == _sha256_bytes(data)
+                        for name, data in desired.items() if name != "openclaw_env")
+            )
+        return summary
 
     backup = None
     if changed:
@@ -2400,7 +2826,7 @@ def _sync_clients(
                 _atomic_write(paths[name], desired[name], mode=mode, **({"journal": journal, "effect_id": "catalog-" + name} if journal is not None else {}))
                 if journal is not None:
                     journal.observe_bytes("catalog-" + name, journal.read(paths[name]))
-            if hermes_rows:
+            if hermes_rows and journal is None:
                 _apply_hermes_profile_plans(
                     hermes_rows,
                     hermes_bin=hermes_bin,
@@ -2453,12 +2879,9 @@ def _sync_clients(
             if name != "openclaw_env"
         }
     )
-    file_hashes.update(
-        {
-            "hermes:" + profile: _file_sha256(path)
-            for profile, path in hermes_configs.items()
-        }
-    )
+    if journal is None:
+        file_hashes.update({"hermes:" + profile: _file_sha256(path)
+                            for profile, path in hermes_configs.items()})
     state = {
         "config_sha256": catalog["config_sha256"],
         "client_excluded_aliases": {**prior_exclusions, **exclusions},
@@ -2575,6 +2998,8 @@ def _sync_clients(
             raise
     state_bytes = _json_bytes(state)
     if journal is not None:
+        if hermes_profiles and "hermes" in selected_clients and _discover_hermes_profile_configs(hermes_home, hermes_profiles) != expected_hermes_configs:
+            raise ClientCatalogError("Hermes profile set changed during apply")
         if before_images["state"] != state_bytes:
             journal.begin_effect("catalog-state", paths["state"], before_images["state"], state_bytes)
             state_backup = _backup([paths["state"]], Path(os.path.expanduser(backup_root)), catalog["config_sha256"], journal=journal)

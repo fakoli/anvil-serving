@@ -10,7 +10,7 @@ import pytest
 from anvil_serving.control_plane.propagation import ReceiptIdentity, parse_contract
 from anvil_serving.propagation_sessions import (
     SessionCheck, _hash, observe_pi_web, pending, pi_model_digest, pi_catalog_digest,
-    pi_web_state, session_inventory_digest, session_states,
+    pi_web_state, session_states,
 )
 from tests.test_propagation_contracts import _contract
 
@@ -21,7 +21,8 @@ MODEL = {"provider": "anvil", "id": "llm.primary", "api": "openai-completions",
 
 def check(kind="existing_session", **changes):
     value = SessionCheck("target-1", ReceiptIdentity("installation-1", "profile-1", "runtime-1"),
-                         "a" * 64, "existing-1" if kind == "existing_session" else "new-1", kind,
+                         "a" * 64, "b" * 64,
+                         "existing-1" if kind == "existing_session" else "new-1", kind,
                          "anvil", "llm.primary", pi_model_digest(MODEL),
                          pi_catalog_digest([MODEL]))
     return replace(value, **changes)
@@ -36,7 +37,7 @@ def observation(item, **changes):
 
 
 def contract(required, extra=()):
-    target = _contract()["targets"][0] | {"expected_identity_digest": session_inventory_digest(required),
+    target = _contract()["targets"][0] | {"expected_identity_digest": "a" * 64,
         "checks": ["catalog-equal", "session-existing-loaded", "session-new-loaded"]}
     return parse_contract(_contract(targets=[target, *extra]))
 
@@ -50,8 +51,10 @@ def test_exact_existing_session_cannot_be_replaced_by_fresh_process():
     assert states["target-1"]["existing_session"]["state"] == "pending"
     substituted = pi_web_state(old, observation(new), now=NOW)
     assert substituted["pending_reason"] == "identity-mismatch"
+    missing = session_states(declaration, (new,), [fresh], now=NOW)
+    assert missing["target-1"]["existing_session"]["state"] == "pending"
     with pytest.raises(ValueError, match="session_inventory_mismatch"):
-        session_states(declaration, (new,), [fresh], now=NOW)
+        session_states(declaration, (replace(new, expected_identity_digest="c" * 64),), [fresh], now=NOW)
     with pytest.raises(ValueError, match="duplicate_session_inventory"):
         session_states(declaration, (old, replace(old, kind="new_session")), [], now=NOW)
 
@@ -65,7 +68,8 @@ def test_every_declared_cli_web_profile_stays_in_denominator():
     assert states["target-1"]["existing_session"]["state"] == "accepted"
     assert states["target-1"]["new_session"]["state"] == "pending"
     assert all(row["state"] == "pending" and row["pending_reason"] == "unsupported-capability" for row in states["cli-2"].values())
-    for changed in (replace(item, executable_digest="b" * 64), replace(item, identity=replace(item.identity, profile_id="other"))):
+    for changed in (replace(item, expected_identity_digest="c" * 64),
+                    replace(item, identity=replace(item.identity, profile_id="other"))):
         with pytest.raises(ValueError):
             session_states(contract((item,)), (changed,), [], now=NOW)
 

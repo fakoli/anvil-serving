@@ -266,7 +266,7 @@ def test_fresh_supervisor_adopts_verified_pidfd_for_cancellation(tmp_path: Path)
         fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
         assert fresh.cancel(job["job_id"])["state"] == "requested"
         assert job["job_id"] not in fresh._pidfds
-        assert _wait(fresh, job["job_id"])["state"] == "cancelled"
+        assert _wait(fresh, job["job_id"])["state"] == "recovery_required"
         assert effects.read_text() == "one\n"
         assert job["job_id"] not in fresh._pidfds
     finally:
@@ -437,7 +437,7 @@ def test_pre_profile_cancellation_refuses_an_existing_child_reservation(tmp_path
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_cancel_is_only_confirmed_after_child_reports_quiescence(tmp_path: Path):
+def test_cancelled_profile_cannot_prove_remote_quiescence(tmp_path: Path):
     started = tmp_path / "profile-started"
     script = ("import json,sys,time,pathlib; json.load(sys.stdin); "
               f"pathlib.Path({str(started)!r}).write_text('started'); "
@@ -452,7 +452,7 @@ def test_cancel_is_only_confirmed_after_child_reports_quiescence(tmp_path: Path)
         time.sleep(0.01)
     assert started.exists()
     assert supervisor.cancel(job["job_id"])["state"] == "requested"
-    assert _wait(supervisor, job["job_id"])["state"] == "cancelled"
+    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
@@ -465,7 +465,7 @@ def test_oversized_or_untruthful_result_stays_recovery_required(tmp_path: Path):
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_native_crash_with_empty_custody_has_supervisor_quiescence(tmp_path: Path):
+def test_native_crash_with_empty_local_custody_does_not_prove_remote_quiescence(tmp_path: Path):
     store, job = _submitted(tmp_path, "import json,sys; json.load(sys.stdin); raise SystemExit(1)")
     supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     supervisor.launch(job["job_id"])
@@ -475,7 +475,22 @@ def test_native_crash_with_empty_custody_has_supervisor_quiescence(tmp_path: Pat
         job["job_id"], {key: observed[key] for key in ("pid", "start_ticks", "boot_id")},
     )
     assert result["outcome"] == "uncertain"
-    assert result["quiescent"] is True
+    assert result["quiescent"] is False
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
+def test_applied_profile_with_unresolved_remote_work_stays_in_recovery(tmp_path: Path):
+    script = "import json,sys; c=json.load(sys.stdin); print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':False}))"
+    store, job = _submitted(tmp_path, script)
+    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
+    supervisor.launch(job["job_id"])
+    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
+    observed = store.lookup_internal(job["job_id"])
+    result = store.completed_child_result(
+        job["job_id"], {key: observed[key] for key in ("pid", "start_ticks", "boot_id")},
+    )
+    assert result["outcome"] == "applied"
+    assert result["quiescent"] is False
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")

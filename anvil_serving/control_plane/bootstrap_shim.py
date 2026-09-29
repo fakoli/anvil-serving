@@ -7,9 +7,11 @@ already-open descriptor supplied by a later, no-follow staging boundary.
 from __future__ import annotations
 
 import errno
+import hashlib
 import os
 import stat
 import struct
+import subprocess
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -420,6 +422,14 @@ def inspect_opened_permissions(
 
     if type(descriptor) is not int or descriptor < 0 or type(ancestor) is not bool:
         return BootstrapPermissionVerdict.INDETERMINATE
+    if sys.platform == "darwin":
+        from .mcp.auth_file import AuthFileError, _require_macos_no_extended_acl
+
+        try:
+            _require_macos_no_extended_acl(descriptor, ancestor_allow_deny_only=ancestor)
+        except (OSError, AuthFileError):
+            return BootstrapPermissionVerdict.INDETERMINATE
+        return _inspect_linux(descriptor, ancestor=ancestor)
     if sys.platform == "linux":
         return _inspect_linux(descriptor, ancestor=ancestor)
     if sys.platform == "win32":
@@ -951,7 +961,8 @@ def open_trusted_file(
         raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
     if not 1 <= max_bytes <= MAX_BUNDLE_BYTES:
         raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
-    if sys.platform == "linux":
+    if sys.platform in {"linux", "darwin"}:
+        # The held directory-fd reader uses POSIX APIs on both systems.
         platform = "linux"
     elif sys.platform == "win32":
         platform = "windows"
@@ -973,4 +984,46 @@ def open_trusted_file(
         opened.close()
 
 
-__all__ = ["inspect_opened_permissions", "open_trusted_file"]
+def run_pinned_executable(argv: list[str], sha256: str, *, run=subprocess.run, **kwargs):
+    """Run a custody-checked executable without a pathname swap after hashing."""
+    if (not argv or type(argv[0]) is not str or type(sha256) is not str
+            or len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256)):
+        raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
+    path = argv[0]
+    if sys.platform == "win32" and not path.casefold().endswith(".exe"):
+        raise _reader_refusal(BootstrapErrorCode.UNSAFE_PATH)
+    with open_trusted_file(path, max_bytes=MAX_BUNDLE_BYTES, require_readonly=False) as opened:
+        captured = opened.read_verified()
+        if hashlib.sha256(captured).hexdigest() != sha256:
+            raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
+        if sys.platform == "win32":
+            # Retained file and ancestor handles deny write/delete until launch exits.
+            return run(argv, **kwargs)
+        if sys.platform == "darwin":
+            # macOS has no sealed memfd execution. Only an administrator-owned,
+            # non-writable namespace may be executed by path; user installations
+            # must be provisioned into that protected release before use.
+            if any(os.fstat(fd).st_uid != 0 or os.fstat(fd).st_mode & 0o022
+                   for fd in opened._descriptors):
+                raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
+            result = run(argv, **kwargs)
+            opened.read_verified()
+            return result
+        if sys.platform != "linux" or not hasattr(os, "memfd_create"):
+            raise _reader_refusal(BootstrapErrorCode.UNSUPPORTED_PLATFORM)
+        import fcntl
+
+        descriptor = os.memfd_create("anvil-pinned-executable", os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
+        try:
+            with os.fdopen(os.dup(descriptor), "wb") as stream:
+                stream.write(captured)
+            # Linux F_ADD_SEALS and all four write/size/future-seal bits; some
+            # Python builds omit the symbolic constants despite kernel support.
+            fcntl.fcntl(descriptor, 1033, 0x0F)
+            return run(argv, executable=f"/proc/self/fd/{descriptor}",
+                       pass_fds=(descriptor,), **kwargs)
+        finally:
+            os.close(descriptor)
+
+
+__all__ = ["inspect_opened_permissions", "open_trusted_file", "run_pinned_executable"]

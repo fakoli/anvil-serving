@@ -351,7 +351,7 @@ def test_windows_fixture_refuses_existing_or_nested_file_names() -> None:
 
 
 def test_public_dispatch_validates_exact_types_before_platform(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(shim.sys, "platform", "darwin")
+    monkeypatch.setattr(shim.sys, "platform", "unsupported-os")
     assert shim.inspect_opened_permissions(0) is Verdict.UNSUPPORTED
     for descriptor, ancestor in ((True, False), (0, 1), (-1, False), ("0", False)):
         assert shim.inspect_opened_permissions(descriptor, ancestor=ancestor) is Verdict.INDETERMINATE  # type: ignore[arg-type]

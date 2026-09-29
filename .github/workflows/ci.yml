@@ -111,6 +111,18 @@ jobs:
       - name: Build standalone client
         run: go -C connect build -trimpath -o "$RUNNER_TEMP/anvil-connect" ./cmd/anvil-connect
 
+  propagation-macos:
+    name: Propagation native custody (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ".[dev,hermes]"
+      - name: Test native files and fenced catalogs without live clients
+        run: python -m pytest tests/test_bootstrap_permissions.py tests/test_bootstrap_opened_file.py tests/test_propagation_fencing.py tests/test_client_catalog_sync.py -q
+
   lint:
     name: lint (ruff)
     runs-on: ubuntu-latest
@@ -164,7 +176,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -182,5 +194,5 @@ jobs:
       - name: Twine metadata check
         run: python -m twine check dist/*
 
-      - name: Clean-install smoke (fresh venv, no deps, canonical entry point, package data)
+      - name: Clean-install smoke (fresh venv, Hermes dependency, exact versions, package data)
         run: python scripts/wheel_smoke.py

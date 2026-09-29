@@ -281,6 +281,10 @@ class PropagationIntentStore:
                 if high_water is not None and value["generation"] <= high_water["generation"]:
                     connection.execute("ROLLBACK")
                     raise PropagationIntentError("stale_generation")
+                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='propagation_native_resources'").fetchone():
+                    if connection.execute("SELECT 1 FROM propagation_native_resources LIMIT 1").fetchone():
+                        connection.execute("ROLLBACK")
+                        raise PropagationIntentError("resource_conflict")
                 active_count = connection.execute(
                     "SELECT COUNT(*) AS count FROM propagation_intents WHERE terminal_at IS NULL"
                 ).fetchone()["count"]

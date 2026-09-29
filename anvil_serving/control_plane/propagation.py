@@ -38,6 +38,7 @@ ADMISSION_SCOPE = "propagation:admission"
 DISPATCH_SCOPE = "propagation:dispatch"
 ACTIVITY_SCOPE = "propagation:activity"
 STATUS_SCOPE = "propagation:status"
+RECOVERY_SCOPE = "propagation:recovery"
 
 
 class PropagationContractError(ValueError):
@@ -298,13 +299,16 @@ def authorize_receipt_lookup(identity: ReceiptIdentity, caller: ReceiptIdentity)
 
 _OPERATIONS = (
     ("propagation.accept.v1", ADMISSION_SCOPE, ("approval_ref", "request_id"), ("intent_id", "workflow_id", "contract_digest")),
+    ("propagation.profile.v1", STATUS_SCOPE, (), ("profile_id", "profile_digest", "installed")),
     ("propagation.status.v1", STATUS_SCOPE, ("intent_id", "cursor"), ("targets", "observed_at")),
     ("propagation.resume.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("attempt_id", "state")),
     ("propagation.cancel.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("state",)),
+    ("propagation.recovery.verify.v1", RECOVERY_SCOPE, ("profile_id",), ("state", "evidence_digest", "verified_at")),
     ("propagation.dispatch.pending.v1", DISPATCH_SCOPE, ("cursor",), ("intents", "next_cursor")),
     ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id", "contract_digest"), ("recorded",)),
     ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
     ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("contract_digest", "operation_id", "job_id", "state")),
+    ("fleet.propagation.current.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("current", "observed_at")),
     ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
     ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
     ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
@@ -474,7 +478,7 @@ def _intent_row() -> dict[str, Any]:
 
 def _input_schema(name: str, fields: tuple[str, ...]) -> dict[str, Any]:
     properties: dict[str, Any] = {
-        field: _cursor() if field == "cursor" else _digest_schema() if field.endswith("digest") else _identifier()
+        field: _cursor() if field == "cursor" else _digest_schema() if field.endswith("digest") else {"type": "integer", "minimum": 1} if field == "generation" else _identifier()
         for field in fields
     }
     return _object(properties)
@@ -483,14 +487,31 @@ def _input_schema(name: str, fields: tuple[str, ...]) -> dict[str, Any]:
 def _result_schema(name: str) -> dict[str, Any]:
     if name == "propagation.accept.v1":
         return _object({"intent_id": _identifier(), "workflow_id": _identifier(), "contract_digest": _digest_schema()})
+    if name == "propagation.profile.v1":
+        return _object({"profile_id": _identifier(), "profile_digest": _digest_schema(),
+                        "installed": {"type": "boolean"}, "observed_at": _timestamp()})
     if name == "propagation.status.v1":
-        return _page({"targets": _array(_outcome_row(), MAX_PAGE_ITEMS),
+        return _page({"intent_id": _identifier(), "workflow_id": _identifier(),
+                      "contract_digest": _digest_schema(), "target_set_digest": _digest_schema(),
+                      "job_id": _nullable(_identifier()),
+                      "workflow_progress": {"type": "string", "enum": [
+                          "unavailable", "pending", "running", "completed", "failed",
+                          "cancelled", "recovery_required",
+                      ]},
+                      "workflow_observed_at": _nullable(_timestamp()),
+                      "workflow_age_seconds": {"type": ["integer", "null"], "minimum": 0},
+                      "targets": _array(_outcome_row(), MAX_PAGE_ITEMS),
                       "state": {"type": "string", "enum": ["pending", "running", "completed", "failed", "cancelled", "recovery_required"]},
                       "all_targets_verified": {"type": "boolean"}})
     if name == "propagation.resume.v1":
         return _object({"attempt_id": _identifier(), "state": {"type": "string", "enum": ["accepted", "refused", "reconciling"]}})
     if name == "propagation.cancel.v1":
         return _object({"state": {"type": "string", "enum": ["requested", "confirmed", "uncertain"]}})
+    if name == "propagation.recovery.verify.v1":
+        return _object({"profile_id": _identifier(),
+                        "state": {"type": "string", "enum": ["passed", "failed", "recovery_required"]},
+                        "evidence_digest": _nullable(_digest_schema()),
+                        "verified_at": _nullable(_timestamp())})
     if name == "propagation.dispatch.pending.v1":
         return _object({"intents": _array(_intent_row(), 100), "next_cursor": _cursor()})
     if name == "propagation.dispatch.record.v1":
@@ -502,6 +523,8 @@ def _result_schema(name: str) -> dict[str, Any]:
                       "targets": _array(_preview_row(), MAX_PAGE_ITEMS)})
     if name == "fleet.propagation.submit.v1":
         return _object({"contract_digest": _digest_schema(), "operation_id": _identifier(), "job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
+    if name == "fleet.propagation.current.v1":
+        return _object({"current": {"type": "boolean"}, "observed_at": _timestamp()})
     if name == "fleet.propagation.status.v1":
         return _page({"job_id": _identifier(),
                       "state": {"type": "string", "enum": ["running", "applied", "failed", "cancelled", "recovery_required"]},

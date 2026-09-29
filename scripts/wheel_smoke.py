@@ -18,8 +18,11 @@ DEFAULT_TIMEOUT_SECONDS = 120
 MAX_COMMAND_OUTPUT_BYTES = 8 * 1024 * 1024
 MAX_DIAGNOSTIC_CHARS = 4096
 PACKAGE_DATA_PROBE = """
+import json
+from importlib import metadata
 from importlib import resources
 import anvil_serving
+import yaml
 
 package = resources.files("anvil_serving")
 required = (
@@ -40,6 +43,14 @@ missing = [str(path) for path in required if not path.is_file()]
 if missing:
     raise SystemExit("missing package data: " + ", ".join(missing))
 print(anvil_serving.__file__)
+versions = {
+    "anvil-serving": metadata.version("anvil-serving"),
+    "module": anvil_serving.__version__,
+    "PyYAML": metadata.version("PyYAML"),
+}
+if versions["anvil-serving"] != versions["module"] or versions["PyYAML"] != "6.0.3":
+    raise SystemExit("installed owner dependency versions differ")
+print(json.dumps(versions, sort_keys=True))
 from anvil_serving.benchmarking.profiles import PROFILE_NAMES, load_profile
 for name in sorted(PROFILE_NAMES):
     load_profile(name)
@@ -155,7 +166,7 @@ def run_smoke(
 
         _checked(
             runner,
-            [str(python), "-m", "pip", "install", "--no-deps", "--force-reinstall", str(wheel)],
+            [str(python), "-m", "pip", "install", "--force-reinstall", str(wheel) + "[hermes]"],
             cwd=outside_checkout,
             environment=environment,
             timeout=timeout,
@@ -168,9 +179,17 @@ def run_smoke(
             timeout=timeout,
         )
         probe_lines = [line.strip() for line in package_probe.stdout.splitlines() if line.strip()]
-        if len(probe_lines) < 2 or probe_lines[-1] != "package-data-ok":
+        if len(probe_lines) < 3 or probe_lines[-1] != "package-data-ok":
             raise WheelSmokeError("package-data probe did not return its success marker")
-        installed_package = Path(probe_lines[-2]).resolve()
+        installed_package = Path(probe_lines[-3]).resolve()
+        try:
+            versions = json.loads(probe_lines[-2])
+        except json.JSONDecodeError as exc:
+            raise WheelSmokeError("package-data probe did not return exact versions") from exc
+        if (type(versions) is not dict or set(versions) != {"anvil-serving", "module", "PyYAML"}
+                or versions["anvil-serving"] != versions["module"]
+                or versions["PyYAML"] != "6.0.3"):
+            raise WheelSmokeError("installed owner dependency versions differ")
         checkout = checkout.resolve()
         if installed_package == checkout or checkout in installed_package.parents:
             raise WheelSmokeError("smoke imported anvil_serving from the source checkout")
@@ -186,6 +205,7 @@ def run_smoke(
             raise WheelSmokeError("installed console entry point did not expose canonical router help")
         return {
             "wheel": wheel.name,
+            "versions": versions,
             "installed_package": str(installed_package),
             "entrypoint": str(entrypoint),
             "canonical_command": "anvil-serving router run --help",

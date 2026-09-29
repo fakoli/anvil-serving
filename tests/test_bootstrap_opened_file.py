@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import stat
+import subprocess
 import sys
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import mkstemp
+from types import SimpleNamespace
 
 import pytest
 
@@ -64,6 +67,70 @@ def test_held_file_repeats_bounded_reads_and_becomes_closed(
     assert repr(opened) == "OpenedTrustedFile(closed)"
     _refusal(BootstrapErrorCode.PRECONDITION_FAILED, opened.read_verified)
     assert str(path) not in repr(opened)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="sealed memfd is Linux-specific")
+def test_pinned_executable_runs_captured_bytes_after_path_and_content_change(trusted_tmp: Path) -> None:
+    path = trusted_tmp
+    approved = b"#!/bin/sh\nprintf approved\n"
+    path.write_bytes(approved)
+    path.chmod(0o700)
+
+    def replace_then_run(argv, **kwargs):
+        path.write_bytes(b"#!/bin/sh\nprintf substituted\n")
+        return subprocess.run(argv, **kwargs)
+
+    result = shim.run_pinned_executable(
+        [str(path)], hashlib.sha256(approved).hexdigest(), run=replace_then_run,
+        capture_output=True, text=True, check=True)
+    assert result.stdout == "approved"
+    path.write_bytes(approved)
+
+    def swap_then_run(argv, **kwargs):
+        path.unlink()
+        path.write_bytes(b"#!/bin/sh\nprintf substituted\n")
+        return subprocess.run(argv, **kwargs)
+
+    result = shim.run_pinned_executable(
+        [str(path)], hashlib.sha256(approved).hexdigest(), run=swap_then_run,
+        capture_output=True, text=True, check=True)
+    assert result.stdout == "approved"
+    _refusal(BootstrapErrorCode.PRECONDITION_FAILED, lambda: shim.run_pinned_executable(
+        [str(path)], hashlib.sha256(approved).hexdigest(), capture_output=True))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows handle custody")
+def test_pinned_windows_executable_holds_file_against_replacement() -> None:
+    with windows_fixture_tree() as tree:
+        path = tree.file("hermes.exe")
+        path.write_bytes(b"synthetic executable")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+
+        def held_run(_argv, **_kwargs):
+            with pytest.raises(OSError):
+                path.write_bytes(b"substituted")
+            return SimpleNamespace(returncode=0)
+
+        assert shim.run_pinned_executable([str(path)], digest, run=held_run).returncode == 0
+        assert path.read_bytes() == b"synthetic executable"
+        _refusal(BootstrapErrorCode.UNSAFE_PATH, lambda: shim.run_pinned_executable(
+            [str(path.with_suffix(".cmd"))], digest, run=held_run))
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="native macOS custody")
+def test_pinned_macos_execution_requires_system_custody(trusted_tmp: Path) -> None:
+    path = Path("/usr/bin/true")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    assert shim.run_pinned_executable([str(path)], digest, timeout=5).returncode == 0
+    _refusal(BootstrapErrorCode.PRECONDITION_FAILED, lambda: shim.run_pinned_executable(
+        [str(path)], "0" * 64, timeout=5))
+    trusted_tmp.write_bytes(b"#!/bin/sh\nexit 0\n")
+    trusted_tmp.chmod(0o700)
+    if os.geteuid() != 0:
+        def never_run(*_args, **_kwargs):
+            raise AssertionError("a user-owned executable must not run")
+        _refusal(BootstrapErrorCode.PRECONDITION_FAILED, lambda: shim.run_pinned_executable(
+            [str(trusted_tmp)], hashlib.sha256(trusted_tmp.read_bytes()).hexdigest(), run=never_run))
 
 
 def test_empty_and_cap_overflow_are_distinguished(
@@ -323,7 +390,7 @@ def test_partial_open_cleanup_closes_owned_descriptors(
 
 
 def test_unsupported_platform_refuses_before_path_io(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(shim.sys, "platform", "darwin")
+    monkeypatch.setattr(shim.sys, "platform", "unsupported-os")
     _refusal(
         BootstrapErrorCode.UNSUPPORTED_PLATFORM,
         lambda: shim.open_trusted_file("/not/read", max_bytes=1, require_readonly=False).__enter__(),

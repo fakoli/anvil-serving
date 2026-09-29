@@ -3,11 +3,13 @@
 from .family import command_family
 from .common import CONFIRM_OPTIONS
 from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
+from .workflows import workflow_command
 
 
 @command_family(category="Control plane & integrations")
 def commands() -> tuple[CommandNode, ...]:
     return (
+        workflow_command(),
         _node(
             "mcp",
             "Expose bounded MCP management tools.",
@@ -48,6 +50,10 @@ def commands() -> tuple[CommandNode, ...]:
                     role="controller",
                     mutation="process",
                     output_policy="foreground",
+                    options=(
+                        _option("--propagation-profile", summary="Protected installed owner profile.", value_name="PATH"),
+                        _option("--propagation-profile-sha256", summary="Reviewed exact profile SHA-256.", value_name="SHA256"),
+                    ),
                 ),
                 _resource_node(
                     "status",

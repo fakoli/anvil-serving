@@ -92,6 +92,11 @@ def _grant(fence: NativeMutationFence, target: Path, generation: int = 1):
     )
 
 
+def _bind(fence, grant, target, job_id, digest, contract=_CONTRACT):
+    return fence.bind_job(grant, canonical_contract=contract, target_paths=(target,),
+                          job_id=job_id, job_digest=digest)
+
+
 def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
     fence, target = _fence(tmp_path)
     with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
@@ -111,6 +116,61 @@ def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
     }
 
 
+def test_fleet_job_binding_survives_lost_reply_and_refuses_another_job(tmp_path):
+    fence, target = _fence(tmp_path)
+    grant = _grant(fence, target)
+    digest = hashlib.sha256(b"original-job").hexdigest()
+    assert _bind(fence, grant, target, "job-1", digest) is None
+    assert _bind(fence, grant, target, "job-1", digest) is None
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, grant, target, "job-2", digest)
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, grant, target, "job-1", hashlib.sha256(b"different").hexdigest())
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    restarted = NativeMutationFence(fence.owner, tmp_path / "ignored")
+    original = _bind(restarted, _grant(restarted, target), target, "job-1", digest)
+    assert original["status"] == "completed"
+    assert original["effects"]["catalog"]["state"] == "verified"
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(restarted, _grant(restarted, target), target, "job-2", digest)
+
+
+def test_completed_observation_reads_exact_job_without_new_authority(tmp_path):
+    fence, target = _fence(tmp_path)
+    grant = _grant(fence, target)
+    digest = hashlib.sha256(b"original-job").hexdigest()
+    _bind(fence, grant, target, "job-1", digest)
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    expired = replace(fence.owner, clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
+                      current_authority=lambda *_: False)
+    reader = NativeMutationFence(expired, tmp_path / "ignored")
+    with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,
+            target_paths=(target,), job_id="job-1", job_digest=digest) as observed:
+        assert observed.read(target) == b"after"
+        assert observed.effects["catalog"]["observed_digest"] == hashlib.sha256(b"after").hexdigest()
+    with pytest.raises(PropagationFenceError, match="completed_operation_not_found"):
+        with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,
+                target_paths=(target,), job_id="job-2", job_digest=digest):
+            pass
+
+
+def test_existing_unbound_native_operation_cannot_adopt_a_fleet_job(tmp_path):
+    fence, target = _fence(tmp_path)
+    with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT,
+                           target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, _grant(fence, target), target, "job-1", hashlib.sha256(b"job").hexdigest())
+
+
 def test_stale_or_reused_generation_fails_under_the_shared_lock(tmp_path):
     fence, target = _fence(tmp_path)
     with fence.transaction(_grant(fence, target, 2), canonical_contract=_CONTRACT2, target_paths=(target,)) as journal:
@@ -123,6 +183,101 @@ def test_stale_or_reused_generation_fails_under_the_shared_lock(tmp_path):
     with pytest.raises(PropagationFenceError, match="already_completed"):
         with fence.transaction(_grant(fence, target, 2), canonical_contract=_CONTRACT2, target_paths=(target,)):
             pass
+
+
+def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, monkeypatch):
+    from anvil_serving import client_catalog_sync
+
+    value = parse_contract(_CONTRACT).value
+    value["targets"][0]["resource_keys"] = ["client-catalog"]
+    value["effect_set_digest"] = effect_scope_digest(value)
+    contract = parse_contract(value).canonical
+    target = tmp_path / "catalog.json"
+    target.write_bytes(b"before")
+    _private_file(target)
+    owner = TrustedNativeOwner(
+        "owner-1", "client-catalog", tmp_path, clock=_trusted_test_clock,
+        current_authority=lambda *_args: True,
+        effect_bindings={"catalog": ("catalog-apply", target)},
+    )
+    fence = NativeMutationFence(owner, tmp_path)
+    legacy_lock = tmp_path / ".config/anvil-serving/pi/catalog.lock"
+    legacy_lock.parent.mkdir(parents=True, mode=0o700)
+    for directory in (tmp_path / ".config", legacy_lock.parent.parent, legacy_lock.parent):
+        _private_directory(directory)
+    legacy_lock.write_bytes(b"")
+    _private_file(legacy_lock)
+    if os.name != "nt":
+        import fcntl
+        with open(legacy_lock, "r+") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            with pytest.raises(PropagationFenceError, match="operation_in_progress"):
+                with NativeMutationFence.legacy_catalog_write(tmp_path):
+                    pytest.fail("direct writer passed the Pi lock")
+            with NativeMutationFence.legacy_catalog_write(tmp_path, catalog_lock_fd=held.fileno()):
+                pass
+            other = tmp_path / "other.lock"
+            other.write_bytes(b"")
+            _private_file(other)
+            with open(other, "r+") as wrong:
+                with pytest.raises(PropagationFenceError, match="owner_lock_unavailable"):
+                    with NativeMutationFence.legacy_catalog_write(tmp_path, catalog_lock_fd=wrong.fileno()):
+                        pytest.fail("wrong lock descriptor entered")
+    with NativeMutationFence.legacy_catalog_write(tmp_path):
+        with NativeMutationFence.legacy_catalog_write(tmp_path):
+            pass
+        with pytest.raises(PropagationFenceError, match="operation_in_progress"):
+            fence.activate_catalog_cutover(contract)
+    with pytest.raises(PropagationFenceError, match="untrusted_grant"):
+        with fence.transaction(None, canonical_contract=contract, target_paths=(target,)):
+            pytest.fail("untrusted writer entered")
+    assert not fence._catalog_cutover_path.exists()
+    grant = fence.grant(canonical_contract=contract, generation=1, effects=("catalog",), target_paths=(target,))
+    _bind(fence, grant, target, "job-1", hashlib.sha256(b"original-job").hexdigest(), contract)
+    with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)):
+        assert fence._catalog_cutover_path.exists()
+    fence.activate_catalog_cutover(contract)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        with NativeMutationFence.legacy_catalog_write(tmp_path):
+            pytest.fail("retired writer entered")
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    touched = []
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", lambda **_kwargs: touched.append("catalog"))
+    monkeypatch.setattr(client_catalog_sync, "_sync_pi_media", lambda **_kwargs: touched.append("media"))
+    monkeypatch.setattr(client_catalog_sync, "_sync_hermes_media", lambda **_kwargs: touched.append("hermes-media"))
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=False, confirm=True)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_pi_media(withdraw=True, dry_run=False, confirm=True)
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        client_catalog_sync.sync_hermes_media(dry_run=False, confirm=True)
+    assert touched == []
+    client_catalog_sync.sync_clients(base_url="http://127.0.0.1:8000/v1", dry_run=True)
+    client_catalog_sync.sync_hermes_media(dry_run=True)
+    assert touched == ["catalog", "hermes-media"]
+    fence._catalog_cutover_path.unlink()  # Simulate an incomplete local restore.
+    with pytest.raises(PropagationFenceError, match="stale_generation"):
+        with fence.resume(grant, canonical_contract=contract, target_paths=(target,)):
+            pytest.fail("restored writer entered without cutover")
+
+
+@pytest.mark.parametrize(("name", "kwargs"), [
+    ("sync_clients", {"base_url": "http://127.0.0.1:8000/v1"}),
+    ("sync_pi_media", {"withdraw": True}),
+    ("sync_hermes_media", {}),
+])
+@pytest.mark.parametrize("hint", ("canonical_contract", "grant"))
+def test_owner_apply_hint_never_falls_through_to_legacy_writer(name, kwargs, hint):
+    from anvil_serving import client_catalog_sync
+
+    with pytest.raises(client_catalog_sync.ClientCatalogError, match="owner apply requires a native fence"):
+        getattr(client_catalog_sync, name)(
+            **kwargs, dry_run=False, confirm=True,
+            **{hint: _CONTRACT if hint == "canonical_contract" else object()},
+        )
 
 
 def test_drift_and_interruption_remain_recovery_required_without_rollback_claim(tmp_path):
@@ -352,8 +507,8 @@ def test_journal_parent_and_lookup_mapping_are_custody_bound(tmp_path):
         fence.grant(canonical_contract=_CONTRACT, generation=1, effects=("catalog",), target_paths=(other,), effect_targets={"catalog": other})
     outside = tmp_path / "outside"; outside.mkdir()
     import shutil
-    shutil.rmtree(root / ".anvil-serving")
-    (root / ".anvil-serving").symlink_to(outside, target_is_directory=True)
+    shutil.rmtree(root / ".config" / "anvil-serving")
+    (root / ".config" / "anvil-serving").symlink_to(outside, target_is_directory=True)
     fresh = NativeMutationFence(TrustedNativeOwner(
         "owner-1", "catalog-1", root, backup_root=root / "backups",
         clock=_trusted_test_clock,
@@ -556,7 +711,7 @@ def test_windows_fence_refuses_junction_at_canonical_lock_leaf(tmp_path):
     )
     lock_parent = fence.journal_root
     lock_parent.mkdir(parents=True)
-    for path in (root / ".anvil-serving", lock_parent):
+    for path in (root / ".config", lock_parent.parent, lock_parent):
         tree.establish_full_control(path)
     lock_leaf = lock_parent / "catalog-1.lock"
     completed = subprocess.run(

@@ -321,7 +321,7 @@ required operands, choices, and defaults.
 | `mcp serve` | Run the MCP management server. | `read` / `protocol` | `--controller-url`<br>`--auth-env`<br>`--auth-file` |
 | `mcp tools` | List bounded MCP tools. | `read` / `bounded` | - |
 | `controller` | Manage the private controller service. | `read` / `bounded` | - |
-| `controller serve` | Run the private controller. | `process` / `foreground` | - |
+| `controller serve` | Run the private controller. | `process` / `foreground` | `--propagation-profile`<br>`--propagation-profile-sha256` |
 | `controller status` | Probe controller health. | `read` / `bounded` | - |
 | `controller inspect` | Read-only metadata inspection for one controller container. | `read` / `bounded` | `--container` |
 | `controller logs` | Read bounded metadata-only controller audit events. | `read` / `bounded` | `--container`<br>`--tail` |
@@ -441,6 +441,18 @@ required operands, choices, and defaults.
 | `workbench down` | Stop the Workbench hub stack while preserving its named data volumes. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `workbench status` | Show the bounded Docker Compose service status for Workbench. | `read` / `bounded` | - |
 | `workbench logs` | Read bounded Workbench hub stack logs. | `read` / `bounded` | - |
+| `workflows` | Operate approved propagation through the authenticated owner. | `read` / `bounded` | - |
+| `workflows capabilities` | Require the installed owner to expose this release's complete contract. | `read` / `bounded` | - |
+| `workflows start` | Accept one approved propagation contract. | `mutate` / `bounded` | `--approval-ref`<br>`--request-id`<br>`--confirm` |
+| `workflows status` | Read complete owner and workflow progress. | `read` / `bounded` | `--intent-id` |
+| `workflows resume` | Resume retained work under the same approved revision. | `mutate` / `bounded` | `--intent-id`<br>`--expected-digest`<br>`--confirm` |
+| `workflows cancel` | Request cancellation of retained work. | `mutate` / `bounded` | `--intent-id`<br>`--expected-digest`<br>`--confirm` |
+| `workflows deployment` | Inspect pinned release artifacts and installed owner profile. | `read` / `bounded` | - |
+| `workflows deployment preview` | Verify local release bytes without installation. | `read` / `bounded` | `--profile` |
+| `workflows deployment verify` | Compare pinned release and installed owner profile. | `read` / `bounded` | `--profile` |
+| `workflows recovery` | Inspect isolated recovery evidence through the owner. | `read` / `bounded` | - |
+| `workflows recovery verify` | Read verified isolated-restore evidence. | `read` / `bounded` | `--profile` |
+| `workflows recovery snapshot-journal` | Copy the guarded native operation journal for encrypted backup. | `mutate` / `bounded` | `--profile`<br>`--output`<br>`--confirm` |
 <!-- END GENERATED CLI MANIFEST INDEX -->
 
 ## Migration from legacy commands
