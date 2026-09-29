@@ -2742,7 +2742,7 @@ def _sync_clients(
         if current.get("config_sha256") != expected_config_sha256:
             raise ClientCatalogError("router configuration changed before client reconciliation")
     if dry_run or not confirm:
-        return _summary(
+        summary = _summary(
             catalog,
             clients=selected_clients,
             changed=changed,
@@ -2754,6 +2754,19 @@ def _sync_clients(
             exclusions=exclusions,
             openclaw_allowed_aliases=additions,
         )
+        if journal is not None:
+            recorded = prior_state.get("file_sha256")
+            summary["state_converged"] = (
+                prior_state_exists
+                and prior_state.get("config_sha256") == catalog["config_sha256"]
+                and prior_exclusions == {**prior_exclusions, **exclusions}
+                and ("openclaw" not in selected_clients
+                     or prior_state.get("openclaw_allowed_aliases") == list(additions))
+                and isinstance(recorded, Mapping)
+                and all(recorded.get(name) == _sha256_bytes(data)
+                        for name, data in desired.items() if name != "openclaw_env")
+            )
+        return summary
 
     backup = None
     if changed:

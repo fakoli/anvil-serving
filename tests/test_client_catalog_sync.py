@@ -790,6 +790,14 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
     assert [row["target_id"] for row in applied] == ["target-1", "target-2", "target-3"]
     assert all(row["result"]["dry_run"] is False for row in applied)
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
+    assert all(row["result"]["state_converged"] for row in sync_client_catalog_batch(**options))
+    state = Path(targets[0].state_path)
+    original_state = state.read_bytes()
+    state.write_bytes(b"{}\n")
+    drifted = sync_client_catalog_batch(**options)
+    assert drifted[0]["result"]["changed"] == []
+    assert drifted[0]["result"]["state_converged"] is False
+    state.write_bytes(original_state)
     with pytest.raises(PropagationFenceError, match="already_completed"):
         sync_client_catalog_batch(**options, dry_run=False)
     assert set(fence.journal()["effects"]) == set(bindings)
