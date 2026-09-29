@@ -488,7 +488,10 @@ class PropagationService:
                 if row["age_seconds"] is not None or row["freshness"] != "unknown":
                     raise PropagationJobError("invalid_freshness")
             else:
-                age = int((now - contract_api._utc(row["observed_at"])).total_seconds())
+                # The reader reports age at its snapshot, before transport and
+                # validation. Fresh verification above still uses the owner clock.
+                age = int((contract_api._utc(observed["observed_at"])
+                           - contract_api._utc(row["observed_at"])).total_seconds())
                 if age < 0 or row["age_seconds"] != age or row["freshness"] != ("fresh" if age <= 300 else "stale"):
                     raise PropagationJobError("invalid_freshness")
             if row["last_contact_at"] is not None and contract_api._utc(row["last_contact_at"]) > now:

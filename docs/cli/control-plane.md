@@ -124,6 +124,10 @@ outcomes. If Temporal progress cannot be observed, it says `unavailable` while
 owner identity and target custody remain visible. Resume and cancel require a
 configured workflow service binding and fail closed when it is absent. Neither
 command changes the approved revision or grants a new effect identity.
+Target age and freshness describe the reader's reported snapshot time; transport
+delay does not make a consistent snapshot malformed. Verification separately
+checks observation and receipt timestamps against the current owner clock and
+the original job completion time, so stale evidence cannot pass acceptance.
 Deployment preview hashes the protected local release manifest and each declared
 component without contacting the controller or installing anything. The manifest
 uses `anvil-workflows.release/v1`, names the `propagation-v1` profile and its

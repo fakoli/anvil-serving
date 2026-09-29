@@ -814,10 +814,13 @@ class NativeMutationFence:
         return self.journal(reservation_id)
 
     def bind_job(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
-                 target_paths: Iterable[str | Path], job_id: str, job_digest: str) -> dict | None:
-        """Persist one fleet job identity before its native effects may start."""
+                 target_paths: Iterable[str | Path], job_id: str, job_digest: str,
+                 reserve: bool = True) -> dict | None:
+        """Bind a fleet job, or inspect its original binding without reserving one."""
         if not isinstance(grant, NativeMutationGrant) or grant._seal is not self._seal:
             raise PropagationFenceError("untrusted_grant")
+        if type(reserve) is not bool:
+            raise PropagationFenceError("malformed_grant")
         _token(job_id)
         _digest(job_digest)
         reservation_id = self._reservation_id(grant)
@@ -825,8 +828,11 @@ class NativeMutationFence:
         with self._lock():
             index = self._read_index()
             row = index["operations"].get(reservation_id)
-            self._validate_grant(grant, canonical_contract, targets, require_fresh=row is None)
+            self._validate_grant(grant, canonical_contract, targets,
+                                 require_fresh=row is None and reserve)
             if row is None:
+                if not reserve:
+                    return None
                 if (index["high_water_generation"] >= grant.generation
                         or any(entry["status"] != "completed" for entry in index["operations"].values())):
                     raise PropagationFenceError("unresolved_reservation")
@@ -845,7 +851,9 @@ class NativeMutationFence:
             if index["latest_reservation_id"] != reservation_id:
                 raise PropagationFenceError("unsafe_journal")
             if row["status"] == "bound":
-                return None
+                return None if reserve else {"status": "bound", "reservation_id": reservation_id,
+                                             "job_id": job_id, "contract_digest": grant.contract_digest,
+                                             "generation": grant.generation}
             state = self._read_state(self._operation_path(reservation_id))
             if (state["reservation_id"], state["contract_digest"], state["generation"],
                     state["status"]) != (reservation_id, grant.contract_digest,

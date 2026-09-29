@@ -240,6 +240,25 @@ def test_fresh_verify_and_same_pass_convergence_detect_changed_bytes(tmp_path):
     assert owner.marker.read_text() == "concurrent-drift"
 
 
+def test_observation_age_is_bound_to_snapshot_not_transport_completion(tmp_path, monkeypatch):
+    owner = ControlledOwner(tmp_path)
+    accepted, job, _ = owner.submit()
+    captured = _now() + timedelta(seconds=1)
+    monkeypatch.setattr(sys.modules[__name__], "_now", lambda: captured)
+    owner.service.profile = replace(owner.profile, now=lambda: captured + timedelta(seconds=2))
+    observed = owner.service.verify(accepted["intent_id"], job["job_id"])
+    assert observed["all_targets_verified"]
+    assert observed["observed_at"] == _stamp(captured)
+    assert observed["outcomes"][0]["age_seconds"] == 0
+    owner.corrupt = lambda value: value["outcomes"][0].update(age_seconds=1)
+    with pytest.raises(PropagationJobError, match="invalid_freshness"):
+        owner.service.status(job["job_id"])
+    owner.corrupt = None
+    owner.service.profile = replace(owner.profile, now=lambda: captured + timedelta(seconds=301))
+    with pytest.raises(PropagationJobError, match="stale_observation"):
+        owner.service.verify(accepted["intent_id"], job["job_id"])
+
+
 def test_pagination_retains_snapshot_binding_and_all_original_targets(tmp_path):
     owner = ControlledOwner(tmp_path, count=12)
     accepted, job, _ = owner.submit()
@@ -432,6 +451,44 @@ def test_durable_unlaunched_job_resolves_after_authority_expiry(tmp_path):
     resolved = late.submit(accepted["intent_id"], preview["preview_digest"], operation)
     assert resolved["job_id"] == job["job_id"] and resolved["state"] == "existing"
     assert owner.jobs.lookup(job["job_id"])["never_launched"] and not owner.marker.exists()
+
+
+@pytest.mark.parametrize("completed", [False, True])
+def test_native_job_inspection_after_expiry_never_reserves_or_rewrites(tmp_path, completed):
+    from anvil_serving.propagation_fencing import NativeMutationFence, PropagationFenceError
+    from tests.test_propagation_fencing import _CONTRACT, _fence, _grant
+
+    fence, target = _fence(tmp_path)
+    grant = _grant(fence, target)
+    digest = hashlib.sha256(b"original-job").hexdigest()
+    bound = dict(canonical_contract=_CONTRACT, target_paths=(target,),
+                 job_id="job-1", job_digest=digest)
+    assert fence.bind_job(grant, reserve=False, **bound) is None
+    assert fence.journal() is None
+    assert fence.bind_job(grant, **bound) is None
+    if completed:
+        with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+            journal.begin_effect("catalog", target, b"before", b"after")
+            journal.bind_backup("catalog", journal.backup([target]))
+            journal.write("catalog", b"after")
+            journal.observe_bytes("catalog", target.read_bytes())
+    original_files = {p: p.read_bytes() for p in tmp_path.rglob("*.json")}
+    original_mtime = target.stat().st_mtime_ns
+
+    expired = NativeMutationFence(replace(fence.owner,
+        clock=lambda: datetime(2026, 9, 29, tzinfo=timezone.utc),
+        current_authority=lambda *_: False), tmp_path)
+    original = expired.bind_job(_grant(expired, target), reserve=False, **bound)
+    assert original["status"] == ("completed" if completed else "bound")
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*.json")} == original_files
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        expired.bind_job(_grant(expired, target), reserve=False, **{**bound, "job_id": "other-job"})
+    with pytest.raises(PropagationFenceError, match="approval_expired"):
+        with expired.transaction(_grant(expired, target), canonical_contract=_CONTRACT,
+                                 target_paths=(target,)):
+            pytest.fail("expired job entered the write boundary")
+    assert target.read_bytes() == (b"after" if completed else b"before")
+    assert target.stat().st_mtime_ns == original_mtime
 
 
 def test_future_pending_check_cannot_enter_status(tmp_path):
