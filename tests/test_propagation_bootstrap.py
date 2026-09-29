@@ -8,13 +8,14 @@ import sys
 
 import pytest
 
-from anvil_serving.control_plane.controller.propagation_bootstrap import build_propagation_service
+from anvil_serving.control_plane.controller.propagation_bootstrap import build_propagation_service, build_activation_observer
 from anvil_serving.control_plane.controller.propagation_job_store import ExecutionProfile
 from anvil_serving.control_plane.controller.errors import ControllerError
 from anvil_serving.control_plane.controller import cli as controller_cli
 from anvil_serving.control_plane.controller import server as controller_server
 from tests.test_propagation_contracts import _contract
 from anvil_serving.control_plane.propagation import parse_contract
+from anvil_serving.control_plane.propagation import ActiveIdentity
 from tests.test_controller import _authorization_policy, _request, running_controller
 
 
@@ -156,6 +157,56 @@ def test_preview_bootstrap_advertises_only_read_operations(tmp_path):
         assert available["fleet.propagation.submit.v1"] is False
         assert service.profile.preview_contract == parse_contract(
             _contract(authority_mode="preview")).canonical
+
+
+def test_scoped_activation_observer_is_pinned_and_read_only(tmp_path):
+    _, owner, _ = _profile(tmp_path)
+    path = tmp_path / "activation-observer.json"
+    raw = json.dumps({"schema": "anvil-serving.propagation-activation-observer/v1",
+                      "activation": owner["activation"]}, sort_keys=True).encode()
+    _write(path, raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    observed = build_activation_observer(str(path), digest)
+    assert observed.ref == "activation-1"
+    with pytest.raises(ControllerError, match="activation observer is unavailable"):
+        build_activation_observer(str(path), "0" * 64)
+
+    policy = _authorization_policy(tmp_path, [
+        {"id": "reader", "scopes": ["propagation:status"], "credential_env": "READER"},
+    ])
+    observations = []
+    def stable_identity():
+        observations.append(True)
+        return ActiveIdentity(observed.ref, observed.digest)
+    token = tmp_path / "observer-token"
+    _write(token, b"synthetic-reader\n")
+    with running_controller(activation_observer=stable_identity,
+                            activation_observer_profile_sha256=digest,
+                            allowed_operations=["propagation.activation.observe.v1"],
+                            authorization_policy=policy,
+                            env={"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy",
+                                 "READER": "synthetic-reader"}) as (host, port):
+        status, _, body, _ = _request(host, port, "GET", "/tools/list",
+                                      headers={"Authorization": "Bearer synthetic-reader"})
+        assert status == 200
+        assert [tool["name"] for tool in body["tools"]] == ["propagation.activation.observe.v1"]
+        status, _, body, _ = _request(host, port, "POST", "/tools/call",
+            {"name": "propagation.activation.observe.v1", "arguments": {}},
+            {"Authorization": "Bearer synthetic-reader"})
+        assert status == 200 and body["ok"]
+        assert body["data"]["activation_digest"] == observed.digest
+        assert body["data"]["observer_profile_sha256"] == digest
+        headers = {"Authorization": "Bearer synthetic-reader",
+                   "X-Anvil-Idempotency-Key": "same-observation"}
+        for _ in range(2):
+            status, _, body, _ = _request(host, port, "POST", "/tools/call",
+                {"name": "propagation.activation.observe.v1", "arguments": {}}, headers)
+            assert status == 200 and body["ok"]
+        assert len(observations) == 3
+        remote = type(observed)(**owner["activation"], observer={
+            "controller_url": f"http://{host}:{port}",
+            "token_file": str(token), "profile_sha256": digest})
+        assert remote() == ActiveIdentity(observed.ref, observed.digest)
 
 
 def test_bootstrap_refuses_pinned_reader_without_required_modes(tmp_path):

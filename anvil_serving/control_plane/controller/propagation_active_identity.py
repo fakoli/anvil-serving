@@ -7,6 +7,7 @@ import json
 import re
 from time import monotonic
 import urllib.request
+from datetime import datetime, timedelta, timezone
 
 from ...controller_diagnostics import _capture_fixed_child, local_docker_prefix
 from ... import serve_recipes
@@ -64,7 +65,7 @@ class ObservedActiveIdentity:
     """Accept only the exact previously approved container and fresh endpoints."""
 
     def __init__(self, activation_ref: str, catalog_sha256: str, owners: list[dict],
-                 router_base_url: str, router_token_env: str):
+                 router_base_url: str, router_token_env: str, observer: dict | None = None):
         try:
             self.ref = _id(activation_ref)
             self.catalog_sha256 = _digest(catalog_sha256)
@@ -89,6 +90,10 @@ class ObservedActiveIdentity:
             self.owners = tuple(sorted(frozen, key=lambda owner: owner["container_id"]))
             self.router_base_url = router_base_url
             self.router_token_env = router_token_env
+            if observer is not None and (type(observer) is not dict or set(observer) != {
+                    "controller_url", "token_file", "profile_sha256"}):
+                raise ValueError()
+            self.observer = observer
             fingerprint = {"schema": "anvil-propagation-activation/v1",
                            "catalog_sha256": self.catalog_sha256, "owners": self.owners}
             self.digest = hashlib.sha256(json.dumps(fingerprint, sort_keys=True, separators=(",", ":"),
@@ -97,6 +102,8 @@ class ObservedActiveIdentity:
             raise PropagationJobError("active_identity_unavailable") from None
 
     def __call__(self) -> ActiveIdentity:
+        if self.observer is not None:
+            return self._remote()
         try:
             deadline = monotonic() + _OBSERVATION_DEADLINE_SECONDS
             def remaining() -> float:
@@ -141,6 +148,38 @@ class ObservedActiveIdentity:
                         or payload["data"][0].get("id") != owner["served_identity"]):
                     raise ValueError()
             remaining()
+            return ActiveIdentity(self.ref, self.digest)
+        except Exception:
+            raise PropagationJobError("active_identity_unavailable") from None
+
+    def _remote(self) -> ActiveIdentity:
+        """Use the scoped resource controller, never a Docker socket in the worker owner."""
+        try:
+            from ... import mcp
+            from ..mcp.controller_client import remote_controller_request, resolve_controller_token_file
+            observer = self.observer
+            assert observer is not None
+            expected_profile = _digest(observer["profile_sha256"])
+            token = resolve_controller_token_file(observer["token_file"])
+            response = remote_controller_request(observer["controller_url"], {
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "propagation.activation.observe.v1", "arguments": {},
+                           "_meta": {"io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                                     "io.modelcontextprotocol/clientCapabilities": {},
+                                     "io.modelcontextprotocol/clientInfo": {
+                                         "name": "anvil-propagation-owner", "version": mcp.SERVER_INFO["version"]}}},
+            }, token, timeout=_OBSERVATION_DEADLINE_SECONDS, max_response_bytes=8192)
+            result = response["result"]
+            content = result["structuredContent"]
+            data = content["data"]
+            observed = datetime.fromisoformat(data["observed_at"].replace("Z", "+00:00"))
+            if (result.get("isError") is not False or content.get("ok") is not True
+                    or data["observer_profile_sha256"] != expected_profile
+                    or data["activation_ref"] != self.ref
+                    or data["activation_digest"] != self.digest
+                    or observed.tzinfo != timezone.utc
+                    or not timedelta(0) <= datetime.now(timezone.utc) - observed <= timedelta(seconds=30)):
+                raise ValueError()
             return ActiveIdentity(self.ref, self.digest)
         except Exception:
             raise PropagationJobError("active_identity_unavailable") from None
