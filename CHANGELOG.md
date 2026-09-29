@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format is based on
   routes, with device-key grants, fixed bank bindings and no backend fallback.
 - Preview-first curated Markdown memory import with source provenance, preserving
   existing Codex, Pi, Hermes, OpenClaw and Claude memory stores.
+- Explicit propagation-owner preview mode with pinned whole-fleet readback and
+  capability discovery that omits and refuses every effect operation.
 
 ## [1.5.0] - 2026-09-26
 

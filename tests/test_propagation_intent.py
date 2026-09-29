@@ -32,7 +32,8 @@ _DIGEST = "a" * 64
 
 def _contract(*, scope="scope-1", revision="revision-1", generation=1, target="target-1", effect="catalog-apply"):
     value = {
-        "schema": "anvil-propagation/v1", "scope": scope, "revision": revision,
+        "schema": "anvil-propagation/v1", "authority_mode": "effects",
+        "scope": scope, "revision": revision,
         "generation": generation, "approval_ref": "approval-1", "approval_digest": _DIGEST,
         "activation_ref": "activation-1", "activation_digest": _DIGEST,
         "inputs": {"catalog_digest": _DIGEST, "monitoring_inventory_digest": _DIGEST,

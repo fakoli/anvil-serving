@@ -65,7 +65,8 @@ class ControlledOwner:
         self.profile = PropagationProfile("profile-1", DIGEST, "executor-1",
             lambda ref: self.contract.canonical if ref == "approval-1" else b"{}",
             lambda ref: ApprovedAuthority("approval-1", DIGEST, self.contract.digest) if ref == "approval-1" else None,
-            lambda: ActiveIdentity("activation-1", DIGEST), self.preview, self.observe)
+            lambda: ActiveIdentity("activation-1", DIGEST), self.preview, self.observe,
+            preview_contract=self.contract.canonical, owner_profile_digest=DIGEST)
         self.service = PropagationService(self.intents, self.jobs, self.supervisor, self.profile)
 
     def reconcile(self, job, result):
@@ -132,6 +133,52 @@ class ControlledOwner:
                 return accepted, submitted, preview
             time.sleep(.02)
         pytest.fail("native child did not settle")
+
+
+def test_preview_mode_cannot_create_or_authorize_effects(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    preview_contract = parse_contract({**owner.contract.value,
+                                       "authority_mode": "preview"})
+    profile = replace(owner.profile, mode="preview",
+                      preview_contract=preview_contract.canonical)
+    service = PropagationService(owner.intents, owner.jobs, owner.supervisor, profile)
+
+    reported = service.handle("propagation.profile.v1", {}, caller_id="operator")
+    assert reported["mode"] == "preview" and reported["installed"]
+    page = service.handle("propagation.preview.v1", {"cursor": None},
+                          caller_id="operator")
+    schema = next(operation for operation in capability_declaration()["operations"]
+                  if operation["name"] == "propagation.preview.v1")["result_schema"]
+    assert _matches_declared_schema(page, schema)
+    assert page["all_required_ready"] and page["preview_digest"] is not None
+
+    blocked = {
+        "propagation.accept.v1", "propagation.status.v1",
+        "propagation.resume.v1", "propagation.cancel.v1",
+        "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
+        "fleet.propagation.preview.v1", "fleet.propagation.submit.v1",
+        "fleet.propagation.current.v1", "fleet.propagation.status.v1",
+        "fleet.propagation.verify.v1", "fleet.propagation.convergence.v1",
+        "fleet.propagation.cancel.v1",
+    }
+    for operation in blocked:
+        assert not service.operation_available(operation)
+        with pytest.raises(PropagationJobError, match="preview_only"):
+            service.handle(operation, {}, caller_id="all-scopes")
+
+    with owner.intents._connection() as db:
+        for table in ("propagation_intents", "propagation_outbox",
+                      "propagation_native_jobs"):
+            assert db.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
+    assert not owner.marker.exists()
+    assert not owner.supervisor._children
+    assert service.operation_available("propagation.preview.v1")
+    assert owner.service.operation_available("propagation.preview.v1")
+    assert owner.service.handle("propagation.preview.v1", {"cursor": None},
+                                caller_id="operator")["all_required_ready"]
+    with pytest.raises(ValueError, match="contract mode mismatch"):
+        PropagationService(owner.intents, owner.jobs, owner.supervisor,
+                           replace(profile, mode="effects"))
 
 
 def test_actual_http_preserves_caller_and_composes_per_server(tmp_path):

@@ -19,7 +19,7 @@ _NOW = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)
 
 
 def _contract(**changes):
-    value = {"schema": "anvil-propagation/v1", "scope": "scope-1", "revision": "revision-1", "generation": 1, "approval_ref": "approval-1", "approval_digest": _DIGEST, "activation_ref": "activation-1", "activation_digest": _DIGEST, "inputs": {"catalog_digest": _DIGEST, "monitoring_inventory_digest": _DIGEST, "execution_profile_digest": _DIGEST, "artifact_digest": _DIGEST, "installation_inventory_digest": _DIGEST}, "effect_set_digest": _DIGEST, "targets": [{"target_id": "target-1", "installation_id": "installation-1", "profile_id": "profile-1", "runtime_id": "runtime-1", "resource_keys": ["catalog-1"], "expected_identity_ref": "identity-1", "expected_identity_digest": _DIGEST, "checks": ["catalog-equal"], "effects": ["catalog-apply"]}], "execution_profile_ref": "profile-1", "execution_profile_digest": _DIGEST, "session_policy": {"preserve_active_conversations": True, "loaded_state_required": True, "idle_reload": False}, "preview_policy": {"all_required_targets": True, "web_runtime_required": True, "monitoring_required": True}, "issued_at": "2026-09-27T12:00:00Z", "deadline_at": "2026-09-28T12:00:00Z"}
+    value = {"schema": "anvil-propagation/v1", "authority_mode": "effects", "scope": "scope-1", "revision": "revision-1", "generation": 1, "approval_ref": "approval-1", "approval_digest": _DIGEST, "activation_ref": "activation-1", "activation_digest": _DIGEST, "inputs": {"catalog_digest": _DIGEST, "monitoring_inventory_digest": _DIGEST, "execution_profile_digest": _DIGEST, "artifact_digest": _DIGEST, "installation_inventory_digest": _DIGEST}, "effect_set_digest": _DIGEST, "targets": [{"target_id": "target-1", "installation_id": "installation-1", "profile_id": "profile-1", "runtime_id": "runtime-1", "resource_keys": ["catalog-1"], "expected_identity_ref": "identity-1", "expected_identity_digest": _DIGEST, "checks": ["catalog-equal"], "effects": ["catalog-apply"]}], "execution_profile_ref": "profile-1", "execution_profile_digest": _DIGEST, "session_policy": {"preserve_active_conversations": True, "loaded_state_required": True, "idle_reload": False}, "preview_policy": {"all_required_targets": True, "web_runtime_required": True, "monitoring_required": True}, "issued_at": "2026-09-27T12:00:00Z", "deadline_at": "2026-09-28T12:00:00Z"}
     value.update(changes)
     value["effect_set_digest"] = effect_scope_digest(value)
     return value
@@ -54,6 +54,9 @@ def test_effect_scope_digest_binds_authority_but_not_execution_window_observatio
     replacement_approval = _contract(approval_ref="approval-2", approval_digest="b" * 64)
     assert effect_scope_digest(contract) == effect_scope_digest(replacement_approval)
     assert parse_contract(contract).digest != parse_contract(replacement_approval).digest
+    preview_contract = _contract(authority_mode="preview")
+    assert effect_scope_digest(contract) == effect_scope_digest(preview_contract)
+    assert parse_contract(contract).digest != parse_contract(preview_contract).digest
     forged = dict(contract)
     forged["targets"] = [{**contract["targets"][0], "effects": ["monitoring-apply"]}]
     with pytest.raises(PropagationContractError, match="effect_scope_mismatch"):
@@ -66,11 +69,13 @@ def test_effect_scope_digest_binds_authority_but_not_execution_window_observatio
         ('{"schema":"anvil-propagation/v1","schema":"anvil-propagation/v1"}', "malformed_payload"),
         (json.dumps(_contract(generation=0)), "malformed_payload"),
         (json.dumps(_contract(generation=True)), "malformed_payload"),
+        (json.dumps(_contract(authority_mode=[])), "malformed_payload"),
         (json.dumps(_contract(targets=[])), "malformed_payload"),
         (json.dumps(_contract(unknown=True)), "malformed_payload"),
         (b"{" + b"x" * MAX_CONTRACT_BYTES + b"}", "payload_too_large"),
     ],
-    ids=("duplicate-schema", "zero-generation", "boolean-generation", "empty-targets", "unknown-field", "oversized-payload"),
+    ids=("duplicate-schema", "zero-generation", "boolean-generation", "invalid-authority-mode",
+         "empty-targets", "unknown-field", "oversized-payload"),
 )
 def test_contract_rejects_unapproved_shapes(raw, code):
     with pytest.raises(PropagationContractError, match=code):
@@ -89,6 +94,9 @@ def test_admission_uses_only_owner_registry_and_observed_active_identity():
         admit_contract(_contract(issued_at="2026-09-26T11:00:00Z", deadline_at="2026-09-27T11:00:00Z"), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW)
     with pytest.raises(PropagationContractError, match="policy_mismatch"):
         admit_contract(_contract(targets=[{**_contract()["targets"][0], "effects": ["session-idle-reload"]}]), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW)
+    preview = parse_contract(_contract(authority_mode="preview"))
+    with pytest.raises(PropagationContractError, match="execution_not_authorized"):
+        admit_contract(preview.canonical, lambda _: ApprovedAuthority("approval-1", _DIGEST, preview.digest), ActiveIdentity("activation-1", _DIGEST), _NOW)
 
 
 def test_receipt_binds_context_transport_identity_and_full_lookup_identity():
@@ -112,7 +120,8 @@ def test_receipt_binds_context_transport_identity_and_full_lookup_identity():
 def test_capabilities_match_the_versioned_inert_owner_operations():
     operations = capability_declaration()["operations"]
     assert [operation["name"] for operation in operations] == [
-        "propagation.accept.v1", "propagation.profile.v1", "propagation.status.v1",
+        "propagation.accept.v1", "propagation.profile.v1", "propagation.preview.v1",
+        "propagation.status.v1",
         "propagation.resume.v1", "propagation.cancel.v1", "propagation.recovery.verify.v1",
         "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
         "fleet.propagation.preview.v1", "fleet.propagation.submit.v1", "fleet.propagation.current.v1",
@@ -258,6 +267,7 @@ def test_preview_and_verification_can_report_unavailable_targets_without_evidenc
                             "pending_reason": "offline", "observed_at": None,
                             "observed_digest": None, "permitted_effects": ["catalog-apply"]}]}
     assert _matches_declared_schema(preview, operations["fleet.propagation.preview.v1"]["result_schema"])
+    assert _matches_declared_schema(preview, operations["propagation.preview.v1"]["result_schema"])
     verification = {**_page_context(), "job_id": "job-1", "verification_id": "pass-1",
                     "kind": "verify", "changed": 0, "reloads": 0, "outcomes": [_offline_row()],
                     "all_targets_verified": False, "receipts": [],
@@ -265,7 +275,7 @@ def test_preview_and_verification_can_report_unavailable_targets_without_evidenc
                                 "outcome": "pending", "pending_reason": "offline",
                                 "observed_at": None, "evidence_ref": None, "evidence_digest": None}]}
     assert _matches_declared_schema(verification, operations["fleet.propagation.verify.v1"]["result_schema"])
-    for name in ("propagation.status.v1", "fleet.propagation.preview.v1", "fleet.propagation.status.v1",
+    for name in ("propagation.preview.v1", "propagation.status.v1", "fleet.propagation.preview.v1", "fleet.propagation.status.v1",
                  "fleet.propagation.verify.v1", "fleet.propagation.convergence.v1"):
         assert operations[name]["input_schema"]["properties"]["cursor"]["type"] == ["string", "null"]
         fields = operations[name]["result_schema"]["properties"]

@@ -19,6 +19,7 @@ from .mcp.arguments import validate_schema_value
 
 
 _MAX_SNAPSHOT = 4 * 1024 * 1024
+_MODES = frozenset({"effects", "preview"})
 
 
 def _json(value):
@@ -58,6 +59,9 @@ class PropagationProfile:
     cancel_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     recovery_evidence: Callable[[str, str], Mapping[str, Any]] | None = None
     workflow_status: Callable[[str, str], Mapping[str, Any]] | None = None
+    mode: str = "effects"
+    preview_contract: bytes | None = None
+    owner_profile_digest: str = ""
 
 
 class PropagationService:
@@ -69,8 +73,23 @@ class PropagationService:
             raise ValueError("propagation intent and job stores must share one database")
         contract_api._id(profile.profile_id)
         contract_api._digest(profile.profile_digest)
+        contract_api._digest(profile.owner_profile_digest)
         contract_api._id(profile.executor_issuer)
+        if profile.mode not in _MODES:
+            raise ValueError("invalid propagation owner mode")
+        if not isinstance(profile.preview_contract, bytes):
+            raise ValueError("preview contract is required")
+        preview_contract = contract_api.parse_contract(profile.preview_contract)
+        if preview_contract.canonical != profile.preview_contract:
+            raise ValueError("preview contract must be canonical")
+        value = preview_contract.value
+        if value["authority_mode"] != profile.mode:
+            raise ValueError("propagation contract mode mismatch")
+        if (value["execution_profile_ref"], value["execution_profile_digest"]) != (
+                profile.profile_id, profile.profile_digest):
+            raise ValueError("preview contract profile mismatch")
         self.intents, self.jobs, self.supervisor, self.profile = intents, jobs, supervisor, profile
+        self._preview_contract = preview_contract
         # ponytail: one verification pass at a time; per-job locks if read volume grows.
         self._verification_lock = threading.Lock()
         with self.intents._connection() as db:
@@ -82,6 +101,9 @@ class PropagationService:
         """Translate all failures to bounded codes at the owner transport boundary."""
         try:
             contract_api._id(caller_id)
+            if (self.profile.mode == "preview"
+                    and operation not in contract_api.PREVIEW_MODE_OPERATIONS):
+                raise PropagationJobError("preview_only")
             if operation == "propagation.accept.v1":
                 raw = self.profile.contract_lookup(arguments["approval_ref"])
                 parsed = contract_api.parse_contract(raw)
@@ -97,8 +119,16 @@ class PropagationService:
                 installed = self.jobs.profiles.get(self.profile.profile_id)
                 return {"profile_id": self.profile.profile_id,
                         "profile_digest": self.profile.profile_digest,
+                        "owner_profile_digest": self.profile.owner_profile_digest,
+                        "mode": self.profile.mode,
                         "installed": installed is not None and installed.digest == self.profile.profile_digest,
                         "observed_at": _stamp(self.profile.now())}
+            if operation == "propagation.preview.v1":
+                identity = _hash({"contract_digest": self._preview_contract.digest})
+                if arguments["cursor"] is not None:
+                    return self._page(operation, identity, caller_id, cursor=arguments["cursor"])
+                return self._page(operation, identity, caller_id,
+                                  payload=self.installation_preview())
             if operation == "propagation.dispatch.pending.v1":
                 return self.intents.pending(arguments["cursor"])
             if operation == "propagation.dispatch.record.v1":
@@ -157,13 +187,21 @@ class PropagationService:
         except Exception:
             raise PropagationJobError("owner_operation_unavailable") from None
 
+    def operation_available(self, operation):
+        """Report only operations the installed owner mode can execute."""
+        if self.profile.mode == "preview":
+            return operation in contract_api.PREVIEW_MODE_OPERATIONS
+        return True
+
     @staticmethod
     def _cancel_state(job):
         return "confirmed" if job["state"] in {"applied", "failed", "cancelled"} else "uncertain" if job["state"] == "recovery_required" else "requested"
 
     def _profile_binding(self, contract):
         value = contract.value
-        if (value["execution_profile_ref"], value["execution_profile_digest"]) != (self.profile.profile_id, self.profile.profile_digest):
+        if (value["authority_mode"] != self.profile.mode
+                or (value["execution_profile_ref"], value["execution_profile_digest"]) != (
+                    self.profile.profile_id, self.profile.profile_digest)):
             raise PropagationJobError("profile_mismatch")
 
     def current_authority(self, intent_id, job_id, contract_digest, generation, target_id, resource_id):
@@ -200,6 +238,21 @@ class PropagationService:
 
     def preview(self, intent_id):
         contract = self._contract(intent_id, current=True)
+        return self._preview(contract, intent_id=intent_id)
+
+    def installation_preview(self):
+        contract = self._preview_contract
+        now = self.profile.now()
+        value = contract.value
+        if not contract_api._utc(value["issued_at"]) <= now < contract_api._utc(value["deadline_at"]):
+            raise PropagationJobError("approval_expired")
+        active = self.profile.active_identity()
+        if (active.activation_ref, active.activation_digest) != (
+                value["activation_ref"], value["activation_digest"]):
+            raise PropagationJobError("approval_mismatch")
+        return self._preview(contract)
+
+    def _preview(self, contract, *, intent_id=None):
         observed = json.loads(_json(self.profile.preview(contract.canonical)))
         if set(observed) != {"observed_at", "targets"}:
             raise PropagationJobError("invalid_preview")
@@ -225,7 +278,7 @@ class PropagationService:
                    "expires_at": _stamp(expires), "all_required_ready": all(row["ready"] for row in rows)}
         digest = _hash(payload) if payload["all_required_ready"] else None
         payload["preview_digest"] = digest
-        if digest:
+        if digest and intent_id is not None:
             with self.intents._connection() as db:
                 db.execute("BEGIN IMMEDIATE")
                 db.execute("DELETE FROM propagation_previews WHERE expires_at < ?", (_stamp(now),))

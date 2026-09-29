@@ -33,7 +33,8 @@ def _profile(argv: tuple[str, ...], **extra: object) -> ExecutionProfile:
 def _contract(deadline: datetime, now: datetime | None = None) -> dict[str, object]:
     now = _now() if now is None else now
     value: dict[str, object] = {
-        "schema": "anvil-propagation/v1", "scope": "scope-1", "revision": "revision-1", "generation": 1,
+        "schema": "anvil-propagation/v1", "authority_mode": "effects",
+        "scope": "scope-1", "revision": "revision-1", "generation": 1,
         "approval_ref": "approval-1", "approval_digest": DIGEST, "activation_ref": "activation-1", "activation_digest": DIGEST,
         "inputs": {"catalog_digest": DIGEST, "monitoring_inventory_digest": DIGEST, "execution_profile_digest": DIGEST, "artifact_digest": DIGEST, "installation_inventory_digest": DIGEST},
         "effect_set_digest": "", "targets": [{"target_id": "target-1", "installation_id": "installation-1", "profile_id": "profile-1", "runtime_id": "runtime-1", "resource_keys": ["catalog-1"], "expected_identity_ref": "identity-1", "expected_identity_digest": DIGEST, "checks": ["catalog-equal"], "effects": ["catalog-apply"]}],

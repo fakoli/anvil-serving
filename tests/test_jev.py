@@ -97,6 +97,7 @@ def test_policy_rechecked_at_last_dispatch_boundary():
 
 def test_subprocess_uses_closed_argv_bounded_output_and_minimal_environment(monkeypatch):
     seen = []
+    monkeypatch.setattr("anvil_serving.control_plane.mcp.runtime._terminate_process_tree", lambda process: None)
     class Process:
         stdout = io.BytesIO(b'{"ok":true}')
         returncode = 0

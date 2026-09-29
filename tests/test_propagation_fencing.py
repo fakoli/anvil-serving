@@ -23,7 +23,8 @@ from anvil_serving.propagation_fencing import (
 def _canonical_contract(generation: int = 1) -> bytes:
     digest = "a" * 64
     value = {
-        "schema": "anvil-propagation/v1", "scope": "scope-1", "revision": "revision-1", "generation": generation,
+        "schema": "anvil-propagation/v1", "authority_mode": "effects",
+        "scope": "scope-1", "revision": "revision-1", "generation": generation,
         "approval_ref": "approval-1", "approval_digest": digest, "activation_ref": "activation-1", "activation_digest": digest,
         "inputs": {"catalog_digest": digest, "monitoring_inventory_digest": digest, "execution_profile_digest": digest, "artifact_digest": digest, "installation_inventory_digest": digest},
         "effect_set_digest": digest,

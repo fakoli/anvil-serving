@@ -19,7 +19,8 @@ from .control_plane.mcp.controller_client import remote_controller_request, reso
 from .control_plane.mcp.errors import ToolError
 from .control_plane.mcp.protocol import CLIENT_CAPABILITIES_META_KEY, CLIENT_INFO_META_KEY, PROTOCOL_VERSION_META_KEY
 from .control_plane.propagation import (
-    MAX_TARGETS, PropagationContractError, _digest, _id, capability_declaration,
+    MAX_TARGETS, PREVIEW_MODE_OPERATIONS, PropagationContractError, _digest, _id,
+    capability_declaration,
 )
 from .operator_output import CommandResult, PartialResultError, SafetyError, TransportError, UsageError
 
@@ -98,12 +99,16 @@ def _local_preview(profile: str) -> dict:
         if len(raw) > 65_536 or hashlib.sha256(raw).hexdigest() != expected:
             raise ValueError()
         manifest = json.loads(raw, object_pairs_hook=_unique_pairs)
-        if (type(manifest) is not dict or set(manifest) != {"schema", "profile_id", "profile_digest", "components"}
+        if (type(manifest) is not dict or set(manifest) != {
+                "schema", "owner_mode", "owner_profile_digest", "profile_id",
+                "profile_digest", "components"}
                 or manifest["schema"] != "anvil-workflows.release/v1"
+                or manifest["owner_mode"] not in {"preview", "effects"}
                 or manifest["profile_id"] != profile or type(manifest["components"]) is not list
                 or not 1 <= len(manifest["components"]) <= 8):
             raise ValueError()
         _digest(manifest["profile_digest"])
+        _digest(manifest["owner_profile_digest"])
         components = []
         names = set()
         for item in manifest["components"]:
@@ -130,6 +135,8 @@ def _local_preview(profile: str) -> dict:
                 raise ValueError()
             components.append({"name": item["name"], "sha256": expected_file, "bytes": metadata.st_size})
         return {"profile_id": profile, "profile_digest": manifest["profile_digest"],
+                "owner_mode": manifest["owner_mode"],
+                "owner_profile_digest": manifest["owner_profile_digest"],
                 "release_digest": expected,
                 "release_path_digest": hashlib.sha256(os.fsencode(directory.resolve(strict=True))).hexdigest(),
                 "components": components, "effects": []}
@@ -211,12 +218,28 @@ def _call(url: str, token: str, name: str, arguments: dict, *, timeout: int = 15
     data = content["data"]
     if name == "propagation_capabilities":
         expected = capability_declaration()
-        for operation in expected["operations"]:
-            operation["available"] = True
-        if data != expected:
+        operations = data.get("operations")
+        if (data.get("schema") != expected["schema"]
+                or not isinstance(operations, list)
+                or len(operations) != len(expected["operations"])):
+            raise SafetyError("workflow owner capabilities differ from this release", code="workflow_owner_capabilities_missing")
+        available = set()
+        for actual, declared in zip(operations, expected["operations"]):
+            if (not isinstance(actual, dict)
+                    or type(actual.get("available")) is not bool
+                    or {**actual, "available": False} != declared):
+                raise SafetyError("workflow owner capabilities differ from this release", code="workflow_owner_capabilities_missing")
+            if actual["available"]:
+                available.add(actual["name"])
+        all_operations = {item["name"] for item in expected["operations"]}
+        if available == all_operations:
+            mode = "effects"
+        elif available == PREVIEW_MODE_OPERATIONS:
+            mode = "preview"
+        else:
             raise SafetyError("workflow owner capabilities differ from this release", code="workflow_owner_capabilities_missing")
         return {"schema": data["schema"], "state": "ready",
-                "operations": [operation["name"] for operation in data["operations"]], "effects": []}
+                "mode": mode, "operations": sorted(available), "effects": []}
     validate_schema_value(data, _SCHEMAS[name]["result_schema"], "result")
     return data
 
@@ -284,8 +307,11 @@ def main(argv: list[str] | None = None) -> CommandResult:
             owner = _call(url, token, "propagation.profile.v1", {})
             result = {**result, "owner": owner,
                       "state": "matched" if owner["installed"]
-                      and (owner["profile_id"], owner["profile_digest"]) ==
-                      (result["profile_id"], result["profile_digest"]) else "drift"}
+                      and (owner["mode"], owner["owner_profile_digest"],
+                           owner["profile_id"], owner["profile_digest"]) ==
+                      (result["owner_mode"], result["owner_profile_digest"],
+                       result["profile_id"], result["profile_digest"])
+                      else "drift"}
             if result["state"] != "matched":
                 return CommandResult(data=result, error=PartialResultError(
                     "installed workflow profile differs from release", code="workflow_profile_drift"))

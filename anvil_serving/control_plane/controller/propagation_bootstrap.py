@@ -22,7 +22,7 @@ from .propagation_workflow_client import WorkflowControlClient
 
 
 _MAX_PROFILE = 64 * 1024
-_FIELDS = {"schema", "ledger_path", "approved_contract_path", "approved_contract_sha256",
+_FIELDS = {"schema", "mode", "ledger_path", "approved_contract_path", "approved_contract_sha256",
            "approval_ref", "activation", "execution_profile", "readback_profile",
            "executor_issuer", "workflow_control"}
 
@@ -104,6 +104,8 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
         _ledger(ledger)
         approved = PinnedApprovedContract(value["approved_contract_path"], value["approved_contract_sha256"])
         contract = parse_contract(approved.contract_lookup(value["approval_ref"]))
+        if value["mode"] not in {"effects", "preview"}:
+            raise ValueError()
         execution = ExecutionProfile.from_private_value(value["execution_profile"])
         readback = ExecutionProfile.from_private_value(value["readback_profile"])
         if ((contract.value["execution_profile_ref"], contract.value["execution_profile_digest"])
@@ -133,7 +135,8 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
             approved.contract_lookup, approved.approval_lookup, active,
             reader.preview, reader.observe, resume_workflow=client.resume,
             cancel_workflow=client.cancel, recovery_evidence=reader.recovery_evidence,
-            workflow_status=client.status)
+            workflow_status=client.status, mode=value["mode"],
+            preview_contract=contract.canonical, owner_profile_digest=sha256)
         return PropagationService(intents, jobs, supervisor, profile)
     except Exception:
         raise ControllerError("propagation_profile_unavailable",
