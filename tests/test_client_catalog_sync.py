@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
+import traceback
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import yaml
 import anvil_serving.client_catalog_sync as client_catalog_sync
 
 from anvil_serving.control_plane.propagation import effect_scope_digest, parse_contract
@@ -18,6 +22,9 @@ from anvil_serving.propagation_fencing import (
 )
 from anvil_serving.client_catalog_sync import (
     ClientCatalogError,
+    NativeCatalogTarget,
+    native_catalog_effect_targets,
+    sync_client_catalog_batch,
     sync_clients,
     sync_hermes_media,
     sync_pi_media,
@@ -42,6 +49,13 @@ def tmp_path(tmp_path):
     else:
         os.chmod(tmp_path, 0o700)
         yield tmp_path
+
+
+@pytest.fixture(autouse=True)
+def isolated_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if os.name == "nt":
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
 
 def _private_file(path: Path) -> None:
@@ -170,6 +184,8 @@ class _HermesRunner:
     def __init__(self, states):
         self.states = states
         self.sets = []
+        self.homes = []
+        self.arguments = []
 
     @staticmethod
     def _completed(*, returncode=0, stdout="", stderr=""):
@@ -180,12 +196,37 @@ class _HermesRunner:
         )
 
     def __call__(self, argv, **_kwargs):
+        self.arguments.append(argv)
+        scratch = _kwargs.get("env", {}).get("HERMES_HOME")
+        self.homes.append(scratch)
+        if scratch:
+            assert _kwargs["env"]["HOME"] == scratch
+            assert all(_kwargs["env"][key].startswith(scratch + os.sep)
+                       for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))
+            if not hasattr(self, "scratch_runners"):
+                self.scratch_runners = {}
+            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))
+            profile = argv[2]
+            path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
+            runner.states[profile] = yaml.safe_load(path.read_bytes())
+            result = runner(argv)
+            if argv[3:5] in (["config", "set"], ["config", "unset"]):
+                profile = argv[2]
+                path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
+                path.write_text(json.dumps(runner.states[profile]), encoding="utf-8")
+            return result
         profile = argv[2]
         command = argv[3:]
         if command[:2] == ["config", "get"]:
             key = command[2]
             if key not in self.states[profile]:
                 return self._completed(returncode=1, stderr="missing")
+            if key == "custom_providers" and "--raw" not in command:
+                masked = copy.deepcopy(self.states[profile][key])
+                for provider in masked:
+                    if "api_key" in provider:
+                        provider["api_key"] = "MASKED"
+                return self._completed(stdout=json.dumps(masked))
             return self._completed(stdout=json.dumps(self.states[profile][key]))
         if command[:2] == ["config", "set"]:
             key, raw = command[2:4]
@@ -353,6 +394,12 @@ def _write_hermes_profiles(root: Path):
         },
     }
     return home, states
+
+
+def _materialize_hermes_states(home, states):
+    for profile, state in states.items():
+        path = home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml"
+        path.write_text(json.dumps(state), encoding="utf-8")
 
 
 def _catalog(
@@ -575,6 +622,302 @@ def test_fenced_catalog_sync_journals_direct_file_effects_and_refuses_blind_rest
             state_path=str(state), dry_run=False, confirm=True, restart_openclaw_on_change=True,
             fence=fence, grant=grant, canonical_contract=contract,
         )
+
+
+def test_fenced_preview_refuses_swapped_openclaw_parent_before_read(tmp_path, monkeypatch):
+    if os.name == "nt":
+        pytest.skip("POSIX directory-symlink probe")
+    client_dir = tmp_path / "clients"
+    client_dir.mkdir(mode=0o700)
+    openclaw, _, _ = _write_inputs(client_dir)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    env_path = client_dir / ".env"
+    bindings = {"catalog-openclaw": ("catalog-apply", openclaw),
+                "catalog-openclaw_env": ("catalog-apply", env_path),
+                "catalog-state": ("catalog-apply", state)}
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        effect_bindings=bindings), tmp_path / "journal")
+    targets = (openclaw, env_path, state)
+    grant = fence.grant(canonical_contract=contract, generation=1,
+                        effects=tuple(bindings), target_paths=targets,
+                        effect_targets={name: path for name, (_, path) in bindings.items()})
+    options = dict(base_url="https://router.example.ts.net/v1", clients="openclaw",
+                   openclaw_config=str(openclaw), state_path=str(state),
+                   backup_root=str(tmp_path / "backups"), dry_run=True, confirm=False,
+                   environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"},
+                   fence=fence, grant=grant, canonical_contract=contract)
+    with pytest.raises(ClientCatalogError, match="requires a grant and contract"):
+        sync_clients(**{**options, "grant": None})
+    assert sync_clients(**options, opener=_Opener(*_catalog()))["dry_run"] is True
+    (tmp_path / "openclaw.json").write_bytes(openclaw.read_bytes())
+    (tmp_path / ".env").write_text("synthetic-private-value")
+    original_fetch = client_catalog_sync.fetch_client_catalog
+
+    def swap_after_lock(**kwargs):
+        client_dir.rename(tmp_path / "original-clients")
+        client_dir.symlink_to(tmp_path, target_is_directory=True)
+        return original_fetch(**kwargs)
+
+    monkeypatch.setattr(client_catalog_sync, "fetch_client_catalog", swap_after_lock)
+    with pytest.raises(PropagationFenceError, match="unsafe_custody_path"):
+        sync_clients(**options, opener=_Opener(*_catalog()))
+    assert fence.journal() is None
+
+
+def _native_three_client_batch(tmp_path, monkeypatch, *, include_hermes=False):
+    value = json.loads(_fenced_contract("client-catalog"))
+    second = dict(value["targets"][0])
+    second.update(target_id="target-2", installation_id="installation-2",
+                  profile_id="profile-2", runtime_id="runtime-2",
+                  expected_identity_ref="identity-2")
+    value["targets"].append(second)
+    third = dict(second)
+    third.update(target_id="target-3", installation_id="installation-3",
+                 profile_id="profile-3", runtime_id="runtime-3",
+                 expected_identity_ref="identity-3")
+    value["targets"].append(third)
+    if include_hermes:
+        for index in (4, 5):
+            row = dict(third)
+            row.update(target_id=f"target-{index}", installation_id=f"installation-{index}",
+                       profile_id=f"profile-{index}", runtime_id=f"runtime-{index}",
+                       expected_identity_ref=f"identity-{index}")
+            value["targets"].append(row)
+    value["effect_set_digest"] = effect_scope_digest(value)
+    contract = parse_contract(value).canonical
+    targets = []
+    for index in (1, 2, 3):
+        directory = tmp_path / f"client-{index}"
+        directory.mkdir(mode=0o700)
+        openclaw, models, settings = _write_inputs(directory)
+        identity = {field: value["targets"][index - 1][field] for field in (
+            "target_id", "installation_id", "profile_id", "runtime_id",
+            "expected_identity_ref", "expected_identity_digest")}
+        if index == 3:
+            targets.append(NativeCatalogTarget(**identity, client="openclaw",
+                state_path=str(directory / "state.json"), openclaw_config=str(openclaw)))
+        else:
+            targets.append(NativeCatalogTarget(**identity, client="pi",
+                state_path=str(directory / "state.json"),
+                pi_models=str(models), pi_settings=str(settings)))
+    hermes_runner = None
+    if include_hermes:
+        directory = tmp_path / "client-4"
+        home, states = _write_hermes_profiles(directory)
+        states["default"]["custom_providers"].append(
+            {"name": "cloud-preserved", "model": "cloud-model", "api_key": "synthetic-secret-never-argv"})
+        _materialize_hermes_states(home, states)
+        hermes_runner = _HermesRunner(states)
+        for profile, index in (("default", 4), ("anvil-primary", 5)):
+            identity = {field: value["targets"][index - 1][field] for field in (
+                "target_id", "installation_id", "profile_id", "runtime_id",
+                "expected_identity_ref", "expected_identity_digest")}
+            config = home / "config.yaml" if profile == "default" else home / "profiles" / profile / "config.yaml"
+            targets.append(NativeCatalogTarget(**identity, client="hermes",
+                state_path=str(tmp_path / f"hermes-{profile}-state.json"),
+                hermes_home=str(home), hermes_bin=str(tmp_path / "hermes-bin"),
+                hermes_profile=profile, hermes_config=str(config)))
+        if os.name != "nt":
+            directory.chmod(0o700)
+            home.chmod(0o700)
+            (home / "profiles").chmod(0o700)
+            for config in client_catalog_sync._discover_hermes_profile_configs(str(home), "all").values():
+                config.parent.chmod(0o700)
+                config.chmod(0o600)
+    bindings = {name: ("catalog-apply", path)
+                for target in targets for name, path in native_catalog_effect_targets(target).items()}
+    lock = tmp_path / ".config" / "anvil-serving" / "pi"
+    lock.mkdir(parents=True, mode=0o700)
+    for parent in (tmp_path / ".config", lock.parent, lock):
+        parent.chmod(0o700)
+    (lock / "catalog.lock").write_bytes(b"")
+    (lock / "catalog.lock").chmod(0o600)
+    if os.name == "nt":
+        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+
+        tree = WindowsFixtureTree(tmp_path)
+        for path in sorted(tmp_path.rglob("*"), key=lambda path: len(path.parts)):
+            tree.establish_full_control(path)
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "client-catalog", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        catalog_digest=CONFIG_SHA, effect_bindings=bindings), tmp_path)
+    effect_targets = {name: path for name, (_, path) in bindings.items()}
+    grant = fence.grant(canonical_contract=contract, generation=1,
+                        effects=tuple(bindings), target_paths=tuple(effect_targets.values()),
+                        effect_targets=effect_targets)
+    status, capabilities = _catalog()
+    monkeypatch.setattr(client_catalog_sync, "_fetch_json",
+                        lambda _base, endpoint, **_kwargs:
+                        status if endpoint == "/router/status" else capabilities)
+    options = dict(targets=tuple(targets), base_url="https://router.example.ts.net/v1",
+                   backup_root=str(tmp_path / "backups"),
+                   expected_config_sha256=CONFIG_SHA,
+                   environ={"ANVIL_ROUTER_TOKEN": "synthetic-token"}, fence=fence,
+                   grant=grant, canonical_contract=contract)
+    if hermes_runner is not None:
+        options["hermes_run"] = hermes_runner
+    return options, targets, bindings, fence
+
+
+def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_path, monkeypatch):
+    options, targets, bindings, fence = _native_three_client_batch(tmp_path, monkeypatch)
+    with pytest.raises(ClientCatalogError, match="target is not approved"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], replace(targets[1], runtime_id="other-runtime"))})
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], replace(targets[1], state_path=targets[0].state_path))})
+    with pytest.raises(ClientCatalogError, match="shared home environment"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            targets[0], targets[1], replace(targets[2], openclaw_config=str(tmp_path / "openclaw.json")))})
+    with pytest.raises(ClientCatalogError, match="shared home environment"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            replace(targets[0], state_path=str(tmp_path / ".ENV")), targets[1], targets[2])})
+    service_env = Path(targets[2].openclaw_config).parent / "service-env" / "ai.openclaw.gateway.env"
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            replace(targets[0], state_path=str(service_env)), targets[1], targets[2])})
+    if os.name == "nt":
+        for leaf in ("state. ", "state:stream"):
+            with pytest.raises(ClientCatalogError, match="noncanonical native catalog path"):
+                native_catalog_effect_targets(replace(targets[0], state_path=str(tmp_path / leaf)))
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == ["target-1", "target-2", "target-3"]
+    applied = sync_client_catalog_batch(**options, dry_run=False)
+    assert [row["target_id"] for row in applied] == ["target-1", "target-2", "target-3"]
+    assert all(row["result"]["dry_run"] is False for row in applied)
+    assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
+    assert all(row["result"]["state_converged"] for row in sync_client_catalog_batch(**options))
+    state = Path(targets[0].state_path)
+    original_state = state.read_bytes()
+    state.write_bytes(b"{}\n")
+    drifted = sync_client_catalog_batch(**options)
+    assert drifted[0]["result"]["changed"] == []
+    assert drifted[0]["result"]["state_converged"] is False
+    state.write_bytes(original_state)
+    with pytest.raises(PropagationFenceError, match="already_completed"):
+        sync_client_catalog_batch(**options, dry_run=False)
+    assert set(fence.journal()["effects"]) == set(bindings)
+    assert all(effect["state"] == "verified" for effect in fence.journal()["effects"].values())
+    for target in targets[:2]:
+        models = json.loads(Path(target.pi_models).read_text())
+        assert models["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
+    openclaw = json.loads(Path(targets[2].openclaw_config).read_text())
+    assert openclaw["models"]["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
+
+
+def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch):
+    options, targets, bindings, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    for wrong in (replace(targets[3], hermes_profile="all"),
+                  replace(targets[3], hermes_config=targets[4].hermes_config),
+                  replace(targets[3], hermes_bin="hermes")):
+        with pytest.raises(ClientCatalogError, match="invalid native Hermes profile"):
+            native_catalog_effect_targets(wrong)
+    with pytest.raises(ClientCatalogError, match="file binding differs"):
+        sync_client_catalog_batch(**{**options, "targets": (
+            *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
+    before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
+              for target in targets[3:]}
+    Path(targets[3].hermes_config).write_bytes(b"model: {}\nmodel: {}\n")
+    with pytest.raises(ClientCatalogError, match="duplicate keys"):
+        sync_client_catalog_batch(**options)
+    Path(targets[3].hermes_config).write_bytes(before["default"])
+    original_file_sha256 = client_catalog_sync._file_sha256
+
+    def no_unfenced_hermes_hash(path):
+        if Path(path) in {Path(target.hermes_config) for target in targets[3:]}:
+            raise AssertionError("fenced Hermes must hash journal bytes")
+        return original_file_sha256(path)
+
+    monkeypatch.setattr(client_catalog_sync, "_file_sha256", no_unfenced_hermes_hash)
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == [
+        f"target-{index}" for index in range(1, 6)]
+    applied = sync_client_catalog_batch(**options, dry_run=False)
+    assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
+    assert options["hermes_run"].sets == []
+    assert all("synthetic-secret-never-argv" not in repr(argv)
+               for argv in options["hermes_run"].arguments)
+    assert all(argv[3:5] != ["config", "set"] for argv in options["hermes_run"].arguments)
+    assert options["hermes_run"].homes
+    assert all(home is not None and Path(home).name.startswith("anvil-hermes-render-")
+               for home in options["hermes_run"].homes)
+    assert Path(targets[3].hermes_config).read_bytes() != before["default"]
+    assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
+    assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
+    assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
+    assert set(fence.journal()["effects"]) == set(bindings)
+
+
+def test_native_hermes_rejects_aliases_and_redacts_parser_errors(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    config = Path(targets[3].hermes_config)
+    original = config.read_bytes()
+    aliased = yaml.safe_dump(yaml.safe_load(original), sort_keys=False).replace(
+        "model:\n", "model: &shared\n", 1) + "unmanaged: *shared\n"
+    config.write_text(aliased, encoding="utf-8")
+    with pytest.raises(ClientCatalogError, match="aliases are not supported"):
+        sync_client_catalog_batch(**options)
+    assert config.read_text(encoding="utf-8") == aliased
+    assert fence.journal() is None
+
+    marker = "synthetic-private-parser-marker"
+    config.write_text("model: [" + marker + "\n", encoding="utf-8")
+    with pytest.raises(ClientCatalogError) as error:
+        sync_client_catalog_batch(**options)
+    assert marker not in "".join(traceback.format_exception(error.value))
+    assert fence.journal() is None
+
+
+def test_native_hermes_rejects_effective_provider_mismatch(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    original = Path(targets[3].hermes_config).read_bytes()
+    run = options["hermes_run"]
+
+    def mismatched_cli(argv, **kwargs):
+        if (kwargs.get("env", {}).get("HERMES_HOME") and argv[2] == "default"
+                and argv[3:6] == ["config", "get", "model"]):
+            return _HermesRunner._completed(stdout=json.dumps({
+                "provider": "cloud-selected", "default": "cloud-model"}))
+        return run(argv, **kwargs)
+
+    with pytest.raises(ClientCatalogError, match="scratch render failed verification"):
+        sync_client_catalog_batch(**{**options, "hermes_run": mismatched_cli})
+    assert Path(targets[3].hermes_config).read_bytes() == original
+    assert fence.journal() is None
+
+
+def test_native_catalog_batch_second_failure_retains_original_reservation(tmp_path, monkeypatch):
+    options, targets, _, fence = _native_three_client_batch(tmp_path, monkeypatch)
+    original_second = Path(targets[1].pi_models).read_bytes()
+    status, capabilities = _catalog()
+    status_calls = 0
+
+    def stale_second(_base, endpoint, **_kwargs):
+        nonlocal status_calls
+        if endpoint != "/router/status":
+            return capabilities
+        status_calls += 1
+        return status if status_calls < 4 else {**status, "config_sha256": "0" * 64}
+
+    monkeypatch.setattr(client_catalog_sync, "_fetch_json", stale_second)
+    with pytest.raises(ClientCatalogError):
+        sync_client_catalog_batch(**options, dry_run=False)
+    assert status_calls >= 4
+    assert Path(targets[1].pi_models).read_bytes() == original_second
+    assert Path(targets[0].pi_models).read_bytes() != original_second
+    journal = fence.journal()
+    assert journal["status"] == "recovery_required"
+    assert all(journal["effects"][name]["state"] == "verified"
+               for name in native_catalog_effect_targets(targets[0]))
+    assert not set(native_catalog_effect_targets(targets[1])) & set(journal["effects"])
+    with pytest.raises(PropagationFenceError, match="unresolved_reservation"):
+        sync_client_catalog_batch(**options, dry_run=False)
 
 
 def test_fenced_catalog_partial_write_retains_verified_and_uncertain_effects(tmp_path, monkeypatch):
@@ -1897,7 +2240,7 @@ def test_promotion_binding_refuses_drift_before_client_files(tmp_path, observed,
             pi_settings=str(tmp_path / "settings.json"),
             environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
         )
-    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir() if p.is_file()} == before
 
 
 def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
@@ -2111,36 +2454,85 @@ def test_fenced_catalog_preserves_an_edit_made_after_render_before_effect_prepar
     assert fence.journal()["status"] == "recovery_required"
 
 
-def test_fenced_hermes_profile_sync_refuses_before_runner_or_journal(tmp_path):
+def test_fenced_hermes_profile_sync_renders_in_scratch_then_journals_exact_bytes(tmp_path):
     home, states = _write_hermes_profiles(tmp_path)
-    config = home / "config.yaml"
+    _materialize_hermes_states(home, states)
+    home.chmod(0o700)
+    configs = client_catalog_sync._discover_hermes_profile_configs(str(home), "all")
+    (home / "profiles").chmod(0o700)
+    for config in configs.values():
+        config.parent.chmod(0o700)
+        config.chmod(0o600)
+    config = configs["default"]
+    state = tmp_path / "state.json"
+    bindings = {"catalog-hermes:" + profile: ("catalog-apply", path) for profile, path in configs.items()}
+    bindings["catalog-state"] = ("catalog-apply", state)
     contract = _fenced_contract()
     fence = NativeMutationFence(
         TrustedNativeOwner(
             "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
             clock=_trusted_test_clock,
-        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings={"hermes-default": ("catalog-apply", config)},
+        current_authority=lambda _digest, _generation, _epoch: True, effect_bindings=bindings,
         ),
         tmp_path / "journal",
     )
     grant = fence.grant(
-        canonical_contract=contract, generation=1, effects=("hermes-default",), target_paths=(config,),
+        canonical_contract=contract, generation=1,
+        effects=tuple(bindings), target_paths=(*configs.values(), state),
+        effect_targets={effect: path for effect, (_, path) in bindings.items()},
     )
-    def unexpected_hermes_call(*_args, **_kwargs):
-        raise AssertionError("fenced Hermes profiles must not invoke the CLI or restart callback")
+    runner = _HermesRunner(states)
+    before = {profile: path.read_bytes() for profile, path in configs.items()}
+    result = sync_clients(
+        base_url="https://router.example.ts.net/v1", clients="hermes",
+        hermes_home=str(home), hermes_profiles="all", state_path=str(state),
+        backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
+        environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
+        hermes_run=runner, fence=fence, grant=grant, canonical_contract=contract,
+    )
+    assert "hermes:default" in result["changed"]
+    assert "hermes:ox-alpha" not in result["changed"]
+    assert config.read_bytes() != before["default"]
+    assert configs["ox-alpha"].read_bytes() == before["ox-alpha"]
+    assert runner.sets == []  # No command was allowed to mutate the real profile.
+    journal = fence.journal()
+    assert journal["status"] == "completed"
+    assert all(journal["effects"]["catalog-" + name]["state"] == "verified"
+               for name in result["changed"] if name.startswith("hermes:"))
 
-    before = config.read_bytes()
-    with pytest.raises(PropagationFenceError, match="UnsupportedCapability"):
-        sync_clients(
-            base_url="https://router.example.ts.net/v1", clients="hermes",
-            hermes_home=str(home), hermes_profiles="default", state_path=str(tmp_path / "state.json"),
+
+def test_fenced_hermes_profile_sync_preserves_external_edit_during_preview(tmp_path, monkeypatch):
+    home, states = _write_hermes_profiles(tmp_path)
+    _materialize_hermes_states(home, states)
+    home.chmod(0o700)
+    config = home / "config.yaml"
+    config.chmod(0o600)
+    state = tmp_path / "state.json"
+    contract = _fenced_contract()
+    fence = NativeMutationFence(TrustedNativeOwner(
+        "owner-1", "catalog-1", tmp_path, backup_root=tmp_path / "backups",
+        clock=_trusted_test_clock, current_authority=lambda *_: True,
+        effect_bindings={"catalog-hermes:default": ("catalog-apply", config),
+                         "catalog-state": ("catalog-apply", state)}), tmp_path / "journal")
+    grant = fence.grant(canonical_contract=contract, generation=1,
+        effects=("catalog-hermes:default", "catalog-state"), target_paths=(config, state),
+        effect_targets={"catalog-hermes:default": config, "catalog-state": state})
+    original_plan = client_catalog_sync.plan_hermes_profiles
+
+    def concurrent_edit(*args, **kwargs):
+        result = original_plan(*args, **kwargs)
+        config.write_bytes(b"external edit\n")
+        return result
+
+    monkeypatch.setattr(client_catalog_sync, "plan_hermes_profiles", concurrent_edit)
+    with pytest.raises(ClientCatalogError, match="changed during preview"):
+        sync_clients(base_url="https://router.example.ts.net/v1", clients="hermes",
+            hermes_home=str(home), hermes_profiles="default", state_path=str(state),
             backup_root=str(tmp_path / "backups"), dry_run=False, confirm=True,
             environ={"ANVIL_ROUTER_TOKEN": "secret-never-returned"}, opener=_Opener(*_catalog()),
-            hermes_run=unexpected_hermes_call, restart_hermes=unexpected_hermes_call,
-            fence=fence, grant=grant, canonical_contract=contract,
-        )
-    assert config.read_bytes() == before
-    assert not fence.journal_root.exists()
+            hermes_run=_HermesRunner(states), fence=fence, grant=grant, canonical_contract=contract)
+    assert config.read_bytes() == b"external edit\n"
+    assert fence.journal()["status"] == "recovery_required"
 
 
 def test_router_metadata_bound_uses_declared_default_not_64k():

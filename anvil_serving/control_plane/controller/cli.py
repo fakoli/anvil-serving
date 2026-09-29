@@ -51,6 +51,10 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_IDEMPOTENCY_DB_PATH,
         help="durable controller operation-state database path",
     )
+    serve_parser.add_argument("--propagation-profile", default=None,
+                              help="protected installed propagation owner profile")
+    serve_parser.add_argument("--propagation-profile-sha256", default=None,
+                              help="reviewed SHA-256 of the exact owner profile")
     serve_parser.add_argument(
         "--drain-seconds",
         type=float,
@@ -274,6 +278,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 workload_fleet_topology=args.workload_fleet_topology,
                 workload_router_resource=args.workload_router_resource,
                 workload_router_auth_env=args.workload_router_auth_env,
+                propagation_profile_path=args.propagation_profile,
+                propagation_profile_sha256=args.propagation_profile_sha256,
             )
         except ControllerError as exc:
             print(

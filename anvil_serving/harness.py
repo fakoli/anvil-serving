@@ -636,6 +636,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
                      _hermes_run=subprocess.run, _environ=None):
     """Reconcile Mini clients from authenticated router model metadata."""
     from .client_catalog_sync import ClientCatalogError, sync_clients
+    from .propagation_fencing import PropagationFenceError
 
     try:
         result = sync_clients(
@@ -668,7 +669,7 @@ def cmd_sync_clients(*, base_url, api_key_env="ANVIL_ROUTER_TOKEN",
             hermes_run=_hermes_run,
             environ=_environ,
         )
-    except (OSError, ClientCatalogError) as exc:
+    except (OSError, ClientCatalogError, PropagationFenceError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2, sort_keys=True))
@@ -729,6 +730,7 @@ def cmd_sync_pi_media(
     confirm=False,
 ):
     from .client_catalog_sync import ClientCatalogError, sync_pi_media
+    from .propagation_fencing import PropagationFenceError
 
     try:
         result = sync_pi_media(
@@ -738,7 +740,7 @@ def cmd_sync_pi_media(
             dry_run=dry_run,
             confirm=confirm,
         )
-    except (OSError, ClientCatalogError) as exc:
+    except (OSError, ClientCatalogError, PropagationFenceError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(json.dumps(result, indent=2, sort_keys=True))

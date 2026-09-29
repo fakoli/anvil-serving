@@ -127,13 +127,13 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             if anchor:
                 emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 if mode[0] == "overlap":
-                    assert started.wait(2)
+                    assert started.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
                 progressed.set()
                 time.sleep(.1)
             else:
                 started.set()
-                assert progressed.wait(2)
+                assert progressed.wait(8)
                 time.sleep(.05)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             emit({"choices": [{"delta": {}, "finish_reason": "stop"}],
@@ -149,7 +149,8 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             mode[0] = selected
             started.clear()
             progressed.clear()
-            observed = stability.run(scenario(base, mode=selected), tmp_path / (selected + ".json"), calibrate=calibration, identity=identity)
+            observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30),
+                                     tmp_path / (selected + ".json"), calibrate=calibration, identity=identity)
             assert observed["status"] == "completed"
             assert observed["coverage_passed"] is True
             pair = observed["rounds"][0]

@@ -53,6 +53,7 @@ ROOT_ORDER = (
     "edge",
     "connect",
     "workbench",
+    "workflows",
 )
 
 

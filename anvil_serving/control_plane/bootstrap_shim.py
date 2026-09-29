@@ -7,9 +7,11 @@ already-open descriptor supplied by a later, no-follow staging boundary.
 from __future__ import annotations
 
 import errno
+import hashlib
 import os
 import stat
 import struct
+import subprocess
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -973,4 +975,36 @@ def open_trusted_file(
         opened.close()
 
 
-__all__ = ["inspect_opened_permissions", "open_trusted_file"]
+def run_pinned_executable(argv: list[str], sha256: str, *, run=subprocess.run, **kwargs):
+    """Run a custody-checked executable without a pathname swap after hashing."""
+    if (not argv or type(argv[0]) is not str or type(sha256) is not str
+            or len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256)):
+        raise _reader_refusal(BootstrapErrorCode.INVALID_CONTRACT)
+    path = argv[0]
+    if sys.platform == "win32" and not path.casefold().endswith(".exe"):
+        raise _reader_refusal(BootstrapErrorCode.UNSAFE_PATH)
+    with open_trusted_file(path, max_bytes=MAX_BUNDLE_BYTES, require_readonly=False) as opened:
+        captured = opened.read_verified()
+        if hashlib.sha256(captured).hexdigest() != sha256:
+            raise _reader_refusal(BootstrapErrorCode.PRECONDITION_FAILED)
+        if sys.platform == "win32":
+            # Retained file and ancestor handles deny write/delete until launch exits.
+            return run(argv, **kwargs)
+        if sys.platform != "linux" or not hasattr(os, "memfd_create"):
+            raise _reader_refusal(BootstrapErrorCode.UNSUPPORTED_PLATFORM)
+        import fcntl
+
+        descriptor = os.memfd_create("anvil-pinned-executable", os.MFD_CLOEXEC | os.MFD_ALLOW_SEALING)
+        try:
+            with os.fdopen(os.dup(descriptor), "wb") as stream:
+                stream.write(captured)
+            # Linux F_ADD_SEALS and all four write/size/future-seal bits; some
+            # Python builds omit the symbolic constants despite kernel support.
+            fcntl.fcntl(descriptor, 1033, 0x0F)
+            return run(argv, executable=f"/proc/self/fd/{descriptor}",
+                       pass_fds=(descriptor,), **kwargs)
+        finally:
+            os.close(descriptor)
+
+
+__all__ = ["inspect_opened_permissions", "open_trusted_file", "run_pinned_executable"]

@@ -5,6 +5,7 @@ from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
 from pathlib import Path
 import sys
 from threading import Barrier
@@ -40,7 +41,7 @@ def _stamp(value):
 
 
 class ControlledOwner:
-    def __init__(self, root, count=1):
+    def __init__(self, root, count=1, runner_wait=0):
         self.root = root
         self.marker = root / "catalog"
         self.reads = []
@@ -52,12 +53,14 @@ class ControlledOwner:
         value["effect_set_digest"] = effect_scope_digest(value)
         self.contract = parse_contract(value)
         runner = root / "native.py"
-        runner.write_text("import json,pathlib,sys\nj=json.load(sys.stdin)\np=pathlib.Path(sys.argv[1])\np.write_text('accepted')\ne=[{**item,'state':'applied'} for item in j['planned_effects']]\nprint(json.dumps({'outcome':'applied','native_effects':e,'quiescent':True}))\n")
+        runner.write_text("import json,pathlib,sys,time\nj=json.load(sys.stdin)\n"
+            + f"time.sleep({runner_wait})\n"
+            + "p=pathlib.Path(sys.argv[1])\np.write_text('accepted')\ne=[{**item,'state':'applied'} for item in j['planned_effects']]\nprint(json.dumps({'outcome':'applied','native_effects':e,'quiescent':True}))\n")
         profile = ExecutionProfile("profile-1", DIGEST, (sys.executable, str(runner), str(self.marker)),
             hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
             artifact_pins=((str(runner), hashlib.sha256(runner.read_bytes()).hexdigest()),), budget_seconds=10, heartbeat_seconds=1)
-        self.jobs = JobStore(root / "jobs.sqlite", {"profile-1": profile})
-        self.intents = PropagationIntentStore(root / "intent.sqlite")
+        self.jobs = JobStore(root / "propagation.sqlite", {"profile-1": profile})
+        self.intents = PropagationIntentStore(root / "propagation.sqlite")
         self.supervisor = PropagationSupervisor(self.jobs, reconcile=self.reconcile)
         self.profile = PropagationProfile("profile-1", DIGEST, "executor-1",
             lambda ref: self.contract.canonical if ref == "approval-1" else b"{}",
@@ -161,6 +164,55 @@ def test_actual_http_preserves_caller_and_composes_per_server(tmp_path):
         assert all(not op["available"] for op in body["data"]["operations"])
 
 
+def test_current_authority_is_bound_to_executing_job_and_declared_resource(tmp_path):
+    owner = ControlledOwner(tmp_path, runner_wait=3)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    arguments = {"intent_id": accepted["intent_id"], "job_id": submitted["job_id"],
+                 "contract_digest": owner.contract.digest, "generation": 1,
+                 "target_id": "target-000", "resource_id": "catalog-000"}
+    try:
+        for _ in range(100):
+            if owner.jobs.lookup_internal(submitted["job_id"])["state"] == "executing":
+                break
+            time.sleep(.01)
+        else:
+            pytest.fail("native job never entered execution")
+        current = owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
+        assert current["current"] is True
+        policy = _authorization_policy(tmp_path, [
+            {"id": "activity", "scopes": ["propagation:activity"], "credential_env": "ACTIVITY"},
+            {"id": "reader", "scopes": ["propagation:status"], "credential_env": "READER"},
+        ])
+        env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy-controller",
+               "ACTIVITY": "synthetic-activity", "READER": "synthetic-reader"}
+        with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
+            def request(token):
+                _, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 1,
+                    "method": "tools/call", "params": {"name": "fleet.propagation.current.v1", "arguments": arguments}},
+                    {"Authorization": "Bearer " + token})
+                return body
+            assert request(env["ACTIVITY"])["result"]["structuredContent"]["data"]["current"] is True
+            denied = request(env["READER"])
+            assert "result" not in denied or denied["result"].get("isError")
+        for changed in ({"generation": 2}, {"contract_digest": "b" * 64},
+                        {"resource_id": "other"}, {"target_id": "other"}):
+            with pytest.raises(PropagationJobError):
+                owner.service.handle("fleet.propagation.current.v1", {**arguments, **changed}, caller_id="activity")
+        owner.supervisor.cancel(submitted["job_id"])
+        with pytest.raises(PropagationJobError, match="stale_generation"):
+            owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
+    finally:
+        for _ in range(500):
+            if owner.supervisor.observe(submitted["job_id"])["state"] != "running":
+                break
+            time.sleep(.01)
+    with pytest.raises(PropagationJobError, match="stale_generation"):
+        owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
+
+
 def test_lost_submit_ack_and_expired_preview_resolve_original_job(tmp_path):
     owner = ControlledOwner(tmp_path)
     accepted, job, preview = owner.submit()
@@ -226,6 +278,59 @@ def test_invalid_owner_observations_cannot_enable_convergence(tmp_path, corrupt)
     expected = _hash(["convergence/v1", owner.contract.digest, 1])
     with pytest.raises(PropagationJobError, match="verification_incomplete"):
         owner.service.convergence(accepted["intent_id"], expected)
+
+
+def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path, monkeypatch):
+    owner = ControlledOwner(tmp_path)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    job_id = submitted["job_id"]
+    child = owner.supervisor._children[job_id]
+    original_poll = child.poll
+    first = True
+
+    def exit_after_first_poll():
+        nonlocal first
+        if first:
+            first = False
+            # Model a liveness poll immediately before exit, then cross the
+            # scheduling gap before identity lookup without a timing sleep.
+            assert child.wait(timeout=10) == 0
+            return None
+        return original_poll()
+
+    monkeypatch.setattr(child, "poll", exit_after_first_poll)
+    assert owner.supervisor.observe(job_id)["state"] == "applied"
+    assert owner.supervisor.observe(job_id)["state"] == "applied"
+    assert job_id not in owner.supervisor._children
+    assert job_id not in owner.supervisor._pidfds
+    assert owner.marker.read_text() == "accepted"
+
+
+@pytest.mark.parametrize("observed", [lambda job: None,
+    lambda job: {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": "other"}],
+    ids=["missing", "mismatched"])
+def test_running_child_identity_failure_releases_pidfd(tmp_path, monkeypatch, observed):
+    owner = ControlledOwner(tmp_path, runner_wait=3)
+    accepted = owner.accept()
+    preview = owner.service.preview(accepted["intent_id"])
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
+    job_id = submitted["job_id"]
+    child = owner.supervisor._children[job_id]
+    descriptor = owner.supervisor._pidfds[job_id]
+    job = owner.jobs.lookup_internal(job_id)
+    assert child.poll() is None
+    monkeypatch.setattr("anvil_serving.control_plane.controller.propagation_supervisor._identity",
+                        lambda _pid: observed(job))
+    assert owner.supervisor.observe(job_id)["state"] == "recovery_required"
+    assert job_id not in owner.supervisor._children
+    assert job_id not in owner.supervisor._pidfds
+    with pytest.raises(OSError):
+        os.fstat(descriptor)
+    child.wait(timeout=10)
 
 
 def test_http_idempotency_header_cannot_replay_verification_or_convergence(tmp_path):
@@ -408,3 +513,49 @@ def test_superseded_historical_apply_cannot_receive_fresh_acceptance(tmp_path):
     with pytest.raises(PropagationIntentError, match="stale_generation"):
         owner.service.verify(accepted["intent_id"], job["job_id"])
     assert owner.reads == []
+
+
+def test_new_generation_waits_for_durable_job_custody(tmp_path):
+    from anvil_serving.control_plane.controller.propagation_store import PropagationIntentError
+    owner = ControlledOwner(tmp_path)
+    accepted = owner.accept()
+    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
+    owner.jobs.submit({"intent_id": accepted["intent_id"], "operation_id": operation,
+        "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
+        "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
+        "deadline": owner.contract.value["deadline_at"]})
+    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["targets"] = [{**value["targets"][0], "resource_keys": ["different-client-catalog"]}]
+    value["effect_set_digest"] = effect_scope_digest(value)
+    newer = parse_contract(value)
+    with pytest.raises(PropagationIntentError, match="resource_conflict"):
+        owner.intents.admit(newer.canonical,
+            approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
+            active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
+            request_id="request-2", now=_now())
+    owner.intents.assert_current(accepted["intent_id"])
+
+
+def test_owner_refuses_split_admission_and_job_ledgers(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    other = PropagationIntentStore(tmp_path / "separate.sqlite")
+    with pytest.raises(ValueError, match="share one database"):
+        PropagationService(other, owner.jobs, owner.supervisor, owner.profile)
+
+
+def test_old_job_cannot_reserve_after_new_generation_admission(tmp_path):
+    owner = ControlledOwner(tmp_path)
+    accepted = owner.accept()
+    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
+    value["effect_set_digest"] = effect_scope_digest(value)
+    newer = parse_contract(value)
+    owner.intents.admit(newer.canonical,
+        approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
+        active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
+        request_id="request-2", now=_now())
+    with pytest.raises(PropagationJobError, match="stale_generation"):
+        owner.jobs.submit({"intent_id": accepted["intent_id"],
+            "operation_id": _hash(["effect/v1", owner.contract.digest, "fleet", "apply"]),
+            "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
+            "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
+            "deadline": owner.contract.value["deadline_at"]})
