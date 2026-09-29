@@ -92,6 +92,11 @@ def _grant(fence: NativeMutationFence, target: Path, generation: int = 1):
     )
 
 
+def _bind(fence, grant, target, job_id, digest, contract=_CONTRACT):
+    return fence.bind_job(grant, canonical_contract=contract, target_paths=(target,),
+                          job_id=job_id, job_digest=digest)
+
+
 def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
     fence, target = _fence(tmp_path)
     with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
@@ -109,6 +114,39 @@ def test_fence_persists_before_write_backup_and_verified_readback(tmp_path):
         "state": "verified",
         "observed_digest": hashlib.sha256(b"after").hexdigest(),
     }
+
+
+def test_fleet_job_binding_survives_lost_reply_and_refuses_another_job(tmp_path):
+    fence, target = _fence(tmp_path)
+    grant = _grant(fence, target)
+    digest = hashlib.sha256(b"original-job").hexdigest()
+    assert _bind(fence, grant, target, "job-1", digest) is None
+    assert _bind(fence, grant, target, "job-1", digest) is None
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, grant, target, "job-2", digest)
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, grant, target, "job-1", hashlib.sha256(b"different").hexdigest())
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    restarted = NativeMutationFence(fence.owner, tmp_path / "ignored")
+    original = _bind(restarted, _grant(restarted, target), target, "job-1", digest)
+    assert original["status"] == "completed"
+    assert original["effects"]["catalog"]["state"] == "verified"
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(restarted, _grant(restarted, target), target, "job-2", digest)
+
+
+def test_existing_unbound_native_operation_cannot_adopt_a_fleet_job(tmp_path):
+    fence, target = _fence(tmp_path)
+    with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT,
+                           target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
+        _bind(fence, _grant(fence, target), target, "job-1", hashlib.sha256(b"job").hexdigest())
 
 
 def test_stale_or_reused_generation_fails_under_the_shared_lock(tmp_path):
@@ -173,6 +211,7 @@ def test_catalog_cutover_retires_direct_cli_mcp_and_scheduled_writes(tmp_path, m
             pytest.fail("untrusted writer entered")
     assert not fence._catalog_cutover_path.exists()
     grant = fence.grant(canonical_contract=contract, generation=1, effects=("catalog",), target_paths=(target,))
+    _bind(fence, grant, target, "job-1", hashlib.sha256(b"original-job").hexdigest(), contract)
     with fence.transaction(grant, canonical_contract=contract, target_paths=(target,)):
         assert fence._catalog_cutover_path.exists()
     fence.activate_catalog_cutover(contract)

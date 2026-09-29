@@ -538,7 +538,10 @@ class NativeMutationFence:
             self._require_current_authority(contract.value)
             self._check_authority(digest, generation)
             index = self._read_index()
-            if any(row["status"] != "completed" for row in index["operations"].values()):
+            if any(row["status"] != "completed" and not (
+                    row["status"] == "bound" and row["generation"] == generation
+                    and row["contract_digest"] == digest)
+                    for row in index["operations"].values()):
                 raise PropagationFenceError("unresolved_reservation")
             existing = self._held().read(self._catalog_cutover_path, private=True)
             if existing is not None:
@@ -547,7 +550,11 @@ class NativeMutationFence:
                     return
                 if generation <= current["generation"]:
                     raise PropagationFenceError("stale_generation")
-            if generation <= index["high_water_generation"]:
+            bound = [row for row in index["operations"].values() if row["status"] == "bound"]
+            if (generation < index["high_water_generation"]
+                    or generation == index["high_water_generation"] and not (
+                        len(bound) == 1 and bound[0]["generation"] == generation
+                        and bound[0]["contract_digest"] == digest)):
                 raise PropagationFenceError("stale_generation")
             self._write_json(self._catalog_cutover_path, value)
 
@@ -680,7 +687,9 @@ class NativeMutationFence:
             # unresolved rather than allowing a later generation to reuse it.
             index["high_water_generation"] = max(index["high_water_generation"], grant.generation)
             index["latest_reservation_id"] = reservation_id
-            index["operations"][reservation_id] = {"generation": grant.generation, "status": "active"}
+            index["operations"][reservation_id] = {
+                **index["operations"].get(reservation_id, {}),
+                "generation": grant.generation, "status": "active"}
             self._write_index(index)
             self._write_state(path, state)
             journal = NativeMutationJournal(self, state, path)
@@ -803,6 +812,46 @@ class NativeMutationFence:
             raise PropagationFenceError("untrusted_grant")
         reservation_id = self._reservation_id(grant)
         return self.journal(reservation_id)
+
+    def bind_job(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                 target_paths: Iterable[str | Path], job_id: str, job_digest: str) -> dict | None:
+        """Persist one fleet job identity before its native effects may start."""
+        if not isinstance(grant, NativeMutationGrant) or grant._seal is not self._seal:
+            raise PropagationFenceError("untrusted_grant")
+        _token(job_id)
+        _digest(job_digest)
+        reservation_id = self._reservation_id(grant)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            index = self._read_index()
+            row = index["operations"].get(reservation_id)
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=row is None)
+            if row is None:
+                if (index["high_water_generation"] >= grant.generation
+                        or any(entry["status"] != "completed" for entry in index["operations"].values())):
+                    raise PropagationFenceError("unresolved_reservation")
+                index["high_water_generation"] = grant.generation
+                index["latest_reservation_id"] = reservation_id
+                index["operations"][reservation_id] = {
+                    "generation": grant.generation, "status": "bound",
+                    "job_id": job_id, "job_digest": job_digest,
+                    "contract_digest": grant.contract_digest}
+                self._write_index(index)
+                return None
+            if (row.get("job_id"), row.get("job_digest"), row.get("contract_digest"),
+                    row["generation"]) != (job_id, job_digest, grant.contract_digest,
+                                           grant.generation):
+                raise PropagationFenceError("job_identity_conflict")
+            if index["latest_reservation_id"] != reservation_id:
+                raise PropagationFenceError("unsafe_journal")
+            if row["status"] == "bound":
+                return None
+            state = self._read_state(self._operation_path(reservation_id))
+            if (state["reservation_id"], state["contract_digest"], state["generation"],
+                    state["status"]) != (reservation_id, grant.contract_digest,
+                                         grant.generation, row["status"]):
+                raise PropagationFenceError("unsafe_journal")
+            return state
 
     def advance_recovery_epoch(self, new_epoch: str, approval_digest: str, target_set_digest: str) -> str:
         """Fence restored work after owner-approved, quiescent local reconciliation.
@@ -975,6 +1024,11 @@ class NativeMutationFence:
     def _validate_generation(index: dict, grant: NativeMutationGrant, reservation_id: str) -> None:
         existing = index["operations"].get(reservation_id)
         if existing is not None:
+            if existing["status"] == "bound":
+                if (existing["generation"] != grant.generation
+                        or index["latest_reservation_id"] != reservation_id):
+                    raise PropagationFenceError("unsafe_journal")
+                return
             if existing["status"] == "completed":
                 raise PropagationFenceError("already_completed")
             raise PropagationFenceError("unresolved_reservation")
@@ -1222,10 +1276,17 @@ class NativeMutationFence:
                 _digest(recovery["cutover_digest"])
         for reservation, row in value["operations"].items():
             _token(reservation)
-            if (type(row) is not dict or set(row) != {"generation", "status"}
+            if (type(row) is not dict or set(row) not in (
+                    {"generation", "status"},
+                    {"generation", "status", "job_id", "job_digest", "contract_digest"})
                     or type(row["generation"]) is not int or row["generation"] < 1
-                    or row["status"] not in {"active", "completed", "recovery_required"}):
+                    or row["status"] not in {"bound", "active", "completed", "recovery_required"}
+                    or row["status"] == "bound" and "job_id" not in row):
                 raise PropagationFenceError("unsafe_journal")
+            if "job_id" in row:
+                _token(row["job_id"])
+                _digest(row["job_digest"])
+                _digest(row["contract_digest"])
         return value
 
     def _read_state(self, path: Path) -> dict:
