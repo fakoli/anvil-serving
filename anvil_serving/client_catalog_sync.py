@@ -2330,13 +2330,20 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               base_url: str, backup_root: str, expected_config_sha256: str,
                               environ: Mapping[str, str], fence, grant,
                               canonical_contract: bytes, dry_run: bool = True,
-                              opener=None, hermes_run=subprocess.run) -> list[dict]:
+                              opener=None, hermes_run=subprocess.run,
+                              read_only: str | None = None,
+                              completed_job: tuple[str, str] | None = None) -> list[dict]:
     """Reconcile distinct installations in one owner reservation."""
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
     if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
             or any(type(target) is not NativeCatalogTarget for target in targets)
-            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"):
+            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"
+            or read_only not in {None, "inspect", "completed"}
+            or read_only is not None and not dry_run
+            or read_only == "completed" and (type(completed_job) is not tuple
+                or len(completed_job) != 2 or any(type(value) is not str for value in completed_job))
+            or read_only != "completed" and completed_job is not None):
         raise ClientCatalogError("invalid native catalog batch")
     targets = tuple(sorted(targets, key=lambda target: target.target_id))
     bindings = [native_catalog_effect_targets(target) for target in targets]
@@ -2365,9 +2372,15 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                                               for name, path in binding.items()}):
         raise ClientCatalogError("native catalog file binding differs")
     fence.validate_backup_root(Path(backup_root))
-    context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
-               if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
-                                                 target_paths=paths))
+    if read_only == "inspect":
+        context = fence.inspect(grant, canonical_contract=canonical_contract, target_paths=paths)
+    elif read_only == "completed":
+        context = fence.observe_completed(grant, canonical_contract=canonical_contract,
+            target_paths=paths, job_id=completed_job[0], job_digest=completed_job[1])
+    else:
+        context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
+                   if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
+                                                     target_paths=paths))
     results = []
     with context as journal:
         for target in targets:
@@ -2691,8 +2704,8 @@ def _sync_clients(
     ]
     if journal is None:
         changed.extend("hermes:" + row["profile"] for row in hermes_rows if row.get("changed_keys"))
-    prior_state_exists = paths["state"].exists()
     prior_state = read_json("state", required=False)
+    prior_state_exists = before_images["state"] is not None if journal is not None else paths["state"].exists()
     prior_exclusions = prior_state.get("client_excluded_aliases", {})
     if not isinstance(prior_exclusions, Mapping):
         raise ClientCatalogError("prior client alias policy state must be an object")

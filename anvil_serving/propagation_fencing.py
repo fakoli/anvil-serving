@@ -651,6 +651,62 @@ class NativeMutationFence:
                                   files=files, catalog_digest=grant.catalog_digest)
 
     @contextmanager
+    def inspect(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                target_paths: Iterable[str | Path]) -> Iterator[object]:
+        """Read approved targets for a pre-apply preview without mutation authority."""
+        from types import SimpleNamespace
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            self._require_current_authority(parse_contract(canonical_contract).value)
+            files = self._held()
+            yield SimpleNamespace(read=lambda path: files.read(self._trusted_path(path)),
+                                  files=SimpleNamespace(mode=lambda path: files.mode(
+                                      self._trusted_path(path))),
+                                  catalog_digest=grant.catalog_digest)
+
+    @contextmanager
+    def observe_completed(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                          target_paths: Iterable[str | Path], job_id: str,
+                          job_digest: str) -> Iterator[object]:
+        """Freshly read one exact completed job without granting another write."""
+        from types import SimpleNamespace
+        _token(job_id)
+        _digest(job_digest)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            reservation_id = self._reservation_id(grant)
+            index = self._read_index()
+            row = index["operations"].get(reservation_id)
+            if (row is None or row.get("status") != "completed"
+                    or row.get("job_id") != job_id or row.get("job_digest") != job_digest
+                    or row.get("contract_digest") != grant.contract_digest
+                    or row.get("generation") != grant.generation):
+                raise PropagationFenceError("completed_operation_not_found")
+            state = self._read_state(self._operation_path(reservation_id))
+            if (state["status"] != "completed" or state["reservation_id"] != reservation_id
+                    or state["contract_digest"] != grant.contract_digest
+                    or state["generation"] != grant.generation
+                    or state["allowed_effects"] != list(grant.effects)
+                    or state["effect_targets"] != dict(grant.effect_targets)
+                    or not set(state["effects"]) <= set(grant.effects)
+                    or any(effect["state"] != "verified"
+                           or effect["observed_digest"] != effect["desired_digest"]
+                           for effect in state["effects"].values())):
+                raise PropagationFenceError("completed_operation_not_found")
+            files = self._held()
+            yield SimpleNamespace(
+                read=lambda path: files.read(self._trusted_path(path)),
+                files=SimpleNamespace(mode=lambda path: files.mode(self._trusted_path(path))),
+                catalog_digest=grant.catalog_digest, contract_digest=grant.contract_digest,
+                generation=grant.generation, reservation_id=reservation_id,
+                effects={name: {key: effect[key] for key in (
+                    "before_digest", "desired_digest", "observed_digest")}
+                    for name, effect in state["effects"].items()},
+            )
+
+    @contextmanager
     def transaction(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
                     target_paths: Iterable[str | Path]) -> Iterator[NativeMutationJournal]:
         if not isinstance(canonical_contract, bytes):

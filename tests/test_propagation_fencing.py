@@ -138,6 +138,28 @@ def test_fleet_job_binding_survives_lost_reply_and_refuses_another_job(tmp_path)
         _bind(restarted, _grant(restarted, target), target, "job-2", digest)
 
 
+def test_completed_observation_reads_exact_job_without_new_authority(tmp_path):
+    fence, target = _fence(tmp_path)
+    grant = _grant(fence, target)
+    digest = hashlib.sha256(b"original-job").hexdigest()
+    _bind(fence, grant, target, "job-1", digest)
+    with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
+        journal.begin_effect("catalog", target, b"before", b"after")
+        target.write_bytes(b"after")
+        journal.observe_bytes("catalog", b"after")
+    expired = replace(fence.owner, clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
+                      current_authority=lambda *_: False)
+    reader = NativeMutationFence(expired, tmp_path / "ignored")
+    with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,
+            target_paths=(target,), job_id="job-1", job_digest=digest) as observed:
+        assert observed.read(target) == b"after"
+        assert observed.effects["catalog"]["observed_digest"] == hashlib.sha256(b"after").hexdigest()
+    with pytest.raises(PropagationFenceError, match="completed_operation_not_found"):
+        with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,
+                target_paths=(target,), job_id="job-2", job_digest=digest):
+            pass
+
+
 def test_existing_unbound_native_operation_cannot_adopt_a_fleet_job(tmp_path):
     fence, target = _fence(tmp_path)
     with fence.transaction(_grant(fence, target), canonical_contract=_CONTRACT,

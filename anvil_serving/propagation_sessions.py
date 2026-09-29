@@ -65,6 +65,7 @@ class SessionCheck:
     """
     target_id: str
     identity: ReceiptIdentity
+    expected_identity_digest: str
     executable_digest: str
     session_id: str
     kind: str
@@ -78,6 +79,7 @@ class SessionCheck:
                       self.identity.profile_id, self.identity.runtime_id,
                       self.session_id, self.provider, self.model_id):
             _id(value)
+        _digest(self.expected_identity_digest)
         _digest(self.executable_digest)
         _digest(self.model_digest)
         _digest(self.catalog_digest)
@@ -191,7 +193,7 @@ def observe_pi_web(check: SessionCheck, *, port: int, token: str,
 
 
 def session_inventory_digest(required: tuple[SessionCheck, ...]) -> str:
-    """Owner-resolved identity digest to bind in the approved target contract."""
+    """Digest the profile-internal native-session inventory for owner evidence."""
     return _hash(["pi-session-inventory/v1", sorted(check.digest for check in required)])
 
 
@@ -215,9 +217,8 @@ def session_states(contract: PropagationContract, required: tuple[SessionCheck, 
         if (target is None or _SESSION_CHECKS[check.kind] not in target["checks"]
                 or asdict(check.identity) != {key: target[key] for key in asdict(check.identity)}):
             raise ValueError("conflicting_session_target")
-    for target_id, target in targets.items():
-        checks = tuple(check for check in required if check.target_id == target_id)
-        if checks and session_inventory_digest(checks) != target["expected_identity_digest"]:
+    for check in required:
+        if check.expected_identity_digest != targets[check.target_id]["expected_identity_digest"]:
             raise ValueError("session_inventory_mismatch")
     if not isinstance(observations, list) or len(observations) > len(required):
         raise ValueError("invalid_session_observations")
