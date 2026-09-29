@@ -176,7 +176,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -194,5 +194,5 @@ jobs:
       - name: Twine metadata check
         run: python -m twine check dist/*
 
-      - name: Clean-install smoke (fresh venv, no deps, canonical entry point, package data)
+      - name: Clean-install smoke (fresh venv, Hermes dependency, exact versions, package data)
         run: python scripts/wheel_smoke.py
