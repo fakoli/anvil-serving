@@ -155,8 +155,8 @@ class ObservedActiveIdentity:
     def _remote(self) -> ActiveIdentity:
         """Use the scoped resource controller, never a Docker socket in the worker owner."""
         try:
-            from ... import mcp
             from ..mcp.controller_client import remote_controller_request, resolve_controller_token_file
+            from ..mcp.protocol import PROTOCOL_VERSION, SERVER_INFO
             observer = self.observer
             assert observer is not None
             expected_profile = _digest(observer["profile_sha256"])
@@ -164,10 +164,10 @@ class ObservedActiveIdentity:
             response = remote_controller_request(observer["controller_url"], {
                 "jsonrpc": "2.0", "id": 1, "method": "tools/call",
                 "params": {"name": "propagation.activation.observe.v1", "arguments": {},
-                           "_meta": {"io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
+                           "_meta": {"io.modelcontextprotocol/protocolVersion": PROTOCOL_VERSION,
                                      "io.modelcontextprotocol/clientCapabilities": {},
                                      "io.modelcontextprotocol/clientInfo": {
-                                         "name": "anvil-propagation-owner", "version": mcp.SERVER_INFO["version"]}}},
+                                         "name": "anvil-propagation-owner", "version": SERVER_INFO["version"]}}},
             }, token, timeout=_OBSERVATION_DEADLINE_SECONDS, max_response_bytes=8192)
             result = response["result"]
             content = result["structuredContent"]
