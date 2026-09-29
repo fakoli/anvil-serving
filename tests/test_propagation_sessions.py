@@ -10,7 +10,7 @@ import pytest
 from anvil_serving.control_plane.propagation import ReceiptIdentity, parse_contract
 from anvil_serving.propagation_sessions import (
     SessionCheck, _hash, observe_pi_web, pending, pi_model_digest, pi_catalog_digest,
-    pi_web_state, session_inventory_digest, session_states,
+    pi_web_state, session_states,
 )
 from tests.test_propagation_contracts import _contract
 
