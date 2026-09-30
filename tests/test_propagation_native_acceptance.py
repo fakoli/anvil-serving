@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -36,6 +37,7 @@ def fixture_profile(tmp_path):
     return profile, contract
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     calls, histories = [], {}
@@ -86,6 +88,7 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
     assert len(calls) == 3
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_expired_budget_and_changed_executable_never_start_turn(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     def forbidden(*args):
@@ -100,6 +103,7 @@ def test_expired_budget_and_changed_executable_never_start_turn(tmp_path):
         validate_native_runtime(profile['targets'][0])
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_pi_handle_survives_prepare_and_closes_on_catalog_failure(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     target = profile['targets'][0]
@@ -128,6 +132,7 @@ def test_pi_handle_survives_prepare_and_closes_on_catalog_failure(tmp_path):
     assert all(not Path(row['receipt_file']).exists() for row in target['native_sessions'])
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_shared_prefixture_uses_existing_route_even_when_new_check_is_first(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     target = profile['targets'][0]
@@ -147,6 +152,7 @@ def test_shared_prefixture_uses_existing_route_even_when_new_check_is_first(tmp_
     lifecycle.close()
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_web_fixture_lifecycle_uses_owned_loopback_adapter_and_closes(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     target = profile['targets'][0]
@@ -236,6 +242,7 @@ def test_pi_evidence_failure_normalizes_only_after_verified_cleanup(tmp_path):
         assert closed == [True]
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_cleanup_proof_is_exact_and_requires_completed_owned_cleanup(tmp_path):
     from anvil_serving.propagation_native_acceptance import NativeQuiescenceError, verify_native_cleanup
     profile, contract = fixture_profile(tmp_path)
@@ -258,6 +265,7 @@ def test_cleanup_proof_is_exact_and_requires_completed_owned_cleanup(tmp_path):
         verify_native_cleanup(profile, contract, job, '7'*64)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_openclaw_lost_response_never_proves_gateway_quiescence(tmp_path):
     from anvil_serving.propagation_native_acceptance import NativeQuiescenceError
     profile, contract = fixture_profile(tmp_path)
@@ -277,8 +285,8 @@ def test_openclaw_lost_response_never_proves_gateway_quiescence(tmp_path):
     assert not list(tmp_path.glob('cleanup-*'))
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_mac_admin_group_runtime_is_explicit_and_keeps_private_evidence(tmp_path, monkeypatch):
-    import os
     from anvil_serving import propagation_native_acceptance as native
     profile, _ = fixture_profile(tmp_path)
     target = profile['targets'][0]

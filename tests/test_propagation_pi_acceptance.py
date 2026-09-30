@@ -148,6 +148,7 @@ def check(profile, *, kind, fixture_id, previous, prepared_at,
     )
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_existing_fixture_retains_exact_process_and_history(tmp_path):
     clients = []
     current = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
@@ -188,6 +189,7 @@ def test_existing_fixture_retains_exact_process_and_history(tmp_path):
     )["state"] == "accepted"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_new_fixture_uses_configured_route_and_direct_loaded_catalog(tmp_path):
     clients = []
     current = datetime(2026, 1, 1, 0, 0, 2, tzinfo=timezone.utc)
@@ -220,6 +222,7 @@ def test_new_fixture_uses_configured_route_and_direct_loaded_catalog(tmp_path):
     )["state"] == "accepted"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_new_fixture_refuses_wrong_loaded_catalog_and_failed_turn(tmp_path):
     declared = profile(tmp_path)
     item = check(
@@ -251,6 +254,7 @@ def test_new_fixture_refuses_wrong_loaded_catalog_and_failed_turn(tmp_path):
         failed.accept_new(item, declared, "new-native-session")
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_existing_fixture_never_resumes_after_process_boundary_loss(tmp_path):
     clients = []
     current = [datetime(2026, 1, 1, tzinfo=timezone.utc)]
@@ -279,6 +283,7 @@ def test_existing_fixture_never_resumes_after_process_boundary_loss(tmp_path):
     assert len(clients) == 1 and prepared.closed is True
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_existing_fixture_refuses_lost_pre_effect_history(tmp_path):
     runner = PiFixtureAcceptance(
         client_factory=lambda argv, cwd, environment: FakePi(argv, cwd, environment),
@@ -300,6 +305,7 @@ def test_existing_fixture_refuses_lost_pre_effect_history(tmp_path):
     assert prepared.closed is True
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_profile_rejects_unpinned_executable_and_nonprivate_root(tmp_path):
     declared = profile(tmp_path)
     declared.executable.write_bytes(b"changed")
@@ -317,6 +323,7 @@ def test_profile_rejects_unpinned_executable_and_nonprivate_root(tmp_path):
         runner.accept_new(item, declared, "new-native-session")
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_receipt_has_only_closed_native_acceptance_fields(tmp_path):
     declared = profile(tmp_path)
     item = check(
@@ -339,6 +346,7 @@ def test_receipt_has_only_closed_native_acceptance_fields(tmp_path):
     assert "prompt" not in json.dumps(receipt)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_protected_fixture_and_receipt_writers_are_idempotent_and_conflict_closed(tmp_path):
     clients = []
     runner = PiFixtureAcceptance(
@@ -425,6 +433,7 @@ def test_phase_timeout_is_bounded_by_caller_budget(tmp_path):
         runner.prepare_existing(declared, "existing-fixture", timeout_seconds=121)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_packaged_pi_web_acceptance_uses_live_manager_and_exact_wrapper_generation(tmp_path):
     node = shutil.which("node")
     if node is None:
