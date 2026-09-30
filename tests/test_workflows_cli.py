@@ -197,7 +197,8 @@ def test_capability_preflight_reads_actual_authenticated_controller(tmp_path, mo
 def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monkeypatch):
     artifact = tmp_path / "worker.whl"
     artifact.write_bytes(b"synthetic release")
-    manifest = {"schema": "anvil-workflows.release/v1", "profile_id": "propagation-v1",
+    profile = "propagation-v1-release-r16"
+    manifest = {"schema": "anvil-workflows.release/v1", "profile_id": profile,
                 "owner_mode": "preview", "owner_profile_digest": "b" * 64,
                 "profile_digest": "a" * 64,
                 "components": [{"name": "worker", "file": artifact.name,
@@ -206,13 +207,16 @@ def test_local_release_preview_checks_exact_bytes_without_effects(tmp_path, monk
     (tmp_path / "manifest.json").write_bytes(raw)
     monkeypatch.setattr(workflows_cli, "_read_config", lambda: {
         "release_dir": str(tmp_path), "release_digest": hashlib.sha256(raw).hexdigest()})
-    preview = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1"])
+    preview = workflows_cli.main(["deployment", "preview", "--profile", profile])
     assert preview.exit_code == 0 and preview.data["effects"] == []
+    assert preview.data["profile_id"] == profile
     assert preview.data["owner_mode"] == "preview"
     assert preview.data["release_path_digest"] == hashlib.sha256(os.fsencode(tmp_path.resolve())).hexdigest()
     assert preview.data["components"][0]["bytes"] == len(artifact.read_bytes())
+    refused = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1-other"])
+    assert refused.exit_code != 0 and refused.error.code == "workflow_release_unavailable"
     artifact.write_bytes(b"drift")
-    refused = workflows_cli.main(["deployment", "preview", "--profile", "propagation-v1"])
+    refused = workflows_cli.main(["deployment", "preview", "--profile", profile])
     assert refused.exit_code != 0 and refused.error.code == "workflow_release_unavailable"
 
 

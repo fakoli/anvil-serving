@@ -76,8 +76,6 @@ def _config(*, recovery: bool = False) -> tuple[str, str]:
 
 
 def _local_preview(profile: str) -> dict:
-    if profile != "propagation-v1":
-        raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
     if not hasattr(os, "O_NOFOLLOW"):
         raise SafetyError("local workflow release is unavailable", code="workflow_release_unavailable")
     config = _read_config()
@@ -186,8 +184,6 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
     elif action == "capabilities":
         arguments = {}
     elif action in {"deployment_preview", "deployment_verify", "recovery_verify"}:
-        if values["profile"] != "propagation-v1":
-            raise UsageError("unsupported workflow profile", code="invalid_workflow_profile")
         arguments = {"profile_id": values["profile"]}
     elif action == "recovery_snapshot-journal":
         arguments = {"profile_id": values["profile"], "output": values["output"]}
