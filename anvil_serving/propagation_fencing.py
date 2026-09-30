@@ -701,6 +701,7 @@ class NativeMutationFence:
                 files=SimpleNamespace(mode=lambda path: files.mode(self._trusted_path(path))),
                 catalog_digest=grant.catalog_digest, contract_digest=grant.contract_digest,
                 generation=grant.generation, reservation_id=reservation_id,
+                completed_at=self._parse_utc(state["updated_at"]).isoformat().replace("+00:00", "Z"),
                 effects={name: {key: effect[key] for key in (
                     "before_digest", "desired_digest", "observed_digest")}
                     for name, effect in state["effects"].items()},

@@ -127,10 +127,12 @@ and executable approved contract.
 Admission, dispatch, activity and status credentials have separate scopes.
 Requests contain opaque owner references; profiles, executable pins, transport
 credentials and approval resolution come from the installed owner configuration.
-The activity-scoped `current` read checks the exact contract digest, generation,
+The status-scoped `current` read checks the exact contract digest, generation,
 declared target/resource and an executing job against the owner's current
 approval and activation. A native client uses it inside its file fence's
 current-authority callback; the read grants no file path or effect by itself.
+Give each native host its own status-only credential for audit attribution.
+It cannot invoke fleet preview, submit, verify, convergence or cancel operations.
 Transport failure or a superseded, cancelled or completed job refuses a write.
 The native client helper requires a closed success response and an observation
 within five seconds, with at most two seconds of future clock skew. It refuses

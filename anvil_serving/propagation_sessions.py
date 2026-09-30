@@ -267,3 +267,131 @@ def session_states(contract: PropagationContract, required: tuple[SessionCheck, 
                 if values and all(row["observed_at"] is not None for row in values) else None,
             }
     return result
+
+
+@dataclass(frozen=True)
+class NativeSessionCheck:
+    """Owner-declared fixture acceptance, separate from loaded Pi snapshots.
+
+    Timestamps and the previous native ID come from the owner's pre-effect
+    fixture and completed operation, never from the imported turn receipt.
+    Physical catalog bytes are a separate observation from native loaded limits.
+    """
+    target_id: str
+    identity: ReceiptIdentity
+    contract_digest: str
+    expected_identity_digest: str
+    executable_digest: str
+    physical_catalog_digest: str
+    fixture_id: str
+    previous_session_id: str
+    prepared_at: str
+    effect_completed_at: str
+    kind: str
+    provider: str
+    model_id: str
+    context_tokens: int
+    max_output_tokens: int
+    previous_process_generation: str | None = None
+
+    def __post_init__(self):
+        for value in (self.target_id, self.identity.installation_id,
+                      self.identity.profile_id, self.identity.runtime_id,
+                      self.fixture_id, self.previous_session_id, self.provider, self.model_id):
+            _id(value)
+        for value in (self.contract_digest, self.expected_identity_digest,
+                      self.executable_digest, self.physical_catalog_digest):
+            _digest(value)
+        if self.previous_process_generation is not None:
+            _id(self.previous_process_generation)
+        if (self.kind not in {"new_session", "existing_session"}
+                or _utc(self.prepared_at) > _utc(self.effect_completed_at)
+                or any(type(value) is not int or not 0 < value <= 16_777_216
+                       for value in (self.context_tokens, self.max_output_tokens))):
+            raise ValueError("invalid_native_session_check")
+
+    @property
+    def digest(self):
+        return _hash(asdict(self))
+
+
+def native_session_state(check: NativeSessionCheck, receipt: dict, *, now: datetime):
+    """Validate one custody-protected, redacted native turn receipt.
+
+    This performs no I/O and grants no receipt-import authority. The owner must
+    read the installed receipt under its normal protected-file/custody checks.
+    Missing native metadata stays unsupported; approved values cannot fill it.
+    """
+    result = {"check_digest": check.digest, "state": "pending",
+              "pending_reason": "invalid-observation", "observed_at": None,
+              "continuity_kind": None, "native_session_id": None,
+              "actual_provider": None, "actual_model": None,
+              "actual_context_tokens": None, "actual_max_output_tokens": None,
+              "physical_catalog_digest": None, "process_generation": None, "tool_probe_passed": False,
+              "history_probe_passed": False, "reloads": 0}
+    fields = {"schema", "check_digest", "started_at", "completed_at", "native_session_id",
+              "continuity_kind", "configured_route", "provider", "model", "context_tokens",
+              "max_output_tokens", "turn_completed", "tool_probe_passed", "history_probe_passed", "fallback_used",
+              "physical_catalog_digest", "process_generation"}
+    if (now.tzinfo != timezone.utc or type(receipt) is not dict or set(receipt) != fields
+            or receipt.get("schema") != "native-session-acceptance/v1"
+            or receipt.get("check_digest") != check.digest
+            or any(type(receipt[key]) is not bool for key in (
+                "configured_route", "turn_completed", "tool_probe_passed", "history_probe_passed"))
+            or receipt["fallback_used"] is not None and type(receipt["fallback_used"]) is not bool):
+        return result
+    try:
+        started, completed = _utc(receipt["started_at"]), _utc(receipt["completed_at"])
+        _id(receipt["native_session_id"])
+        _id(receipt["provider"])
+        _id(receipt["model"])
+        _digest(receipt["physical_catalog_digest"])
+        if receipt["process_generation"] is not None:
+            _id(receipt["process_generation"])
+    except (TypeError, ValueError):
+        return result
+    if (not _utc(check.effect_completed_at) <= started <= completed <= now
+            or (now - completed).total_seconds() > 300):
+        result["pending_reason"] = "stale-observation"
+        return result
+    result["observed_at"] = receipt["completed_at"]
+    kind = receipt["continuity_kind"]
+    expected_kind = {"new_session": {"loaded_fixture"},
+                     "existing_session": {"durable_resume", "same_process"}}[check.kind]
+    if (type(kind) is not str or kind not in expected_kind
+            or kind == "same_process" and (check.previous_process_generation is None
+                or receipt["process_generation"] != check.previous_process_generation)
+            or receipt["configured_route"] is not True
+            or receipt["provider"] != check.provider or receipt["model"] != check.model_id
+            or receipt["physical_catalog_digest"] != check.physical_catalog_digest
+            or (receipt["native_session_id"] == check.previous_session_id) !=
+               (check.kind == "existing_session")):
+        result["pending_reason"] = "identity-mismatch"
+        return result
+    if receipt["fallback_used"] is None:
+        result["pending_reason"] = "unsupported-capability"
+        return result
+    if (receipt["turn_completed"] is not True or receipt["fallback_used"] is not False
+            or receipt["tool_probe_passed"] is not True
+            or check.kind == "existing_session" and receipt["history_probe_passed"] is not True):
+        result["pending_reason"] = "session-acceptance-pending"
+        return result
+    result.update(continuity_kind=kind, native_session_id=receipt["native_session_id"],
+                  process_generation=receipt["process_generation"],
+                  actual_provider=receipt["provider"], actual_model=receipt["model"],
+                  physical_catalog_digest=receipt["physical_catalog_digest"],
+                  tool_probe_passed=True, history_probe_passed=receipt["history_probe_passed"])
+    for value in (receipt["context_tokens"], receipt["max_output_tokens"]):
+        if value is not None and (type(value) is not int or not 0 < value <= 16_777_216):
+            return {**result, "pending_reason": "invalid-observation"}
+    result.update(actual_context_tokens=receipt["context_tokens"],
+                  actual_max_output_tokens=receipt["max_output_tokens"])
+    # Durable continuation proves retained history and route, not a reload of
+    # the previous process's catalog or limits. Only a new fixture must load.
+    if check.kind == "new_session":
+        if receipt["context_tokens"] is None or receipt["max_output_tokens"] is None:
+            return {**result, "pending_reason": "unsupported-capability"}
+        if (receipt["context_tokens"], receipt["max_output_tokens"]) != (
+                check.context_tokens, check.max_output_tokens):
+            return {**result, "pending_reason": "loaded-model-mismatch"}
+    return {**result, "state": "accepted", "pending_reason": None}

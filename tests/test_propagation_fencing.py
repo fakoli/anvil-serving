@@ -148,12 +148,14 @@ def test_completed_observation_reads_exact_job_without_new_authority(tmp_path):
         journal.begin_effect("catalog", target, b"before", b"after")
         target.write_bytes(b"after")
         journal.observe_bytes("catalog", b"after")
+    completed = _bind(fence, grant, target, "job-1", digest)["updated_at"]
     expired = replace(fence.owner, clock=lambda: datetime(2030, 1, 1, tzinfo=timezone.utc),
                       current_authority=lambda *_: False)
     reader = NativeMutationFence(expired, tmp_path / "ignored")
     with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,
             target_paths=(target,), job_id="job-1", job_digest=digest) as observed:
         assert observed.read(target) == b"after"
+        assert observed.completed_at == completed
         assert observed.effects["catalog"]["observed_digest"] == hashlib.sha256(b"after").hexdigest()
     with pytest.raises(PropagationFenceError, match="completed_operation_not_found"):
         with reader.observe_completed(_grant(reader, target), canonical_contract=_CONTRACT,

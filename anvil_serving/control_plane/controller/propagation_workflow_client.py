@@ -89,7 +89,9 @@ class WorkflowControlClient:
                 conn.settimeout(_remaining(deadline))
                 conn.connect(str(self.path))
                 pid, uid, gid = struct.unpack("3i", conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i")))
-                if (pid < 1 or (uid, gid) != (self.peer_uid, self.peer_gid)
+                # Linux reports PID 0 when the peer is outside our PID namespace.
+                # Custody, credentials and the unchanged socket inode bind the peer.
+                if (pid < 0 or (uid, gid) != (self.peer_uid, self.peer_gid)
                         or _socket_identity(self.path, self.peer_uid, self.peer_gid) != endpoint):
                     raise ValueError()
                 conn.settimeout(_remaining(deadline))
