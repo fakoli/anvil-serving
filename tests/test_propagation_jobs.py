@@ -236,14 +236,28 @@ def test_current_authority_is_bound_to_executing_job_and_declared_resource(tmp_p
         env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy-controller",
                "ACTIVITY": "synthetic-activity", "READER": "synthetic-reader"}
         with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
-            def request(token):
+            def request(token, name="fleet.propagation.current.v1", args=None):
                 _, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 1,
-                    "method": "tools/call", "params": {"name": "fleet.propagation.current.v1", "arguments": arguments}},
+                    "method": "tools/call", "params": {"name": name, "arguments": arguments if args is None else args}},
                     {"Authorization": "Bearer " + token})
                 return body
-            assert request(env["ACTIVITY"])["result"]["structuredContent"]["data"]["current"] is True
-            denied = request(env["READER"])
+            assert request(env["READER"])["result"]["structuredContent"]["data"]["current"] is True
+            denied = request(env["ACTIVITY"])
             assert "result" not in denied or denied["result"].get("isError")
+            restricted = {
+                "preview": {"intent_id": accepted["intent_id"], "cursor": None},
+                "submit": {"intent_id": accepted["intent_id"],
+                           "preview_digest": preview["preview_digest"], "operation_id": operation},
+                "verify": {"intent_id": accepted["intent_id"], "job_id": submitted["job_id"], "cursor": None},
+                "convergence": {"intent_id": accepted["intent_id"], "verification_id": "verification-1", "cursor": None},
+                "cancel": {"job_id": submitted["job_id"]},
+            }
+            from unittest.mock import patch
+            with patch.object(owner.service, "handle", side_effect=AssertionError("authorization bypass")) as handle:
+                for verb, args in restricted.items():
+                    denied = request(env["READER"], f"fleet.propagation.{verb}.v1", args)
+                    assert "result" not in denied or denied["result"].get("isError")
+                handle.assert_not_called()
         for changed in ({"generation": 2}, {"contract_digest": "b" * 64},
                         {"resource_id": "other"}, {"target_id": "other"}):
             with pytest.raises(PropagationJobError):

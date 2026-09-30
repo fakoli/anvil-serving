@@ -319,7 +319,7 @@ _OPERATIONS = (
     ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id", "contract_digest"), ("recorded",)),
     ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
     ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("contract_digest", "operation_id", "job_id", "state")),
-    ("fleet.propagation.current.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("current", "observed_at")),
+    ("fleet.propagation.current.v1", STATUS_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("current", "observed_at")),
     ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
     ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
     ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
