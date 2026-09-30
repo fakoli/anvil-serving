@@ -344,20 +344,45 @@ def _client_failure(
     return "client identity or response validation failed"
 
 
+def _native_session_id(value: Any) -> str | None:
+    """Expose only a bounded native identity, never arbitrary client metadata."""
+    return value if type(value) is str and _RUN_ID_RE.fullmatch(value) else None
+
+
+def _resume_probe(prompt: str, marker: str, previous_marker: str | None) -> tuple[str, str]:
+    if previous_marker is None:
+        return prompt, marker
+    if type(previous_marker) is not str or not 1 <= len(previous_marker) <= 256:
+        raise ValueError("invalid previous fixture marker")
+    # The old marker must come from native conversation history, never this prompt.
+    return (prompt.replace("Then reply with exactly the file contents and nothing else.",
+            "Then reply with the marker from your previous response, one space, "
+            "and the new file contents; nothing else."), previous_marker + " " + marker)
+
+
 def evaluate_openclaw(
     *, alias: str, provider: str, marker: str, probe_path: str, run_id: str,
     expected_context_tokens: int,
     timeout_seconds: float, runner: Callable[[Sequence[str], float], Any] = _default_runner,
     executable: str = "openclaw",
+    session_id: str | None = None, configured_route: bool = False,
+    previous_marker: str | None = None,
 ) -> dict[str, Any]:
+    if session_id is not None and _native_session_id(session_id) is None:
+        raise ValueError("invalid native session identity")
+    if previous_marker is not None and session_id is None:
+        raise ValueError("history probe requires a native session identity")
     model = f"{provider}/{alias}"
     prompt = (
         f"Use the exec tool exactly once to read the UTF-8 file at {json.dumps(probe_path)}. "
         "Then reply with exactly the file contents and nothing else."
     )
+    prompt, expected_response = _resume_probe(prompt, marker, previous_marker)
+    session_args = (("--session-id", session_id) if session_id is not None else
+                    ("--session-key", f"agent:main:anvil-routed-eval-{run_id}"))
     argv = (
-        executable, "agent", "--agent", "main", "--session-key",
-        f"agent:main:anvil-routed-eval-{run_id}", "--model", model,
+        executable, "agent", "--agent", "main", *session_args,
+        *(("--model", model) if not configured_route else ()),
         "--thinking", "off", "--message", prompt,
         "--timeout", str(int(timeout_seconds)), "--json",
     )
@@ -387,7 +412,7 @@ def evaluate_openclaw(
         "output_bounded": not process["output_truncated"],
         "json_valid": parse_error is None,
         "status_ok": parsed.get("status") == "ok",
-        "marker_exact": texts == [marker],
+        "marker_exact": texts == [expected_response],
         "provider_exact": agent_meta.get("provider") == provider,
         "model_exact": agent_meta.get("model") == alias,
         "winner_provider_exact": trace.get("winnerProvider") == provider,
@@ -395,15 +420,23 @@ def evaluate_openclaw(
         "fallback_forbidden": trace.get("fallbackUsed") is False,
         "context_exact": agent_meta.get("contextTokens") == expected_context_tokens,
     }
+    native_id = _native_session_id(agent_meta.get("sessionId"))
+    if configured_route or session_id is not None:
+        checks["session_identified"] = native_id is not None
+    if session_id is not None:
+        checks["session_preserved"] = native_id == session_id
     return {
         "client": "openclaw", "passed": all(checks.values()), "checks": checks,
         "command": {
-            "provider": provider, "model": model, "thinking": "off",
+            "provider": None if configured_route else provider,
+            "model": None if configured_route else model, "thinking": "off",
             "tool_probe": "exec/read-temporary-nonce",
         },
         "observed": {
+            "session_id": native_id,
             "provider": agent_meta.get("provider"), "model": agent_meta.get("model"),
             "context_tokens": agent_meta.get("contextTokens"),
+            "max_output_tokens": agent_meta.get("maxOutputTokens"),
             "winner_provider": trace.get("winnerProvider"),
             "winner_model": trace.get("winnerModel"),
             "fallback_used": trace.get("fallbackUsed"),
@@ -423,7 +456,13 @@ def evaluate_hermes(
     probe_path: str,
     timeout_seconds: float, runner: Callable[[Sequence[str], float], Any] = _default_runner,
     executable: str = "hermes",
+    session_id: str | None = None, configured_route: bool = False,
+    previous_marker: str | None = None,
 ) -> dict[str, Any]:
+    if session_id is not None and _native_session_id(session_id) is None:
+        raise ValueError("invalid native session identity")
+    if previous_marker is not None and session_id is None:
+        raise ValueError("history probe requires a native session identity")
     usage_error = None
     usage: Mapping[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="anvil-routed-eval-") as temporary:
@@ -433,14 +472,22 @@ def evaluate_hermes(
             f"{json.dumps(probe_path)}. Then reply with exactly the file contents "
             "and nothing else."
         )
+        prompt, expected_response = _resume_probe(prompt, marker, previous_marker)
+        route_args = () if configured_route else ("--provider", provider, "--model", alias)
+        turn_args = (("chat", "-Q", "-q", prompt, "--no-restore-cwd",
+                      *(("--resume", session_id) if session_id is not None else ()))
+                     if configured_route or session_id is not None else ("-z", prompt))
         argv = (
-            executable, "--provider", provider, "--model", alias,
-            "--reasoning", "none", "--usage-file", usage_path,
-            "--toolsets", "terminal", "-z", prompt,
+            executable, *route_args, "--reasoning", "none", "--usage-file", usage_path,
+            "--toolsets", "terminal", *turn_args,
         )
         process = _run_client(argv, timeout_seconds=timeout_seconds, runner=runner)
         try:
-            value = json.loads(Path(usage_path).read_text(encoding="utf-8"))
+            with open(usage_path, "rb") as handle:
+                raw = handle.read(MAX_CLIENT_OUTPUT_BYTES + 1)
+            if len(raw) > MAX_CLIENT_OUTPUT_BYTES:
+                raise ValueError("oversized usage report")
+            value = json.loads(raw)
             if isinstance(value, Mapping):
                 usage = value
             else:
@@ -449,29 +496,39 @@ def evaluate_hermes(
             usage_error = "Hermes usage evidence was not created"
         except OSError:
             usage_error = "Hermes usage evidence could not be read"
-        except json.JSONDecodeError:
-            usage_error = "Hermes usage evidence was not valid JSON"
+        except (ValueError, UnicodeError):
+            usage_error = "Hermes usage evidence was not bounded valid JSON"
     visible = process["stdout"].strip()
     checks = {
         "process_succeeded": process["returncode"] == 0 and not process["timed_out"],
         "output_bounded": not process["output_truncated"],
-        "marker_exact": visible == marker,
+        "marker_exact": visible == expected_response,
         "usage_valid": usage_error is None,
         "provider_exact": usage.get("provider") == expected_observed_provider,
         "model_exact": usage.get("model") == alias,
         "completed": usage.get("completed") is True,
         "not_failed": usage.get("failed") is False,
-        "api_call_recorded": isinstance(usage.get("api_calls"), int) and usage["api_calls"] >= 1,
+        "api_call_recorded": type(usage.get("api_calls")) is int and usage["api_calls"] >= 1,
     }
+    native_id = _native_session_id(usage.get("session_id"))
+    if configured_route or session_id is not None:
+        checks["session_identified"] = native_id is not None
+    if session_id is not None:
+        checks["session_preserved"] = native_id == session_id
     return {
         "client": "hermes", "passed": all(checks.values()), "checks": checks,
         "command": {
-            "provider_selector": provider, "expected_observed_provider": expected_observed_provider,
-            "model": alias, "reasoning": "none",
+            "provider_selector": None if configured_route else provider,
+            "expected_observed_provider": expected_observed_provider,
+            "model": None if configured_route else alias, "reasoning": "none",
             "tool_probe": "terminal/read-temporary-nonce",
         },
         "observed": {
+            "session_id": native_id,
             "provider": usage.get("provider"), "model": usage.get("model"),
+            "context_tokens": usage.get("context_length"),
+            "max_output_tokens": usage.get("max_tokens"),
+            "fallback_used": usage.get("fallback_used"),
             "api_calls": usage.get("api_calls"), "input_tokens": usage.get("input_tokens"),
             "output_tokens": usage.get("output_tokens"),
             "reasoning_tokens": usage.get("reasoning_tokens"),

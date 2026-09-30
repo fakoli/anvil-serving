@@ -1,3 +1,53 @@
+diff --git a/app/api/propagation/session-acceptance/route.ts b/app/api/propagation/session-acceptance/route.ts
+new file mode 100644
+index 0000000..c9a3230
+--- /dev/null
++++ b/app/api/propagation/session-acceptance/route.ts
+@@ -0,0 +1,18 @@
++import { NextResponse } from "next/server";
++import { runPropagationAcceptance } from "@/lib/propagation-acceptance";
++import { propagationAcceptanceAuthorized } from "@/lib/propagation-observer-auth";
++
++export const runtime = "nodejs";
++
++export async function POST(request: Request) {
++  if (!propagationAcceptanceAuthorized(request.headers.get("authorization"))) {
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++  try {
++    return NextResponse.json(await runPropagationAcceptance(await request.json()), {
++      headers: { "Cache-Control": "no-store" },
++    });
++  } catch {
++    return NextResponse.json({ error: "unavailable" }, { status: 409, headers: { "Cache-Control": "no-store" } });
++  }
++}
+diff --git a/app/api/propagation/session-state/route.ts b/app/api/propagation/session-state/route.ts
+new file mode 100644
+index 0000000..888459d
+--- /dev/null
++++ b/app/api/propagation/session-state/route.ts
+@@ -0,0 +1,20 @@
++import { NextResponse } from "next/server";
++import {
++  observePropagationSession,
++  validPropagationNativeId,
++} from "@/lib/propagation-observer";
++import { propagationObserverAuthorized } from "@/lib/propagation-observer-auth";
++
++export const runtime = "nodejs";
++
++export function GET(request: Request) {
++  if (!propagationObserverAuthorized(request.headers.get("authorization"))) {
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++  const search = new URL(request.url).searchParams;
++  const nativeId = search.get("id");
++  if (search.size !== 1 || !validPropagationNativeId(nativeId)) {
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++  return NextResponse.json(observePropagationSession(nativeId), { headers: { "Cache-Control": "no-store" } });
++}
 diff --git a/app/api/workbench/associate/route.ts b/app/api/workbench/associate/route.ts
 new file mode 100644
 index 0000000..5c1b773
@@ -143,172 +193,449 @@ index 90858a5..fcccbd2 100644
    // Called by ChatWindow when a new session gets its real id from pi
    const handleSessionCreated = useCallback((session: SessionInfo, sourceDraftKey: string) => {
      setRefreshKey((k) => k + 1);
-diff --git a/lib/rpc-manager.ts b/lib/rpc-manager.ts
-index d3d67c8..e5ed7db 100644
---- a/lib/rpc-manager.ts
-+++ b/lib/rpc-manager.ts
-@@ -165,6 +165,7 @@ export interface RpcSessionStartOptions {
-   initialModel?: { provider: string; modelId: string };
-   allowInitialModelFallback?: boolean;
-   thinkingLevel?: ThinkingLevel;
-+  sessionId?: string;
- }
- 
- const CODING_TOOL_NAMES = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
-@@ -1969,7 +1970,7 @@ export async function startRpcSession(
-     sessionManager = SessionManager.open(sessionFile, undefined);
-   } else {
-     if (!cwd) throw new Error("cwd is required for a new session");
--    sessionManager = SessionManager.create(cwd, undefined);
-+    sessionManager = SessionManager.create(cwd, undefined, options.sessionId ? { id: options.sessionId } : undefined);
-   }
-   const sessionCwd = sessionManager.getCwd();
-   const subagentResources = sessionFile
-diff --git a/lib/workbench-bridge.ts b/lib/workbench-bridge.ts
+diff --git a/lib/propagation-acceptance.ts b/lib/propagation-acceptance.ts
 new file mode 100644
-index 0000000..e840d8f
+index 0000000..de24987
 --- /dev/null
-+++ b/lib/workbench-bridge.ts
-@@ -0,0 +1,106 @@
-+import { timingSafeEqual } from "crypto";
-+import { existsSync, mkdirSync, readFileSync } from "fs";
-+import { SessionManager } from "@earendil-works/pi-coding-agent";
-+import { isAbsolute, join, resolve } from "path";
-+import { writePrivateFileAtomicSync } from "./atomic-file";
-+import { getRpcSession, getRpcSessionInfos, startRpcSession } from "./rpc-manager";
-+import { getAgentDir, listAllSessions, mergeSessionLists, resolveSessionPath } from "./session-reader";
++++ b/lib/propagation-acceptance.ts
+@@ -0,0 +1,400 @@
++import { randomUUID } from "node:crypto";
++import {
++  closeSync,
++  fsyncSync,
++  lstatSync,
++  mkdirSync,
++  openSync,
++  unlinkSync,
++  writeFileSync,
++} from "node:fs";
++import { join } from "node:path";
++import { getRpcSession, startRpcSession, type AgentEvent, type AgentSessionWrapper } from "./rpc-manager";
++import { observePropagationSession } from "./propagation-observer";
++import { getAgentDir } from "./session-reader";
 +
-+type Reservation = { project_id: string; session_id: string };
-+type Registry = { version: 1; reservations: Record<string, Reservation> };
-+
-+const KEY = /^[a-f0-9]{64}$/;
 +const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
-+const PROJECT = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/;
-+const MAX_CWD_BYTES = 4096;
++const FIXTURE_ID = /^propagation-[A-Za-z0-9][A-Za-z0-9._-]{0,179}$/;
++const MAX_EVENTS = 8192;
++const TURN_TIMEOUT_MS = 120_000;
++
++type PreparedFixture = {
++  nativeId: string;
++  processGeneration: string;
++  historyMarker: string;
++  messageCount: number;
++  preparedAt: string;
++  session?: AgentSessionWrapper;
++  cancelled: Promise<void>;
++  cancel: () => void;
++  inFlight: Promise<void>;
++  finishFlight: () => void;
++  busy: boolean;
++};
++
++declare global {
++  var __anvilPropagationFixtures: Map<string, PreparedFixture> | undefined;
++  var __anvilPropagationCancellations: Map<string, string> | undefined;
++  var __anvilPropagationClosedCancellations: Map<string, string> | undefined;
++}
++
++function registry(): Map<string, PreparedFixture> {
++  return globalThis.__anvilPropagationFixtures ??= new Map();
++}
++
++function cancellations(): Map<string, string> {
++  return globalThis.__anvilPropagationCancellations ??= new Map();
++}
++
++function closedCancellations(): Map<string, string> {
++  return globalThis.__anvilPropagationClosedCancellations ??= new Map();
++}
++
++function requireNotCancelled(operationId: string, nativeId: string): void {
++  const cancelledNativeId = cancellations().get(operationId);
++  if (cancelledNativeId !== undefined) {
++    if (cancelledNativeId !== nativeId) throw new Error("fixture identity conflict");
++    throw new Error("fixture cancelled");
++  }
++}
++
++function deferred(): { promise: Promise<void>; resolve: () => void } {
++  let resolve!: () => void;
++  const promise = new Promise<void>((done) => { resolve = done; });
++  return { promise, resolve };
++}
++
++function reserveOperation(operationId: string, nativeId: string): PreparedFixture {
++  requireNotCancelled(operationId, nativeId);
++  if (registry().has(operationId)
++      || [...registry().values()].some((fixture) => fixture.nativeId === nativeId)
++      || getRpcSession(nativeId)?.isAlive()) throw new Error("fixture conflict");
++  const cancellation = deferred();
++  const flight = deferred();
++  const fixture: PreparedFixture = {
++    nativeId,
++    processGeneration: "",
++    historyMarker: "",
++    messageCount: 0,
++    preparedAt: "",
++    cancelled: cancellation.promise,
++    cancel: cancellation.resolve,
++    inFlight: flight.promise,
++    finishFlight: flight.resolve,
++    busy: true,
++  };
++  registry().set(operationId, fixture);
++  return fixture;
++}
++
++function beginFlight(fixture: PreparedFixture): void {
++  if (fixture.busy) throw new Error("fixture operation is already running");
++  const flight = deferred();
++  fixture.inFlight = flight.promise;
++  fixture.finishFlight = flight.resolve;
++  fixture.busy = true;
++}
++
++function endFlight(fixture: PreparedFixture): void {
++  fixture.busy = false;
++  fixture.finishFlight();
++}
 +
 +function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
 +  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 +}
 +
-+function registryPath(): string {
-+  return join(getAgentDir(), "workbench-host-bridge.json");
++function utcSeconds(): string {
++  return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 +}
 +
-+function load(): Registry {
-+  const path = registryPath();
-+  if (!existsSync(path)) return { version: 1, reservations: {} };
-+  try {
-+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-+    if (!parsed || typeof parsed !== "object") throw new Error();
-+    const registry = parsed as Registry;
-+    if (registry.version !== 1 || !registry.reservations || typeof registry.reservations !== "object" || Array.isArray(registry.reservations) || !exactKeys(registry as unknown as Record<string, unknown>, ["version", "reservations"])) throw new Error();
-+    for (const [key, row] of Object.entries(registry.reservations)) {
-+      if (!KEY.test(key) || !row || typeof row !== "object" || Array.isArray(row) || !exactKeys(row as Record<string, unknown>, ["project_id", "session_id"]) || !PROJECT.test(row.project_id) || !ID.test(row.session_id)) throw new Error();
++function fixtureRoot(): string {
++  const root = join(getAgentDir(), "propagation-fixtures");
++  mkdirSync(root, { recursive: true, mode: 0o700 });
++  const details = lstatSync(root);
++  if (!details.isDirectory() || details.isSymbolicLink() || (details.mode & 0o077) !== 0) {
++    throw new Error("fixture root is not private");
++  }
++  return root;
++}
++
++function fixtureId(value: unknown): string {
++  if (typeof value !== "string" || !FIXTURE_ID.test(value)) throw new Error("invalid fixture id");
++  return value;
++}
++
++function request(value: unknown): Record<string, unknown> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
++  const body = value as Record<string, unknown>;
++  if (body.v !== 1 || typeof body.action !== "string" || typeof body.operation_id !== "string"
++      || !ID.test(body.operation_id)) throw new Error("invalid request");
++  return body;
++}
++
++async function sessionState(session: AgentSessionWrapper) {
++  const state = await session.send({ type: "get_state" });
++  if (!state || typeof state !== "object" || Array.isArray(state)) throw new Error("state unavailable");
++  const row = state as Record<string, unknown>;
++  if (row.sessionId !== session.sessionId || row.isStreaming !== false
++      || !Number.isSafeInteger(row.messageCount) || (row.messageCount as number) < 0) {
++    throw new Error("state unavailable");
++  }
++  return row as { sessionId: string; isStreaming: false; messageCount: number };
++}
++
++async function idleSession(nativeId: string, { create }: { create: boolean }): Promise<AgentSessionWrapper> {
++  let session = getRpcSession(nativeId);
++  if (!session?.isAlive()) {
++    if (!create) throw new Error("fixture process unavailable");
++    session = (await startRpcSession(nativeId, "", fixtureRoot(), {
++      sessionId: nativeId,
++      toolNames: ["read"],
++      propagationFixture: true,
++    })).session;
++  }
++  if (!session.isAlive() || session.isRunning() || session.inner.sessionId !== nativeId) {
++    throw new Error("fixture process unavailable");
++  }
++  return session;
++}
++
++function probeSucceeded(
++  events: AgentEvent[], path: string, marker: string, expectedText: string,
++): boolean {
++  const starts = events.filter((event) => event.type === "tool_execution_start");
++  const ends = events.filter((event) => event.type === "tool_execution_end");
++  const completed = events.filter((event) => event.type === "agent_end");
++  const textEnds = events.map((event) => event.assistantMessageEvent)
++    .filter((event): event is Record<string, unknown> => Boolean(
++      event && typeof event === "object" && !Array.isArray(event)
++      && (event as Record<string, unknown>).type === "text_end",
++    ));
++  if (starts.length !== 1 || ends.length !== 1 || completed.length !== 1
++      || starts[0].toolName !== "read" || ends[0].toolName !== "read"
++      || starts[0].toolCallId !== ends[0].toolCallId
++      || JSON.stringify(starts[0].args) !== JSON.stringify({ path })
++      || ends[0].isError !== false
++      || textEnds.length < 1
++      || String(textEnds.at(-1)?.content ?? "").trim() !== expectedText) return false;
++  const result = ends[0].result;
++  if (!result || typeof result !== "object" || Array.isArray(result)) return false;
++  const content = (result as Record<string, unknown>).content;
++  return Array.isArray(content) && content.length === 1
++    && content[0] && typeof content[0] === "object"
++    && (content[0] as Record<string, unknown>).type === "text"
++    && (content[0] as Record<string, unknown>).text === marker;
++}
++
++async function runProbe(
++  session: AgentSessionWrapper,
++  phase: string,
++  marker: string,
++  cancelled: Promise<void>,
++  previousMarker?: string,
++) {
++  const path = join(fixtureRoot(), `${phase}-${randomUUID()}.txt`);
++  let descriptor = -1;
++  const events: AgentEvent[] = [];
++  let resolveCompletion!: () => void;
++  let rejectCompletion!: (error: Error) => void;
++  const completion = new Promise<void>((resolve, reject) => {
++    resolveCompletion = resolve;
++    rejectCompletion = reject;
++  });
++  const unsubscribe = session.onEvent((event) => {
++    if (events.length >= MAX_EVENTS) {
++      rejectCompletion(new Error("fixture emitted too many events"));
++      return;
 +    }
-+    return registry;
-+  } catch {
-+    throw new Error("host bridge registry unavailable");
++    events.push(event);
++    if (event.type === "error" || event.type === "prompt_error") rejectCompletion(new Error("fixture turn failed"));
++    if (event.type === "agent_end") resolveCompletion();
++  });
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  try {
++    descriptor = openSync(path, "wx", 0o600);
++    writeFileSync(descriptor, marker, { encoding: "ascii" });
++    fsyncSync(descriptor);
++    closeSync(descriptor);
++    descriptor = -1;
++    const message = previousMarker === undefined
++      ? `Use the read tool exactly once on this fixture file and reply with only its exact contents: ${path}`
++      : "Reply with the exact token from your immediately preceding assistant response, then a newline. "
++        + "Use the read tool exactly once on this fixture file and append only its exact contents after "
++        + `that newline: ${path}`;
++    const sendOutcome = await Promise.race([
++      session.send({ type: "prompt", message }).then(() => "sent" as const),
++      cancelled.then(() => "cancelled" as const),
++    ]);
++    if (sendOutcome === "cancelled") throw new Error("fixture cancelled");
++    const outcome = await Promise.race([
++      completion.then(() => "completed" as const),
++      cancelled.then(() => "cancelled" as const),
++      new Promise<never>((_resolve, reject) => {
++        timer = setTimeout(() => reject(new Error("fixture turn timed out")), TURN_TIMEOUT_MS);
++      }),
++    ]);
++    if (outcome === "cancelled") throw new Error("fixture cancelled");
++    const boundaryDeadline = Date.now() + 5_000;
++    while (session.isRunning() && Date.now() < boundaryDeadline) {
++      await new Promise((resolve) => setTimeout(resolve, 20));
++    }
++    const expectedText = previousMarker === undefined ? marker : `${previousMarker}\n${marker}`;
++    if (session.isRunning() || !probeSucceeded(events, path, marker, expectedText)) {
++      throw new Error("fixture turn did not complete exactly");
++    }
++    return await sessionState(session);
++  } finally {
++    if (timer) clearTimeout(timer);
++    unsubscribe();
++    if (descriptor >= 0) closeSync(descriptor);
++    try { unlinkSync(path); } catch {}
 +  }
 +}
 +
-+function save(registry: Registry): void {
-+  mkdirSync(getAgentDir(), { recursive: true, mode: 0o700 });
-+  writePrivateFileAtomicSync(registryPath(), JSON.stringify(registry));
-+}
-+
-+function nativeId(requestKey: string): string {
-+  return `workbench-${requestKey}`;
-+}
-+
-+export function bridgeAuthorized(value: string | null): boolean {
-+  const token = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
-+  if (!token || !value || !value.startsWith("Bearer ")) return false;
-+  const supplied = Buffer.from(value.slice(7));
-+  const expected = Buffer.from(token);
-+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
-+}
-+
-+export async function ensureWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
-+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
-+  const body = value as Record<string, unknown>;
-+  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES) throw new Error("invalid request");
-+  const registry = load();
-+  const prior = registry.reservations[body.request_key];
-+  if (prior && prior.project_id !== body.project_id) throw new Error("request conflict");
-+  const session_id = prior?.session_id ?? nativeId(body.request_key);
-+  if (!prior) {
-+    registry.reservations[body.request_key] = { project_id: body.project_id, session_id };
-+    save(registry);
++function observation(session: AgentSessionWrapper, startedAt: string, historyProbePassed: boolean) {
++  const observed = observePropagationSession(session.sessionId);
++  if (!observed.loaded || observed.busy || !observed.model || !observed.catalog_digest) {
++    throw new Error("loaded state unavailable");
 +  }
-+  if (!getRpcSession(session_id)?.isAlive()) {
-+    const path = await resolveSessionPath(session_id);
-+    await startRpcSession(session_id, path ?? "", body.cwd, { sessionId: session_id });
++  return {
++    schema: "pi-web-propagation-turn/v1" as const,
++    started_at: startedAt,
++    completed_at: utcSeconds(),
++    native_session_id: session.sessionId,
++    process_generation: session.propagationProcessGeneration,
++    configured_route: true,
++    provider: observed.model.provider,
++    model: observed.model.id,
++    context_tokens: observed.model.contextWindow,
++    max_output_tokens: observed.model.maxTokens,
++    loaded_catalog_digest: observed.catalog_digest,
++    turn_completed: true,
++    tool_probe_passed: true,
++    history_probe_passed: historyProbePassed,
++    fallback_used: false,
++  };
++}
++
++export async function runPropagationAcceptance(value: unknown) {
++  const body = request(value);
++  const operationId = body.operation_id as string;
++  const nativeId = fixtureId(body.native_id);
++  if (body.action === "prepare_existing") {
++    if (!exactKeys(body, ["v", "action", "operation_id", "native_id"])) throw new Error("invalid request");
++    const prepared = reserveOperation(operationId, nativeId);
++    let session: AgentSessionWrapper | undefined;
++    try {
++      session = await idleSession(nativeId, { create: true });
++      prepared.session = session;
++      prepared.processGeneration = session.propagationProcessGeneration;
++      prepared.historyMarker = `PI-FIXTURE-${randomUUID().replaceAll("-", "")}`;
++      requireNotCancelled(operationId, nativeId);
++      const state = await runProbe(
++        session, "before", prepared.historyMarker, prepared.cancelled,
++      );
++      if (registry().get(operationId) !== prepared || !session.isAlive()) throw new Error("fixture cancelled");
++      prepared.messageCount = state.messageCount;
++      prepared.preparedAt = utcSeconds();
++      return {
++        schema: "pi-web-propagation-fixture/v1" as const,
++        prepared_at: prepared.preparedAt,
++        native_session_id: nativeId,
++        process_generation: prepared.processGeneration,
++        history_marker: prepared.historyMarker,
++      };
++    } catch (error) {
++      if (registry().get(operationId) === prepared) registry().delete(operationId);
++      if (session?.isAlive()) await session.shutdown();
++      throw error;
++    } finally {
++      endFlight(prepared);
++    }
 +  }
-+  return { session_id };
-+}
-+
-+function sameCwd(first: string, second: string): boolean {
-+  return resolve(first) === resolve(second);
-+}
-+
-+export async function associateWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
-+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
-+  const body = value as Record<string, unknown>;
-+  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd", "native_id"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES || typeof body.native_id !== "string" || !ID.test(body.native_id)) throw new Error("invalid request");
-+  const path = await resolveSessionPath(body.native_id);
-+  if (!path || !sameCwd(SessionManager.open(path).getCwd(), body.cwd)) throw new Error("native session is outside the declared root");
-+  const registry = load();
-+  const prior = registry.reservations[body.request_key];
-+  if (prior && (prior.project_id !== body.project_id || prior.session_id !== body.native_id)) throw new Error("request conflict");
-+  if (!prior) {
-+    registry.reservations[body.request_key] = { project_id: body.project_id, session_id: body.native_id };
-+    save(registry);
++  if (body.action === "complete_existing") {
++    if (!exactKeys(body, ["v", "action", "operation_id", "native_id"])) throw new Error("invalid request");
++    requireNotCancelled(operationId, nativeId);
++    const prepared = registry().get(operationId);
++    if (!prepared || !prepared.preparedAt || prepared.nativeId !== nativeId) throw new Error("fixture process changed");
++    beginFlight(prepared);
++    let session: AgentSessionWrapper | undefined;
++    try {
++      session = await idleSession(nativeId, { create: false });
++      if (prepared.session !== session
++          || prepared.processGeneration !== session.propagationProcessGeneration) {
++        throw new Error("fixture process changed");
++      }
++      const startedAt = utcSeconds();
++      const state = await runProbe(
++        session,
++        "after",
++        `PI-FIXTURE-${randomUUID().replaceAll("-", "")}`,
++        prepared.cancelled,
++        prepared.historyMarker,
++      );
++      if (state.messageCount <= prepared.messageCount) throw new Error("fixture history did not advance");
++      return observation(session, startedAt, true);
++    } finally {
++      if (registry().get(operationId) === prepared) registry().delete(operationId);
++      if (session?.isAlive()) await session.shutdown();
++      endFlight(prepared);
++    }
 +  }
-+  return { session_id: body.native_id };
++  if (body.action === "cancel_existing") {
++    if (!exactKeys(body, ["v", "action", "operation_id", "native_id"])) throw new Error("invalid request");
++    const prepared = registry().get(operationId);
++    const priorCancellation = cancellations().get(operationId);
++    const priorClosed = closedCancellations().get(operationId);
++    if ((prepared && prepared.nativeId !== nativeId)
++        || (priorCancellation !== undefined && priorCancellation !== nativeId)
++        || (priorClosed !== undefined && priorClosed !== nativeId)) {
++      throw new Error("fixture identity conflict");
++    }
++    if (!prepared) {
++      if (priorClosed === nativeId) {
++        return { schema: "pi-web-propagation-cancel/v1" as const, closed: true };
++      }
++      cancellations().set(operationId, nativeId);
++      throw new Error("fixture ownership unavailable");
++    }
++    cancellations().set(operationId, nativeId);
++    prepared.cancel();
++    await prepared.inFlight;
++    const session = prepared.session;
++    if (session?.isAlive()) await session.shutdown();
++    if (session?.isAlive()) throw new Error("fixture process did not stop");
++    if (registry().get(operationId) === prepared) registry().delete(operationId);
++    if (!prepared.processGeneration) {
++      throw new Error("fixture process identity unavailable");
++    }
++    closedCancellations().set(operationId, nativeId);
++    return { schema: "pi-web-propagation-cancel/v1" as const, closed: true };
++  }
++  if (body.action === "accept_new") {
++    if (!exactKeys(body, ["v", "action", "operation_id", "native_id", "previous_native_id"])) {
++      throw new Error("invalid request");
++    }
++    const previous = fixtureId(body.previous_native_id);
++    if (previous === nativeId) throw new Error("fixture conflict");
++    const pending = reserveOperation(operationId, nativeId);
++    const startedAt = utcSeconds();
++    let session: AgentSessionWrapper | undefined;
++    try {
++      session = await idleSession(nativeId, { create: true });
++      pending.session = session;
++      pending.processGeneration = session.propagationProcessGeneration;
++      requireNotCancelled(operationId, nativeId);
++      await runProbe(
++        session, "new", `PI-FIXTURE-${randomUUID().replaceAll("-", "")}`,
++        pending.cancelled,
++      );
++      if (registry().get(operationId) !== pending || !session.isAlive()) throw new Error("fixture cancelled");
++      return observation(session, startedAt, false);
++    } finally {
++      if (registry().get(operationId) === pending) registry().delete(operationId);
++      if (session?.isAlive()) await session.shutdown();
++      endFlight(pending);
++    }
++  }
++  throw new Error("invalid request");
 +}
-+
-+export async function listWorkbenchSessions(): Promise<{ native_id: string; title: string; running: boolean }[]> {
-+  const sessions = mergeSessionLists(await listAllSessions(), getRpcSessionInfos());
-+  if (sessions.length > 512) throw new Error("native session inventory exceeds the declared bridge limit");
-+  return sessions.map((session) => ({
-+    native_id: session.id,
-+    title: (session.name || "Untitled session").slice(0, 192),
-+    running: Boolean(getRpcSession(session.id)?.isRunning()),
-+  }));
-+}
-diff --git a/next.config.ts b/next.config.ts
-index 0bc12b4..9f60107 100644
---- a/next.config.ts
-+++ b/next.config.ts
-@@ -14,6 +14,7 @@ try {
- const nextConfig: NextConfig = {
-   outputFileTracingRoot: configDir,
-   experimental: {
-+    cpus: 2,
-     // proxy.ts matches /api/:path*, and Next buffers the request body whenever
-     // a proxy is present, capped at 10 MB by default. The upload route accepts
-     // up to 100 MB per request, so raise the buffer above that or large uploads
 diff --git a/lib/propagation-observer-auth.ts b/lib/propagation-observer-auth.ts
 new file mode 100644
+index 0000000..7e740fb
 --- /dev/null
 +++ b/lib/propagation-observer-auth.ts
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,28 @@
 +import { timingSafeEqual } from "node:crypto";
 +
 +const OBSERVER_TOKEN = /^[A-Za-z0-9_-]{32,256}$/;
++
++function authorizedToken(value: string | null, candidate: string | undefined): boolean {
++  if (!candidate || !OBSERVER_TOKEN.test(candidate) || !value || !value.startsWith("Bearer ")) return false;
++  const supplied = Buffer.from(value.slice(7));
++  const expected = Buffer.from(candidate);
++  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
++}
 +
 +export function propagationObserverAuthorized(value: string | null): boolean {
 +  const observer = process.env.PI_WEB_PROPAGATION_OBSERVER_TOKEN;
 +  const bridge = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
 +  const password = process.env.PI_WEB_PASSWORD;
-+  if (!observer || !OBSERVER_TOKEN.test(observer) || observer === bridge || observer === password
-+      || !value || !value.startsWith("Bearer ")) return false;
-+  const supplied = Buffer.from(value.slice(7));
-+  const expected = Buffer.from(observer);
-+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
++  return Boolean(observer && observer !== bridge && observer !== password
++    && observer !== process.env.PI_WEB_PROPAGATION_ACCEPTANCE_TOKEN
++    && authorizedToken(value, observer));
++}
++
++export function propagationAcceptanceAuthorized(value: string | null): boolean {
++  const acceptance = process.env.PI_WEB_PROPAGATION_ACCEPTANCE_TOKEN;
++  const observer = process.env.PI_WEB_PROPAGATION_OBSERVER_TOKEN;
++  const bridge = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
++  const password = process.env.PI_WEB_PASSWORD;
++  return Boolean(acceptance && acceptance !== observer && acceptance !== bridge && acceptance !== password
++    && authorizedToken(value, acceptance));
 +}
 diff --git a/lib/propagation-observer.ts b/lib/propagation-observer.ts
 new file mode 100644
+index 0000000..04ae69b
 --- /dev/null
 +++ b/lib/propagation-observer.ts
 @@ -0,0 +1,137 @@
@@ -449,46 +776,250 @@ new file mode 100644
 +    catalog_digest: catalogDigestValue,
 +  };
 +}
-diff --git a/app/api/propagation/session-state/route.ts b/app/api/propagation/session-state/route.ts
+diff --git a/lib/rpc-manager.ts b/lib/rpc-manager.ts
+index d3d67c8..a661a04 100644
+--- a/lib/rpc-manager.ts
++++ b/lib/rpc-manager.ts
+@@ -165,6 +165,8 @@ export interface RpcSessionStartOptions {
+   initialModel?: { provider: string; modelId: string };
+   allowInitialModelFallback?: boolean;
+   thinkingLevel?: ThinkingLevel;
++  sessionId?: string;
++  propagationFixture?: boolean;
+ }
+ 
+ const CODING_TOOL_NAMES = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
+@@ -217,6 +219,8 @@ function withExtensionTools(session: AgentSessionLike, toolNames: string[]): str
+ // ============================================================================
+ 
+ export class AgentSessionWrapper {
++  /** Opaque identity for this exact in-memory wrapper; never survives recreation. */
++  public readonly propagationProcessGeneration = `piweb-${randomUUID()}`;
+   private listeners: EventListener[] = [];
+   private activeToolEvents = new Map<string, AgentEvent>();
+   private pendingUiResponses = new Map<string, PendingUiResponse>();
+@@ -1952,6 +1956,10 @@ export async function startRpcSession(
+   options: RpcSessionStartOptions = {},
+ ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
+   const { initialModel, allowInitialModelFallback, thinkingLevel } = options;
++  const propagationFixture = options.propagationFixture === true;
++  if (propagationFixture && (sessionFile || initialModel || thinkingLevel || allowInitialModelFallback)) {
++    throw new Error("Propagation fixtures cannot restore or override a model");
++  }
+   const requestedToolNames = options.toolNames === undefined
+     ? undefined
+     : validateSessionToolSelection(options.toolNames);
+@@ -1969,7 +1977,7 @@ export async function startRpcSession(
+     sessionManager = SessionManager.open(sessionFile, undefined);
+   } else {
+     if (!cwd) throw new Error("cwd is required for a new session");
+-    sessionManager = SessionManager.create(cwd, undefined);
++    sessionManager = SessionManager.create(cwd, undefined, options.sessionId ? { id: options.sessionId } : undefined);
+   }
+   const sessionCwd = sessionManager.getCwd();
+   const subagentResources = sessionFile
+@@ -1996,8 +2004,8 @@ export async function startRpcSession(
+ 
+     // Determine which tools to pass based on requested toolNames.
+     // Since v0.68.0, session creation expects string[] tool names instead of Tool[] instances.
+-    let toolsOption: string[] | undefined = subagentResources?.tools;
+-    if (!subagentResources && selectedToolNames !== undefined) {
++    let toolsOption: string[] | undefined = propagationFixture ? ["read"] : subagentResources?.tools;
++    if (!propagationFixture && !subagentResources && selectedToolNames !== undefined) {
+       // toolNames === [] -> "all off" (an empty allow-list disables every tool).
+       // Otherwise DO NOT pass a builtin-only allow-list: passing CODING_TOOL_NAMES
+       // set allowedToolNames to coding builtins only, which filtered every
+@@ -2012,7 +2020,9 @@ export async function startRpcSession(
+     // before the SDK restores the saved model from the session file.
+     // Gate untrusted project extensions so opening a repository does not run
+     // its .pi/extensions code automatically (see lib/project-trust.ts, #236).
+-    const trustReloadOptions = subagentResources
++    const trustReloadOptions = propagationFixture
++      ? undefined
++      : subagentResources
+       ? subagentLoadsResources
+         ? projectTrustReloadOptions(sessionCwd, agentDir)
+         : undefined
+@@ -2031,7 +2041,15 @@ export async function startRpcSession(
+       cwd: sessionCwd,
+       agentDir,
+       settingsManager,
+-      resourceLoaderOptions: subagentResources
++      resourceLoaderOptions: propagationFixture
++        ? {
++            noExtensions: true,
++            noSkills: true,
++            noPromptTemplates: true,
++            noThemes: true,
++            noContextFiles: true,
++          }
++        : subagentResources
+         ? {
+             noExtensions: !subagentResources.loadExtensions,
+             noSkills: !subagentResources.loadSkills,
+@@ -2125,7 +2143,9 @@ export async function startRpcSession(
+     // If specific tool names were requested (non-empty), set the active tools to the
+     // requested builtin coding tools PLUS all extension/package tools, so installed
+     // extensions stay usable in Pi Web just like in the `pi` CLI.
+-    if (!subagentResources && !chatOnly) {
++    if (propagationFixture) {
++      inner.setActiveToolsByName(["read"]);
++    } else if (!subagentResources && !chatOnly) {
+       inner.setActiveToolsByName(withExtensionTools(inner, selectedToolNames ?? inner.getActiveToolNames()));
+     }
+ 
+@@ -2145,7 +2165,7 @@ export async function startRpcSession(
+           console.error("[pi-web] failed to send completion push:", error instanceof Error ? error.message : error);
+         });
+       },
+-      suppressCompletionNotifications: Boolean(subagentResources),
++      suppressCompletionNotifications: propagationFixture || Boolean(subagentResources),
+     });
+     const realSessionId = inner.sessionId as string;
+     registerRpcWrapper(wrapper);
+diff --git a/lib/workbench-bridge.ts b/lib/workbench-bridge.ts
 new file mode 100644
+index 0000000..e840d8f
 --- /dev/null
-+++ b/app/api/propagation/session-state/route.ts
-@@ -0,0 +1,20 @@
-+import { NextResponse } from "next/server";
-+import {
-+  observePropagationSession,
-+  validPropagationNativeId,
-+} from "@/lib/propagation-observer";
-+import { propagationObserverAuthorized } from "@/lib/propagation-observer-auth";
++++ b/lib/workbench-bridge.ts
+@@ -0,0 +1,106 @@
++import { timingSafeEqual } from "crypto";
++import { existsSync, mkdirSync, readFileSync } from "fs";
++import { SessionManager } from "@earendil-works/pi-coding-agent";
++import { isAbsolute, join, resolve } from "path";
++import { writePrivateFileAtomicSync } from "./atomic-file";
++import { getRpcSession, getRpcSessionInfos, startRpcSession } from "./rpc-manager";
++import { getAgentDir, listAllSessions, mergeSessionLists, resolveSessionPath } from "./session-reader";
 +
-+export const runtime = "nodejs";
++type Reservation = { project_id: string; session_id: string };
++type Registry = { version: 1; reservations: Record<string, Reservation> };
 +
-+export function GET(request: Request) {
-+  if (!propagationObserverAuthorized(request.headers.get("authorization"))) {
-+    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
-+  }
-+  const search = new URL(request.url).searchParams;
-+  const nativeId = search.get("id");
-+  if (search.size !== 1 || !validPropagationNativeId(nativeId)) {
-+    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
-+  }
-+  return NextResponse.json(observePropagationSession(nativeId), { headers: { "Cache-Control": "no-store" } });
++const KEY = /^[a-f0-9]{64}$/;
++const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,191}$/;
++const PROJECT = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}$/;
++const MAX_CWD_BYTES = 4096;
++
++function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
++  return Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 +}
++
++function registryPath(): string {
++  return join(getAgentDir(), "workbench-host-bridge.json");
++}
++
++function load(): Registry {
++  const path = registryPath();
++  if (!existsSync(path)) return { version: 1, reservations: {} };
++  try {
++    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
++    if (!parsed || typeof parsed !== "object") throw new Error();
++    const registry = parsed as Registry;
++    if (registry.version !== 1 || !registry.reservations || typeof registry.reservations !== "object" || Array.isArray(registry.reservations) || !exactKeys(registry as unknown as Record<string, unknown>, ["version", "reservations"])) throw new Error();
++    for (const [key, row] of Object.entries(registry.reservations)) {
++      if (!KEY.test(key) || !row || typeof row !== "object" || Array.isArray(row) || !exactKeys(row as Record<string, unknown>, ["project_id", "session_id"]) || !PROJECT.test(row.project_id) || !ID.test(row.session_id)) throw new Error();
++    }
++    return registry;
++  } catch {
++    throw new Error("host bridge registry unavailable");
++  }
++}
++
++function save(registry: Registry): void {
++  mkdirSync(getAgentDir(), { recursive: true, mode: 0o700 });
++  writePrivateFileAtomicSync(registryPath(), JSON.stringify(registry));
++}
++
++function nativeId(requestKey: string): string {
++  return `workbench-${requestKey}`;
++}
++
++export function bridgeAuthorized(value: string | null): boolean {
++  const token = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN;
++  if (!token || !value || !value.startsWith("Bearer ")) return false;
++  const supplied = Buffer.from(value.slice(7));
++  const expected = Buffer.from(token);
++  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
++}
++
++export async function ensureWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
++  const body = value as Record<string, unknown>;
++  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES) throw new Error("invalid request");
++  const registry = load();
++  const prior = registry.reservations[body.request_key];
++  if (prior && prior.project_id !== body.project_id) throw new Error("request conflict");
++  const session_id = prior?.session_id ?? nativeId(body.request_key);
++  if (!prior) {
++    registry.reservations[body.request_key] = { project_id: body.project_id, session_id };
++    save(registry);
++  }
++  if (!getRpcSession(session_id)?.isAlive()) {
++    const path = await resolveSessionPath(session_id);
++    await startRpcSession(session_id, path ?? "", body.cwd, { sessionId: session_id });
++  }
++  return { session_id };
++}
++
++function sameCwd(first: string, second: string): boolean {
++  return resolve(first) === resolve(second);
++}
++
++export async function associateWorkbenchSession(value: unknown): Promise<{ session_id: string }> {
++  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid request");
++  const body = value as Record<string, unknown>;
++  if (!exactKeys(body, ["v", "request_key", "project_id", "cwd", "native_id"]) || body.v !== 1 || typeof body.request_key !== "string" || !KEY.test(body.request_key) || typeof body.project_id !== "string" || !PROJECT.test(body.project_id) || typeof body.cwd !== "string" || !isAbsolute(body.cwd) || Buffer.byteLength(body.cwd, "utf8") > MAX_CWD_BYTES || typeof body.native_id !== "string" || !ID.test(body.native_id)) throw new Error("invalid request");
++  const path = await resolveSessionPath(body.native_id);
++  if (!path || !sameCwd(SessionManager.open(path).getCwd(), body.cwd)) throw new Error("native session is outside the declared root");
++  const registry = load();
++  const prior = registry.reservations[body.request_key];
++  if (prior && (prior.project_id !== body.project_id || prior.session_id !== body.native_id)) throw new Error("request conflict");
++  if (!prior) {
++    registry.reservations[body.request_key] = { project_id: body.project_id, session_id: body.native_id };
++    save(registry);
++  }
++  return { session_id: body.native_id };
++}
++
++export async function listWorkbenchSessions(): Promise<{ native_id: string; title: string; running: boolean }[]> {
++  const sessions = mergeSessionLists(await listAllSessions(), getRpcSessionInfos());
++  if (sessions.length > 512) throw new Error("native session inventory exceeds the declared bridge limit");
++  return sessions.map((session) => ({
++    native_id: session.id,
++    title: (session.name || "Untitled session").slice(0, 192),
++    running: Boolean(getRpcSession(session.id)?.isRunning()),
++  }));
++}
+diff --git a/next.config.ts b/next.config.ts
+index 0bc12b4..9f60107 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -14,6 +14,7 @@ try {
+ const nextConfig: NextConfig = {
+   outputFileTracingRoot: configDir,
+   experimental: {
++    cpus: 2,
+     // proxy.ts matches /api/:path*, and Next buffers the request body whenever
+     // a proxy is present, capped at 10 MB by default. The upload route accepts
+     // up to 100 MB per request, so raise the buffer above that or large uploads
 diff --git a/proxy.ts b/proxy.ts
-index bb9a32c..cc27f23 100644
+index bb9a32c..205216a 100644
 --- a/proxy.ts
 +++ b/proxy.ts
-@@ -3,6 +3,7 @@ import {
+@@ -3,6 +3,10 @@ import {
    isApiRequestAllowed,
    isApiRequestHostAllowed,
  } from "@/lib/request-security";
-+import { propagationObserverAuthorized } from "@/lib/propagation-observer-auth";
++import {
++  propagationAcceptanceAuthorized,
++  propagationObserverAuthorized,
++} from "@/lib/propagation-observer-auth";
  import {
    isValidWebSessionToken,
    isValidBasicAuthorization,
-@@ -24,2 +25,14 @@ export function proxy(request: NextRequest) {
-    return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
-  }
+@@ -23,6 +27,29 @@ export function proxy(request: NextRequest) {
+     }
+     return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
+   }
 +  const isPropagationObserverRequest = request.method === "GET"
 +    && request.nextUrl.pathname === "/api/propagation/session-state";
 +  if (isPropagationObserverRequest) {
@@ -500,4 +1031,18 @@ index bb9a32c..cc27f23 100644
 +      headers: { "Cache-Control": "no-store" },
 +    });
 +  }
++  const isPropagationAcceptanceRequest = request.method === "POST"
++    && request.nextUrl.pathname === "/api/propagation/session-acceptance";
++  if (isPropagationAcceptanceRequest) {
++    if (propagationAcceptanceAuthorized(request.headers.get("authorization"))) {
++      return NextResponse.next();
++    }
++    return new NextResponse("Authentication required", {
++      status: 401,
++      headers: { "Cache-Control": "no-store" },
++    });
++  }
 +
+ 
+   const password = process.env.PI_WEB_PASSWORD;
+   if (!isWebPasswordEnabled(password)) {

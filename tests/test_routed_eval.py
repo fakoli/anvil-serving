@@ -468,3 +468,76 @@ def test_routed_eval_integrates_real_client_catalog_reconciler(tmp_path):
     }
     assert by_id["llm.secondary"]["contextWindow"] == 262_144
     assert json.loads(state.read_text(encoding="utf-8"))["config_sha256"] == ROUTER_SHA
+
+
+def test_configured_route_native_session_resume_uses_history_without_overrides(tmp_path):
+    """Both clients must expose the same native session and actual configured route."""
+    probe = tmp_path / 'fixture.txt'
+    probe.write_text('next-marker')
+    for client in ('hermes', 'openclaw'):
+        def runner(argv, _timeout):
+            assert '--model' not in argv and '--provider' not in argv
+            prompt = argv[argv.index('-q' if client == 'hermes' else '--message') + 1]
+            assert 'previous-secret-marker' not in prompt
+            assert 'new file contents' in prompt
+            expected = 'previous-secret-marker next-marker'
+            if client == 'hermes':
+                assert '-z' not in argv and '--no-restore-cwd' in argv
+                assert argv[argv.index('--resume') + 1] == 'owned-session'
+                Path(argv[argv.index('--usage-file') + 1]).write_text(json.dumps({
+                    'session_id': 'owned-session', 'provider': 'custom', 'model': 'llm.primary',
+                    'completed': True, 'failed': False, 'api_calls': 1}))
+                return SimpleNamespace(returncode=0, stderr='', stdout=expected)
+            assert argv[argv.index('--session-id') + 1] == 'owned-session'
+            return SimpleNamespace(returncode=0, stderr='', stdout=json.dumps({
+                'status': 'ok', 'result': {'payloads': [{'text': expected}], 'meta': {
+                    'agentMeta': {'sessionId': 'owned-session', 'provider': 'anvil',
+                                  'model': 'llm.primary', 'contextTokens': 8192},
+                    'executionTrace': {'winnerProvider': 'anvil', 'winnerModel': 'llm.primary',
+                                       'fallbackUsed': False}}}}))
+        kwargs = dict(alias='llm.primary', provider='anvil', marker='next-marker',
+                      probe_path=str(probe), timeout_seconds=10, runner=runner,
+                      configured_route=True, session_id='owned-session',
+                      previous_marker='previous-secret-marker')
+        result = (routed_eval.evaluate_hermes(**kwargs, expected_observed_provider='custom')
+                  if client == 'hermes' else routed_eval.evaluate_openclaw(
+                      **kwargs, expected_context_tokens=8192, run_id='owned-fixture'))
+        assert result['passed'] is True
+        assert result['observed']['session_id'] == 'owned-session'
+        assert result['checks']['session_preserved'] is True
+        assert 'previous-secret-marker' not in json.dumps(result)
+
+
+def test_native_session_change_and_missing_receipt_fail_closed(tmp_path):
+    import pytest
+    for returned_id in ('different-session', None, 'untrusted/path'):
+        def runner(argv, _timeout):
+            Path(argv[argv.index('--usage-file') + 1]).write_text(json.dumps({
+                'session_id': returned_id, 'provider': 'custom', 'model': 'llm.primary',
+                'completed': True, 'failed': False, 'api_calls': 1}))
+            return SimpleNamespace(returncode=0, stderr='', stdout='nonce')
+        result = routed_eval.evaluate_hermes(alias='llm.primary', provider='anvil',
+            expected_observed_provider='custom', marker='nonce', probe_path='/fixture',
+            timeout_seconds=10, runner=runner, configured_route=True, session_id='owned-session')
+        assert not result['passed']
+        assert not result['checks']['session_preserved']
+        if returned_id == 'untrusted/path':
+            assert result['observed']['session_id'] is None
+    with pytest.raises(ValueError, match='native session identity'):
+        routed_eval.evaluate_hermes(alias='llm.primary', provider='anvil',
+            expected_observed_provider='custom', marker='nonce', probe_path='/fixture',
+            timeout_seconds=10, session_id='untrusted/path')
+
+
+def test_configured_new_session_requires_native_identity(tmp_path):
+    def runner(argv, _timeout):
+        assert '--resume' not in argv and '--model' not in argv and '--provider' not in argv
+        Path(argv[argv.index('--usage-file') + 1]).write_text(json.dumps({
+            'provider': 'custom', 'model': 'llm.primary', 'completed': True,
+            'failed': False, 'api_calls': 1}))
+        return SimpleNamespace(returncode=0, stderr='', stdout='nonce')
+    result = routed_eval.evaluate_hermes(alias='llm.primary', provider='anvil',
+        expected_observed_provider='custom', marker='nonce', probe_path='/fixture',
+        timeout_seconds=10, runner=runner, configured_route=True)
+    assert not result['passed']
+    assert not result['checks']['session_identified']
