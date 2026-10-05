@@ -36,3 +36,13 @@ It published its child-PID readiness file before registering its SIGTERM handler
 The parent could terminate the process in that gap. Publish readiness after
 handler registration; production cleanup and the exit/group-removal assertions
 remain unchanged. Retain the failed run, then require a fresh complete CI run.
+
+## Browser CI diagnosis
+
+The next CI run failed the existing Jev abstention freshness test with the
+intentionally opaque `owner_failed` error (86 other browser tests passed).
+The isolated test passed locally, so the underlying cause remains unresolved.
+Add test-only scenario/phase and bounded CDP-method/error-class observations on
+failure. Do not forward browser payloads or raw transport errors, change runtime
+behavior, relax freshness assertions, or increase timeouts. A fresh CI run must
+retain these observations if the failure recurs.

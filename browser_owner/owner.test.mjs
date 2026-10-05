@@ -69,7 +69,7 @@ async function screenshotGate(page) {
   return { entered, release: releaseResolve, restore: () => { page.screenshot = real; } };
 }
 
-function trustedPageHook() {
+function trustedPageHook(diagnostics) {
   let resolvePage;
   const page = new Promise((resolve) => { resolvePage = resolve; });
   return {
@@ -78,9 +78,27 @@ function trustedPageHook() {
       const newContext = browser.newContext.bind(browser);
       browser.newContext = async (...args) => {
         const context = await newContext(...args);
+        if (diagnostics) {
+          const newCDPSession = context.newCDPSession.bind(context);
+          context.newCDPSession = async (...sessionArgs) => {
+            const session = await newCDPSession(...sessionArgs), send = session.send.bind(session);
+            session.send = async (method, ...methodArgs) => {
+              try { return await send(method, ...methodArgs); }
+              catch (error) { diagnostics(method, error); throw error; }
+            };
+            return session;
+          };
+        }
         const newPage = context.newPage.bind(context);
         context.newPage = async (...pageArgs) => {
           const value = await newPage(...pageArgs);
+          if (diagnostics) {
+            const screenshot = value.screenshot.bind(value);
+            value.screenshot = async (...screenshotArgs) => {
+              try { return await screenshot(...screenshotArgs); }
+              catch (error) { diagnostics("page.screenshot", error); throw error; }
+            };
+          }
           resolvePage(value);
           return value;
         };
@@ -492,21 +510,42 @@ test("owner Jev consumer rejects malformed selections and keeps disabled and non
 test("owner Jev rechecks every abstention after mutation, navigation, and expiry", { timeout: 30_000 }, async (t) => {
   const site = await fixture(), abstentions = ["NO_MATCH_IN_CANDIDATES", "AMBIGUOUS", "NEEDS_VISUAL_EVIDENCE"];
   t.after(() => site.close());
+  // The owner deliberately hides raw transport errors. Keep CI diagnosis in this
+  // synthetic test, without logging browser payloads or changing owner behavior.
+  let scenario = "setup", phase = "setup";
+  const failures = [];
+  const diagnostic = (method, error) => {
+    if (failures.length < 8) failures.push({ scenario, phase, method: /^(?:Page|Runtime)\.[A-Za-z]+$/.test(method) || method === "page.screenshot" ? method : "other", error_class: error?.name === "TimeoutError" ? "TimeoutError" : error instanceof Error ? "Error" : "other" });
+  };
+  try {
   for (const change of ["mutation", "navigation"]) for (const choice of abstentions) {
-    const trusted = trustedPageHook(); let release, entered; const wait = new Promise((resolve) => { release = resolve; }), started = new Promise((resolve) => { entered = resolve; });
+    scenario = `${change}-${choice}`; phase = "create";
+    const trusted = trustedPageHook(diagnostic); let release, entered; const wait = new Promise((resolve) => { release = resolve; }), started = new Promise((resolve) => { entered = resolve; });
     const core = await owner(site.origin, {}, undefined, trusted.prepare, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); entered(); await wait; return { code: 0, stdout: answer(projection, choice, projection.entities.map((entity) => entity.id)) }; }));
     try {
-    const session = core.session(), page = await trusted.page; await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `${change}-${choice}` })); const pending = session.jevResolve(observation.observation_id); await started;
+    const session = core.session(), page = await trusted.page;
+    phase = "navigate"; await session.navigate(`${site.origin}/`);
+    phase = "capture"; const observation = await session.capture(captureRequest({ request_id: `${change}-${choice}` }));
+    phase = "jev-start"; const pending = session.jevResolve(observation.observation_id); await started;
+    phase = change;
     if (change === "mutation") await page.evaluate(() => document.querySelector("button").setAttribute("data-after-reply", "yes")); else await page.goto(`${site.origin}/`);
-    release(); assert.equal((await pending).outcome, change === "mutation" ? "stale_observation" : "unknown_observation");
+    phase = "reply"; release(); assert.equal((await pending).outcome, change === "mutation" ? "stale_observation" : "unknown_observation");
     } finally { await core.close(); }
   }
   for (const choice of abstentions) {
+    scenario = `expiry-${choice}`; phase = "create";
+    const trusted = trustedPageHook(diagnostic);
     let tick = 0;
-    const core = await owner(site.origin, { ttl: 5 }, () => tick, undefined, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); tick = 6; return { code: 0, stdout: answer(projection, choice, projection.entities.map((entity) => entity.id)) }; }));
+    const core = await owner(site.origin, { ttl: 5 }, () => tick, trusted.prepare, [site.origin], fakeJev(site.origin, async ({ args }) => { const projection = JSON.parse(await readFile(args[4], "utf8")); tick = 6; return { code: 0, stdout: answer(projection, choice, projection.entities.map((entity) => entity.id)) }; }));
     try {
-    const session = core.session(); await session.navigate(`${site.origin}/`); const observation = await session.capture(captureRequest({ request_id: `expiry-${choice}` })); assert.deepEqual(await session.jevResolve(observation.observation_id), { outcome: "expired_observation" });
+    const session = core.session(); phase = "navigate"; await session.navigate(`${site.origin}/`);
+    phase = "capture"; const observation = await session.capture(captureRequest({ request_id: `expiry-${choice}` }));
+    phase = "reply"; assert.deepEqual(await session.jevResolve(observation.observation_id), { outcome: "expired_observation" });
     } finally { await core.close(); }
+  }
+  } catch (error) {
+    t.diagnostic(JSON.stringify({ scenario, phase, failures }));
+    throw error;
   }
 });
 
