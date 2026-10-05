@@ -1,0 +1,129 @@
+{
+  "created_at": "2026-10-05T08:47:11.445566Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": "REDACTED_LOOPBACK_ENDPOINT",
+    "finished_at": "2026-10-05T08:47:11.445490Z",
+    "started_at": "2026-10-05T08:46:46.162617Z",
+    "submitted_at": "2026-10-05T08:35:19.638195+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-10-05T08:47:11.435784Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 262144
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+        },
+        "hardware": {
+          "gpu": "dual-96GiB-class-gpus",
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.agentic/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "repository": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+          "revision": "6909a5bed089a48fa07e956d3915af2537de9368",
+          "served_name": "candidate-local-tier-r1"
+        },
+        "runtime": {
+          "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+          "image_id": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        "served_model": {
+          "configured_context": 262144,
+          "id": "qwen38-step5500-tp2-nospec-262k-r1"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "REDACTED_RUN_OR_WORKER_ID"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "REDACTED_BENCHMARK_CONTENT"
+      },
+      "run": {
+        "ownership_id": "REDACTED_RUN_OR_WORKER_ID",
+        "profile": "scout",
+        "run_id": "REDACTED_RUN_OR_WORKER_ID",
+        "spec_sha256": "44e9b867cc94fd76db049d4b562c6afc6261110d9d41ea3b8cf9b25e5a540957",
+        "suite": "agentic"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 559,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "7b951aba2259d99e9b13051bca3cb5f2ffb71547eac2b952ed747367459295f4"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2011,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "e6d790c6a84bdc852c78da5f074260aa6564da0e2d4181e12353d5a3f854e2e9"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 36644,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "f4675963f30101db49a1eb0ea32e82fb96cb4544b23feb3aa0d5042d95e81ebf"
+            }
+          ],
+          "name": "agentic",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 18,
+        "pass_rate": 1.0,
+        "passed": 18,
+        "required_pass_rate": 0.75
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "REDACTED_RUN_OR_WORKER_ID",
+    "profile": "scout",
+    "run_id": "REDACTED_RUN_OR_WORKER_ID",
+    "spec_sha256": "44e9b867cc94fd76db049d4b562c6afc6261110d9d41ea3b8cf9b25e5a540957",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

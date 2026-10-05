@@ -1,0 +1,48 @@
+{
+  "observed_at": "2026-10-05T11:42:06.212380+00:00",
+  "router_readmit_applied": true,
+  "transition_status": {
+    "tiers": [
+      {
+        "active_requests": 0,
+        "draining": false,
+        "expected_model": "baseline-local-tier-r11",
+        "metadata_source": "configured",
+        "observed_context_limit": null,
+        "observed_model": "baseline-local-tier-r11",
+        "readiness_reason": "identity_passed",
+        "readiness_state": "ready",
+        "ready": true,
+        "reason": "admitting",
+        "state": "admitting",
+        "tier_id": "primary"
+      },
+      {
+        "active_requests": 0,
+        "draining": false,
+        "expected_model": "unchanged-secondary",
+        "metadata_source": "configured",
+        "observed_context_limit": null,
+        "observed_model": "unchanged-secondary",
+        "readiness_reason": "identity_passed",
+        "readiness_state": "ready",
+        "ready": true,
+        "reason": "admitting",
+        "state": "admitting",
+        "tier_id": "secondary"
+      }
+    ]
+  },
+  "router_source_unchanged": true,
+  "model_manifest_unchanged": true,
+  "model_manifest_sha256": "45d35f1f3aa00203471362b999dde0108307c7913f359b2127b767a52b0e9be1",
+  "candidate_unloaded": true,
+  "gpu_processes": "only restored TP0/EP0 and TP1/EP1 workers observed",
+  "shared_memory": {
+    "total_bytes": 67082244096,
+    "used_bytes": 165445632,
+    "available_bytes": 66916798464
+  },
+  "privacy": "operator addresses, GPU UUIDs, runtime container ID and source paths omitted; private raw receipts retained",
+  "promotion": false
+}

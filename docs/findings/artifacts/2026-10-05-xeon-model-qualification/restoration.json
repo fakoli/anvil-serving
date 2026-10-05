@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "status": "complete",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "baseline-preflight.json",
+      "baseline-capacity-c4-strict128.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-10-05T11:42:06.212380+00:00",
+    "evidence": [
+      "restoration-runtime-status.json",
+      "restoration-checks.json",
+      "restoration-preflight.json",
+      "restoration-routed-preflight.json",
+      "restoration-pi-tool-turn.json"
+    ]
+  },
+  "differences": [
+    "Container instance recreated with exact original model revision, image digest, recipe and registry digests; routes unchanged."
+  ],
+  "post_run_checks": [
+    "direct functional preflight passed 25/25",
+    "routed functional preflight passed 7/7",
+    "fresh Pi read-tool turn returned exact unseen fixture value",
+    "primary and secondary ready and admitting",
+    "original router and model manifest SHA256 unchanged",
+    "candidate unloaded and only restored model GPU workers observed"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

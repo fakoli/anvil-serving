@@ -1,5 +1,12 @@
 # Benchmark run catalog
 
+## 2026-10-05 Xeon model qualification campaign
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-10-05 | Qwen replacement scout | Evaluated prospective primary profile | 2x RTX PRO 6000 Blackwell Max-Q | frozen primary SWE 3/5; strict C4 128-word cell 0/4 performance-eligible | `rejected`, `no-promotion`; applies only to this evaluated profile | [Qwen dossier](models/qwen38-flash-next.md) · [finding](../findings/2026-10-05-xeon-model-qualification.md) |
+| 2026-10-05 | GLM-5.3-Flash CSF/QAD scout | Pinned QAD revision, TP2/DCP2, C4, 327,680 configured tokens, no speculation | 2x RTX PRO 6000 Blackwell Max-Q | max functional 25/25; Oracle 18/18; initial SWE 4/5; fresh-reload A1 SWE 2/5 attempts, 2/4 graded (Sphinx/Xarray resolved; Django/Pylint false; Sympy ungraded at 60 steps); exact eight-image/context/offered-C4 summaries 4/4; strict C4 0/4 performance-eligible | `rejected`, `no-promotion`; A1 misses the 4/5 floor, so B1/B2/A2 did not run. No full-window, simultaneous-C4, or speed result. Exact r11 restored: direct 25/25, routed 7/7, and fresh Pi read-tool passed; routes/manifests unchanged | [GLM dossier](models/glm53-flash.md) · [finding](../findings/2026-10-05-xeon-model-qualification.md) |
+
 ## 2026-09-26 Swift TP2 campaign
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |

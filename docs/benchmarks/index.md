@@ -5,10 +5,12 @@
 
 **2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
 
+**2026-10-05 qualification decision:** [Qwen replacement and GLM CSF/QAD evidence](../findings/2026-10-05-xeon-model-qualification.md) rejects Qwen at 3/5 and GLM after fresh-reload A1 resolved 2/5 attempts (2/4 graded), below the 4/5 floor. GLM's earlier 4/5 scout, functional 25/25, Oracle 18/18, vision, and bounded context acceptance remain retained but do not establish a reliable quality floor, full-window capacity, or speed. B1/B2/A2 did not run. Exact r11 DCP1 restoration completed with direct 25/25, routed 7/7, and a fresh Pi read-tool turn; independent review follows closure.
+
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-09-19 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-10-05 UTC.**
 
 ## Current bounded APC reference — September 19
 

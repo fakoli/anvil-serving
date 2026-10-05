@@ -1,0 +1,296 @@
+{
+  "calibration": {
+    "chars_per_token": 4.832231202547146,
+    "method": "endpoint-usage-filler-ratio/v2",
+    "request_id": null,
+    "sample_chars": 39460,
+    "sample_prompt_tokens": 8166
+  },
+  "curve": {
+    "advertised_context": 327680,
+    "attempted_buckets": [
+      319000
+    ],
+    "buckets": [
+      {
+        "completed_count": 4,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 41130.06484899597,
+          "observations": [
+            39228.96770699299,
+            39806.872610992286,
+            44087.16087699577,
+            41397.25820100284
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 4,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 319000,
+        "sample_count": 4,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-319000-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 39228.96770699299,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 316766,
+            "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+            "raw_reasoning_field": "reasoning",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 319000,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 2.4981539338984553,
+            "token_measurement": "usage",
+            "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-319000-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 39806.872610992286,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 316766,
+            "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+            "raw_reasoning_field": "reasoning",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 319000,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 3.064797408031267,
+            "token_measurement": "usage",
+            "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+            "case_id": "native-crosslink-319000-0.100-r0",
+            "case_type": "native-crosslink",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 44087.16087699577,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 316774,
+            "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+            "raw_reasoning_field": "reasoning",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 319000,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 3,
+            "throughput_tps": 12.293828616276583,
+            "token_measurement": "usage",
+            "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+            "case_id": "native-crosslink-319000-0.900-r0",
+            "case_type": "native-crosslink",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 41397.25820100284,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 316774,
+            "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+            "raw_reasoning_field": "reasoning",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 319000,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 3,
+            "throughput_tps": 5.5076111295331325,
+            "token_measurement": "usage",
+            "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 5.84109777193486,
+          "observations": [
+            2.4981539338984553,
+            3.064797408031267,
+            12.293828616276583,
+            5.5076111295331325
+          ]
+        }
+      }
+    ],
+    "effective_context": 319000,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 319000,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  },
+  "observations": [
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-319000-0.100-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 39228.96770699299,
+      "passed": true,
+      "position": 0.1,
+      "prompt_tokens": 316766,
+      "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+      "raw_reasoning_field": "reasoning",
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 319000,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 2.4981539338984553,
+      "token_measurement": "usage",
+      "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-319000-0.900-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 39806.872610992286,
+      "passed": true,
+      "position": 0.9,
+      "prompt_tokens": 316766,
+      "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+      "raw_reasoning_field": "reasoning",
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 319000,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 3.064797408031267,
+      "token_measurement": "usage",
+      "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+      "case_id": "native-crosslink-319000-0.100-r0",
+      "case_type": "native-crosslink",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 44087.16087699577,
+      "passed": true,
+      "position": 0.1,
+      "prompt_tokens": 316774,
+      "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+      "raw_reasoning_field": "reasoning",
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 319000,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 3,
+      "throughput_tps": 12.293828616276583,
+      "token_measurement": "usage",
+      "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+      "visible_answer_truncated": false
+    },
+    {
+      "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+      "case_id": "native-crosslink-319000-0.900-r0",
+      "case_type": "native-crosslink",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 41397.25820100284,
+      "passed": true,
+      "position": 0.9,
+      "prompt_tokens": 316774,
+      "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+      "raw_reasoning_field": "reasoning",
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 319000,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 3,
+      "throughput_tps": 5.5076111295331325,
+      "token_measurement": "usage",
+      "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+      "visible_answer_truncated": false
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+  "schema": "anvil-serving.context-suite-run/v1",
+  "selection": {
+    "case_ids": [
+      "native-needle",
+      "native-crosslink"
+    ],
+    "output_headroom_tokens": 8192,
+    "positions": [
+      0.1,
+      0.9
+    ],
+    "repetitions": 1,
+    "token_buckets": [
+      319000
+    ]
+  }
+}

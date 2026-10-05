@@ -1,0 +1,212 @@
+{
+  "agentic_oracle7": {
+    "attempted": 18,
+    "campaign_required_passed": 18,
+    "captured_pretty_spec_file_sha256": "17e142c5c907380469c9f4f5cea7c8ab01e830f96a3095e51c5eb8c92a6b69d0",
+    "identity_source": "glm-max2-agentic-artifact.json results.evidence.identities and results.evidence.run",
+    "native_canonical_spec_sha256": "049d8a604d013d6d670fb1ff2a95529bf4614db796b7f53e47f0f472e3dbfa68",
+    "native_observed": {
+      "attempted": 18,
+      "pass_rate": 1.0,
+      "passed": 18
+    },
+    "native_required_pass_rate": 0.75,
+    "request_controls": {
+      "reasoning_effort": "max",
+      "temperature": 1.0,
+      "thinking_mode": "default",
+      "top_p": 0.95
+    }
+  },
+  "c4_long_functional_contract": {
+    "actual_prompt_tokens": [
+      165903,
+      165905,
+      165907,
+      165908
+    ],
+    "artifact": "glm-max-c4-long-summary.json",
+    "claim_boundary": "Offered C4 client overlap only, not engine occupancy. No finish_reason is retained. Ignore emitted performance_eligible and do not use this artifact for quality, speed, or throughput claims.",
+    "complete_capture": true,
+    "completed": 4,
+    "concurrency": 4,
+    "failed": 0,
+    "foreign_markers": 0,
+    "identity_and_health_binding": {
+      "configured_context_tokens": 327680,
+      "health_claim": "Managed status was running with no OOM kill; private receipt retained outside this repository.",
+      "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+      "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+      "runtime_image_digest": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067",
+      "served_model": "candidate-glm-max-tier-r1",
+      "source": "private after-contract managed status plus retained startup/config evidence"
+    },
+    "nominal_context_tokens": 201000,
+    "own_canary_first": true,
+    "plan": "glm-max-c4-functional-plan.json",
+    "status": "passed-functional-only"
+  },
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "campaign_plan_capture": {
+    "current_file_sha256": "bd93a46fde9c472e664022410e11ccb641cf7c4a3b179f907eda26d2876b0973",
+    "meaning": "Hash of the campaign-plan file captured during this active campaign; live-progress text is mutable and this is not a pre-first-request attestation."
+  },
+  "comparison_limit": {
+    "allowed_interpretation": "Supports the absolute >=4/5 replacement floor only. It does not support a matched causal quantization, hardware, or coding-improvement claim versus r11.",
+    "shared_controls": "The r11 and candidate scouts use the same five-task selection, scout profile, package set, mini-SWE agent, and grader pins.",
+    "thinking_controls": "r11 retained control: thinking enabled with no explicit reasoning effort; Qwen: default/medium; GLM: default/max."
+  },
+  "context256_64_contract": {
+    "actual_prompt_tokens": [
+      247617,
+      247617,
+      247638,
+      247638
+    ],
+    "artifact": "glm-max-context256-64-artifact.json",
+    "claim_boundary": "Proves four successful requests at the retained actual prompts with 65536 accepted output headroom. It does not prove a full 327680-token request or a generated 65536-token completion.",
+    "completed_count": 4,
+    "configured_context_tokens": 327680,
+    "max_tokens_accepted": 65536,
+    "native_artifact": "glm-max-context256-64-native.json",
+    "nominal_requested_tokens": 250000,
+    "passed_count": 4,
+    "status": "passed-with-bounded-claim"
+  },
+  "context319_8_contract": {
+    "actual_prompt_tokens": [
+      316766,
+      316766,
+      316774,
+      316774
+    ],
+    "artifact": "glm-max-context319-8-artifact.json",
+    "claim_boundary": "Proves four successful requests at the retained actual prompts with 8192 accepted output headroom. It does not prove a full 327680-token request or a generated 8192-token completion.",
+    "completed_count": 4,
+    "configured_context_tokens": 327680,
+    "max_tokens_accepted": 8192,
+    "native_artifact": "glm-max-context319-8-native.json",
+    "nominal_requested_tokens": 319000,
+    "passed_count": 4,
+    "status": "passed-with-bounded-claim"
+  },
+  "identity": {
+    "configured_context_tokens": 327680,
+    "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+    "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+    "runtime_engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+    "runtime_image_digest": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+  },
+  "matched_swe_plan": {
+    "claim_boundary": "Original scout time is excluded. Every replica requires Oracle 18/18 and SWE >=4/5; pair and aggregate speed gates each require at least 10% candidate advantage.",
+    "current_period": {
+      "agent_duration_s": 3321.827074,
+      "claim_boundary": "A1 fails the 4/5 quality gate. B1, B2, and A2 were not run; no comparative speed claim.",
+      "long_tool": {
+        "actual_prompt_tokens": 110760,
+        "passed": true,
+        "requested_context_tokens": 131072
+      },
+      "official_grader_duration_s": 95.808019,
+      "oracle": {
+        "attempted": 18,
+        "pass_rate": 1.0,
+        "passed": 18,
+        "required_pass_rate": 0.75
+      },
+      "period": "candidate-A1",
+      "preflight": "25/25 passed",
+      "swe_campaign_full_attempt_metric": "2/5",
+      "swe_native_summary": {
+        "attempted": 5,
+        "graded": 4,
+        "resolve_rate": 0.5,
+        "resolved": 2
+      },
+      "swe_officially_graded_metric": "2/4 (resolve_rate 0.5)",
+      "ungraded_instance_ids": [
+        "sympy__sympy-12096"
+      ],
+      "unresolved_instance_ids": [
+        "django__django-13512",
+        "pylint-dev__pylint-8898"
+      ]
+    },
+    "early_stop_artifact": "matched-swe-early-stop.json",
+    "order": [
+      "candidate-A1",
+      "incumbent-B1",
+      "incumbent-B2",
+      "candidate-A2"
+    ],
+    "plan": "matched-swe-plan.json",
+    "primary_measure": "officially resolved SWE tasks per hour of SWE agent-stage duration_s",
+    "quality_gate": {
+      "oracle_attempted": 18,
+      "oracle_passed": 18,
+      "swe_attempted": 5,
+      "swe_min_resolved": 4
+    },
+    "source_status_artifact": "matched-a1-source-status.json",
+    "speed_requirement": "candidate/incumbent >=1.10 aggregate AND A1/B1 >=1.10 AND A2/B2 >=1.10",
+    "status": "partial; aborted after candidate A1 quality gate",
+    "warmup_addendum": "matched-swe-warmup-addendum.json"
+  },
+  "profile": {
+    "name": "scout",
+    "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+  },
+  "schema": "anvil-serving.workload-manifest/v1",
+  "status": "active closure; matched-SWE partial and aborted after A1 quality gate; restoration pending parent control",
+  "swe_verified_scout5": {
+    "captured_pretty_spec_file_sha256": "7ba66d9ee28ab7499838bda0a5a75995c91fe8582d10403c2c1817220c88451c",
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "identity_source": "glm-max2-swe-scout5-spec.json parameters.identities",
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "native_canonical_spec_sha256": "f9265e8dfd098c10bdee7a953996f3fc44b65fb93862151e727d12ab8074991a",
+    "native_plan_sha256": "9640c1a859c948334c7cbcc7499cc182207d0a8dfda3f988d4b5039626c4395b",
+    "native_selection_sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4",
+    "native_summary": {
+      "attempted": 5,
+      "graded": 5,
+      "resolve_rate": 0.8,
+      "resolved": 4
+    },
+    "official_grader_complete": true,
+    "required_resolved": 4,
+    "resolved_instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "split": "test",
+    "stage_duration_s": {
+      "agent": 2121.469953,
+      "official_grader": 109.970112
+    },
+    "status": "completed; official grader complete",
+    "timing_interpretation": "Agent and grader stages overlapped offline CPU tests; durations are not comparative performance evidence.",
+    "unresolved_instance_ids": [
+      "django__django-13512"
+    ]
+  },
+  "vision8_contract": {
+    "artifact": "glm-max-vision8.json",
+    "corpus": "exact eight-image ordered/reversed corpus",
+    "max_images_per_request": 8,
+    "passed_attempts": 4,
+    "requests": 4,
+    "status": "passed"
+  }
+}

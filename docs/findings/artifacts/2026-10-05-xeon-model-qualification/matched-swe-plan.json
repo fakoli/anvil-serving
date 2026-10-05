@@ -1,0 +1,53 @@
+{
+  "controls": {
+    "cache_policy": "managed fresh load each period; same untimed25checkpreflight andOracle18 beforeSWE; APC recipe setting unchanged",
+    "case_order": "unchanged frozen five-case selection",
+    "max_completion_tokens": 16384,
+    "reasoning_effort": "max",
+    "resource_policy": "exclusive GPUs, nootherbenchmark/download/test/build workload duringtimedagentstage; snapshotthermal,power,processownershipbeforeafter",
+    "steps": 60,
+    "swe_workers": 1,
+    "task_container_network": "none",
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_p": 0.95
+  },
+  "frozen_at": "2026-10-05T10:22:18.381222+00:00",
+  "limitations": [
+    "two periods are bounded evidence, not broad benchmark generalization",
+    "SWE agent-stage duration includes tool/container activity, not pure GPUcompute",
+    "Oracle18 is quality-only, excludedfromtimeandnumerator",
+    "model/runtime/quant profilecomparison, nohardwarecausalclaim"
+  ],
+  "order": [
+    "candidate-A1",
+    "incumbent-B1",
+    "incumbent-B2",
+    "candidate-A2"
+  ],
+  "performance": {
+    "aggregate": "sum resolved across both periods divided by sum agent-stage duration_s, multiplied by3600",
+    "exclude": [
+      "asset preparation",
+      "official grader duration",
+      "Oracle timing",
+      "previous scouts with competing work"
+    ],
+    "failures": "all attempts and elapsed retained, zero success for failed tasks; anyqualityfailure stops promotion qualification",
+    "primary": "officially resolved SWE tasks per hour of SWE agent-stage duration_s",
+    "requirement": "candidate/incumbent >=1.10 aggregate AND A1/B1 >=1.10 AND A2/B2 >=1.10"
+  },
+  "quality_per_period": {
+    "oracle_attempted": 18,
+    "oracle_passed": 18,
+    "swe_attempted": 5,
+    "swe_min_resolved": 4
+  },
+  "reviewer": "independent Sol",
+  "schema": "anvil-serving.matched-swe-plan/v1",
+  "stop_policy": "No unchanged quality-failure retries, no tuning betweenperiods. Restore/readmitexactr11 atclosure unlessallpromotiongatespass.",
+  "templates": {
+    "glm-max2-agentic-oracle7-spec.json": "17e142c5c907380469c9f4f5cea7c8ab01e830f96a3095e51c5eb8c92a6b69d0",
+    "glm-max2-swe-scout5-spec.json": "7ba66d9ee28ab7499838bda0a5a75995c91fe8582d10403c2c1817220c88451c"
+  }
+}

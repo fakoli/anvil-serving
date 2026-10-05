@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-10-05 Xeon model qualification:** [Qwen and GLM CSF/QAD campaign evidence](2026-10-05-xeon-model-qualification.md) rejects Qwen at 3/5 and GLM after fresh-reload A1 resolved 2/5 attempts and 2/4 graded, below the 4/5 floor. GLM's earlier 4/5 scout plus functional, Oracle, vision, and bounded-context acceptance remain retained; B1/B2/A2 did not run, so no comparison or speed claim exists. Exact r11 restoration passed direct 25/25, routed 7/7, and a fresh Pi read-tool turn, with routes and manifests unchanged. No promotion or route change follows.
+
 **2026-09-26 Swift TP2 campaign:** [Swift TP2 evidence](2026-09-26-swift-tp2-jev.md) retained bounded functional observations but failed the SWE coding gate at 2/5 against a 4/5 floor. It was not qualified or promoted; the exact GLM incumbent was restored on the current host with direct and routed tools 5/5 preflights.
 
 **2026-09-26 single-GPU qualification:** [Swift and Qwen3.8 candidates](2026-09-26-single-gpu-qualification.md) did not clear the frozen 4/5 coding floor. Exact GLM r11 was restored and readmitted; no candidate was promoted. The ThinkingCap coding capture is explicitly partial after managed cancellation.
@@ -93,6 +95,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-10-05 | [Xeon model qualification](2026-10-05-xeon-model-qualification.md) | Qwen rejected at frozen-primary 3/5; GLM max functional 25/25, Oracle 18/18, initial SWE 4/5, then fresh-reload A1 2/5 attempts and 2/4 graded, below the 4/5 floor. Strict C4 is 0/4 performance-eligible; B1/B2/A2 did not run. Candidate rejected; exact r11 restored with direct 25/25, routed 7/7, and fresh Pi read-tool acceptance. |
 | 2026-09-24 | [ThinkingCap 128K secondary promotion](2026-09-24-thinkingcap-secondary-promotion.md) | Human-authorized router promotion, 131072 total / 10240 output / C1 / two images; initial routed gates pass; intermittent multimodal relay and Pi effort compatibility incidents retained. Fleet and UI acceptance tracked separately. |
 | 2026-09-24 | [ThinkingCap Qwen3.8 27B AWQ 128K context](2026-09-24-thinkingcap-context-5090.md) | Current user-selected RTX 5090 challenger: configured 131072-total-token MTP3/BF16-KV/default-FP32-SSM C1 with generic UVA3. Completed 27 functional, 9 thinking, 18/18 vision, 30/30 limited diagnostic, and strict 100/100 short-output capacity; 32K and near-126K text scout passed 2/2. Full 60-case text context passed with all `stop` results at 32658–32689 and 125838–125869 actual inputs, retaining a 4096-token reserve; synthetic agentic passed 2/2 across six turns and four tool calls. No promotion. |
 | 2026-09-24 | [ThinkingCap Qwen3.8 27B AWQ RTX 5090: earlier 32K qualification](2026-09-23-thinkingcap-5090.md) | Qualified 32K/C1 Triton + MTP3 BF16 KV alternative: 27 functional, 8 thinking, 18/18 image, 30/30 limited diagnostic, 100/100 strict capacity, context 60/60, and agentic 2/2. Retained faster rollback; no promotion, C2, SWE, soak, video, or universal-context claim; FP8 rejected at 27/30. |

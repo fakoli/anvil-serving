@@ -1,0 +1,113 @@
+{
+  "campaign": "xeon-qwen-step5500-initial-feasibility",
+  "candidates": [
+    {
+      "hard_failures": [],
+      "id": "qwen-step5500-tp2-per-rank-initial-probe",
+      "kv_token_multiplier": {
+        "notes": "",
+        "observed_at": "2026-10-05",
+        "source": "KV counted in fixed pool; token capacity still to measure",
+        "status": "assumed",
+        "unit": "ratio",
+        "value": 1
+      },
+      "metrics": {},
+      "per_sequence_components": {},
+      "per_token_components": {
+        "kv_growth": {
+          "min": 1,
+          "notes": "An explicit fixed8GiB KV pool is configured, but new-engine token capacity is not measured. Keep memory-derived context unknown.",
+          "status": "unknown",
+          "unit": "bytes/token"
+        }
+      },
+      "resident_components": {
+        "fixed_kv_pool": {
+          "notes": "",
+          "observed_at": "2026-10-05",
+          "source": "retained8GiB/rank from prior passing startup; manually bounded pool",
+          "status": "assumed",
+          "unit": "bytes",
+          "value": 8589934592
+        },
+        "runtime_and_graphs": {
+          "max": 17179869184,
+          "min": 1073741824,
+          "notes": "Not a measured upper bound; startup can refute this estimate.",
+          "observed_at": "2026-10-05",
+          "source": "bounded campaign planning allowance against available per-card capacity",
+          "status": "estimated",
+          "unit": "bytes"
+        },
+        "target_weights": {
+          "max": 70866960384,
+          "min": 53687091200,
+          "notes": "Planning range only; new loader residency must be measured. Includes GPU PLE and visual/MTP tensors; 13.46GiB upper margin over prior measured loading.",
+          "observed_at": "2026-10-05",
+          "source": "previous local r2 measured52.54GiB/rank; new snapshot mixed layout similar checkpoint bytes",
+          "status": "estimated",
+          "unit": "bytes"
+        }
+      },
+      "runtime_context_limit_tokens": {
+        "notes": "",
+        "observed_at": "2026-10-05",
+        "source": "pinned checkpoint text_config.max_position_embeddings; initial probe below native context",
+        "status": "confirmed",
+        "unit": "tokens",
+        "value": 262144
+      }
+    }
+  ],
+  "requirements": {
+    "concurrency": {
+      "notes": "",
+      "observed_at": "2026-10-05",
+      "source": "initial fit probe, no production capacity claim",
+      "status": "assumed",
+      "unit": "requests",
+      "value": 1
+    },
+    "physical_vram_bytes": {
+      "notes": "",
+      "observed_at": "2026-10-05",
+      "source": "nvidia-smi 2026-10-05; one rank/card budget",
+      "status": "measured",
+      "unit": "bytes",
+      "value": 102641958912
+    },
+    "tokens": {
+      "output_reserve": {
+        "notes": "",
+        "observed_at": "2026-10-05",
+        "source": "initial smoke requirement",
+        "status": "assumed",
+        "unit": "tokens",
+        "value": 8192
+      },
+      "prompt": {
+        "notes": "",
+        "observed_at": "2026-10-05",
+        "source": "initial smoke requirement",
+        "status": "assumed",
+        "unit": "tokens",
+        "value": 24576
+      }
+    },
+    "vram_reserves": {
+      "headroom": {
+        "kind": "policy",
+        "variable": {
+          "notes": "",
+          "observed_at": "2026-10-05",
+          "source": "campaign 2GiB/card initial reserve",
+          "status": "assumed",
+          "unit": "bytes",
+          "value": 2147483648
+        }
+      }
+    }
+  },
+  "schema": "anvil-serving.recipe-feasibility-input/v1"
+}

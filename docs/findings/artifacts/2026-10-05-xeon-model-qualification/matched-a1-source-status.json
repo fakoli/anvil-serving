@@ -1,0 +1,35 @@
+{
+  "container": "xeon-glm53-csf-nospec-r1",
+  "gpu_selection": [
+    "dual-96GiB-class-gpus",
+    "dual-96GiB-class-gpus"
+  ],
+  "health": null,
+  "host_memory": {
+    "current_bytes": 55797469184,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 1048576,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 11508,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 55834574848,
+    "ram_plus_swap_limit_bytes": 55835623424
+  },
+  "image_digest": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067",
+  "model": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+  "native_kv_offload": false,
+  "recipe_digest": "380feb427a9908c8913c463be0fba5e5dde3ca0e8060cc7dc85b100255d92adb",
+  "registry_digest": "2e47e521bdc82a8c8110529c475eb250969f1af736d9d61974183055028fd46a",
+  "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+  "running": true,
+  "served_identity": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+  "state": "running"
+}

@@ -1,5 +1,30 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-05 Xeon qualification campaign:** an evaluated Qwen replacement was
+rejected at frozen-primary SWE 3/5 and strict C4 0/4 performance eligibility.
+The GLM CSF/QAD scout retained max functional 25/25, original Oracle 17/18,
+corrected max-only Oracle 18/18, initial five-task SWE 4/5 with only Django
+failed, and strict C4 0/4. Fresh-reload A1 then resolved 2/5 attempts and 2/4
+graded tasks (Sphinx/Xarray); Django and Pylint graded false and Sympy was
+ungraded at 60 steps, below the 4/5 floor. The candidate is rejected and r11
+is retained; B1/B2/A2 did not run. The earlier SWE result does not prove
+reliability or improvement over r11;
+exact eight-image 4/4, two context gates 4/4 (247,617–247,638 +65,536 and
+316,766–316,774 +8,192), and offered-C4 summary 4/4 at 165,903–165,908 actual
+tokens have now passed. They are not full-window, simultaneous-C4, or speed
+evidence. The quality stop leaves no comparative speed result. Exact r11
+restoration completed with direct 25/25, routed 7/7, and a fresh Pi read-tool
+turn; routes and manifest hashes were unchanged. Independent review follows
+closure. This produces no measured speed, hardware capacity, promotion, or
+route claim.
+[Finding](../../findings/2026-10-05-xeon-model-qualification.md).
+
+During matched candidate A1 SWE work, the upgraded host exposed PCIe Gen5 x16
+on both cards under actual model load (100% GPU utilization, 292.24/286.35 W
+under 300 W limits, and 72/74 °C). This [point-in-time
+observation](../../findings/artifacts/2026-10-05-xeon-model-qualification/hardware-loaded-link.json)
+is not PCIe bandwidth, comparative speed, or thermal-peak evidence.
+
 **2026-09-26 Swift TP2 campaign:** bounded functional observations were retained, but SWE was 2/5 against the 4/5 floor. The candidate was not qualified or promoted; the exact GLM incumbent was restored on the current host. No performance, full-window, production, or route claim follows. [Evidence](../../findings/2026-09-26-swift-tp2-jev.md).
 
 **2026-09-26 single-GPU qualification:** one-card Swift Flash, Swift27, and ThinkingCap candidate configurations each passed their retained deterministic agentic/image/context gates but did not clear the frozen 4/5 coding floor. Flash r3 resolved 3/5, Swift27 r2 2/5 with four graded, and ThinkingCap stopped with two known unresolved tasks and a maximum possible 3/5; its raw coding trajectories are missing after managed cancellation. Exact dual-card GLM r11 was restored and readmitted. No performance winner or promotion follows. [Finding](../../findings/2026-09-26-single-gpu-qualification.md).
@@ -24,9 +49,9 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 
 **2026-09-18 update:** [GLM EXL3 vision](../../findings/2026-09-18-glm53-vision.md) passed 10/10 synthetic image attempts plus routed acceptance and a matching Pi output transcript on this GPU pair. Configured 327K/C4 retained; 260K retrieval passed on retry after an initial refusal. No new speed or broad quality ranking. The prior text-only record below is historical.
 
-**2026-09-19 current decision:** [GLM-5.3-Flash r10 APC](../../findings/2026-09-19-glm53-apc-promotion.md) received explicit human approval and fresh bounded acceptance on this pair. The 32-request shared-prefix finalist reduced mean visible TTFT 23.70 s → 7.62 s (−67.84%) and raised requests/s 0.146 → 0.462; unique-prefix requests/s changed 0.144 → 0.141 (−2.39%), inside the frozen 5% gate. The [historical campaign](../../findings/2026-09-19-glm53-apc.md) retains the 75.58% cache-reuse measurement, failures, and restored-r9 close. Exact r9 is the rollback. This is not a full-window concurrency, video, soak, or broad intelligence result.
+**2026-09-19 APC performance lineage (historical):** [GLM-5.3-Flash r10 APC](../../findings/2026-09-19-glm53-apc-promotion.md) received explicit human approval and fresh bounded acceptance at that time. The 32-request shared-prefix finalist reduced mean visible TTFT 23.70 s → 7.62 s (−67.84%) and raised requests/s 0.146 → 0.462; unique-prefix requests/s changed 0.144 → 0.141 (−2.39%), inside the frozen 5% gate. The [historical campaign](../../findings/2026-09-19-glm53-apc.md) retains the 75.58% cache-reuse measurement, failures, and restored-r9 close. Publication-verified r11 DCP1 superseded r10; r10 is its documented rollback. This is not a full-window concurrency, video, soak, or broad intelligence result.
 
-**2026-09-23 GLM Spark and Qwen Flash Next qualification:** Qwen medium resolved 4/5 frozen SWE tasks and passed Oracle7 18/18, while Spark resolved 2/5 attempted tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached Oracle7 16/18. Strict C4 capacity failed for Qwen medium 0/4, Spark 0/16, and the incumbent control 0/16; none is eligible for a performance claim. The exact incumbent was restored with authenticated smoke and JSON checks passing. Retain GLM r10 APC; no rollout followed. See the [finding](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
+**2026-09-23 GLM Spark and Qwen Flash Next qualification:** Qwen medium resolved 4/5 frozen SWE tasks and passed Oracle7 18/18, while Spark resolved 2/5 attempted tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached Oracle7 16/18. Strict C4 capacity failed for Qwen medium 0/4, Spark 0/16, and the incumbent control 0/16; none is eligible for a performance claim. The exact incumbent was restored with authenticated smoke and JSON checks passing. Retain selected GLM r11 DCP1; no rollout followed. See the [finding](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
 
 **2026-09-21 MiMo replacement trial:** the GLM control completed a nominal-32K/C4 16-word final cell 100/100 eligible; its short-output limits and possible first-eight warm prefixes remain explicit. MiMo V3 loaded at 81.41 GiB/rank but both correctness probes exhausted reasoning without visible content, so no capacity or throughput test ran. This is `no-promotion`, not a MiMo hardware performance result; the one-task GLM SWE official 0/1 is infrastructure-confounded and final restoration is verified. See the [finding](../../findings/2026-09-21-mimo-v26-qualification.md).
 
@@ -38,8 +63,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-09-23. **Evidence
-interpretation reviewed:** 2026-09-23.
+history. **Last locally measured:** 2026-10-05. **Evidence
+interpretation reviewed:** 2026-10-05.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

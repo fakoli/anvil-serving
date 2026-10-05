@@ -1,0 +1,243 @@
+{
+  "schema": "anvil-serving.model-research-dispositions/v1",
+  "observed_at": "2026-10-05",
+  "scope": "External research priors and retained local disposition evidence. This is not a promotion, load, route, or benchmark result.",
+  "hardware_relevance": {
+    "topology": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+    "vram_mib_per_gpu": 97887,
+    "vram_gib_total": 191.185546875,
+    "caveat": "Artifact bytes and hosted leaderboard scores do not establish fit, local quant quality, or performance on this topology."
+  },
+  "shortlist": [
+    {
+      "identity": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD@4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+      "quantization": "NVFP4 routed experts with lossless CSF; MXFP8 attention/shared experts",
+      "disposition": "tested profile rejected after matched A1 quality gate",
+      "conclusion": "Local qualification confirmed the retained functional, Oracle, and vision cells, but the matched A1 SWE quality result did not meet the 4/5 replacement floor. This tested profile is not a replacement conclusion.",
+      "sources": [
+        {
+          "url": "https://huggingface.co/local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD/tree/4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+          "date": "2026-10-05T00:23:35Z",
+          "evidence_class": "artifact inventory",
+          "relevance": "44 tensor files, 178443517340 bytes; inventory only, not HBM fit."
+        },
+        {
+          "url": "https://github.com/local-inference-lab/blackwell-llm-docker/releases/tag/karmic-kraken-beta-e1ccbaf0fc0f4f4c52c72cd3d16892a741bc9307a0d0af381c326e90b69c03cb",
+          "date": "2026-10-05",
+          "evidence_class": "runtime release prior",
+          "relevance": "Pins the new glm53-tp2 runtime line; release labels full GLM cache E2E and serving performance unqualified."
+        },
+        {
+          "url": "https://artificialanalysis.ai/models/glm-5-3-flash",
+          "date": "observed 2026-10-05",
+          "evidence_class": "hosted/API leaderboard prior",
+          "relevance": "Open-weight family prior only; it cannot transfer to this local quant or runtime."
+        }
+      ],
+      "historical_research_unknowns": [
+        "HBM residency, KV, multimodal, graph and fragmentation fit at C4/327680/65536",
+        "independent coding, tool-JSON and vision quality",
+        "full cache E2E and serving performance"
+      ],
+      "local_measurements": [
+        "GLM max functional preflight: 25/25.",
+        "GLM Max2 Oracle: 18/18 with max reasoning and default thinking mode.",
+        "Vision8: 4/4 exact eight-image corpus.",
+        "Bounded context: 4/4 at actual prompts 247617..247638 with max_tokens=65536 accepted, and 4/4 at 316766..316774 with max_tokens=8192 accepted.",
+        "Matched A1: preflight 25/25, long-tool validation at actual 110760 tokens, Oracle 18/18, then SWE 2/5 campaign full attempts and 2/4 native official grades."
+      ],
+      "remaining_local_unknowns": [
+        "Comparable C4/cache/serving performance and full 327680-token or 65536-token-generation behavior were not established.",
+        "No matched speed result exists because the A1 quality stop prevented B1/B2/A2."
+      ],
+      "local_followup": "No unchanged retry or advancement is authorized. Preserve the failed A1 evidence; a materially changed profile requires new remedy evidence and qualification."
+    },
+    {
+      "identity": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4@6909a5bed089a48fa07e956d3915af2537de9368",
+      "quantization": "pinned local NVFP4 mixed ModelOpt artifact",
+      "disposition": "research lead subsequently rejected as a replacement profile",
+      "conclusion": "Keep identity separate from GLM and benchmark it on its own evidence. Native context is 262144; the 327680 contract is not established by the artifact prior.",
+      "unknowns": [
+        "327680 context behavior",
+        "C4/APC capacity",
+        "coding and multimodal quality on the pinned runtime"
+      ],
+      "sources": [
+        {
+          "url": "https://huggingface.co/local-inference-lab/Qwen3.8-Flash-Next-NVFP4/tree/6909a5bed089a48fa07e956d3915af2537de9368",
+          "date": "2026-10-02T02:39:10Z",
+          "evidence_class": "artifact identity"
+        },
+        {
+          "url": "https://artificialanalysis.ai/leaderboards/models",
+          "date": "observed 2026-10-05",
+          "evidence_class": "hosted/API leaderboard prior",
+          "relevance": "Not evidence for the pinned local quant or this hardware."
+        }
+      ],
+      "local_followup": "qwen-swe-native.json:3/5 below absolute4/5 floor; Oracle18/18 and functional25/25 do not override coding gate"
+    }
+  ],
+  "ruled_out_or_deferred": [
+    {
+      "identity": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "quantization": "official mixed MXFP4/FP8 local candidate",
+      "disposition": "deferred pending a diagnosed fix",
+      "conclusion": "A local startup reached health, then two bounded probes each exhausted 9216 reasoning tokens with zero visible content. This is configuration-specific negative evidence, not a universal TP2 impossibility.",
+      "unknowns": [
+        "root cause",
+        "whether a materially changed supported runtime fixes visible-output failure"
+      ],
+      "sources": [
+        {
+          "url": "docs/findings/2026-09-21-mimo-v26-qualification.md",
+          "date": "2026-09-21",
+          "evidence_class": "local qualification failure"
+        }
+      ]
+    },
+    {
+      "identity": "MiMo V2.6 Pro score versus any pruned MOPD artifact",
+      "quantization": "unresolved pruned MOPD identity",
+      "disposition": "not rankable",
+      "conclusion": "The observed MiMo Pro hosted score cannot transfer to an unspecified pruned MOPD artifact; no exact artifact identity or local evidence was retained.",
+      "unknowns": [
+        "exact MOPD repository, revision, quantization, runtime support and local qualification"
+      ],
+      "sources": [
+        {
+          "url": "https://artificialanalysis.ai/leaderboards/models",
+          "date": "observed 2026-10-05",
+          "evidence_class": "hosted/API leaderboard prior",
+          "relevance": "Family-level hosted score only."
+        }
+      ]
+    },
+    {
+      "identity": "bartowski/MiniMax-M3-GGUF / MiniMax-M3-Q3_K_M.gguf",
+      "quantization": "Q3_K_M; repository revision not pinned because no trial was advanced",
+      "disposition": "deferred by safe envelope",
+      "conclusion": "196.61 GB artifact is below total physical GPU bytes but leaves too little safe headroom for KV, engine, graphs and multimodal overhead. This is policy-infeasible for the selected all-GPU envelope, not a mathematical proof against every offload recipe.",
+      "unknowns": [
+        "exact immutable revision",
+        "resident overhead and offload latency",
+        "independent quality of lower-bit artifacts"
+      ],
+      "sources": [
+        {
+          "url": "https://huggingface.co/bartowski/MiniMax-M3-GGUF",
+          "date": "observed 2026-10-05",
+          "evidence_class": "quant artifact inventory",
+          "relevance": "Q4_K_M261.28GB;Q3_K_M196.61GB;Q2_K151.89GB; file sizes do not establish resident memory or quality"
+        }
+      ]
+    },
+    {
+      "identity": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
+      "quantization": "NVFP4",
+      "disposition": "low-priority unresolved",
+      "conclusion": "The vendor four-B200/GB200 recommendation is deployment guidance, not physical proof that a two-GPU recipe is impossible. No optimistic-bound proof is retained.",
+      "unknowns": [
+        "two-GPU weight/residency fit and contract quality"
+      ],
+      "sources": [
+        {
+          "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-NVFP4",
+          "date": "observed 2026-10-05",
+          "evidence_class": "vendor model card"
+        }
+      ]
+    },
+    {
+      "identity": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+      "quantization": "NVFP4",
+      "disposition": "deferred for this multimodal contract",
+      "conclusion": "Retained qualification is text-only, so it does not establish the required vision capability.",
+      "unknowns": [
+        "vision support and full contract qualification"
+      ],
+      "sources": [
+        {
+          "url": "docs/findings/2026-08-01-dual-pro-tp2-model-campaign.md",
+          "date": "2026-08-01",
+          "evidence_class": "local qualification record",
+          "relevance": "Retained route evidence is text-only for the present multimodal requirement."
+        }
+      ]
+    },
+    {
+      "identity": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "disposition": "capacity and loader unresolved; not advanced",
+      "conclusion": "Native multimodal552B backbone plus196BEngram is a research lead, not a2x96GPU fit. A community conversion reports475.2GiB upstream and399.9GiB for an unexecuted lossyEngram recipe; no end-to-end TP2 result retained. HF763B packaged metadata and backbone counts remain distinct.",
+      "unknowns": [
+        "full CSF revision/blob inventory",
+        "local loader and vision support",
+        "residency and quant quality"
+      ],
+      "sources": [
+        {
+          "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash",
+          "date": "observed 2026-10-05",
+          "evidence_class": "official model card"
+        },
+        {
+          "url": "https://huggingface.co/LibertAIDAI/DeepSeek-V4.1-Flash-NVFP4",
+          "date": "observed 2026-10-05",
+          "evidence_class": "unexecuted community conversion lead"
+        }
+      ]
+    }
+  ],
+  "cache_and_multimodal_note": {
+    "host_ram_cache_lead": "The pinned GLM TP2 release describes an LMCache RAM tier and reports a cache-workload prior; it is not quality or local performance evidence.",
+    "launcher_readme_contradiction": "Pinned runtime README claims GLM image/video-bearing cache bundles with content-hash placeholders, but the launcher warns an LMCache recurrent connector restores text only and uses native GPU prefix caching for image/video. Treat executable launcher behavior as the boundary until image-pinned E2E restore evidence exists.",
+    "vram_only_relevance": "CACHE_MODE=vram starts no external cache service, so it does not invoke CPU/disk recurrent restore; vision still requires qualification.",
+    "sources": [
+      {
+        "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/c411dbf93f296de0aa6ad04c932df9103dfbee46/runtime/README.md",
+        "date": "observed 2026-10-05",
+        "evidence_class": "runtime documentation"
+      },
+      {
+        "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/c411dbf93f296de0aa6ad04c932df9103dfbee46/runtime/launcher.py#L1208-L1223",
+        "date": "observed 2026-10-05",
+        "evidence_class": "executable runtime source"
+      }
+    ]
+  },
+  "decision_rule": "Hosted/API leaderboards and model cards are external priors. Promotion requires exact local artifact identity, supported runtime, measured capacity, independent correctness/coding/tool/vision gates, and the campaign's human promotion gate.",
+  "leaderboard_observations": {
+    "observed_at": "2026-10-05",
+    "source": "https://artificialanalysis.ai/leaderboards/models",
+    "channel": "Chrome research subagent",
+    "evidence_class": "external hosted/API prior, not exact local quant evidence",
+    "rows": [
+      {
+        "board_label": "MiMo V2.6 Pro",
+        "intelligence_index": 46
+      },
+      {
+        "board_label": "GLM-5.3 Max",
+        "intelligence_index": 45
+      },
+      {
+        "board_label": "Kimi K3 Max",
+        "intelligence_index": 44
+      },
+      {
+        "board_label": "GLM-5.3 Flash",
+        "intelligence_index": 42
+      },
+      {
+        "board_label": "Qwen3.8 Flash Next",
+        "intelligence_index": 40
+      },
+      {
+        "board_label": "DeepSeek V4.1 Flash Max",
+        "intelligence_index": 39
+      }
+    ],
+    "historical_article": "https://artificialanalysis.ai/articles/artificial-analysis-intelligence-index-v4-3",
+    "historical_boundary": "September7 article uses Qwen3.8 2.4T A95B40 and DeepSeekV4Pro0813max36. It is not evidence for current FlashNext/V4.1 labels."
+  }
+}

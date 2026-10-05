@@ -1,0 +1,15 @@
+{
+  "classification": "partial matched comparison; advancement rule not met; no general speed claim; promoted=false; restore exact r11",
+  "early_stop": [
+    "A1 quality failure stops before comparison",
+    "B1 quality failure stops after retaining both periods",
+    "A completed, officially graded A1/B1 rate below 1.10 permanently fails the first conjunct; do not run B2/A2 to rescue it"
+  ],
+  "measurement": "Use only frozen SWE agent-stage duration_s and officially resolved counts; exclude preparation/grader time.",
+  "parent_plan_sha256": "e21c304b11c5fddd713e6016730f3fb4a246053b790865ab3384e13fb15bbdc3",
+  "predicate": "A1/B1 >= 1.10 AND A2/B2 >= 1.10 AND aggregate >= 1.10, plus every period Oracle18/18 and SWE>=4/5",
+  "recorded_at": "2026-10-05T10:52:45.153104+00:00",
+  "reviewer": "independent Sol",
+  "schema": "anvil-serving.matched-swe-early-stop/v1",
+  "timing": "A1 coding active; no A1 or B1 grader result available"
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.startup-identity/v1",
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "model": {
+    "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+    "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+    "served_name": "glm53-csf-qad-tp2-dcp2-c4-327k-r1"
+  },
+  "runtime": {
+    "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+    "image_digest": "ghcr.io/local-inference-lab/vllm@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067",
+    "load_format": "nvfp4_csf",
+    "quantization": "nvfp4_csf with MXFP8 attention and shared experts"
+  },
+  "topology": {
+    "tensor_parallel_size": 2,
+    "decode_context_parallel_size": 2,
+    "kv_cache_dtype": "fp8",
+    "speculative_config": null
+  },
+  "resolved_configuration": {
+    "configured_context_tokens": 327680,
+    "configured_context_status": "configured; not a measured long-context result",
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 4096,
+    "image_cap_per_prompt": 8,
+    "video_cap_per_prompt": 0,
+    "vision_enabled": true,
+    "reasoning_effort_default": "high",
+    "reasoning_effort_source": "pinned GLM profile and retained startup arguments"
+  },
+  "measurements": {
+    "model_loading_gib_per_rank": 81.56,
+    "available_kv_cache_tokens": 1457183,
+    "measurement_scope": "startup only; not a sustained capacity, quality, or performance measurement"
+  },
+  "containment": {
+    "memory_limit_bytes": 55834574848,
+    "memory_swap_limit_bytes": 1048576,
+    "oom_events": 0,
+    "oom_killed": false
+  },
+  "outcome": {
+    "startup_completed": true,
+    "candidate_identity_verified": true,
+    "promoted": false,
+    "notes": [
+      "TP2/DCP2 startup completed with no speculative configuration.",
+      "Configured C4 and context do not prove C4 correctness or long-context behavior.",
+      "The retained startup log remains private; paths, endpoints, process identifiers, and complete log content are not published."
+    ]
+  },
+  "source_artifact": {
+    "artifact_name": "glm-startup-complete.log",
+    "location": "private evidence retained outside this repository",
+    "published_path": null,
+    "redaction": "Private paths, endpoints, process identifiers, GPU identifiers, and complete log content are not published."
+  }
+}

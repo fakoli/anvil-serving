@@ -26,37 +26,65 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-10-05 CSF/QAD scout:** the separate pinned GLM candidate passed disabled
+preflight 2/2 and HIGH preflight 25/25. Its first Oracle was 17/18 because a
+structured edit returned a Markdown fence instead of JSON; the strict C4
+128-word cell was 0/4 performance-eligible. The initial explicit
+enabled-thinking plus `max` request conflicted before inference. A corrected
+`thinking_mode=default` plus `reasoning_effort=max` Oracle derived the pinned
+API's effective enabled-thinking behavior and passed 18/18. The same max
+controls passed functional preflight 25/25 and the single five-task SWE scout
+resolved 4/5, with only Django failed. Fresh-reload A1 then attempted five SWE
+tasks: four graded, with only Sphinx and Xarray resolved; Django and Pylint
+graded false, and Sympy reached the 60-step limit ungraded. The native graded
+resolve rate is 2/4 = 0.5 and the campaign result is 2/5 attempts, below the
+4/5 floor. The prior 4/5 scout therefore does not establish a reliable floor.
+B1, B2, and A2 did not run, so there is no comparative speed result. The
+candidate is `rejected`/`no-promotion`; selected r11 DCP1 remains current.
+Its exact restoration completed with direct 25/25, routed 7/7, and a fresh Pi
+read-tool turn; routes and manifest hashes were unchanged.
+See the [active finding](../../findings/2026-10-05-xeon-model-qualification.md).
+
+The candidate subsequently passed exact eight-image 4/4, context 4/4 at
+247,617–247,638 actual input tokens with 65,536 maximum output, near-full 4/4
+at 316,766–316,774 with 8,192 maximum output, and an offered-C4 long summary
+4/4 at 165,903–165,908 actual input tokens (nominal 201,000). These are not
+generated-output lengths, full 327,680-token requests, simultaneous occupancy,
+or speed evidence. The failed A1 quality gate stopped the fresh-reload ABBA
+plan before B1/B2/A2. An independent review follows restoration and closure;
+it cannot turn these acceptance gates into capacity or speed evidence.
+
 **2026-09-18 update:** [Bounded vision acceptance](../../findings/2026-09-18-glm53-vision.md) passed 10/10 image attempts and routed checks and a matching Pi output transcript with unchanged 4-bpw weights, FP8 KV and disabled speculation. Eight images/request; configured 327K/C4 retained. A 259,922-token synthetic retrieval passed on retry after an initial refusal; this is not a full-window soak. The following September 14 snapshot remains the prior text-only evidence.
 
-**2026-09-19 APC campaign:** matched shared-prefix mean visible TTFT improved 67.84% and request throughput rose 3.17×; unique-prefix throughput fell 2.39%, within the 5% gate. Final diagnostic quality passed 12/12 per arm, with image and long-context gates passed. Exact r9 restoration and direct/routed acceptance are verified. At the historical campaign close, independent review recommended a bounded human-approved APC promotion and no selected configuration changed. See the [dated finding](../../findings/2026-09-19-glm53-apc.md).
+**2026-09-19 APC campaign (historical performance lineage):** matched shared-prefix mean visible TTFT improved 67.84% and request throughput rose 3.17×; unique-prefix throughput fell 2.39%, within the 5% gate. Final diagnostic quality passed 12/12 per arm, with image and long-context gates passed. The campaign's r9 restoration and direct/routed acceptance are retained historical evidence. See the [dated finding](../../findings/2026-09-19-glm53-apc.md).
 
-**2026-09-19 APC promotion follow-up:** explicit human approval and fresh managed acceptance promoted the bounded r10 APC configuration. This changes the current documented decision, while the [campaign finding](../../findings/2026-09-19-glm53-apc.md) remains its historical restored-r9 close and r9 remains the exact rollback. See the [follow-up](../../findings/2026-09-19-glm53-apc-promotion.md).
+**2026-09-19 APC promotion follow-up (historical):** explicit human approval and fresh managed acceptance selected bounded r10 APC at that time. It was superseded by the publication-verified r11 DCP1 selection on 2026-09-23; r10 is the documented rollback. See the [follow-up](../../findings/2026-09-19-glm53-apc-promotion.md).
 
 !!! info "Decision snapshot"
 
     - **Product role:** current bounded text, tools, image, and OCR reference.
-    - **Selected or best-qualified configuration:** GLM Flash EXL3 r10 APC,
-      4-bpw EXL3, FP8 MLA KV, 327,680 configured tokens, C4, with no speculation.
+    - **Selected or best-qualified configuration:** GLM Flash EXL3 r11 DCP1,
+      batch 2,048/C4/0.97, FP8 DS-MLA KV, 327,680 configured tokens, APC,
+      and no speculation.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** [APC promotion follow-up](../../findings/2026-09-19-glm53-apc-promotion.md)
-      and [historical campaign](../../findings/2026-09-19-glm53-apc.md): shared-prefix
-      visible TTFT −67.84%, unique-prefix request throughput −2.39% within the 5% gate,
-      diagnostic quality 12/12 per arm, plus bounded image and long-context checks.
-    - **Decision:** explicitly human-approved bounded r10 APC promotion with fresh acceptance.
-      Exact r9 is the documented rollback; active route and startup assignments are private.
-    - **Important limitation:** performance uses synthetic 32-request finalist cells at about
-      25K actual prompt tokens, not a general speed or intelligence claim. No full-window
-      concurrent capacity, video, broad SWE, soak, or fresh reboot proof is retained.
+    - **Evidence:** [r11 DCP1 qualification](../../findings/2026-09-23-glm-dcp1-qualification.md):
+      direct/routed preflight 28/28, 13 native-client paths, quality 12/12,
+      agentic 18/18, and absolute SWE 4/5. Its 825,268 KV pool is 41.73%
+      below DCP2, so four full 327K windows are unsupported.
+    - **Decision:** publication-verified r11 DCP1 is selected and deployed;
+      exact r10 APC is the documented rollback. Active route and startup assignments are private.
+    - **Important limitation:** r11 is a bounded DCP1 mitigation, not a root-cause,
+      crash-rate, speed, C8, full-window, video, soak, or fresh-reboot claim.
     - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
-      DCP2. The DCP1 mitigation is unpromoted; restored does not mean fixed.
-    - **Review dates:** runtime investigation 2026-09-23 UTC; APC qualification
-      2026-09-19. Earlier 4-bpw and mixed-quant results remain retained history.
+      DCP2. Selected DCP1 is a mitigation; selection does not mean the cause is fixed.
+    - **Review dates:** r11 qualification and runtime investigation 2026-09-23 UTC;
+      APC qualification 2026-09-19 is historical performance lineage.
 
 ### Review narrative
 
-#### 2026-09-23 — Spark challenger and incumbent strict-capacity control
+#### 2026-09-23 — Spark challenger and r11 incumbent strict-capacity control
 
-The Spark NVFP4 challenger resolved 2/5 attempted frozen SWE tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached 16/18 Oracle7 and failed strict C4 capacity 0/16. The restored incumbent resolved 3/5 and reached Oracle7 18/18, but also failed strict C4 0/16; 14 captures had wrong counts and two were length-truncated. All failed strict cells are performance-ineligible. Retain r10 APC: retention does not claim the incumbent passed this new gate. No route, client, catalog, or dashboard change followed. [Evidence](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
+The Spark NVFP4 challenger resolved 2/5 attempted frozen SWE tasks; three were submitted/graded and two attempts hit the 60-call limit. It reached 16/18 Oracle7 and failed strict C4 capacity 0/16. The restored r11 incumbent resolved 3/5 and reached Oracle7 18/18, but also failed strict C4 0/16; 14 captures had wrong counts and two were length-truncated. All failed strict cells are performance-ineligible. Retain selected r11 DCP1: retention does not claim it passed this new gate. No route, client, catalog, or dashboard change followed. [Evidence](../../findings/2026-09-23-glm-spark-qwen-next-qualification.md).
 
 #### 2026-09-17 — mixed 3.5-bpw startup failure
 
@@ -478,6 +506,7 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-10-05 | CSF/QAD prospective qualification scout | Max functional 25/25, Oracle 18/18, initial SWE 4/5, then fresh-reload A1 SWE 2/5 attempts and 2/4 graded (Sphinx/Xarray resolved; Django/Pylint false; Sympy ungraded at 60 steps); exact eight-image/context/offered-C4 summaries 4/4. Strict C4 is 0/4 performance-eligible. A1 misses the 4/5 floor, so B1/B2/A2 did not run and no speed comparison exists. Candidate rejected; exact r11 restored with direct 25/25, routed 7/7, and fresh Pi read-tool acceptance. [Finding](../../findings/2026-10-05-xeon-model-qualification.md) |
 | 2026-09-26 | Single-GPU challenger qualification | Exact r11 was the verified 4/5 frozen-SWE reference. Flash r3 and Swift27 r2 failed the floor; ThinkingCap's attainable upper bound was 3/5 with partial coding evidence only. Exact r11 was restored and readmitted; no alias changed. [Finding](../../findings/2026-09-26-single-gpu-qualification.md) |
 | 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected September 14 text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |
 | 2026-09-09 | ormandj v0.4.2 runtime qualification | Bounded direct gates and matched capacity improve, but strict turnover is 58/60 then 57/60; user selected `retain-baseline/no-promotion` and the exact baseline was restored; [finding](../../findings/2026-09-09-glm53-ormandj-v042.md) |

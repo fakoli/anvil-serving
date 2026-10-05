@@ -1,0 +1,240 @@
+{
+  "created_at": "2026-10-05T08:48:18.621112Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "endpoint": {
+    "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+    "model": "candidate-local-tier-r1"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "0a3b88e6d96417ebc76030561e5e5b357d363ed4fd985ffa4086da4999e81831",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "REDACTED_PRIVATE_REFERENCE",
+        "sha256": "566be6fec55c3802d04a2206b680e99c540f8427acfddcf89a8b48fd210d401b"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "1ff665af48731ebb870ec97e8cea9912a641e6a743a21a4be9dc93d94085ac3d",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "REDACTED_PRIVATE_REFERENCE",
+        "sha256": "b38147b6236f6e01c3b6d4819598b8d3325c71ed5659bc402cb40d5a108ce651"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "REDACTED_PRIVATE_REFERENCE",
+        "sha256": "db466d0e871b7c7a34b42757662a53150421ec3ff992b07a3df5844b84892d05"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "c5335d23171cabf907b7ff849f902a9335b8a4c2f2c4340d7a3cb723a2c5a7c9",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "REDACTED_PRIVATE_REFERENCE",
+        "sha256": "8ea855750406f994ab36e4b0d34f38812da53761bd3d241aaa4dba158ac7b384"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "37063bb392f0e798de860ecfeaca6d6852a4d4c5f4fc93e04d87ae9b58b16e48",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": "REDACTED_RUN_OR_REQUEST_ID",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "REDACTED_PRIVATE_REFERENCE",
+        "sha256": "77ac27986dd6629df759b31027382a17e75d97dc6fb07a0421e2de72e305058b"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+  "plan_sha256": "5f8a22577dced2a42b8f009bb2d5d6b6ca50255b0bb8f9f93eb4a6c0fe1662d9",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "REDACTED_BENCHMARK_CONTENT"
+  },
+  "request_controls": {
+    "reasoning_effort": "medium",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": "REDACTED_PRIVATE_REFERENCE",
+      "duration_s": 556.890417,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "REDACTED_BENCHMARK_CONTENT",
+      "stdout": "REDACTED_BENCHMARK_CONTENT"
+    },
+    {
+      "command": "REDACTED_PRIVATE_REFERENCE",
+      "duration_s": 118.066589,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "REDACTED_BENCHMARK_CONTENT",
+      "stdout": "REDACTED_BENCHMARK_CONTENT"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.6,
+    "resolved": 3
+  },
+  "task_container_network": "none"
+}

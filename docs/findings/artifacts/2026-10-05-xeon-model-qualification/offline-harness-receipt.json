@@ -1,0 +1,35 @@
+{
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "tests/test_agentic_benchmark.py",
+    "tests/test_benchmark_suite_runner.py",
+    "-q",
+    "--basetemp",
+    "REDACTED_TEMP_ROOT"
+  ],
+  "cwd": ".",
+  "exit_code": 0,
+  "finished_at": "2026-10-05T08:12:30.848831+00:00",
+  "interpreter": "python",
+  "pytest_args": [
+    "tests/test_agentic_benchmark.py",
+    "tests/test_benchmark_suite_runner.py",
+    "-q"
+  ],
+  "run_id": "REDACTED_RUN_ID",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "4ef32cc8e3c178967abef2725fba099f13dd5ebb",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "4ef32cc8e3c178967abef2725fba099f13dd5ebb",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-10-05T08:12:30.506284+00:00",
+  "state": "passed"
+}

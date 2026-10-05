@@ -1,0 +1,103 @@
+{
+  "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+  "budget": {
+    "max_completion_tokens": 2048,
+    "reasoning_headroom_tokens": 0,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "REDACTED_BENCHMARK_CONTENT"
+  },
+  "image_expect": [],
+  "model": "candidate-local-tier-r1",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 21,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": null,
+      "reasoning_tokens": 0,
+      "seconds": 0.166,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 9,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 37
+      },
+      "validation_detail": "REDACTED_BENCHMARK_CONTENT"
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 31,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 0,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": null,
+      "reasoning_tokens": 0,
+      "seconds": 0.128,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 10,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 40
+      },
+      "validation_detail": "REDACTED_BENCHMARK_CONTENT"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "REDACTED_BENCHMARK_CONTENT",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "REDACTED_BENCHMARK_CONTENT",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "mode": "disabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

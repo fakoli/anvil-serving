@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.hardware-link-observation/v1",
+  "captured_at_from_file_mtime": "2026-10-05T10:58:57.182911+00:00",
+  "source": "nvidia-smi --query-gpu=name,pcie.link.gen.current,pcie.link.width.current,temperature.gpu,power.draw,utilization.gpu --format=csv",
+  "raw_artifact": "matched-a1-midrun-gpus.csv",
+  "raw_sha256": "3bb76e928120ad9d039aaeb87385b4917fba6dfd5c3ead80527bf88f9bb68789",
+  "during": "matched candidate A1 SWE agent stage",
+  "observed": "Both GPUs at PCIe Gen5 x16,100%GPUutilization; temperatures72/74C, power292.24/286.35W underconfigured300Wlimits.",
+  "limits": "Point-in-time observation, not measured PCIe bandwidth, thermal peak or a comparative speed result."
+}

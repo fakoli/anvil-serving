@@ -1,0 +1,20 @@
+{
+  "controls": {
+    "max_tokens": 8192,
+    "reasoning_effort": "max",
+    "temperature": 1,
+    "top_p": 0.95
+  },
+  "recorded_at": "2026-10-05T10:19:47.931748+00:00",
+  "required": "4/4 valid terminal nonempty streams with owncanary first and noforeignmarker; no capturetruncation; inspect actualprompttokens, engineerrors andOOM",
+  "review_correction": {
+    "reason": "Existing capacity artifact does not retain successful finish_reasons; cannot attest stop, only terminal/nonempty. Unsupported claim removed before reading result.",
+    "recorded_at": "2026-10-05T10:20:10.424720+00:00",
+    "required": "4requests/completed/responses,0failed,4timingrows,eachcanarypassed/atstart/foreign0/capturecomplete; terminal/nonempty; promptusageretained. OfferedC4, notengineoccupancy.",
+    "reviewer": "independent Sol"
+  },
+  "scope": "functionalC4only; clientoverlap isnotenginebatchproof, noexactlengthorcomparativethroughputclaim",
+  "stop": "anyfailureblocksadvancement pendingrootcauseandsupportedrepair; noautomaticunchangedretry",
+  "strict128": "Existingfailedstrict128cells unchangedandperformanceineligible; thisnewworkload doesnotrepairthemforspeedcomparisons",
+  "workload": "4 simultaneous unique-prefix201000 nominal context requests, owncanary + one-line summary"
+}

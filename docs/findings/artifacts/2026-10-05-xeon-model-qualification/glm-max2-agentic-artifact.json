@@ -1,0 +1,132 @@
+{
+  "created_at": "2026-10-05T09:25:49.323978Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+      "model": "candidate-glm-max-tier-r1"
+    },
+    "finished_at": "2026-10-05T09:25:49.323816Z",
+    "started_at": "2026-10-05T09:25:15.783736Z",
+    "submitted_at": "2026-10-05T09:25:15.269053+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-10-05T09:25:49.311812Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 327680
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+        },
+        "hardware": {
+          "gpu": "dual-96GiB-class-gpus",
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.agentic/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+          "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+          "served_name": "candidate-glm-max-tier-r1"
+        },
+        "runtime": {
+          "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+          "image_id": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        "served_model": {
+          "configured_context": 327680,
+          "id": "glm53-csf-qad-tp2-dcp2-c4-327k-r1"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "REDACTED_RUN_OR_REQUEST_ID"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "REDACTED_BENCHMARK_CONTENT"
+      },
+      "run": {
+        "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "profile": "scout",
+        "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "spec_sha256": "049d8a604d013d6d670fb1ff2a95529bf4614db796b7f53e47f0f472e3dbfa68",
+        "suite": "agentic"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 556,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "2d5adf579eb774fdd510909cfceecf31a4057daac4f9090f40c5401832d07148"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2006,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "8d95def5a9ba6de3e09a6578be1dba609aed7b864fd993f3b89f51ddeec3c0f1"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 36708,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "bbec7322adc750b4006d7da97896954f4a8defc6dad81e1d8e275ccfea0414ef"
+            }
+          ],
+          "name": "agentic",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 18,
+        "pass_rate": 1.0,
+        "passed": 18,
+        "required_pass_rate": 0.75
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "profile": "scout",
+    "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "spec_sha256": "049d8a604d013d6d670fb1ff2a95529bf4614db796b7f53e47f0f472e3dbfa68",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

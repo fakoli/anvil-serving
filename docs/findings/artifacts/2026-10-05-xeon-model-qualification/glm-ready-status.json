@@ -1,0 +1,27 @@
+{
+  "command": "REDACTED_MANAGED_STATUS_COMMAND",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\n  \"container\": \"REDACTED_MANAGED_CONTAINER\",\n  \"container_id\": \"REDACTED_CONTAINER_ID\",\n  \"health\": null,\n  \"host_memory\": {\n    \"current_bytes\": 47041658880,\n    \"effective_limit_bytes\": 55834574848,\n    \"effective_swap_limit_bytes\": 1048576,\n    \"events\": {\n      \"high\": 0,\n      \"low\": 0,\n      \"max\": 13156,\n      \"oom\": 0,\n      \"oom_group_kill\": 0,\n      \"oom_kill\": 0\n    },\n    \"exit_code\": 0,\n    \"limit_bytes\": 55834574848,\n    \"oom_killed\": false,\n    \"peak_bytes\": 55834574848,\n    \"ram_plus_swap_limit_bytes\": 55835623424\n  },\n  \"image\": \"ghcr.io/local-inference-lab/vllm:karmic-kraken-beta-20261005-e1ccbaf0fc0f4f4c@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067\",\n  \"image_id\": \"sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067\",\n  \"model\": \"local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD\",\n  \"revision\": \"4f90b74165cb1542cca35730b7dfa4d550bcf0ce\",\n  \"running\": true,\n  \"schema\": \"recipe-container-status/v1\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

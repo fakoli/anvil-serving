@@ -1,0 +1,174 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "campaign": {
+    "id": "2026-10-05-xeon-model-qualification",
+    "capability": "MULTIMODAL",
+    "repository_revision": "4ef32cc8e3c178967abef2725fba099f13dd5ebb",
+    "dirty_state": "campaign-start clean; final public bundle captures sanctioned campaign artifacts",
+    "started_at": "2026-10-05T08:12:30Z",
+    "completed_at": "2026-10-05T11:42:06.212380+00:00",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": true,
+    "promotion_authorization": "User authorized promotion only after all required gates pass; current promoted state is false."
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.test-run/v1",
+    "anvil-serving.recipe-feasibility-input/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.startup-identity/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.matched-swe-plan/v1",
+    "anvil-serving.matched-swe-early-stop/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human-readable active-campaign index and bounded closure status."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "research-dispositions.json"
+      ],
+      "reason": "Dated external and local research provenance with disposition boundaries."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Frozen workload selections, identity pins, corpus bounds, and matched-comparison rules."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md",
+        "dispatch-packet.md",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "glm-max-c4-functional-plan.json",
+        "glm-max-repair-plan.json",
+        "matched-swe-plan.json",
+        "matched-swe-warmup-addendum.json"
+      ],
+      "reason": "Sanitized campaign controls, approved repairs, gate coverage, and declared run order."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "feasibility-initial.json",
+        "offline-harness-receipt.json",
+        "qwen-startup-identity.json",
+        "glm-startup-identity.json",
+        "glm-ready-status.json",
+        "hardware-loaded-link.json",
+        "matched-a1-source-status.json",
+        "matched-a1-midrun-gpus.csv"
+      ],
+      "reason": "Sanitized repository, model, runtime, hardware, startup, and managed-status identity records."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "baseline-preflight.json",
+        "baseline-capacity-c4-strict128.json",
+        "qwen-preflight-disabled.json",
+        "qwen-preflight-medium.json",
+        "qwen-capacity-c4-strict128.json",
+        "qwen-agentic-artifact.json",
+        "qwen-agentic-native.json",
+        "qwen-swe-artifact.json",
+        "qwen-swe-native.json",
+        "glm-preflight-disabled.json",
+        "glm-preflight-enabled.json",
+        "glm-agentic-artifact.json",
+        "glm-agentic-native.json",
+        "glm-capacity-c4-strict128.json",
+        "glm-max-preflight.json",
+        "glm-max2-agentic-artifact.json",
+        "glm-max2-agentic-native.json",
+        "glm-max2-swe-artifact.json",
+        "glm-max2-swe-native.json",
+        "glm-max-vision8.json",
+        "glm-max-context256-64-artifact.json",
+        "glm-max-context256-64-native.json",
+        "glm-max-context319-8-artifact.json",
+        "glm-max-context319-8-native.json",
+        "glm-max-c4-long-summary.json",
+        "matched-a1-preflight.json",
+        "matched-a1-long-tools.json",
+        "matched-a1-agentic-artifact.json",
+        "matched-a1-agentic-native.json",
+        "matched-a1-swe-artifact.json",
+        "matched-a1-swe-native.json"
+      ],
+      "reason": "Sanitized native functional, multimodal, context, capacity, agentic, SWE, and partial-failure outputs."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "glm-max-control-failure-artifact.json",
+        "matched-swe-early-stop.json"
+      ],
+      "reason": "Actionable output-control, harness-control, and A1 quality failures with reviewed stop disposition."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration-checks.json",
+        "restoration-preflight.json",
+        "restoration-routed-preflight.json",
+        "restoration-pi-tool-turn.json",
+        "restoration-runtime-status.json"
+      ],
+      "reason": "Verified exact-r11 restoration, admission, direct/routed functional checks, fresh Pi tool check, and unchanged-identity receipt."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Machine-readable no-promotion decision, gates, limits, and evidence links."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Derivative public claim ledger for the closed no-promotion campaign."
+    }
+  ]
+}
