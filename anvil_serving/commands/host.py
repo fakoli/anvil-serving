@@ -302,7 +302,7 @@ def commands() -> tuple[CommandNode, ...]:
                 ),
                 _node(
                     "docker-disk",
-                    "Inspect and compact the Docker Desktop data disk.",
+                    "Inspect, compact, or restore the Docker Desktop data disk.",
                     children=(
                         _resource_node(
                             "compact",
@@ -315,6 +315,21 @@ def commands() -> tuple[CommandNode, ...]:
                             execution_runtime_roles=("native",),
                             execution_host_os=("windows",),
                             docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
+                        ),
+                        _resource_node(
+                            "restore",
+                            "Restore SOURCE TARGET with a target backup; --move consumes SOURCE.",
+                            "anvil_serving.docker_disk_restore",
+                            role="host",
+                            argv_prefix=(),
+                            options=CONFIRM_OPTIONS + (
+                                _option("--move", summary="Move on the same volume instead of copying; consumes the source path."),
+                            ),
+                            mutation="mutate",
+                            forward_confirm_flag=True,
+                            execution_runtime_roles=("native",),
+                            execution_host_os=("windows",),
+                            docs_anchor="docs/cli/host.md#docker-data-vhdx-restoration",
                         ),
                     ),
                     docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",

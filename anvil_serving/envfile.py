@@ -84,7 +84,7 @@ def resolve_env_value(
     for path in fallback_paths():
         try:
             file_value = (read_dotenv(path).get(name) or "").strip()
-        except OSError:
+        except (OSError, UnicodeError):
             continue
         if file_value:
             return file_value, path

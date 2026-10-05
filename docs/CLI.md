@@ -358,8 +358,9 @@ required operands, choices, and defaults.
 | `host docker-image build` | Build a declared local image with CPU and memory limits. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `host docker-image inspect` | Read the platform and selected build labels of one cached image. | `read` / `bounded` | `--label` |
 | `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |
-| `host docker-disk` | Inspect and compact the Docker Desktop data disk. | `read` / `bounded` | - |
+| `host docker-disk` | Inspect, compact, or restore the Docker Desktop data disk. | `read` / `bounded` | - |
 | `host docker-disk compact` | Stop Docker Desktop and compact one exact data VHDX. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `host docker-disk restore` | Restore SOURCE TARGET with a target backup; --move consumes SOURCE. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--move` |
 | `host wsl-config` | Render or update WSL configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host restart-docker` | Restart Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host reset-wsl` | Reset WSL. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

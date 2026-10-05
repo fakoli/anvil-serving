@@ -399,6 +399,42 @@ remount the same data disk. If inspection or optimization fails after the
 command stopped Docker Desktop, the failure result preserves that stopped state
 and the same restart recovery instruction.
 
+### Docker data VHDX restoration
+
+Restore an explicitly selected old Docker Desktop data image to the current
+data-disk path. Both absolute `.vhdx` files must already exist:
+
+```powershell
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --dry-run
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --confirm
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --move --dry-run
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --move --confirm
+```
+
+Apply stops Docker Desktop and requires both images to accept handles denying
+writes before copying. It rejects linked paths, reserves full-copy space plus
+1 GiB, streams to a temporary file, and verifies SHA-256 with a second full read
+before replacing the target. The previous target is renamed to the reported
+timestamped backup, then the verified copy is renamed to the target. If the
+second rename fails, rollback is attempted; if rollback fails the backup remains.
+An interruption between the two renames may also leave only that backup until
+recovery. Keep other processes from renaming these paths during the operation.
+The source remains unchanged
+in copy mode. Docker is left
+stopped; inspect the restored images/containers after a separate managed restart.
+This copies bytes, not proof that the older image is compatible with the current
+Docker version or image-store setting. No WSL distro or data image is deleted.
+
+`--move` requires both files on the same volume and skips the full copy/hash.
+It moves the source into place after backing up the target. The source path is
+consumed; after restart, Docker can modify the moved image. This mode retains
+the old target as rollback but does not keep an untouched copy of the source.
+
+On failure, inspect the reported target, backup and staged paths before restarting.
+Any staged copy is retained. To roll back, run the same command with the reported
+backup as source and the current data image as target. This operation is CLI-only;
+it has no remote controller/MCP wrapper.
+
 ## Automatic reclaim after model lifecycle operations
 
 On Windows/WSL, operators may enable one machine-level policy in
