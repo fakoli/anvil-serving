@@ -6,12 +6,15 @@ import os
 from pathlib import Path
 import subprocess
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
 from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
+from anvil_serving.benchmarking import swe
+from anvil_serving.benchmarking import harnesses
 from anvil_serving.benchmarking.swe import (
     SWE_DATASET,
     build_swe_run_plan,
@@ -23,6 +26,21 @@ from anvil_serving.benchmarking.swe import (
 
 INSTANCE = "astropy__astropy-12907"
 SCOUT_INSTANCES = [f"project__case-{index}" for index in range(5)]
+
+
+@pytest.fixture(autouse=True)
+def supported_worker(monkeypatch):
+    monkeypatch.setattr(harnesses.platform, "system", lambda: "Linux")
+
+
+def build_fixture_plan(tmp_path, *args, **kwargs):
+    data = b"synthetic dataset content"
+    relative = "data/test-00000-of-00001.parquet"
+    path = tmp_path / "cache" / "swe-bench-verified" / swe.SWE_DATASET_REVISION / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    with patch.dict(swe.SWE_DATA_FILES, {relative: hashlib.sha256(data).hexdigest()}, clear=True):
+        return build_swe_run_plan(*args, **kwargs)
 
 
 def manifest(profile):
@@ -70,7 +88,7 @@ def plan(tmp_path, *, request_controls=None):
         executable.touch()
     else:
         executable.symlink_to(os.sys.executable)
-    return build_swe_run_plan(
+    return build_fixture_plan(tmp_path,
         profile,
         {**manifest(profile), "python_environment": environment},
         endpoint={
@@ -98,7 +116,7 @@ def scout_plan(tmp_path):
         executable.touch()
     else:
         executable.symlink_to(os.sys.executable)
-    return build_swe_run_plan(
+    return build_fixture_plan(tmp_path,
         profile,
         {**manifest(profile), "python_environment": environment},
         endpoint={
@@ -117,6 +135,8 @@ def scout_plan(tmp_path):
 def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     value = plan(tmp_path)
     assert value["dataset"] == SWE_DATASET
+    assert value["commands"]["agent"][value["commands"]["agent"].index("--subset") + 1] == value["dataset_snapshot"]["root"]
+    assert value["commands"]["grader"][value["commands"]["grader"].index("--dataset_name") + 1] == value["dataset_snapshot"]["root"]
     assert value["selection"]["kind"] == "explicit_instance_ids"
     assert value["selection"]["instance_ids"] == [INSTANCE]
     assert "^" in value["commands"]["agent"][value["commands"]["agent"].index("--filter") + 1]
@@ -132,6 +152,16 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert "    - --platform\n    - linux/amd64\n" in value["config_text"]
     assert "    - --network\n    - none\n" in value["config_text"]
     assert value["task_container_network"] == "none"
+    assert "    - --memory\n    - 8g\n" in value["config_text"]
+    assert "    - --memory-swap\n    - 8g\n" in value["config_text"]
+    assert "    - --cpus\n    - '4'\n" in value["config_text"]
+    assert "    - --pids-limit\n    - '512'\n" in value["config_text"]
+    assert value["container_limits"]["mem_limit"] == 8589934592
+    assert value["container_limits"]["network_mode"] == "none"
+    assert value["commands"]["grader"][1].endswith("swe_grader_adapter.py")
+    assert value["harnesses"]["grader_containment"]["adapter_sha256"] == hashlib.sha256(
+        Path(value["commands"]["grader"][1]).read_bytes()
+    ).hexdigest()
     assert value["request_controls"] == {
         "thinking_mode": "default",
         "reasoning_effort": None,
@@ -264,7 +294,7 @@ def test_agent_completion_without_official_report_is_incomplete(tmp_path):
 
     def no_report(argv, cwd, timeout, env):
         result = runner(argv, cwd, timeout, env)
-        if "swebench.harness.run_evaluation" in argv:
+        if argv[1].endswith("swe_grader_adapter.py"):
             for path in Path(value["paths"]["grader_work"]).glob("*.json"):
                 path.unlink()
         return result
@@ -457,3 +487,56 @@ def test_timeout_and_failures_are_distinct(tmp_path):
     assert classify_swe_failure(stage="agent", returncode=1, text="Cannot connect to Docker daemon") == "infrastructure_failure"
     assert classify_swe_failure(stage="grader", returncode=0, text="tests failed") == "test_failure"
     assert classify_swe_failure(stage="agent", returncode=1, text="exec format error") == "image_failure"
+
+
+def test_changed_dataset_rejected_before_model_or_grader(tmp_path):
+    value = plan(tmp_path)
+    snapshot = value["dataset_snapshot"]
+    (Path(snapshot["root"]) / next(iter(snapshot["files"]))).write_bytes(b"LFS pointer or changed bytes")
+    with pytest.raises(BenchmarkJobError, match="dataset content changed"):
+        run_swe_benchmark(value, runner=lambda *_args: pytest.fail("model invoked"))
+
+
+@pytest.mark.parametrize("extra", ["test.json", "test.txt", "test.zip"])
+def test_extra_dataset_discovery_file_rejected(tmp_path, extra):
+    value = plan(tmp_path)
+    (Path(value["dataset_snapshot"]["root"]) / extra).write_text("[]")
+    with pytest.raises(BenchmarkJobError, match="unexpected files"):
+        swe._verify_dataset_snapshot(value["dataset_snapshot"])
+
+
+def test_dataset_rechecked_after_agent_before_grader(tmp_path):
+    value = plan(tmp_path)
+    runner = SuccessfulRunner(value)
+    def mutate_after_agent(argv, cwd, timeout, env):
+        result = runner(argv, cwd, timeout, env)
+        snapshot = value["dataset_snapshot"]
+        (Path(snapshot["root"]) / next(iter(snapshot["files"]))).write_bytes(b"changed")
+        return result
+    result = run_swe_benchmark(value, runner=mutate_after_agent, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "swe_dataset_mismatch"
+    assert Path(value["paths"]["result"]).is_file()
+    assert len(runner.calls) == 1
+
+
+def test_missing_dataset_file_is_typed_error(tmp_path):
+    value = plan(tmp_path)
+    snapshot = value["dataset_snapshot"]
+    (Path(snapshot["root"]) / next(iter(snapshot["files"]))).unlink()
+    with pytest.raises(BenchmarkJobError) as exc:
+        swe._verify_dataset_snapshot(snapshot)
+    assert exc.value.code == "swe_dataset_unavailable"
+
+
+def test_windows_plan_and_replay_refuse_before_effects(tmp_path, monkeypatch):
+    monkeypatch.setattr(harnesses.platform, "system", lambda: "Windows")
+    with pytest.raises(BenchmarkJobError) as exc:
+        build_swe_run_plan(load_profile("smoke"), {}, endpoint={}, instance_ids=[],
+                           run_root=str(tmp_path / "runs"), cache_root=str(tmp_path / "cache"),
+                           ownership_id="campaign", run_id="unsupported")
+    assert exc.value.code == "unsupported_swe_worker_platform"
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_swe_benchmark({}, runner=lambda *_args: pytest.fail("runner called"))
+    assert exc.value.code == "unsupported_swe_worker_platform"
+    assert list(tmp_path.iterdir()) == []

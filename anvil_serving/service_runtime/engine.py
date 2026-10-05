@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import json
-import os
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit
 
 from .contracts import MAX_BYTES
+from ..envfile import resolve_env_value
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -32,7 +32,7 @@ def inspect(binding: dict, *, open_url=_OPEN, timeout: float = 3.0) -> dict:
     path = binding.get("models_path") or binding.get("health_path") or default_path
     headers = {"Accept": "application/json"}
     if binding.get("api_key_env"):
-        token = os.environ.get(binding["api_key_env"], "")
+        token, _ = resolve_env_value(binding["api_key_env"])
         if not token:
             return {**result, "ready": False, "error": "credential_unavailable"}
         headers["Authorization"] = "Bearer " + token

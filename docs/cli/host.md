@@ -357,6 +357,29 @@ is not automatic: rebuild or pull the same immutable image again. A removed
 image's shared layers may remain while another image or build cache references
 them; this command never removes either of those owners.
 
+### Old Docker build cache
+
+Use recorded BuildKit last use to inspect regular build-cache records older
+than an explicit timezone-qualified cutoff, at least 14 days ago:
+
+```bash
+anvil-serving host docker-build-cache inventory --context desktop-linux --builder desktop-linux --before 2026-01-01T00:00:00Z
+anvil-serving host docker-build-cache prune --context desktop-linux --builder desktop-linux --before 2026-01-01T00:00:00Z --dry-run
+```
+
+Apply the same prune command with `--confirm`. `--dry-run` always wins.
+The command requires one running Docker-driver builder on the named context,
+rechecks the engine and complete inventory, and sends an anchored exact-ID
+filter plus age and type filters to BuildKit. BuildKit checks live references
+under its native record locks. Unknown last use and in-use records are retained.
+It never prunes images, containers or volumes;
+image-owned shared layers remain referenced. No Docker restart is required.
+
+Results retain the daemon's human-readable reclaimed total without claiming
+exact byte precision. Rounded cache sizes can share layers and must not be
+summed as reclaimed storage. Filesystem free space and physical VHDX allocation
+are separate measurements; offline compaction is a separate operation.
+
 ### Docker data VHDX compaction
 
 Deleting Docker objects releases space inside Docker Desktop's dynamic data
@@ -398,6 +421,42 @@ successful run may reclaim zero bytes. Restart Docker Desktop normally to
 remount the same data disk. If inspection or optimization fails after the
 command stopped Docker Desktop, the failure result preserves that stopped state
 and the same restart recovery instruction.
+
+### Docker data VHDX restoration
+
+Restore an explicitly selected old Docker Desktop data image to the current
+data-disk path. Both absolute `.vhdx` files must already exist:
+
+```powershell
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --dry-run
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --confirm
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --move --dry-run
+anvil-serving host docker-disk restore D:\archive\docker_data.vhdx D:\Docker\disk\docker_data.vhdx --move --confirm
+```
+
+Apply stops Docker Desktop and requires both images to accept handles denying
+writes before copying. It rejects linked paths, reserves full-copy space plus
+1 GiB, streams to a temporary file, and verifies SHA-256 with a second full read
+before replacing the target. The previous target is renamed to the reported
+timestamped backup, then the verified copy is renamed to the target. If the
+second rename fails, rollback is attempted; if rollback fails the backup remains.
+An interruption between the two renames may also leave only that backup until
+recovery. Keep other processes from renaming these paths during the operation.
+The source remains unchanged
+in copy mode. Docker is left
+stopped; inspect the restored images/containers after a separate managed restart.
+This copies bytes, not proof that the older image is compatible with the current
+Docker version or image-store setting. No WSL distro or data image is deleted.
+
+`--move` requires both files on the same volume and skips the full copy/hash.
+It moves the source into place after backing up the target. The source path is
+consumed; after restart, Docker can modify the moved image. This mode retains
+the old target as rollback but does not keep an untouched copy of the source.
+
+On failure, inspect the reported target, backup and staged paths before restarting.
+Any staged copy is retained. To roll back, run the same command with the reported
+backup as source and the current data image as target. This operation is CLI-only;
+it has no remote controller/MCP wrapper.
 
 ## Automatic reclaim after model lifecycle operations
 

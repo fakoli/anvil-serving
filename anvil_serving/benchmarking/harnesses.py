@@ -25,6 +25,16 @@ DEFAULT_HARNESS_COMMAND_TIMEOUT = 1800
 CommandRunner = Callable[[Sequence[str], str | None, float], Any]
 
 
+def require_swe_worker_platform() -> None:
+    """The pinned SWE dependencies and Docker cleanup require a POSIX worker."""
+    if platform.system().lower() not in {"linux", "darwin"}:
+        raise BenchmarkJobError(
+            "unsupported_swe_worker_platform",
+            "SWE preparation and execution require a Linux or macOS worker; "
+            "the pinned grader imports resource and mini-SWE cleanup uses POSIX shell commands",
+        )
+
+
 def resolve_container_binary() -> str | None:
     """Resolve Docker for detached workers whose service PATH may be minimal."""
     discovered = shutil.which("docker")
@@ -382,7 +392,7 @@ def _prepare_repository(
             ("git", "init", "--quiet"),
             ("git", "remote", "add", "origin", adapter["source"]),
             ("git", "fetch", "--depth", "1", "origin", revision),
-            ("git", "checkout", "--detach", "FETCH_HEAD"),
+            ("git", "-c", "core.autocrlf=false", "checkout", "--detach", "FETCH_HEAD"),
             ("git", "rev-parse", "HEAD"),
             ("git", "status", "--porcelain"),
         )
@@ -476,6 +486,8 @@ def prepare_harness_assets(
     runner: CommandRunner = _default_runner,
 ) -> dict[str, Any]:
     """Prepare exact profile assets through one bounded, owned product operation."""
+    if suite == "swe":
+        require_swe_worker_platform()
     validated = validate_profile(profile)
     if suite not in validated["suites"]:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")

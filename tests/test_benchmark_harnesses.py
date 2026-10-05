@@ -20,6 +20,11 @@ from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.profiles import load_profile
 
 
+@pytest.fixture(autouse=True)
+def supported_worker(monkeypatch):
+    monkeypatch.setattr(harnesses.platform, "system", lambda: "Linux")
+
+
 class Runner:
     def __init__(self):
         self.calls = []
@@ -73,6 +78,8 @@ def test_preparation_records_exact_assets_and_reuses_cache(tmp_path):
         "mini-swe-agent"
     ]["revision"]
     assert first["assets"]["worker-base"]["image"].count("@sha256:") == 1
+    assert any(call[0] == ("git", "-c", "core.autocrlf=false", "checkout", "--detach", "FETCH_HEAD")
+               for call in runner.calls)
     assert first["python_environment"]["schema"] == (
         "anvil-serving.swe-python-environment/v1"
     )
@@ -200,3 +207,13 @@ def test_mutable_profile_is_rejected_before_commands(tmp_path):
             runner=lambda *_args: pytest.fail("command ran"),
         )
     assert exc.value.code in {"profile_digest_mismatch", "mutable_image"}
+
+
+def test_windows_swe_prepare_refuses_before_files_or_runner(tmp_path, monkeypatch):
+    monkeypatch.setattr(harnesses.platform, "system", lambda: "Windows")
+    with pytest.raises(BenchmarkJobError) as exc:
+        prepare_harness_assets(load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
+                               ownership_id="campaign", run_id="unsupported", cache_root=str(tmp_path / "cache"),
+                               runner=lambda *_args: pytest.fail("runner called"))
+    assert exc.value.code == "unsupported_swe_worker_platform"
+    assert list(tmp_path.iterdir()) == []

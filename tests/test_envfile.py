@@ -76,6 +76,14 @@ def test_resolve_unset_everywhere_returns_none(env_homes):
     assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
 
 
+def test_resolve_skips_unreadable_encoding(env_homes):
+    config_home, user_home = env_homes
+    (config_home / ".env").write_bytes(b"\xff\xfeinvalid")
+    assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
+    (user_home / ".env").write_text("EXAMPLE_TOKEN=from-home\n", encoding="utf-8")
+    assert envfile.resolve_env_value("EXAMPLE_TOKEN")[0] == "from-home"
+
+
 def test_explicit_env_mapping_is_hermetic(env_homes):
     config_home, _user_home = env_homes
     (config_home / ".env").write_text("EXAMPLE_TOKEN=from-config\n", encoding="utf-8")

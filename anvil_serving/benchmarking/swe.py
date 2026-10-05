@@ -20,14 +20,21 @@ from .harnesses import (
     MAX_HARNESS_OUTPUT_BYTES,
     SWE_PYTHON_ENVIRONMENT_SCHEMA,
     resolve_container_binary,
+    require_swe_worker_platform,
 )
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import validate_profile
+from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
 SWE_PLAN_SCHEMA = "anvil-serving.swe-plan/v1"
 SWE_DATASET = "princeton-nlp/SWE-bench_Verified"
+SWE_DATASET_REVISION = "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+# Git LFS content identity in this exact dataset revision, not a mutable hub head.
+SWE_DATA_FILES = {
+    "data/test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+}
 SWE_SUBSET = "verified"
 SWE_SPLIT = "test"
 TASK_CONTAINER_NETWORK = "none"
@@ -91,6 +98,36 @@ def _read_json(path: str, *, code: str) -> Any:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise BenchmarkJobError(code, f"required SWE artifact is missing or invalid: {path}") from exc
+
+
+def _verify_dataset_snapshot(snapshot):
+    try:
+        root = Path(snapshot["root"]).resolve(strict=True)
+        for relative, expected in snapshot["files"].items():
+            path = root / relative
+            if (path.is_symlink() or not path.resolve(strict=True).is_relative_to(root)
+                    or _sha256_file(str(path)) != expected):
+                raise BenchmarkJobError("swe_dataset_mismatch", "pinned SWE dataset content changed or is an LFS pointer")
+        # Hugging Face discovers many data formats; permit only the pinned files.
+        actual = {str(p.relative_to(root)).replace("\\", "/") for p in root.rglob("*")
+                  if p.is_file() or p.is_symlink()}
+    except OSError as exc:
+        raise BenchmarkJobError("swe_dataset_unavailable", "pinned SWE dataset files are missing or unreadable") from exc
+    if actual != set(snapshot["files"]):
+        raise BenchmarkJobError("swe_dataset_mismatch", "unexpected files in pinned SWE dataset")
+
+
+def _dataset_snapshot(assets, cache_root):
+    asset = assets["swe-bench-verified"]
+    if asset["revision"] != SWE_DATASET_REVISION:
+        raise BenchmarkJobError("unsupported_swe_dataset", "SWE dataset revision has no qualified content identity")
+    root = real_path(os.path.join(cache_root, asset["cache_key"], "data"))
+    if not path_is_within(root, cache_root):
+        raise BenchmarkJobError("unsafe_cache_path", "SWE dataset escaped the harness cache")
+    snapshot = {"root": root, "revision": SWE_DATASET_REVISION,
+                "files": {path.removeprefix("data/"): digest for path, digest in SWE_DATA_FILES.items()}}
+    _verify_dataset_snapshot(snapshot)
+    return snapshot
 
 
 def validate_swe_selection(profile: Mapping[str, Any], instance_ids: Any) -> list[str]:
@@ -312,6 +349,14 @@ def _mini_config(
         "    - --network\n"
         f"    - {TASK_CONTAINER_NETWORK}\n"
         "    - --rm\n"
+        "    - --memory\n"
+        "    - 8g\n"
+        "    - --memory-swap\n"
+        "    - 8g\n"
+        "    - --cpus\n"
+        "    - '4'\n"
+        "    - --pids-limit\n"
+        "    - '512'\n"
     )
 
 
@@ -328,6 +373,7 @@ def build_swe_run_plan(
     request_controls: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
+    require_swe_worker_platform()
     validated = validate_profile(profile)
     assets = _validate_assets(validated, assets_manifest)
     selected = validate_swe_selection(validated, instance_ids)
@@ -339,6 +385,7 @@ def build_swe_run_plan(
         run_root, ownership_id=ownership_id, run_id=run_id, relative="work"
     )
     cache = real_path(cache_root)
+    dataset_snapshot = _dataset_snapshot(assets, cache)
     python_executable, python_environment = _python_environment(
         assets_manifest, cache_root=cache
     )
@@ -353,12 +400,17 @@ def build_swe_run_plan(
     predictions_jsonl = os.path.join(work, "predictions.jsonl")
     exact_filter = "^(?:" + "|".join(re.escape(item) for item in selected) + ")$"
     suite = validated["suites"]["swe"]
+    if assets["swe-bench"]["revision"] != GRADER_REVISION:
+        raise BenchmarkJobError("unsupported_grader_containment", "grader containment requires its qualified revision")
+    adapter_path = str(Path(__file__).with_name("swe_grader_adapter.py"))
+    adapter_sha256 = _sha256_file(adapter_path)
+    containment_receipt = os.path.join(grader_work, "containment.json")
     mini_command = [
         python_executable,
         os.path.join(mini_root, "src", "minisweagent", "run", "benchmarks", "swebench.py"),
         "--output", output,
         "--model", f"openai/{target['model']}",
-        "--subset", SWE_SUBSET,
+        "--subset", dataset_snapshot["root"],
         "--split", SWE_SPLIT,
         "--filter", exact_filter,
         "--workers", "1",
@@ -370,11 +422,14 @@ def build_swe_run_plan(
     ]
     grader_command = [
         python_executable,
-        "-m", "swebench.harness.run_evaluation",
-        "--dataset_name", SWE_DATASET,
+        adapter_path, "--grader-root", grader_root,
+        "--adapter-sha256", adapter_sha256,
+        "--receipt", containment_receipt, "--",
+        "--dataset_name", dataset_snapshot["root"],
         "--split", SWE_SPLIT,
         "--predictions_path", predictions_jsonl,
         "--max_workers", "1",
+        "--namespace", "swebench",
         "--run_id", run_id,
         "--timeout", str(min(1800, suite["timeout_s"])),
         "--report_dir", grader_work,
@@ -387,6 +442,7 @@ def build_swe_run_plan(
         "profile": validated["name"],
         "profile_sha256": validated["content_sha256"],
         "dataset": SWE_DATASET,
+        "dataset_snapshot": dataset_snapshot,
         "split": SWE_SPLIT,
         "selection": {
             "kind": "explicit_instance_ids",
@@ -395,10 +451,16 @@ def build_swe_run_plan(
         },
         "endpoint": target,
         "task_container_network": TASK_CONTAINER_NETWORK,
+        "container_limits": dict(LIMITS),
         "request_controls": controls,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
             "grader": {"name": "swe-bench", "revision": assets["swe-bench"]["revision"]},
+            "grader_containment": {
+                "adapter_sha256": adapter_sha256,
+                "source_hashes": dict(SOURCE_HASHES),
+                "receipt": containment_receipt,
+            },
             "python_environment": {
                 "schema": python_environment["schema"],
                 "python": python_environment["python"],
@@ -521,10 +583,12 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "profile_sha256": plan["profile_sha256"],
         "plan_sha256": plan["plan_sha256"],
         "dataset": plan["dataset"],
+        "dataset_snapshot": plan["dataset_snapshot"],
         "split": plan["split"],
         "selection": plan["selection"],
         "endpoint": plan["endpoint"],
         "task_container_network": plan["task_container_network"],
+        "container_limits": plan["container_limits"],
         "request_controls": plan["request_controls"],
         "harnesses": plan["harnesses"],
         "state": "incomplete",
@@ -547,6 +611,7 @@ def run_swe_benchmark(
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Run mini-SWE-agent, normalize predictions, then require the official grader."""
+    require_swe_worker_platform()
     if not isinstance(plan, Mapping) or plan.get("schema") != SWE_PLAN_SCHEMA:
         raise BenchmarkJobError("bad_swe_plan", "SWE run plan is invalid")
     expected_sha = hashlib.sha256(
@@ -554,6 +619,7 @@ def run_swe_benchmark(
     ).hexdigest()
     if plan.get("plan_sha256") != expected_sha:
         raise BenchmarkJobError("swe_plan_digest_mismatch", "SWE run plan identity changed")
+    _verify_dataset_snapshot(plan["dataset_snapshot"])
     result = _base_result(plan)
     paths = plan["paths"]
     Path(paths["work"]).mkdir(parents=True, exist_ok=True)
@@ -679,6 +745,12 @@ def run_swe_benchmark(
         }
 
     grader_started = time.monotonic()
+    try:
+        _verify_dataset_snapshot(plan["dataset_snapshot"])
+    except BenchmarkJobError as exc:
+        result["failure"] = {"class": "broken_harness", "stage": "official_grader", "code": exc.code}
+        atomic_write_json(paths["result"], result)
+        return result
     try:
         grader_process = runner(
             plan["commands"]["grader"], paths["grader_work"], plan["timeout_s"], child_env

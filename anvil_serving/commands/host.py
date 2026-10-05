@@ -301,8 +301,31 @@ def commands() -> tuple[CommandNode, ...]:
                     docs_anchor="docs/cli/host.md#exact-docker-image-removal",
                 ),
                 _node(
+                    "docker-build-cache",
+                    "Inspect or prune exact build-cache IDs with old recorded last use.",
+                    children=tuple(
+                        _resource_node(
+                            action,
+                            "Inspect old build cache." if action == "inventory" else "Prune only twice-verified old regular build-cache IDs.",
+                            "anvil_serving.docker_build_cache",
+                            role="host",
+                            argv_prefix=(action,),
+                            options=(CONFIRM_OPTIONS if action == "prune" else ()) + (
+                                _option("--context", value_name="NAME", summary="Exact Docker context."),
+                                _option("--builder", value_name="NAME", summary="Single-node docker-driver builder on that context."),
+                                _option("--before", value_name="TIMESTAMP", summary="Timezone-qualified last-use cutoff at least 14 days old."),
+                            ),
+                            mutation="mutate" if action == "prune" else "read",
+                            forward_confirm_flag=action == "prune",
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/cli/host.md#old-docker-build-cache",
+                        ) for action in ("inventory", "prune")
+                    ),
+                    docs_anchor="docs/cli/host.md#old-docker-build-cache",
+                ),
+                _node(
                     "docker-disk",
-                    "Inspect and compact the Docker Desktop data disk.",
+                    "Inspect, compact, or restore the Docker Desktop data disk.",
                     children=(
                         _resource_node(
                             "compact",
@@ -315,6 +338,21 @@ def commands() -> tuple[CommandNode, ...]:
                             execution_runtime_roles=("native",),
                             execution_host_os=("windows",),
                             docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
+                        ),
+                        _resource_node(
+                            "restore",
+                            "Restore SOURCE TARGET with a target backup; --move consumes SOURCE.",
+                            "anvil_serving.docker_disk_restore",
+                            role="host",
+                            argv_prefix=(),
+                            options=CONFIRM_OPTIONS + (
+                                _option("--move", summary="Move on the same volume instead of copying; consumes the source path."),
+                            ),
+                            mutation="mutate",
+                            forward_confirm_flag=True,
+                            execution_runtime_roles=("native",),
+                            execution_host_os=("windows",),
+                            docs_anchor="docs/cli/host.md#docker-data-vhdx-restoration",
                         ),
                     ),
                     docs_anchor="docs/cli/host.md#docker-data-vhdx-compaction",
