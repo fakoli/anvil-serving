@@ -27,3 +27,12 @@ projection. CLI status uses the established CommandResult seam to expose it
 under JSON while preserving human text. This intentionally changes CLI JSON
 `data` from rendered text to an object; MCP/controller fields are additive.
 No lifecycle, ownership, config-export, or admission behavior changes.
+
+## CI readiness race
+
+The first complete Linux Python3.13 suite reached7388 passing tests, then the
+existing Pi process-group fixture returned SIGTERM exit-15 instead of graceful0.
+It published its child-PID readiness file before registering its SIGTERM handler.
+The parent could terminate the process in that gap. Publish readiness after
+handler registration; production cleanup and the exit/group-removal assertions
+remain unchanged. Retain the failed run, then require a fresh complete CI run.
