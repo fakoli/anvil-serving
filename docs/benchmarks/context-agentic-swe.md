@@ -29,6 +29,11 @@ model host. Put the real endpoint, worker registration, and credential
 environment reference in the private operator configuration. Public evidence
 uses the generic address above.
 
+SWE preparation, planning, and execution require a Linux or macOS worker.
+Native Windows may control remote jobs but cannot serve as the SWE worker:
+the pinned grader imports POSIX `resource` and mini-SWE uses POSIX shell cleanup.
+Unsupported workers fail before downloading assets or creating run files.
+
 The controller launches a detached worker after durable submission. That
 worker claims the run ID exactly once, prepares pinned assets, performs
 read-only preflight, executes the selected suite, and writes partial or
@@ -54,9 +59,19 @@ Before a measured campaign, verify:
 - the owned evidence directory is writable.
 
 The default repository benchmark topology is isolated. An explicitly selected
-`co-resident` client topology is permitted for endpoint-only context or agentic
-diagnostics, but its artifacts must retain that topology as a performance and
-isolation caveat; it must not be presented as isolated repository execution.
+`co-resident` topology is also available for endpoint diagnostics and managed
+SWE jobs with contained task and grading containers. Its artifacts retain the
+shared-host performance and isolation caveat; it is not isolated repository
+execution. Set the same actual identity for the worker and model host.
+
+Managed SWE task and grading containers have no network, an 8 GiB memory and
+memory-plus-swap ceiling, four CPUs and a 512-process ceiling. The pinned official
+grader runs through a source-verified compatibility launcher that guards its
+Docker create path, rejects conflicting settings, verifies effective container
+limits before startup, and refuses automatic image builds. Prebuilt official
+SWE images are required. The official test oracle is unchanged; adapter and
+source digests remain in the native plan and result. These bounds do not make
+shared-host performance comparable to a separate benchmark worker.
 
 SWE-bench evaluation images are normally Linux x86-64. The managed adapter
 selects `linux/amd64`; an Apple Silicon worker must prove that its configured
@@ -97,6 +112,11 @@ can report those benchmark names.
 Every SWE profile also pins the `princeton-nlp/SWE-bench_Verified` dataset
 revision as a prepared adapter. The official grader's repository revision is
 not a substitute for the dataset identity.
+
+Both running harnesses receive the same local data directory from that pinned
+checkout. The supported snapshot's Parquet bytes are verified before each
+stage and retained by digest in the native evidence; an unresolved LFS pointer,
+changed content, or extra discoverable dataset file blocks execution.
 
 | Profile | Context buckets | Positions × repetitions | Agentic scope | SWE Verified instances | Intended use |
 |---|---|---:|---|---:|---|
