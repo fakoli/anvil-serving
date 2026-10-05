@@ -11,6 +11,20 @@ resolved 3/5 frozen coding tasks against a 4/5 floor and its strict C4
 historical Qwen evidence below. See the
 [campaign finding](../../findings/2026-10-05-xeon-model-qualification.md).
 
+### October 5: separate 5090 expert-offload investigation
+
+The [96 GB host campaign](../../findings/2026-10-05-swift-96gb-baseline.md#initial-flash-next-feasibility-and-failed-latency-gate)
+measured Strata UD-IQ4_XS on one RTX 5090. Initial 32K/C1, R36/M50 passed five
+protocol families and 12/12 image checks. All twelve service canaries passed,
+but native nearest-rank p50 visible TTFT 30.406 s and E2E 30.852 s failed the frozen practical
+latency gate against Swift. Three-request instrumented MMQ/fused diagnostics
+are separate populations, not replacement gates. A final fixed-4096 diagnostic
+shifted refill cost into batched prefill without useful overall improvement.
+This configuration was rejected for promotion; larger-context/C4 and finalist
+quality gates were not run. No local quality advantage is established; Swift
+host-cache profile subsequently passed final acceptance and was promoted. Review: **2026-10-05**;
+earlier lanes below retain their own hardware, quantization and decisions.
+
 !!! info "Decision snapshot"
 
     - **Product role:** measured EXL3 alternative to the September 14 GLM
@@ -99,6 +113,14 @@ evaluation began on 2026-08-30, Qwen3.8 Flash Next became the immediate
 retained text/image/OCR/video rollback. The label describes the August decision, not a current rollback assignment.
 
 ## Immutable identity
+
+### October Strata candidate, unqualified at this checkpoint
+
+Unsloth GGUF revision `38bb39ee97821de2c9009abb7e93950eec396e66`, UD-IQ4_XS;
+Strata `6f32ec070f23ced9f50e704d854d775da52591ab`. The measured initial 32K/C1, 50 GiB containment/36 GiB resident-expert setup and separate instrumented image pins are in the
+[follow-up identity](../../findings/2026-10-05-swift-96gb-baseline-evidence/follow-up-identity.json).
+The earlier 52 GiB preparation proposal is retained separately; bounded startup is not final qualification.
+
 
 ### September EXL3 scout
 
@@ -267,6 +289,8 @@ functional, quality, capacity, and client gates.
   contract.
 
 ## Dated run history
+
+- 2026-10-05 — [Strata/UD-IQ4_XS research and Swift baseline](../../findings/2026-10-05-swift-96gb-baseline.md): 5090/96 GB initial feasibility; protocol/image checks passed, practical latency failed, instrumented diagnostics separate; no promotion.
 
 | Date | Event | Result |
 |---|---|---|

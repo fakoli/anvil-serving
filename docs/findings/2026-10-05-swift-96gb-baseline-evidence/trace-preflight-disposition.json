@@ -1,0 +1,12 @@
+{
+  "schema": "anvil-campaign.diagnostic-disposition/v1",
+  "observed_at": "2026-10-05T11:07:18.1163039Z",
+  "preflight": "flash-trace-preflight.json",
+  "status": "failed: shared-prefix tools19/20; otherfourfamiliespassed",
+  "error": "Remote end closed connection without response",
+  "authoritative_logs": "trace-preflight-failure-logs.json",
+  "container_state": "trace-preflight-failure-status.json",
+  "interpretation": "Healthy/noOOM does not mean no memory pressure: at50GiB ceiling, cumulative max events1087870. No causal attribution to memory or physical disk.",
+  "next": "Astra permits three C1requests for failure investigation only, stop if another error. No qualification transfer or promotion.",
+  "reruns": "none; originalfailure retained"
+}

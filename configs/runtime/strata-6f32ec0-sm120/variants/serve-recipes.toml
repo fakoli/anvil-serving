@@ -1,0 +1,190 @@
+schema = "anvil-serving.serve-recipes/v1"
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-32K-C1-R36"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; configuration SHA256 7c440183cce3ca523fdf911df127b895d190b1397e6e158a8cb60190ae8a3aae"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/runtime.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 32768
+port = 39128
+health = "/health"
+# Replace the reserved example with the exact proxy hostname only in private config.
+# Never use a wildcard or publish an operator's hostname.
+env = ["PORT=39128", "STRATA_ALLOWED_HOSTS=models.example.invalid"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-32k-c1-r36"
+flags = ["--runtime-config 32k-c1-r36"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Baked configuration 32k-c1-r36, SHA256 7c440183cce3ca523fdf911df127b895d190b1397e6e158a8cb60190ae8a3aae; initial and expanded profiles require separate measured gates."
+
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-128K-C1-R36"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; configuration SHA256 45785a7b0e2941011ef6d6bb37aca885847a6df26dd0231d9b3cce92ff2cf304"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/runtime.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 131072
+port = 39128
+health = "/health"
+# Replace the reserved example with the exact proxy hostname only in private config.
+# Never use a wildcard or publish an operator's hostname.
+env = ["PORT=39128", "STRATA_ALLOWED_HOSTS=models.example.invalid"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-128k-c1-r36"
+flags = ["--runtime-config 128k-c1-r36"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Baked configuration 128k-c1-r36, SHA256 45785a7b0e2941011ef6d6bb37aca885847a6df26dd0231d9b3cce92ff2cf304; initial and expanded profiles require separate measured gates."
+
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-128K-C4-R36"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; configuration SHA256 aac0d4172147d0ce27c577a85942d3e0182007f534ebc87a1d07450349b443e9"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/runtime.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 131072
+port = 39128
+health = "/health"
+# Replace the reserved example with the exact proxy hostname only in private config.
+# Never use a wildcard or publish an operator's hostname.
+env = ["PORT=39128", "STRATA_ALLOWED_HOSTS=models.example.invalid"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-128k-c4-r36"
+flags = ["--runtime-config 128k-c4-r36"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Baked configuration 128k-c4-r36, SHA256 aac0d4172147d0ce27c577a85942d3e0182007f534ebc87a1d07450349b443e9; initial and expanded profiles require separate measured gates."
+
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-262K-C1-R36"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; configuration SHA256 6b16b79e9c70868b80c9e6475ea8420c40666815efbdc7cd70eb26284f3747a7"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/runtime.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 262144
+port = 39128
+health = "/health"
+# Replace the reserved example with the exact proxy hostname only in private config.
+# Never use a wildcard or publish an operator's hostname.
+env = ["PORT=39128", "STRATA_ALLOWED_HOSTS=models.example.invalid"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-262k-c1-r36"
+flags = ["--runtime-config 262k-c1-r36"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Baked configuration 262k-c1-r36, SHA256 6b16b79e9c70868b80c9e6475ea8420c40666815efbdc7cd70eb26284f3747a7; initial and expanded profiles require separate measured gates."
+
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-128K-C1-R48"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; configuration SHA256 8a9639137d4429dfd106bb6062f503ea05c28e6a8226439fabbd4f1a99a82d56"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/runtime.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 131072
+port = 39128
+health = "/health"
+# Replace the reserved example with the exact proxy hostname only in private config.
+# Never use a wildcard or publish an operator's hostname.
+env = ["PORT=39128", "STRATA_ALLOWED_HOSTS=models.example.invalid"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-128k-c1-r48"
+flags = ["--runtime-config 128k-c1-r48"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 67584
+memory_swap_limit_mib = 67584
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion", "initial-64gib-wsl-ceiling"]
+rationale = "Baked configuration 128k-c1-r48, SHA256 8a9639137d4429dfd106bb6062f503ea05c28e6a8226439fabbd4f1a99a82d56; NOT initially runnable: requires 66GiB container plus 8GiB guest reserve and an independently admitted larger VM/host memory budget. Enable only after measured justification; no automatic host-memory change."

@@ -1,0 +1,124 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-10-05T09:12:55.062201Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 262144,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "SWE-bench_Verified",
+      "split": "test"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 132807802880,
+      "harness_assets": [],
+      "id": "[operator identity redacted]",
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "mini-swe-agent": {
+        "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+        "source": "[operator identity redacted]"
+      },
+      "swe-bench": {
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+        "source": "[operator identity redacted]"
+      },
+      "swe-bench-verified": {
+        "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+        "source": "[operator identity redacted]"
+      },
+      "worker-base": {
+        "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+      }
+    },
+    "image": {
+      "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+      "kind": "image",
+      "reused": true
+    },
+    "model": {
+      "alias": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 262144,
+      "id": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "topology": {
+      "kind": "isolated-benchmark-worker",
+      "worker_id": "[operator identity redacted]"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "[redacted]"
+  },
+  "run": {
+    "ownership_id": "[operator identity redacted]",
+    "profile": "scout",
+    "run_id": "swift-swe-001",
+    "spec_sha256": "bace57965e4b5369e732925fdc2c1cdfc410747dcf41b301b854659196ecf4ae",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 10858,
+          "path": "evidence/0-assets.json",
+          "sha256": "d42dcc77d8f9f432a51cb8953f938caee915c8b5c6473ad8d25b4341ca1f42e7"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 1988,
+          "path": "evidence/0-preflight.json",
+          "sha256": "6085a86786370fd47a37455ad5b7db6d1b0dcb66890347c680142b3c9029a796"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 28698,
+          "path": "evidence/2-swe.json",
+          "sha256": "51b9f32ba2b5e32ca702b47e94e52ad0c707c6bff78790fdc990bedcbf3ab0aa"
+        }
+      ],
+      "name": "swe",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  }
+}

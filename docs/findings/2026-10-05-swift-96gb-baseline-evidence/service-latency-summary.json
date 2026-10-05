@@ -1,0 +1,56 @@
+{
+  "schema": "anvil-serving.derived-service-latency/v1",
+  "derivation": "Native metrics.ttft_p50_ms and e2e_p50_ms; no output-length normalization or population pooling.",
+  "cells": [
+    {
+      "cell": "8k-c1",
+      "artifact": "swift-service-v2-8k-c1.json",
+      "completed": 12,
+      "ttft_median_ms": 1733.2922000005055,
+      "e2e_median_ms": 1837.6459000010072,
+      "actual_prompt_min": 7415.0,
+      "actual_prompt_max": 7433.0,
+      "actual_output_min": 186.0,
+      "actual_output_max": 396.0
+    },
+    {
+      "cell": "8k-c4",
+      "artifact": "swift-service-v2-8k-c4.json",
+      "completed": 12,
+      "ttft_median_ms": 3453.0902999995305,
+      "e2e_median_ms": 3588.9893999992637,
+      "actual_prompt_min": 7415.0,
+      "actual_prompt_max": 7433.0,
+      "actual_output_min": 142.0,
+      "actual_output_max": 1075.0
+    },
+    {
+      "cell": "24k-c1",
+      "artifact": "swift-service-v2-24k-c1.json",
+      "completed": 12,
+      "ttft_median_ms": 3116.5836000000127,
+      "e2e_median_ms": 3256.4419000009366,
+      "actual_prompt_min": 22467.0,
+      "actual_prompt_max": 22495.0,
+      "actual_output_min": 195.0,
+      "actual_output_max": 425.0
+    },
+    {
+      "cell": "24k-c4",
+      "artifact": "swift-service-v2-24k-c4.json",
+      "completed": 12,
+      "ttft_median_ms": 9502.766399999018,
+      "e2e_median_ms": 9814.59679999898,
+      "actual_prompt_min": 22467.0,
+      "actual_prompt_max": 22495.0,
+      "actual_output_min": 217.0,
+      "actual_output_max": 470.0
+    }
+  ],
+  "limitations": [
+    "12 samples per cell; no p99 inference",
+    "Variable output length; no fixed-output TPS or speculative speedup claim",
+    "Unique cache intent and canary correctness do not prove every token was a cold cache miss"
+  ],
+  "statistic_convention": "Historical fields named median retain native nearest-rank p50; they are not average-middle-pair medians."
+}

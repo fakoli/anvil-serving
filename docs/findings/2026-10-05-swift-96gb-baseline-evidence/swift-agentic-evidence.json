@@ -1,0 +1,110 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-10-05T08:28:20.275123Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 262144,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "architecture": "amd64",
+      "container_capable": true,
+      "free_disk_bytes": 1265709080576,
+      "harness_assets": [],
+      "id": "[operator identity redacted]",
+      "owned_output_writable": true,
+      "platform": "win32"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 262144,
+      "id": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "[operator identity redacted]"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "[redacted]"
+  },
+  "run": {
+    "ownership_id": "[operator identity redacted]",
+    "profile": "scout",
+    "run_id": "swift-agentic-001",
+    "spec_sha256": "27c7faccfb0948db321d139309c50b82b4d1edec1211f4b79d410bde73d9dcdf",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 541,
+          "path": "evidence/0-assets.json",
+          "sha256": "9a0e46273972b5f57020e9278b3f5f75bff0bc452cdc969c81ab6af760f04d3c"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 1996,
+          "path": "evidence/0-preflight.json",
+          "sha256": "a13a6d99f60c3ce64b7c054430a607df240d55f476baca9640738316ad27cc7f"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 36978,
+          "path": "evidence/0-agentic.json",
+          "sha256": "4942a695db7dc1d67eaac50e51ceccd4d385abb4c4845e95125516d628dc297e"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 1.0,
+    "passed": 18,
+    "required_pass_rate": 0.75
+  }
+}

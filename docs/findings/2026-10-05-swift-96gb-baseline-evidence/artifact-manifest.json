@@ -1,0 +1,637 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-05-swift-96gb-baseline",
+    "capability": "RTX 5090 baseline and larger-memory investigation",
+    "repository_revision": "1704cf58dc9b8727c63bbc094983ca6cda4e071e",
+    "dirty_state": {
+      "tracked_diff_sha256": "3542f3a3060dd76e3af0a30575a436a9d1c161140bfc466a763f858d57f402cc",
+      "dirty": true
+    },
+    "started_at": "2026-10-05T08:28:03Z",
+    "completed_at": "2026-10-05T12:51:03.144591+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "rejected"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "4f967410e7278f87495404ee2ea0ef57e2a9217c964be2262eb97c0cfd867acb",
+          "bytes": 8522
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "ae7d5d66f7d1dc4a95de9044bcbd9f1b3d78c62388a594bc2a3e75eed813cf07",
+          "bytes": 4974
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "swift-host-cache-experiment-plan.json",
+          "sha256": "4618c70bb223586def9b91d5f6aee48629603ecb5487517737e692e3effab380",
+          "bytes": 2949
+        },
+        {
+          "path": "workload-manifest.json",
+          "sha256": "38b06d46cbbbeffd50ae4dac6ebbd5d0b0e8782d4925b33aedd4bc88831d739f",
+          "bytes": 1583
+        },
+        {
+          "path": "workload-service-latency-v2.json",
+          "sha256": "03bb572671a4412d96c1185970d540efd3b351bad208c6f8178052770cd57375",
+          "bytes": 2423
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "ffea5ce5cde6c7002bd5a3dc86ab674e0342afbc17618f6a6dbc01bf97f9ebaa",
+          "bytes": 3271
+        },
+        {
+          "path": "swift-host-cache-experiment-plan.json",
+          "sha256": "4618c70bb223586def9b91d5f6aee48629603ecb5487517737e692e3effab380",
+          "bytes": 2949
+        },
+        {
+          "path": "workload-service-latency-v2.json",
+          "sha256": "03bb572671a4412d96c1185970d540efd3b351bad208c6f8178052770cd57375",
+          "bytes": 2423
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-identity.json",
+          "sha256": "22c9fdda031b1aa2d708a98de17901b1e8a5a2edeecff7d911c82ade5178d51a",
+          "bytes": 2441
+        },
+        {
+          "path": "follow-up-identity.json",
+          "sha256": "940c17fcf52218ef82109abd12b7b77d2ffd6883a1c888442e24e8d603dd91c7",
+          "bytes": 5318
+        },
+        {
+          "path": "launcher-identity.json",
+          "sha256": "07fa005807648077b53ab4ac98712bc37d41097c1fbba62ab2168840d333fc99",
+          "bytes": 1087
+        },
+        {
+          "path": "physical-memory-modules.json",
+          "sha256": "e30fc4d13c5cfc99194afa60000ea02b73cd6f71026f9d0d5ec9ed8a786b7d14",
+          "bytes": 325
+        },
+        {
+          "path": "redaction-provenance.json",
+          "sha256": "bb26615708524326131fe717d9605f84e2f151d1a37de3c1679a8248088a2467",
+          "bytes": 102439
+        },
+        {
+          "path": "swe-image-identities-final.json",
+          "sha256": "6da2b9aa3b85019e51c076378d531fedf9376678e322fda693b91868d35e5a96",
+          "bytes": 2108
+        },
+        {
+          "path": "swe-image-identities-initial.json",
+          "sha256": "4d69a4a27fd4a889ba809e7d33f37510a04b1ffd6a4bacf4aceb7d6c623923b6",
+          "bytes": 2748
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "9d25cdb05d86b5072f395d4de08a9420de4879b2c26a643550ccd2a2b04e4d85",
+          "bytes": 3084
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "2d991afe46d06f75f7935e36cae951717237950b1a7a9587eed29221f2dead7a",
+          "bytes": 5345
+        },
+        {
+          "path": "diagnostic-mmq-phases.json",
+          "sha256": "32f7f773e967dcb04981b9930c7f7e021c5dd1c9324eb177508db290a683ed28",
+          "bytes": 11776
+        },
+        {
+          "path": "flash-diagnostic-fused-8k-c1.json",
+          "sha256": "2f9c12e61b3ad27483e03c5e50eb8bbfea1f9aa6ee63e2007c52240c8d02df74",
+          "bytes": 14657
+        },
+        {
+          "path": "flash-diagnostic-fused-preflight.json",
+          "sha256": "55b69e6aa3d42be57b8c5c061f69b698aaa079790f8481fba5a7a8a65defe786",
+          "bytes": 16902
+        },
+        {
+          "path": "flash-diagnostic-mmq-8k-c1.json",
+          "sha256": "304aa46552e0b9bd6dae7a77d49a4d67c18820f5b00578e597e6da4ec311ac82",
+          "bytes": 14675
+        },
+        {
+          "path": "flash-diagnostic-mmq-preflight.json",
+          "sha256": "0056df1a4d7822d614e6e62314bf39daa899fb2368b167e4e2da55ab43a5025d",
+          "bytes": 16903
+        },
+        {
+          "path": "flash-m50-32k-initial-comparison.json",
+          "sha256": "eb8b0760a60de47dc1d7820ce979b9c1a3cad8ccf69ad47a0c1a838a98362d63",
+          "bytes": 1102
+        },
+        {
+          "path": "flash-m50-32k-service-v2-8k-c1.json",
+          "sha256": "8453db6cc0361ab9cf26e4704a2273d1a8721d1ccd0b9d42f14d2fdac7e3cc2b",
+          "bytes": 23715
+        },
+        {
+          "path": "flash-m50-images-001.json",
+          "sha256": "bc243342b52ba809198ec9ac9f8ba8b2c08b1fa5ef30da33664c85d1022c2be3",
+          "bytes": 22854
+        },
+        {
+          "path": "flash-m50-preflight-001.json",
+          "sha256": "59b0d7cec49251ff063354ccf30c81055023b63700ed3f5b1efebfea67cc3a7b",
+          "bytes": 16903
+        },
+        {
+          "path": "flash-prefill4096-8k-c1.json",
+          "sha256": "7fd88b12c47bdae97428600f87edffd4064023a9ef19374a6d74e94f2e0ec4b6",
+          "bytes": 14692
+        },
+        {
+          "path": "flash-prefill4096-preflight.json",
+          "sha256": "c9897bb503abb07ffbc2a0c4d0cab2b22152017dad629dea607f818d9fe03c06",
+          "bytes": 16909
+        },
+        {
+          "path": "flash-trace-8k-c1.json",
+          "sha256": "9fd1c0a045480892e3ed0433ae2bac5a8bd47d5dc411af03c666224822723ee8",
+          "bytes": 14674
+        },
+        {
+          "path": "flash-trace-preflight.json",
+          "sha256": "23a50d51aedf48c7b4e72f7fc73b7991bde2ad676fd79c14ec06874e7d614dd9",
+          "bytes": 16273
+        },
+        {
+          "path": "follow-up-identity.json",
+          "sha256": "940c17fcf52218ef82109abd12b7b77d2ffd6883a1c888442e24e8d603dd91c7",
+          "bytes": 5318
+        },
+        {
+          "path": "fused-activation-observation.json",
+          "sha256": "ce7ff2949e21cad7a9e31ac3bb1609b5544e50e89f5f77348e5c9d85115d3e14",
+          "bytes": 634
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "520fb2cc720c3b73b038c3502ce76b2b9b6f9577f72dc2f14707f132a1ac115b",
+          "bytes": 1913
+        },
+        {
+          "path": "prefill-diagnostic-comparison.json",
+          "sha256": "e8af77dc8c4393fc7ee920d40fa7fc5fdf9c4d5686ffcf4e04aa7c39202ba0d6",
+          "bytes": 1308
+        },
+        {
+          "path": "prefill4096-analysis.json",
+          "sha256": "46a13236e8c271e420fe41ed235506a42f8fbfa3e65c336e325f49f58077a3cc",
+          "bytes": 4838
+        },
+        {
+          "path": "promotion-final.json",
+          "sha256": "c3c539fcedff8b98348df5c728bf85c9278093abcdb14713fe52c16ad654149a",
+          "bytes": 3791
+        },
+        {
+          "path": "service-latency-summary.json",
+          "sha256": "5c2253e853f7ef7e3dcb176d824e0c5bac7a87a1c4347a4581371494934b925b",
+          "bytes": 1905
+        },
+        {
+          "path": "strata-phase-interpretation.json",
+          "sha256": "ef6a2049c35c4d984850fd1a6b899ef14af1098bdcf20e9e9b73ab3cea825b65",
+          "bytes": 2748
+        },
+        {
+          "path": "swift-agentic-cases.json",
+          "sha256": "417ac9f6ebaff134b37da9ba08053e019d65ba7e94a92fee341e0ca30233b4ee",
+          "bytes": 30996
+        },
+        {
+          "path": "swift-agentic-evidence.json",
+          "sha256": "d1855ad93c7f3990ceec9a5fdad9516f9b6a3f62f8825e2ee20df59e4c393958",
+          "bytes": 2790
+        },
+        {
+          "path": "swift-appended-history-changed.json",
+          "sha256": "778daf88bfb64344f8657282c6dfa4770a9a4dcc2a9d70b3da0f507c79095d24",
+          "bytes": 3247
+        },
+        {
+          "path": "swift-appended-history-native-analysis.json",
+          "sha256": "0ba2118cc46f9ba5bce662f3bfa7ded1415982f2f41f7d15a7113b93ac43cd21",
+          "bytes": 12307
+        },
+        {
+          "path": "swift-cache-admission-diagnosis.json",
+          "sha256": "a6b9e3b273a0be8b4512cde799feae85d3f90ef7aea0e029d267f875a200a158",
+          "bytes": 3743
+        },
+        {
+          "path": "swift-cache-continuation-outcome.json",
+          "sha256": "0fb4fc0ecdd40a9b7a68edfcebcfb650f373f947e8f7ce78e9547d68e6bd2da7",
+          "bytes": 3742
+        },
+        {
+          "path": "swift-cache-control-analysis.json",
+          "sha256": "be31de92078c70841550eb586c148f5f17b33bdb8cca8dfe1ce6e6c260d11f29",
+          "bytes": 20021
+        },
+        {
+          "path": "swift-cache-control-cold.json",
+          "sha256": "140a127564d1986a5a34b30fd3e157664178df6703f7f9ce06e7611228413a9b",
+          "bytes": 17646
+        },
+        {
+          "path": "swift-cache-control-preflight.json",
+          "sha256": "b3f61f4579e65f465445f8265c434d97f29214ebdf977945b06d2607a1e5c2b8",
+          "bytes": 18898
+        },
+        {
+          "path": "swift-cache-control-revisit1.json",
+          "sha256": "6b8c46c4ed4de103d3a9a20ae3a5a68a7ccb5f98fd32f0871092de327e64d50e",
+          "bytes": 17675
+        },
+        {
+          "path": "swift-cache-control-revisit2.json",
+          "sha256": "b2afc35be84050daebf381ceb102bfbc3f26677aeffe82101d7843d9170b574c",
+          "bytes": 17676
+        },
+        {
+          "path": "swift-cache-expanded-agentic-cases.json",
+          "sha256": "829b2049798661a53d233fe6354c4bf06642721e0b1cfc6ef536e4e07c4acc4c",
+          "bytes": 30987
+        },
+        {
+          "path": "swift-cache-expanded-agentic-evidence.json",
+          "sha256": "07112123c3a07bb587dc5c85bf59ad2e9daa981df3122ffe3f022d8f290010f1",
+          "bytes": 2805
+        },
+        {
+          "path": "swift-cache-expanded-analysis.json",
+          "sha256": "1878c4ad4634cf9be80f0befb57ac826fcb17c5b707794cb6095834e149fdaea",
+          "bytes": 20264
+        },
+        {
+          "path": "swift-cache-expanded-cold.json",
+          "sha256": "349fdd8093755703d8851c7a3221c3ece1d741ed26c04d154b437d84e89b80f4",
+          "bytes": 17638
+        },
+        {
+          "path": "swift-cache-expanded-context262-cases.json",
+          "sha256": "80ded4b895b85745d2c41b6a288e71b14bd02a8e6ddf4ccbc49782cdd8578b13",
+          "bytes": 19743
+        },
+        {
+          "path": "swift-cache-expanded-context262-evidence.json",
+          "sha256": "c74b4cba9cfa953506cff81e0341747b1b9b90ca2bb50569ae39c2c2cb0f4872",
+          "bytes": 13488
+        },
+        {
+          "path": "swift-cache-expanded-images.json",
+          "sha256": "3c001c7a2b4d13103431d94be413e4b005310a5e1dfa1fe5085b850dbe59f791",
+          "bytes": 23845
+        },
+        {
+          "path": "swift-cache-expanded-preflight.json",
+          "sha256": "9ad9c689085bfe6a31c16004f459217c61ca45bd6f9cda8f8d5676716cdeb67a",
+          "bytes": 18899
+        },
+        {
+          "path": "swift-cache-expanded-revisit1.json",
+          "sha256": "0b67efd3564c27bca23862bf042aead62505997a1e81677eca4b19939b44a0e6",
+          "bytes": 17691
+        },
+        {
+          "path": "swift-cache-expanded-revisit2.json",
+          "sha256": "7fec5748e61905ed9498fd650b1b94e1805b2e1a322e0be9ad161cd865684f7b",
+          "bytes": 17694
+        },
+        {
+          "path": "swift-cache-expanded-service-comparison.json",
+          "sha256": "e417a68fed25ffa29a8571e007ea28356fded02e7354602d32c7b2d75e23b50d",
+          "bytes": 5740
+        },
+        {
+          "path": "swift-cache-expanded-service-v2-24k-c1.json",
+          "sha256": "3d5034745ad4638d26756ab4de289699f89e0f32c240d1b97a6e20ccb71c553b",
+          "bytes": 23769
+        },
+        {
+          "path": "swift-cache-expanded-service-v2-24k-c4.json",
+          "sha256": "b82994eb2132660909311308ec81420279081a9df679941f4974cb6072155ee2",
+          "bytes": 23743
+        },
+        {
+          "path": "swift-cache-expanded-service-v2-8k-c1.json",
+          "sha256": "e058abcab8b6577725cdfb99185f0a0c3c073c8da2a5b60cbc80ff83c50837c6",
+          "bytes": 23685
+        },
+        {
+          "path": "swift-cache-expanded-service-v2-8k-c4.json",
+          "sha256": "c66e7be67ab2db9e5ecf0e0d0123b93763db87b03061ba0f9a2667535d3971e6",
+          "bytes": 23698
+        },
+        {
+          "path": "swift-capacity-8k-c1.json",
+          "sha256": "3e014db67aabf2e5e687500d9dbbd275949cf87dc3d51234402de9745b5c53e6",
+          "bytes": 19893
+        },
+        {
+          "path": "swift-context128-cases.json",
+          "sha256": "5bebf5f39fde0a1542c101cb514ce301e42eb67156d7f7100b01406b65033f62",
+          "bytes": 56070
+        },
+        {
+          "path": "swift-context128-evidence.json",
+          "sha256": "46cf6d65f5b24d21b1521f7ab68cc45cbd707a3f65da9ccbf6ed993e16c05b03",
+          "bytes": 33837
+        },
+        {
+          "path": "swift-context262-cases.json",
+          "sha256": "32d78bab509776ca11c15818d120bc27e8158ee9213c61d92b02b8a3ea97fa83",
+          "bytes": 19763
+        },
+        {
+          "path": "swift-context262-evidence.json",
+          "sha256": "bd2ac65654032e3f0a004dd326da835b876ff80d997cbe5e66a9a85e260e42a8",
+          "bytes": 13481
+        },
+        {
+          "path": "swift-explicit-history-changed.json",
+          "sha256": "6bf8a15f30dbacc0cbb83939b351fbb91c56f78286ce05324a62ec065b0f5aeb",
+          "bytes": 3263
+        },
+        {
+          "path": "swift-explicit-history-outcome.json",
+          "sha256": "8f56ecaca5cdf29e691319960689f3a55cdc6c0e8880bdc5c1b265d45cea5a34",
+          "bytes": 10412
+        },
+        {
+          "path": "swift-explicit-history-plan.json",
+          "sha256": "7087fef9d02358b1e057262a8df90e080b6768e0afc3c424340ee43bae2aec1a",
+          "bytes": 1526
+        },
+        {
+          "path": "swift-explicit-history-pressure.json",
+          "sha256": "fd396a6766e56544eb28134e91b15b696a8a2715d52fc06fb0cccf3c6f1b225b",
+          "bytes": 16617
+        },
+        {
+          "path": "swift-explicit-history-warm.json",
+          "sha256": "74a2d417a00eb868b3edaee67cf90b618f2f42843a491d89df137c906ee28213",
+          "bytes": 636
+        },
+        {
+          "path": "swift-final-acceptance-status.json",
+          "sha256": "4268e8e44dbdad59de37a9bbd67428031e45931884b50e4822b79ace8dd7424a",
+          "bytes": 950
+        },
+        {
+          "path": "swift-final-full-protocol-preflight.json",
+          "sha256": "78324fcb7c9c46b7f8e421985d12c17f64a6fdc7489e363a6832d19f85573ec4",
+          "bytes": 18901
+        },
+        {
+          "path": "swift-final-pi-smoke.json",
+          "sha256": "ea6ac4708d22def542308f2fd52020b3458d9180f85b3c40b836f90d3a3c3dfa",
+          "bytes": 3778
+        },
+        {
+          "path": "swift-final-routed-clients.json",
+          "sha256": "0ea5c83793801c34e400d80a719dbad1b9e01cbfde39b0e4c18f1c1f8aa4ec2d",
+          "bytes": 6014
+        },
+        {
+          "path": "swift-final-startup-identity-comparison.json",
+          "sha256": "d60069208bbf7b0924f41a9c8792ed5ed550a06ac2181d6a11b24c37a46ae7b3",
+          "bytes": 559
+        },
+        {
+          "path": "swift-host-cache-comparison.json",
+          "sha256": "fa543b5304a48825e43261b5ae578d017f48bca8f93a2e0dc38cc360906ce072",
+          "bytes": 2955
+        },
+        {
+          "path": "swift-host-cache-experiment-plan.json",
+          "sha256": "4618c70bb223586def9b91d5f6aee48629603ecb5487517737e692e3effab380",
+          "bytes": 2949
+        },
+        {
+          "path": "swift-images-001.json",
+          "sha256": "e9d1ec334f3a7416e926c13e5629250ace2af1044c372bbd9209a01501586ce9",
+          "bytes": 23852
+        },
+        {
+          "path": "swift-preflight-001.json",
+          "sha256": "831865fc40be7b794301f1f0610c7feddf6cffe810c97d5b0fea789b6f95d5e5",
+          "bytes": 18899
+        },
+        {
+          "path": "swift-preflight-002.json",
+          "sha256": "0c4c372198d15701837ac7844e70cb9a8826aab3c7cc67cca28f6679aad738b4",
+          "bytes": 18895
+        },
+        {
+          "path": "swift-preflight-003.json",
+          "sha256": "4054ae59aac0e467e36626c32d39e451c6e8b281a52fcd6d426feafbdf9b8dba",
+          "bytes": 18905
+        },
+        {
+          "path": "swift-service-v2-24k-c1.json",
+          "sha256": "f2ba562899baad2cb8f9354a92bd4fff84a8b9ce3ce34b7592567bcf9e8b8627",
+          "bytes": 23759
+        },
+        {
+          "path": "swift-service-v2-24k-c4.json",
+          "sha256": "0cd16c11157ee0894c226a5827ae7bd735fbc4de626260f40492166cb4d9b7f1",
+          "bytes": 23735
+        },
+        {
+          "path": "swift-service-v2-8k-c1.json",
+          "sha256": "f251d24b44126f0ade07b38cf3c2d7b4da3b70957da66fe757de2b5c46146db3",
+          "bytes": 23686
+        },
+        {
+          "path": "swift-service-v2-8k-c4.json",
+          "sha256": "4b1529ca7504bd69bb488a59b2eec23d5a60cd39939c134aa8ac48c3d518a6f9",
+          "bytes": 23666
+        },
+        {
+          "path": "swift-stream-diagnostic-001.json",
+          "sha256": "8d1b05cb70587ee7ef602abb8608ebd8c181c38f7c2796d04bad347d4eb268d9",
+          "bytes": 3852
+        },
+        {
+          "path": "swift-swe-evidence.json",
+          "sha256": "a17b4de9084874da5c8c652ac126a111458c5403a8fd246eddd43899590041d8",
+          "bytes": 3319
+        },
+        {
+          "path": "swift-swe-paired-evidence.json",
+          "sha256": "3bb49960b623560ae62f74b9ba1f609afca5af1ac0703a9d26edf37d4ebff2c4",
+          "bytes": 3326
+        },
+        {
+          "path": "swift-swe-paired-result.json",
+          "sha256": "97534ffb5148984e641e8bb4a1b2eeba5cdb31e55d32a0ad8964b50f7b5814ee",
+          "bytes": 14769
+        },
+        {
+          "path": "swift-swe-result.json",
+          "sha256": "eac9cc73c9a98c8673041e468426d0d70fcdbf1ae9c0dafc098a1185265cf6d1",
+          "bytes": 13197
+        },
+        {
+          "path": "trace-preflight-disposition.json",
+          "sha256": "79192ef083043ad5ad7ea71df124beeb3b10019d8e95395ad2433a633b620f41",
+          "bytes": 760
+        },
+        {
+          "path": "trace-refill-analysis.json",
+          "sha256": "46ffe658f90ad74783ed68d716a75a741be0bc2bf35926bec2c3217b2d4f0397",
+          "bytes": 3135
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "flash-m50-32k-initial-comparison.json",
+          "sha256": "eb8b0760a60de47dc1d7820ce979b9c1a3cad8ccf69ad47a0c1a838a98362d63",
+          "bytes": 1102
+        },
+        {
+          "path": "flash-trace-preflight.json",
+          "sha256": "23a50d51aedf48c7b4e72f7fc73b7991bde2ad676fd79c14ec06874e7d614dd9",
+          "bytes": 16273
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "0246722f02fd09e7e107c177ba1bce5f4cb4fe1041ad33ed0d26266d1dd654d6",
+          "bytes": 6311
+        },
+        {
+          "path": "prefill4096-analysis.json",
+          "sha256": "46a13236e8c271e420fe41ed235506a42f8fbfa3e65c336e325f49f58077a3cc",
+          "bytes": 4838
+        },
+        {
+          "path": "strata-phase-interpretation.json",
+          "sha256": "ef6a2049c35c4d984850fd1a6b899ef14af1098bdcf20e9e9b73ab3cea825b65",
+          "bytes": 2748
+        },
+        {
+          "path": "swift-capacity-8k-c1.json",
+          "sha256": "3e014db67aabf2e5e687500d9dbbd275949cf87dc3d51234402de9745b5c53e6",
+          "bytes": 19893
+        },
+        {
+          "path": "swift-stream-diagnostic-001.json",
+          "sha256": "8d1b05cb70587ee7ef602abb8608ebd8c181c38f7c2796d04bad347d4eb268d9",
+          "bytes": 3852
+        },
+        {
+          "path": "trace-preflight-disposition.json",
+          "sha256": "79192ef083043ad5ad7ea71df124beeb3b10019d8e95395ad2433a633b620f41",
+          "bytes": 760
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "f73099a384ae008414a76c860458d74c4b16d8090f1b7faec2a3112c9f2108d5",
+          "bytes": 1426
+        }
+      ],
+      "reason": "Final promoted state, rollback custody and independent client acceptance are retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "a56325c9925716bb34898541fb92e5e0f2323f34113ee47c4ae802ae59653191",
+          "bytes": 9933
+        }
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/publication copy requested; full local narrative and result card are retained."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

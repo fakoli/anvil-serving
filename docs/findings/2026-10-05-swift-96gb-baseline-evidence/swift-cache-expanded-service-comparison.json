@@ -1,0 +1,157 @@
+{
+  "schema": "anvil-campaign.service-regression-comparison/v1",
+  "created_at": "2026-10-05T12:09:12.003450+00:00",
+  "gate": "Each midpoint median <=1.10x baseline, all12 complete/owncanary/noerrors",
+  "all_passed": true,
+  "cells": [
+    {
+      "cell": "8k-c1",
+      "completed": 12,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "midpoint_median_visible_ttft_ms": 1595.5781000011484,
+      "midpoint_median_e2e_ms": 1722.4995000015042,
+      "visible_ttft_ratio": 0.9199614482664674,
+      "e2e_ratio": 0.9336221808537171,
+      "gate_passed": true,
+      "prompt_range": [
+        7415,
+        7433
+      ],
+      "output_range": [
+        213,
+        403
+      ],
+      "artifact": "swift-cache-expanded-service-v2-8k-c1.json",
+      "sha256": "9eb7e34447296bdfb8fddd0b6f6f02d2b09a07cf716e1b7faf29b6a558c2db5a",
+      "baseline": {
+        "cell": "8k-c1",
+        "completed": 12,
+        "ttft_median_ms": 1733.2922000005055,
+        "e2e_median_ms": 1837.6459000010072,
+        "actual_prompt_min": 7415.0,
+        "actual_prompt_max": 7433.0,
+        "actual_output_min": 186.0,
+        "actual_output_max": 396.0,
+        "artifact": "swift-service-v2-8k-c1.json",
+        "historical_summary_convention": "nearest-rank p50; original historical summary preserved",
+        "midpoint_median_visible_ttft_ms": 1734.396700000616,
+        "midpoint_median_e2e_ms": 1844.9642000005042,
+        "sha256": "91d1654edeaa9c47f86c89756a58112d57d1d9fb51234bc58f022b57fc6e7f30"
+      }
+    },
+    {
+      "cell": "8k-c4",
+      "completed": 12,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "midpoint_median_visible_ttft_ms": 3221.9330000007176,
+      "midpoint_median_e2e_ms": 3651.734099999885,
+      "visible_ttft_ratio": 0.9309892067155936,
+      "e2e_ratio": 1.015442651015566,
+      "gate_passed": true,
+      "prompt_range": [
+        7415,
+        7433
+      ],
+      "output_range": [
+        146,
+        366
+      ],
+      "artifact": "swift-cache-expanded-service-v2-8k-c4.json",
+      "sha256": "504e5e1cbcdc342980a816496db603bb381b696a1f2f25ee5bfec1f2c30f86dc",
+      "baseline": {
+        "cell": "8k-c4",
+        "completed": 12,
+        "ttft_median_ms": 3453.0902999995305,
+        "e2e_median_ms": 3588.9893999992637,
+        "actual_prompt_min": 7415.0,
+        "actual_prompt_max": 7433.0,
+        "actual_output_min": 142.0,
+        "actual_output_max": 1075.0,
+        "artifact": "swift-service-v2-8k-c4.json",
+        "historical_summary_convention": "nearest-rank p50; original historical summary preserved",
+        "midpoint_median_visible_ttft_ms": 3460.7630000000427,
+        "midpoint_median_e2e_ms": 3596.1992499996995,
+        "sha256": "620229f0780f015646d6e55427e3d28846477e1beb66d12d3cc4dffb73b7b1ef"
+      }
+    },
+    {
+      "cell": "24k-c1",
+      "completed": 12,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "midpoint_median_visible_ttft_ms": 2951.803899999504,
+      "midpoint_median_e2e_ms": 3100.1614999986487,
+      "visible_ttft_ratio": 0.9398797740034868,
+      "e2e_ratio": 0.9475640772102665,
+      "gate_passed": true,
+      "prompt_range": [
+        22467,
+        22495
+      ],
+      "output_range": [
+        208,
+        403
+      ],
+      "artifact": "swift-cache-expanded-service-v2-24k-c1.json",
+      "sha256": "25c357c31a8f28a8391bcdb7d99df4f83b71f9c9f07babc4c602f4f577a44ab9",
+      "baseline": {
+        "cell": "24k-c1",
+        "completed": 12,
+        "ttft_median_ms": 3116.5836000000127,
+        "e2e_median_ms": 3256.4419000009366,
+        "actual_prompt_min": 22467.0,
+        "actual_prompt_max": 22495.0,
+        "actual_output_min": 195.0,
+        "actual_output_max": 425.0,
+        "artifact": "swift-service-v2-24k-c1.json",
+        "historical_summary_convention": "nearest-rank p50; original historical summary preserved",
+        "midpoint_median_visible_ttft_ms": 3140.61860000038,
+        "midpoint_median_e2e_ms": 3271.7170000005353,
+        "sha256": "11a22697f00b96afad33385ba766a67ec17019a6d3a94115ef9439dc160113b6"
+      }
+    },
+    {
+      "cell": "24k-c4",
+      "completed": 12,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "midpoint_median_visible_ttft_ms": 8062.267799998153,
+      "midpoint_median_e2e_ms": 9448.110150000502,
+      "visible_ttft_ratio": 0.840853097961102,
+      "e2e_ratio": 0.9624545538267638,
+      "gate_passed": true,
+      "prompt_range": [
+        22467,
+        22495
+      ],
+      "output_range": [
+        241,
+        386
+      ],
+      "artifact": "swift-cache-expanded-service-v2-24k-c4.json",
+      "sha256": "b8ab4832b1965f5a9158605ea6b9bf855b32f1b7cd2ef3f62d45449eb5470c88",
+      "baseline": {
+        "cell": "24k-c4",
+        "completed": 12,
+        "ttft_median_ms": 9502.766399999018,
+        "e2e_median_ms": 9814.59679999898,
+        "actual_prompt_min": 22467.0,
+        "actual_prompt_max": 22495.0,
+        "actual_output_min": 217.0,
+        "actual_output_max": 470.0,
+        "artifact": "swift-service-v2-24k-c4.json",
+        "historical_summary_convention": "nearest-rank p50; original historical summary preserved",
+        "midpoint_median_visible_ttft_ms": 9588.200149999466,
+        "midpoint_median_e2e_ms": 9816.68184999944,
+        "sha256": "54d4ff42a6d4e481e27aedc68cf1ab445f207685a0c679836a8bbaaca799ac4e"
+      }
+    }
+  ],
+  "limits": [
+    "Variable output lengths; no fixed-output decode speed claim",
+    "Same ordered cells and request controls; sequential historical baseline versus current expanded, screening not broad performance proof"
+  ],
+  "method_note": "Recomputed ordinary midpoint medians from both raw request populations; historical baseline summary used nearest-rank p50 and is retained without modification."
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-investigation.swift-host-cache-comparison/v1",
+  "status": "predeclared cache pilot passed; broader regressions and final deployment still pending",
+  "request_control_match": true,
+  "engine_match_except_host_capacity_bundle": true,
+  "contamination_detected": false,
+  "control": {
+    "requests": 12,
+    "median_visible_ttft_ms": 9100.137449999238,
+    "median_e2e_ms": 9226.973349999753,
+    "reused_prompt_tokens": 124648,
+    "nearest_rank_p50_visible_ttft_ms": 8966.76590000061,
+    "nearest_rank_p50_e2e_ms": 9129.797699999472
+  },
+  "expanded": {
+    "requests": 12,
+    "reused_prompt_tokens": 373954,
+    "median_visible_ttft_ms": 5352.872649998972,
+    "nearest_rank_p50_visible_ttft_ms": 1752.577299997938,
+    "median_e2e_ms": 5497.665400000187,
+    "nearest_rank_p50_e2e_ms": 1861.3442999994732
+  },
+  "gates": {
+    "median_": {
+      "visible_ttft_ratio": 0.5882188790455489,
+      "e2e_ratio": 0.5958254339165653,
+      "at_least20percent_lower_ttft": true,
+      "e2e_within10percent": true,
+      "retention_increased": true,
+      "bundle_gate_passed": true
+    },
+    "nearest_rank_p50_": {
+      "visible_ttft_ratio": 0.19545255441516757,
+      "e2e_ratio": 0.20387574414705606,
+      "at_least20percent_lower_ttft": true,
+      "e2e_within10percent": true,
+      "retention_increased": true,
+      "bundle_gate_passed": true
+    }
+  },
+  "mechanism": "Expanded uses host KV beyond2GiB and8host slots, retains more exact prompt tokens across matched revisits. Main KV H2D counters support host use. Cannot attribute bundle benefit separately to byte budget versus state slots.",
+  "limits": [
+    "First pass interval sums include preflight intervals; later passes sum only newly captured native interval records. Occupancy is a sampled gauge, not an exact continuous peak.",
+    "Throughput interval attribution assumes root-reported quiet>=6s capture boundaries; native IDs prove no intervening inference.",
+    "All normal records are private until sanitized; native errors/startup can contain identifying free text.",
+    "Observed state_transfers.*.bytes numerically equal operation counts in control logs. Preserve raw field names but do not use these as physical state-byte volumes without producer-unit verification; main_kv_transfers bytes/pages are separately reported.",
+    "Two passes and12matched revisits per arm; sequential control then expanded, no p99 or broad coding/decode speed claim.",
+    "Benefit is retention branch;20percent median TTFT improvement is not required if measured retention increases and E2E nonregression holds."
+  ],
+  "sources": {
+    "swift-cache-control-analysis.json": "e3a2e9605df31acfdfb2de2dee60aeff430e9449ccef7e40b13e4422bcb6f622",
+    "swift-cache-expanded-analysis.json": "3cfba2c2e73125eef4c1f8cbdbd1c18072390335745805dcbdc92ac20bda5773",
+    "swift-host-cache-experiment-plan.json": "0387c997edba6eafdf83aeb1aa80b8345e8f7522c3a76bc49aa860f0bfdd8042"
+  }
+}

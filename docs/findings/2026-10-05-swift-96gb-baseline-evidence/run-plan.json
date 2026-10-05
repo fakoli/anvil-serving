@@ -1,0 +1,104 @@
+{
+  "schema": "anvil-serving.publication-run-plan/v1",
+  "kind": "Description of retained completed cells, not a reconstructed claim of predeclaration",
+  "functional": {
+    "preflight_repetitions": 3,
+    "agentic_repetitions": 3,
+    "context_cases": [
+      "native-needle",
+      "native-order",
+      "native-distractor"
+    ],
+    "context_positions": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "context_output_reserve": 8192,
+    "image_attempts": 12
+  },
+  "capacity": {
+    "context_tokens": 8192,
+    "concurrency": 1,
+    "requests": 12,
+    "max_tokens": 8192,
+    "response_words": 128,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "context_seed": 17,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.9,
+        "requested": 0.9,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "serve_flags": {
+      "no_thinking": false,
+      "reasoning_effort": null,
+      "shared_prefix_burst": false,
+      "thinking_mode": "default"
+    }
+  },
+  "swe": {
+    "selection": {
+      "instance_ids": [
+        "astropy__astropy-12907",
+        "django__django-10097",
+        "matplotlib__matplotlib-13989",
+        "scikit-learn__scikit-learn-10297",
+        "sympy__sympy-11618"
+      ],
+      "kind": "explicit_instance_ids",
+      "sha256": "675265ec1242101c95fdf9e44d4c2e9c6159b9879cbae3f61642740265a66970"
+    },
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "split": "test",
+    "harnesses": {
+      "agent": {
+        "name": "mini-swe-agent",
+        "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+      },
+      "grader": {
+        "name": "swe-bench",
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "grader_containment": {
+        "adapter_sha256": "92ede9ca7793cfed0f89f00c16cbfc5a7275f609a9bdcf115ef673709ebe90f1",
+        "receipt": "[operator identity redacted]",
+        "source_hashes": {
+          "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+          "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+        }
+      },
+      "python_environment": {
+        "architecture": "x86_64",
+        "platform": "linux",
+        "python": {
+          "implementation": "CPython",
+          "version": "3.14.4"
+        },
+        "resolved_packages_sha256": "558d4728e007ae1dfa707114f8c089b6590acd259db7a8ae5cabc06dc45b0a34",
+        "schema": "anvil-serving.swe-python-environment/v1"
+      }
+    },
+    "container_limits": {
+      "mem_limit": 8589934592,
+      "memswap_limit": 8589934592,
+      "nano_cpus": 4000000000,
+      "network_mode": "none",
+      "pids_limit": 512
+    }
+  },
+  "prospective_gates": [
+    "Same model/image host cache trial must isolate host KV and state pool changes.",
+    "32K/C1 Strata trial is feasibility only; any final contract requires measured quality, context, concurrency and vision parity or explicitly approved changes.",
+    "No comparative speed without eligible matched populations and an otherwise matched no-speculation control for speculation gain."
+  ]
+}

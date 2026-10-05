@@ -1,0 +1,39 @@
+{
+  "schema": "anvil-serving.qualification-workload-manifest/v1",
+  "campaign_id": "2026-10-05-flash-next-promotion",
+  "files": [
+    {
+      "path": "configs/benchmarks/scout.json",
+      "sha256": "ca4de6ae32ba48c68ce9bd262582c882bfd7c2dbd14379f4a02783d91c384809",
+      "bytes": 2041
+    },
+    {
+      "path": "configs/benchmarks/smoke.json",
+      "sha256": "e92bc090b09c3fd6e8d4ad956870c6b5fb89ab539f5dc7ce9c0ce917913431eb",
+      "bytes": 2135
+    },
+    {
+      "path": "anvil_serving/benchmarking/agentic.py",
+      "sha256": "748441b549f22822974c7c2c7371ea9d92b16e7e145971168ce1d0df438238c8",
+      "bytes": 18270
+    },
+    {
+      "path": "anvil_serving/benchmarking/suite_runner.py",
+      "sha256": "a6bf9f944a249b5da92b6ad44b88db78626efa732476e78d4d6eeae1a1c0a989",
+      "bytes": 32630
+    },
+    {
+      "path": "anvil_serving/benchmarking/swe.py",
+      "sha256": "ce8d1a4b80b3d4264f9d1dd695e9d795d3e533e9cfbb11d6c2ef6b517a077ed8",
+      "bytes": 33487
+    },
+    {
+      "path": "tests/fixtures/eval-data/agents-a1-v1/image-corpus.json",
+      "sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12",
+      "bytes": 3753
+    }
+  ],
+  "coding_selection": "Five explicit SWE Verified IDs must be frozen from pinned dataset before either model coding request. No substitute cases after results.",
+  "modality_corpus": "CC0-1.0 synthetic image-only corpus; every media hash validated by native runner.",
+  "oracle": "Pinned deterministic tool assertions, native hidden context answer hashes, official pinned SWE grader; no model self-grading."
+}

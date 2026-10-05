@@ -1,0 +1,46 @@
+{
+  "schema": "anvil-campaign.promotion-decision/v1",
+  "recorded_at": "2026-10-05T12:51:03.144591+00:00",
+  "status": "promoted",
+  "human_authorization": "User explicitly authorized evidence-backed promotion and directed completion of research, evaluation, promotion and optimization, with Astra review before merges.",
+  "review": "astra-review-swift-final-acceptance.md",
+  "model": "kaushikvira/Qwen3.8-27B-Swift15-NInfer-DFlash2-262K-HostCache96GB",
+  "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+  "container": "swift15-ninfer-hostcache96",
+  "container_id": "[operator identity redacted]",
+  "image": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+  "model_revision": "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+  "recipe_digest": "db954301b6d6a3b645f2fb5fe6221dc45a6afd223f30b883373f4de52a5a6a3d",
+  "registry_digest": "5bdfb5e0f20c5999d39e8ca5c1005a7c2601def651f7896e79ea1052f9cc61c4",
+  "change": "Same model/image/arithmetic/context/C4/GPU pool; hostKV2048MiB/4slots to8192MiB/8slots,40GiBhard/noSwap.",
+  "selection": "Flash Next rejected after frozen practical latency gate failed; Swift host-cache bundle promoted after paired pilot, regressions and real-client acceptance.",
+  "benefit": "Paired12 revisits perarm: midpointmedian visibleTTFT9.100s to5.353s; E2E9.227s to5.498s; reusedtokens124648 to373954.",
+  "router_public_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+  "rollback": "Original stopped swift15-ninfer-baked retained; exact original service/serve/topology files under final-activation-rollback, original recipe retained. Managed rollback router candidate also retained on Dark.",
+  "scope_limits": [
+    "Explicit-cache-aware appended-history restore proven; two implicit/changedtail attempts uninformative zerohits",
+    "Historical strictpairedSWE4/5 remains baselineonly; no new expanded coding score",
+    "Hermes client context/output/fallback fields unavailable, not claimed",
+    "Owner refresh provenance between earlier snapshot and handoff unconfirmed; handoffstate preserved, no nativeownerreconciliation/admission",
+    "Recipe and deployment artifact bytes retain prospective wording for immutable identity; conditions have now been satisfied by this separate finaldecision"
+  ],
+  "remaining_task_work": [
+    "Publish reviewed public/private evidence and runtime artifacts",
+    "Merge remaining source PR626 and publicationPRs aftergreenCI",
+    "Build/review/install exact merged localCLI wheel",
+    "Final repository/service verification"
+  ],
+  "sources": {
+    "swift-host-cache-comparison.json": "3875775b91a710691ec2703d7589bee6c2552e27de1a85cef8e4af2a53191101",
+    "swift-cache-expanded-service-comparison.json": "ce3cc045ddb109eca188b199faebac43b960abeef9b222cae54262e32d29983a",
+    "swift-explicit-history-outcome.json": "cf9c00eaad0c07814bfcd692f87f653952b65ce72052f967249adb6fd86d67e4",
+    "swift-final-startup-identity-comparison.json": "eed9f874a101d0da80a74d7a6104a3921fee389b78fd8f5ba0e85f5ce645b39e",
+    "swift-final-full-protocol-preflight.json": "e9146a51cfbb4cbe67ec4215198caa0afa8b7d12055b22d76511c5e66fe00ad3",
+    "swift-final-pi-smoke.json": "1876d4f29e420b58aefa9847a83861c2d175dc9e8cdc90f9d1dcb3c7f39cf188",
+    "swift-final-routed-clients.json": "b77a5d0f710532bbf5987dc72d2344597884e432081b64230c6f37c98cf9ce8f",
+    "swift-final-acceptance-status.json": "c5017fe6f21336ef683e67d7fa07d0b2c8bcd02120305c7298bfe5adc0f5f8d3",
+    "swift-final-acceptance-native.json": "aa420175ecbee06fcd65997d59e284e447185be1ce823a3eaa58523147461893",
+    "router-hostcache-managed-install.jsonl": "4d4fceb73941dc431265f01b514d0b9f9bd73d4f1e05b8a6c8d01186ca3d37c2"
+  },
+  "review_sha256": "2aa5bd482b49385620d03d9b8114d271c366482a2dc75299dc722e307602ea83"
+}

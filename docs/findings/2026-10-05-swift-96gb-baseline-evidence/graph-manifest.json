@@ -1,0 +1,75 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Swift15 baseline: variable-output service latency",
+  "subtitle": "RTX 5090; 12 requests per cell; unique canaries; no candidate or fixed-output decode comparison",
+  "charts": [
+    {
+      "title": "Visible TTFT p50 (nearest rank)",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Nominal context (actual input ranges in finding)",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "x": "8k",
+              "artifact": "swift-service-v2-8k-c1.json"
+            },
+            {
+              "x": "24k",
+              "artifact": "swift-service-v2-24k-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "x": "8k",
+              "artifact": "swift-service-v2-8k-c4.json"
+            },
+            {
+              "x": "24k",
+              "artifact": "swift-service-v2-24k-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Total E2E p50 (nearest rank)",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Nominal context (actual input ranges in finding)",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "x": "8k",
+              "artifact": "swift-service-v2-8k-c1.json"
+            },
+            {
+              "x": "24k",
+              "artifact": "swift-service-v2-24k-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "x": "8k",
+              "artifact": "swift-service-v2-8k-c4.json"
+            },
+            {
+              "x": "24k",
+              "artifact": "swift-service-v2-24k-c4.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

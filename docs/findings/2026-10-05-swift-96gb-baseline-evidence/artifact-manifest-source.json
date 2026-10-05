@@ -1,0 +1,210 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-05-swift-96gb-baseline",
+    "capability": "RTX 5090 baseline and larger-memory investigation",
+    "repository_revision": "1704cf58dc9b8727c63bbc094983ca6cda4e071e",
+    "dirty_state": {
+      "tracked_diff_sha256": "3542f3a3060dd76e3af0a30575a436a9d1c161140bfc466a763f858d57f402cc",
+      "dirty": true
+    },
+    "started_at": "2026-10-05T08:28:03Z",
+    "completed_at": "2026-10-05T12:51:03.144591+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "rejected"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "swift-host-cache-experiment-plan.json",
+        "workload-manifest.json",
+        "workload-service-latency-v2.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "swift-host-cache-experiment-plan.json",
+        "workload-service-latency-v2.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-identity.json",
+        "follow-up-identity.json",
+        "launcher-identity.json",
+        "physical-memory-modules.json",
+        "redaction-provenance.json",
+        "swe-image-identities-final.json",
+        "swe-image-identities-initial.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "benchmark-graph-data.json",
+        "benchmark-matrix.svg",
+        "diagnostic-mmq-phases.json",
+        "flash-diagnostic-fused-8k-c1.json",
+        "flash-diagnostic-fused-preflight.json",
+        "flash-diagnostic-mmq-8k-c1.json",
+        "flash-diagnostic-mmq-preflight.json",
+        "flash-m50-32k-initial-comparison.json",
+        "flash-m50-32k-service-v2-8k-c1.json",
+        "flash-m50-images-001.json",
+        "flash-m50-preflight-001.json",
+        "flash-prefill4096-8k-c1.json",
+        "flash-prefill4096-preflight.json",
+        "flash-trace-8k-c1.json",
+        "flash-trace-preflight.json",
+        "follow-up-identity.json",
+        "fused-activation-observation.json",
+        "graph-manifest.json",
+        "prefill-diagnostic-comparison.json",
+        "prefill4096-analysis.json",
+        "promotion-final.json",
+        "service-latency-summary.json",
+        "strata-phase-interpretation.json",
+        "swift-agentic-cases.json",
+        "swift-agentic-evidence.json",
+        "swift-appended-history-changed.json",
+        "swift-appended-history-native-analysis.json",
+        "swift-cache-admission-diagnosis.json",
+        "swift-cache-continuation-outcome.json",
+        "swift-cache-control-analysis.json",
+        "swift-cache-control-cold.json",
+        "swift-cache-control-preflight.json",
+        "swift-cache-control-revisit1.json",
+        "swift-cache-control-revisit2.json",
+        "swift-cache-expanded-agentic-cases.json",
+        "swift-cache-expanded-agentic-evidence.json",
+        "swift-cache-expanded-analysis.json",
+        "swift-cache-expanded-cold.json",
+        "swift-cache-expanded-context262-cases.json",
+        "swift-cache-expanded-context262-evidence.json",
+        "swift-cache-expanded-images.json",
+        "swift-cache-expanded-preflight.json",
+        "swift-cache-expanded-revisit1.json",
+        "swift-cache-expanded-revisit2.json",
+        "swift-cache-expanded-service-comparison.json",
+        "swift-cache-expanded-service-v2-24k-c1.json",
+        "swift-cache-expanded-service-v2-24k-c4.json",
+        "swift-cache-expanded-service-v2-8k-c1.json",
+        "swift-cache-expanded-service-v2-8k-c4.json",
+        "swift-capacity-8k-c1.json",
+        "swift-context128-cases.json",
+        "swift-context128-evidence.json",
+        "swift-context262-cases.json",
+        "swift-context262-evidence.json",
+        "swift-explicit-history-changed.json",
+        "swift-explicit-history-outcome.json",
+        "swift-explicit-history-plan.json",
+        "swift-explicit-history-pressure.json",
+        "swift-explicit-history-warm.json",
+        "swift-final-acceptance-status.json",
+        "swift-final-full-protocol-preflight.json",
+        "swift-final-pi-smoke.json",
+        "swift-final-routed-clients.json",
+        "swift-final-startup-identity-comparison.json",
+        "swift-host-cache-comparison.json",
+        "swift-host-cache-experiment-plan.json",
+        "swift-images-001.json",
+        "swift-preflight-001.json",
+        "swift-preflight-002.json",
+        "swift-preflight-003.json",
+        "swift-service-v2-24k-c1.json",
+        "swift-service-v2-24k-c4.json",
+        "swift-service-v2-8k-c1.json",
+        "swift-service-v2-8k-c4.json",
+        "swift-stream-diagnostic-001.json",
+        "swift-swe-evidence.json",
+        "swift-swe-paired-evidence.json",
+        "swift-swe-paired-result.json",
+        "swift-swe-result.json",
+        "trace-preflight-disposition.json",
+        "trace-refill-analysis.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "flash-m50-32k-initial-comparison.json",
+        "flash-trace-preflight.json",
+        "friction-log.md",
+        "prefill4096-analysis.json",
+        "strata-phase-interpretation.json",
+        "swift-capacity-8k-c1.json",
+        "swift-stream-diagnostic-001.json",
+        "trace-preflight-disposition.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Final promoted state, rollback custody and independent client acceptance are retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Retained sanitized evidence; derived views identify their native sources."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/publication copy requested; full local narrative and result card are retained."
+    }
+  ]
+}

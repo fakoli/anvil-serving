@@ -1,0 +1,105 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "observed_at": "2026-10-05",
+  "sources": [
+    {
+      "id": "qwen27",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-27B",
+      "published_or_observed": "2026-08-14",
+      "age_class": "current",
+      "evidence_type": "publisher specification",
+      "hardware_runtime_relevance": "Base model, not the measured Swift derivative",
+      "decision_impact": "Confirms model family; no transferred score.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "qwen-next",
+      "url": "https://huggingface.co/Qwen/Qwen3.8-Flash-Next",
+      "published_or_observed": "HF modified 2026-08-27",
+      "age_class": "current",
+      "evidence_type": "publisher specification and benchmark",
+      "hardware_runtime_relevance": "Larger sparse model; publisher harness differs",
+      "decision_impact": "Quality hypothesis, not local superiority.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "ninfer-pin",
+      "url": "https://github.com/Neroued/ninfer/blob/bace20dc70249eed6402b66d4852c6c3f9612905/docs/serving.md",
+      "published_or_observed": "Retained pin observed 2026-09-25",
+      "age_class": "current",
+      "evidence_type": "engine source",
+      "hardware_runtime_relevance": "Exact baseline engine host KV and state pools",
+      "decision_impact": "Larger host cache is a reuse hypothesis; preserve old flag semantics.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "strata-models",
+      "url": "https://github.com/Niko1221/Strata/blob/6f32ec070f23ced9f50e704d854d775da52591ab/docs/MODELS.md",
+      "published_or_observed": "Revision 2026-10-04",
+      "age_class": "current",
+      "evidence_type": "engine-maintainer documentation",
+      "hardware_runtime_relevance": "Consumer GPU expert offload; nominal 96 GB recipe advice",
+      "decision_impact": "UD-IQ4_XS candidate selection; not proof of fit inside 64 GB WSL cap.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "strata-batching",
+      "url": "https://github.com/Niko1221/Strata/blob/6f32ec070f23ced9f50e704d854d775da52591ab/docs/BATCHING.md",
+      "published_or_observed": "Revision 2026-10-04",
+      "age_class": "current",
+      "evidence_type": "engine-maintainer documentation",
+      "hardware_runtime_relevance": "Opt-in multi-slot differs from native IQ MTP recipe constraints",
+      "decision_impact": "Do not infer C4 parity from C1 or generic batching support.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "unsloth-pin",
+      "url": "https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/tree/38bb39ee97821de2c9009abb7e93950eec396e66",
+      "published_or_observed": "HF modified 2026-09-02",
+      "age_class": "current",
+      "evidence_type": "quantizer artifact registry",
+      "hardware_runtime_relevance": "Exact selected UD-IQ4_XS revision",
+      "decision_impact": "Pins candidate weights; no quality or performance claim.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "sglang-next",
+      "url": "https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-Flash-Next",
+      "published_or_observed": "Undated living documentation",
+      "age_class": "undated",
+      "evidence_type": "engine-maintainer recipe",
+      "hardware_runtime_relevance": "Resident-GPU recipe on different hardware",
+      "decision_impact": "Its GPU budget cannot reject all expert-offload engines.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "strata-5090-linux",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1wvwssq/strata_on_a_power_limited_5090_and_96gb_of/",
+      "published_or_observed": "Approximately 2026-10-02 (relative browser date)",
+      "age_class": "current",
+      "evidence_type": "community first-person report",
+      "hardware_runtime_relevance": "Power-limited 5090, 96 GB DDR5, Ubuntu, IQ3_S",
+      "decision_impact": "Hardware-matched discovery lead; no controlled local speed transfer.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    },
+    {
+      "id": "strata-5090-windows",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1wxqmaa/stratas_quants_or_freetokens_nvfp4_5090_96gb_ram/",
+      "published_or_observed": "Approximately 2026-10-04 (relative browser date)",
+      "age_class": "current",
+      "evidence_type": "community first-person report",
+      "hardware_runtime_relevance": "Windows 5090/96 GB IQ4_XS plus vision; uncontrolled anecdote",
+      "decision_impact": "Prioritize testing IQ4_XS; reported RAM headroom does not establish WSL fit.",
+      "observed_at": "2026-10-05",
+      "evidence_label": "external-prior"
+    }
+  ]
+}

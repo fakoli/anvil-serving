@@ -1,0 +1,70 @@
+schema = "anvil-serving.serve-recipes/v1"
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-Prepare"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; no runtime qualification yet"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/prepare.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 32768
+env = ["PORT=39128"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-32k-c1"
+flags = ["--prepare-only"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 16384
+memory_swap_limit_mib = 16384
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Prepared config must enforce 36GiB resident experts, int8 KV, 32k context, c1 and 4096MiB GPU reserve. CPU preparation uses 16GiB hard containment, no swap, and 8GiB WSL reserve; it does not start the inference engine. Preparation peak is not yet measured."
+
+[[recipe]]
+model = "unsloth/Qwen3.8-Flash-Next-Strata-UD-IQ4_XS-32K-C1"
+status = "unqualified"
+source = "Pinned Strata 6f32ec070f23ced9f50e704d854d775da52591ab; isolated RTX 5090 WSL feasibility candidate; no runtime qualification yet"
+[recipe.download]
+repo = "unsloth/Qwen3.8-Flash-Next-GGUF"
+revision = "38bb39ee97821de2c9009abb7e93950eec396e66"
+volume = "vllm-hfcache"
+require_complete_cache = true
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+vram_total_gb = 32
+[recipe.serve]
+engine = "strata"
+# Verified immutable managed build output.
+image = "sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea"
+entrypoint = ["/opt/strata/.venv/bin/python", "/opt/strata/anvil/prepare.py"]
+model_env = "STRATA_MODEL_ID"
+quantization = "UD-IQ4_XS mixed IQ3_S/IQ4_NL with compat-bf16 projections"
+context_tokens = 32768
+port = 39128
+health = "/health"
+env = ["PORT=39128"]
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-flash-next-strata-iq4xs-32k-c1"
+flags = ["--host 0.0.0.0", "--port 39128", "--gpu 0"]
+named_volumes = ["strata-flashnext-iq4xs:/data"]
+ulimits = ["memlock=-1"]
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 8192
+[recipe.fit]
+suited = ["isolated-rtx5090-qualification"]
+not_suited = ["unqualified-client-promotion"]
+rationale = "Prepared config must enforce 36GiB resident experts, int8 KV, 32k context, c1 and 4096MiB GPU reserve. Loader peak is unknown; 52GiB hard containment, no swap, retain 8GiB within 64GiB WSL. Windows containment dispatch remains a product gate."

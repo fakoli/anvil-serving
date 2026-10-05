@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "branches": [
+    {
+      "phase": "changed",
+      "branch": 0,
+      "passed": true,
+      "expected": "[redacted]",
+      "observed_visible": "[redacted]",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 64,
+        "completion_tokens_details": {
+          "reasoning_tokens": 44
+        },
+        "prompt_tokens": 57110,
+        "prompt_tokens_details": {
+          "cached_tokens": 56963
+        },
+        "total_tokens": 57174
+      },
+      "latency_s": 1.662547399999312,
+      "request_id": "[operator identity redacted]",
+      "messages_sha256": "de6dc856cccfec5ab35c9534777089e9d8d75ff68fe8e252c7621ae0740eb511",
+      "assistant_message_sha256": "9104a35df1e526d395c07d9c67350df01c8a0242cd6685ccf9370f1ddc0995c3"
+    },
+    {
+      "phase": "changed",
+      "branch": 1,
+      "passed": true,
+      "expected": "[redacted]",
+      "observed_visible": "[redacted]",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 46,
+        "completion_tokens_details": {
+          "reasoning_tokens": 26
+        },
+        "prompt_tokens": 57110,
+        "prompt_tokens_details": {
+          "cached_tokens": 56963
+        },
+        "total_tokens": 57156
+      },
+      "latency_s": 1.5211406999987958,
+      "request_id": "[operator identity redacted]",
+      "messages_sha256": "ee51883bea770f0fdab73efba7ea5761a8942a1771b2c3c4f003a249ea2bb06a",
+      "assistant_message_sha256": "5d1931b947c0bef6c88ffbff89fa08c0b4e4542643445f0cf27b85a7a69f580c"
+    },
+    {
+      "phase": "changed",
+      "branch": 2,
+      "passed": true,
+      "expected": "[redacted]",
+      "observed_visible": "[redacted]",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 64,
+        "completion_tokens_details": {
+          "reasoning_tokens": 44
+        },
+        "prompt_tokens": 57110,
+        "prompt_tokens_details": {
+          "cached_tokens": 56963
+        },
+        "total_tokens": 57174
+      },
+      "latency_s": 1.7690068999982032,
+      "request_id": "[operator identity redacted]",
+      "messages_sha256": "11845a597169840cbb4d29193031df2635bb20c5d611e3f44a63cef731d21ace",
+      "assistant_message_sha256": "ee1b5da24351834881536668459e96fd92b8b5d851da7d6eb68beb6f08ba6f74"
+    },
+    {
+      "phase": "changed",
+      "branch": 3,
+      "passed": true,
+      "expected": "[redacted]",
+      "observed_visible": "[redacted]",
+      "finish_reason": "stop",
+      "usage": {
+        "completion_tokens": 65,
+        "completion_tokens_details": {
+          "reasoning_tokens": 45
+        },
+        "prompt_tokens": 57110,
+        "prompt_tokens_details": {
+          "cached_tokens": 56963
+        },
+        "total_tokens": 57175
+      },
+      "latency_s": 1.2683047999998962,
+      "request_id": "[operator identity redacted]",
+      "messages_sha256": "54c55ff056c7c73f768f017f5844d4ab696b539e6100fce15f4ab60a7c6a1887",
+      "assistant_message_sha256": "f70d02b2596923fda28b680a9d8db075bb60e0b36de56dd7827b655a31c2fcf7"
+    }
+  ],
+  "history_sha256": "59e48d743b83e13f8c9558432e7a247fdf92dec3ae1e1a8fff617be73609e3c9",
+  "scope": "Appended user turns with exact actual prior assistant retained; native cache telemetry is a separate mandatory gate."
+}

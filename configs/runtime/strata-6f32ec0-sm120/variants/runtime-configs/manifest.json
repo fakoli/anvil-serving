@@ -1,0 +1,52 @@
+{
+  "schema": "anvil-strata-runtime-configs/v1",
+  "base_image_id": "sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea",
+  "status": "draft-unbuilt-unqualified",
+  "configs": {
+    "32k-c1-r36": {
+      "sha256": "7c440183cce3ca523fdf911df127b895d190b1397e6e158a8cb60190ae8a3aae",
+      "bytes": 1436,
+      "context_tokens": 32768,
+      "parallel": 1,
+      "resident_budget_gib": 36,
+      "required_ram_limit_mib": 53248,
+      "host_gate": "Unqualified; require measured context/concurrency capacity and memory admission."
+    },
+    "128k-c1-r36": {
+      "sha256": "45785a7b0e2941011ef6d6bb37aca885847a6df26dd0231d9b3cce92ff2cf304",
+      "bytes": 1439,
+      "context_tokens": 131072,
+      "parallel": 1,
+      "resident_budget_gib": 36,
+      "required_ram_limit_mib": 53248,
+      "host_gate": "Unqualified; require measured context/concurrency capacity and memory admission."
+    },
+    "128k-c4-r36": {
+      "sha256": "aac0d4172147d0ce27c577a85942d3e0182007f534ebc87a1d07450349b443e9",
+      "bytes": 1439,
+      "context_tokens": 131072,
+      "parallel": 4,
+      "resident_budget_gib": 36,
+      "required_ram_limit_mib": 53248,
+      "host_gate": "Unqualified; require measured context/concurrency capacity and memory admission."
+    },
+    "262k-c1-r36": {
+      "sha256": "6b16b79e9c70868b80c9e6475ea8420c40666815efbdc7cd70eb26284f3747a7",
+      "bytes": 1439,
+      "context_tokens": 262144,
+      "parallel": 1,
+      "resident_budget_gib": 36,
+      "required_ram_limit_mib": 53248,
+      "host_gate": "Unqualified; require measured context/concurrency capacity and memory admission."
+    },
+    "128k-c1-r48": {
+      "sha256": "8a9639137d4429dfd106bb6062f503ea05c28e6a8226439fabbd4f1a99a82d56",
+      "bytes": 1439,
+      "context_tokens": 131072,
+      "parallel": 1,
+      "resident_budget_gib": 48,
+      "required_ram_limit_mib": 67584,
+      "host_gate": "Later measured memory-ceiling experiment; never load under the initial 52GiB bound."
+    }
+  }
+}
