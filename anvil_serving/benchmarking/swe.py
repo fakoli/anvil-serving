@@ -25,6 +25,7 @@ from .harnesses import (
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import validate_profile
 from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
+from .swe_images import instance_image_tag, observe_paired_images, validate_paired_image_ids
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
@@ -293,6 +294,7 @@ def _mini_config(
     suite: Mapping[str, Any],
     request_controls: Mapping[str, Any],
     container_executable: str,
+    paired_images: bool = False,
 ) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
     # mini-SWE-agent's model client runs in the host process. Its Docker environment
@@ -357,6 +359,7 @@ def _mini_config(
         "    - '4'\n"
         "    - --pids-limit\n"
         "    - '512'\n"
+        + ("    - --pull\n    - never\n" if paired_images else "")
     )
 
 
@@ -371,12 +374,14 @@ def build_swe_run_plan(
     ownership_id: str,
     run_id: str,
     request_controls: Mapping[str, Any] | None = None,
+    paired_image_ids: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     require_swe_worker_platform()
     validated = validate_profile(profile)
     assets = _validate_assets(validated, assets_manifest)
     selected = validate_swe_selection(validated, instance_ids)
+    paired_images = validate_paired_image_ids(paired_image_ids, selected)
     target = _endpoint(endpoint)
     controls = _validate_request_controls(request_controls)
     Path(run_root).mkdir(parents=True, exist_ok=True)
@@ -405,6 +410,11 @@ def build_swe_run_plan(
     adapter_path = str(Path(__file__).with_name("swe_grader_adapter.py"))
     adapter_sha256 = _sha256_file(adapter_path)
     containment_receipt = os.path.join(grader_work, "containment.json")
+    image_policy_path = os.path.join(work, "paired-image-ids.json")
+    image_policy_sha256 = (hashlib.sha256(canonical_json_bytes(
+        {instance_image_tag(k): v for k, v in paired_images.items()}
+    )).hexdigest() if paired_images is not None else None)
+    container_executable = resolve_container_binary() or "docker"
     mini_command = [
         python_executable,
         os.path.join(mini_root, "src", "minisweagent", "run", "benchmarks", "swebench.py"),
@@ -424,7 +434,9 @@ def build_swe_run_plan(
         python_executable,
         adapter_path, "--grader-root", grader_root,
         "--adapter-sha256", adapter_sha256,
-        "--receipt", containment_receipt, "--",
+        "--receipt", containment_receipt,
+        *(["--image-identities", image_policy_path,
+           "--image-identities-sha256", image_policy_sha256] if paired_images is not None else []), "--",
         "--dataset_name", dataset_snapshot["root"],
         "--split", SWE_SPLIT,
         "--predictions_path", predictions_jsonl,
@@ -452,6 +464,8 @@ def build_swe_run_plan(
         "endpoint": target,
         "task_container_network": TASK_CONTAINER_NETWORK,
         "container_limits": dict(LIMITS),
+        "paired_image_ids": paired_images,
+        "container_executable": container_executable,
         "request_controls": controls,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
@@ -480,10 +494,11 @@ def build_swe_run_plan(
             "mini_root": mini_root,
             "grader_root": grader_root,
             "result": os.path.join(run_path, "swe-result.json"),
+            "image_policy": image_policy_path,
         },
         "commands": {"agent": mini_command, "grader": grader_command},
         "config_text": _mini_config(
-            target, suite, controls, resolve_container_binary() or "docker"
+            target, suite, controls, container_executable, paired_images=paired_images is not None
         ),
         "timeout_s": suite["timeout_s"],
     }
@@ -589,6 +604,8 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "endpoint": plan["endpoint"],
         "task_container_network": plan["task_container_network"],
         "container_limits": plan["container_limits"],
+        "paired_image_ids": plan.get("paired_image_ids"),
+        "image_observations": [],
         "request_controls": plan["request_controls"],
         "harnesses": plan["harnesses"],
         "state": "incomplete",
@@ -620,6 +637,7 @@ def run_swe_benchmark(
     if plan.get("plan_sha256") != expected_sha:
         raise BenchmarkJobError("swe_plan_digest_mismatch", "SWE run plan identity changed")
     _verify_dataset_snapshot(plan["dataset_snapshot"])
+    paired_images = validate_paired_image_ids(plan.get("paired_image_ids"), plan["selection"]["instance_ids"])
     result = _base_result(plan)
     paths = plan["paths"]
     Path(paths["work"]).mkdir(parents=True, exist_ok=True)
@@ -646,6 +664,25 @@ def run_swe_benchmark(
     if child_env.get("PYTHONPATH"):
         pinned_python_paths.append(child_env["PYTHONPATH"])
     child_env["PYTHONPATH"] = os.pathsep.join(pinned_python_paths)
+
+    def image_boundary(stage):
+        if paired_images is None:
+            return True
+        try:
+            rows = observe_paired_images(paired_images, executable=plan["container_executable"],
+                                         runner=runner, cwd=paths["work"], env=child_env)
+        except BenchmarkJobError as exc:
+            result["failure"] = {"class": "image_failure", "stage": stage, "code": exc.code}
+            atomic_write_json(paths["result"], result)
+            return False
+        result["image_observations"].append({"stage": stage, "images": rows})
+        atomic_write_json(paths["result"], result)
+        return True
+
+    if not image_boundary("before_agent"):
+        return result
+    if paired_images is not None:
+        atomic_write_json(paths["image_policy"], {instance_image_tag(k): v for k, v in paired_images.items()})
 
     agent_started = time.monotonic()
     try:
@@ -745,6 +782,8 @@ def run_swe_benchmark(
         }
 
     grader_started = time.monotonic()
+    if not image_boundary("before_grader"):
+        return result
     try:
         _verify_dataset_snapshot(plan["dataset_snapshot"])
     except BenchmarkJobError as exc:
@@ -770,6 +809,8 @@ def run_swe_benchmark(
     )
     grader_stage.update({"name": "official_grader", "status": "completed"})
     result["stages"].append(grader_stage)
+    if not image_boundary("after_grader"):
+        return result
     report_path = _find_official_report(paths["grader_work"], plan["run_id"])
     if grader_stage["returncode"] != 0 or report_path is None:
         failure = classify_swe_failure(

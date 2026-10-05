@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -83,7 +84,8 @@ def test_adapter_hash_mismatch_refuses_before_source_or_import(tmp_path):
         adapter.run_grader(tmp_path, [], adapter_sha256="0" * 64, receipt=tmp_path / "receipt")
 
 
-def test_official_grader_argv_passthrough_guard_installed_and_restored(tmp_path, monkeypatch):
+@pytest.mark.parametrize("paired", [False, True])
+def test_official_grader_argv_passthrough_guard_installed_and_restored(tmp_path, monkeypatch, paired):
     original_path = [str(Path(adapter.__file__).resolve().parent), *sys.path]
     monkeypatch.setattr(sys, "path", original_path[:])
     class Collection:
@@ -102,22 +104,71 @@ def test_official_grader_argv_passthrough_guard_installed_and_restored(tmp_path,
             raise AssertionError("unbounded build reached")
     build_module.BuildApiMixin = BuildApiMixin
     monkeypatch.setitem(sys.modules, "docker.api.build", build_module)
+    class ImageCollection:
+        def pull(self):
+            raise AssertionError("unbounded pull reached")
+    original_pull = ImageCollection.pull
+    images_module = ModuleType("docker.models.images")
+    images_module.ImageCollection = ImageCollection
+    monkeypatch.setitem(sys.modules, "docker.models.images", images_module)
     seen = []
     def official(name, *, run_name):
         assert str(Path(adapter.__file__).resolve().parent) not in sys.path
         with pytest.raises(RuntimeError, match="prebuilt"):
             BuildApiMixin().build()
+        if paired:
+            with pytest.raises(RuntimeError, match="automatic pulls"):
+                ImageCollection().pull()
         seen.append((name, run_name, sys.argv[:], Collection.create is not original))
         return {"unchanged_grader": True}
     result = adapter.run_grader(tmp_path, ["--max_workers", "1"],
                                adapter_sha256=hashlib.sha256(Path(adapter.__file__).read_bytes()).hexdigest(),
-                               receipt=tmp_path / "receipt.json", run_module=official)
+                               receipt=tmp_path / "receipt.json", run_module=official,
+                               image_ids={"swebench/sweb.eval.x86_64.example:latest": "sha256:" + "a" * 64} if paired else None)
     assert result == {"unchanged_grader": True}
     assert seen == [("swebench.harness.run_evaluation", "__main__",
                      ["swebench.harness.run_evaluation", "--max_workers", "1"], True)]
     assert Collection.create is original
     assert sys.path == original_path
+    assert ImageCollection.pull is original_pull
     assert (tmp_path / "receipt.json").is_file()
+
+
+@pytest.mark.parametrize("observed", ["a", "b"])
+def test_paired_grader_resolves_selected_tag_and_creates_by_immutable_id(observed):
+    image_id = "sha256:" + "a" * 64
+    tag = "swebench/sweb.eval.x86_64.example:latest"
+    calls = []
+    class Container:
+        attrs = {"Image": image_id, "HostConfig": {
+            "Memory": 8589934592, "MemorySwap": 8589934592,
+            "NanoCpus": 4000000000, "PidsLimit": 512, "NetworkMode": "none"}}
+        def reload(self):
+            pass
+    class Collection:
+        client = SimpleNamespace(images=SimpleNamespace(get=lambda value: SimpleNamespace(id="sha256:" + observed * 64)))
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return Container()
+    adapter.install_container_guard(Collection, {tag: image_id})
+    if observed == "a":
+        Collection().create(image="docker.io/" + tag)
+        assert calls[0]["image"] == image_id
+    else:
+        with pytest.raises(RuntimeError, match="image identity changed"):
+            Collection().create(image=tag)
+        assert calls == []
+
+
+def test_paired_policy_file_digest_prevents_replacement(tmp_path):
+    value = {"swebench/sweb.eval.x86_64.example:latest": "sha256:" + "a" * 64}
+    digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    path = tmp_path / "images.json"
+    path.write_text(json.dumps(value))
+    assert adapter.load_image_identities(path, digest) == value
+    path.write_text(json.dumps({next(iter(value)): "sha256:" + "b" * 64}))
+    with pytest.raises(RuntimeError, match="policy changed"):
+        adapter.load_image_identities(path, digest)
 
 
 def test_preimported_grader_rejected(tmp_path, monkeypatch):
