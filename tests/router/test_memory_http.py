@@ -36,10 +36,21 @@ def server(tmp_path, *, models=None):
     # client connection, so wait for their final credential-audit writes before
     # the Windows-private temporary database is removed.
     httpd.daemon_threads = False
+    request_complete = threading.Event()
+    handler = httpd.RequestHandlerClass
+
+    class CompletedHandler(handler):
+        def handle(self):
+            try:
+                super().handle()
+            finally:
+                request_complete.set()
+
+    httpd.RequestHandlerClass = CompletedHandler
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
-        yield httpd.server_address, key, calls
+        yield (httpd.server_address, request_complete), key, calls
     finally:
         httpd.shutdown()
         httpd.server_close()
@@ -47,8 +58,10 @@ def server(tmp_path, *, models=None):
 
 
 def request(address, token, path, body, headers=None):
-    connection = http.client.HTTPConnection(*address, timeout=5)
-    request_headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+    socket_address, request_complete = address
+    request_complete.clear()
+    connection = http.client.HTTPConnection(*socket_address, timeout=5)
+    request_headers = {"Authorization": "Bearer " + token, "Content-Type": "application/json", "Connection": "close"}
     request_headers.update(headers or {})
     try:
         connection.request("POST", path, json.dumps(body), request_headers)
@@ -56,11 +69,66 @@ def request(address, token, path, body, headers=None):
         return response.status, json.loads(response.read() or b"{}")
     finally:
         connection.close()
+        # A complete HTTP body precedes credential-audit cleanup. These are
+        # sequential protocol tests, so await the one-shot handler, not just
+        # response bytes, before allowing another request to consume a slot.
+        assert request_complete.wait(5), "request handler did not finish its credential audit"
 
 
 def current_request(request_id, method, params):
     return {"jsonrpc": "2.0", "id": request_id, "method": method, "params": {
         **params, "_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {}}}}
+
+
+def test_request_waits_for_post_response_credential_audit(tmp_path, monkeypatch):
+    audit_started = threading.Event()
+    release_audit = threading.Event()
+    body_read = threading.Event()
+    awaiting_completion = threading.Event()
+    request_returned = threading.Event()
+    outcomes = []
+    record = KeyStore.record
+    read = http.client.HTTPResponse.read
+
+    def held_record(self, *args, **kwargs):
+        audit_started.set()
+        assert release_audit.wait(5)
+        return record(self, *args, **kwargs)
+
+    def observed_read(self, *args, **kwargs):
+        result = read(self, *args, **kwargs)
+        body_read.set()
+        return result
+
+    monkeypatch.setattr(KeyStore, "record", held_record)
+    monkeypatch.setattr(http.client.HTTPResponse, "read", observed_read)
+    with server(tmp_path) as (address, key, _calls):
+        completion_wait = address[1].wait
+
+        def observed_completion_wait(timeout):
+            awaiting_completion.set()
+            return completion_wait(timeout)
+
+        monkeypatch.setattr(address[1], "wait", observed_completion_wait)
+
+        def invoke():
+            try:
+                outcomes.append(request(address, key, MEMORY_MCP_PATH, {},
+                                        {"MCP-Protocol-Version": "2025-11-25"}))
+            finally:
+                request_returned.set()
+
+        client = threading.Thread(target=invoke)
+        client.start()
+        try:
+            assert audit_started.wait(5) and body_read.wait(5) and awaiting_completion.wait(5)
+            assert not request_returned.is_set()
+        finally:
+            release_audit.set()
+            client.join(5)
+        assert not client.is_alive() and request_returned.is_set()
+        assert outcomes == [(200, {"jsonrpc": "2.0", "id": None,
+                                  "error": {"code": -32600, "message": "invalid JSON-RPC request"}})]
 
 
 def test_memory_http_is_device_bound_and_routes_only_the_configured_bank(tmp_path):

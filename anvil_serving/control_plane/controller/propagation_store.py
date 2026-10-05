@@ -207,8 +207,9 @@ class PropagationIntentStore:
         resolved = self._resolve_request(caller_id, request_id, parsed.digest)
         if resolved is not None:
             return resolved
-        if self._request_exists(caller_id, request_id):
-            raise PropagationIntentError("intent_conflict")
+        # A concurrent admission may commit after the optimistic lookup.
+        # Resolve its digest inside the duplicate-binding transaction below;
+        # a separate existence check would misclassify an identical replay.
         scope_duplicate = self._bind_scope_duplicate(caller_id, request_id, parsed)
         if scope_duplicate is not None:
             return scope_duplicate
@@ -540,16 +541,6 @@ class PropagationIntentStore:
                 return AcceptedIntent(scope["intent_id"], original["workflow_id"], parsed.digest, True)
         except PropagationIntentError:
             raise
-        except sqlite3.Error as exc:
-            raise PropagationIntentError("storage_unavailable") from exc
-
-    def _request_exists(self, caller_id: str, request_id: str) -> bool:
-        try:
-            with self._connection() as connection:
-                return connection.execute(
-                    "SELECT 1 FROM propagation_request_tombstones WHERE caller_id = ? AND request_id = ?",
-                    (caller_id, request_id),
-                ).fetchone() is not None
         except sqlite3.Error as exc:
             raise PropagationIntentError("storage_unavailable") from exc
 

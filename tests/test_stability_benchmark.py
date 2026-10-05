@@ -100,9 +100,24 @@ def test_preview_has_no_network_or_artifact_side_effects(tmp_path, monkeypatch):
 
 
 def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
-    started = threading.Event()
-    progressed = threading.Event()
+    contender_headers_observed = threading.Event()
+    anchor_content_observed = threading.Event()
     mode = ["overlap"]
+
+    def observed_stream(base, model, prompt, key, max_tokens, **kwargs):
+        observer = kwargs["observer"]
+
+        def observe(kind, data):
+            # Release the server only after the real client has recorded the
+            # event. A server write alone does not establish client ordering.
+            observer(kind, data)
+            if prompt == "contender" and kind == "response":
+                contender_headers_observed.set()
+            if prompt == "anchor" and kind == "delta" and data.get("content"):
+                anchor_content_observed.set()
+
+        kwargs["observer"] = observe
+        return stability.stream_chat(base, model, prompt, key, max_tokens, **kwargs)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -127,14 +142,10 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             if anchor:
                 emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 if mode[0] == "overlap":
-                    assert started.wait(8)
+                    assert contender_headers_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
-                progressed.set()
-                time.sleep(.1)
             else:
-                started.set()
-                assert progressed.wait(8)
-                time.sleep(.05)
+                assert anchor_content_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             emit({"choices": [{"delta": {}, "finish_reason": "stop"}],
                   "usage": {"prompt_tokens": 256, "completion_tokens": 3}})
@@ -147,11 +158,12 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
         base = f"http://127.0.0.1:{server.server_port}/v1"
         for selected in ("overlap", "serial"):
             mode[0] = selected
-            started.clear()
-            progressed.clear()
+            contender_headers_observed.clear()
+            anchor_content_observed.clear()
             observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30),
-                                     tmp_path / (selected + ".json"), calibrate=calibration, identity=identity)
-            assert observed["status"] == "completed"
+                                     tmp_path / (selected + ".json"), stream=observed_stream,
+                                     calibrate=calibration, identity=identity)
+            assert observed["status"] == "completed", observed["rounds"]
             assert observed["coverage_passed"] is True
             pair = observed["rounds"][0]
             assert pair["anchor_output_during_contender_response_wait"] is (selected == "overlap")

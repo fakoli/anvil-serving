@@ -1,6 +1,7 @@
 """Real HTTP checks for device policy, credential attribution, and revocation."""
 from contextlib import contextmanager
 import http.client
+from itertools import count
 import json
 import threading
 
@@ -45,9 +46,26 @@ def running(store, **kwargs):
         server_config=ServerConfig(api_keys_path=str(store.path)), **kwargs)
     # Join handlers, including post-response audit writes, before deleting SQLite.
     server.daemon_threads = False
+    completions = {}
+    handler = server.RequestHandlerClass
+
+    class CompletedHandler(handler):
+        def handle_one_request(self):
+            try:
+                super().handle_one_request()
+            finally:
+                headers = getattr(self, "headers", None)
+                marker = headers.get("X-Test-Request-Completion") if headers else None
+                completed = completions.get(marker)
+                if completed is not None:
+                    completed.set()
+
+    server.RequestHandlerClass = CompletedHandler
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+    connection._test_completions = completions
+    connection._test_request_ids = count(1)
     try:
         yield connection, backend
     finally:
@@ -62,9 +80,24 @@ def request(connection, token, path=CHAT, body=None, method="POST", extra=None):
     headers.update(extra or {})
     payload = None if method == "GET" else json.dumps(body if body is not None else {
         "model": "llm.primary", "messages": [{"role": "user", "content": "private prompt"}]})
-    connection.request(method, path, payload, headers)
-    response = connection.getresponse()
-    return response.status, dict(response.getheaders()), response.read()
+    # Only this fixture's sequential client awaits its own audit. Independent
+    # clients in the saturation test keep their genuine concurrent behavior.
+    completions = getattr(connection, "_test_completions", None)
+    completed = threading.Event() if completions is not None else None
+    marker = str(next(connection._test_request_ids)) if completed is not None else None
+    if completed is not None:
+        completions[marker] = completed
+        headers["X-Test-Request-Completion"] = marker
+    try:
+        connection.request(method, path, payload, headers)
+        response = connection.getresponse()
+        result = response.status, dict(response.getheaders()), response.read()
+        if completed is not None:
+            assert completed.wait(5), "request handler did not finish its credential audit"
+        return result
+    finally:
+        if completions is not None:
+            completions.pop(marker, None)
 
 
 def test_catalog_grants_denials_and_master(store):
