@@ -157,7 +157,7 @@
     "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
   },
   "schema": "anvil-serving.workload-manifest/v1",
-  "status": "active closure; matched-SWE partial and aborted after A1 quality gate; restoration pending parent control",
+  "status": "closed; matched-SWE partial and aborted after A1 quality gate; exact r11 restoration complete",
   "swe_verified_scout5": {
     "captured_pretty_spec_file_sha256": "7ba66d9ee28ab7499838bda0a5a75995c91fe8582d10403c2c1817220c88451c",
     "dataset": "princeton-nlp/SWE-bench_Verified",

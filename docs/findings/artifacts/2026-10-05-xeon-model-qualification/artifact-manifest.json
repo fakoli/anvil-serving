@@ -68,8 +68,8 @@
       "files": [
         {
           "path": "workload-manifest.json",
-          "sha256": "61dbab7605c24748840184261559f05d8cc6e0a35fbc85b4ba4419035bfede6b",
-          "bytes": 8543
+          "sha256": "73b67e2f6876f74b118692818b81f7f47dcbd148115923bab5d9ae3bf2d98418",
+          "bytes": 8531
         }
       ],
       "reason": "Frozen workload selections, identity pins, corpus bounds, and matched-comparison rules."
