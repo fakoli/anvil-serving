@@ -524,6 +524,9 @@ class MediaJobStore:
 
     def get(self, job_id: str, *, principal: str | None = None, allow_cross_principal: bool = False) -> MediaJob:
         with self._connect() as db:
+            # State, event history and artifacts must describe one committed
+            # snapshot even when an independent connection transitions the job.
+            db.execute("BEGIN")
             row = db.execute("SELECT * FROM media_jobs WHERE id=?", (job_id,)).fetchone()
             if row is None or (principal is not None and row["principal"] != principal and not allow_cross_principal):
                 raise MediaError("job_not_found", "media job was not found", status=404)

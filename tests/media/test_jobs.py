@@ -54,6 +54,42 @@ def test_restart_preserves_ordered_state_and_backend_prompt(tmp_path):
     assert [event.sequence for event in reopened.events] == [1, 2]
 
 
+def test_job_get_keeps_one_snapshot_during_independent_transition(tmp_path, monkeypatch):
+    target = store(tmp_path)
+    writer = store(tmp_path)
+    accepted, _ = create(target)
+    connect = target._connect
+    committed = []
+    errors = []
+
+    def connected():
+        db = connect()
+
+        def interleave(statement):
+            if "FROM media_job_events" in statement and not committed and not errors:
+                try:
+                    committed.append(writer.transition(
+                        accepted.id, JobState.QUEUED, principal="hermes",
+                        now=NOW + dt.timedelta(seconds=1),
+                    ))
+                except BaseException as exc:
+                    errors.append(exc)
+
+        db.set_trace_callback(interleave)
+        return db
+
+    monkeypatch.setattr(target, "_connect", connected)
+    observed = target.get(accepted.id, principal="hermes")
+    assert errors == [] and len(committed) == 1
+    assert observed.state is JobState.ACCEPTED
+    assert observed.updated_at == NOW
+    assert [event.state for event in observed.events] == [JobState.ACCEPTED]
+    current = target.get(accepted.id, principal="hermes")
+    assert current.state is JobState.QUEUED
+    assert current.updated_at == NOW + dt.timedelta(seconds=1)
+    assert [event.state for event in current.events] == [JobState.ACCEPTED, JobState.QUEUED]
+
+
 def test_restart_preserves_selected_quality_profile(tmp_path):
     target = store(tmp_path)
     accepted, _ = target.create(
