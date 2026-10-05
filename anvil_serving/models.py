@@ -1551,7 +1551,7 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         "state": state.get("Status"),
         "running": bool(state.get("Running")),
         "health": ((state.get("Health") or {}).get("Status")),
-        "host_memory": serve_recipes.recipe_memory.observation(row),
+        "host_memory": serve_recipes.recipe_memory.observation(row, _run=_run),
     }
 
 
