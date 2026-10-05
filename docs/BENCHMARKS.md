@@ -26,7 +26,7 @@ attribution and broader qualification remain open. See the
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The current bounded reference is [GLM Flash EXL3 r10 APC](findings/2026-09-19-glm53-apc-promotion.md): 4-bpw EXL3 with FP8 MLA KV, no speculation, 327,680 configured tokens, and C4. The matched APC claim is limited to repeated-prefix latency and completed requests under its frozen finalist protocol. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the exact rollback and matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing.
+The current bounded reference is [GLM Flash EXL3 r11 DCP1](findings/2026-09-23-glm-dcp1-qualification.md): 4-bpw EXL3 with FP8 DS-MLA KV, APC, no speculation, 327,680 configured tokens, C4, and the selected DCP1 mitigation. [r10 APC](findings/2026-09-19-glm53-apc-promotion.md) is historical repeated-prefix performance lineage and r11's immediate rollback. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the historical matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing.
 
 On the RTX 5090, the [Huihui NInfer MTP3 160K/C1 profile](findings/2026-09-19-qwen38-context-envelope.md) is the qualified context reference: preflight 8/8, repeated bounded quality, vision 18/18, unique-canary capacity and 150,144-token retrieval passed. The 64K results remain a separate historical comparison. Actual deployment assignments are private.
 
@@ -67,7 +67,29 @@ This page is the public, searchable summary of the model and end-to-end benchmar
 
 The 160K context measurements use one RTX 5090 with no co-resident media-generation workload. They do not establish concurrent model/media capacity. The separate model vision gate passed 18/18.
 
-The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-09-24**.
+The dated [findings](findings/README.md) contain the full commands, raw artifacts, failure cases, and decision history. Results below were last updated **2026-10-05**.
+
+## Xeon model qualification campaign (2026-10-05)
+
+The evaluated Qwen replacement profile was rejected at 3/5 against the frozen
+4/5 primary coding floor; its strict C4 128-word cell was 0/4
+performance-eligible. The prospective GLM CSF/QAD configuration passed max
+functional preflight 25/25, an original Oracle 17/18, and a corrected max-only
+Oracle 18/18. Its initial five-task SWE scout resolved 4/5, with only Django
+failed, but fresh-reload A1 resolved 2/5 attempts: 2/4 graded (Sphinx and
+Xarray), with Django and Pylint false and Sympy ungraded after its 60-step
+limit. The repeat misses the 4/5 floor, so the candidate is `no-promotion` and
+r11 is retained; B1/B2/A2 did not run. Strict C4 was 0/4 performance-eligible.
+Exact eight-image 4/4, context 4/4 at 247,617–247,638
+actual input tokens plus 65,536 maximum output, near-full 4/4 at
+316,766–316,774 plus 8,192 maximum output, and offered-C4 summary 4/4 at
+165,903–165,908 actual input tokens (nominal 201,000) are acceptance gates,
+not generated-output lengths, full-window requests, simultaneous-C4, or speed
+evidence. The failed A1 stops the comparison, so no speed result exists.
+Exact r11 restoration completed with direct 25/25, routed 7/7, and a fresh Pi
+read-tool turn; routes and manifest hashes were unchanged. Independent review
+now follows closure. These results retain the selected r11 DCP1 baseline and
+establish no capacity or promotion result. [Campaign finding](findings/2026-10-05-xeon-model-qualification.md).
 
 ## GLM mixed 3.5-bpw startup failure (2026-09-17)
 

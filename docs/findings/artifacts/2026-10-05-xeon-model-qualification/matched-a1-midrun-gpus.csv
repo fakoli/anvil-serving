@@ -1,0 +1,3 @@
+name, pcie.link.gen.current, pcie.link.width.current, temperature.gpu, power.draw [W], utilization.gpu [%]
+NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 5, 16, 72, 292.24 W, 100 %
+NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 5, 16, 74, 286.35 W, 100 %

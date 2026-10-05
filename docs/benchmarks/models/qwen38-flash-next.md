@@ -4,6 +4,13 @@
 
 ## Current status and review date
 
+**2026-10-05 replacement scout:** the evaluated prospective primary profile
+resolved 3/5 frozen coding tasks against a 4/5 floor and its strict C4
+128-word cell was 0/4 performance-eligible. It is rejected with
+`no-promotion`. These results apply to that profile only and do not revise the
+historical Qwen evidence below. See the
+[campaign finding](../../findings/2026-10-05-xeon-model-qualification.md).
+
 !!! info "Decision snapshot"
 
     - **Product role:** measured EXL3 alternative to the September 14 GLM
@@ -263,6 +270,7 @@ functional, quality, capacity, and client gates.
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-10-05 | [Prospective primary replacement scout](../../findings/2026-10-05-xeon-model-qualification.md) | rejected at 3/5 against the 4/5 frozen coding floor; strict C4 0/4 performance-eligible; `no-promotion` for this evaluated profile only. |
 | 2026-09-22 | [RadixArk NVFP4 TP2, C4 configured admission, serial C1 replacement scout](../../findings/2026-09-22-model-shortlist-validation.md) | direct preflight 6/6; agentic 16/18 and 15/18 miss the campaign 18/18 gate; `no-promotion` |
 | 2026-09-13–14 | [EXL3 quality, context, agentic, SWE, and image scout](../../findings/2026-09-13-intelligence-context-scout.md) | `no-promotion`; strict120 performance ineligible |
 | 2026-08-26 | [Full multimodal corpus, context curve, and vision-route/client promotion](../../findings/2026-08-26-qwen38-flash-next-vision-promotion.md) | then-current text/image/OCR/video Primary; direct 30/30; live 57/60 strict; edges 8/8; 25/25 context requests |

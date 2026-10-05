@@ -1,0 +1,7 @@
+{
+  "parent_sha256": "e21c304b11c5fddd713e6016730f3fb4a246053b790865ab3384e13fb15bbdc3",
+  "reason": "Campaign requireslong-tool-context correctness; bothprofilesreceiveidenticaluntimedwarmup.",
+  "recorded_at": "2026-10-05T10:23:49.107123+00:00",
+  "timing": "before first comparative warmup orbenchmark request",
+  "warmup": "same25checkpreflight plusseparate long-tools preflight nominal131072 eachperiod, reasoningmax, visible2048+8192headroom,timeout180; longtoolartifactmustshowactual>=100K. Alluntimed. Oracle18thenSWE5unchanged."
+}

@@ -1,0 +1,26 @@
+{
+  "change": "request reasoning_effort=max only;temperature1/top_p.95/thinking enabled unchanged",
+  "control_mapping": {
+    "corrected_run": "xeon-glm-csf-max2-agentic-oracle7",
+    "effective_thinking": "enabled by pinned vLLM build_chat_params; chat_template_kwargs null in native artifact means no competing override",
+    "failed_run": "xeon-glm-csf-max-agentic-oracle7",
+    "failure": "conflicting_reasoning_controls before model requests",
+    "independent_review": "Sol accepts mapping correction; pre-inference failure does not consume model repair",
+    "oracle_result": "18/18 complete, no validator changes",
+    "serialized_change": "thinking_mode enabled -> default; reasoning_effort max remains explicit"
+  },
+  "failure": "Oracle structured-edit emitted Markdown fence;17/18 campaign gate",
+  "gate": "Require18/18 before SWE; failure remains profile rejection unless a distinct supported remedy is reviewed",
+  "hypothesis": "Explicit max restores intended official/incumbent reasoning contract and may improve instruction following",
+  "independent_review": "Sol adversarial reviewer accepts source-backed max-only full-suite repair; temperature proposal withdrawn; no recipe reload necessary",
+  "observed_at": "2026-10-05T09:18:16.823803+00:00",
+  "preservation": "Original17/18 and strict0/4 retained; no validator changes or stripping; full18denominator; separate immutable run",
+  "schema": "anvil-serving.configuration-search/v1",
+  "source_default": "Pinned profile and startup arguments select reasoning_effort high",
+  "source_urls": [
+    "https://docs.z.ai/guides/vlm/glm-5.3-flash",
+    "https://github.com/local-inference-lab/blackwell-llm-docker/blob/c411dbf93f296de0aa6ad04c932df9103dfbee46/runtime/profiles/glm53-flash.yaml",
+    "https://github.com/local-inference-lab/vllm/blob/00a33e23142097f99fef95b1ecab6da4ea271e2e/vllm/entrypoints/openai/chat_completion/protocol.py",
+    "https://github.com/local-inference-lab/vllm/blob/00a33e23142097f99fef95b1ecab6da4ea271e2e/vllm/renderers/params.py"
+  ]
+}

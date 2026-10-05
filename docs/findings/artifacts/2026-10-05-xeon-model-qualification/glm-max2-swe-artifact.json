@@ -1,0 +1,146 @@
+{
+  "created_at": "2026-10-05T10:03:49.518233Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+      "model": "candidate-glm-max-tier-r1"
+    },
+    "finished_at": "2026-10-05T10:03:49.518129Z",
+    "started_at": "2026-10-05T09:26:37.671115Z",
+    "submitted_at": "2026-10-05T09:26:36.821690+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-10-05T10:03:49.507646Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 327680
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "gpu": "dual-96GiB-class-gpus",
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+          "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+          "served_name": "candidate-glm-max-tier-r1"
+        },
+        "runtime": {
+          "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+          "image_id": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        "served_model": {
+          "configured_context": 327680,
+          "id": "glm53-csf-qad-tp2-dcp2-c4-327k-r1"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "REDACTED_RUN_OR_REQUEST_ID"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "REDACTED_BENCHMARK_CONTENT"
+      },
+      "run": {
+        "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "profile": "scout",
+        "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "spec_sha256": "f9265e8dfd098c10bdee7a953996f3fc44b65fb93862151e727d12ab8074991a",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 10879,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "d51bb7d60f7391dfaef81a0aa074dfa44fbf453b458932e5a0c8f81dcdeb2aa5"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2001,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "be7adb1135f0609c6fc8f4f095dcd3c1200df0369389e5fb1daf0ad63f7a1795"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 32053,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "d8640dca5012e2f459879d85652bfcb0dc90fe59c5e7cf417d670943a538e7a6"
+            }
+          ],
+          "name": "swe",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "profile": "scout",
+    "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "spec_sha256": "f9265e8dfd098c10bdee7a953996f3fc44b65fb93862151e727d12ab8074991a",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

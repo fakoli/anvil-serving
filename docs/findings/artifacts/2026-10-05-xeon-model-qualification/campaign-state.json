@@ -1,0 +1,176 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "updated_at": "2026-10-05T11:42:06.212380+00:00",
+  "status": "complete",
+  "current_stage": "complete",
+  "launcher": {
+    "invocation": "python3 -m anvil_serving.cli",
+    "version": "1.5.0",
+    "repository_revision": "4ef32cc8e3c178967abef2725fba099f13dd5ebb",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "qwen-startup-identity.json",
+        "glm-startup-identity.json",
+        "configuration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [],
+      "failures": [
+        "Qwen resolved 3/5; GLM initial Max resolved 4/5 and fresh A1 resolved 2/5 attempted. Neither qualifies as a replacement."
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "not-applicable",
+      "evidence": [],
+      "failures": [
+        "No candidate survived repeated coding floor; comparison stopped before B1/B2/A2."
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "complete",
+      "evidence": [
+        "qwen-swe-native.json",
+        "glm-agentic-native.json",
+        "glm-max2-agentic-native.json",
+        "matched-a1-swe-native.json",
+        "matched-swe-early-stop.json"
+      ],
+      "failures": [
+        "Qwen resolved 3/5; GLM initial Max resolved 4/5 and fresh A1 resolved 2/5 attempted. Neither qualifies as a replacement."
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "publication-summary.md"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    {
+      "id": "baseline-preflight",
+      "artifact": "baseline-preflight.json",
+      "classification": "functional 25/25"
+    },
+    {
+      "id": "baseline-c4-strict128",
+      "artifact": "baseline-capacity-c4-strict128.json",
+      "classification": "diagnostic 0/4 strict; performance-ineligible"
+    },
+    {
+      "id": "qwen-medium-functional",
+      "artifact": "qwen-preflight-medium.json",
+      "classification": "functional25/25"
+    },
+    {
+      "id": "qwen-medium-oracle",
+      "artifact": "qwen-agentic-native.json",
+      "classification": "quality18/18"
+    },
+    {
+      "id": "qwen-medium-swe",
+      "artifact": "qwen-swe-native.json",
+      "classification": "quality3/5;replacementprofile rejected"
+    },
+    {
+      "id": "qwen-strict128",
+      "artifact": "qwen-capacity-c4-strict128.json",
+      "classification": "diagnostic0/4;performance-ineligible"
+    },
+    {
+      "id": "glm-high-functional",
+      "artifact": "glm-preflight-enabled.json",
+      "classification": "functional25/25"
+    },
+    {
+      "id": "glm-high-oracle",
+      "artifact": "glm-agentic-native.json",
+      "classification": "quality17/18; gatefailed"
+    },
+    {
+      "id": "glm-max2-oracle",
+      "artifact": "glm-max2-agentic-native.json",
+      "classification": "quality18/18; passed"
+    },
+    {
+      "id": "glm-high-strict128",
+      "artifact": "glm-capacity-c4-strict128.json",
+      "classification": "diagnostic0/4;performance-ineligible"
+    },
+    {
+      "id": "glm-max2-swe",
+      "artifact": "glm-max2-swe-native.json",
+      "classification": "4/5; ties historical r11 floor, not demonstrated improvement"
+    },
+    {
+      "id": "glm-max-functional",
+      "artifact": "glm-max-preflight.json",
+      "classification": "25/25"
+    },
+    {
+      "id": "glm-max-vision8",
+      "artifact": "glm-max-vision8.json",
+      "classification": "4/4 exact eight-image corpus"
+    },
+    {
+      "id": "glm-max-context256-64",
+      "artifact": "glm-max-context256-64-native.json",
+      "classification": "4/4 actual prompt247617..247638, output65536 accepted; not64K generated"
+    },
+    {
+      "id": "glm-max-context319-8",
+      "artifact": "glm-max-context319-8-native.json",
+      "classification": "4/4 actual316766..316774input+8192allowance; notfull327680 or8192generated"
+    },
+    {
+      "id": "glm-max-c4-summary",
+      "artifact": "glm-max-c4-long-summary.json",
+      "classification": "offeredC4 functional4/4 actual165903..165908; notoccupancy/speed"
+    },
+    {
+      "id": "matched-a1-oracle",
+      "artifact": "matched-a1-agentic-native.json",
+      "classification": "18/18 quality eligibility passed"
+    },
+    {
+      "id": "matched-a1-swe",
+      "artifact": "matched-a1-swe-native.json",
+      "classification": "failed advancement:2/5attempted;4graded,2resolved;Sympy60stepfailureungraded. Native graded rate.5 preserved."
+    }
+  ],
+  "next_actions": [],
+  "promotion_authorized": true,
+  "promotion_conditions": "User authorized promotion only after evidence demonstrates improvement and required qualification/integration gates pass. No candidate is promoted."
+}

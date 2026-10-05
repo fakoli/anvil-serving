@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-05-xeon-model-qualification.md`
+(dual-Max-Q Qwen replacement and GLM CSF/QAD scout; configured context/C4 only,
+strict C4 cells are performance-ineligible; fresh-reload A1 missed the SWE
+floor, B1/B2/A2 did not run, and exact r11 restoration completed);
+
 `docs/findings/2026-09-23-glm-runtime-stability.md`
 (dual-Max-Q runtime crash reproduction and bounded DCP1 mitigation; exact baseline restored, no performance ranking or promotion);
 

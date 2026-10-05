@@ -1,0 +1,61 @@
+{
+  "observed_at": "2026-10-05T11:42:06.212380+00:00",
+  "provider": "anvil",
+  "model": "llm.primary",
+  "session": "fresh ephemeral; no saved session or provider change",
+  "stdin": "DEVNULL; no inherited script",
+  "enabled_tools": [
+    "read"
+  ],
+  "tool_events": [
+    {
+      "type": "tool_execution_end",
+      "toolCallId": "chatcmpl-tool-9a9bcea4faa49de9",
+      "toolName": "read",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "RESTORE_R11_0ecccd9cc793eb0b\n"
+          }
+        ]
+      },
+      "isError": false
+    }
+  ],
+  "final_message": {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": "RESTORE_R11_0ecccd9cc793eb0b"
+      }
+    ],
+    "api": "openai-completions",
+    "provider": "anvil",
+    "model": "llm.primary",
+    "usage": {
+      "input": 1705,
+      "output": 17,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "reasoning": 0,
+      "totalTokens": 1722,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+      }
+    },
+    "stopReason": "stop",
+    "timestamp": 1791200428094,
+    "responseId": "chatcmpl-ba616c91c1594440b70433e1",
+    "rawStopReason": "stop"
+  },
+  "expected": "RESTORE_R11_0ecccd9cc793eb0b",
+  "passed": true,
+  "source_sha256": "e1a731940792c6f9d1f2fe4d56993b531e9b449e87b0585729ff01658e1e8e05",
+  "redactions": "omitted unrelated startup and reasoning events; read path is relative synthetic fixture"
+}

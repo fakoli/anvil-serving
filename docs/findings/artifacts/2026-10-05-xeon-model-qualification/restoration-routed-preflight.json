@@ -1,0 +1,201 @@
+{
+  "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+  "budget": {
+    "max_completion_tokens": 10240,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 150,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 932,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 3.686,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 274,
+        "prompt_tokens": 28,
+        "total_tokens": 302
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 31,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 200,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.851,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 54,
+        "prompt_tokens": 30,
+        "total_tokens": 84
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 0,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 93,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 1.054,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 4967,
+        "total_tokens": 5001
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 0,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 163,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 1.272,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 4967,
+        "total_tokens": 5016
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "event_count": 34,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.693,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 42,
+        "prompt_tokens": 166,
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 0,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.668,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 166,
+        "total_tokens": 206
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 11,
+      "content_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 169,
+      "reasoning_excerpt": "REDACTED_BENCHMARK_CONTENT",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.807,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 70,
+        "total_tokens": 121
+      },
+      "validation_detail": "tool result retained"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "3.7s got=\"```python\\nsum(xs)\\n```\\n\\nPython's built-in `sum()` d\" finish='stop' visible=150 reasoning_chars=932 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=200 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "2/2 clean (sample: 1.1s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=93 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x2",
+      "passed": true
+    },
+    {
+      "detail": "0.7s done=True events=34 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "1.5s tool result retained finish='stop' visible=11 reasoning_chars=169 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

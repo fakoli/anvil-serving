@@ -1,0 +1,50 @@
+{
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "measurements": {
+    "available_kv_cache_tokens": 955959,
+    "measurement_scope": "startup only; not a sustained capacity or performance measurement",
+    "model_loading_gib_per_rank": 51.58
+  },
+  "model": {
+    "repository": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "6909a5bed089a48fa07e956d3915af2537de9368",
+    "served_name": "candidate-local-tier-r1"
+  },
+  "outcome": {
+    "candidate_identity_verified": true,
+    "notes": [
+      "TP2/DCP1 no-speculation startup completed.",
+      "Configured context does not prove long-context behavior or preserve the incumbent context contract."
+    ],
+    "promoted": false,
+    "startup_completed": true
+  },
+  "resolved_configuration": {
+    "configured_context_status": "configured; not a measured long-context result",
+    "configured_context_tokens": 262144,
+    "image_cap_per_prompt": 8,
+    "max_num_batched_tokens": 6019,
+    "max_num_seqs": 4,
+    "video_cap_per_prompt": 0,
+    "vision_enabled": true
+  },
+  "runtime": {
+    "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+    "image_digest": "ghcr.io/local-inference-lab/vllm@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067",
+    "load_format": "instanttensor",
+    "quantization": "modelopt_mixed"
+  },
+  "schema": "anvil-serving.startup-identity/v1",
+  "source_artifact": {
+    "artifact_name": "qwen-startup-complete.log",
+    "location": "private evidence retained outside this repository",
+    "published_path": null,
+    "redaction": "Private paths, endpoints, process identifiers, and complete log content are not published."
+  },
+  "topology": {
+    "decode_context_parallel_size": 1,
+    "kv_cache_dtype": "fp8",
+    "speculative_config": null,
+    "tensor_parallel_size": 2
+  }
+}

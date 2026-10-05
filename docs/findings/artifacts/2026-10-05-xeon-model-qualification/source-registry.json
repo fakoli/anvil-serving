@@ -1,0 +1,127 @@
+{
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "observed_at": "2026-10-05T08:30:00Z",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current",
+      "decision_impact": "Pins the candidate identity and requires an explicit revision in feasibility and scout cells.",
+      "evidence_type": "model-artifact",
+      "hardware_runtime_relevance": "Exact QAD mixed NVFP4/MXFP8 checkpoint candidate; its safetensor index is self-contained and does not require hybrid materialization.",
+      "id": "qwen-step5500-hf-revision",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "2026-10-02T02:39:10Z",
+      "url": "https://huggingface.co/local-inference-lab/Qwen3.8-Flash-Next-NVFP4/tree/6909a5bed089a48fa07e956d3915af2537de9368"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Sets mixed-layout loader and context-extension gates; it is not local quality or capacity evidence.",
+      "evidence_type": "model-card",
+      "hardware_runtime_relevance": "Documents the mixed ModelOpt layout, including NVFP4 PLE and MTP expert weights, and native 262144-token context.",
+      "id": "qwen-step5500-model-card",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "observed 2026-10-05",
+      "url": "https://huggingface.co/local-inference-lab/Qwen3.8-Flash-Next-NVFP4/blob/6909a5bed089a48fa07e956d3915af2537de9368/README.md"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Selected for initial load feasibility rather than the older beta3221 image; local load and behavior remain required.",
+      "evidence_type": "runtime-release",
+      "hardware_runtime_relevance": "Pinned SM120-oriented runtime image candidate: ghcr.io/local-inference-lab/vllm@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067.",
+      "id": "lil-karmic-kraken-beta-20261005",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "2026-10-05T02:44:37Z",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/releases/tag/karmic-kraken-beta-e1ccbaf0fc0f4f4c52c72cd3d16892a741bc9307a0d0af381c326e90b69c03cb"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Defines a supported starting configuration only; no exact step-5500 compatibility or local qualification claim.",
+      "evidence_type": "runtime-source",
+      "hardware_runtime_relevance": "Declares Qwen profile defaults for ModelOpt mixed quantization, CPU PLE offload, vision enabled, and TP-compatible launch settings.",
+      "id": "lil-qwen-profile",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "2026-10-05",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/c411dbf93f296de0aa6ad04c932df9103dfbee46/runtime/profiles/qwen38-flash-next.yaml"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Requires a no-speculation MTP_DEPTH=0 control before any speculative comparison.",
+      "evidence_type": "runtime-source",
+      "hardware_runtime_relevance": "Launcher resolves zero draft tokens to non-speculative mode; options map MTP_DEPTH to draft tokens.",
+      "id": "lil-launcher-mtp-zero",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "2026-10-05",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/c411dbf93f296de0aa6ad04c932df9103dfbee46/runtime/launcher.py#L1022-L1044"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "GLM feasibility lead only; requires local fit, supported runtime, and independent requalification.",
+      "evidence_type": "model-artifact-inventory",
+      "hardware_runtime_relevance": "Exact revision inventory reports 44 tensor files totaling 178443517340 bytes and 113 repository files totaling 178536434755 bytes. Artifact bytes are not an HBM-fit measurement.",
+      "id": "glm53-csf-qad-artifact",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "2026-10-05T00:23:35Z",
+      "url": "https://huggingface.co/local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD/tree/4f90b74165cb1542cca35730b7dfa4d550bcf0ce"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Does not establish local loadability, quality, or promotion.",
+      "evidence_type": "model-card",
+      "hardware_runtime_relevance": "Local quantization artifact lead for GLM-5.3-Flash.",
+      "id": "glm53-flash-model-card",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "observed 2026-10-05",
+      "url": "https://huggingface.co/local-inference-lab/GLM-5.3-Flash-NVFP4-4p67"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Research ranking input only; no local qualification credit.",
+      "evidence_type": "external-api-prior",
+      "hardware_runtime_relevance": "Artificial Analysis index prior of 42 for the hosted model; it is not evidence for a local quantization or local runtime.",
+      "id": "aa-glm53-flash",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "observed 2026-10-05",
+      "url": "https://artificialanalysis.ai/models/glm-5-3-flash"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Ranks research leads only; no local benchmark or promotion claim.",
+      "evidence_type": "external-api-prior",
+      "hardware_runtime_relevance": "Browser research recorded external comparison priors: MiMo Pro 46, GLM-5.3 Max 45, Kimi 44, GLM-5.3 Flash 42, Qwen Flash Next 40, and DeepSeek Flash Max 39. These are hosted-model priors, not local quantization or hardware measurements.",
+      "id": "aa-open-weights-comparison-board",
+      "observed_at": "2026-10-05",
+      "published_or_observed": "observed 2026-10-05",
+      "url": "https://artificialanalysis.ai/leaderboards/models"
+    },
+    {
+      "id": "chrome-x-mimo-search",
+      "url": "https://x.com/search?q=MiMo%20V2.6%20Pro%20local%20LLM&src=typed_query&f=top",
+      "published_or_observed": "observed 2026-10-05",
+      "observed_at": "2026-10-05",
+      "age_class": "current-observation; publication age not independently established",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "discovery only; not controlled against local configuration",
+      "decision_impact": "Chrome scout observed vendor/community leads; no reproducible local benchmark extracted."
+    },
+    {
+      "id": "chrome-reddit-mimo-discussion",
+      "url": "https://www.reddit.com/r/LocalLLaMA/comments/1woa5d3/mimov26_both_pro_and_flash_is_a_benchmaxxed_scam/",
+      "published_or_observed": "observed 2026-10-05",
+      "observed_at": "2026-10-05",
+      "age_class": "current-observation; publication age not independently established",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "discovery only; not controlled against local configuration",
+      "decision_impact": "Chrome scout observed anecdotal quality complaints; neither acceptance nor disqualification evidence."
+    },
+    {
+      "id": "reddit-pro6000-community-lead",
+      "url": "https://www.reddit.com/r/Vllm/comments/1w37hsi/so_got_2_6000_pro_maxq/",
+      "published_or_observed": "observed 2026-10-05",
+      "observed_at": "2026-10-05",
+      "age_class": "current-observation; publication age not independently established",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "discovery only; not controlled against local configuration",
+      "decision_impact": "Hardware-matched community recipe lead only; exact checkpoint and local validation remain required."
+    }
+  ]
+}

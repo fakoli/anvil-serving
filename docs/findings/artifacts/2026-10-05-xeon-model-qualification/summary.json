@@ -1,0 +1,254 @@
+{
+  "campaign_id": "2026-10-05-xeon-model-qualification",
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "compatibility-only"
+    ],
+    "next_gate": "None. Qualification and restoration evidence are complete; deliver the closed public evidence bundle through the pull request and CI.",
+    "promoted": false,
+    "promotion_authorized": true
+  },
+  "evidence": [
+    "baseline-preflight.json",
+    "baseline-capacity-c4-strict128.json",
+    "offline-harness-receipt.json",
+    "feasibility-initial.json",
+    "qwen-startup-identity.json",
+    "qwen-preflight-disabled.json",
+    "qwen-preflight-medium.json",
+    "qwen-capacity-c4-strict128.json",
+    "qwen-agentic-artifact.json",
+    "qwen-agentic-native.json",
+    "qwen-swe-artifact.json",
+    "qwen-swe-native.json",
+    "glm-max-repair-plan.json",
+    "glm-max-control-failure-artifact.json",
+    "glm-max2-agentic-artifact.json",
+    "glm-max2-agentic-native.json",
+    "workload-manifest.json",
+    "run-plan.md",
+    "glm-max-preflight.json",
+    "glm-max2-swe-artifact.json",
+    "glm-max2-swe-native.json",
+    "glm-max-vision8.json",
+    "glm-max-context256-64-artifact.json",
+    "glm-max-context256-64-native.json",
+    "glm-max-context319-8-artifact.json",
+    "glm-max-context319-8-native.json",
+    "glm-max-c4-long-summary.json",
+    "glm-max-c4-functional-plan.json",
+    "matched-swe-plan.json",
+    "matched-swe-warmup-addendum.json",
+    "matched-a1-preflight.json",
+    "matched-a1-long-tools.json",
+    "matched-a1-agentic-artifact.json",
+    "matched-a1-agentic-native.json",
+    "matched-a1-swe-artifact.json",
+    "matched-a1-swe-native.json",
+    "matched-swe-early-stop.json",
+    "matched-a1-source-status.json",
+    "restoration.json",
+    "restoration-checks.json",
+    "restoration-preflight.json",
+    "restoration-routed-preflight.json",
+    "restoration-pi-tool-turn.json",
+    "restoration-runtime-status.json"
+  ],
+  "failures": [
+    {
+      "kind": "controlled-output",
+      "result": "0/4 exact adherence; diagnostic only",
+      "scope": "baseline strict C4"
+    },
+    {
+      "kind": "controlled-output",
+      "result": "0/4 exact adherence; every response opened with the wrong marker and had one extra code word; diagnostic only",
+      "scope": "candidate strict C4"
+    },
+    {
+      "kind": "independent-coding-quality",
+      "result": "3/5 resolved; Django 13512 and Pylint 8898 unresolved. This rejects the evaluated Qwen replacement profile, not the model generally.",
+      "scope": "candidate SWE-bench Verified scout"
+    },
+    {
+      "kind": "agentic-quality",
+      "result": "17/18; structured-edit output used a Markdown fence. Retained without validator changes.",
+      "scope": "original GLM Oracle"
+    },
+    {
+      "kind": "harness-configuration",
+      "result": "conflicting_reasoning_controls before inference; corrected by default thinking mode with max reasoning only.",
+      "scope": "GLM Max control"
+    },
+    {
+      "kind": "controlled-output",
+      "result": "0/4 performance-eligible; retain as diagnostic only and do not report timing as performance.",
+      "scope": "GLM strict C4"
+    },
+    {
+      "kind": "matched-coding-quality",
+      "result": "A1 campaign full-attempt metric 2/5; native official-grader metric 2/4 (resolve_rate=0.5). django__django-13512, pylint-dev__pylint-8898 graded unresolved; sympy__sympy-12096 LimitsExceeded with empty submission and ungraded. Below 4/5; matched sequence aborted.",
+      "scope": "matched SWE A1"
+    }
+  ],
+  "gates": [
+    {
+      "evidence": "baseline-preflight.json",
+      "name": "baseline-functional",
+      "result": "25/25",
+      "status": "passed"
+    },
+    {
+      "evidence": "baseline-capacity-c4-strict128.json",
+      "name": "baseline-strict-c4",
+      "result": "0/4 performance-eligible; do not report performance",
+      "status": "failed-diagnostic"
+    },
+    {
+      "evidence": "qwen-startup-identity.json",
+      "name": "candidate-startup-identity",
+      "result": "TP2/DCP1 no-spec startup; 51.58 GiB weights per rank; 955959 available KV tokens",
+      "status": "passed"
+    },
+    {
+      "evidence": "qwen-preflight-disabled.json",
+      "name": "candidate-disabled-smoke",
+      "result": "2/2",
+      "status": "passed"
+    },
+    {
+      "evidence": "qwen-preflight-medium.json",
+      "name": "candidate-medium-functional",
+      "result": "25/25",
+      "status": "passed"
+    },
+    {
+      "evidence": "qwen-agentic-artifact.json; qwen-agentic-native.json",
+      "name": "candidate-agentic-oracle",
+      "result": "18/18",
+      "status": "passed"
+    },
+    {
+      "evidence": "qwen-capacity-c4-strict128.json",
+      "name": "candidate-strict-c4",
+      "result": "0/4 performance-eligible; wrong opening marker; code words 136/121/132/126 and one extra word each",
+      "status": "failed-diagnostic"
+    },
+    {
+      "evidence": "qwen-swe-artifact.json; qwen-swe-native.json",
+      "name": "candidate-swe-verified-scout",
+      "result": "3/5 resolved (Sphinx, SymPy, Xarray); Django 13512 and Pylint 8898 unresolved; below frozen incumbent r11 4/5 replacement floor",
+      "status": "failed-replacement-floor"
+    },
+    {
+      "evidence": "glm-agentic-artifact.json; glm-agentic-native.json",
+      "name": "glm-original-oracle",
+      "result": "17/18; structured-edit response emitted a Markdown fence",
+      "status": "failed-profile"
+    },
+    {
+      "evidence": "glm-max-control-failure-artifact.json",
+      "name": "glm-max-control",
+      "result": "conflicting explicit reasoning_effort and thinking_mode; no model request was evaluated",
+      "status": "tooling-failure-before-inference"
+    },
+    {
+      "evidence": "glm-max2-agentic-artifact.json; glm-max2-agentic-native.json",
+      "name": "glm-max2-oracle",
+      "result": "18/18 campaign gate passed; native artifact separately records required_pass_rate=0.75 and observed pass_rate=1.0; all 18 observations retained reasoning_present=true with reasoning_effort=max and thinking_mode=default",
+      "status": "passed"
+    },
+    {
+      "evidence": "glm-max2-swe-artifact.json; glm-max2-swe-native.json",
+      "name": "glm-max2-swe-verified-scout",
+      "result": "4/5 resolved; sphinx-doc__sphinx-9658, sympy__sympy-12096, pydata__xarray-4356, pylint-dev__pylint-8898 resolved; django__django-13512 unresolved; meets the absolute 4/5 floor and ties historical r11",
+      "status": "passed-replacement-floor-tied"
+    },
+    {
+      "evidence": "glm-max-preflight.json",
+      "name": "glm-max-functional-preflight",
+      "result": "25/25",
+      "status": "passed"
+    },
+    {
+      "evidence": "glm-max-vision8.json",
+      "name": "glm-max-vision8",
+      "result": "4/4 exact eight-image ordered/reversed corpus",
+      "status": "passed"
+    },
+    {
+      "evidence": "glm-max-context256-64-artifact.json; glm-max-context256-64-native.json",
+      "name": "glm-max-context256-64",
+      "result": "4/4 at actual prompt tokens 247617..247638; nominal 250000; max_tokens=65536 accepted",
+      "status": "passed-with-bounded-claim"
+    },
+    {
+      "evidence": "glm-max-context319-8-artifact.json; glm-max-context319-8-native.json",
+      "name": "glm-max-context319-8",
+      "result": "4/4 at actual prompt tokens 316766..316774; nominal 319000; max_tokens=8192 accepted",
+      "status": "passed-with-bounded-claim"
+    },
+    {
+      "evidence": "glm-max-c4-long-summary.json; glm-max-c4-functional-plan.json",
+      "name": "glm-max-c4-long-functional",
+      "result": "4/4 completed at actual prompt tokens 165903..165908; own first canary, no foreign markers, complete capture",
+      "status": "passed-functional-only"
+    },
+    {
+      "evidence": "matched-a1-preflight.json; matched-a1-long-tools.json; matched-a1-agentic-artifact.json; matched-a1-agentic-native.json; matched-a1-swe-artifact.json; matched-a1-swe-native.json; matched-swe-early-stop.json",
+      "name": "matched-swe-performance",
+      "result": "A1 preflight 25/25, long tool actual 110760, Oracle 18/18; SWE campaign full attempt 2/5, native 2/4 graded (resolve_rate=0.5), below 4/5; B1/B2/A2 not run",
+      "status": "failed-partial-aborted-a1-quality"
+    },
+    {
+      "name": "restoration-closure",
+      "evidence": "restoration.json; restoration-checks.json; restoration-preflight.json; restoration-routed-preflight.json; restoration-pi-tool-turn.json; restoration-runtime-status.json",
+      "result": "exact r11 restored/readmitted; direct 25/25, routed 7/7, fresh Pi read-tool exact fixture; tiers ready/admitting; candidate unloaded; router/model identities unchanged",
+      "status": "passed"
+    }
+  ],
+  "headline_results": [],
+  "identity": {
+    "baseline": "baseline-local-tier-r11",
+    "candidate": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4@6909a5bed089a48fa07e956d3915af2537de9368",
+    "glm_max_candidate": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD@4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+    "runtime_candidate": "ghcr.io/local-inference-lab/vllm@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+  },
+  "limitations": [
+    "Qwen candidate context is configured at 262144 tokens; its 327680-token contract is unproven. Its strict C4 is 0/4 performance-eligible and no further Qwen profile trial is authorized without remedy evidence.",
+    "GLM Max2 scout met the absolute 4/5 floor but tied historical r11; differing reasoning controls prevent a causal quantization, hardware, or coding-improvement claim versus r11.",
+    "GLM scout durations overlapped offline CPU tests and are not comparative performance evidence.",
+    "GLM context and vision claims are limited to their retained corpora and actual prompt/output bounds.",
+    "GLM long C4 is functional only: offered client overlap is not engine occupancy; no finish_reason is retained; emitted performance eligibility is ignored.",
+    "Matched SWE is partial and aborted after A1 quality failure: campaign full-attempt 2/5 and native official-grader 2/4, below 4/5. B1, B2, and A2 were not run, so no speed claim is available.",
+    "A1 agent and official-grader durations are failed-attempt evidence only and cannot support comparative speed.",
+    "Exact r11 restoration is verified: direct 25/25, routed 7/7, a fresh Pi read-tool exact-fixture round trip, ready/admitting tiers, unchanged router/model identities, and candidate unload.",
+    "Promotion remains false because the candidate failed the matched A1 quality gate; Git delivery and CI are outside benchmark qualification evidence."
+  ],
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "baseline_preflight": "25/25 functional checks",
+    "baseline_strict_c4": "4 attempted, 0 performance-eligible due to strict 128-word adherence failure",
+    "candidate_agentic_oracle": "18/18 passed",
+    "candidate_disabled_smoke": "2/2 functional checks with speculation disabled",
+    "candidate_medium_preflight": "25/25 functional checks",
+    "candidate_strict_c4": "4 attempted, 0 performance-eligible due to wrong opening canary marker",
+    "candidate_swe_verified_scout": "3/5 resolved; all 5 submitted and independently graded by pinned SWE-bench grader",
+    "glm_max2_oracle": "18/18 passed; max reasoning with default thinking mode",
+    "glm_max2_swe_verified_scout": "4/5 resolved; all 5 submitted and officially graded",
+    "glm_max_c4_long_functional": "4/4 completed; actual prompts 165903..165908; own first canary, foreign=0, complete capture",
+    "glm_max_context256_64": "4/4 at actual prompts 247617..247638; max_tokens=65536 accepted",
+    "glm_max_context319_8": "4/4 at actual prompts 316766..316774; max_tokens=8192 accepted",
+    "glm_max_preflight": "25/25 functional checks",
+    "glm_max_vision8": "4/4 exact eight-image corpus",
+    "glm_original_oracle": "17/18 retained; structured-edit fence failure",
+    "matched_a1_swe": "campaign full attempt 2/5; native 2/4 officially graded (resolve_rate=0.5); sympy__sympy-12096 LimitsExceeded/ungraded",
+    "matched_swe": "partial matched comparison: A1 quality failure, aborted; B1/B2/A2 not run"
+  }
+}

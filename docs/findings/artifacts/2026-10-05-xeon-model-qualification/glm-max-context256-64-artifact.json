@@ -1,0 +1,280 @@
+{
+  "created_at": "2026-10-05T10:10:38.609006Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+      "model": "candidate-glm-max-tier-r1"
+    },
+    "finished_at": "2026-10-05T10:10:38.608894Z",
+    "started_at": "2026-10-05T10:08:30.503025Z",
+    "submitted_at": "2026-10-05T10:08:29.954730+00:00",
+    "worker": {
+      "id": "local-benchmark"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-10-05T10:10:38.597074Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 327680
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+        },
+        "hardware": {
+          "gpu": "dual-96GiB-class-gpus",
+          "vram_mib_per_gpu": 97887
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.context/v1"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "repository": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+          "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+          "served_name": "candidate-glm-max-tier-r1"
+        },
+        "runtime": {
+          "engine_revision": "00a33e23142097f99fef95b1ecab6da4ea271e2e",
+          "image_id": "sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        "served_model": {
+          "configured_context": 327680,
+          "id": "glm53-csf-qad-tp2-dcp2-c4-327k-r1"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "REDACTED_RUN_OR_REQUEST_ID"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "REDACTED_BENCHMARK_CONTENT"
+      },
+      "run": {
+        "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "profile": "scout",
+        "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+        "spec_sha256": "9e34ea297b1059c3855b68cc24f39738324b16fcf1cb321ef623cb9d453602ce",
+        "suite": "context"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 553,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "576bfb45a47f8ee3f02c581a7c028e99fc13030d05d95f99fab977b9b166e3c8"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2003,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "af89f2fe8ce33b60fa41238b6b06ad49ff06320c4e17a7ab573d27097a09f611"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 16044,
+              "path": "REDACTED_PRIVATE_REFERENCE",
+              "sha256": "2502c7aadb46f1474790ba8df0d5c2cb762a13f2967893e3165f82c42063f4d3"
+            }
+          ],
+          "name": "context",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "advertised_context": 327680,
+        "attempted_buckets": [
+          250000
+        ],
+        "buckets": [
+          {
+            "completed_count": 4,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 31727.37964074986,
+              "observations": [
+                30182.496374007314,
+                30986.798423007713,
+                32567.26715399418,
+                33172.95661199023
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 4,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 250000,
+            "sample_count": 4,
+            "samples": [
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-needle-250000-0.100-r0",
+                "case_type": "native-needle",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 30182.496374007314,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 247617,
+                "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+                "raw_reasoning_field": "reasoning",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 250000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 3.048124279051647,
+                "token_measurement": "usage",
+                "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-needle-250000-0.900-r0",
+                "case_type": "native-needle",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 30986.798423007713,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 247617,
+                "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+                "raw_reasoning_field": "reasoning",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 250000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 5.324848270787712,
+                "token_measurement": "usage",
+                "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-250000-0.100-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 32567.26715399418,
+                "passed": true,
+                "position": 0.1,
+                "prompt_tokens": 247638,
+                "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+                "raw_reasoning_field": "reasoning",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 250000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 9.058174841784968,
+                "token_measurement": "usage",
+                "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "f223b260b85326cac70f0d7b2aee301abc5624d3a9e80fb9e7104bb5ffaf0389",
+                "case_id": "native-crosslink-250000-0.900-r0",
+                "case_type": "native-crosslink",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 33172.95661199023,
+                "passed": true,
+                "position": 0.9,
+                "prompt_tokens": 247638,
+                "raw_reasoning": "REDACTED_BENCHMARK_CONTENT",
+                "raw_reasoning_field": "reasoning",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 250000,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 10.430182755399612,
+                "token_measurement": "usage",
+                "visible_answer": "REDACTED_BENCHMARK_CONTENT",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 6.965332536755985,
+              "observations": [
+                3.048124279051647,
+                5.324848270787712,
+                9.058174841784968,
+                10.430182755399612
+              ]
+            }
+          }
+        ],
+        "effective_context": 250000,
+        "first_material_degradation": null,
+        "notes": [
+          "effective_context uses attempted buckets only",
+          "missing engine telemetry is unavailable and is not inferred from latency"
+        ],
+        "schema": "anvil-serving.context-curve/v1",
+        "threshold_policy": {
+          "baseline_bucket": 250000,
+          "baseline_pass_rate": 1.0,
+          "max_relative_drop": 0.25,
+          "pass_rate_floor": 0.75
+        }
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "profile": "scout",
+    "run_id": "REDACTED_RUN_OR_REQUEST_ID",
+    "spec_sha256": "9e34ea297b1059c3855b68cc24f39738324b16fcf1cb321ef623cb9d453602ce",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

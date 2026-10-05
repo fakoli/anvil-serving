@@ -1,0 +1,71 @@
+{
+  "base_url": "REDACTED_LOOPBACK_ENDPOINT",
+  "budget": {
+    "max_completion_tokens": 10240,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 2048
+  },
+  "checks": [
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "REDACTED_BENCHMARK_CONTENT"
+  },
+  "image_expect": [],
+  "model": "candidate-glm-max-tier-r1",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "REDACTED_BENCHMARK_CONTENT",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 110760,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 227,
+      "reasoning_excerpt": "The user has sent a bunch of repeated text about \"Archived repository telemetry remained nominal during this interval\" and then asks \"What's the weather in Oakland? Use the tool.\"\n\nI should use the ge",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 46,
+      "requested_context_tokens": 131072,
+      "seconds": 12.403,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 59,
+        "completion_tokens_details": {
+          "reasoning_tokens": 46
+        },
+        "prompt_tokens": 110760,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 110819
+      },
+      "validation_detail": "REDACTED_BENCHMARK_CONTENT"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "REDACTED_BENCHMARK_CONTENT",
+      "name": "tool call after >=100K prompt (target 131072)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}
