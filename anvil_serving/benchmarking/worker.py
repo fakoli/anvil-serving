@@ -169,6 +169,7 @@ def _run_suite(
             for key in ("thinking_mode", "reasoning_effort", "temperature", "top_p")
             if key in parameters
         },
+        paired_image_ids=parameters.get("paired_image_ids"),
     )
     return run_swe_benchmark(plan)
 

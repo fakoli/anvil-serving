@@ -77,7 +77,7 @@ def manifest(profile):
     }
 
 
-def plan(tmp_path, *, request_controls=None):
+def plan(tmp_path, *, request_controls=None, paired_image_ids=None):
     profile = load_profile("smoke")
     environment = manifest(profile)["python_environment"]
     executable = (
@@ -102,6 +102,7 @@ def plan(tmp_path, *, request_controls=None):
         ownership_id="campaign",
         run_id="smoke-one",
         request_controls=request_controls,
+        paired_image_ids=paired_image_ids,
     )
 
 
@@ -286,6 +287,55 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     assert result["promotion"]["authorized"] is False
     serialized = json.dumps(result)
     assert "not-recorded" not in serialized
+
+
+@pytest.mark.parametrize("identities", [{}, {INSTANCE: "latest"}, {"other__case": "sha256:" + "a" * 64}])
+def test_paired_images_require_exact_selection_and_immutable_ids(tmp_path, identities):
+    with pytest.raises(BenchmarkJobError, match="every selected instance"):
+        plan(tmp_path, paired_image_ids=identities)
+
+
+@pytest.mark.parametrize("changed_boundary", [None, "before_agent", "before_grader", "after_grader"])
+def test_paired_images_record_boundaries_and_stop_before_dependent_execution(tmp_path, changed_boundary):
+    expected = "sha256:" + "a" * 64
+    value = plan(tmp_path, paired_image_ids={INSTANCE: expected})
+    assert "    - --pull\n    - never\n" in value["config_text"]
+    assert "--image-identities-sha256" in value["commands"]["grader"]
+    delegate = SuccessfulRunner(value)
+    boundaries = iter(["before_agent", "before_grader", "after_grader"])
+
+    def run(argv, cwd, timeout, env):
+        if argv[1:3] == ["image", "inspect"]:
+            boundary = next(boundaries)
+            observed = "sha256:" + "b" * 64 if changed_boundary == boundary else expected
+            return SimpleNamespace(returncode=0, stdout=json.dumps({
+                "image_id": observed,
+                "repo_digests": ["swebench/example@" + observed],
+            }))
+        return delegate(argv, cwd, timeout, env)
+
+    result = run_swe_benchmark(value, runner=run, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    if changed_boundary is None:
+        assert result["state"] == "completed"
+        assert [x["stage"] for x in result["image_observations"]] == ["before_agent", "before_grader", "after_grader"]
+        assert all(x["images"][0]["image_id"] == expected for x in result["image_observations"])
+    else:
+        assert result["state"] == "incomplete"
+        assert result["failure"] == {"class": "image_failure", "stage": changed_boundary,
+                                     "code": "swe_image_identity_mismatch"}
+        assert len(delegate.calls) == {"before_agent": 0, "before_grader": 1, "after_grader": 2}[changed_boundary]
+
+
+def test_missing_paired_image_never_pulls_or_calls_model(tmp_path):
+    value = plan(tmp_path, paired_image_ids={INSTANCE: "sha256:" + "a" * 64})
+    calls = []
+    def missing(argv, cwd, timeout, env):
+        calls.append(argv)
+        assert argv[1:3] == ["image", "inspect"]
+        return SimpleNamespace(returncode=1, stdout="")
+    result = run_swe_benchmark(value, runner=missing, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert len(calls) == 1
+    assert result["failure"]["stage"] == "before_agent"
 
 
 def test_agent_completion_without_official_report_is_incomplete(tmp_path):

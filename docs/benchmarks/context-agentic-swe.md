@@ -193,6 +193,22 @@ profile matrix. For SWE, replace the context parameters with
 `"instance_ids": ["owner__repo-NNN"]` and provide exactly the profile's
 declared count.
 
+For a paired SWE comparison, also supply `parameters.paired_image_ids`, mapping
+every selected instance ID to its previously observed full `sha256:` image ID.
+The keys must match `instance_ids` exactly. Preserve these cached official
+instance images throughout both runs. Paired mode checks the cached tag and
+retains image IDs and repository digests before the agent, before the grader,
+and after grading; a missing or changed identity leaves the run incomplete.
+It never pulls a missing task image. The grader also rejects pulls and creates
+its containers by the validated immutable image ID, verifying the created
+container before startup. The image-policy file is digest-bound to the plan.
+
+Task image checks are observations at stage boundaries, not a lock against an
+unrelated process retagging Docker images while tasks run. Keep cache writers
+quiescent during paired runs. An omitted map preserves the legacy unpaired
+behavior and produces no paired image observations; never infer immutable image
+coverage from those historical results or from a mutable `latest` tag alone.
+
 Submit to the registered worker through the controller and return after the
 job is durable:
 

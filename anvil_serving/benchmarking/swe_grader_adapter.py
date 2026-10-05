@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import runpy
 import subprocess
@@ -42,7 +43,7 @@ def contained_kwargs(kwargs):
     return {**kwargs, **LIMITS}
 
 
-def install_container_guard(collection_class):
+def install_container_guard(collection_class, image_ids=None):
     """Guard every create through the exact SDK seam used by pinned docker_build."""
     original = collection_class.create
 
@@ -50,7 +51,15 @@ def install_container_guard(collection_class):
         # Pinned source passes image and every other argument by keyword.
         if args:
             raise RuntimeError("official grader create signature changed")
-        container = original(self, **contained_kwargs(kwargs))
+        kwargs = contained_kwargs(kwargs)
+        expected_image = None
+        if image_ids is not None:
+            tag = str(kwargs.get("image", "")).removeprefix("docker.io/")
+            expected_image = image_ids.get(tag)
+            if expected_image is None or self.client.images.get(tag).id != expected_image:
+                raise RuntimeError("paired grader image identity changed or was not selected")
+            kwargs["image"] = expected_image
+        container = original(self, **kwargs)
         try:
             container.reload()
             config = container.attrs["HostConfig"]
@@ -63,6 +72,8 @@ def install_container_guard(collection_class):
                 raise RuntimeError("Docker did not enforce grader container limits")
             if config.get("Privileged") or config.get("CapAdd") or config.get("Binds"):
                 raise RuntimeError("Docker grader container has unexpected host access")
+            if expected_image is not None and container.attrs.get("Image") != expected_image:
+                raise RuntimeError("Docker grader container image differs from paired identity")
         except Exception:
             container.remove(force=True)
             raise
@@ -103,10 +114,38 @@ def reject_image_build(*_args, **_kwargs):
     raise RuntimeError("contained SWE grading requires prebuilt images; automatic builds are disabled")
 
 
-def run_grader(root, argv, *, adapter_sha256, receipt, runner=subprocess.run, run_module=runpy.run_module):
+def reject_image_pull(*_args, **_kwargs):
+    raise RuntimeError("paired SWE grading requires cached images; automatic pulls are disabled")
+
+
+def validate_image_identities(value):
+    if (not isinstance(value, dict) or not value or len(value) > 500
+            or any(not isinstance(k, str)
+                   or not re.fullmatch(r"swebench/sweb\.eval\.x86_64\.[a-z0-9_.-]+:latest", k)
+                   or not isinstance(v, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", v)
+                   for k, v in value.items())):
+        raise RuntimeError("invalid paired grader image identities")
+    return value
+
+
+def load_image_identities(path, expected_sha256):
+    source = Path(path)
+    if source.stat().st_size > 262144:
+        raise RuntimeError("paired image identity file exceeds size limit")
+    value = validate_image_identities(json.loads(source.read_text(encoding="utf-8")))
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    if hashlib.sha256(canonical).hexdigest() != expected_sha256:
+        raise RuntimeError("paired image identity policy changed after planning")
+    return value
+
+
+def run_grader(root, argv, *, adapter_sha256, receipt, image_ids=None,
+               runner=subprocess.run, run_module=runpy.run_module):
     own_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if own_hash != adapter_sha256:
         raise RuntimeError("grader containment adapter changed after planning")
+    if image_ids is not None:
+        image_ids = validate_image_identities(image_ids)
     root = verify_source(root, runner=runner)
     original_path = sys.path[:]
     # File launch otherwise shadows third-party requests with our requests.py.
@@ -118,10 +157,16 @@ def run_grader(root, argv, *, adapter_sha256, receipt, runner=subprocess.run, ru
         # Available only in the pre-existing isolated SWE harness environment.
         from docker.models.containers import ContainerCollection
         from docker.api.build import BuildApiMixin
+        if image_ids is not None:
+            from docker.models.images import ImageCollection
 
-        original = install_container_guard(ContainerCollection)
+        original = install_container_guard(ContainerCollection, image_ids)
         original_build = BuildApiMixin.build
         BuildApiMixin.build = reject_image_build
+        original_pull = None
+        if image_ids is not None:
+            original_pull = ImageCollection.pull
+            ImageCollection.pull = reject_image_pull
         original_argv = sys.argv
         try:
             Path(receipt).write_text(json.dumps({
@@ -129,12 +174,16 @@ def run_grader(root, argv, *, adapter_sha256, receipt, runner=subprocess.run, ru
                 "source_hashes": SOURCE_HASHES, "adapter_sha256": own_hash,
                 "container_limits": LIMITS, "status": "guard-installed",
                 "image_build_policy": "prebuilt-only",
+                "paired_image_ids": image_ids,
+                "image_pull_policy": "never" if image_ids is not None else "upstream-cache-first",
             }, sort_keys=True, indent=2) + "\n", encoding="utf-8")
             sys.argv = ["swebench.harness.run_evaluation", *argv]
             return run_module("swebench.harness.run_evaluation", run_name="__main__")
         finally:
             ContainerCollection.create = original
             BuildApiMixin.build = original_build
+            if original_pull is not None:
+                ImageCollection.pull = original_pull
             sys.argv = original_argv
     finally:
         sys.path[:] = original_path
@@ -145,12 +194,20 @@ def main():
     parser.add_argument("--grader-root", required=True)
     parser.add_argument("--adapter-sha256", required=True)
     parser.add_argument("--receipt", required=True)
+    parser.add_argument("--image-identities")
+    parser.add_argument("--image-identities-sha256")
     parser.add_argument("grader_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     tail = args.grader_args
     if not tail or tail[0] != "--":
         parser.error("official grader arguments must follow --")
-    run_grader(args.grader_root, tail[1:], adapter_sha256=args.adapter_sha256, receipt=args.receipt)
+    image_ids = None
+    if bool(args.image_identities) != bool(args.image_identities_sha256):
+        parser.error("paired image identity path and digest must be supplied together")
+    if args.image_identities:
+        image_ids = load_image_identities(args.image_identities, args.image_identities_sha256)
+    run_grader(args.grader_root, tail[1:], adapter_sha256=args.adapter_sha256,
+               receipt=args.receipt, image_ids=image_ids)
 
 
 if __name__ == "__main__":
