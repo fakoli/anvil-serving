@@ -256,9 +256,18 @@ without these fields retain their previous behavior.
 
 `models recipes status` and `running --json` include `host_memory`: Docker limits,
 effective cgroup RAM/swap limits, current/peak usage, OOM events and exit state.
-Confirm effective limits before trusting a new loader. Counters unavailable after
-container exit are null; Docker OOM/exit state remains available. These limits do
-not cap GPU VRAM or prove that the model fits. Keep restoration separate.
+Confirm effective limits before trusting a new loader. Windows uses read-only
+cgroup files in the local Docker Desktop WSL VM, selected by the exact container
+ID, after validating the local endpoint and matching VM identity. Default
+cgroupfs/systemd layouts are supported; remote endpoints, custom cgroup parents,
+unknown drivers, missing files, malformed data and timed-out probes leave live
+counters null. Nothing is executed inside the model container.
+
+Capture peak/event observations while the container is running. Counters
+unavailable after container exit are null; Docker OOM/exit state remains available.
+An unlimited cgroup (`max`) has no numeric effective limit and is also represented
+by null. These limits do not cap GPU VRAM or prove that the model fits. Keep
+restoration separate.
 
 When machine-level cache reclaim is enabled, the preview also declares that `load`
 will wait up to 600 seconds for the recipe's HTTP health after the container starts.

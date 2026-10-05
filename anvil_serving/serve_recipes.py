@@ -1018,7 +1018,7 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
     return fallback
 
 
-def _recipe_container_record(row: dict) -> dict | None:
+def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     if not isinstance(row, dict):
         return None
     config = row.get("Config") or {}
@@ -1074,7 +1074,7 @@ def _recipe_container_record(row: dict) -> dict | None:
         "state": state_name,
         "running": bool(state.get("Running")),
         "health": health,
-        "host_memory": recipe_memory.observation(row),
+        "host_memory": recipe_memory.observation(row, _run=_run),
         "native_kv_offload": (
             None if native_raw is None else native_raw == "true"
         ),
@@ -1135,7 +1135,7 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         raise RecipeError("Docker recipe identity inspection returned malformed JSON")
     containers = []
     for row in rows[:MAX_DISCOVERED_RECIPE_CONTAINERS]:
-        record = _recipe_container_record(row)
+        record = _recipe_container_record(row, _run=_run)
         if record is not None:
             containers.append(record)
     containers.sort(key=lambda item: item["container"].casefold())

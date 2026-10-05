@@ -153,3 +153,148 @@ def test_windows_desktop_containment_checks_both_memory_boundaries(monkeypatch, 
     else:
         rm.check_host(bounded, _run=run)
         assert any(argv[0] == 'wsl' for argv in calls)
+
+
+def _live_row():
+    return {'Id': 'b' * 64, 'HostConfig': {'Memory': 67108864, 'MemorySwap': 67108864},
+            'State': {'Pid': 123, 'Running': True, 'OOMKilled': False, 'ExitCode': 0}}
+
+
+def _desktop_probe(monkeypatch, *, fault=None, driver='cgroupfs'):
+    import subprocess
+
+    monkeypatch.setattr(rm.sys, 'platform', 'win32')
+    monkeypatch.delenv('DOCKER_CONTEXT', raising=False)
+    monkeypatch.setenv('DOCKER_HOST', 'npipe:////./pipe/dockerDesktopLinuxEngine')
+    info = dict(OSType='linux', OperatingSystem='Docker Desktop',
+                KernelVersion='6.6-microsoft-standard-WSL2', MemTotal=64 * 1024**3,
+                CgroupVersion='2', CgroupDriver=driver)
+    if fault == 'engine':
+        info['OperatingSystem'] = 'remote'
+    if fault == 'vm':
+        info['MemTotal'] -= 1024
+    if fault == 'v1':
+        info['CgroupVersion'] = '1'
+    payload = ('memory.current\n1024\nmemory.peak\n2048\nmemory.max\n67108864\n'
+               'memory.swap.max\n0\nmemory.events\nlow 0\nhigh 0\nmax 3\noom 1\noom_kill 1\n')
+    if fault == 'negative':
+        payload = payload.replace('1024', '-1')
+    if fault == 'duplicate':
+        payload += 'oom 2\n'
+    if fault == 'missing-oom':
+        payload = payload.replace('oom_kill 1\n', '')
+    if fault == 'truncated':
+        payload = payload[:35]
+    if fault == 'oversized':
+        payload += 'x' * 16384
+    if fault == 'unlimited':
+        payload = payload.replace('67108864', 'max').replace('memory.swap.max\n0', 'memory.swap.max\nmax')
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        assert kwargs['check'] and kwargs['capture_output'] and kwargs['text']
+        assert 0 < kwargs['timeout'] <= 15
+        if argv[:2] == ['docker', 'context']:
+            text = json.dumps('ssh://remote.invalid')
+        elif argv[:2] == ['docker', 'info']:
+            text = json.dumps(info)
+        elif argv == ['wsl', '-d', 'docker-desktop', '-e', 'cat', '/proc/meminfo']:
+            text = f'MemTotal: {64 * 1024**2} kB\nMemAvailable: 1000 kB\nSwapFree: 0 kB\n'
+        else:
+            assert argv[:6] == ['wsl', '-d', 'docker-desktop', '-e', 'sh', '-c']
+            assert argv[6] == rm._CGROUP_READ
+            assert argv[7] == 'anvil-recipe-memory'
+            expected = ('/sys/fs/cgroup/docker/' + 'b' * 64 if driver == 'cgroupfs'
+                        else '/sys/fs/cgroup/system.slice/docker-' + 'b' * 64 + '.scope')
+            assert argv[8] == expected
+            assert kwargs['timeout'] == 5
+            if fault == 'timeout':
+                raise subprocess.TimeoutExpired(argv, 5)
+            if fault == 'exit-race':
+                raise subprocess.CalledProcessError(1, argv)
+            text = payload
+        return SimpleNamespace(stdout=text, returncode=0)
+    return run, calls
+
+
+@pytest.mark.parametrize('driver', ['cgroupfs', 'systemd'])
+def test_windows_exact_id_cgroup_observation_has_no_container_exec(monkeypatch, driver):
+    run, calls = _desktop_probe(monkeypatch, driver=driver)
+    result = rm.observation(_live_row(), _run=run)
+    assert result['current_bytes'] == 1024
+    assert result['peak_bytes'] == 2048
+    assert result['effective_limit_bytes'] == 67108864
+    assert result['effective_swap_limit_bytes'] == 0
+    assert result['events'] == {'low': 0, 'high': 0, 'max': 3, 'oom': 1, 'oom_kill': 1}
+    assert not any(call[:2] == ['docker', 'exec'] for call in calls)
+    # Observation still works when the VM has little free memory; it is not admission.
+    assert len(calls) == 3
+
+
+@pytest.mark.parametrize('fault', ['engine', 'vm', 'v1', 'negative', 'duplicate',
+                                   'missing-oom', 'truncated', 'oversized', 'timeout', 'exit-race'])
+def test_windows_unavailable_observation_preserves_docker_state(monkeypatch, fault):
+    run, _ = _desktop_probe(monkeypatch, fault=fault)
+    result = rm.observation(_live_row(), _run=run)
+    assert result['limit_bytes'] == 67108864
+    assert result['oom_killed'] is False
+    assert result['exit_code'] == 0
+    assert all(result[key] is None for key in ('current_bytes', 'peak_bytes', 'events',
+                                               'effective_limit_bytes', 'effective_swap_limit_bytes'))
+
+
+def test_windows_remote_context_overrides_local_host_without_wsl_probe(monkeypatch):
+    run, calls = _desktop_probe(monkeypatch)
+    monkeypatch.setenv('DOCKER_CONTEXT', 'remote')
+    assert rm.observation(_live_row(), _run=run)['peak_bytes'] is None
+    assert len(calls) == 1
+    assert calls[0][:4] == ['docker', 'context', 'inspect', 'remote']
+
+
+@pytest.mark.parametrize('fault', ['id', 'stopped', 'custom-parent', 'unknown-driver', 'remote-host'])
+def test_windows_unsupported_identity_or_topology_never_reads_cgroup(monkeypatch, fault):
+    run, calls = _desktop_probe(monkeypatch, driver='other' if fault == 'unknown-driver' else 'cgroupfs')
+    row = _live_row()
+    if fault == 'id':
+        row['Id'] = '../other'
+    elif fault == 'stopped':
+        row['State']['Running'] = False
+    elif fault == 'custom-parent':
+        row['HostConfig']['CgroupParent'] = '/custom'
+    elif fault == 'remote-host':
+        monkeypatch.setenv('DOCKER_HOST', 'ssh://remote.invalid')
+    assert rm.observation(row, _run=run)['peak_bytes'] is None
+    assert not any('sh' in call for call in calls)
+
+
+def test_windows_unlimited_cgroup_has_measured_usage_but_no_numeric_limit(monkeypatch):
+    run, _ = _desktop_probe(monkeypatch, fault='unlimited')
+    result = rm.observation(_live_row(), _run=run)
+    assert result['current_bytes'] == 1024 and result['peak_bytes'] == 2048
+    assert result['effective_limit_bytes'] is None
+    assert result['effective_swap_limit_bytes'] is None
+
+
+def test_recipe_identity_and_discovery_forward_their_runner(monkeypatch):
+    from anvil_serving import models
+
+    row = _live_row()
+    row.update(Name='/candidate', Image='sha256:' + 'c' * 64,
+               Config={'Image': 'example/runtime', 'Labels': {
+                   sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+                   sr.RECIPE_MODEL_LABEL: 'example/model'}})
+    def run(argv, **kwargs):
+        if argv[:2] == ['docker', 'ps']:
+            return SimpleNamespace(returncode=0, stdout='b' * 64 + '\n')
+        assert argv[:2] == ['docker', 'inspect']
+        return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+    seen = []
+    def observed(value, *, _run):
+        assert value == row and _run is run
+        seen.append(value['Id'])
+        return {'peak_bytes': 2048}
+    monkeypatch.setattr(rm, 'observation', observed)
+    assert models._recipe_container_identity({'model': 'example/model'}, 'candidate', _run=run)['host_memory']['peak_bytes'] == 2048
+    assert sr.discover_recipe_containers(_run=run)['containers'][0]['host_memory']['peak_bytes'] == 2048
+    assert len(seen) == 2

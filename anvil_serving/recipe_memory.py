@@ -10,6 +10,13 @@ import sys
 
 MIB = 1024 * 1024
 FIELDS = ('memory_limit_mib', 'memory_swap_limit_mib', 'host_memory_reserve_mib')
+_DESKTOP_ENDPOINTS = {'npipe:////./pipe/dockerDesktopLinuxEngine',
+                      'npipe:////./pipe/docker_engine'}
+_CGROUP_FILES = ('memory.current', 'memory.peak', 'memory.max', 'memory.swap.max',
+                 'memory.events')
+_CGROUP_READ = ("set -eu; for file in " + " ".join(_CGROUP_FILES)
+                + "; do printf '%s\\n' \"$file\"; "
+                + "head -c 2048 \"$1/$file\"; printf '\\n'; done")
 
 
 def _memory_facts(text):
@@ -27,7 +34,7 @@ def _memory_facts(text):
     return facts
 
 
-def _desktop_facts(memory, reserve, _run):
+def _desktop_vm_facts(_run):
     from . import host
 
     info = json.loads(_run(['docker', 'info', '--format', '{{json .}}'], check=True,
@@ -42,6 +49,13 @@ def _desktop_facts(memory, reserve, _run):
     facts = _memory_facts(observed.stdout)
     if facts.get('MemTotal') != info['MemTotal']:
         raise ValueError('Docker and local WSL memory identities do not match')
+    return facts, info
+
+
+def _desktop_facts(memory, reserve, _run):
+    from . import host
+
+    facts, info = _desktop_vm_facts(_run)
     observed = host._ps(
         "$m = Get-CimInstance Win32_OperatingSystem; "
         "@{total=$m.TotalVisibleMemorySize; available=$m.FreePhysicalMemory} | ConvertTo-Json -Compress",
@@ -72,11 +86,7 @@ def limits(serve: dict) -> tuple[int, int, int] | None:
     return memory, total, reserve
 
 
-def check_host(serve: dict, *, _run=subprocess.run, meminfo=Path('/proc/meminfo')) -> None:
-    bounds = limits(serve)
-    if bounds is None:
-        return
-    memory, total, reserve = bounds
+def _docker_endpoint(_run):
     context = os.environ.get('DOCKER_CONTEXT', '')
     if context and (len(context) > 256 or context.startswith('-') or any(ord(c) < 32 for c in context)):
         raise ValueError('invalid Docker context selection')
@@ -84,8 +94,16 @@ def check_host(serve: dict, *, _run=subprocess.run, meminfo=Path('/proc/meminfo'
     if not endpoint:
         endpoint = _run(['docker', 'context', 'inspect', *([context] if context else []), '--format', '{{json .Endpoints.docker.Host}}'], check=True, capture_output=True, text=True, timeout=10).stdout
         endpoint = json.loads(endpoint)
-    desktop = sys.platform == 'win32' and endpoint in {
-        'npipe:////./pipe/dockerDesktopLinuxEngine', 'npipe:////./pipe/docker_engine'}
+    return endpoint
+
+
+def check_host(serve: dict, *, _run=subprocess.run, meminfo=Path('/proc/meminfo')) -> None:
+    bounds = limits(serve)
+    if bounds is None:
+        return
+    memory, total, reserve = bounds
+    endpoint = _docker_endpoint(_run)
+    desktop = sys.platform == 'win32' and endpoint in _DESKTOP_ENDPOINTS
     if not desktop and (not isinstance(endpoint, str) or not endpoint.startswith('unix://') or not meminfo.is_file()):
         raise ValueError('bounded recipe loads require a local Linux Docker endpoint')
     capabilities = _run(['docker', 'info', '--format', '{{json .MemoryLimit}} {{json .SwapLimit}} {{json .CgroupVersion}}'], check=True, capture_output=True, text=True, timeout=10).stdout.strip()
@@ -98,7 +116,59 @@ def check_host(serve: dict, *, _run=subprocess.run, meminfo=Path('/proc/meminfo'
         raise ValueError('candidate swap allowance exceeds currently free host swap')
 
 
-def observation(row: dict, *, proc=Path('/proc'), cgroup=Path('/sys/fs/cgroup')) -> dict:
+def _desktop_observation(row, _run):
+    from . import host
+
+    if _docker_endpoint(_run) not in _DESKTOP_ENDPOINTS:
+        return {}
+    _, info = _desktop_vm_facts(_run)
+    if info.get('CgroupVersion') != '2' or (row.get('HostConfig') or {}).get('CgroupParent'):
+        return {}
+    identity = row['Id']  # observation already requires a full immutable ID.
+    driver = info.get('CgroupDriver')
+    if driver == 'cgroupfs':
+        root = '/sys/fs/cgroup/docker/' + identity
+    elif driver == 'systemd':
+        root = '/sys/fs/cgroup/system.slice/docker-' + identity + '.scope'
+    else:
+        return {}
+    # Desktop's State.Pid lives in a different PID namespace from this WSL /proc.
+    # The host cgroup hierarchy is visible, and full IDs cannot select another
+    # container generation. No process is executed inside the model container.
+    completed = _run(host._wsl_argv(
+        ['-e', 'sh', '-c', _CGROUP_READ, 'anvil-recipe-memory', root], 'docker-desktop'),
+        check=True, capture_output=True, text=True, timeout=5)
+    text = completed.stdout
+    if len(text) > 16384:
+        raise ValueError('oversized cgroup observation')
+    lines = [line for line in text.splitlines() if line]
+    if len(lines) < 11 or [lines[i] for i in (0, 2, 4, 6, 8)] != list(_CGROUP_FILES):
+        raise ValueError('incomplete cgroup observation')
+    result = {}
+    for key, value, unlimited in zip(
+            ('current_bytes', 'peak_bytes', 'effective_limit_bytes', 'effective_swap_limit_bytes'),
+            (lines[1], lines[3], lines[5], lines[7]), (False, False, True, True)):
+        if unlimited and value == 'max':
+            result[key] = None
+        elif re.fullmatch(r'[0-9]{1,20}', value):
+            result[key] = int(value)
+        else:
+            raise ValueError('invalid cgroup memory value')
+    events = {}
+    for line in lines[9:]:
+        parts = line.split()
+        if len(parts) != 2 or parts[0] in events or not re.fullmatch(r'[0-9]{1,20}', parts[1]):
+            raise ValueError('invalid cgroup memory event')
+        events[parts[0]] = int(parts[1])
+    if not {'oom', 'oom_kill'} <= events.keys():
+        raise ValueError('missing cgroup OOM counters')
+    result['events'] = {key: value for key, value in events.items()
+                        if key in {'low', 'high', 'max', 'oom', 'oom_kill', 'oom_group_kill'}}
+    return result
+
+
+def observation(row: dict, *, proc=Path('/proc'), cgroup=Path('/sys/fs/cgroup'),
+                _run=subprocess.run) -> dict:
     host, state = row.get('HostConfig') or {}, row.get('State') or {}
     result = {'limit_bytes': host.get('Memory'), 'ram_plus_swap_limit_bytes': host.get('MemorySwap'),
               'oom_killed': state.get('OOMKilled'), 'exit_code': state.get('ExitCode'),
@@ -106,6 +176,14 @@ def observation(row: dict, *, proc=Path('/proc'), cgroup=Path('/sys/fs/cgroup'))
               'effective_limit_bytes': None, 'effective_swap_limit_bytes': None}
     pid, identity = state.get('Pid'), row.get('Id')
     if type(pid) is not int or pid <= 0 or not isinstance(identity, str) or not re.fullmatch(r'[0-9a-f]{64}', identity):
+        return result
+    if sys.platform == 'win32' and proc == Path('/proc') and cgroup == Path('/sys/fs/cgroup'):
+        if state.get('Running') is not True:
+            return result
+        try:
+            result.update(_desktop_observation(row, _run))
+        except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError):
+            pass  # An unavailable live probe must not hide Docker exit/OOM state.
         return result
     try:
         rows = (proc / str(pid) / 'cgroup').read_text().splitlines()
