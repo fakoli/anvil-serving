@@ -1,6 +1,6 @@
 # Retain and enforce paired SWE instance image identities
 
-Status: implemented; independent review and live paired replay pending.
+Status: implemented; independent review and live paired replay passed.
 
 The pinned mini-SWE-agent and official SWE-bench grader derive prebuilt instance
 image references with a mutable `latest` tag. The managed SWE result retains
@@ -32,3 +32,6 @@ Implementation uses the existing job parameters and SWE plan: an optional exact
 immutable ID and refuses pulls. Legacy unpaired runs remain explicitly uncovered.
 Focused regressions cover pre-agent, pre-grader, and post-grader mismatches,
 missing images, policy replacement, immutable create arguments, and guard cleanup.
+Independent review reran 79 focused tests and inspected both pinned upstream
+Docker seams. A native POSIX replay completed every official grading task with
+all three image observation boundaries matching and no containment failure.
