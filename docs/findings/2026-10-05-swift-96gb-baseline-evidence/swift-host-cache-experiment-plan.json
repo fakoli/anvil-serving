@@ -1,0 +1,50 @@
+{
+  "schema": "anvil-campaign.cache-retention-experiment/v1",
+  "created_at": "2026-10-05T10:28:00.301795+00:00",
+  "status": "planned before observations; requires exact recipes/review",
+  "question": "Does restoring host KV/state capacity avoid re-prefill when revisiting more inactive long conversations than the32GB-era profile retained?",
+  "engine": "Exact pinned Swift15 NInfer image; arithmetic/model/GPUKV/context/C4 unchanged",
+  "arms": [
+    {
+      "host_kv_mib": 2048,
+      "host_state_slots": 4
+    },
+    {
+      "host_kv_mib": 8192,
+      "host_state_slots": 8
+    }
+  ],
+  "workload": {
+    "native_command": "eval benchmark capacity",
+    "requests": 6,
+    "concurrency": 1,
+    "context_tokens": 65536,
+    "seed": 1717,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "response_words": 0,
+    "max_tokens": 8192,
+    "temperature": 0.9,
+    "top_p": 0.95,
+    "timeout_seconds": 300,
+    "sequence": "Six unique prompts once, repeat same exact six in same order, repeat once more. Each arm begins with fresh container; no external requests between three passes."
+  },
+  "rationale": "Six histories exceed original four host-state slots and collectively exceed shared GPU token pool; measured prompt tokens and native cache telemetry must establish actual pressure. Unique mode here means unique within each pass, intentionally identical across passes.",
+  "predeclared_gates": [
+    "All18 requests complete, visible own canary, terminalstream, no truncation/errors/OOM",
+    "Both benefit branches require median revisit E2E no more than10% slower than control. Benefit additionally requires either at least20% lower matched-revisit medianvisibleTTFT or independently recorded retained-token/cache increase. Actualusage/telemetry must establish pressure and a retentiondifference before attributing speed to cache.",
+    "Retain failed/uninformative outcomes; no benefit claim unless cache retention actually differs",
+    "Full baseline functional/context/image contracts remain; larger host cache does not imply faster cold decode or greater GPU capacity"
+  ],
+  "limits": "Small mechanistic experiment, not p99/SLA or broad coding-quality claim; no new harness needed.",
+  "prompt_sha256": [
+    "5bc0b321a88ce74ee234a12baa15b289be121b9c9985d125da35b3ae5397d9ae",
+    "a5eb5fdaeae516771e14d41e1694b7a277f7332a1f0fd4a652e3cf4d87929f8d",
+    "29f83da6480f1506a805acd5db11f0cca1300e69a66eeba746a633ae23af7fac",
+    "0382b63842d8abb7a032f24c54c4e462c9535a17d3f46d47ad9e295d6df84236",
+    "e2f6136090d43f013c48d9f36e4809e7a769efa3d80de292e8b50fde335f404a",
+    "332dcce1d70a4ac4b4a1b44aa72b03fe5db7738b820ba9c82efcc305c1f92eb8"
+  ],
+  "comparison_population": "Exactly12matched revisit requests per arm (two passes), excluding6coldfill requests; also report eachpass separately",
+  "attribution": "This tests the2GiB/4slot to8GiB/8slot capacity bundle, not independent attribution to bytes versus slots"
+}

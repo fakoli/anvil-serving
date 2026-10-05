@@ -1,0 +1,142 @@
+{
+  "schema": "anvil-investigation.prefill4096-analysis/v1",
+  "status": "diagnostic-only; final root disposition no promotion",
+  "requests": [
+    {
+      "request_index": 0,
+      "prompt_tokens": 7415,
+      "batched_tokens": 7410,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 883,
+      "loan_chunk_tokens": 4096,
+      "lend_ms": 0.1,
+      "batched_ms": 16332.6,
+      "refill_ms": 7989.2,
+      "window_ms": 178.2,
+      "trace_components_ms": 24500.1,
+      "first_output_ms": 24636.383199998818,
+      "visible_ttft_ms": 27621.021299997665,
+      "e2e_ms": 27974.79580000072,
+      "first_output_minus_components_ms": 136.283
+    },
+    {
+      "request_index": 1,
+      "prompt_tokens": 7417,
+      "batched_tokens": 7412,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 883,
+      "loan_chunk_tokens": 4096,
+      "lend_ms": 0.1,
+      "batched_ms": 16921.4,
+      "refill_ms": 8681.5,
+      "window_ms": 166.1,
+      "trace_components_ms": 25769.1,
+      "first_output_ms": 25867.335900002217,
+      "visible_ttft_ms": 30354.38939999949,
+      "e2e_ms": 30717.87939999922,
+      "first_output_minus_components_ms": 98.236
+    },
+    {
+      "request_index": 2,
+      "prompt_tokens": 7418,
+      "batched_tokens": 7413,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 883,
+      "loan_chunk_tokens": 4096,
+      "lend_ms": 0.1,
+      "batched_ms": 15069.0,
+      "refill_ms": 9286.1,
+      "window_ms": 136.5,
+      "trace_components_ms": 24491.7,
+      "first_output_ms": 24597.396000001027,
+      "visible_ttft_ms": 27812.978400001157,
+      "e2e_ms": 28217.62469999885,
+      "first_output_minus_components_ms": 105.696
+    }
+  ],
+  "matched_request_controls": {
+    "requests": 3,
+    "concurrency": 1,
+    "context_seed": 17,
+    "context_tokens": 8192,
+    "max_tokens": 8192,
+    "response_words": 0,
+    "controlled_output_policy": "observe",
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.9,
+        "requested": 0.9,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    }
+  },
+  "metrics": {
+    "loan_slots": {
+      "auto_median": 1424,
+      "fixed4096_median": 883
+    },
+    "batched_ms": {
+      "auto_median": 10818.3,
+      "fixed4096_median": 16332.6
+    },
+    "refill_ms": {
+      "auto_median": 13401.9,
+      "fixed4096_median": 8681.5
+    },
+    "first_output_ms": {
+      "auto_median": 25175.632400001632,
+      "fixed4096_median": 24636.383199998818
+    },
+    "visible_ttft_ms": {
+      "auto_median": 28609.902000000147,
+      "fixed4096_median": 27812.978400001157
+    },
+    "e2e_ms": {
+      "auto_median": 29049.241700002312,
+      "fixed4096_median": 28217.62469999885
+    }
+  },
+  "cgroup_observations": {
+    "before_events": {
+      "high": 0,
+      "low": 0,
+      "max": 1183995,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "after_events": {
+      "high": 0,
+      "low": 0,
+      "max": 2260052,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "delta_events_max": 1076057,
+    "peak_bytes": 53687095296,
+    "hard_limit_bytes": 53687091200,
+    "limitation": "Status boundaries are asynchronous; no per-request memory-pressure or physical disk attribution."
+  },
+  "quality": "Fixed4096 all5 preflight families pass including20/20 tools; prior auto trace19/20 failure remains unresolved and retained.",
+  "conclusion": "4096 reduces borrowed slots1424 to883 and median refill13.40s to8.68s, but median batched prompt time increases10.82s to16.33s. This tradeoff does not materially improve service latency: tinyN medians visible28.61s to27.81s, E2E29.05s to28.22s; wall86.7s to86.9s. No repeat, reverse-order, uninstrumented headline or p99 claim. Frozen<=2xSwift gate fails by a wide margin. Stop Flash campaign without128K/262K/C4/SWE finalist runs.",
+  "source_artifacts": {
+    "prefill4096-final-logs.json": "67ef825b91251b33cb47143b40545609c6b3d86ac5c405a0be8ff3c7f5dc2906",
+    "prefill4096-final-status.json": "1144adcaa774e9027685553da687db59a7e385974812df88b78038cec0af74e6",
+    "prefill4096-before-capacity-status.json": "313ae29db3fc76b55b1af95f03d5a6160a601992fd045d92499d4909089c7c83",
+    "flash-prefill4096-8k-c1.json": "4c0d6f0b36f27083bb108c998f5f3f503e5b217e03c7e1e785331f6045c11b12",
+    "flash-trace-8k-c1.json": "83abeeaa1d945b114c34a43d68e6e69b6b1e4e07d5cb45327f9455242722ce5f",
+    "trace-refill-analysis.json": "123381141674e5d06eb0d1d83eb140f0ba4e36ad2c6d6b775378c7809dfa9d5f",
+    "flash-prefill4096-preflight.json": "3e517478a01956c611a92a881d3523f2dc0d4cdfabad5424f90c39e7ee683348"
+  }
+}

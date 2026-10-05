@@ -1,0 +1,63 @@
+{
+  "schema": "anvil-investigation.cache-admission-diagnosis/v1",
+  "engine_revision": "bace20dc70249eed6402b66d4852c6c3f9612905",
+  "source_capture": "Read-only capture from the exact retained Swift image; no model requests or lifecycle changes.",
+  "observed_from_independent_native_review": {
+    "warm_request": 178,
+    "completed_captures": 0,
+    "changed_cached_tokens": 0,
+    "changed_host_to_device_transfers": 0,
+    "preserve_thinking": true,
+    "preserve_thinking_semantic_change": false
+  },
+  "facts": [
+    {
+      "source": "resource_manager.h:1681-1705",
+      "fact": "DefaultAutomatic first-seen shared candidates require vacant shared slots, otherwise declared ExplicitBoundary/RequestedAutomatic evidence or at least two matching reuse domains. Only declared or repeated candidates are pressure-capable."
+    },
+    {
+      "source": "resource_manager.h:582-607",
+      "fact": "Occupied shared-owner replacement during active capture similarly requires explicit/requested evidence or two matching reuse domains."
+    },
+    {
+      "source": "resource_manager.h:1781-1813 and shared_capture_planner.h:311-380",
+      "fact": "Declared candidates receive explicit shared credit but capture still requires positive portfolio benefit after private retention loss and immediate/schedule costs. This is not guaranteed pinning."
+    },
+    {
+      "source": "resource_manager.h:3098-3111,1327",
+      "fact": "Published explicit credit expires after the bounded32-demand window."
+    },
+    {
+      "source": "resource_manager.h:323-363",
+      "fact": "Matching exact private resident checkpoints are considered without requiring a session key; a session binding changes retention/source handling, not general prefix eligibility."
+    },
+    {
+      "source": "openai_common.cpp:53-64,83-104,165-177",
+      "fact": "prompt_cache_key is validated only here, not assigned as a chat session. prompt_cache_options mode implicit selects RequestedAutomatic; mode explicit suppresses the default endpoint marker. Engine automatic shared-prefix inference is disabled in favor of protocol markers."
+    },
+    {
+      "source": "openai_chat_request.cpp:356-357 and openai_common.cpp:41-50",
+      "fact": "A content-part prompt_cache_breakpoint={mode:explicit} declares a boundary. This is NInfer-supported request syntax; do not substitute generic cache_control without source support."
+    }
+  ],
+  "interpretation": "Warm zero-capture with occupied catalogs is consistent with adaptive default admission refusing this first-seen checkpoint. Preserved reasoning and identical history alone do not prove a resident checkpoint survived pressure. Native observations do not expose every planner rejection, so exact per-candidate reason remains an inference, not a uniquely proven branch.",
+  "next_plan_constraint": "If another request is authorized, predeclare cache-aware shape with explicit content-part boundary or requested-automatic evidence, require observed capture before pressure, then native positive reuse plus changed-value correctness. Do not repeat default warm-and-pressure blindly; explicit markers do not guarantee retention.",
+  "files": [
+    {
+      "path": "[operator identity redacted]",
+      "sha256": "06cc91c7374be3f5b1b97d47863751bfd275d9b95f505d9c32df064718d08b95"
+    },
+    {
+      "path": "[operator identity redacted]",
+      "sha256": "80769d4fed6b0f5e50edd849cf6a1d22a167fa107f4f792a0088a9a033c0bf86"
+    },
+    {
+      "path": "[operator identity redacted]",
+      "sha256": "ba6b6123d4097c7df1f9b41a0db19d9beaa83a9ff71c7ea4be72512a278a4f15"
+    },
+    {
+      "path": "[operator identity redacted]",
+      "sha256": "25ed9fec3ff89af2006117237050eb28d0b395b6ce83ef088af808379c9d488f"
+    }
+  ]
+}

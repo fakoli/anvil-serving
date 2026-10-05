@@ -1,0 +1,236 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-05-swift-96gb-baseline",
+  "complete": true,
+  "checkpoint": "Closed: Swift 8 GiB/eight-slot host-cache profile promoted after independent review; tested Flash candidate rejected.",
+  "identity": {
+    "configuration": "configuration-identity.json",
+    "launcher": "launcher-identity.json"
+  },
+  "measurement": {
+    "path": "direct online endpoint; separate CPU-only official SWE worker",
+    "warm_cold_state": "Functional cache state uncontrolled; failed strict stress separate from completed unique-prefix-intent service-v2 cells.",
+    "sample_count": {
+      "preflight_repetitions": 3,
+      "agentic": 18,
+      "context128": 27,
+      "context262": 9,
+      "images": 12,
+      "swe": 5,
+      "capacity": 12,
+      "service_latency_v2": 48,
+      "swe_paired": 5,
+      "flash_initial_service_v2": 12,
+      "flash_mmq_diagnostic": 3,
+      "swift_cache_pilot_per_arm": 18
+    },
+    "statistics": [
+      "Historical service-v2 and initial Flash fields named median retain native nearest-rank p50; 12 attempts each; variable output, no p99 claim.",
+      "Swift cache pilot reports both ordinary average-middle-pair medians and native nearest-rank p50 explicitly."
+    ]
+  },
+  "headline_results": {
+    "preflight_all_passed": true,
+    "agentic_passed": 18,
+    "context128_passed": 27,
+    "context128_actual_prompt_max": 122788,
+    "context262_passed": 9,
+    "context262_actual_prompt_min": 253838,
+    "context262_actual_prompt_max": 253868,
+    "context_output_headroom_tokens": 8192,
+    "images_passed": 12,
+    "swe": {
+      "attempted": 5,
+      "graded": 5,
+      "resolve_rate": 0.8,
+      "resolved": 4
+    },
+    "capacity_completed": 0,
+    "capacity_failed": 12,
+    "capacity_performance_eligible": false,
+    "service_latency_v2": [
+      {
+        "cell": "8k-c1",
+        "artifact": "swift-service-v2-8k-c1.json",
+        "completed": 12,
+        "ttft_median_ms": 1733.2922000005055,
+        "e2e_median_ms": 1837.6459000010072,
+        "actual_prompt_min": 7415.0,
+        "actual_prompt_max": 7433.0,
+        "actual_output_min": 186.0,
+        "actual_output_max": 396.0
+      },
+      {
+        "cell": "8k-c4",
+        "artifact": "swift-service-v2-8k-c4.json",
+        "completed": 12,
+        "ttft_median_ms": 3453.0902999995305,
+        "e2e_median_ms": 3588.9893999992637,
+        "actual_prompt_min": 7415.0,
+        "actual_prompt_max": 7433.0,
+        "actual_output_min": 142.0,
+        "actual_output_max": 1075.0
+      },
+      {
+        "cell": "24k-c1",
+        "artifact": "swift-service-v2-24k-c1.json",
+        "completed": 12,
+        "ttft_median_ms": 3116.5836000000127,
+        "e2e_median_ms": 3256.4419000009366,
+        "actual_prompt_min": 22467.0,
+        "actual_prompt_max": 22495.0,
+        "actual_output_min": 195.0,
+        "actual_output_max": 425.0
+      },
+      {
+        "cell": "24k-c4",
+        "artifact": "swift-service-v2-24k-c4.json",
+        "completed": 12,
+        "ttft_median_ms": 9502.766399999018,
+        "e2e_median_ms": 9814.59679999898,
+        "actual_prompt_min": 22467.0,
+        "actual_prompt_max": 22495.0,
+        "actual_output_min": 217.0,
+        "actual_output_max": 470.0
+      }
+    ],
+    "swe_paired": {
+      "attempted": 5,
+      "graded": 5,
+      "resolve_rate": 0.8,
+      "resolved": 4
+    },
+    "flash_initial": {
+      "preflight_passed": true,
+      "image_passed": 12,
+      "service_artifact": "flash-m50-32k-service-v2-8k-c1.json",
+      "requests_completed": 12,
+      "practical_latency_gate": "failed",
+      "visible_ttft_median_ms": 30405.80200000113,
+      "e2e_median_ms": 30851.82150000037
+    },
+    "flash_mmq_diagnostic": {
+      "artifact": "flash-diagnostic-mmq-8k-c1.json",
+      "completed": 3,
+      "eligible_for_official_gate": false,
+      "reason": "instrumented diagnostic; three requests rather than frozen twelve-request cell"
+    },
+    "flash_trace_diagnostic": {
+      "artifact": "flash-trace-8k-c1.json",
+      "preflight_passed": false,
+      "tools_passed": 19,
+      "tools_attempts": 20,
+      "diagnostic_requests": 3,
+      "qualification_eligible": false
+    },
+    "flash_fixed4096_diagnostic": {
+      "artifact": "flash-prefill4096-8k-c1.json",
+      "requests": 3,
+      "completed": 3,
+      "preflight_families_passed": 5,
+      "visible_ttft_median_ms": 27812.978400001157,
+      "e2e_median_ms": 28217.62469999885,
+      "eligible_for_official_gate": false
+    },
+    "swift_host_cache_pilot": {
+      "comparison_artifact": "swift-host-cache-comparison.json",
+      "requests_per_arm": 18,
+      "matched_revisits_per_arm": 12,
+      "passed": true,
+      "control": {
+        "requests": 12,
+        "median_visible_ttft_ms": 9100.137449999238,
+        "median_e2e_ms": 9226.973349999753,
+        "reused_prompt_tokens": 124648,
+        "nearest_rank_p50_visible_ttft_ms": 8966.76590000061,
+        "nearest_rank_p50_e2e_ms": 9129.797699999472
+      },
+      "expanded": {
+        "requests": 12,
+        "reused_prompt_tokens": 373954,
+        "median_visible_ttft_ms": 5352.872649998972,
+        "nearest_rank_p50_visible_ttft_ms": 1752.577299997938,
+        "median_e2e_ms": 5497.665400000187,
+        "nearest_rank_p50_e2e_ms": 1861.3442999994732
+      },
+      "final_selection": "promoted",
+      "limits": [
+        "First pass interval sums include preflight intervals; later passes sum only newly captured native interval records. Occupancy is a sampled gauge, not an exact continuous peak.",
+        "Throughput interval attribution assumes root-reported quiet>=6s capture boundaries; native IDs prove no intervening inference.",
+        "All normal records are private until sanitized; native errors/startup can contain identifying free text.",
+        "Observed state_transfers.*.bytes numerically equal operation counts in control logs. Preserve raw field names but do not use these as physical state-byte volumes without producer-unit verification; main_kv_transfers bytes/pages are separately reported.",
+        "Two passes and12matched revisits per arm; sequential control then expanded, no p99 or broad coding/decode speed claim.",
+        "Benefit is retention branch;20percent median TTFT improvement is not required if measured retention increases and E2E nonregression holds."
+      ]
+    },
+    "swift_expanded_regression": {
+      "service_comparison": "swift-cache-expanded-service-comparison.json",
+      "service_completed": 48,
+      "service_failed": 0,
+      "all_midpoint_latency_ratios_at_most": 1.1,
+      "agentic_passed": 18,
+      "context262_passed": 9,
+      "context262_actual_prompt_range": [
+        253838,
+        253868
+      ],
+      "context_output_headroom_tokens": 8192,
+      "images_passed": 12,
+      "deployment_acceptance": "passed; exact final startup, protocol, Pi, OpenClaw and Hermes checks retained"
+    },
+    "swift_explicit_history": {
+      "artifact": "swift-explicit-history-outcome.json",
+      "independent_fresh_answer_branches": 4,
+      "passed": 4,
+      "native_cached_tokens_each": 56963,
+      "pressure_prompt_tokens": 311646,
+      "device_kv_pool_tokens": 282112,
+      "changed_interval_main_kv_h2d_bytes": 1455587328,
+      "scope": "Explicitly cache-aware marked prior history only; group-level host restore, no per-request tier attribution or implicit-client generalization. No performance comparison.",
+      "prior_attempts": "Two functionally successful attempts had zero reuse and do not pass the cached-continuation gate."
+    }
+  },
+  "limitations": [
+    "Functional cells overlapped bounded build/download activity; timings are not comparative performance.",
+    "Synthetic agentic assertions are not executed repository-patch evidence.",
+    "Five explicit SWE cases are a bounded sample, not the full Verified score.",
+    "SWE image IDs were observed after task stage and after grading, not continuously pinned before every historical task.",
+    "C4 is configured, not established by the serial context or image runs.",
+    "Failed strict 128-word capacity does not establish ordinary prose streaming failure.",
+    "Paired SWE replay is a distinct bounded attempt; original boundary-only image observations remain historical.",
+    "Trace preflight had one unresolved tool connection failure; subsequent3requests are diagnosis only, despite matching timing components.",
+    "Fixed4096 is three instrumented diagnostic requests, not a replacement twelve-request comparison; Flash expansion stopped after scout failure.",
+    "Paired SWE wrapper retains missing_promotion_boundary; the separate final promotion decision supplies the campaign boundary without rewriting native historical evidence.",
+    "Hermes does not expose context, maximum output or fallback observations; no parity claim for those fields.",
+    "Native workflow owner reconciliation and scheduler convergence are separate unresolved work; the final router handoff preserves its immediately observed owner state."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "capacity",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "current",
+      "rejected"
+    ],
+    "promotion_authorized": true,
+    "next_gate": null,
+    "flash_next": {
+      "disposition": "rejected",
+      "reason": "Frozen practical latency gate failed; bounded diagnostics did not establish a useful service improvement.",
+      "not_run": [
+        "128K context",
+        "262K context",
+        "C4 capacity",
+        "agentic suite",
+        "SWE finalist",
+        "strict repeated-word stress"
+      ],
+      "not_run_reason": "Stopped after failed scout; these are not passing gates."
+    },
+    "promotion_evidence": "promotion-final.json",
+    "current": "Swift same-image host KV 8192 MiB/eight slots, 40 GiB hard RAM with no extra swap; 262144/C4 and device pool unchanged"
+  }
+}

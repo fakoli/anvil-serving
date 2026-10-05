@@ -1,0 +1,61 @@
+{
+  "schema": "anvil-serving.publication-configuration/v1",
+  "baseline": {
+    "model_repository": "kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3",
+    "model_revision": "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+    "model_file_sha256": "16f313c043c06a19f7c27d74f8259ed9d86c8cb5beed631efbb96f392b373d96",
+    "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+    "engine": "NInfer",
+    "engine_revision": "bace20dc70249eed6402b66d4852c6c3f9612905",
+    "runtime_image": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+    "weight_format": "NVFP4 full Swift-1.5 derivative",
+    "kv_format": "K8V4",
+    "speculation": "DFlash2 draft7",
+    "configured_context_tokens": 262144,
+    "configured_concurrency": 4,
+    "measured_request_concurrency": 1,
+    "host_kv_mib": 2048,
+    "host_state_slots": 4,
+    "gpu_kv_pool_tokens": 282112,
+    "prefill_chunk_tokens": 4096,
+    "default_output_tokens": 32768,
+    "default_thinking_budget_tokens": 16384,
+    "recipe_sampling": {
+      "temperature": 0.9,
+      "min_p": 0.05
+    },
+    "measurement_sampling": {
+      "temperature": 0.9,
+      "top_p": 0.95,
+      "thinking_mode": "default"
+    },
+    "recipe_digest": "11c579755ed5e5dd15527a825b8ae9daacf36354193e2d20f0950dde15e6f3b3"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "gpu_count": 1,
+    "gpu_memory_mib": 32607,
+    "physical_memory_bytes": 100582346752,
+    "wsl_configured_memory": "64GB",
+    "wsl_configured_swap": "4GB",
+    "observed_docker_memory_gib_approx": 62.79,
+    "os": "Windows / Docker Desktop WSL2",
+    "other_gpu_measured": false
+  },
+  "candidate_at_checkpoint": {
+    "model_repository": "unsloth/Qwen3.8-Flash-Next-GGUF",
+    "model_revision": "38bb39ee97821de2c9009abb7e93950eec396e66",
+    "quantization": "UD-IQ4_XS",
+    "engine": "Strata",
+    "engine_revision": "6f32ec070f23ced9f50e704d854d775da52591ab",
+    "runtime_image": "sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea",
+    "status": "Flash Next rejected for promotion after failed practical latency scout and bounded instrumented trials. Swift cache/restoration work remains active.",
+    "proposed_initial_context": 32768,
+    "proposed_initial_concurrency": 1,
+    "proposed_container_ram_gib": 52,
+    "proposed_container_ram_plus_swap_gib": 52,
+    "proposed_expert_ram_gib": 36,
+    "native_iq_requires_mtp": true,
+    "promotion": false
+  }
+}

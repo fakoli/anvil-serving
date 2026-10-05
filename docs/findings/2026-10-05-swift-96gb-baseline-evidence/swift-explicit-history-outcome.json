@@ -1,0 +1,314 @@
+{
+  "schema": "anvil-campaign.explicit-history-outcome/v1",
+  "created_at": "2026-10-05T12:32:54.358656+00:00",
+  "all_gates_passed": true,
+  "gates": {
+    "warm_captured": true,
+    "actual_pressure_over_gpu_pool": true,
+    "all_answers": true,
+    "all_four_native_reused_at_least50000": true,
+    "changed_interval_main_kv_h2d_positive": true,
+    "exact_10_request_accounting": true,
+    "zero_memory_events": true,
+    "hard_limit_40g_no_swap": true
+  },
+  "stages": [
+    {
+      "stage": "warm",
+      "start_ids": [
+        188
+      ],
+      "done_ids": [
+        188
+      ],
+      "prompt_tokens_sum": 56970,
+      "main_kv_h2d_bytes": 0,
+      "completed_captures": 1,
+      "native_results": [
+        {
+          "id": 188,
+          "completion_tokens": 96,
+          "computed_prefill_tokens": 56970,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 74,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 56970,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        }
+      ]
+    },
+    {
+      "stage": "pressure",
+      "start_ids": [
+        189,
+        190,
+        191,
+        192,
+        193
+      ],
+      "done_ids": [
+        189,
+        190,
+        191,
+        192,
+        193
+      ],
+      "prompt_tokens_sum": 311646,
+      "main_kv_h2d_bytes": 0,
+      "completed_captures": 3,
+      "native_results": [
+        {
+          "id": 189,
+          "completion_tokens": 387,
+          "computed_prefill_tokens": 62327,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 331,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 62327,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 190,
+          "completion_tokens": 190,
+          "computed_prefill_tokens": 62328,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 156,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 62328,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 191,
+          "completion_tokens": 432,
+          "computed_prefill_tokens": 62328,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 373,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 62328,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 192,
+          "completion_tokens": 196,
+          "computed_prefill_tokens": 62330,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 154,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 62330,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 193,
+          "completion_tokens": 295,
+          "computed_prefill_tokens": 62333,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 262,
+          "prefix_cache_hit_tokens": 0,
+          "prefix_reuse_path": "root",
+          "prompt_tokens": 62333,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        }
+      ]
+    },
+    {
+      "stage": "changed",
+      "start_ids": [
+        194,
+        195,
+        196,
+        197
+      ],
+      "done_ids": [
+        194,
+        195,
+        196,
+        197
+      ],
+      "prompt_tokens_sum": 228440,
+      "main_kv_h2d_bytes": 1455587328,
+      "completed_captures": 2,
+      "native_results": [
+        {
+          "id": 194,
+          "completion_tokens": 64,
+          "computed_prefill_tokens": 147,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 44,
+          "prefix_cache_hit_tokens": 56963,
+          "prefix_reuse_path": "shared_stable_prefix",
+          "prompt_tokens": 57110,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 195,
+          "completion_tokens": 65,
+          "computed_prefill_tokens": 147,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 45,
+          "prefix_cache_hit_tokens": 56963,
+          "prefix_reuse_path": "shared_stable_prefix",
+          "prompt_tokens": 57110,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 196,
+          "completion_tokens": 46,
+          "computed_prefill_tokens": 147,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 26,
+          "prefix_cache_hit_tokens": 56963,
+          "prefix_reuse_path": "shared_stable_prefix",
+          "prompt_tokens": 57110,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        },
+        {
+          "id": 197,
+          "completion_tokens": 64,
+          "computed_prefill_tokens": 147,
+          "finish_reason": "stop_token",
+          "model_thinking_tokens": 44,
+          "prefix_cache_hit_tokens": 56963,
+          "prefix_reuse_path": "shared_stable_prefix",
+          "prompt_tokens": 57110,
+          "thinking_budget": 16384,
+          "thinking_control_applied": false,
+          "thinking_control_tokens": 0,
+          "tool_call_count": 0,
+          "tool_call_parse": {
+            "empty_arguments_omitted": 0,
+            "fallback_reason": "none",
+            "marker_seen": false,
+            "schema_mismatch_arguments": 0,
+            "structured_call_count": 0
+          }
+        }
+      ]
+    }
+  ],
+  "host_memory": {
+    "current_bytes": 32229740544,
+    "effective_limit_bytes": 42949672960,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 42949672960,
+    "oom_killed": false,
+    "peak_bytes": 32229740544,
+    "ram_plus_swap_limit_bytes": 42949672960
+  },
+  "scope": "Explicitly cache-aware marked history; all four changed branches correct with substantial native prefix reuse and group-level host H2D evidence. No implicit-client generalization or per-request tier attribution. No performance comparison.",
+  "sources": {
+    "swift-explicit-history-check.py": "2fdb332d8b12e59dccabf31480e315edd255ad847516dc8263354fb8ed5c64f2",
+    "swift-explicit-history-plan.json": "3715fdb4834da9b3e89d6d6a5d6f83a92e43294f30c1f29327d17a95ad573fcf",
+    "swift-explicit-history-warm.json": "bb7acc9bce22e42624b2fcbc9cfc58ecd9e42ed36ef1bffa193be062f200d757",
+    "swift-explicit-history-pressure.json": "d9f6c719768219da072570faf24610c568fda3d6f66d385652996b37fc6ddab4",
+    "swift-explicit-history-changed.json": "1bab7f6d25c4ec1ccada5440213b4a487b21589bfa0fe9f77ecd35155d180f0c",
+    "swift-explicit-history-final-status.json": "611752ace1b05a78b7ec2383154613c5532b7dbff4526fd0742c26335400ede5",
+    "swift-explicit-history-before-native.json": "b408b3774543529ffd2d39aa97e05eeb184c86a61986ef12cd037b8f35be3d1b",
+    "swift-explicit-history-warm-native.json": "f85610d2b1b3d36f98477eafcf695cabb5c0b5a08884a9f0a1d3dba42b4fa7f7",
+    "swift-explicit-history-pressure-native.json": "fcfb287195a54591e824e627a0a6f5ecd9202ed80835753faab0dc7bf5144fc1",
+    "swift-explicit-history-changed-native.json": "7df083a64a070b21dd2ea429fd9f634110cd516452656687d989140770374edf"
+  }
+}

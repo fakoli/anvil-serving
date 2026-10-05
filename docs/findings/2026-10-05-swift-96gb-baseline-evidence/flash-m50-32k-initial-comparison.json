@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-campaign.capacity-comparison/v1",
+  "sources": {
+    "swift-service-v2-8k-c1.json": "91d1654edeaa9c47f86c89756a58112d57d1d9fb51234bc58f022b57fc6e7f30",
+    "flash-m50-32k-service-v2-8k-c1.json": "80d4ad56219077b9c99740c846380ece9e0ee975ebf305e19e79f6495dfef01d"
+  },
+  "scope": "initial32K C1 feasibility profile; not final candidate qualification",
+  "requests_each": 12,
+  "candidate_complete": 12,
+  "candidate_canary_passed": 12,
+  "candidate_median_visible_ttft_ms": 30405.80200000113,
+  "candidate_median_e2e_ms": 30851.82150000037,
+  "baseline_median_visible_ttft_ms": 1733.2922000005055,
+  "baseline_median_e2e_ms": 1837.6459000010072,
+  "visible_ttft_ratio": 17.542225136645893,
+  "e2e_ratio": 16.78877388727799,
+  "practical_latency_gate": "failed; relative2x limit and30s8KmedianTTFT limit exceeded",
+  "next": "Pinned phase diagnostics then supported fusedprefill single-variable experiment; original result retained",
+  "publication_limits": "Variable outputs; no fixed-output decode ranking, no p99 claim; native file-tier accesses do not prove physical SSD reads"
+}

@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "expected": "[redacted]",
+  "observed_visible": "[redacted]",
+  "finish_reason": "stop",
+  "usage": {
+    "completion_tokens": 96,
+    "completion_tokens_details": {
+      "reasoning_tokens": 74
+    },
+    "prompt_tokens": 56970,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 57066
+  },
+  "latency_s": 7.8118899000000965,
+  "request_id": "[operator identity redacted]",
+  "messages_sha256": "a774599ecb240f3735ba205cb9f35fd603c8541c1f26689c0ad5f900a2a5cfce",
+  "assistant_message_sha256": "9e4e81b4e160d5000d8a18229732390eeaebf631e2edc633bb0c8e60568e35e7",
+  "phase": "warm"
+}

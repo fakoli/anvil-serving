@@ -1,0 +1,10 @@
+schema = "anvil-serving.image-builds/v1"
+[builds.strata-flashnext-iq4xs]
+# Copy this declaration beside a separately pinned Strata checkout; see README.
+context = "strata-checkout"
+dockerfile = "Dockerfile.anvil"
+image = "anvil-strata:6f32ec0-sm120"
+cpus = 4
+memory_mib = 16384
+platform = "linux/amd64"
+timeout_seconds = 14400

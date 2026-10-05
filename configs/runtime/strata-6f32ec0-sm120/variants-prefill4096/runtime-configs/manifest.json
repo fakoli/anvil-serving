@@ -1,0 +1,16 @@
+{
+  "schema": "anvil-strata-runtime-configs/v1",
+  "base_image_id": "sha256:ae0433aac9045a739de69ae9852a0611dc86a7e4d9a167bc4f5da1f5e92175ee",
+  "status": "unbuilt-unqualified",
+  "configs": {
+    "32k-c1-r36-m50-p4096": {
+      "sha256": "65c9eecd487adc632888dadd736948568609378a745bff636871c99ca66dad12",
+      "bytes": 1456,
+      "context_tokens": 32768,
+      "parallel": 1,
+      "resident_budget_gib": 36,
+      "required_ram_limit_mib": 51200,
+      "host_gate": "Same50GiB containment and borrowing retained; actual chunk/cache identity and quality gates required."
+    }
+  }
+}

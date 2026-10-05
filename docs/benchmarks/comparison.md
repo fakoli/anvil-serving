@@ -372,6 +372,9 @@ Under 128 concurrent requests the ranking inverts — NVFP4 wins on density wher
 
 ## RTX 5090 — 32 GB, sm_120
 
+The [October 5 Swift15 cache promotion](../findings/2026-10-05-swift-96gb-baseline.md) is a separate matched-revisit comparison: 2 GiB/four host slots versus 8 GiB/eight on the same 96 GB host, unchanged GPU pool and model image. Twelve revisits per arm reduced midpoint-median visible TTFT 9.100→5.353 s and E2E 9.227→5.498 s. This does not rank cold decode, coding quality or p99 against the historical rows below. Flash Next/Strata failed its practical latency gate.
+
+
 The current qualification lane uses the 5090 exclusively for one candidate.
 The older Omni rows describe historical Primary Node reservation shapes; their
 27,999 MiB usable budget after a 4,608 MiB system/audio reserve is not the

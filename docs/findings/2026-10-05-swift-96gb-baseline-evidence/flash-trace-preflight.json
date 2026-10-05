@@ -1,0 +1,613 @@
+{
+  "base_url": "[operator identity redacted]",
+  "budget": {
+    "max_completion_tokens": 8192,
+    "reasoning_headroom_tokens": 7168,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "[redacted]"
+  },
+  "image_expect": [],
+  "model": "qwen38-flash-next-strata-iq4xs-32k-c1-r36-m50",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "[redacted]",
+      "content_chars": 21,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 325,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 2.923,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 98,
+        "prompt_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 166
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 31,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 193,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 3.857,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 62,
+        "prompt_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 132
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 156,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 5,
+      "seconds": 27.581,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 65,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 5573
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 134,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 28.264,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5569
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 178,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 6,
+      "seconds": 28.967,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 71,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5579
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 195,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 29.673,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 76,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5584
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 94,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 7,
+      "seconds": 30.07,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5559
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 125,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 30.586,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 59,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5567
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 155,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 31.078,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 65,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5573
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 130,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 9,
+      "seconds": 31.51,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 60,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5568
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 172,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 16,
+      "seconds": 32.058,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 69,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5577
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 94,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 8,
+      "seconds": 32.401,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5559
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 177,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 19,
+      "seconds": 32.901,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 70,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5578
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 175,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 33.392,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 70,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5578
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 134,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 12,
+      "seconds": 33.836,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5569
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 137,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 14,
+      "seconds": 34.298,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 59,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5567
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 155,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 15,
+      "seconds": 34.758,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 65,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5573
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 155,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 17,
+      "seconds": 35.174,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 65,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5573
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 130,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 18,
+      "seconds": 35.541,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 60,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5568
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 130,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 11,
+      "seconds": 35.898,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 60,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5568
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 142,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 10,
+      "seconds": 36.263,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 5508,
+        "prompt_tokens_details": {
+          "cached_tokens": 5503
+        },
+        "total_tokens": 5569
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "event_count": 50,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 175,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 4.712,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 69,
+        "prompt_tokens": 308,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 377
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 0,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 175,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.544,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 66,
+        "prompt_tokens": 308,
+        "prompt_tokens_details": {
+          "cached_tokens": 303
+        },
+        "total_tokens": 374
+      },
+      "validation_detail": "[redacted]"
+    },
+    {
+      "content": "[redacted]",
+      "content_chars": 11,
+      "content_excerpt": "[redacted]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 128,
+      "reasoning_excerpt": "[redacted]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.851,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 48,
+        "prompt_tokens": 143,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 191
+      },
+      "validation_detail": "[redacted]"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": false,
+  "results": [
+    {
+      "detail": "[redacted]",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "[redacted]",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "[redacted]",
+      "name": "shared-prefix tool batch x20",
+      "passed": false
+    },
+    {
+      "detail": "[redacted]",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "[redacted]",
+      "name": "tool-result continuation",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

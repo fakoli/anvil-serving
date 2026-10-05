@@ -1,0 +1,9 @@
+schema = "anvil-serving.image-builds/v1"
+[builds.strata-flashnext-trace-m50]
+context = "."
+dockerfile = "Dockerfile"
+image = "anvil-strata:6f32ec0-sm120-trace-m50-v1"
+cpus = 1
+memory_mib = 1024
+platform = "linux/amd64"
+timeout_seconds = 600

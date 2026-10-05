@@ -1,0 +1,30 @@
+{
+  "container": "swift15-ninfer-hostcache96",
+  "container_id": "[operator identity redacted]",
+  "health": null,
+  "host_memory": {
+    "current_bytes": 12015611904,
+    "effective_limit_bytes": 42949672960,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 42949672960,
+    "oom_killed": false,
+    "peak_bytes": 31923703808,
+    "ram_plus_swap_limit_bytes": 42949672960
+  },
+  "image": "anvil-ninfer@sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+  "image_id": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+  "model": "kaushikvira/Qwen3.8-27B-Swift15-NInfer-DFlash2-262K-HostCache96GB",
+  "revision": "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+  "running": true,
+  "schema": "recipe-container-status/v1",
+  "state": "running"
+}

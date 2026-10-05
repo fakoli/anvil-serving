@@ -1,5 +1,14 @@
 # Benchmark results
 
+**2026-10-05 RTX 5090:** [Swift15 host-cache promotion](findings/2026-10-05-swift-96gb-baseline.md)
+selects the same model/image at 262K/C4 with 8 GiB/eight host slots and a
+40 GiB/no-extra-swap bound. Twelve matched revisits per arm showed midpoint
+median visible TTFT 9.100→5.353 s and E2E 9.227→5.498 s; fresh regressions
+and Pi/OpenClaw/Hermes acceptance passed. This is bounded reuse benefit, not
+cold decode, general coding or p99 superiority. The tested Flash Next/Strata
+profile failed the practical latency gate and was rejected.
+
+
 **2026-09-23 DCP1 r11 publication verified:** the [GLM DCP1 qualification](findings/2026-09-23-glm-dcp1-qualification.md) records selected and deployed r11 after 28/28 direct and production-routed checks plus 13 native-client semantic paths. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. DCP1 is a mitigation, not a root-cause or speed claim; its 825,268 KV pool is 41.73% below DCP2's 1,416,244, so four full 327K windows are unsupported. Exact r10 remains the rollback.
 
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
@@ -28,7 +37,7 @@ attribution and broader qualification remain open. See the
 
 The current bounded reference is [GLM Flash EXL3 r11 DCP1](findings/2026-09-23-glm-dcp1-qualification.md): 4-bpw EXL3 with FP8 DS-MLA KV, APC, no speculation, 327,680 configured tokens, C4, and the selected DCP1 mitigation. [r10 APC](findings/2026-09-19-glm53-apc-promotion.md) is historical repeated-prefix performance lineage and r11's immediate rollback. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the historical matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing.
 
-On the RTX 5090, the [Huihui NInfer MTP3 160K/C1 profile](findings/2026-09-19-qwen38-context-envelope.md) is the qualified context reference: preflight 8/8, repeated bounded quality, vision 18/18, unique-canary capacity and 150,144-token retrieval passed. The 64K results remain a separate historical comparison. Actual deployment assignments are private.
+The current RTX 5090 same-image reuse reference is the [Swift15 96 GB profile](findings/2026-10-05-swift-96gb-baseline.md); the [Huihui NInfer MTP3 160K/C1 profile](findings/2026-09-19-qwen38-context-envelope.md) is the qualified context reference: preflight 8/8, repeated bounded quality, vision 18/18, unique-canary capacity and 150,144-token retrieval passed. The 64K results remain a separate historical comparison. Actual deployment assignments are private.
 
 Other retained comparisons (their dated evidence remains unchanged):
 The original Qwen3.8 27B FP8 path was the September 14 rollback; it was not

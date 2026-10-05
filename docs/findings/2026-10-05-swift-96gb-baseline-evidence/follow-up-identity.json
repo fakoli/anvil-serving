@@ -1,0 +1,141 @@
+{
+  "schema": "anvil-serving.publication-configuration-follow-up/v1",
+  "candidate_status_sources": [
+    {
+      "source_basename": "m50-final-status.json",
+      "source_sha256": "3669f2bd8c7c51f73a2420c8cf2792e11037e5d89ba145de06641ef1e10d35a9",
+      "image_digest": "sha256:d9c5ae90a028ba7ae5cee9c01ebddc1524da3b831be47de0daf7c6a3e211817a",
+      "recipe_digest": "44339b2b53251c5c10ebd686dbdcde362328e3935c51c70fc3ad9d030195f08f",
+      "revision": "38bb39ee97821de2c9009abb7e93950eec396e66",
+      "host_memory": {
+        "current_bytes": 48280924160,
+        "effective_limit_bytes": 53687091200,
+        "effective_swap_limit_bytes": 0,
+        "events": {
+          "high": 0,
+          "low": 0,
+          "max": 5803818,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0
+        },
+        "exit_code": 0,
+        "limit_bytes": 53687091200,
+        "oom_killed": false,
+        "peak_bytes": 53687099392,
+        "ram_plus_swap_limit_bytes": 53687091200
+      }
+    },
+    {
+      "source_basename": "diagnostic-mmq-final-status.json",
+      "source_sha256": "aff2706c9d2ef32fcd5bd06195fa99cc0cdf3b8d1fbeb991cdb9739935b366e2",
+      "image_digest": "sha256:2451bf190e65d96337dbf15683c58465f08e2a8fe49c9a591c741f3c94c3d3b3",
+      "recipe_digest": "e9ac2caa43a63bfb6f1a5dd48b8be26e09c1a51682e6c3e2dbd48c41b7ebd507",
+      "revision": "38bb39ee97821de2c9009abb7e93950eec396e66",
+      "host_memory": {
+        "current_bytes": 53681082368,
+        "effective_limit_bytes": 53687091200,
+        "effective_swap_limit_bytes": 0,
+        "events": {
+          "high": 0,
+          "low": 0,
+          "max": 2159544,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0
+        },
+        "exit_code": 0,
+        "limit_bytes": 53687091200,
+        "oom_killed": false,
+        "peak_bytes": 53687095296,
+        "ram_plus_swap_limit_bytes": 53687091200
+      }
+    },
+    {
+      "source_basename": "trace-final-status.json",
+      "source_sha256": "e0f8449cad588ccc875c66d4b94af2492d2f235ade2b1c50f5919e9e7c229081",
+      "image_digest": "sha256:ae0433aac9045a739de69ae9852a0611dc86a7e4d9a167bc4f5da1f5e92175ee",
+      "revision": "38bb39ee97821de2c9009abb7e93950eec396e66",
+      "host_memory": {
+        "current_bytes": 53681074176,
+        "effective_limit_bytes": 53687091200,
+        "effective_swap_limit_bytes": 0,
+        "events": {
+          "high": 0,
+          "low": 0,
+          "max": 2166246,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0
+        },
+        "exit_code": 0,
+        "limit_bytes": 53687091200,
+        "oom_killed": false,
+        "peak_bytes": 53687103488,
+        "ram_plus_swap_limit_bytes": 53687091200
+      },
+      "note": "Native status schema, not recipe-status schema; recipe digest not present here."
+    },
+    {
+      "source_basename": "prefill4096-final-status.json",
+      "source_sha256": "1144adcaa774e9027685553da687db59a7e385974812df88b78038cec0af74e6",
+      "image_digest": "sha256:34bcc9a6c14b466b470ce1db5bef49a75455c7e4d8feb3a708bfe17516534997",
+      "host_memory": {
+        "current_bytes": 53686923264,
+        "effective_limit_bytes": 53687091200,
+        "effective_swap_limit_bytes": 0,
+        "events": {
+          "high": 0,
+          "low": 0,
+          "max": 2260052,
+          "oom": 0,
+          "oom_group_kill": 0,
+          "oom_kill": 0
+        },
+        "exit_code": 0,
+        "limit_bytes": 53687091200,
+        "oom_killed": false,
+        "peak_bytes": 53687095296,
+        "ram_plus_swap_limit_bytes": 53687091200
+      },
+      "recipe_file_sha256": "4f13984d0588fa7712d80d8a0f239703a214811424f4c033406dcf35f57a52ec",
+      "execution_packet_sha256": "15ec9c0e8f0af98790de0cea41ae5107b67afd4a863c0ba7b9936367bd2ece02",
+      "controls": {
+        "prefill_tokens": 4096,
+        "borrow": true,
+        "context": 32768,
+        "parallel": 1,
+        "resident_gib": 36,
+        "hard_memory_gib": 50,
+        "total_memory_swap_gib": 50,
+        "declared_guest_reserve_gib": 8,
+        "effective_windows_floor_gib": 14,
+        "trace": "1",
+        "diagnostic_lines": "1",
+        "prefill_timing": "1",
+        "fused": "absent"
+      }
+    }
+  ],
+  "paired_swe_source": {
+    "created_at": "2026-10-05T09:34:22.814772+00:00",
+    "revision": "575257efe7cca8205cea643cbd637416d71ea844",
+    "dirty": false,
+    "bundle_sha256": "fe7d5865db2a678b5a7040193a0d4901dd34a0dd1af9e91b82d38f2de29e7f61",
+    "bundle_bytes": 24365998,
+    "file_count": 5563
+  },
+  "candidate_context_tokens": 32768,
+  "candidate_concurrency": 1,
+  "candidate_expert_ram_gib": 36,
+  "candidate_memory_limit_gib": 50,
+  "candidate_ram_plus_swap_limit_gib": 50,
+  "mtp": "native IQ; speculation window 4",
+  "phase_diagnostic": "Instrumented runtime differs from initial M50; never pool timings.",
+  "timing_caveats": [
+    "host_staging_ms and ple_ms accumulate within one engine process; differences require accounting for intervening calls.",
+    "Wall, GPU timeline and chunk setup/wait/after-chunk fields are per batched run.",
+    "dequant is a timeline bucket including MMQ/gather and submission gaps, not isolated kernel time or proof of FP16 fallback.",
+    "DONE file_blobs/file_mb are decode-only deltas after prompt/refill, not physical SSD reads."
+  ]
+}

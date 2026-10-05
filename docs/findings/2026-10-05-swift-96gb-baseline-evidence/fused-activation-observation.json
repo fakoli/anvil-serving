@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-10-05T10:49:28.497602+00:00",
+  "source_container_id": "[operator identity redacted]",
+  "source_fixed_path": "[runtime log path redacted]",
+  "sha256": "98e9f1a96a09d6cb0c87ca2b0754bfde826518c954753c41488e3ce6c21d13af",
+  "bytes": 26246,
+  "activation_banner_count": 1,
+  "meaning": "Pinned engine entered fused branch for at least one eligible layer/chunk; not all-layer coverage",
+  "retrieval_gap": "Managed numeric timing log adapter does not yet export fixed activation banner; narrow read-only exact-container file copy used. Distinct trace layer currently under independent review closes this gap."
+}

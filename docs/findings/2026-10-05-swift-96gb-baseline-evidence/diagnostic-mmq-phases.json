@@ -1,0 +1,646 @@
+[
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 1835,
+    "host_staging_ms": 815,
+    "phases": {
+      "combine": {
+        "ms": 1,
+        "percent": 0.1
+      },
+      "dequant": {
+        "ms": 865,
+        "percent": 47.1
+      },
+      "embed+steps": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "gather": {
+        "ms": 430,
+        "percent": 23.4
+      },
+      "gdn": {
+        "ms": 186,
+        "percent": 10.1
+      },
+      "gdn conv+gates": {
+        "ms": 1,
+        "percent": 0.0
+      },
+      "gdn out proj": {
+        "ms": 9,
+        "percent": 0.5
+      },
+      "gdn recurrence": {
+        "ms": 2,
+        "percent": 0.1
+      },
+      "gemm down": {
+        "ms": 28,
+        "percent": 1.5
+      },
+      "gemm gate/up": {
+        "ms": 28,
+        "percent": 1.5
+      },
+      "hc read": {
+        "ms": 209,
+        "percent": 11.4
+      },
+      "host grouping": {
+        "ms": 4,
+        "percent": 0.2
+      },
+      "ple": {
+        "ms": 1,
+        "percent": 0.0
+      },
+      "qsa attn": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 11,
+        "percent": 0.6
+      },
+      "qsa select": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "router+shared": {
+        "ms": 12,
+        "percent": 0.7
+      },
+      "wait copy": {
+        "ms": 48,
+        "percent": 2.6
+      }
+    },
+    "tokens": 65,
+    "wall_ms": 1837
+  },
+  {
+    "after_chunk_ms": 2,
+    "chunk_setup_ms": 0,
+    "chunk_wait_ms": 1,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 0
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 9358,
+    "host_staging_ms": 1300,
+    "phases": {
+      "combine": {
+        "ms": 71,
+        "percent": 0.8
+      },
+      "dequant": {
+        "ms": 4982,
+        "percent": 53.2
+      },
+      "embed+steps": {
+        "ms": 8,
+        "percent": 0.1
+      },
+      "gather": {
+        "ms": 14,
+        "percent": 0.2
+      },
+      "gdn": {
+        "ms": 109,
+        "percent": 1.2
+      },
+      "gdn conv+gates": {
+        "ms": 35,
+        "percent": 0.4
+      },
+      "gdn out proj": {
+        "ms": 74,
+        "percent": 0.8
+      },
+      "gdn recurrence": {
+        "ms": 107,
+        "percent": 1.1
+      },
+      "gemm down": {
+        "ms": 457,
+        "percent": 4.9
+      },
+      "gemm gate/up": {
+        "ms": 201,
+        "percent": 2.2
+      },
+      "hc read": {
+        "ms": 156,
+        "percent": 1.7
+      },
+      "host grouping": {
+        "ms": 2846,
+        "percent": 30.4
+      },
+      "ple": {
+        "ms": 107,
+        "percent": 1.1
+      },
+      "qsa attn": {
+        "ms": 52,
+        "percent": 0.6
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 63,
+        "percent": 0.7
+      },
+      "qsa select": {
+        "ms": 14,
+        "percent": 0.1
+      },
+      "router+shared": {
+        "ms": 29,
+        "percent": 0.3
+      },
+      "wait copy": {
+        "ms": 33,
+        "percent": 0.4
+      }
+    },
+    "tokens": 5487,
+    "wall_ms": 9364
+  },
+  {
+    "after_chunk_ms": 5,
+    "chunk_setup_ms": 5,
+    "chunk_wait_ms": 13,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 107
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 2704,
+    "host_staging_ms": 2732,
+    "phases": {
+      "combine": {
+        "ms": 2,
+        "percent": 0.1
+      },
+      "dequant": {
+        "ms": 1525,
+        "percent": 56.4
+      },
+      "embed+steps": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "gather": {
+        "ms": 798,
+        "percent": 29.5
+      },
+      "gdn": {
+        "ms": 28,
+        "percent": 1.0
+      },
+      "gdn conv+gates": {
+        "ms": 2,
+        "percent": 0.1
+      },
+      "gdn out proj": {
+        "ms": 11,
+        "percent": 0.4
+      },
+      "gdn recurrence": {
+        "ms": 5,
+        "percent": 0.2
+      },
+      "gemm down": {
+        "ms": 84,
+        "percent": 3.1
+      },
+      "gemm gate/up": {
+        "ms": 68,
+        "percent": 2.5
+      },
+      "hc read": {
+        "ms": 9,
+        "percent": 0.3
+      },
+      "host grouping": {
+        "ms": 6,
+        "percent": 0.2
+      },
+      "ple": {
+        "ms": 1,
+        "percent": 0.0
+      },
+      "qsa attn": {
+        "ms": 1,
+        "percent": 0.0
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 12,
+        "percent": 0.4
+      },
+      "qsa select": {
+        "ms": 1,
+        "percent": 0.0
+      },
+      "router+shared": {
+        "ms": 12,
+        "percent": 0.4
+      },
+      "wait copy": {
+        "ms": 140,
+        "percent": 5.2
+      }
+    },
+    "tokens": 303,
+    "wall_ms": 2704
+  },
+  {
+    "after_chunk_ms": 1,
+    "chunk_setup_ms": 0,
+    "chunk_wait_ms": 4,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 107
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 635,
+    "host_staging_ms": 2970,
+    "phases": {
+      "combine": {
+        "ms": 1,
+        "percent": 0.2
+      },
+      "dequant": {
+        "ms": 324,
+        "percent": 51.1
+      },
+      "embed+steps": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "gather": {
+        "ms": 113,
+        "percent": 17.8
+      },
+      "gdn": {
+        "ms": 26,
+        "percent": 4.0
+      },
+      "gdn conv+gates": {
+        "ms": 1,
+        "percent": 0.1
+      },
+      "gdn out proj": {
+        "ms": 10,
+        "percent": 1.6
+      },
+      "gdn recurrence": {
+        "ms": 3,
+        "percent": 0.4
+      },
+      "gemm down": {
+        "ms": 34,
+        "percent": 5.3
+      },
+      "gemm gate/up": {
+        "ms": 39,
+        "percent": 6.1
+      },
+      "hc read": {
+        "ms": 7,
+        "percent": 1.1
+      },
+      "host grouping": {
+        "ms": 3,
+        "percent": 0.5
+      },
+      "ple": {
+        "ms": 1,
+        "percent": 0.1
+      },
+      "qsa attn": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 11,
+        "percent": 1.8
+      },
+      "qsa select": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "router+shared": {
+        "ms": 11,
+        "percent": 1.7
+      },
+      "wait copy": {
+        "ms": 51,
+        "percent": 8.0
+      }
+    },
+    "tokens": 138,
+    "wall_ms": 635
+  },
+  {
+    "after_chunk_ms": 0,
+    "chunk_setup_ms": 0,
+    "chunk_wait_ms": 4,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 108
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 12522,
+    "host_staging_ms": 3602,
+    "phases": {
+      "combine": {
+        "ms": 97,
+        "percent": 0.8
+      },
+      "dequant": {
+        "ms": 7322,
+        "percent": 58.5
+      },
+      "embed+steps": {
+        "ms": 19,
+        "percent": 0.2
+      },
+      "gather": {
+        "ms": 16,
+        "percent": 0.1
+      },
+      "gdn": {
+        "ms": 147,
+        "percent": 1.2
+      },
+      "gdn conv+gates": {
+        "ms": 58,
+        "percent": 0.5
+      },
+      "gdn out proj": {
+        "ms": 112,
+        "percent": 0.9
+      },
+      "gdn recurrence": {
+        "ms": 156,
+        "percent": 1.2
+      },
+      "gemm down": {
+        "ms": 554,
+        "percent": 4.4
+      },
+      "gemm gate/up": {
+        "ms": 332,
+        "percent": 2.7
+      },
+      "hc read": {
+        "ms": 236,
+        "percent": 1.9
+      },
+      "host grouping": {
+        "ms": 3236,
+        "percent": 25.8
+      },
+      "ple": {
+        "ms": 5,
+        "percent": 0.0
+      },
+      "qsa attn": {
+        "ms": 74,
+        "percent": 0.6
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 82,
+        "percent": 0.7
+      },
+      "qsa select": {
+        "ms": 19,
+        "percent": 0.2
+      },
+      "router+shared": {
+        "ms": 33,
+        "percent": 0.3
+      },
+      "wait copy": {
+        "ms": 22,
+        "percent": 0.2
+      }
+    },
+    "tokens": 7410,
+    "wall_ms": 12532
+  },
+  {
+    "after_chunk_ms": 9,
+    "chunk_setup_ms": 5,
+    "chunk_wait_ms": 13,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 108
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 10277,
+    "host_staging_ms": 4061,
+    "phases": {
+      "combine": {
+        "ms": 91,
+        "percent": 0.9
+      },
+      "dequant": {
+        "ms": 5764,
+        "percent": 56.1
+      },
+      "embed+steps": {
+        "ms": 5,
+        "percent": 0.0
+      },
+      "gather": {
+        "ms": 15,
+        "percent": 0.1
+      },
+      "gdn": {
+        "ms": 124,
+        "percent": 1.2
+      },
+      "gdn conv+gates": {
+        "ms": 34,
+        "percent": 0.3
+      },
+      "gdn out proj": {
+        "ms": 77,
+        "percent": 0.8
+      },
+      "gdn recurrence": {
+        "ms": 132,
+        "percent": 1.3
+      },
+      "gemm down": {
+        "ms": 609,
+        "percent": 5.9
+      },
+      "gemm gate/up": {
+        "ms": 181,
+        "percent": 1.8
+      },
+      "hc read": {
+        "ms": 153,
+        "percent": 1.5
+      },
+      "host grouping": {
+        "ms": 2851,
+        "percent": 27.7
+      },
+      "ple": {
+        "ms": 5,
+        "percent": 0.1
+      },
+      "qsa attn": {
+        "ms": 74,
+        "percent": 0.7
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 78,
+        "percent": 0.8
+      },
+      "qsa select": {
+        "ms": 19,
+        "percent": 0.2
+      },
+      "router+shared": {
+        "ms": 33,
+        "percent": 0.3
+      },
+      "wait copy": {
+        "ms": 30,
+        "percent": 0.3
+      }
+    },
+    "tokens": 7412,
+    "wall_ms": 10285
+  },
+  {
+    "after_chunk_ms": 7,
+    "chunk_setup_ms": 5,
+    "chunk_wait_ms": 15,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 108
+  },
+  {
+    "event": "anvil_strata_prefill_timing",
+    "gpu_timeline_ms": 10573,
+    "host_staging_ms": 4446,
+    "phases": {
+      "combine": {
+        "ms": 95,
+        "percent": 0.9
+      },
+      "dequant": {
+        "ms": 6711,
+        "percent": 63.5
+      },
+      "embed+steps": {
+        "ms": 30,
+        "percent": 0.3
+      },
+      "gather": {
+        "ms": 16,
+        "percent": 0.2
+      },
+      "gdn": {
+        "ms": 124,
+        "percent": 1.2
+      },
+      "gdn conv+gates": {
+        "ms": 37,
+        "percent": 0.3
+      },
+      "gdn out proj": {
+        "ms": 79,
+        "percent": 0.7
+      },
+      "gdn recurrence": {
+        "ms": 133,
+        "percent": 1.3
+      },
+      "gemm down": {
+        "ms": 324,
+        "percent": 3.1
+      },
+      "gemm gate/up": {
+        "ms": 180,
+        "percent": 1.7
+      },
+      "hc read": {
+        "ms": 192,
+        "percent": 1.8
+      },
+      "host grouping": {
+        "ms": 2412,
+        "percent": 22.8
+      },
+      "ple": {
+        "ms": 5,
+        "percent": 0.1
+      },
+      "qsa attn": {
+        "ms": 74,
+        "percent": 0.7
+      },
+      "qsa indexer": {
+        "ms": 0,
+        "percent": 0.0
+      },
+      "qsa proj": {
+        "ms": 80,
+        "percent": 0.8
+      },
+      "qsa select": {
+        "ms": 19,
+        "percent": 0.2
+      },
+      "router+shared": {
+        "ms": 33,
+        "percent": 0.3
+      },
+      "wait copy": {
+        "ms": 28,
+        "percent": 0.3
+      }
+    },
+    "tokens": 7413,
+    "wall_ms": 10581
+  },
+  {
+    "after_chunk_ms": 7,
+    "chunk_setup_ms": 30,
+    "chunk_wait_ms": 15,
+    "event": "anvil_strata_prefill_host_timing",
+    "ple_ms": 108
+  }
+]

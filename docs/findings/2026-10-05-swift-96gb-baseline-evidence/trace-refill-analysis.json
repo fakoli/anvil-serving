@@ -1,0 +1,77 @@
+{
+  "schema": "anvil-investigation.trace-refill-analysis/v1",
+  "status": "diagnostic-only, preflightfailed19/20toolbatch; noqualificationclaim",
+  "pairing": "SingleC1 ordered3requests; final3largebatchedlogs map exactly via prompt_tokens=batched_tokens+4windowtokens+1lasttoken. No extra traffic assumed perrootcontrolledrun.",
+  "requests": [
+    {
+      "request_index": 0,
+      "prompt_tokens": 7415,
+      "batched_tokens": 7410,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 1424,
+      "loan_chunk_tokens": 7424,
+      "lend_ms": 0.2,
+      "batched_ms": 10376.4,
+      "refill_ms": 13210.8,
+      "window_ms": 234.1,
+      "trace_components_ms": 23821.5,
+      "visible_ttft_ms": 26490.712800001347,
+      "first_output_ms": 23981.571899999835,
+      "e2e_ms": 26957.813500001066,
+      "phase_host_staging_cumulative_ms": 3928
+    },
+    {
+      "request_index": 1,
+      "prompt_tokens": 7417,
+      "batched_tokens": 7412,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 1424,
+      "loan_chunk_tokens": 7424,
+      "lend_ms": 0.1,
+      "batched_ms": 12397.7,
+      "refill_ms": 13401.9,
+      "window_ms": 164.6,
+      "trace_components_ms": 25964.3,
+      "visible_ttft_ms": 30198.69739999922,
+      "first_output_ms": 26157.44099999938,
+      "e2e_ms": 30648.735099999612,
+      "phase_host_staging_cumulative_ms": 4649
+    },
+    {
+      "request_index": 2,
+      "prompt_tokens": 7418,
+      "batched_tokens": 7413,
+      "window_tokens": 4,
+      "last_prompt_token_read_in_decode": 1,
+      "loan_slots": 1424,
+      "loan_chunk_tokens": 7424,
+      "lend_ms": 0.1,
+      "batched_ms": 10818.3,
+      "refill_ms": 13972.8,
+      "window_ms": 275.8,
+      "trace_components_ms": 25067.0,
+      "visible_ttft_ms": 28609.902000000147,
+      "first_output_ms": 25175.632400001632,
+      "e2e_ms": 29049.241700002312,
+      "phase_host_staging_cumulative_ms": 5323
+    }
+  ],
+  "cgroup_observations": {
+    "before_events_max": 1087870,
+    "after_events_max": 2166246,
+    "delta_events_max": 1078376,
+    "oom_and_oomkill_both_samples": 0,
+    "hard_memory_bytes": 53687091200,
+    "same_peak_bytes": 53687103488,
+    "limitation": "Asynchronous preflight-end/final status boundaries. Delta cannotbeassignedperrequest; memory.maxevents showcharge/reclaimpressure, notOOM orcauseofoneconnectionfailure."
+  },
+  "conclusion": "Restoring1424borrowedexperts takes13.2–14.0s, exceeding10.4–12.4sbatchedprefill inall3. Materialouterpromptcost confirmed; no claimphysicalSSDlatency. Small fixed4096borrow-retainedtrial justified, samehardlimits, withqualitygateandnoexpectedperformanceguarantee.",
+  "source_artifacts": {
+    "trace-final-logs.json": "507013edb233656107bbfe3496ad3d2aeb220641493c907018dbecb947ff3c41",
+    "trace-final-status.json": "e0f8449cad588ccc875c66d4b94af2492d2f235ade2b1c50f5919e9e7c229081",
+    "trace-preflight-failure-status.json": "9957155c02208d0ac4e40e21b12dbfc1155e5064b5db0dc5fd1612f49a8b9f1f",
+    "flash-trace-8k-c1.json": "83abeeaa1d945b114c34a43d68e6e69b6b1e4e07d5cb45327f9455242722ce5f"
+  }
+}

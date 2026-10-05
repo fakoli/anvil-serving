@@ -4,6 +4,17 @@
 
 ## Current status and review date
 
+### October 5 host-cache promotion
+
+The retained Swift-1.5/NInfer NVFP4 derivative is a separate configuration from
+September's Q6_K challenger. On one RTX 5090 with nominal 96 GB host RAM it
+passed three preflight repeats, agentic 18/18, context 36/36, images 12/12 and
+five-case official SWE 4/5. Strict repeated-word capacity failed 0/12; a separate
+variable-output service workload passed 48/48 across four 8K/24K C1/C4 cells.
+A separate immutable-image SWE replay also resolved 4/5. The initial Flash Next 12-request cell failed the practical latency gate against this baseline; instrumented diagnostics do not replace it. The same-image 8 GiB/eight-slot host-cache pilot passed: 12 revisits per arm retained about three times more tokens, with median visible TTFT 9.100→5.353 s and E2E 9.227→5.498 s (average-middle-pair convention). Fresh service, agentic, long-context, image and explicitly cache-aware continuation gates passed; final configuration and client acceptance passed; the 8 GiB/eight-slot profile is promoted. Evidence cutoff/review: **2026-10-05**.
+[Finding and evidence](../../findings/2026-10-05-swift-96gb-baseline.md). The snapshot below retains September's decision.
+
+
 !!! info "Decision snapshot"
 
     - **Product role:** direct RTX 5090 replacement candidates, not promoted services.
@@ -33,6 +44,19 @@ the best new efficiency research lead, but not a qualified full-contract
 replacement. The incumbent was faster on the revised cold short-output scout.
 
 ## Immutable identity
+
+### October 5 Swift15 NVFP4 baseline
+
+`kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3` at
+`ff891a1130adfcf46bf745e06f0fa3dcde2e8c82`; NInfer
+`bace20dc70249eed6402b66d4852c6c3f9612905`, runtime image
+`sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67`.
+[Exact reconstruction parameters](../../findings/2026-10-05-swift-96gb-baseline-evidence/configuration-identity.json)
+retain model-file/recipe hashes, K8V4, DFlash2 draft7, 262K/C4, 2 GiB host KV
+and four host-state slots. Context/quality cells are serial; short service
+latency separately exercised C4. This does not inherit September's evidence.
+
+### September candidates
 
 | Recipe family | Weight repository | Exact revision |
 |---|---|---|
@@ -64,6 +88,20 @@ control. Signal/Swift have matched no-spec variants. Exact filenames,
 sampling, graph settings, and flags are in the linked recipes.
 
 ## Evidence by measurement class
+
+### October 5: recovered baseline on larger system RAM
+
+- **Status:** functional and bounded quality/context; failed strict stress
+  and a separately versioned variable-output service-latency population.
+- **Measured:** three preflight repetitions passed, agentic 18/18, context
+  27/27 plus 9/9 at 253,838–253,868 actual inputs with 8,192 reserve, images
+  12/12, official SWE 4/5 of five fixed tasks. Service-v2 passed 12/12 per cell.
+- **Limits:** no candidate speed comparison, fixed-output decode ranking,
+  broad coding score or full C4 context envelope. Historical SWE image
+  identities are boundary-only observations. Strict repeated-word failure
+  does not imply ordinary prose streaming failure.
+- **Evidence:** [baseline checkpoint](../../findings/2026-10-05-swift-96gb-baseline.md).
+
 
 ### Four-model functional and quality scout
 
@@ -133,6 +171,8 @@ an efficiency research lead, not a proven full-contract upgrade.
 - **Decision:** retain GLM; no route or promotion change. See the [dated finding](../../findings/2026-09-26-swift-tp2-jev.md).
 
 ## Dated run history
+
+- 2026-10-05 — [Swift15 upgraded-host baseline](../../findings/2026-10-05-swift-96gb-baseline.md): bounded correctness and quality; strict stress ineligible; separate service-latency cells retained; 8 GiB/eight-slot host-cache pilot passed with more retention and lower revisit latency; fresh regression and explicit-history gate passed; final client acceptance passed and the expanded cache profile was promoted.
 
 - 2026-09-26 — [single-GPU Swift qualification](../../findings/2026-09-26-single-gpu-qualification.md): Flash IQ3 r3 passed deterministic gates but SWE 3/5; Swift27 NVFP4 r2 resolved 2/5 with four graded. Neither is qualified or promoted.
 

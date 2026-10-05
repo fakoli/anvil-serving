@@ -1,0 +1,92 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "swift-service-v2-8k-c1.json",
+              "artifact_sha256": "f251d24b44126f0ade07b38cf3c2d7b4da3b70957da66fe757de2b5c46146db3",
+              "value": 1733.2922000005055,
+              "x": "8k"
+            },
+            {
+              "artifact": "swift-service-v2-24k-c1.json",
+              "artifact_sha256": "f2ba562899baad2cb8f9354a92bd4fff84a8b9ce3ce34b7592567bcf9e8b8627",
+              "value": 3116.5836000000127,
+              "x": "24k"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "swift-service-v2-8k-c4.json",
+              "artifact_sha256": "4b1529ca7504bd69bb488a59b2eec23d5a60cd39939c134aa8ac48c3d518a6f9",
+              "value": 3453.0902999995305,
+              "x": "8k"
+            },
+            {
+              "artifact": "swift-service-v2-24k-c4.json",
+              "artifact_sha256": "0cd16c11157ee0894c226a5827ae7bd735fbc4de626260f40492166cb4d9b7f1",
+              "value": 9502.766399999018,
+              "x": "24k"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT p50 (nearest rank)",
+      "x_label": "Nominal context (actual input ranges in finding)",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "swift-service-v2-8k-c1.json",
+              "artifact_sha256": "f251d24b44126f0ade07b38cf3c2d7b4da3b70957da66fe757de2b5c46146db3",
+              "value": 1837.6459000010072,
+              "x": "8k"
+            },
+            {
+              "artifact": "swift-service-v2-24k-c1.json",
+              "artifact_sha256": "f2ba562899baad2cb8f9354a92bd4fff84a8b9ce3ce34b7592567bcf9e8b8627",
+              "value": 3256.4419000009366,
+              "x": "24k"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "swift-service-v2-8k-c4.json",
+              "artifact_sha256": "4b1529ca7504bd69bb488a59b2eec23d5a60cd39939c134aa8ac48c3d518a6f9",
+              "value": 3588.9893999992637,
+              "x": "8k"
+            },
+            {
+              "artifact": "swift-service-v2-24k-c4.json",
+              "artifact_sha256": "0cd16c11157ee0894c226a5827ae7bd735fbc4de626260f40492166cb4d9b7f1",
+              "value": 9814.59679999898,
+              "x": "24k"
+            }
+          ]
+        }
+      ],
+      "title": "Total E2E p50 (nearest rank)",
+      "x_label": "Nominal context (actual input ranges in finding)",
+      "y_label": "milliseconds"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "RTX 5090; 12 requests per cell; unique canaries; no candidate or fixed-output decode comparison",
+  "title": "Swift15 baseline: variable-output service latency"
+}

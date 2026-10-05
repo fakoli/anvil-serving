@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-investigation.prefill-phase-interpretation/v1",
+  "source_revision": "6f32ec070f23ced9f50e704d854d775da52591ab",
+  "status": "source-supported interpretation; no additional live requests",
+  "findings": [
+    {
+      "claim": "dequant is a timeline bucket, not evidence of FP16 fallback or isolatedkernel cost. MMQ compute marks samebucket before gather, with hostqueue gaps charged to previousmark.",
+      "source": [
+        "src/prefill/prefill.cpp:1460",
+        "src/prefill/prefill.cpp:2711",
+        "src/prefill/prefill.cpp:2733"
+      ]
+    },
+    {
+      "claim": "Batched MTP callback is included in run_impl wall and aftereachchunk counter; should not explain outergap unless differentpathproof.",
+      "source": [
+        "src/prefill/prefill.cpp:2955",
+        "src/prefill/prefill.cpp:2963",
+        "src/program/generate.cpp:5374"
+      ]
+    },
+    {
+      "claim": "prompt_ms startsatrequest and endsafter lending, each promptpart including shortverifywindows, checkpointatturnboundary and finalrefill; these extend beyond timedbatchedrun.",
+      "source": [
+        "src/program/generate.cpp:6981",
+        "src/program/generate.cpp:7028",
+        "src/program/generate.cpp:7044"
+      ]
+    },
+    {
+      "claim": "Exact numeric lend/refill timing available with STRATA_TRACE; not yet exposed by approveddiagnosticparser. This is nextnarrow attribution surface, not proofthoseoperations causeallgap.",
+      "source": [
+        "src/program/generate.cpp:6785",
+        "src/program/generate.cpp:6840"
+      ]
+    },
+    {
+      "claim": "host_staging_ms and ple_ms are cumulative PrefillStats across run_impl calls in one engine; wall/GPU phases and chunk setup/wait/afterchunk are perrun. Difference cumulativefields only within sameprocess, accountingforinterveningcalls.",
+      "source": [
+        "src/prefill/prefill.cpp:607",
+        "src/prefill/prefill.cpp:2685",
+        "src/prefill/prefill.cpp:3012",
+        "src/prefill/prefill.cpp:3015"
+      ]
+    }
+  ],
+  "limitations": [
+    "No physicalSSDclaimfrom file_blob counters",
+    "No changingR36 orprefillceiling basedonlyaggregatephase",
+    "No inferencealllayersfusedfromenv; mixedQ8downlayerscanremainMMQ",
+    "Diagnostic timing overhead excludesheadlineperformance"
+  ],
+  "observations": {
+    "mmq_large_calls": [
+      {
+        "tokens": 7410,
+        "wall_ms": 12532,
+        "after_chunk_ms": 9
+      },
+      {
+        "tokens": 7412,
+        "wall_ms": 10285,
+        "after_chunk_ms": 7
+      },
+      {
+        "tokens": 7413,
+        "wall_ms": 10581,
+        "after_chunk_ms": 7
+      }
+    ],
+    "interpretation": "Batched draft callback included and measured7–9ms; cannot aloneexplain reported~12s outergap."
+  }
+}

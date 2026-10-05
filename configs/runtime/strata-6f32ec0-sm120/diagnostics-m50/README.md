@@ -1,0 +1,11 @@
+# Pinned numeric diagnostics for the strict memory profile
+
+This unbuilt, unqualified layer derives from the exact existing m50 image. It forwards the reviewed fixed32K/C1/R36 launcher, its configuration hashing,50GiB cgroup ceiling and zero swap; it changes no model/runtime arguments or prepared outputs. All previously built artifact inputs remain intact.
+
+At build time patch_server.py refuses any server source except the exact baked parent SHA256. That parent contains upstream CRLF bytes; normalization to LF occurs only after the exact byte check (its LF-equivalent matches pinned upstream6f32ec0). The small patch reuses the existing owned-log follower. STRATA_DIAGNOSTIC_LINES=1 enables only reconstructed JSON for the two exact single-GPU prefill timing grammars; bounded complete-line handling rejects arbitrary, partial, oversized and malformed text. STRATA_REQUEST_LINES retains its independent existing request-summary control. No raw prompt, token, reasoning, arbitrary filename or arbitrary log suffix is emitted.
+
+The wrapper calls the original preparation verifier, then verifies the fixed native_experts.txt length and SHA256 and emits numeric layer/blob totals. No metadata filename from that file is exposed. It finally continues the existing runtime_m50 launcher. The fixed artifact source and prepared metadata identities fail closed on changes.
+
+The image bakes no diagnostic environment flags. Private diagnostic recipes explicitly set STRATA_DIAGNOSTIC_LINES=1 and STRATA_PREFILL_TIMING=1. The upstream timing check tests presence: setting0 or an empty value still enables GPU timing events. Headline recipes must omit STRATA_PREFILL_TIMING entirely; instrumented runs are not performance headlines. The derived image leaves native-IQ fused kernels off. A separately declared STRATA_PF_FUSED=1 experiment changes arithmetic and requires all affected quality gates. File-tier counters remain mapped accesses, not evidence of physical SSD misses.
+
+Build through the provided managed image-build registry only after independent review. Operate through an exact private recipe retaining the base profile limits and reserve. Capture diagnostics through models recipes logs. No image has been built or model started by creating this artifact.
