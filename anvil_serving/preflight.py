@@ -23,6 +23,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
+    from .operator_output import redact
     from .model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
     from .benchmarking.artifacts import (
         atomic_write_json as _atomic_write_json,
@@ -30,6 +31,7 @@ try:
         validate_write_target,
     )
 except ImportError:  # direct ``python anvil_serving/preflight.py`` compatibility
+    from operator_output import redact
     from model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_control
     from benchmarking.artifacts import (
         atomic_write_json as _atomic_write_json,
@@ -279,6 +281,37 @@ def response_observation(response):
         "usage": usage,
     }
 
+def _request_with_evidence(evidence, test, key, request, *args,
+                           request_index=None, **kwargs):
+    """Retain failed request attempts without inventing response or finish data.
+
+    This boundary includes response decoding, but not probe validation. Exception
+    types describe the caller failure, not a diagnosed serving-engine cause.
+    """
+    started = time.perf_counter()
+    try:
+        return request(*args, **kwargs)
+    except Exception as exc:
+        seconds = round(time.perf_counter() - started, 3)
+        message = redact(str(exc) or "<empty exception message>", secrets=(key,))
+        detail = message[:2048]
+        observation = {
+            "test": test,
+            "seconds": seconds,
+            "passed": False,
+            "status": "request_failed",
+            "error_type": type(exc).__name__,
+            "error_message": detail,
+            "error_message_truncated": len(message) > 2048,
+        }
+        if request_index is not None:
+            observation["request_index"] = request_index
+        if evidence is not None:
+            evidence.append(observation)
+        # Existing probe catches also return this safe detail in CLI summaries.
+        raise RuntimeError(detail) from exc
+
+
 def _capture(evidence, test, response, seconds, request_index=None):
     observation = response_observation(response)
     observation.update({"test": test, "seconds": round(seconds, 3)})
@@ -305,9 +338,11 @@ def t_needle(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
     doc = body[:cut] + f"\n\nIMPORTANT: The launch code is {secret}.\n\n" + body[cut:]
     msgs = [{"role": "user", "content": doc + "\n\nQuestion: What is the launch code? Reply with ONLY the code."}]
     try:
-        resp, dt = chat(base, model, msgs, key, max_tokens=max_tokens,
-                        chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-                        timeout=timeout)
+        resp, dt = _request_with_evidence(
+            evidence, "needle", key, chat, base, model, msgs, key,
+            max_tokens=max_tokens, chat_template_kwargs=ctk,
+            reasoning_effort=reasoning_effort, timeout=timeout,
+        )
         obs = _capture(evidence, "needle", resp, dt)
         out = resp["choices"][0]["message"].get("content") or ""
         ok = secret.replace("-", "") in out.replace("-", "").replace(" ", "")
@@ -361,9 +396,12 @@ def t_tool_one(base, model, key, shared_prefix, ctk=None, max_tokens=256,
     msgs = [{"role": "system", "content": shared_prefix},
             {"role": "user", "content": "What's the weather in Oakland? Use the tool."}]
     try:
-        resp, dt = chat(base, model, msgs, key, max_tokens=max_tokens, tools=TOOLS,
-                        tool_choice="auto", chat_template_kwargs=ctk,
-                        reasoning_effort=reasoning_effort, timeout=timeout)
+        resp, dt = _request_with_evidence(
+            evidence, "tools", key, chat, base, model, msgs, key,
+            max_tokens=max_tokens, tools=TOOLS, tool_choice="auto",
+            chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+            timeout=timeout, request_index=request_index,
+        )
         obs = _capture(evidence, "tools", resp, dt, request_index)
         m = resp["choices"][0]["message"]
         ok, detail = validate_tool_call(m)
@@ -399,7 +437,8 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
         "content": record + "\n\nWhat's the weather in Oakland? Use the tool.",
     }]
     try:
-        response, seconds = chat(
+        response, seconds = _request_with_evidence(
+            evidence, "long-tools", key, chat,
             base,
             model,
             messages,
@@ -445,7 +484,8 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
         "content": "What's the weather in Oakland? Use the tool.",
     }]
     try:
-        events, done, seconds = chat_stream(
+        events, done, seconds = _request_with_evidence(
+            evidence, "streaming-tools", key, chat_stream,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
             tool_choice="auto", chat_template_kwargs=ctk, timeout=timeout,
         )
@@ -513,7 +553,8 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
         "content": "What's the weather in Oakland? Use the tool.",
     }]
     try:
-        first, first_seconds = chat(
+        first, first_seconds = _request_with_evidence(
+            evidence, "tool-result-initial", key, chat,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
             tool_choice="auto", chat_template_kwargs=ctk,
             reasoning_effort=reasoning_effort, timeout=timeout,
@@ -541,7 +582,8 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
                 "content": "Reply exactly OAKLAND 72F using the tool result.",
             },
         ])
-        final, final_seconds = chat(
+        final, final_seconds = _request_with_evidence(
+            evidence, "tool-result-continuation", key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
             timeout=timeout,
@@ -570,7 +612,8 @@ def t_responses(base, model, key, ctk=None, max_tokens=256,
                 evidence=None, timeout=900):
     """Require a visible completed answer from the stateless Responses subset."""
     try:
-        response, seconds = responses_request(
+        response, seconds = _request_with_evidence(
+            evidence, "responses", key, responses_request,
             base, model, "Reply with exactly READY", key,
             max_tokens=max_tokens, chat_template_kwargs=ctk, timeout=timeout,
         )
@@ -620,9 +663,11 @@ def t_json(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
            evidence=None, timeout=900):
     msgs = [{"role": "user", "content": 'Return ONLY a JSON object: {"language":"python","ok":true}. No prose.'}]
     try:
-        resp, dt = chat(base, model, msgs, key, max_tokens=max_tokens,
-                        chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-                        timeout=timeout)
+        resp, dt = _request_with_evidence(
+            evidence, "json", key, chat, base, model, msgs, key,
+            max_tokens=max_tokens, chat_template_kwargs=ctk,
+            reasoning_effort=reasoning_effort, timeout=timeout,
+        )
         obs = _capture(evidence, "json", resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "").strip()
         s = out[out.find("{"): out.rfind("}") + 1]
@@ -637,9 +682,11 @@ def t_smoke(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
             evidence=None, timeout=900):
     msgs = [{"role": "user", "content": "Write a Python one-liner that returns the sum of a list `xs`."}]
     try:
-        resp, dt = chat(base, model, msgs, key, max_tokens=max_tokens,
-                        chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-                        timeout=timeout)
+        resp, dt = _request_with_evidence(
+            evidence, "smoke", key, chat, base, model, msgs, key,
+            max_tokens=max_tokens, chat_template_kwargs=ctk,
+            reasoning_effort=reasoning_effort, timeout=timeout,
+        )
         obs = _capture(evidence, "smoke", resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "")
         ok = "sum(" in out
@@ -667,7 +714,8 @@ def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
         {"type": "text", "text": prompts[check]},
     ]}]
     try:
-        resp, dt = chat(
+        resp, dt = _request_with_evidence(
+            evidence, check, key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
             timeout=timeout,
@@ -707,7 +755,8 @@ def t_video(base, model, key, data_url, video_identity, expectations, *,
         )},
     ]}]
     try:
-        resp, dt = chat(
+        resp, dt = _request_with_evidence(
+            evidence, "video", key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
             timeout=timeout,
@@ -962,7 +1011,11 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         allok &= ok
         results.append({"name": name, "passed": ok, "detail": detail})
         print(_console_safe(f"[{'PASS' if ok else 'FAIL'}] {name:38} {detail}"))
-    bad_finishes = [item for item in evidence if item.get("finish_reason") not in allowed_finish_reasons]
+    bad_finishes = [
+        item for item in evidence
+        if item.get("status") != "request_failed"
+        and item.get("finish_reason") not in allowed_finish_reasons
+    ]
     reasoning_seen = any(
         (item.get("reasoning_chars") or 0) > 0 or (item.get("reasoning_tokens") or 0) > 0
         for item in evidence
