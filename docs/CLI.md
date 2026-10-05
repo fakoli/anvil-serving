@@ -358,6 +358,9 @@ required operands, choices, and defaults.
 | `host docker-image build` | Build a declared local image with CPU and memory limits. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `host docker-image inspect` | Read the platform and selected build labels of one cached image. | `read` / `bounded` | `--label` |
 | `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |
+| `host docker-build-cache` | Inspect or prune exact build-cache IDs with old recorded last use. | `read` / `bounded` | - |
+| `host docker-build-cache inventory` | Inspect old build cache. | `read` / `bounded` | `--context`<br>`--builder`<br>`--before` |
+| `host docker-build-cache prune` | Prune only twice-verified old regular build-cache IDs. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--context`<br>`--builder`<br>`--before` |
 | `host docker-disk` | Inspect, compact, or restore the Docker Desktop data disk. | `read` / `bounded` | - |
 | `host docker-disk compact` | Stop Docker Desktop and compact one exact data VHDX. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host docker-disk restore` | Restore SOURCE TARGET with a target backup; --move consumes SOURCE. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--move` |
