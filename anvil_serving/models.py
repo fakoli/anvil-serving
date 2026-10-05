@@ -40,7 +40,7 @@ from . import paths
 from . import serve_recipes
 from .service_runtime.operations import execute as _service_execute
 from .service_runtime.contracts import ServiceError, identifier as service_identifier
-from .operator_output import CommandResult, OperatorError
+from .operator_output import CommandResult, OperatorError, redact
 HERE = os.path.dirname(__file__)
 
 # `pull` defaults. The vLLM nightly image ships the `hf` CLI (huggingface_hub), so
@@ -1754,6 +1754,16 @@ def _write_console_text(stream, value):
         stream.write(escaped)
 
 
+def _recipe_unload_failure_detail(completed):
+    """Keep the owning Docker error useful without unbounded or secret output."""
+    detail = next((value.strip() for value in (completed.stderr, completed.stdout)
+                   if value and value.strip()), "Docker returned a non-zero exit status")
+    detail = str(redact(detail))
+    if len(detail) > 2048:
+        detail = detail[:2048] + " [truncated]"
+    return "recipe unload failed: %s\n" % detail
+
+
 def _recipe_container_unload(
     recipe,
     container,
@@ -1798,11 +1808,7 @@ def _recipe_container_unload(
         errors="replace",
     )
     if completed.returncode:
-        print(
-            "recipe unload failed: %s"
-            % ((completed.stderr or completed.stdout or "").strip()),
-            file=sys.stderr,
-        )
+        _write_console_text(sys.stderr, _recipe_unload_failure_detail(completed))
         return completed.returncode
     print("unloaded recipe container %r" % container)
     if serve_recipes.uses_native_kv_offload(recipe):
@@ -1860,7 +1866,7 @@ def _discovered_recipe_container_unload(
         errors="replace",
     )
     if completed.returncode:
-        print("recipe unload failed", file=sys.stderr)
+        _write_console_text(sys.stderr, _recipe_unload_failure_detail(completed))
         return completed.returncode
     print("unloaded recipe container %r" % current["container"])
     if cleanup_required:

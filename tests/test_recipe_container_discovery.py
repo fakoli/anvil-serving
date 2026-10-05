@@ -1012,3 +1012,44 @@ def test_mode_status_reports_unresolved_recipe_owner_successfully(
     assert payload["unresolved"] == [
         {"serve": "recipe:candidate", "state": "unmanaged-recipe-owner"}
     ]
+
+
+@pytest.mark.parametrize("registered", [False, True])
+@pytest.mark.parametrize("stderr,stdout,expected", [
+    ("daemon: removal already in progress", "unused", "daemon: removal already in progress"),
+    (" \n", "daemon: removal failed", "daemon: removal failed"),
+    ("", "", "Docker returned a non-zero exit status"),
+    ("daemon: token=private-test-token", "", "daemon: token=<redacted>"),
+])
+def test_recipe_unload_failure_retains_bounded_redacted_docker_detail(
+    monkeypatch, capsys, registered, stderr, stdout, expected,
+):
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    monkeypatch.setattr(models, "_recipe_container_identity", lambda *a, **k: identity)
+    monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *a, **k: identity)
+    def unexpected_cleanup():
+        pytest.fail("a failed removal must not run cleanup")
+    monkeypatch.setattr(models.host_ops, "prepare_native_kv_offload_shared_memory", unexpected_cleanup)
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return _completed(argv, returncode=17, stderr=stderr, stdout=stdout)
+    if registered:
+        code = models._recipe_container_unload({"model": "org/model"}, "candidate", confirm=True, _run=run)
+    else:
+        code = models._discovered_recipe_container_unload(identity, confirm=True, _run=run)
+    captured = capsys.readouterr()
+    assert code == 17
+    assert calls == [["docker", "rm", "-f", identity["container_id"]]]
+    assert captured.err == "recipe unload failed: " + expected + "\n"
+    assert "unloaded" not in captured.out
+    assert "private-test-token" not in captured.err
+
+
+def test_recipe_unload_failure_redacts_before_truncation():
+    detail = models._recipe_unload_failure_detail(_completed([], returncode=1,
+        stderr="denied token=" + "sensitive" * 500 + " " + "x" * 3000))
+    assert "sensitive" not in detail
+    assert "token=<redacted>" in detail
+    assert detail.endswith(" [truncated]\n")
+    assert len(detail) <= len("recipe unload failed: ") + 2048 + len(" [truncated]\n")
