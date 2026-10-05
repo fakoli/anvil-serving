@@ -357,6 +357,29 @@ is not automatic: rebuild or pull the same immutable image again. A removed
 image's shared layers may remain while another image or build cache references
 them; this command never removes either of those owners.
 
+### Old Docker build cache
+
+Use recorded BuildKit last use to inspect regular build-cache records older
+than an explicit timezone-qualified cutoff, at least 14 days ago:
+
+```bash
+anvil-serving host docker-build-cache inventory --context desktop-linux --builder desktop-linux --before 2026-01-01T00:00:00Z
+anvil-serving host docker-build-cache prune --context desktop-linux --builder desktop-linux --before 2026-01-01T00:00:00Z --dry-run
+```
+
+Apply the same prune command with `--confirm`. `--dry-run` always wins.
+The command requires one running Docker-driver builder on the named context,
+rechecks the engine and complete inventory, and sends an anchored exact-ID
+filter plus age and type filters to BuildKit. BuildKit checks live references
+under its native record locks. Unknown last use and in-use records are retained.
+It never prunes images, containers or volumes;
+image-owned shared layers remain referenced. No Docker restart is required.
+
+Results retain the daemon's human-readable reclaimed total without claiming
+exact byte precision. Rounded cache sizes can share layers and must not be
+summed as reclaimed storage. Filesystem free space and physical VHDX allocation
+are separate measurements; offline compaction is a separate operation.
+
 ### Docker data VHDX compaction
 
 Deleting Docker objects releases space inside Docker Desktop's dynamic data
