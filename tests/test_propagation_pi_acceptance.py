@@ -400,10 +400,11 @@ def test_owned_process_group_cleanup_reaps_fixture_descendant(tmp_path):
     program = (
         "import pathlib,signal,subprocess,sys,time\n"
         "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'])\n"
-        f"pathlib.Path({str(child_file)!r}).write_text(str(child.pid))\n"
         "def stop(*_):\n"
         " child.terminate(); child.wait(timeout=2); raise SystemExit(0)\n"
         "signal.signal(signal.SIGTERM,stop)\n"
+        # Publish readiness only after graceful group cleanup is installed.
+        f"pathlib.Path({str(child_file)!r}).write_text(str(child.pid))\n"
         "time.sleep(30)\n"
     )
     process = _owned_process_factory(

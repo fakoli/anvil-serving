@@ -446,13 +446,91 @@ def _health(_open, port=8000):
         return None
 
 
+# Inspect only restart-custody metadata: never request Config.Env, command arguments,
+# arbitrary labels, mount contents, or Docker's full container document.
+_CUSTODY_FORMAT = (
+    '{"container_id":{{json .Id}},"image_id":{{json .Image}},'
+    '"image_reference":{{json .Config.Image}},"started_at":{{json .State.StartedAt}},'
+    '"restart_count":{{json .RestartCount}},'
+    '"compose_project":{{json (index .Config.Labels "com.docker.compose.project")}},'
+    '"compose_service":{{json (index .Config.Labels "com.docker.compose.service")}},'
+    '"mounts":{{json .Mounts}}}'
+)
+
+
+def _restart_custody(container, _run):
+    """Read an allowlisted observation, not an ownership or restart authorization."""
+    unavailable = {"available": False, "error": "router_custody_unavailable"}
+    if not _CONTAINER_NAME_RE.fullmatch(container):
+        return unavailable
+    try:
+        result = _run(["docker", "inspect", "--format", _CUSTODY_FORMAT, container],
+                      capture_output=True, text=True, encoding="utf-8", timeout=5)
+        raw = result.stdout or ""
+        if result.returncode or len(raw) > 131072:
+            return unavailable
+        observed = json.loads(raw)
+        if not isinstance(observed, dict):
+            return unavailable
+        fields = ("container_id", "image_id", "image_reference", "started_at")
+        if any(not isinstance(observed.get(key), str) or len(observed[key]) > 4096
+               or any(ord(ch) < 32 for ch in observed[key]) for key in fields):
+            return unavailable
+        if not re.fullmatch(r"[a-f0-9]{64}", observed["container_id"]) or not re.fullmatch(
+            r"sha256:[a-f0-9]{64}", observed["image_id"]
+        ):
+            return unavailable
+        reference = observed["image_reference"]
+        if not reference or reference.startswith("-"):
+            return unavailable
+        if type(observed.get("restart_count")) is not int or observed["restart_count"] < 0:
+            return unavailable
+        mounts = observed.get("mounts")
+        if not isinstance(mounts, list) or len(mounts) > 128:
+            return unavailable
+        projected = []
+        for mount in mounts:
+            if not isinstance(mount, dict) or type(mount.get("RW")) is not bool:
+                return unavailable
+            row = {}
+            for field in ("Type", "Name", "Source", "Destination"):
+                value = mount.get(field, "")
+                if not isinstance(value, str) or len(value) > 4096 or any(ord(c) < 32 for c in value):
+                    return unavailable
+                row[field.lower()] = value
+            row["read_only"] = not mount["RW"]
+            projected.append(row)
+        custody = {key: observed[key] for key in fields}
+        for label in ("compose_project", "compose_service"):
+            value = observed.get(label)
+            if value is not None and (not isinstance(value, str) or len(value) > 4096
+                                      or any(ord(c) < 32 for c in value)):
+                return unavailable
+            custody[label] = value
+        custody.update(available=True, restart_count=observed["restart_count"], mounts=projected,
+                       local_reference_image_id=None, local_reference_matches=None)
+        reference_result = _run(["docker", "image", "inspect", "--format", "{{.Id}}", reference],
+                                capture_output=True, text=True, encoding="utf-8", timeout=5)
+        reference_id = (reference_result.stdout or "").strip()
+        if reference_result.returncode == 0 and re.fullmatch(r"sha256:[a-f0-9]{64}", reference_id):
+            custody["local_reference_image_id"] = reference_id
+            custody["local_reference_matches"] = reference_id == custody["image_id"]
+        return custody
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, AttributeError):
+        # Docker errors can contain private arguments or daemon diagnostics. The
+        # observation is unavailable; preserve the pre-existing health result.
+        return unavailable
+
+
 def status_summary(container, _run=subprocess.run, _open=urllib.request.urlopen, port=8000):
     state = docker_state(container, _run=_run)
     running = state == "running"
     return {"container": container, "docker_state": state, "running": running,
             "health_status": _health(_open, port) if running else None,
             "health_url": runtime_url("http://127.0.0.1:%s/" % port) if running else None,
-            "ok": state != "error"}
+            "ok": state != "error",
+            "custody": (_restart_custody(container, _run) if state not in {"absent", "error"}
+                        else {"available": False, "error": "router_custody_unavailable"})}
 
 
 def cmd_status(container, _run=subprocess.run, _open=urllib.request.urlopen):
@@ -736,7 +814,16 @@ def main(argv=None):
             )
         print(json.dumps({"applied": rc == 0, "dry_run": False, **plan}, sort_keys=True))
         return rc
-    if args.action == "status": return cmd_status(args.container)
+    if args.action == "status":
+        from .operator_output import CommandResult, OperatorError
+        summary = status_summary(args.container)
+        human = "router container: %s\ndocker state:     %s\n" % (
+            args.container, summary["docker_state"])
+        error = None
+        if summary["docker_state"] == "error":
+            human += "status:           UNKNOWN (docker unavailable)\n"
+            error = OperatorError("Docker unavailable", code="router_status_unavailable")
+        return CommandResult(data=summary, human_stdout=human, error=error)
     if args.action == "fleet-status":
         return cmd_fleet_status(
             args.config,
