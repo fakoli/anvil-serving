@@ -8,6 +8,18 @@ Run `eval preflight` before benchmarking a new serve or changed engine recipe.
 It checks the explicit endpoint and served-model identifier without changing
 the gateway's alias map.
 
+With `--output`, failed request attempts remain in the `preflight/v2`
+`observations` list with `status: request_failed`, `passed: false`, elapsed
+`seconds`, `error_type`, and `error_message`. The shared operator redactor
+removes recognized secret forms and the supplied API credential before the
+message is capped at 2,048 characters; `error_message_truncated` records that
+cap. These records contain no invented finish reason or response token counts.
+`request_index` is the zero-based index within the tools batch, not a global
+request ordinal. Other checks use their test/stage name, including separate
+initial and continuation stages for tool results. Observation order can follow
+concurrent completion order. An exception type describes the caller's failure;
+inspect the owning serve logs before assigning a cause.
+
 For a tool-call gate after a genuinely long prompt, include `long-tools` and
 set the nominal calibration target. The gate succeeds only when the endpoint
 reports at least 100,000 actual prompt tokens and returns the expected

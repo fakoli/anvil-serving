@@ -485,3 +485,131 @@ def test_preflight_video_selection_requires_video_and_expectations():
             "--dry-run",
         ])
     assert exc.value.code == 2
+
+
+def test_failed_batch_attempt_keeps_index_elapsed_and_safe_detail(monkeypatch, tmp_path, capsys):
+    from http.client import RemoteDisconnected
+    from threading import local
+
+    state = local()
+    original = pf.t_tool_one
+    credential = "synthetic-test-credential"
+    monkeypatch.setenv("PREFLIGHT_TEST_AUTH", credential)
+
+    def indexed(*args, **kwargs):
+        state.index = args[8]
+        state.ticks = 0
+        return original(*args, **kwargs)
+
+    def clock():
+        state.ticks += 1
+        return 100 + (state.ticks - 1) * 1.25
+
+    def chat(*args, **kwargs):
+        assert args[3] == credential
+        assert kwargs["timeout"] == 17
+        if state.index == 13:
+            raise RemoteDisconnected(
+                credential + " Authorization: Bearer synthetic-other-secret " + "x" * 3000
+            )
+        return {"choices": [{"finish_reason": "tool_calls", "message": {
+            "tool_calls": [{"function": {
+                "name": "get_weather", "arguments": '{"city":"Oakland"}',
+            }}],
+        }}]}, 0.5
+
+    monkeypatch.setattr(pf, "t_tool_one", indexed)
+    monkeypatch.setattr(pf, "chat", chat)
+    monkeypatch.setattr(pf.time, "perf_counter", clock)
+    target = tmp_path / "preflight.json"
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+        "--checks", "tools", "--tool-batch", "20", "--timeout", "17",
+        "--api-key-env", "PREFLIGHT_TEST_AUTH", "--output", str(target),
+    ]) == 1
+    raw = target.read_text(encoding="utf-8")
+    artifact = json.loads(raw)
+    rows = artifact["observations"]
+    assert len(rows) == 20
+    assert sorted(row["request_index"] for row in rows) == list(range(20))
+    failed = [row for row in rows if row.get("status") == "request_failed"]
+    assert len(failed) == 1
+    assert failed[0] == {
+        "test": "tools", "seconds": 1.25, "passed": False,
+        "status": "request_failed", "request_index": 13,
+        "error_type": "RemoteDisconnected",
+        "error_message": failed[0]["error_message"], "error_message_truncated": True,
+    }
+    assert len(failed[0]["error_message"]) == 2048
+    assert "<redacted>" in failed[0]["error_message"]
+    assert artifact["passed"] is False
+    assert artifact["evidence_policy"]["errors"] == []
+    assert artifact["results"][0]["detail"].startswith("19/20 clean")
+    output = capsys.readouterr().out
+    assert credential not in raw + output
+    assert "synthetic-other-secret" not in raw + output
+
+
+@pytest.mark.parametrize("probe,request_name,test", [
+    (pf.t_streaming_tool, "chat_stream", "streaming-tools"),
+    (pf.t_responses, "responses_request", "responses"),
+])
+def test_protocol_request_failures_retain_observation(monkeypatch, probe, request_name, test):
+    def fail(*args, **kwargs):
+        raise TimeoutError("request timed out")
+
+    ticks = iter([5.0, 7.5])
+    monkeypatch.setattr(pf.time, "perf_counter", lambda: next(ticks))
+    monkeypatch.setattr(pf, request_name, fail)
+    evidence = []
+    passed, detail = probe("http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence)
+    assert passed is False
+    assert detail == "error: request timed out"
+    assert evidence == [{
+        "test": test, "seconds": 2.5, "passed": False, "status": "request_failed",
+        "error_type": "TimeoutError", "error_message": "request timed out",
+        "error_message_truncated": False,
+    }]
+
+
+def test_continuation_failure_keeps_initial_response_and_exact_stage(monkeypatch):
+    calls = 0
+
+    def chat(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ConnectionResetError("peer reset")
+        return {"choices": [{"finish_reason": "tool_calls", "message": {
+            "tool_calls": [{"id": "call-1", "function": {
+                "name": "get_weather", "arguments": '{"city":"Oakland"}',
+            }}],
+        }}]}, 0.1
+
+    monkeypatch.setattr(pf, "chat", chat)
+    evidence = []
+    passed, _ = pf.t_tool_result(
+        "http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence,
+    )
+    assert passed is False
+    assert calls == 2
+    assert len(evidence) == 2
+    assert evidence[0]["test"] == "tool-result-initial"
+    assert evidence[0]["passed"] is True
+    assert evidence[1]["test"] == "tool-result-continuation"
+    assert evidence[1]["error_type"] == "ConnectionResetError"
+    assert "finish_reason" not in evidence[1]
+
+
+def test_validation_error_does_not_duplicate_or_mislabel_request(monkeypatch):
+    monkeypatch.setattr(pf, "chat", lambda *args, **kwargs: ({"choices": [{
+        "finish_reason": "stop", "message": {"content": "not JSON"},
+    }]}, 0.1))
+    evidence = []
+    passed, _ = pf.t_json(
+        "http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence,
+    )
+    assert passed is False
+    assert len(evidence) == 1
+    assert evidence[0]["finish_reason"] == "stop"
+    assert "error_type" not in evidence[0]
