@@ -70,7 +70,14 @@ def _desktop_facts(memory, reserve, _run):
     windows_reserve = max(reserve * MIB, host.RECOMMENDED_WINDOWS_RESERVE_GB * 1024**3)
     if (physical['available'] * 1024 < memory * MIB + windows_reserve
             or physical['total'] * 1024 - info['MemTotal'] < windows_reserve):
-        raise ValueError('candidate or WSL memory ceiling would consume the Windows host reserve')
+        raise ValueError(
+            'candidate or WSL memory ceiling would consume the Windows host reserve: '
+            f'available_bytes={physical["available"] * 1024}, '
+            f'required_available_bytes={memory * MIB + windows_reserve}; '
+            f'physical_total_bytes={physical["total"] * 1024}, '
+            f'wsl_ceiling_bytes={info["MemTotal"]}, '
+            f'required_outside_wsl_bytes={windows_reserve}'
+        )
     return facts
 
 

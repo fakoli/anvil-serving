@@ -87,6 +87,10 @@ def test_cgroup_observation_and_stopped_oom(tmp_path):
     ('vm-mismatch', 'identities'),
     ('windows-pressure', 'Windows host reserve'),
     ('windows-cap', 'Windows host reserve'),
+    ('windows-pressure-boundary', None),
+    ('windows-pressure-below', 'Windows host reserve'),
+    ('windows-cap-boundary', None),
+    ('windows-cap-below', 'Windows host reserve'),
     ('vm-pressure', 'available host reserve'),
     ('invalid-memory', 'invalid host memory'),
     ('missing-swap', 'incomplete host memory'),
@@ -115,6 +119,10 @@ def test_windows_desktop_containment_checks_both_memory_boundaries(monkeypatch, 
         physical['available'] = 1024**2
     if fault == 'windows-cap':
         physical['total'] = 70 * 1024**2
+    if fault in {'windows-pressure-boundary', 'windows-pressure-below'}:
+        physical['available'] = (14 * 1024 + 64) * 1024 - (fault == 'windows-pressure-below')
+    if fault in {'windows-cap-boundary', 'windows-cap-below'}:
+        physical['total'] = 78 * 1024**2 - (fault == 'windows-cap-below')
     if fault == 'missing-physical':
         del physical['available']
     if fault == 'declared-windows-reserve':
@@ -148,8 +156,17 @@ def test_windows_desktop_containment_checks_both_memory_boundaries(monkeypatch, 
     if fault == 'declared-windows-reserve':
         bounded['host_memory_reserve_mib'] = 20 * 1024
     if expected:
-        with pytest.raises(ValueError, match=expected):
+        with pytest.raises(ValueError, match=expected) as caught:
             rm.check_host(bounded, _run=run)
+        if expected == 'Windows host reserve':
+            reserve = max(bounded['host_memory_reserve_mib'] * rm.MIB, 14 * 1024**3)
+            assert str(caught.value).endswith(
+                f'available_bytes={physical["available"] * 1024}, '
+                f'required_available_bytes={64 * rm.MIB + reserve}; '
+                f'physical_total_bytes={physical["total"] * 1024}, '
+                f'wsl_ceiling_bytes={info["MemTotal"]}, '
+                f'required_outside_wsl_bytes={reserve}'
+            )
     else:
         rm.check_host(bounded, _run=run)
         assert any(argv[0] == 'wsl' for argv in calls)
