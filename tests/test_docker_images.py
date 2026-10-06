@@ -1,4 +1,7 @@
+import errno
 import json
+import os
+from pathlib import Path
 import subprocess
 from types import SimpleNamespace
 
@@ -102,6 +105,20 @@ class DockerFixture:
                 "Containers space usage:\n"
             )
             return _completed(argv, stdout=output)
+        if command[:1] == ["compose"]:
+            path = Path(command[command.index("--file") + 1])
+            raw = path.read_text(encoding="utf-8")
+            if "[\n" in raw:
+                return _completed(argv, returncode=1, stderr="invalid compose YAML")
+            if "${" in raw:
+                image = "${IMAGE}"
+            elif "repo/app:old" in raw:
+                image = "repo/app:old"
+            else:
+                image = TARGET_DIGEST
+            return _completed(argv, stdout=json.dumps({
+                "services": {"app": {"image": image}},
+            }))
         if command == ["image", "rm", "--no-prune", TARGET_ID]:
             self.removed = True
             return _completed(argv, stdout="Deleted: " + TARGET_ID + "\n")
@@ -170,6 +187,42 @@ def test_declared_recipe_reference_blocks_exact_image_removal(tmp_path):
     assert configured[0]["field"] == "recipe.serve.image"
 
 
+def test_nested_operational_recipe_reference_blocks_exact_image_removal(tmp_path):
+    recipe = tmp_path / "candidates" / "candidate" / "serve-recipes.toml"
+    recipe.parent.mkdir(parents=True)
+    recipe.write_text('[recipe.serve]\nimage = "%s"\n' % TARGET_DIGEST, encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["configured"] == [{
+        "path": "candidates/candidate/serve-recipes.toml",
+        "field": "recipe.serve.image",
+        "value": TARGET_DIGEST,
+    }]
+
+
+def test_nested_workbench_json_image_reference_blocks_exact_image_removal(tmp_path):
+    config = tmp_path / "workbench" / "bootstrap.json"
+    config.parent.mkdir()
+    config.write_text(json.dumps({"pi": {"image": TARGET_DIGEST}}), encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["configured"] == [{
+        "path": "workbench/bootstrap.json",
+        "field": "pi.image",
+        "value": TARGET_DIGEST,
+    }]
+
+
 def test_declared_rollback_reference_blocks_exact_image_removal(tmp_path):
     (tmp_path / "rollback.json").write_text(
         json.dumps({"rollback": {"image": TARGET_DIGEST}}),
@@ -186,9 +239,104 @@ def test_declared_rollback_reference_blocks_exact_image_removal(tmp_path):
     assert configured[0]["field"] == "rollback.image"
 
 
-def test_yaml_sequence_image_reference_blocks_exact_image_removal(tmp_path):
-    (tmp_path / "compose.yaml").write_text(
-        "candidates:\n  - image: %s\n" % TARGET_DIGEST,
+def test_malformed_selected_json_config_fails_closed(tmp_path):
+    (tmp_path / "candidate-stack.json").write_text("not json", encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors[0].startswith("candidate-stack.json:")
+
+
+def test_unreadable_selected_json_config_fails_closed(tmp_path, monkeypatch):
+    config = tmp_path / "candidate-stack.json"
+    config.write_text(json.dumps({"candidate": {"image": TARGET_DIGEST}}), encoding="utf-8")
+    original = type(config).read_bytes
+
+    def unreadable(path):
+        if path == config:
+            raise OSError("permission denied")
+        return original(path)
+
+    monkeypatch.setattr(type(config), "read_bytes", unreadable)
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["candidate-stack.json: permission denied"]
+
+
+def test_unreadable_config_directory_fails_closed(tmp_path, monkeypatch):
+    blocked = tmp_path / "candidate-stack"
+
+    def inaccessible(root, *, followlinks, onerror):
+        assert root == tmp_path
+        assert followlinks is False
+        onerror(OSError(errno.EACCES, "Permission denied", str(blocked)))
+        return []
+
+    monkeypatch.setattr(docker_images.os, "walk", inaccessible)
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["candidate-stack: [Errno 13] Permission denied: '%s'" % blocked]
+
+
+def test_artifact_and_dependency_trees_do_not_block_config_audit(tmp_path):
+    for relative in (
+        "benchmark-harness-cache/run/bad.json",
+        "evidence/run/bad.json",
+        "candidates/candidate/venv/bad.json",
+        "pi-web/current/node_modules/package/bad.json",
+    ):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("not json", encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "preview"
+    assert result["inspection"]["references"]["config_audit_errors"] == []
+
+
+@pytest.mark.parametrize("filename", ["candidate-stack.yaml", "candidate-stack.json"])
+def test_arbitrary_config_filename_image_reference_blocks_exact_image_removal(
+    tmp_path, filename,
+):
+    path = tmp_path / filename
+    if path.suffix == ".json":
+        path.write_text(json.dumps({"candidate": {"image": TARGET_DIGEST}}), encoding="utf-8")
+    else:
+        path.write_text("services:\n  app:\n    image: %s\n" % TARGET_DIGEST, encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["configured"][0]["path"] == filename
+
+
+def test_flow_yaml_image_reference_blocks_exact_image_removal(tmp_path):
+    (tmp_path / "candidate-stack.yaml").write_text(
+        "services: {app: {image: %s}}\n" % TARGET_DIGEST,
         encoding="utf-8",
     )
     fixture = DockerFixture(configured_tags=[])
@@ -200,11 +348,157 @@ def test_yaml_sequence_image_reference_blocks_exact_image_removal(tmp_path):
     configured = result["inspection"]["references"]["configured"]
     assert result["outcome"] == "blocked"
     assert configured == [{
-        "path": "compose.yaml",
-        "field": "line:2",
+        "path": "candidate-stack.yaml",
+        "field": "services.app.image",
         "value": TARGET_DIGEST,
     }]
+    compose = next(call for call in fixture.calls if call[1:2] == ["compose"])
+    assert compose[1:] == [
+        "compose", "--env-file", os.devnull,
+        "--project-directory", str(tmp_path), "--file",
+        str(tmp_path / "candidate-stack.yaml"),
+        "config", "--format", "json", "--no-interpolate",
+        "--no-env-resolution", "--no-path-resolution",
+    ]
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+
+
+@pytest.mark.parametrize("key", ['"image"', r"im\u0061ge"])
+def test_quoted_or_escaped_yaml_image_key_is_validated(tmp_path, key):
+    (tmp_path / "candidate-stack.yaml").write_text(
+        "metadata:\n  %s: %s\n" % (key, TARGET_DIGEST),
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "blocked"
+    assert any(call[1:2] == ["compose"] for call in fixture.calls)
+
+
+def test_flow_yaml_tag_reference_blocks_exact_image_removal(tmp_path):
+    (tmp_path / "candidate-stack.yaml").write_text(
+        "{services: {app: {image: repo/app:old}}}\n", encoding="utf-8"
+    )
+    fixture = DockerFixture()
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["configured"][0]["value"] == "repo/app:old"
+
+
+@pytest.mark.parametrize("yaml", [
+    "services:\n  app:\n    image: ${IMAGE}\n",
+    "{services: {app: {image: ${IMAGE}}}}\n",
+])
+def test_unresolved_yaml_image_reference_fails_closed(tmp_path, yaml):
+    (tmp_path / "candidate-stack.yaml").write_text(yaml, encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["candidate-stack.yaml: unresolved image reference at services.app.image"]
+
+
+def test_non_compose_yaml_without_image_reference_does_not_block_audit(tmp_path):
+    (tmp_path / "searxng-settings.yml").write_text(
+        "use_default_settings: true\nsearch:\n  safe_search: 0\n  image_proxy: false\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "prometheus.yml").write_text(
+        "global:\n  scrape_interval: 15s\nscrape_configs: []\n",
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "preview"
+    assert result["inspection"]["references"]["config_audit_errors"] == []
+    assert not any(call[1:2] == ["compose"] for call in fixture.calls)
+
+
+def test_potential_yaml_image_key_is_validated_and_blocks_exact_image_removal(tmp_path):
+    (tmp_path / "prometheus.yml").write_text(
+        "static_metadata:\n  immutable_image: %s\n" % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    configured = result["inspection"]["references"]["configured"]
+    assert result["outcome"] == "blocked"
+    assert configured[0]["path"] == "prometheus.yml"
+    assert configured[0]["value"] == TARGET_DIGEST
+    assert any(call[1:2] == ["compose"] for call in fixture.calls)
+
+
+def test_plain_yaml_immutable_reference_blocks_without_compose_parse(tmp_path):
+    (tmp_path / "metadata.yml").write_text(
+        "immutable_ref: %s\n" % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    configured = result["inspection"]["references"]["configured"]
+    assert result["outcome"] == "blocked"
+    assert configured[0]["path"] == "metadata.yml"
+    assert configured[0]["value"] == TARGET_DIGEST
+    assert not any(call[1:2] == ["compose"] for call in fixture.calls)
+
+
+def test_malformed_yaml_config_fails_closed(tmp_path):
+    (tmp_path / "candidate-stack.yaml").write_text("services:\n  app: [\n", encoding="utf-8")
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["candidate-stack.yaml: invalid compose YAML"]
+
+
+def test_compose_yaml_validation_work_is_bounded(tmp_path, monkeypatch):
+    (tmp_path / "first.yaml").write_text(
+        "services:\n  first:\n    image: %s\n" % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    (tmp_path / "second.yaml").write_text(
+        "services:\n  second:\n    image: %s\n" % TARGET_DIGEST,
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(docker_images, "MAX_COMPOSE_CONFIG_FILES", 1)
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
+    )
+
+    errors = result["inspection"]["references"]["config_audit_errors"]
+    assert result["outcome"] == "blocked"
+    assert errors == ["second.yaml: too many Compose YAML files (maximum 1)"]
+    assert len([call for call in fixture.calls if call[1:2] == ["compose"]]) == 1
 
 
 def test_symlinked_config_directory_fails_closed(tmp_path, monkeypatch):
