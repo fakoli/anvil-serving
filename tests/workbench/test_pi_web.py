@@ -491,6 +491,72 @@ def test_status_reports_probe_and_installed_pin(tmp_path: Path) -> None:
     assert report["probe"]["ready"] is False
 
 
+def _status_report(tmp_path: Path) -> dict[str, object]:
+    import anvil_serving.workbench_app.pi_web as module
+
+    config = pi_web_config(_config(tmp_path))
+    run = FakeRun()
+    original_service_state = module.service_state
+    original_probe = module.probe
+
+    def patched_state(**_: object) -> dict[str, object]:
+        return original_service_state(run=run)
+
+    def patched_probe(port: int, **_: object) -> dict[str, object]:
+        return {"ready": False, "url": f"http://127.0.0.1:{port}/", "attempts": 1}
+
+    module.service_state = patched_state  # type: ignore[assignment]
+    module.probe = patched_probe  # type: ignore[assignment]
+    try:
+        return pi_web.status(config)
+    finally:
+        module.service_state = original_service_state  # type: ignore[assignment]
+        module.probe = original_probe  # type: ignore[assignment]
+
+
+def test_status_drift_clean_when_tree_matches_recorded_pin(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd is Linux-only")
+    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
+    version_dir = root / "0.9.0"
+    (version_dir / "bin").mkdir(parents=True)
+    (version_dir / "bin" / "pi-web.js").write_text("// entry\n", encoding="utf-8")
+    recorded = pi_web._artifact_tree_sha256(version_dir)
+    (root / "install-manifest.json").write_text(json.dumps({
+        "version": "0.9.0",
+        "bridge_install": {"artifact_sha256": recorded, "version": "0.9.0"},
+    }), encoding="utf-8")
+    report = _status_report(tmp_path)
+    assert report["drift"] == "clean"
+
+
+def test_status_drifted_when_tree_differs_from_recorded_pin(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd is Linux-only")
+    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
+    version_dir = root / "0.9.0"
+    (version_dir / "bin").mkdir(parents=True)
+    (version_dir / "bin" / "pi-web.js").write_text("// entry\n", encoding="utf-8")
+    recorded = pi_web._artifact_tree_sha256(version_dir)
+    (root / "install-manifest.json").write_text(json.dumps({
+        "version": "0.9.0",
+        "bridge_install": {"artifact_sha256": recorded, "version": "0.9.0"},
+    }), encoding="utf-8")
+    (version_dir / "bin" / "pi-web.js").write_text("// hand-edited\n", encoding="utf-8")
+    report = _status_report(tmp_path)
+    assert report["drift"] == "drifted"
+
+
+def test_status_drift_unknown_without_a_recorded_pin(tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("systemd is Linux-only")
+    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
+    root.mkdir(parents=True)
+    (root / "install-manifest.json").write_text(json.dumps({"version": "0.9.0"}), encoding="utf-8")
+    report = _status_report(tmp_path)
+    assert report["drift"] == "unknown"
+
+
 def test_logs_returns_bounded_journal_text(tmp_path: Path) -> None:
     if sys.platform == "win32":
         pytest.skip("journalctl is Linux-only")
