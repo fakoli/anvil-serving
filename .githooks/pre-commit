@@ -17,7 +17,7 @@ command -v python3 >/dev/null 2>&1 || {
   exit 1
 }
 
-if ! python3 scripts/audit_cli_references.py --update; then
+if ! python3 scripts/audit_cli_references.py --update >/dev/null; then
   echo "pre-commit: CLI reference audit reported violations; resolve them before committing" >&2
   exit 1
 fi
