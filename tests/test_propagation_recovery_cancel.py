@@ -1,5 +1,6 @@
 """Exact-job settlement uses real custody, locks and delayed native writes."""
 from dataclasses import replace
+import errno
 import multiprocessing
 from pathlib import Path
 import subprocess
@@ -109,7 +110,7 @@ def test_original_job_empty_custody_recovery_and_delayed_writer(tmp_path, monkey
                     return observed_stat
                 if path == Path("/proc/sys/kernel/random/boot_id"):
                     if boot is None:
-                        raise FileNotFoundError()
+                        raise FileNotFoundError(errno.ENOENT, "synthetic missing boot identity")
                     return boot
                 return read_text(path, *args, **kwargs)
             with monkeypatch.context() as isolated:
