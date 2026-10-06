@@ -40,6 +40,14 @@ paths = ['''(^|/)docs/findings/2026-08-02-deepseek-v4-flash-0731-primary-promoti
 regexes = ['''MAX_NUM_SEQS=16''']
 
 [[allowlists]]
+description = "Exact pinned MiMo tokenizer fingerprint in diagnostic captures"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/artifacts/2026-10-06-mimo-qualification/mimo-r1-raw-(parallel-greedy|structured-thinking-off)-capture\.json$''']
+regexes = ['''tokenizer_sha256[^\r\n]{0,8}ff15eb925890d6b71b5160de4b846fbd13178438ab463b38ecc953e8cd1dcb3e["']?''']
+
+[[allowlists]]
 description = "RFC 6455 sample WebSocket nonce"
 targetRules = ["generic-api-key"]
 condition = "AND"
