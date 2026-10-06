@@ -1,6 +1,7 @@
 """Exact-job settlement uses real custody, locks and delayed native writes."""
 from dataclasses import replace
 import multiprocessing
+from pathlib import Path
 import subprocess
 import sys
 
@@ -85,9 +86,12 @@ def test_original_job_empty_custody_recovery_and_delayed_writer(tmp_path, monkey
         owner.service.profile = replace(owner.profile, cancellation_evidence=evidence)
         with pytest.raises(PropagationJobError, match="operation_in_progress"):
             owner.service.recover_cancelled(**args)
+        process_stat = Path(f"/proc/{identities[0]['pid']}/stat")
+        original_stat = process_stat.read_text(encoding="ascii")
         for process in processes:
             process.terminate()
             process.wait(timeout=5)
+        assert all(_identity(process.pid) is None for process in processes)
 
         original = owner.jobs.lookup_internal(job_id)
         def unchanged():
@@ -97,6 +101,28 @@ def test_original_job_empty_custody_recovery_and_delayed_writer(tmp_path, monkey
                 assert db.execute("SELECT count(*) FROM propagation_native_settlements").fetchone()[0] == 0
                 assert db.execute("SELECT result_json FROM propagation_native_children WHERE job_id=?", (job_id,)).fetchone()[0] is None
             assert all(path.read_bytes() == b"before" for _, path, _, _ in fences)
+
+        read_text = Path.read_text
+        for observed_stat, boot in ((original_stat, None), (original_stat, ""), ("malformed", "boot")):
+            def observe(path, *args, **kwargs):
+                if path == process_stat:
+                    return observed_stat
+                if path == Path("/proc/sys/kernel/random/boot_id"):
+                    if boot is None:
+                        raise FileNotFoundError()
+                    return boot
+                return read_text(path, *args, **kwargs)
+            with monkeypatch.context() as isolated:
+                isolated.setattr(Path, "read_text", observe)
+                with pytest.raises(PropagationJobError, match="process_observation_failed"):
+                    owner.service.recover_cancelled(**args)
+            unchanged()
+        state_offset = original_stat.rfind(")") + 2
+        zombie_stat = original_stat[:state_offset] + "Z" + original_stat[state_offset + 1:]
+        with monkeypatch.context() as isolated:
+            isolated.setattr(Path, "read_text", lambda path, *args, **kwargs:
+                zombie_stat if path == process_stat else read_text(path, *args, **kwargs))
+            assert _identity(identities[0]["pid"]) is None
 
         target, path, fence, grant = fences[0]
         ctx = multiprocessing.get_context("fork")
