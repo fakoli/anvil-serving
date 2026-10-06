@@ -272,6 +272,7 @@ class TrustedNativeOwner:
     clock: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc), repr=False, compare=False)
     effect_bindings: Mapping[str, tuple[str, Path]] = field(default_factory=dict, repr=False)
     current_authority: Callable[[str, int, str], bool] | None = field(default=None, repr=False, compare=False)
+    cancelled_authority: Callable[[str, str, int, str], bool] | None = field(default=None, repr=False, compare=False)
     recovery_quiescent: Callable[[str, str, int], bool] | None = field(default=None, repr=False, compare=False)
     recovery_authority: Callable[[str, str, str, str, str], bool] | None = field(default=None, repr=False, compare=False)
 
@@ -706,6 +707,39 @@ class NativeMutationFence:
                     "before_digest", "desired_digest", "observed_digest")}
                     for name, effect in state["effects"].items()},
             )
+
+    def inspect_cancelled(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                          target_paths: Iterable[str | Path], job_id: str) -> dict:
+        """Prove empty native custody for an explicitly revoked original job."""
+        _token(job_id)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            check = self.owner.cancelled_authority
+            try:
+                revoked = callable(check) and check(job_id, grant.contract_digest, grant.generation, grant.epoch) is True
+            except Exception:
+                revoked = False
+            if not revoked:
+                raise PropagationFenceError("revocation_unproven")
+            index = self._read_index()
+            if index["operations"] or index["high_water_generation"] or index["latest_reservation_id"] is not None:
+                raise PropagationFenceError("native_effects_present")
+            names = os.listdir(self._held().directory(self.journal_root, private=True))
+            if len(names) > 10_000:
+                raise PropagationFenceError("snapshot_too_large")
+            if any(name.startswith(self.owner.resource_id + ".") and name.endswith(".json")
+                   and name != self._index_path.name for name in names):
+                raise PropagationFenceError("native_effects_present")
+            evidence = {name: _sha256(raw) if raw is not None else None
+                        for name, path in grant.effect_targets
+                        for raw in (self._held().read(Path(path)),)}
+            return {"job_id": job_id, "contract_digest": grant.contract_digest,
+                    "owner_id": self.owner.owner_id, "resource_id": self.owner.resource_id,
+                    "epoch": grant.epoch, "generation": grant.generation,
+                    "targets_digest": grant.targets_digest, "quiescent": True,
+                    "native_effect_count": 0, "evidence_digest": _sha256(_canonical(evidence)),
+                    "observed_at": self._now()}
 
     @contextmanager
     def transaction(self, grant: NativeMutationGrant, *, canonical_contract: bytes,

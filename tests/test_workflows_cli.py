@@ -148,7 +148,7 @@ def test_capability_preflight_requires_exact_available_owner_contract(monkeypatc
     ready = workflows_cli.main(["capabilities"])
     assert ready.exit_code == 0 and ready.data["state"] == "ready"
     assert ready.data["mode"] == "effects"
-    assert len(ready.data["operations"]) == 16 and ready.data["effects"] == []
+    assert len(ready.data["operations"]) == 18 and ready.data["effects"] == []
     assert calls == [{"name": "propagation_capabilities", "arguments": {},
                       "_meta": {workflows_cli.PROTOCOL_VERSION_META_KEY: workflows_cli.mcp.PROTOCOL_VERSION,
                                 workflows_cli.CLIENT_CAPABILITIES_META_KEY: {},

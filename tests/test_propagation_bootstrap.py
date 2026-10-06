@@ -39,7 +39,7 @@ def _profile(tmp_path, *, mode="effects"):
         "import json,sys\nr=json.load(sys.stdin)\n"
         "print(json.dumps({'schema':r['schema'],'profile_id':r['profile_id'],"
         "'contract_digest':r['contract_digest'],'modes':"
-        "['preview','status','verify','convergence','recovery','reconcile']}))\n")
+        "['preview','status','verify','convergence','recovery','reconcile','cancel']}))\n")
     script.chmod(0o644)
     digest = hashlib.sha256(script.read_bytes()).hexdigest()
     system_python = "/usr/bin/python3"
