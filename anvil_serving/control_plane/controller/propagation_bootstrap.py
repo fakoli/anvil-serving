@@ -143,6 +143,7 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
             approved.contract_lookup, approved.approval_lookup, active,
             reader.preview, reader.observe, resume_workflow=client.resume,
             cancel_workflow=client.cancel, recovery_evidence=reader.recovery_evidence,
+            cancellation_evidence=reader.cancellation_evidence,
             workflow_status=client.status, mode=value["mode"],
             preview_contract=contract.canonical, owner_profile_digest=sha256)
         return PropagationService(intents, jobs, supervisor, profile)

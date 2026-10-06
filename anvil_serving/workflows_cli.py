@@ -30,6 +30,7 @@ _OPERATIONS = {
     "status": "propagation.status.v1",
     "resume": "propagation.resume.v1",
     "cancel": "propagation.cancel.v1",
+    "recovery_cancel": "propagation.recovery.cancel.v1",
 }
 _SCHEMAS = {item["name"]: item for item in capability_declaration()["operations"]}
 
@@ -157,10 +158,12 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
     if action == "start":
         parser.add_argument("--approval-ref", required=True)
         parser.add_argument("--request-id", required=True)
-    elif action in {"status", "resume", "cancel"}:
+    elif action in {"status", "resume", "cancel", "recovery_cancel"}:
         parser.add_argument("--intent-id", required=True)
-        if action in {"resume", "cancel"}:
+        if action in {"resume", "cancel", "recovery_cancel"}:
             parser.add_argument("--expected-digest", required=True)
+        if action == "recovery_cancel":
+            parser.add_argument("--job-id", required=True)
     elif action == "recovery_snapshot-journal":
         parser.add_argument("--profile", required=True)
         parser.add_argument("--output", required=True)
@@ -189,6 +192,8 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
         arguments = {"profile_id": values["profile"], "output": values["output"]}
     else:
         arguments = {"intent_id": values["intent_id"], "expected_digest": values["expected_digest"]}
+        if action == "recovery_cancel":
+            arguments["job_id"] = values["job_id"]
     if action in _OPERATIONS:
         try:
             validate_schema_value(arguments, _SCHEMAS[_OPERATIONS[action]]["input_schema"], "arguments")
@@ -244,10 +249,19 @@ def native_current_authority(url: str, token: str, *, intent_id: str, job_id: st
                              contract_digest: str, generation: int, target_id: str,
                              resource_id: str) -> bool:
     """Read the authenticated owner inside a native file fence callback."""
-    name = "fleet.propagation.current.v1"
     arguments = {"intent_id": intent_id, "job_id": job_id,
                  "contract_digest": contract_digest, "generation": generation,
                  "target_id": target_id, "resource_id": resource_id}
+    return _native_authority(url, token, "current", arguments)
+
+
+def native_revoked_authority(url: str, token: str, **arguments) -> bool:
+    """Require a fresh explicit revocation, never an error or expired approval."""
+    return _native_authority(url, token, "revoked", arguments)
+
+
+def _native_authority(url, token, kind, arguments):
+    name = "fleet.propagation." + kind + ".v1"
     validate_schema_value(arguments, _SCHEMAS[name]["input_schema"], "arguments")
     started = time.monotonic()
     data = _call(url, token, name, arguments, timeout=5)
@@ -258,7 +272,7 @@ def native_current_authority(url: str, token: str, *, intent_id: str, job_id: st
     except ValueError:
         return False
     age = datetime.now(timezone.utc) - observed
-    return data["current"] is True and -timedelta(seconds=2) <= age <= timedelta(seconds=5)
+    return data[kind] is True and -timedelta(seconds=2) <= age <= timedelta(seconds=5)
 
 
 def _status(url: str, token: str, arguments: dict) -> dict:
@@ -312,7 +326,7 @@ def main(argv: list[str] | None = None) -> CommandResult:
                 return CommandResult(data=result, error=PartialResultError(
                     "installed workflow profile differs from release", code="workflow_profile_drift"))
         else:
-            url, token = _config(recovery=True) if action == "recovery_verify" else _config()
+            url, token = _config(recovery=True) if action in {"recovery_verify", "recovery_cancel"} else _config()
             result = (_status(url, token, arguments) if action == "status"
                       else _call(url, token, "propagation_capabilities" if action == "capabilities"
                                  else "propagation.recovery.verify.v1" if action == "recovery_verify"

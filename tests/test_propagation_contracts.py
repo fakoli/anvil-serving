@@ -123,8 +123,10 @@ def test_capabilities_match_the_versioned_inert_owner_operations():
         "propagation.accept.v1", "propagation.profile.v1", "propagation.preview.v1",
         "propagation.status.v1",
         "propagation.resume.v1", "propagation.cancel.v1", "propagation.recovery.verify.v1",
+        "propagation.recovery.cancel.v1",
         "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
         "fleet.propagation.preview.v1", "fleet.propagation.submit.v1", "fleet.propagation.current.v1",
+        "fleet.propagation.revoked.v1",
         "fleet.propagation.status.v1", "fleet.propagation.verify.v1",
         "fleet.propagation.convergence.v1", "fleet.propagation.cancel.v1",
     ]

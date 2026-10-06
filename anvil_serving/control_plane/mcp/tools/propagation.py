@@ -17,11 +17,11 @@ OPERATION_NAMES = frozenset({
     "propagation.activation.observe.v1",
     "propagation.accept.v1", "propagation.profile.v1", "propagation.preview.v1", "propagation.status.v1",
     "propagation.resume.v1", "propagation.cancel.v1",
-    "propagation.recovery.verify.v1",
+    "propagation.recovery.verify.v1", "propagation.recovery.cancel.v1",
     "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
     *("fleet.propagation." + verb + ".v1" for verb in (
         "preview", "submit", "status", "verify", "convergence", "cancel",
-        "current",
+        "current", "revoked",
     )),
 })
 

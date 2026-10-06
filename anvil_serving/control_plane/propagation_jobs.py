@@ -14,7 +14,7 @@ import uuid
 from . import propagation as contract_api
 from .controller.propagation_store import PropagationIntentStore, PropagationIntentError, logical_workflow_id
 from .controller.propagation_job_store import PropagationJobError, JobStore
-from .controller.propagation_supervisor import PropagationSupervisor
+from .controller.propagation_supervisor import PropagationSupervisor, _identity
 from .mcp.arguments import validate_schema_value
 
 
@@ -58,6 +58,7 @@ class PropagationProfile:
     resume_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     cancel_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     recovery_evidence: Callable[[str, str], Mapping[str, Any]] | None = None
+    cancellation_evidence: Callable[[bytes, Mapping[str, Any], list[Mapping[str, Any]]], Mapping[str, Any]] | None = None
     workflow_status: Callable[[str, str], Mapping[str, Any]] | None = None
     mode: str = "effects"
     preview_contract: bytes | None = None
@@ -161,6 +162,10 @@ class PropagationService:
                 return self.submit(**arguments)
             if operation == "fleet.propagation.current.v1":
                 return self.current_authority(**arguments)
+            if operation == "fleet.propagation.revoked.v1":
+                return self.revoked_authority(**arguments)
+            if operation == "propagation.recovery.cancel.v1":
+                return self.recover_cancelled(**arguments)
             if operation == "fleet.propagation.cancel.v1":
                 job = self.supervisor.cancel(arguments["job_id"])
                 return {"job_id": arguments["job_id"], "state": job["state"] if job["state"] in {"requested", "confirmed", "uncertain"} else self._cancel_state(job)}
@@ -230,6 +235,71 @@ class PropagationService:
             contract_api.admit_contract(parsed.canonical, self.profile.approval_lookup,
                                        self.profile.active_identity(), self.profile.now())
         return parsed
+
+    def revoked_authority(self, intent_id, job_id, contract_digest, generation, target_id, resource_id):
+        """Explicit original-job revocation; expiry or transport failure is no proof."""
+        contract = self._contract(intent_id)
+        job = self.jobs.lookup_internal(job_id)
+        if (contract.digest != contract_digest or type(generation) is not int
+                or generation != contract.value["generation"]
+                or not any(target["target_id"] == target_id and resource_id in target["resource_keys"]
+                           and target["effects"] for target in contract.value["targets"])
+                or job["intent_id"] != intent_id or job["canonical_contract"] != contract.canonical
+                or job["contract_digest"] != contract_digest or resource_id not in job["resources"]
+                or job["state"] not in {"recovery_required", "cancelled"}
+                or job["state"] == "cancelled" and self.jobs.cancellation_receipt(job_id, intent_id, contract_digest) is None):
+            raise PropagationJobError("revocation_unproven")
+        return {"revoked": True, "observed_at": _stamp(self.profile.now())}
+
+    def recover_cancelled(self, intent_id, job_id, expected_digest):
+        contract = self._contract(intent_id)
+        if contract.digest != expected_digest:
+            raise PropagationJobError("intent_conflict")
+        receipt = self.jobs.cancellation_receipt(job_id, intent_id, expected_digest)
+        if receipt is None:
+            if self.profile.cancellation_evidence is None:
+                raise PropagationJobError("recovery_verifier_unavailable")
+            binding = self.jobs.cancellation_binding(job_id)
+            job, identities = binding["job"], binding["identities"]
+            if job["intent_id"] != intent_id or job["canonical_contract"] != contract.canonical:
+                raise PropagationJobError("intent_conflict")
+            if any(_identity(identity["pid"]) == identity for identity in identities):
+                raise PropagationJobError("operation_in_progress")
+            observed = json.loads(_json(self.profile.cancellation_evidence(contract.canonical, job, identities)))
+            if len(_json(observed)) > contract_api.MAX_RECEIPT_BYTES or set(observed) != {"observed_at", "targets"}:
+                raise PropagationJobError("invalid_recovery_result")
+            _fresh(observed["observed_at"], self.profile.now())
+            expected = sorted(contract.value["targets"], key=lambda target: target["target_id"])
+            rows = observed["targets"]
+            if type(rows) is not list or len(rows) != len(expected):
+                raise PropagationJobError("target_set_mismatch")
+            for row, target in zip(rows, expected):
+                if (type(row) is not dict or set(row) != {"target_id", "installation_id", "profile_id", "runtime_id", "expected_identity_digest", "native"}
+                        or any(row[key] != target[key] for key in row if key != "native")):
+                    raise PropagationJobError("target_identity_mismatch")
+                native = row["native"]
+                fields = {"job_id", "contract_digest", "owner_id", "resource_id", "epoch", "generation", "targets_digest", "quiescent", "native_effect_count", "evidence_digest", "observed_at"}
+                if (type(native) is not dict or set(native) != fields
+                        or type(native["generation"]) is not int
+                        or (native["job_id"], native["contract_digest"], native["generation"])
+                        != (job_id, contract.digest, contract.value["generation"])
+                        or target["resource_keys"] != [native["resource_id"]]
+                        or native["quiescent"] is not True or type(native["native_effect_count"]) is not int
+                        or native["native_effect_count"] != 0):
+                    raise PropagationJobError("invalid_recovery_result")
+                for key in ("owner_id", "epoch", "resource_id"):
+                    contract_api._id(native[key])
+                for key in ("targets_digest", "evidence_digest"):
+                    contract_api._digest(native[key])
+                _fresh(native["observed_at"], self.profile.now())
+            if any(_identity(identity["pid"]) == identity for identity in identities):
+                raise PropagationJobError("operation_in_progress")
+            receipt = {"intent_id": intent_id, "job_id": job_id, "contract_digest": contract.digest,
+                       "state": "cancelled", "quiescent": True, "settled_at": _stamp(self.profile.now()),
+                       "custody_digest": binding["custody_digest"], "identities": identities,
+                       "evidence": observed}
+            receipt = self.jobs.reconcile_cancelled(job_id, binding["custody_digest"], receipt)
+        return {key: receipt[key] for key in ("intent_id", "job_id", "contract_digest", "state", "quiescent", "settled_at")} | {"receipt_digest": _hash(receipt)}
 
     @staticmethod
     def _context(contract):

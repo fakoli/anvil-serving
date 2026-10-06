@@ -31,7 +31,7 @@ class FixedFleetReader:
     def probe(self, profile_id: str, contract_digest: str) -> None:
         expected = {"schema": "anvil-serving.propagation-reader/v1",
                     "profile_id": profile_id, "contract_digest": contract_digest,
-                    "modes": ["preview", "status", "verify", "convergence", "recovery", "reconcile"]}
+                    "modes": ["preview", "status", "verify", "convergence", "recovery", "reconcile", "cancel"]}
         result = self._run({"schema": expected["schema"], "kind": "probe",
                             "profile_id": profile_id, "contract_digest": contract_digest})
         if result != expected:
@@ -168,6 +168,13 @@ class FixedFleetReader:
     def recovery_evidence(self, profile_id: str, caller_id: str) -> dict[str, Any]:
         return self._run({"schema": "anvil-serving.propagation-reader/v1",
                           "kind": "recovery", "profile_id": profile_id, "caller_id": caller_id})
+
+    def cancellation_evidence(self, canonical_contract: bytes, job: Mapping[str, Any],
+                              identities: list[Mapping[str, Any]]) -> dict[str, Any]:
+        return self._run({"schema": "anvil-serving.propagation-reader/v1", "kind": "cancel",
+                         "contract": json.loads(canonical_contract),
+                         "job": {key: job[key] for key in ("job_id", "operation_id", "contract_digest", "intent_id")},
+                         "identities": identities})
 
     def reconcile(self, job: Mapping[str, Any], result: Mapping[str, Any]) -> str:
         value = self._run({"schema": "anvil-serving.propagation-reader/v1",
