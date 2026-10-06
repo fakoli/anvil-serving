@@ -5256,6 +5256,7 @@ def _restore_split_stack(
     skip_readmit_when_router_stopped=False,
 ):
     names = plan["rollback"]["serves"]
+    rollback_targets = _select(serves, names)
     rc = cmd_up(
         serves,
         names,
@@ -5266,6 +5267,10 @@ def _restore_split_stack(
         _run=_run,
         _open=_open,
         _sleep=_sleep,
+        _allow_exclusive_target=(
+            len(rollback_targets) == 1
+            and reservations.is_exclusive(rollback_targets[0])
+        ),
     )
     if rc != 0:
         return rc
