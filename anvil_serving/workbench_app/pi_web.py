@@ -514,7 +514,7 @@ def _drift_state(root: Path) -> str:
     try:
         rendered = _read_regular_private_file(root, "install-manifest.json")
         manifest = json.loads(rendered) if rendered is not None else None
-    except (PiWebError, ValueError, UnicodeDecodeError):
+    except (PiWebError, ValueError, UnicodeDecodeError, OSError):
         return "unknown"
     if not isinstance(manifest, dict):
         return "unknown"
