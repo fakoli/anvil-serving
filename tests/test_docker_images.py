@@ -276,11 +276,12 @@ def test_unreadable_selected_json_config_fails_closed(tmp_path, monkeypatch):
 
 def test_unreadable_config_directory_fails_closed(tmp_path, monkeypatch):
     blocked = tmp_path / "candidate-stack"
+    error = PermissionError(errno.EACCES, "Permission denied", str(blocked))
 
     def inaccessible(root, *, followlinks, onerror):
         assert root == tmp_path
         assert followlinks is False
-        onerror(OSError(errno.EACCES, "Permission denied", str(blocked)))
+        onerror(error)
         return []
 
     monkeypatch.setattr(docker_images.os, "walk", inaccessible)
@@ -292,7 +293,7 @@ def test_unreadable_config_directory_fails_closed(tmp_path, monkeypatch):
 
     errors = result["inspection"]["references"]["config_audit_errors"]
     assert result["outcome"] == "blocked"
-    assert errors == ["candidate-stack: [Errno 13] Permission denied: '%s'" % blocked]
+    assert errors == ["candidate-stack: %s" % error]
 
 
 def test_artifact_and_dependency_trees_do_not_block_config_audit(tmp_path):
