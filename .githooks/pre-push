@@ -7,10 +7,20 @@
 # checked-in inventory is stale, the generated artifacts are regenerated on
 # top of the pushed SHA, committed, and the local branch is fast-forwarded;
 # the push is then rejected so the next `git push` delivers the fresh state.
+#
+# Fail-closed: if the state cannot be verified (worktree creation failed,
+# python3 missing) or the regeneration cannot be committed (missing git
+# identity, active audit violations), the push is rejected with guidance.
 set -u
 
 ZERO=0000000000000000000000000000000000000000
 blocked=0
+tmp=""
+
+cleanup() {
+  [ -n "$tmp" ] && rm -rf "$tmp" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   case "$local_ref" in
@@ -22,12 +32,16 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   branch=${local_ref#refs/heads/}
   tmp=$(mktemp -d)
   if ! git worktree add --detach --force -q "$tmp" "$local_sha" 2>/dev/null; then
-    rm -rf "$tmp"
+    echo "pre-push: push rejected — could not create a throwaway worktree to verify '$branch' at ${local_sha:0:12}." >&2
+    echo "pre-push: fix the local git state (git worktree list / git worktree prune) and re-run: git push" >&2
+    tmp=""
+    blocked=1
     continue
   fi
 
   if (cd "$tmp" && python3 scripts/audit_cli_references.py --check --scope full >/dev/null 2>&1); then
-    git worktree remove --force -q "$tmp" 2>/dev/null
+    git worktree remove --force "$tmp" 2>/dev/null
+    tmp=""
     continue
   fi
 
@@ -39,8 +53,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   else
     new_sha=""
   fi
-  git worktree remove --force -q "$tmp" 2>/dev/null
+  git worktree remove --force "$tmp" 2>/dev/null
   git worktree prune 2>/dev/null
+  tmp=""
 
   if [ -n "$new_sha" ] && [ "$new_sha" != "$local_sha" ]; then
     tip=$(git rev-parse --verify --quiet "refs/heads/$branch" 2>/dev/null || true)
@@ -52,6 +67,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       echo "pre-push: push rejected — the pushed tree had a stale CLI-reference inventory (docs-audit would fail)." >&2
       echo "pre-push: regenerated copy is ${new_sha:0:12}; commit it (or rebase onto it) on '$branch' and re-push." >&2
     fi
+    blocked=1
+  else
+    # Stale tree, but the regeneration could not be committed (missing git
+    # identity, active audit violations, ...). Fail closed.
+    echo "pre-push: push rejected — the pushed tree had a stale CLI-reference inventory and the regeneration could not be committed automatically." >&2
+    echo "pre-push: run 'python3 scripts/audit_cli_references.py --update' (fix any reported violations first), commit the regenerated artifacts, and re-push." >&2
     blocked=1
   fi
 done
