@@ -1,0 +1,377 @@
+{
+  "decision": "functional pass; meaningful cached continuation and host restore gates not met; no further traffic approved",
+  "stages": {
+    "warm": {
+      "start_ids": [
+        178
+      ],
+      "done": [
+        {
+          "id": 178,
+          "result": {
+            "completion_tokens": 90,
+            "computed_prefill_tokens": 56970,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 68,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 56970,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        }
+      ],
+      "actual_prompt_sum": 56970,
+      "captures_completed": 0,
+      "checkpoints_dropped": 1,
+      "shared_owners_evicted": 0,
+      "main_kv_h2d_bytes": 0,
+      "main_kv_d2h_bytes": 856227840,
+      "final_occupancy": {
+        "device_backend_kv_pages": 0,
+        "device_main_kv_pages": 4274,
+        "device_state_slots": 8,
+        "host_kv_bytes": 5361303552,
+        "host_state_slots": 8,
+        "shared_active_references": 0
+      }
+    },
+    "pressure": {
+      "start_ids": [
+        179,
+        180,
+        181,
+        182,
+        183
+      ],
+      "done": [
+        {
+          "id": 179,
+          "result": {
+            "completion_tokens": 418,
+            "computed_prefill_tokens": 62327,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 374,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 62327,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 180,
+          "result": {
+            "completion_tokens": 251,
+            "computed_prefill_tokens": 62328,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 212,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 62328,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 181,
+          "result": {
+            "completion_tokens": 239,
+            "computed_prefill_tokens": 62328,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 198,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 62328,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 182,
+          "result": {
+            "completion_tokens": 334,
+            "computed_prefill_tokens": 62330,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 283,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 62330,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 183,
+          "result": {
+            "completion_tokens": 319,
+            "computed_prefill_tokens": 62333,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 272,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 62333,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        }
+      ],
+      "actual_prompt_sum": 311646,
+      "captures_completed": 6,
+      "checkpoints_dropped": 11,
+      "shared_owners_evicted": 2,
+      "main_kv_h2d_bytes": 0,
+      "main_kv_d2h_bytes": 3349168128,
+      "final_occupancy": {
+        "device_backend_kv_pages": 0,
+        "device_main_kv_pages": 4281,
+        "device_state_slots": 8,
+        "host_kv_bytes": 5387649024,
+        "host_state_slots": 8,
+        "shared_active_references": 0
+      }
+    },
+    "changed": {
+      "start_ids": [
+        185,
+        186,
+        184,
+        187
+      ],
+      "done": [
+        {
+          "id": 185,
+          "result": {
+            "completion_tokens": 60,
+            "computed_prefill_tokens": 57102,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 42,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 57102,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 186,
+          "result": {
+            "completion_tokens": 62,
+            "computed_prefill_tokens": 57102,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 44,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 57102,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 184,
+          "result": {
+            "completion_tokens": 52,
+            "computed_prefill_tokens": 57102,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 34,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 57102,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        },
+        {
+          "id": 187,
+          "result": {
+            "completion_tokens": 60,
+            "computed_prefill_tokens": 57102,
+            "finish_reason": "stop_token",
+            "model_thinking_tokens": 42,
+            "prefix_cache_hit_tokens": 0,
+            "prefix_reuse_path": "root",
+            "prompt_tokens": 57102,
+            "thinking_budget": 16384,
+            "thinking_control_applied": false,
+            "thinking_control_tokens": 0,
+            "tool_call_count": 0,
+            "tool_call_parse": {
+              "empty_arguments_omitted": 0,
+              "fallback_reason": "none",
+              "marker_seen": false,
+              "schema_mismatch_arguments": 0,
+              "structured_call_count": 0
+            }
+          },
+          "preserve_thinking": true,
+          "preserve_thinking_semantic_change": false
+        }
+      ],
+      "actual_prompt_sum": 228408,
+      "captures_completed": 1,
+      "checkpoints_dropped": 5,
+      "shared_owners_evicted": 0,
+      "main_kv_h2d_bytes": 0,
+      "main_kv_d2h_bytes": 3233906688,
+      "final_occupancy": {
+        "device_backend_kv_pages": 0,
+        "device_main_kv_pages": 4022,
+        "device_state_slots": 8,
+        "host_kv_bytes": 7019421696,
+        "host_state_slots": 8,
+        "shared_active_references": 0
+      }
+    }
+  },
+  "files": [
+    {
+      "path": "swift-appended-history-before-native.json",
+      "sha256": "a4c5d4f0e76abcd4f0f5763300ab87ddfc5d179a9f40bfe5b75f2c9e1b6ed62b",
+      "bytes": 1614268
+    },
+    {
+      "path": "swift-appended-history-warm-native.json",
+      "sha256": "75a91f73859328361692d4a454f156fc88db33805e867deb249fcde03135ab44",
+      "bytes": 1628334
+    },
+    {
+      "path": "swift-appended-history-pressure-native.json",
+      "sha256": "4559165605642bca7f1dd99db7c692c85cb96a162cef76e27eb729e311b51d4b",
+      "bytes": 1686920
+    },
+    {
+      "path": "swift-appended-history-changed-native.json",
+      "sha256": "b408b3774543529ffd2d39aa97e05eeb184c86a61986ef12cd037b8f35be3d1b",
+      "bytes": 1728077
+    },
+    {
+      "path": "swift-appended-history-warm.json",
+      "sha256": "b71d27aa24962210013d70aea0823f8c6365473b66c820acb4652c3b42453e8d",
+      "bytes": 709
+    },
+    {
+      "path": "swift-appended-history-pressure.json",
+      "sha256": "e6f2ff9fd20db7aafc69aec347bfd13b5c4bf2ac3e9bb82e8f649bd17aa2acdc",
+      "bytes": 16634
+    },
+    {
+      "path": "swift-appended-history-changed.json",
+      "sha256": "7beb4e6aa8678bc940a19c2fc4c2af4f883d8cc90c8e89742091de2ca8ac906c",
+      "bytes": 3522
+    },
+    {
+      "path": "swift-appended-history-final-status.json",
+      "sha256": "bd62bff2ac9026016914d32264e2b5be098155de4df3025b130d456754b6bc7d",
+      "bytes": 1787
+    },
+    {
+      "path": "swift-appended-history-plan.json",
+      "sha256": "404dd14a7f061d5b48e621e08523dbdd69e72522cc43a87b31f698525cde65fb",
+      "bytes": 1707
+    },
+    {
+      "path": "swift-appended-history-check.py",
+      "sha256": "0c51ff0aacf473dcde0fbe20c1fc284d3af3b8af64da1ff3ecf79da9ec449960",
+      "bytes": 5340
+    }
+  ]
+}

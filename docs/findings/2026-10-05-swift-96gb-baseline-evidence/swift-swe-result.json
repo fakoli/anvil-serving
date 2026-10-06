@@ -1,0 +1,406 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-05T09:01:53.307063Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "[operator identity redacted]"
+  },
+  "endpoint": {
+    "base_url": "[operator identity redacted]",
+    "model": "qwen38-swift15-ninfer-dflash2-c4-262k"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "92ede9ca7793cfed0f89f00c16cbfc5a7275f609a9bdcf115ef673709ebe90f1",
+      "receipt": "[operator identity redacted]",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "558d4728e007ae1dfa707114f8c089b6590acd259db7a8ae5cabc06dc45b0a34",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "astropy__astropy-12907",
+      "prediction_sha256": "68acbdf8cb9a91ab8cf55dfbf39eb3983dc3f4e48a1db9abac92d22000bbe7f1",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-02845ed6e5f38e95",
+        "chatcmpl-099556a90d604e47",
+        "chatcmpl-17c8eb444ac612ab",
+        "chatcmpl-215418d6b3cbdc31",
+        "chatcmpl-22c2910d4d814f38",
+        "chatcmpl-2b46661a7331431f",
+        "chatcmpl-2f9076f303e8e534",
+        "chatcmpl-382f16fec08bd763",
+        "chatcmpl-42869a971885cc2b",
+        "chatcmpl-4c2211193437fcac",
+        "chatcmpl-54d8203f50e7b226",
+        "chatcmpl-65e0cb6cd7f147e5",
+        "chatcmpl-6a5c5cfd7e59f4d4",
+        "chatcmpl-6d1d134b5111eae2",
+        "chatcmpl-7224f0d0e78bf5bc",
+        "chatcmpl-863915ee16066bbd",
+        "chatcmpl-8adc296b0bc3efcc",
+        "chatcmpl-9e4902c1b7c58cb7",
+        "chatcmpl-b0b7581356ffb340",
+        "chatcmpl-b2f57f59eb26c7aa",
+        "chatcmpl-bb7d3343c9911229",
+        "chatcmpl-bcff3b9d519c64c2",
+        "chatcmpl-c0faae71824dfd83",
+        "chatcmpl-c97c063cbd07af99",
+        "chatcmpl-cb42ab3766ebbcd9",
+        "chatcmpl-ebc92cc32ae9ee30",
+        "chatcmpl-ef3cdcfa77e85689",
+        "chatcmpl-fea5afeda3b7c5aa"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-10097",
+      "prediction_sha256": "76936fb498f83ac72be6fb16244f5193d2afb8901725ddca0bf0aa982179d104",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-03cedee4269d39d9",
+        "chatcmpl-0b8fc3d0054f18c1",
+        "chatcmpl-0dd39d3d18bf6431",
+        "chatcmpl-15d8fb4cf45ae3d2",
+        "chatcmpl-224e118c35b2c919",
+        "chatcmpl-2593f1a142bf8e23",
+        "chatcmpl-39ee0b2921fa7edf",
+        "chatcmpl-3cff338704564e15",
+        "chatcmpl-3fb49be527431c32",
+        "chatcmpl-5183c672df2f5372",
+        "chatcmpl-59025aedf454a44e",
+        "chatcmpl-5c993abe31edf285",
+        "chatcmpl-6918617acfae5d6c",
+        "chatcmpl-6e8547b9d4cd90ab",
+        "chatcmpl-71d63e76c53fc0e8",
+        "chatcmpl-895a2bbfd2703a33",
+        "chatcmpl-8ee107fc2b373224",
+        "chatcmpl-9810d64d14a31ee7",
+        "chatcmpl-9e38a0a7ca62b91a",
+        "chatcmpl-a1e08729d80e4cb0",
+        "chatcmpl-a8b954a8210ccc41",
+        "chatcmpl-ad82b5bf9e90c11a",
+        "chatcmpl-b44c7e5ba55807b2",
+        "chatcmpl-bdbb0c3ed889aae4",
+        "chatcmpl-c27b67019a2e9332",
+        "chatcmpl-c6733c6251c909b3",
+        "chatcmpl-c7faabf84c3618b5",
+        "chatcmpl-c9dfd402b0860e7f",
+        "chatcmpl-cdf12e8b1470fd5c",
+        "chatcmpl-ce29bab05eb6549a",
+        "chatcmpl-d3370e71baa367bd",
+        "chatcmpl-dc4898f5020790ab",
+        "chatcmpl-e10508268f1ca963",
+        "chatcmpl-eac62a8130f270bb",
+        "chatcmpl-ebc4d5e60dbd194d",
+        "chatcmpl-f58da15a7b963c1f",
+        "chatcmpl-f922e27d355c6c9d",
+        "chatcmpl-f9aa08500c3f3adf",
+        "chatcmpl-fc85af23bc0d64c3"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "matplotlib__matplotlib-13989",
+      "prediction_sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0c69ff877fddd03e",
+        "chatcmpl-0ff9095080b8be2d",
+        "chatcmpl-1862f2c6ef5477fe",
+        "chatcmpl-18cdc265fbb98f1f",
+        "chatcmpl-1b67038e2c3f219d",
+        "chatcmpl-24d27d8154fd4c05",
+        "chatcmpl-26a41b05f2d90815",
+        "chatcmpl-2af4e9c78069202f",
+        "chatcmpl-487985ef2ac8b695",
+        "chatcmpl-49a61860b3b5f049",
+        "chatcmpl-4e15719ca31cc16c",
+        "chatcmpl-58d143ec4a72840c",
+        "chatcmpl-6906a7095c888415",
+        "chatcmpl-77c0c4a175a0e794",
+        "chatcmpl-786af01589399a77",
+        "chatcmpl-830f81354fa47331",
+        "chatcmpl-85280e8c8b01039e",
+        "chatcmpl-870f3150c3bca4ef",
+        "chatcmpl-8a24fd6e56b5f87a",
+        "chatcmpl-8ca9f8d4ec77f851",
+        "chatcmpl-9cca81a174356898",
+        "chatcmpl-a5c4e2f0e64ff9d3",
+        "chatcmpl-a942a03a80aeac14",
+        "chatcmpl-aaad69566b5427f6",
+        "chatcmpl-b117ce5ecaf6aea0",
+        "chatcmpl-cbf890472b0dfc97",
+        "chatcmpl-d397bae175a0da18",
+        "chatcmpl-dfbf8d612fd1356c",
+        "chatcmpl-e22375591b4a39a9",
+        "chatcmpl-ec24dce99f42bfc8",
+        "chatcmpl-efbcd9724bbaca93",
+        "chatcmpl-f05d50acca9d5e0b",
+        "chatcmpl-f9cb42748cf62ed1"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-0429a94f432e241b",
+        "chatcmpl-0e3fbe67818bceb2",
+        "chatcmpl-0f515b4b9337882c",
+        "chatcmpl-1d1d498c059e1408",
+        "chatcmpl-310badbb2476adf5",
+        "chatcmpl-359b61c8a653d235",
+        "chatcmpl-36e99b74daae015b",
+        "chatcmpl-38b6eec76961afb9",
+        "chatcmpl-3cd1af90510ef81f",
+        "chatcmpl-42326cf26cf7b1e6",
+        "chatcmpl-49e03c4fe8e76cb7",
+        "chatcmpl-4a00557bd255d60d",
+        "chatcmpl-4c6f8e119b1f6297",
+        "chatcmpl-54e9a90541dad8c0",
+        "chatcmpl-62c232da3740c837",
+        "chatcmpl-63ff04f90fbf2ea1",
+        "chatcmpl-72f0d6a3f41b9d75",
+        "chatcmpl-7e97075a6dbf9535",
+        "chatcmpl-bc19842efd835018",
+        "chatcmpl-c1fb675b99f906fd",
+        "chatcmpl-cd375d607704d5c6",
+        "chatcmpl-cfccd42ee0d8e940",
+        "chatcmpl-de409afba47e6bf2",
+        "chatcmpl-e01dec22dbcda405",
+        "chatcmpl-e679cec9261d2522"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "9b104af473d6391688a4ba0a976ea7f65ecdd0f66cd78003858aa101f77a6802",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-09e03877d2d06232",
+        "chatcmpl-1d27d7fe07f8c342",
+        "chatcmpl-26a344cf9a0d13e6",
+        "chatcmpl-34f4fe6ea6e738c9",
+        "chatcmpl-3c781be7d1c4d6c8",
+        "chatcmpl-3cd425d73b861018",
+        "chatcmpl-3dfc1cd11198510d",
+        "chatcmpl-4a355a69676f9a67",
+        "chatcmpl-52eae79bd69ae373",
+        "chatcmpl-5eea03f07d74e179",
+        "chatcmpl-6c567c93a4897d1b",
+        "chatcmpl-744169a2d43993b0",
+        "chatcmpl-7fbcaa8e970a7c3f",
+        "chatcmpl-85caac9b1a4c1680",
+        "chatcmpl-89a706b432d132aa",
+        "chatcmpl-8bea01d6ed6f8be1",
+        "chatcmpl-8ece2fa59ea8fe0e",
+        "chatcmpl-904c1e4293d621c1",
+        "chatcmpl-99bd130e54fcd44b",
+        "chatcmpl-aa7ac5af7585c3fd",
+        "chatcmpl-b448ff765c750000",
+        "chatcmpl-b5b8a283ef599090",
+        "chatcmpl-c4ce92bbf4691921",
+        "chatcmpl-cbb4eab405edde8e",
+        "chatcmpl-d997bdf5e0b968d5",
+        "chatcmpl-e7777001356df71b",
+        "chatcmpl-e8512c159712f7e8",
+        "chatcmpl-f5b8c40aee9e5afb",
+        "chatcmpl-f5ed8611fa3321e2"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "[operator identity redacted]",
+  "plan_sha256": "83219133beac4d75b37268afdef8c7534168dfef769dd04adb4fc31c4f5ca49a",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "[redacted]"
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.9,
+        "requested": 0.9,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "swift-swe-001",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "astropy__astropy-12907",
+      "django__django-10097",
+      "matplotlib__matplotlib-13989",
+      "scikit-learn__scikit-learn-10297",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "675265ec1242101c95fdf9e44d4c2e9c6159b9879cbae3f61642740265a66970"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [],
+      "duration_s": 316.199042,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "[redacted]",
+      "stdout": "[redacted]"
+    },
+    {
+      "command": [],
+      "duration_s": 345.524901,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "[redacted]",
+      "stdout": "[redacted]"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

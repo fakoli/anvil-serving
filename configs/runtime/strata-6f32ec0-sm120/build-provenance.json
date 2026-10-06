@@ -1,0 +1,63 @@
+{
+  "schema": "anvil-strata-build-provenance/v1",
+  "status": "built-unqualified",
+  "observed_date": "2026-10-05",
+  "source_url": "https://github.com/Niko1221/Strata",
+  "source_revision": "6f32ec070f23ced9f50e704d854d775da52591ab",
+  "engine_version": "0.1.39",
+  "llama_cpp_revision": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
+  "base_image": "nvidia/cuda:13.0.0-devel-ubuntu24.04@sha256:435220c0fef35cbf712e11999f8670a83835ef3cdd18564e5e8122f83078c88c",
+  "built_image_id": "sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea",
+  "built_repo_digest": "anvil-strata@sha256:5f944f89efe58a127f934703449f6871583ffcda62d1fae4e4d58556fb5f3cea",
+  "platform": "linux/amd64",
+  "cuda_architectures": [
+    120
+  ],
+  "vision_built": true,
+  "build_step_limits": {
+    "cpus": 4,
+    "memory_mib": 16384,
+    "ram_plus_swap_mib": 16384,
+    "compiler_jobs": 8
+  },
+  "files": {
+    "Dockerfile": "b173665a5f536ad957ea0d69cfba78301a9aeaaa54d8becd3c1b38cb9268e452",
+    "anvil/artifact-manifest.json": "cc16198d9fd033650cb5ea075be8b344cf0cd370341412befd8e7863bc1578de",
+    "anvil/model.safetensors.index.json": "99e815241ef03325536b0aaa4441deea45174c17fae31e10f0bb456410c590de",
+    "anvil/prepare.py": "0baf94f81a40fb57dd518ae090fe386d81e70b46cc7ec8612f76ab971e21ec0f"
+  },
+  "rebuild_caveat": "The source, CUDA base, llama.cpp and model inputs are pinned. Apt package resolution and transitive Python dependencies in the historical build are not fully locked; a rebuild must record and requalify its resulting image ID, not assert bit-for-bit identity. The built image contains anvil/python-packages.txt. The inherited OCI version label 24.04 identifies Ubuntu, not Strata.",
+  "derived_image": {
+    "image_id": "sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2",
+    "repo_digest": "anvil-strata@sha256:d8a0d5b90db4e5a3b8770a60298c97cf73bfaaa72c5d5bcb4e1f920a4153fbc2",
+    "status": "built-preparation-verified-runtime-unqualified",
+    "build_returncode": 0,
+    "build_step_limits": {
+      "cpus": 1,
+      "memory_mib": 1024,
+      "ram_plus_swap_mib": 1024
+    },
+    "files": {
+      "variants/Dockerfile": "c5b10cc3a657d680a20fb5229b4d8a305764a0fa77f2b1ec730c69a652464c7e",
+      "variants/runtime.py": "ba7c82d839c94d8f6ef63d2c1733085a0c9271f8d65d3d2c5806ea055dfa8201",
+      "variants/runtime-configs/128k-c1-r36.json": "45785a7b0e2941011ef6d6bb37aca885847a6df26dd0231d9b3cce92ff2cf304",
+      "variants/runtime-configs/128k-c1-r48.json": "8a9639137d4429dfd106bb6062f503ea05c28e6a8226439fabbd4f1a99a82d56",
+      "variants/runtime-configs/128k-c4-r36.json": "aac0d4172147d0ce27c577a85942d3e0182007f534ebc87a1d07450349b443e9",
+      "variants/runtime-configs/262k-c1-r36.json": "6b16b79e9c70868b80c9e6475ea8420c40666815efbdc7cd70eb26284f3747a7",
+      "variants/runtime-configs/32k-c1-r36.json": "7c440183cce3ca523fdf911df127b895d190b1397e6e158a8cb60190ae8a3aae",
+      "variants/runtime-configs/manifest.json": "3a35593a75cf9991c9fd601bcb9fb307264830e2a93c13ebb568a806fccc0f6f"
+    },
+    "frozen_status_note": "The built Dockerfile comment and baked config manifest retain their draft status text to preserve reviewed image input bytes. This provenance records the completed build without editing those inputs."
+  },
+  "preparation": {
+    "status": "completed-and-reverified-exit-0",
+    "managed_log_receipt_sha256": "08f4a1670bbecdde4e02e22f571caae90ca23cb18be6207121496ccc57d4e850",
+    "outputs": 51,
+    "output_bytes": 8423482344,
+    "mtp_tensor_files": 31,
+    "required_pack_tokenizer_mtp_paths_present": true,
+    "main_experts_duplicated": false,
+    "all_output_hashes_reverified_by_derived_cpu_job": true,
+    "runtime_qualification": "loader and request gates pending; no promotion implied"
+  }
+}

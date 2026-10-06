@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "status": "verified",
+  "starting_state": "Recovered Swift15 with 2 GiB/four host cache slots.",
+  "ending_state": "Human-authorized, independently reviewed Swift15 8 GiB/eight-slot profile running; same model/image/context/C4/device pool. Tested Flash candidate inactive.",
+  "post_run_checks": [
+    "swift-final-startup-identity-comparison.json",
+    "swift-final-full-protocol-preflight.json",
+    "swift-final-pi-smoke.json",
+    "swift-final-routed-clients.json",
+    "swift-final-acceptance-status.json"
+  ],
+  "decision": "promotion-final.json",
+  "rollback": "Exact original recipe and stopped serve retained privately with prior binding files and router rollback candidate.",
+  "differences": [
+    "Host cache bundle expanded; 40 GiB hard/no-extra-swap containment enforced.",
+    "Secondary router configuration fingerprint updated; primary/model routes preserved at the managed handoff."
+  ],
+  "limitations": [
+    "Initial final load was refused by Windows physical-memory admission; subsequent measured admissible retry passed without reserve relaxation.",
+    "Owner profile refreshed during concurrent work before handoff; no whole-campaign owner immutability or native workflow reconciliation claim.",
+    "This is model/service acceptance, not package/controller version parity or a fleet provisioning convergence claim."
+  ],
+  "verified": true
+}

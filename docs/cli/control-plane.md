@@ -100,6 +100,7 @@ anvil-serving workflows cancel --intent-id accepted-intent --expected-digest SHA
 anvil-serving workflows deployment preview --profile propagation-v1 --json
 anvil-serving workflows deployment verify --profile propagation-v1 --json
 anvil-serving workflows recovery verify --profile propagation-v1 --json
+anvil-serving workflows recovery cancel --intent-id original-intent --job-id original-job --expected-digest SHA256 --confirm --json
 anvil-serving workflows recovery snapshot-journal --profile propagation-v1 --output /path/to/new/private-export --confirm --json
 ```
 
@@ -141,6 +142,18 @@ without publishing the private path.
 Recovery verify reads retained isolated-restore evidence
 under the separate recovery scope; it never launches a restore. T015/T016 own
 the actual isolated test and evidence writer. Missing evidence refuses the command.
+
+Recovery cancel uses the separate recovery credential to settle one original
+`recovery_required` job with proven empty native custody. The pinned reader must
+inspect every declared target under its native resource lock and obtain explicit
+authenticated job revocation. Held locks, journals, reservations, offline targets,
+changed process identities or incomplete evidence refuse settlement. The owner
+retains a separate immutable cancellation receipt and releases only that job's
+resources; an identical repeat returns the same receipt. The original child result
+and failed Temporal history remain preserved. This operation cannot relaunch work
+or authorize a successor. Native session profiles whose original execution could
+prepare sessions before reserving custody remain unsupported; absence of observed
+processes or journals does not prove those sessions cannot start later.
 
 ### Integrate read-only telemetry
 

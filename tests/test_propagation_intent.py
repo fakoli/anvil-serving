@@ -156,6 +156,41 @@ def test_concurrent_admission_has_one_intent_and_one_outbox_row(tmp_path):
     assert len(first.pending()["intents"]) == 1
 
 
+@pytest.mark.parametrize("conflicting", [False, True])
+def test_admission_committed_after_replay_lookup_uses_its_digest(tmp_path, monkeypatch, conflicting):
+    path = tmp_path / "propagation.sqlite3"
+    first, second = PropagationIntentStore(path), PropagationIntentStore(path)
+    requested = _contract()
+    committed = _contract(effect="monitoring-apply") if conflicting else requested
+    resolve = first._resolve_request
+    admitted = []
+
+    def commit_between_reads(*args):
+        result = resolve(*args)
+        if not admitted:
+            assert result is None
+            # Force the other connection's commit after the optimistic lookup.
+            # No sleep or scheduler ordering is needed to reproduce the race.
+            admitted.append(_admit(second, committed))
+        return result
+
+    monkeypatch.setattr(first, "_resolve_request", commit_between_reads)
+    if conflicting:
+        with pytest.raises(PropagationIntentError, match="intent_conflict"):
+            _admit(first, requested)
+    else:
+        replay = _admit(first, requested)
+        assert replay.duplicate
+        assert replay.intent_id == admitted[0].intent_id
+        assert replay.contract_digest == admitted[0].contract_digest
+        assert replay.workflow_id == admitted[0].workflow_id
+
+    with closing(sqlite3.connect(path)) as connection:
+        for table in ("propagation_intents", "propagation_outbox", "propagation_request_tombstones"):
+            assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 1
+    assert first.contract_bytes(admitted[0].intent_id) == parse_contract(committed).canonical
+
+
 def test_terminal_payload_pruning_never_prunes_request_contract_or_scope_authority(tmp_path):
     path = tmp_path / "propagation.sqlite3"
     store = PropagationIntentStore(path)

@@ -1,0 +1,132 @@
+{
+  "schema": "anvil-campaign.continuation-outcome/v1",
+  "created_at": "2026-10-05T12:13:32.629380+00:00",
+  "status": "uninformative: changed-stage zero prefix hits; no cache continuation gate pass",
+  "functional_requests": 12,
+  "stages": [
+    {
+      "stage": "warm",
+      "completed": 2,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "actual_prompt_sum": 123720,
+      "native_requests": [
+        {
+          "id": 166,
+          "prompt_tokens": 61859,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 167,
+          "prompt_tokens": 61861,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        }
+      ],
+      "sources": {
+        "swift-cache-continuation-warm.json": "4e642dae4127a26675428c295f7f04ebfe76817e7fa1712d2ae934e1e60530be",
+        "swift-cache-continuation-warm-native.json": "42ef2c7644e0c0cbaa9bba975f698a290aa1e28ff4bfeae6b4108e1065144fe3"
+      }
+    },
+    {
+      "stage": "pressure",
+      "completed": 6,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "actual_prompt_sum": 373981,
+      "native_requests": [
+        {
+          "id": 168,
+          "prompt_tokens": 62327,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 169,
+          "prompt_tokens": 62328,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 170,
+          "prompt_tokens": 62328,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 171,
+          "prompt_tokens": 62330,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 172,
+          "prompt_tokens": 62333,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 173,
+          "prompt_tokens": 62335,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        }
+      ],
+      "sources": {
+        "swift-cache-continuation-pressure.json": "ed739a5617696f3d86da6476d51f3be2d2d84018adfa9b6d116d11e62a830cc9",
+        "swift-cache-continuation-pressure-native.json": "c979aca37e79d9684ea287ba7cdd1014a2561ff8307ddc6ee5e8cabc4b93ed60"
+      }
+    },
+    {
+      "stage": "changed",
+      "completed": 4,
+      "failed": 0,
+      "all_canaries_pass": true,
+      "actual_prompt_sum": 247444,
+      "native_requests": [
+        {
+          "id": 175,
+          "prompt_tokens": 61859,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 174,
+          "prompt_tokens": 61863,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 176,
+          "prompt_tokens": 61861,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        },
+        {
+          "id": 177,
+          "prompt_tokens": 61861,
+          "cache_hit_tokens": 0,
+          "path": "root",
+          "finish": "stop_token"
+        }
+      ],
+      "sources": {
+        "swift-cache-continuation-changed.json": "92f91fc22cc6f8e26edd31c3f25f853f56b6f97c2517dc6a804c9d924bdfc46b",
+        "swift-cache-continuation-changed-native.json": "a4c5d4f0e76abcd4f0f5763300ab87ddfc5d179a9f40bfe5b75f2c9e1b6ed62b"
+      }
+    }
+  ],
+  "next": "No automatic extension. Diagnose checkpoint semantics; any redesigned validation requires separate prospective review."
+}

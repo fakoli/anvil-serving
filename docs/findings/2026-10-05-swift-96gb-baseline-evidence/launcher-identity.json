@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-05T08:33:44.625524+00:00",
+  "source_revision": "1704cf58dc9b8727c63bbc094983ca6cda4e071e",
+  "dirty_source": true,
+  "tracked_diff_sha256": "3542f3a3060dd76e3af0a30575a436a9d1c161140bfc466a763f858d57f402cc",
+  "oracle_revision": "7",
+  "oracle_sha256": "748441b549f22822974c7c2c7371ea9d92b16e7e145971168ce1d0df438238c8",
+  "version": "1.5.0",
+  "module_source": "anvil_serving/cli.py",
+  "direct_auth": "No bearer auth declared by baseline recipe; native direct preflight passed without token",
+  "measurement_caveat": "Concurrent bounded image build/checkpoint download; functionality only, no performance ranking",
+  "harness_preflight": {
+    "root_reported_tests": 55,
+    "command": "[redacted]",
+    "receipt_status": "Original receipt overwritten by later focused runs; root report retained as such, not standalone raw receipt"
+  },
+  "research_method": {
+    "shared_research_synthesis_plugin": "Unavailable in installed catalog; not invoked",
+    "applied": "Anvil native qualification configuration-search and evidence/publication contracts"
+  }
+}

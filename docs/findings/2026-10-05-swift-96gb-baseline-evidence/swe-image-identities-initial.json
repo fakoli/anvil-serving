@@ -1,0 +1,72 @@
+[
+  {
+    "task": "astropy__astropy-12907",
+    "tag": "docker.io/swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest",
+    "status": "observed",
+    "identity": {
+      "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+      ],
+      "repo_tags": [
+        "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+      ]
+    }
+  },
+  {
+    "task": "django__django-10097",
+    "tag": "docker.io/swebench/sweb.eval.x86_64.django_1776_django-10097:latest",
+    "status": "observed",
+    "identity": {
+      "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+      ],
+      "repo_tags": [
+        "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+      ]
+    }
+  },
+  {
+    "task": "matplotlib__matplotlib-13989",
+    "tag": "docker.io/swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest",
+    "status": "observed",
+    "identity": {
+      "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+      ],
+      "repo_tags": [
+        "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+      ]
+    }
+  },
+  {
+    "task": "scikit-learn__scikit-learn-10297",
+    "tag": "docker.io/swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest",
+    "status": "observed",
+    "identity": {
+      "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+      ],
+      "repo_tags": [
+        "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+      ]
+    }
+  },
+  {
+    "task": "sympy__sympy-11618",
+    "tag": "docker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest",
+    "status": "observed",
+    "identity": {
+      "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+      ],
+      "repo_tags": [
+        "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+      ]
+    }
+  }
+]

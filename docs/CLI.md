@@ -455,6 +455,7 @@ required operands, choices, and defaults.
 | `workflows deployment preview` | Verify local release bytes without installation. | `read` / `bounded` | `--profile` |
 | `workflows deployment verify` | Compare pinned release and installed owner profile. | `read` / `bounded` | `--profile` |
 | `workflows recovery` | Inspect isolated recovery evidence through the owner. | `read` / `bounded` | - |
+| `workflows recovery cancel` | Reconcile a revoked original job with proven empty native custody. | `mutate` / `bounded` | `--intent-id`<br>`--job-id`<br>`--expected-digest`<br>`--confirm` |
 | `workflows recovery verify` | Read verified isolated-restore evidence. | `read` / `bounded` | `--profile` |
 | `workflows recovery snapshot-journal` | Copy the guarded native operation journal for encrypted backup. | `mutate` / `bounded` | `--profile`<br>`--output`<br>`--confirm` |
 <!-- END GENERATED CLI MANIFEST INDEX -->

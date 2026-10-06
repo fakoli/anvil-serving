@@ -1,0 +1,395 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-10-05T12:04:43.542379Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 262144,
+      "output_headroom_tokens": 8192,
+      "profile_buckets": [
+        8192,
+        32768,
+        131072,
+        262144
+      ],
+      "selected_buckets": [
+        253952
+      ]
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "architecture": "amd64",
+      "container_capable": true,
+      "free_disk_bytes": 1270630813696,
+      "harness_assets": [],
+      "id": "[operator identity redacted]",
+      "owned_output_writable": true,
+      "platform": "win32"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.context/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 262144,
+      "id": "qwen38-swift15-ninfer-dflash2-c4-262k"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "[operator identity redacted]"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "[redacted]"
+  },
+  "run": {
+    "ownership_id": "[operator identity redacted]",
+    "profile": "scout",
+    "run_id": "swift-cache-expanded-context262-001",
+    "spec_sha256": "886008a3b33988d5a3771158920b2601040fd265f105dbc9e6fd8bb0080dc6fa",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 559,
+          "path": "evidence/0-assets.json",
+          "sha256": "04373d7c726813b165e965a606306331a7ebeaa77d7e03c1d397b8f143fe21c8"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2014,
+          "path": "evidence/0-preflight.json",
+          "sha256": "029be7bfc1802937f84ac5fbce71bc0f3ef20a9ea82232da47cd7ae0e4e3d54e"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 29153,
+          "path": "evidence/0-context.json",
+          "sha256": "0b9215f45720b1a083b2cfe2406d61428e95350a038ff2aac3379a8d69afa72f"
+        }
+      ],
+      "name": "context",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "advertised_context": 262144,
+    "attempted_buckets": [
+      253952
+    ],
+    "buckets": [
+      {
+        "completed_count": 9,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 80761.25877777708,
+          "observations": [
+            80090.66510000048,
+            80421.50200000106,
+            80684.56230000083,
+            80930.2949999983,
+            81059.51659999846,
+            80979.19199999887,
+            80762.30349999969,
+            81081.05269999942,
+            80842.2397999966
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 9,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 253952,
+        "sample_count": 9,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-253952-0.100-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80090.66510000048,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 253838,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 1.910334991087483,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-253952-0.500-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80421.50200000106,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 253838,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 1.977083193497156,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-253952-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80684.56230000083,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 253838,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 1.797121975587621,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+            "case_id": "native-order-253952-0.100-r0",
+            "case_type": "native-order",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80930.2949999983,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 253862,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 3,
+            "throughput_tps": 2.557756647248158,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+            "case_id": "native-order-253952-0.500-r0",
+            "case_type": "native-order",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 81059.51659999846,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 253862,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 3,
+            "throughput_tps": 2.590689024661714,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+            "case_id": "native-order-253952-0.900-r0",
+            "case_type": "native-order",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80979.19199999887,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 253862,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 3,
+            "throughput_tps": 2.6179564745472264,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-distractor-253952-0.100-r0",
+            "case_type": "native-distractor",
+            "completed": true,
+            "distractor_count": 2,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80762.30349999969,
+            "passed": true,
+            "position": 0.1,
+            "prompt_tokens": 253868,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 2.0058863229427404,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-distractor-253952-0.500-r0",
+            "case_type": "native-distractor",
+            "completed": true,
+            "distractor_count": 2,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 81081.05269999942,
+            "passed": true,
+            "position": 0.5,
+            "prompt_tokens": 253868,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 2.9600010360990505,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          },
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-distractor-253952-0.900-r0",
+            "case_type": "native-distractor",
+            "completed": true,
+            "distractor_count": 2,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 80842.2397999966,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 253868,
+            "raw_reasoning": "[redacted]",
+            "raw_reasoning_field": "reasoning_content",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 253952,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 1.9420540597145428,
+            "token_measurement": "usage",
+            "visible_answer": "[redacted]",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 2.262098191709521,
+          "observations": [
+            1.910334991087483,
+            1.977083193497156,
+            1.797121975587621,
+            2.557756647248158,
+            2.590689024661714,
+            2.6179564745472264,
+            2.0058863229427404,
+            2.9600010360990505,
+            1.9420540597145428
+          ]
+        }
+      }
+    ],
+    "effective_context": 253952,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 253952,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  }
+}

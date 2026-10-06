@@ -1,0 +1,114 @@
+{
+  "schema": "anvil-investigation.pi-secondary-smoke/v1",
+  "passed": true,
+  "scope": "ephemeral secondary-only client smoke; not fleet acceptance",
+  "binary_sha256": "e6d7fcf36a239cf3746e67ddf4222081ac01a601b85a3ee688bdfe9c161d754c",
+  "harness_sha256": "c64cb0b8705870c39e658ab997907b4cb502a5bd583d2c4be42fbbb2239dbcfd",
+  "protected_before": {
+    "[private source path] 0": "2f5459748023821cd05b74a257704698f629dd3d608a4d94cd430df6897595a2",
+    "[private source path] 1": "62550104cee779e30e84441b211f97221351ff7645f9db211acb6b797caa5143"
+  },
+  "checks": {
+    "router_before_exact": true,
+    "initial_selection": true,
+    "fresh_idle_session": true,
+    "loaded_secondary": true,
+    "independent_tool_nonce": true,
+    "final_selection": true,
+    "same_session": true,
+    "terminal_idle": true,
+    "router_after_exact": true,
+    "owned_process_quiescent": true,
+    "catalog_and_settings_unchanged": true
+  },
+  "router_before": {
+    "passed": true,
+    "checks": {
+      "alias_advertised": true,
+      "readiness_ready": true,
+      "served_model_exact": true,
+      "config_fingerprint_exact": true,
+      "router_config_sha256_valid": true,
+      "router_config_sha256_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "capacity_loaded": true
+    },
+    "observed": {
+      "package_version": "1.5.0",
+      "config_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+      "tier_id": "secondary-midmod",
+      "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+      "config_fingerprint": "swift15-ninfer-bace20dc-nvfp4-k8v4-262k-c4-dflash2-k7-hostkv8g-hostslots8-m40g-db954301",
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      },
+      "context_limit_tokens": 262144,
+      "discovery_context_window": 262144,
+      "configured_max_concurrency": 4,
+      "engine": {
+        "name": "ninfer",
+        "quantization": "all-nvfp4-w4a4-k8v4-dflash2-k7"
+      }
+    }
+  },
+  "event_types": [
+    "agent_end",
+    "agent_settled",
+    "agent_start",
+    "message_end",
+    "message_start",
+    "message_update",
+    "tool_execution_end",
+    "tool_execution_start",
+    "turn_end",
+    "turn_start"
+  ],
+  "event_count": 44,
+  "selected_model": {
+    "provider": "anvil",
+    "id": "llm.secondary",
+    "contextWindow": 262144,
+    "maxTokens": 32768
+  },
+  "router_after": {
+    "passed": true,
+    "checks": {
+      "alias_advertised": true,
+      "readiness_ready": true,
+      "served_model_exact": true,
+      "config_fingerprint_exact": true,
+      "router_config_sha256_valid": true,
+      "router_config_sha256_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "capacity_loaded": true
+    },
+    "observed": {
+      "package_version": "1.5.0",
+      "config_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+      "tier_id": "secondary-midmod",
+      "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+      "config_fingerprint": "swift15-ninfer-bace20dc-nvfp4-k8v4-262k-c4-dflash2-k7-hostkv8g-hostslots8-m40g-db954301",
+      "readiness": {
+        "loaded": true,
+        "state": "ready",
+        "reason": "identity_passed"
+      },
+      "context_limit_tokens": 262144,
+      "discovery_context_window": 262144,
+      "configured_max_concurrency": 4,
+      "engine": {
+        "name": "ninfer",
+        "quantization": "all-nvfp4-w4a4-k8v4-dflash2-k7"
+      }
+    }
+  },
+  "protected_after": {
+    "[private source path] 0": "2f5459748023821cd05b74a257704698f629dd3d608a4d94cd430df6897595a2",
+    "[private source path] 1": "62550104cee779e30e84441b211f97221351ff7645f9db211acb6b797caa5143"
+  },
+  "elapsed_seconds": 2.148430749773979
+}

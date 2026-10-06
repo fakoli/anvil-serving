@@ -1,0 +1,24 @@
+{
+  "schema": "anvil-campaign.diagnostic-comparison/v1",
+  "observed_at": "2026-10-05T10:52:12.183038+00:00",
+  "sources": {
+    "flash-diagnostic-mmq-8k-c1.json": "4e2ff81f4e425624b0ab6ec70c520cbf9db69a6aef9da349d85493e342cc288b",
+    "flash-diagnostic-fused-8k-c1.json": "d061a8f2d360fd3c434784a0b9a754362a510582cda00fd1fb0b780128034a3e"
+  },
+  "result": "Both3/3complete/canaries; no useful latency benefit observed from fused. Five-family preflight passed both. Diagnostic only, not qualification or uninstrumented headline.",
+  "activation": "fused-activation-observation.json confirms at least one eligible branch, not all layers",
+  "next": "Same unfused50 profile with bounded TRACE adapter;3 matched8K requests; no engine argument changes",
+  "interpretation": "GPU event phases include submission/waits; host_staging_ms and ple_ms are cumulative. DONE filebytes are decode-only, not prompt/refill traffic.",
+  "medians": {
+    "flash-diagnostic-mmq-8k-c1.json": {
+      "e2e_p50_ms": 29446.811400001025,
+      "time_to_first_output_p50_ms": 24598.051299999497,
+      "ttft_p50_ms": 29196.036900000763
+    },
+    "flash-diagnostic-fused-8k-c1.json": {
+      "e2e_p50_ms": 29926.91729999933,
+      "time_to_first_output_p50_ms": 27224.398499998642,
+      "ttft_p50_ms": 29569.60590000017
+    }
+  }
+}

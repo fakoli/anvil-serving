@@ -73,6 +73,21 @@ anvil-serving router logs --tail 200 --since 10m
 anvil-serving --json router status
 ```
 
+`router status --json` and the controller/MCP status report include a `custody`
+observation: container/image IDs, the configured image reference and its current
+local image ID, Compose project/service, start/restart metadata, and mount
+names, paths, types, and read-only flags. Environment values, command arguments,
+arbitrary labels, and file/key-store contents are excluded. Paths are private
+operator evidence; sanitize them before publication. Missing or malformed
+inspection is reported as `custody.available=false`, independently of health.
+A missing local image reference has a null match result, not a mismatch.
+The CLI JSON envelope keeps its existing fields, but `data` now contains the
+structured status object instead of the former rendered-text string. Ordinary
+human output is unchanged; existing MCP/controller status fields are retained.
+This is a point-in-time observation, not a config hash, ownership authorization,
+or a transaction lock; recheck before a controlled restart. Use `router
+fleet-status --live` for the installed config's raw SHA and runtime reachability.
+
 `router endpoint` reports the configured listen address and port. When available,
 it also reports the current node's Tailscale DNS name; it does not change routing
 or tailnet configuration.

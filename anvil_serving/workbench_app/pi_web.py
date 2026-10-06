@@ -506,6 +506,34 @@ def service_state(
     }
 
 
+def _drift_state(root: Path) -> str:
+    """Compare the live artifact tree against the recorded install pin.
+
+    Returns "clean" (live tree matches the recorded artifact hash),
+    "drifted" (it does not), or "unknown" (no recorded pin to compare).
+    """
+    try:
+        rendered = _read_regular_private_file(root, "install-manifest.json")
+        manifest = json.loads(rendered) if rendered is not None else None
+    except (PiWebError, ValueError, UnicodeDecodeError, OSError):
+        return "unknown"
+    if not isinstance(manifest, dict):
+        return "unknown"
+    descriptor = manifest.get("bridge_install")
+    expected = descriptor.get("artifact_sha256") if isinstance(descriptor, dict) else None
+    version = manifest.get("version")
+    if not (isinstance(expected, str) and isinstance(version, str) and version):
+        return "unknown"
+    version_dir = root / version
+    if not version_dir.is_dir():
+        return "unknown"
+    try:
+        current = _artifact_tree_sha256(version_dir)
+    except (PiWebError, OSError):
+        return "unknown"
+    return "clean" if current == expected else "drifted"
+
+
 def status(config: PiWebConfig) -> dict[str, object]:
     """Read-only service state, installed pin, and loopback readiness."""
     root = install_root_for(config)
@@ -515,6 +543,7 @@ def status(config: PiWebConfig) -> dict[str, object]:
         "configured_version": config.version,
         "installed_version": _read_installed_version(root),
         "port": config.port,
+        "drift": _drift_state(root),
         "probe": probe(config.port, attempts=1),
     }
 

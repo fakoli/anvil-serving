@@ -1,0 +1,199 @@
+{
+  "client_overrides": {
+    "hermes": {
+      "expected_observed_provider": "custom",
+      "model": "llm.secondary",
+      "provider_selector": "anvil"
+    },
+    "openclaw": {
+      "model": "anvil/llm.secondary",
+      "provider": "anvil"
+    }
+  },
+  "clients": [
+    "openclaw",
+    "hermes"
+  ],
+  "clients_skipped": [],
+  "credentials": {
+    "api_key_env": "ANVIL_ROUTER_TOKEN",
+    "available": true
+  },
+  "dry_run": false,
+  "finished_at": "2026-10-05T12:46:11.209315Z",
+  "harness_reconciliation": {
+    "backup_root": "~/.anvil-serving/backups/client-catalog",
+    "enabled": false,
+    "openclaw_config": "~/.openclaw/openclaw.json",
+    "pi_models": "~/.pi/agent/models.json",
+    "pi_settings": "~/.pi/agent/settings.json",
+    "restart_openclaw_on_router_change": false,
+    "state_path": "~/.anvil-serving/state/client-catalog.json"
+  },
+  "harness_sync": {
+    "checks": {},
+    "enabled": false,
+    "failure": null,
+    "passed": true,
+    "receipt": null
+  },
+  "output": "[redacted]",
+  "passed": true,
+  "persistent_changes": false,
+  "results": [
+    {
+      "checks": {
+        "context_exact": true,
+        "fallback_forbidden": true,
+        "json_valid": true,
+        "marker_exact": true,
+        "model_exact": true,
+        "output_bounded": true,
+        "process_succeeded": true,
+        "provider_exact": true,
+        "status_ok": true,
+        "winner_model_exact": true,
+        "winner_provider_exact": true
+      },
+      "client": "openclaw",
+      "command": {
+        "model": "anvil/llm.secondary",
+        "provider": "anvil",
+        "thinking": "off",
+        "tool_probe": "exec/read-temporary-nonce"
+      },
+      "failure": null,
+      "observed": {
+        "context_tokens": 262144,
+        "fallback_used": false,
+        "latency_ms": 9711,
+        "max_output_tokens": 32768,
+        "model": "llm.secondary",
+        "payload_count": 1,
+        "provider": "anvil",
+        "response_chars": 59,
+        "returncode": 0,
+        "session_id": "[identity redacted]",
+        "stop_reason": "stop",
+        "winner_model": "llm.secondary",
+        "winner_provider": "anvil"
+      },
+      "passed": true
+    },
+    {
+      "checks": {
+        "api_call_recorded": true,
+        "completed": true,
+        "marker_exact": true,
+        "model_exact": true,
+        "not_failed": true,
+        "output_bounded": true,
+        "process_succeeded": true,
+        "provider_exact": true,
+        "usage_valid": true
+      },
+      "client": "hermes",
+      "command": {
+        "expected_observed_provider": "custom",
+        "model": "llm.secondary",
+        "provider_selector": "anvil",
+        "reasoning": "[redacted]",
+        "tool_probe": "terminal/read-temporary-nonce"
+      },
+      "failure": null,
+      "observed": {
+        "api_calls": 2,
+        "context_tokens": null,
+        "fallback_used": null,
+        "input_tokens": 11406,
+        "latency_ms": 14321,
+        "max_output_tokens": null,
+        "model": "llm.secondary",
+        "output_tokens": 340,
+        "provider": "custom",
+        "reasoning_tokens": 225,
+        "response_chars": 57,
+        "returncode": 0,
+        "session_id": "[operator identity redacted]"
+      },
+      "passed": true
+    }
+  ],
+  "router": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "swift15-ninfer-bace20dc-nvfp4-k8v4-262k-c4-dflash2-k7-hostkv8g-hostslots8-m40g-db954301",
+      "config_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+      "configured_max_concurrency": 4,
+      "context_limit_tokens": 262144,
+      "discovery_context_window": 262144,
+      "engine": {
+        "name": "ninfer",
+        "quantization": "all-nvfp4-w4a4-k8v4-dflash2-k7"
+      },
+      "package_version": "1.5.0",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+      "tier_id": "secondary-midmod"
+    },
+    "passed": true
+  },
+  "router_before_sync": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "swift15-ninfer-bace20dc-nvfp4-k8v4-262k-c4-dflash2-k7-hostkv8g-hostslots8-m40g-db954301",
+      "config_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+      "configured_max_concurrency": 4,
+      "context_limit_tokens": 262144,
+      "discovery_context_window": 262144,
+      "engine": {
+        "name": "ninfer",
+        "quantization": "all-nvfp4-w4a4-k8v4-dflash2-k7"
+      },
+      "package_version": "1.5.0",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+      "tier_id": "secondary-midmod"
+    },
+    "passed": true
+  },
+  "run_id": "swift-hostcache96-secondary-20261005",
+  "schema": "routed-client-eval/v2",
+  "started_at": "2026-10-05T12:45:46.847582Z",
+  "target": {
+    "alias": "llm.secondary",
+    "base_url": "[operator identity redacted]",
+    "expected_config_fingerprint": "swift15-ninfer-bace20dc-nvfp4-k8v4-262k-c4-dflash2-k7-hostkv8g-hostslots8-m40g-db954301",
+    "expected_router_config_sha256": "d2d91cb09e946811e2b61720e0a501747939d47a420419822f5d9705bc9dedb0",
+    "expected_served_model": "qwen38-swift15-ninfer-dflash2-c4-262k",
+    "min_context_tokens": 262144
+  }
+}

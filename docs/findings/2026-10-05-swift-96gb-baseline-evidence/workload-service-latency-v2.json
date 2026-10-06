@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.campaign-workload-revision/v1",
+  "revision": "service-latency-v2",
+  "created_before_candidate_results": true,
+  "created_at": "2026-10-05T09:21:19.963799+00:00",
+  "supersedes_for_practical_latency_only": "strict-repetition-v1",
+  "preserved_stress_result": "swift-capacity-8k-c1.json",
+  "method": "Existing native capacity summary-canary workload; no validator code changes",
+  "prompt_envelope": {},
+  "cells": [
+    {
+      "nominal_context": 8192,
+      "concurrency": 1,
+      "requests": 12
+    },
+    {
+      "nominal_context": 8192,
+      "concurrency": 4,
+      "requests": 12
+    },
+    {
+      "nominal_context": 24576,
+      "concurrency": 1,
+      "requests": 12
+    },
+    {
+      "nominal_context": 24576,
+      "concurrency": 4,
+      "requests": 12
+    }
+  ],
+  "controls": {
+    "max_tokens": 8192,
+    "response_words": 0,
+    "controlled_output_policy": "observe",
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "seed": 17,
+    "temperature": 0.9,
+    "top_p": 0.95,
+    "thinking": "native default",
+    "timeout_seconds": 300
+  },
+  "required_gates": [
+    "All12 requests complete with nonempty visible content and terminal stream event",
+    "Own unique canary at start, no foreign canary, full nontruncated visible capture",
+    "No HTTP/parser/OOM/server failures",
+    "Completion tokens below8192 output limit; inspect owning logs if limit reached"
+  ],
+  "semantic_quality": "Not established by summary text. Independent SWE/agentic/context/image suites remain separate mandatory quality evidence.",
+  "latency_gate": "Compare median visible TTFT and total E2E as variable-length service latency; candidate<=2x baseline and8KmedianTTFT<=30s/E2E<=120s. These are campaign thresholds, not user SLA.",
+  "publication_limits": [
+    "Output length varies; retain native actual prompt/output totals and visible/reasoning chunk counts",
+    "Do not rank fixed-output decode speed or publish emitted p99 from12samples",
+    "Native capacity summary does not retain per-request finish reason or exact split reasoning-token counts; no unsupported claims",
+    "Original repeated128code stress remains failed for Swift and runs unchanged for candidate, reported separately"
+  ],
+  "coactivity": "Local model downloads/builds complete before measurement. First failed stress overlapped remote CPU-only grading; all SWE grading ended beforev2cells."
+}

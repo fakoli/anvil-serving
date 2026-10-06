@@ -1,0 +1,391 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-05T09:36:17.330831Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "[operator identity redacted]"
+  },
+  "endpoint": {
+    "base_url": "[operator identity redacted]",
+    "model": "qwen38-swift15-ninfer-dflash2-c4-262k"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "49d114f7012d5168b72e428f28e52304fe0f074b90d7207df29db65ba34298ad",
+      "receipt": "[redacted]",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "558d4728e007ae1dfa707114f8c089b6590acd259db7a8ae5cabc06dc45b0a34",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "astropy__astropy-12907",
+      "prediction_sha256": "7f233cc776d064f8e1d7d39bf0a846434e59d14cc07ac33aab803b7b758ee755",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-10097",
+      "prediction_sha256": "144a5a1aca325730793b9390ca278e1af2032da93ce8fc167966a00e2c2c675f",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "matplotlib__matplotlib-13989",
+      "prediction_sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "3b1655c76fac477bf981d855577e246788d35260629177e762c687c388ed8077",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {}
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "[operator identity redacted]",
+  "paired_image_ids": {
+    "astropy__astropy-12907": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+    "django__django-10097": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+    "matplotlib__matplotlib-13989": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+    "scikit-learn__scikit-learn-10297": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+    "sympy__sympy-11618": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+  },
+  "plan_sha256": "ad0f039047b7c3d13cae43ab2347b8661b166353a322971af80784f3e44c0cef",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "[redacted]"
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.9,
+        "requested": 0.9,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "swift-swe-paired-001",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "astropy__astropy-12907",
+      "django__django-10097",
+      "matplotlib__matplotlib-13989",
+      "scikit-learn__scikit-learn-10297",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "675265ec1242101c95fdf9e44d4c2e9c6159b9879cbae3f61642740265a66970"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [],
+      "duration_s": 546.587776,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "[redacted]",
+      "stdout": "[redacted]"
+    },
+    {
+      "command": [],
+      "duration_s": 346.875633,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "[redacted]",
+      "stdout": "[redacted]"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

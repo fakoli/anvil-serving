@@ -1,0 +1,14 @@
+{
+  "engine_matches_pilot": true,
+  "server_matches_pilot": true,
+  "environment_matches_pilot": true,
+  "gpu_uuid": "[identity redacted]",
+  "kv_capacity": 282112,
+  "host_kv_bytes": 8589934592,
+  "host_state_slots": 8,
+  "sources": {
+    "swift-final-start-logs-002.json": "e0ecb4b34b5ad72d9cb86edb71b1128a96d497c988d717323b1ff1803b7c56e6",
+    "swift-cache-expanded-start-logs.json": "55978eb10e2260574686a00ab4e6312466b0201d4b4c863ec7254f5771147ece",
+    "swift-final-status.json": "84d09004fb3eb206b089a19da3b48b2374243d4dc14f16116066d25df24e9d56"
+  }
+}

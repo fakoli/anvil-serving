@@ -178,6 +178,11 @@ class JobStore:
                 state TEXT NOT NULL, pid INTEGER, start_ticks TEXT, boot_id TEXT, custody_at TEXT NOT NULL,
                 registered_at TEXT, result_json TEXT, result_digest TEXT
             )""")
+            db.execute("""CREATE TABLE IF NOT EXISTS propagation_native_settlements (
+                job_id TEXT PRIMARY KEY REFERENCES propagation_native_jobs(job_id),
+                intent_id TEXT NOT NULL, contract_digest TEXT NOT NULL,
+                receipt_json TEXT NOT NULL
+            )""")
             for column in ("result_json TEXT", "result_digest TEXT"):
                 try:
                     db.execute("ALTER TABLE propagation_native_children ADD COLUMN " + column)
@@ -537,6 +542,68 @@ class JobStore:
             row = self._job(db, job_id)
             db.execute("COMMIT")
         return self._row(row)
+
+    def cancellation_receipt(self, job_id: str, intent_id: str, contract_digest: str) -> dict | None:
+        with self._connection() as db:
+            row = db.execute("SELECT * FROM propagation_native_settlements WHERE job_id=?", (_id(job_id),)).fetchone()
+            if row is None:
+                return None
+            if (row["intent_id"], row["contract_digest"]) != (_id(intent_id), _digest(contract_digest)):
+                raise PropagationJobError("intent_conflict")
+            if self._job(db, job_id)["state"] != "cancelled":
+                raise PropagationJobError("settlement_conflict")
+            return json.loads(row["receipt_json"])
+
+    def _cancellation_binding(self, db, job_id):
+        row = self._job(db, job_id)
+        launch = db.execute("SELECT * FROM propagation_native_launches WHERE job_id=?", (job_id,)).fetchone()
+        child = db.execute("SELECT * FROM propagation_native_children WHERE job_id=?", (job_id,)).fetchone()
+        if row["state"] != "recovery_required" or launch is None or child is None or child["state"] not in {"registered", "completed"}:
+            raise PropagationJobError("launch_reconciliation_required")
+        identities = [{key: selected[key] for key in ("pid", "start_ticks", "boot_id")}
+                      for selected in (row, child)]
+        if (any(type(identity["pid"]) is not int or identity["pid"] < 1
+                or any(type(identity[key]) is not str or not identity[key] for key in ("start_ticks", "boot_id"))
+                for identity in identities)
+                or any(row[key] != launch[key] for key in ("pid", "start_ticks", "boot_id"))
+                or row["launch_token_digest"] != launch["token_digest"]):
+            raise PropagationJobError("launch_reconciliation_required")
+        resources = [item[0] for item in db.execute("SELECT resource_key FROM propagation_native_resources WHERE job_id=? ORDER BY resource_key", (job_id,))]
+        if resources != json.loads(row["resources_json"]):
+            raise PropagationJobError("resource_binding_mismatch")
+        stored = [dict(selected) for selected in (row, launch, child)]
+        stored[0]["canonical_contract"] = hashlib.sha256(bytes(row["canonical_contract"])).hexdigest()
+        custody_digest = hashlib.sha256(_json(stored, limit=1024 * 1024).encode("ascii")).hexdigest()
+        return {"job": self._row(row), "identities": identities, "custody_digest": custody_digest}
+
+    def cancellation_binding(self, job_id: str) -> dict:
+        with self._connection() as db:
+            db.execute("BEGIN")
+            return self._cancellation_binding(db, _id(job_id))
+
+    def reconcile_cancelled(self, job_id: str, custody_digest: str, receipt: Mapping[str, Any]) -> dict:
+        """Settle exact empty custody without rewriting the original child result."""
+        payload = _json(dict(receipt))
+        _digest(custody_digest)
+        with self._connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute("SELECT receipt_json FROM propagation_native_settlements WHERE job_id=?", (_id(job_id),)).fetchone()
+            if existing is not None:
+                if existing[0] != payload:
+                    raise PropagationJobError("settlement_conflict")
+                return json.loads(existing[0])
+            binding = self._cancellation_binding(db, job_id)
+            job = binding["job"]
+            if (binding["custody_digest"] != custody_digest
+                    or (receipt.get("job_id"), receipt.get("intent_id"), receipt.get("contract_digest"))
+                    != (job_id, job["intent_id"], job["contract_digest"])
+                    or receipt.get("quiescent") is not True or receipt.get("state") != "cancelled"):
+                raise PropagationJobError("settlement_conflict")
+            db.execute("INSERT INTO propagation_native_settlements VALUES(?,?,?,?)", (job_id, job["intent_id"], job["contract_digest"], payload))
+            db.execute("UPDATE propagation_native_jobs SET state='cancelled' WHERE job_id=?", (job_id,))
+            db.execute("DELETE FROM propagation_native_resources WHERE job_id=?", (job_id,))
+            db.execute("COMMIT")
+        return json.loads(payload)
 
     def reconcile_applied(self, job_id: str, result_digest: str, now: datetime | None = None) -> dict[str, Any]:
         """Record installed-owner readback after the original execution stopped.

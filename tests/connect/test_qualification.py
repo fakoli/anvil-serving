@@ -281,15 +281,37 @@ def test_setsiddescendant_listener_is_reaped_after_leader_exit(tmp_path: Path) -
         probe.bind(("127.0.0.1", port))
 
 
-def test_child_flood_is_bounded_and_fails_closed() -> None:
-    code = "import subprocess,sys; c=\"import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(5)\"; [subprocess.Popen([sys.executable,'-c',c]) for _ in range(65)]"
+def test_child_flood_is_bounded_and_fails_closed(tmp_path: Path) -> None:
+    marker = tmp_path / "flood-ready.json"
+    # Fork after installing the handler, so every child ignores TERM from its
+    # first instruction. EOF follows creation of the full flood, rather than
+    # racing 65 interpreter startups against a 200 ms execution timeout.
+    code = f"""
+import json, os, signal, time
+from pathlib import Path
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+pids = []
+for _ in range(65):
+    pid = os.fork()
+    if pid == 0:
+        os.close(1)
+        os.close(2)
+        time.sleep(30)
+        os._exit(0)
+    pids.append(pid)
+Path({str(marker)!r}).write_text(json.dumps({{"pids": pids, "ready": time.monotonic()}}))
+"""
     started = time.monotonic()
     result, _, escalated, _ = subject._run_test(
         [sys.executable, "-c", code], cwd=Path.cwd(), env={"PATH": "/usr/bin:/bin"},
-        timeout=0.2, expected_name=subject._TESTS[0],
+        timeout=5, expected_name=subject._TESTS[0],
     )
-    assert result.startswith("runner-failed-") and escalated is True
-    assert time.monotonic() - started < 5
+    ready = json.loads(marker.read_text())
+    assert len(set(ready["pids"])) == supervisor._MAX_CHILDREN + 1 == 65
+    assert result == "runner-failed-supervisor" and escalated is True
+    assert time.monotonic() - ready["ready"] < 5
+    assert time.monotonic() - started < 10
+    assert all(not Path(f"/proc/{pid}").exists() for pid in ready["pids"])
 
 
 def test_keyboard_interrupt_cleans_owned_process_group(tmp_path: Path) -> None:

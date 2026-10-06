@@ -36,6 +36,11 @@ def workflow_command():
                       options=(_option("--profile", summary="Named workflow profile.", value_name="PROFILE"),)),
             )),
             _node("recovery", "Inspect isolated recovery evidence through the owner.", children=(
+                _leaf("cancel", "Reconcile a revoked original job with proven empty native custody.",
+                      prefix=("recovery", "cancel"), mutate=True,
+                      options=(_option("--intent-id", summary="Original accepted intent.", value_name="ID"),
+                               _option("--job-id", summary="Original native job.", value_name="ID"),
+                               _option("--expected-digest", summary="Exact original contract digest.", value_name="SHA256"))),
                 _leaf("verify", "Read verified isolated-restore evidence.",
                       prefix=("recovery", "verify"),
                       options=(_option("--profile", summary="Named workflow profile.", value_name="PROFILE"),)),
