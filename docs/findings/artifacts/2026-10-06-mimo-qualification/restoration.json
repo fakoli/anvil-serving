@@ -1,0 +1,152 @@
+{
+  "campaign_id": "2026-10-06-mimo-qualification",
+  "differences": [
+    {
+      "configuration_changed": false,
+      "detail": "Both rejected candidates were unloaded; the original pinned r11 recipe was recreated. Container identity changed.",
+      "intentional": true,
+      "kind": "container recreation"
+    }
+  ],
+  "ending_state": {
+    "captured": true,
+    "checkpoint_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "configuration_unchanged": true,
+    "evidence": [
+      {
+        "path": "baseline-final-restore-preview.json",
+        "sha256": "0f38af14b26c37321d5affcfa863f5c3b74406b64ad15dcf18dccab0bfc15fc4"
+      },
+      {
+        "path": "baseline-final-restore-stdout.txt",
+        "sha256": "8ac46ae55a303838986d4ff6d16565de24dc0d62fecffa986b349b2b6dab72a1"
+      },
+      {
+        "path": "restoration-recipe-status.json",
+        "sha256": "26ea0f4d7745a069819f62721fa338898d2b5f12f9bcba462178b995e3a6073c"
+      },
+      {
+        "path": "restoration-mode-status.json",
+        "sha256": "50d44166a71ff0a9ebaca737a744c518c76a1095d48424c52efac04f922ed328"
+      },
+      {
+        "path": "restoration-final-config-hashes.json",
+        "sha256": "ce23f877d4234db5d36418726613dfc165c4cfd45d5954624e7b2494ec116585"
+      },
+      {
+        "path": "restoration-router-readmit.json",
+        "sha256": "9bc0e530e6b7aa817ba145955915926ef1cac1d7307e50e56a60280363869c9e"
+      },
+      {
+        "path": "restoration-router-transition-after-readmit.json",
+        "sha256": "b19cb93181a2b7a8ede69d8dd027945173ea088a9ab8aa3bd65ed753d5e639e1"
+      },
+      {
+        "path": "restoration-gpu-compute.json",
+        "sha256": "0c1c5aa578f50b852c7ac7c10cd9dff7c5edfcdbd1ad74c193ccd73ca462a9b2"
+      },
+      {
+        "path": "restoration-shared-memory.json",
+        "sha256": "1d3b1ece5b3a85dee1b94aeaf9c646263e7b499276b1eba1a37e7bc892bac0be"
+      }
+    ],
+    "exclusive_gpu_owner": "tp2-glm53-exl3-327k-r11-dcp1-vision8-apc-nospec",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "router_tier_state": "admitting"
+  },
+  "limitations": [
+    "Restoration is a bounded smoke/identity check, not fresh full context/C4/multimodal/endurance qualification.",
+    "Pi thinking-off A1 failed; one Pi-max A2 passed. No thinking-off reliability claim.",
+    "Single-file export was refused because dependency validation could not represent the active config; actual file hashes and live model readback were retained.",
+    "Managed mode launch was avoided because it reads prohibited shared dotenv; supported recipe lifecycle plus explicit router drain/readmit was used."
+  ],
+  "mutation_required": true,
+  "not_applicable_reason": null,
+  "observed_at": "2026-10-06T10:53:40.957122+00:00",
+  "post_run_checks": [
+    {
+      "evidence": {
+        "path": "restoration-direct-preflight-native.json",
+        "sha256": "91ccd988b1f75aa39405bb66b000f852336bb8452c3f1a1e26c41ea27ad7a911"
+      },
+      "id": "direct-preflight",
+      "observations": "25/25",
+      "passed": true
+    },
+    {
+      "alias": "llm.primary",
+      "evidence": {
+        "path": "restoration-routed-preflight-native.json",
+        "sha256": "bc81552e5434057b26c8e65c374e4049392f8812938b6c3bf57522650c20abc9"
+      },
+      "id": "routed-preflight",
+      "observations": "7/7",
+      "passed": true
+    },
+    {
+      "acceptance_policy": false,
+      "detail": "Read tool succeeded; exact final-output oracle failed due to extra visible reasoning-like prose.",
+      "evidence": {
+        "path": "restoration-pi-thinking-off-a1.json",
+        "sha256": "663e656c633abf8922aae67bbac1fd9f58d0fa694f123f41bf3156406f8e38e4"
+      },
+      "id": "pi-thinking-off-a1",
+      "passed": false
+    },
+    {
+      "acceptance_policy": true,
+      "detail": "One causal thinking-policy diagnostic; Pi max maps to xhigh in native catalog, reasoning_content observed, raw request effort not independently captured. No catalog/provider change.",
+      "evidence": {
+        "path": "restoration-pi-max-tool-turn.json",
+        "sha256": "549f752346d5f75ea6b976400323adf487853681ac7e5acf631b072fe3baf931"
+      },
+      "id": "pi-max-a2",
+      "passed": true
+    },
+    {
+      "detail": "All four baseline/router file hashes unchanged.",
+      "id": "configuration",
+      "passed": true
+    },
+    {
+      "detail": "RAM52GiB/swap1MiB; all OOM counters zero.",
+      "id": "cgroup",
+      "passed": true
+    },
+    {
+      "detail": "Dual-GPU exclusive r11 owner, no unresolved owners.",
+      "id": "gpu-mode",
+      "passed": true
+    },
+    {
+      "detail": "No vLLM offload mmap entries in native /dev/shm.",
+      "id": "shared-memory",
+      "passed": true
+    }
+  ],
+  "promoted": false,
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "starting_state": {
+    "captured": true,
+    "checkpoint_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "evidence": [
+      {
+        "path": "before-router.toml",
+        "sha256": "a3a6b679eac49508f4824df772fa4da329724c2fcfb9a50dd9035e04a21efcfa"
+      },
+      {
+        "path": "before-serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+        "sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6"
+      },
+      {
+        "path": "before-serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+        "sha256": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975"
+      }
+    ],
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+  },
+  "status": "complete",
+  "verified": true
+}

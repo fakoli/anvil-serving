@@ -1,0 +1,27 @@
+{
+  "disposition": "Stopqualification/performancecells;restoreexactr11andverifyclient;retainfailedruns",
+  "failure_investigation": {
+    "classification": "Application patchquality; all5Submitted/graded,zeroempty/timeout/OOM/parse/step-limit/gradererrors",
+    "django": "Incompletepatch:JSONField.prepare_valuefixed, two requiredadmin display/labeltests missed",
+    "pylint": "Incorrectpatch:bracketstack accepted mismatched closingbrace; invalid-regex error missing"
+  },
+  "format_note": "This retained note summarizes an independent review; it is not schema-validator acceptance.",
+  "gates": {
+    "mimo": "SWE4/5passes butno testedagentpolicy18/18",
+    "uncensored": "Preflight25/25andagentic18/18pass;SWE3/5fails4/5floor"
+  },
+  "limitation": "Fivefrozenproblems smallstochasticsample;predeclaredone-runfloorbinding",
+  "native_uncensored_swe_sha256": "5e93cf8c8c5e498d267e6b4d42793f418433f26912a2f8bae901b6fd0edc3644",
+  "official_report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+  "promoted": false,
+  "record_type": "independent-review-notes",
+  "reviewer": {
+    "agent": "rollback_review",
+    "independent_from_candidates_and_evidence_authors": true,
+    "model": "GPT-5.6 Sol high"
+  },
+  "supported_causal_remedy_found": false,
+  "verdict": "NO-GO",
+  "workflow": "model-qualification-decision",
+  "workflow_validator": "operation_contracts/workflow_packet_validate unavailable;nativegrade/hash/reviewerproof retained"
+}

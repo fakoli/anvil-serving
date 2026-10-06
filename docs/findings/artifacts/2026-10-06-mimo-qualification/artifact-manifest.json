@@ -1,0 +1,420 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-06-mimo-qualification",
+    "capability": "model-serving quality qualification",
+    "repository_revision": "03b2c14e",
+    "dirty_state": "public publication working tree; source test receipt retained",
+    "started_at": null,
+    "started_at_note": "Unknown: no retained initializer timestamp establishes the campaign start; authorization was observed at 2026-10-06T08:06:46.188389+00:00.",
+    "completed_at": "2026-10-06T10:53:40Z",
+    "evidence_labels": [
+      "measured-quality",
+      "failed-gate",
+      "verified-restoration",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "not-qualified",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.cache-cleanup-receipt/v1",
+    "anvil-serving.diagnostic-decision/v1",
+    "anvil-serving.model-cache-cleanup-free-space/v1",
+    "anvil-serving.model-cache-cleanup-receipts/v1",
+    "anvil-serving.model-cache-cleanup-terminal/v1",
+    "anvil-serving.model-cache-cleanup-verification/v1",
+    "anvil-serving.public-redaction-ledger/v1",
+    "anvil-serving.qualification-workload-manifest/v1",
+    "anvil-serving.raw-token-diagnostic/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.test-run/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8176ade0eb2c1bc802b56aa71a8ff7f579b05adcb9e2be92ae406dc5cb316b55",
+          "bytes": 1077
+        },
+        {
+          "path": "redaction-ledger.json",
+          "sha256": "09047f1c9ec31b7af51239f4b571ff41db981da106c4330b0028dcbea61f3901",
+          "bytes": 28300
+        }
+      ],
+      "reason": "Public packet map and private-to-public hash ledger."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "7fa5105bf8d682e4ed6e79cd8a8d8eae60b9419c52cc2a205a3be6b27a9969be",
+          "bytes": 6342
+        }
+      ],
+      "reason": "Pinned local and external identity/source registry."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "c49d240964fbed99da5abacd5e34b2c7f5792040a2632fe2ab2ce9ebe96cf9ff",
+          "bytes": 27102
+        }
+      ],
+      "reason": "Frozen quality workload and gate definition."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "authorization.json",
+          "sha256": "ffd937db1f72b957ce7d980b6fa9ce40acbf659098cc7d3556fa979e5a1635a7",
+          "bytes": 1028
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "36991af70e86ffbf6caf91268e71116b8d92c904d3b91f8a0fbbea6658a7d8f6",
+          "bytes": 3031
+        },
+        {
+          "path": "artifact-manifest-source.json",
+          "sha256": "fc6d71c2a5f41dac624efe28db43fc81b6fd00e53c165eeb9bf0a6d8a628580f",
+          "bytes": 6414
+        }
+      ],
+      "reason": "Authorized campaign boundary, final coverage, and reproducible role plan."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configs/glm53-abliterated-isolated-qualification.toml",
+          "sha256": "dcee8d123c2756baa733616fd3a4d465a1b950bdc7627e887d66f3330baa9eb6",
+          "bytes": 999
+        },
+        {
+          "path": "configs/glm53-abliterated-qualification.toml",
+          "sha256": "bd6fb1971a24609ee75f276d34138cebd9a73c7ea117fae2cd474820cf241c07",
+          "bytes": 4934
+        },
+        {
+          "path": "configs/mimo26-isolated-qualification.toml",
+          "sha256": "b627af81dd660b1599917218d96913163530007c3f5c25cb83416522308495e9",
+          "bytes": 960
+        },
+        {
+          "path": "configs/mimo26-nospec-qualification.toml",
+          "sha256": "c5f2977e771852a8b0facea4db554d69812f99961d7fe0d8b7e3fa300ca5c1e6",
+          "bytes": 2764
+        }
+      ],
+      "reason": "Sanitized model, image, engine, topology, and control reconstruction."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-agentic-a1-native.json",
+          "sha256": "e7a31ec6ff97729e8422cd3b59e802acfbb23b948644a60efbd38d85d018d152",
+          "bytes": 36932
+        },
+        {
+          "path": "baseline-preflight.json",
+          "sha256": "c7fd473afe5d4cdd24f7bbe1a5443a915b214fdd7541fe3ac9274d4b92d96d27",
+          "bytes": 19355
+        },
+        {
+          "path": "baseline-swe-a1-native.json",
+          "sha256": "9a56dd3a5a13feb111c698a12018c13524c7a2fd5ba534cd4971015654dceb29",
+          "bytes": 28857
+        },
+        {
+          "path": "full-suite-03b2c14e.json",
+          "sha256": "a9b289357a1b18e382920564cb2f2c4b260d5dbb68bd3d54c99eea41a18fa023",
+          "bytes": 979
+        },
+        {
+          "path": "full-suite-short-temp-03b2c14e.json",
+          "sha256": "c94e9e2eb9cd4f4492eff9923c2def2fd085771743bda8338b4ada0b3ed2719d",
+          "bytes": 983
+        },
+        {
+          "path": "full-suite-short-temp-a6255695.json",
+          "sha256": "f1742312a5e916025a1874aa7499d68ebaf782f2b765c48a1d550d2cc971c070",
+          "bytes": 993
+        },
+        {
+          "path": "glm53-abliterated-v84-dcp1-c4-r1-startup-logs-tail500.json",
+          "sha256": "3246f68e94dfcf93af091f9b97f3ea3e204abbb956746ec2e4d140f7e115795b",
+          "bytes": 69607
+        },
+        {
+          "path": "glm53-abliterated-v84-dcp1-c4-r1-startup-status.json",
+          "sha256": "49247913d7d18b196e3a9b728cd29f2f6aa506ca0d584ef04878bd7e4f9dd614",
+          "bytes": 2059
+        },
+        {
+          "path": "mimo-r1-agentic-a1-native.json",
+          "sha256": "39bfcedba6f639b2c14e8657c4d1f0119ecde2fa35d6a01182afb7b875128cbf",
+          "bytes": 36496
+        },
+        {
+          "path": "mimo-r1-agentic-greedy-v2-native.json",
+          "sha256": "e1f50722d6a0fc0845a9092c6250a90635ea4eed97c6440c3b664dfec065d453",
+          "bytes": 36022
+        },
+        {
+          "path": "mimo-r1-agentic-thinking-off-v3-native.json",
+          "sha256": "2216e340d2def7bcabbb95002415856154b6ee0ff238b08e571c7254e335b3d3",
+          "bytes": 36241
+        },
+        {
+          "path": "mimo-r1-preflight-native-a2.json",
+          "sha256": "fb32d58c8c5c13d84af78651bc6794ffc9165d56b80f920a478fedb8bbc96a59",
+          "bytes": 22522
+        },
+        {
+          "path": "mimo-r1-raw-parallel-greedy-capture.json",
+          "sha256": "03960ab9c3e68574fe5bbad7462d0c85da04a7031fe3834faf1de0a005bff4ca",
+          "bytes": 2903
+        },
+        {
+          "path": "mimo-r1-raw-parallel-greedy-request.json",
+          "sha256": "430955494de20fc1a290eaaab7316238393e02f87d59afff47fb9418d5525dbf",
+          "bytes": 883
+        },
+        {
+          "path": "mimo-r1-raw-structured-thinking-off-capture.json",
+          "sha256": "38d9df962b260b5e6a609f53615ca8a464694d225cb2d4ceea9325cca630a5ea",
+          "bytes": 1623
+        },
+        {
+          "path": "mimo-r1-raw-structured-thinking-off-request.json",
+          "sha256": "42bd7af5baccaf8e447c8157029e7d6b1d15190c3f14fe446d473e2aea9ef157",
+          "bytes": 444
+        },
+        {
+          "path": "mimo-r1-swe-a1-native.json",
+          "sha256": "d0a18e19c0a49604d1bcb9a49677fe4be0535f4daa5d0b4afb6f602f5e2c6b5b",
+          "bytes": 28461
+        },
+        {
+          "path": "model-cache-cleanup-free-space-derived.json",
+          "sha256": "3a0aadf7c7a502b8598143a7ceed9324710fb22040a3998197552e7de9928833",
+          "bytes": 557
+        },
+        {
+          "path": "model-cache-cleanup-native-stdout.json",
+          "sha256": "45fb993c95d08cc42a3c3499f9521aec0a5659d99d9b67725d30d85e38325c96",
+          "bytes": 2402
+        },
+        {
+          "path": "model-cache-cleanup-post-delete-verification.json",
+          "sha256": "18af5ef9ab2f3b82492ec4ecd5e1f8780ae2970de6febe27693160aa54166a0d",
+          "bytes": 923
+        },
+        {
+          "path": "model-cache-cleanup-terminal-tool-output.json",
+          "sha256": "e5a193463b1ba3a0f1d51cdafc6386907f5ae2b49d7837c41d13952d6b8350a3",
+          "bytes": 932
+        },
+        {
+          "path": "rejected-cache-cleanup-summary.json",
+          "sha256": "b712dcb5ddfe3e79c99ac32105bbb50602fce926b90f0724ecf358818aa54466",
+          "bytes": 1273
+        },
+        {
+          "path": "rejected-cache-post-delete-verification.json",
+          "sha256": "05b0dee2d7a1173feb292c2562518c20ee6ed2922c03a81d178aa4cd09624e9c",
+          "bytes": 918
+        },
+        {
+          "path": "rejected-mimo-cache-remove-native.json",
+          "sha256": "552b5d012e35a4d43ce3e86382f02e0f13d1fb4e6fa2e831d0db29996d8f9af6",
+          "bytes": 1129
+        },
+        {
+          "path": "rejected-uncensored-cache-remove-native.json",
+          "sha256": "36bca2f6b10a30bb3ea5710ea5c08a720cc1cdc9859266b0275f979f56387131",
+          "bytes": 1173
+        },
+        {
+          "path": "uncensored-r1-agentic-a1-native.json",
+          "sha256": "4f1014e4824f285fd30f3b634d1cf5db7ec677cc7619972d6e958a69bd4db6ff",
+          "bytes": 37022
+        },
+        {
+          "path": "uncensored-r1-official-grade-combined.json",
+          "sha256": "b2e4c296c9cbd73dcc49b0c8ebc39b37706bfe0097c680a50faba6080cfdd987",
+          "bytes": 813
+        },
+        {
+          "path": "uncensored-r1-preflight-native.json",
+          "sha256": "7aba3bed5bc32abf87fd9eaec8ce9fcf7b97f08abbdabfd3e67ee115f0e1a96d",
+          "bytes": 18819
+        },
+        {
+          "path": "uncensored-r1-swe-a1-native.json",
+          "sha256": "f2a0563c7766d9de47f592bdb638f2aa7c34ce021e0c42d6aca76fec96954627",
+          "bytes": 26652
+        }
+      ],
+      "reason": "Native quality, startup, raw diagnostic, suite, and cleanup receipts including failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-no-go-review.json",
+          "sha256": "5e18f65a1288913b21841266f6a7ba2e1fde77392591b3c2a8b76381456ed797",
+          "bytes": 1474
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "c9186374fadf922c67f1ea34a96b68557324980a7e0b23d8b2e170adecb54218",
+          "bytes": 8217
+        },
+        {
+          "path": "mimo-r1-diagnostic-decision.json",
+          "sha256": "8d173a85289fdd9945fc286787cfa85614c3160f4b83f91a2e2eb2e67036b4e2",
+          "bytes": 1096
+        },
+        {
+          "path": "mimo-r1-preflight-enabled.json",
+          "sha256": "9a2ce0ce0c99aff02bd4c9fc7e2360249aae11165ff799283ed69342509525e4",
+          "bytes": 22664
+        },
+        {
+          "path": "mimo-r1-preflight-disabled.json",
+          "sha256": "26e739a7dfa7c82517794e409e0fb302401eef27b4a79e819e66e53c5db5cf03",
+          "bytes": 2646
+        },
+        {
+          "path": "uncensored-r1-django-grade.json",
+          "sha256": "8df249d4acb1aefe0cf4a7b7c44c1479a1c6e94bb6170cb69d31765fbe5bb17f",
+          "bytes": 3192
+        },
+        {
+          "path": "uncensored-r1-pylint-grade.json",
+          "sha256": "7aabd9960ec6bf82314077113a1d4eb5c8d449c2b86f2433eb0800388a49e191",
+          "bytes": 1897
+        }
+      ],
+      "reason": "Candidate gate failures, policy friction, and official unresolved-grade evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration-cleanup-independent-review.json",
+          "sha256": "01229db051ac067de7a981a89b066c71ced0a7871218df479ac7b4a2e8b63781",
+          "bytes": 2087
+        },
+        {
+          "path": "restoration-direct-preflight-native.json",
+          "sha256": "91ccd988b1f75aa39405bb66b000f852336bb8452c3f1a1e26c41ea27ad7a911",
+          "bytes": 19515
+        },
+        {
+          "path": "restoration-final-config-hashes.json",
+          "sha256": "3d632494a4a1e7a0dd126ab32e98ba70b1ce79709c6298fdff126d0eb7cd0d5d",
+          "bytes": 838
+        },
+        {
+          "path": "restoration-gpu-compute.json",
+          "sha256": "7bcf884f56045a29db9fb1a1ebca6df8febb149ddf0ce2dc62f8945f3cb138bc",
+          "bytes": 208
+        },
+        {
+          "path": "restoration-mode-status.json",
+          "sha256": "fcd6ee47e1d0b2ea3cf8b63fce591884ee287a8c78f0f231371ecb84fcee9e93",
+          "bytes": 3013
+        },
+        {
+          "path": "restoration-pi-max-tool-turn.json",
+          "sha256": "f34f22d40d6d75a4850c60c645943c4011db614c214c9334f1da6920154b0677",
+          "bytes": 2639
+        },
+        {
+          "path": "restoration-pi-thinking-off-a1.json",
+          "sha256": "3f89eb048247754d9979ebc6e22ced3fb6140a9f0c87c584029601e6d6898e98",
+          "bytes": 1589
+        },
+        {
+          "path": "restoration-recipe-status.json",
+          "sha256": "b5923492662a2e81ded547fe05bf86fb123afa22c545c400c05ef2209640182c",
+          "bytes": 1911
+        },
+        {
+          "path": "restoration-routed-preflight-native.json",
+          "sha256": "bc81552e5434057b26c8e65c374e4049392f8812938b6c3bf57522650c20abc9",
+          "bytes": 7083
+        },
+        {
+          "path": "restoration-router-readmit.json",
+          "sha256": "504cd59278245c86d94dedf06b57e722b2926b416e7238b628bc8a1ed6ba1ff6",
+          "bytes": 1226
+        },
+        {
+          "path": "restoration-router-transition-after-readmit.json",
+          "sha256": "110d07fa9863adaeee08a1fadaf955b43dcf0f969614dab63824215340eae394",
+          "bytes": 1108
+        },
+        {
+          "path": "restoration-shared-memory.json",
+          "sha256": "49f3ca184f27a1dd1e15d9f5a433e669fd049dc0fcf86c9bdbfe2597944cf1bd",
+          "bytes": 138
+        },
+        {
+          "path": "restoration.json",
+          "sha256": "df06d8cb614b62cfc0d3de209c48ad29ef1132ac5b01b6d1d78e80f121b46bab",
+          "bytes": 5770
+        }
+      ],
+      "reason": "Verified incumbent restore, readmission, and bounded resource checks."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "9550edf5a39fceb9ab9cd137dea6220482dc040c5266028a55ea1d6e08951860",
+          "bytes": 6309
+        }
+      ],
+      "reason": "Machine-readable no-promotion decision and limitations."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No external post or social copy was requested; the dated finding is the public record."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

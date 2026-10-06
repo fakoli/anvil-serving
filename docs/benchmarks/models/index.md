@@ -9,6 +9,8 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| MiMo V2.6 Flash RL TP2 no-spec | preflight 25/25 and frozen SWE 4/5 | Agentic profiles 15/18, 17/18, and 17/18 miss the 18/18 gate; no context, multimodal, C4, or speed measurement; `not-qualified` | 2026-10-06 | [MiMo v2.6 Flash](mimo-v26-flash.md) |
+| GLM-5.3-Flash TR3 4-bpw Abliterated TP2 | preflight 25/25 and agentic 18/18 | frozen SWE 3/5 below the 4/5 floor; no capacity or speed result; `not-qualified` | 2026-10-06 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash CSF/QAD TP2/DCP2 | max functional 25/25; Oracle 18/18; initial SWE 4/5, then fresh-reload A1 2/5 attempts and 2/4 graded | A1 misses the 4/5 floor; B1/B2/A2 stopped. Strict C4 0/4 is performance-ineligible; acceptance gates do not prove full-window, simultaneous-C4, or speed. `rejected`; exact r11 restored and readmitted | 2026-10-05 | [GLM-5.3-Flash](glm53-flash.md) |
 | Qwen prospective primary replacement | frozen coding 3/5 | strict C4 0/4 performance-eligible; evaluated profile rejected, `no-promotion` | 2026-10-05 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |
 | MiMo v2.6 Flash RL SGLang TP2 | V3 healthy load, then two probes with zero visible content | `compatibility-only` plus bounded negative correctness; no capacity/throughput or text/vision qualification; `no-promotion` | 2026-09-21 | [MiMo v2.6 Flash](mimo-v26-flash.md) |

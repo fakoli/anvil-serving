@@ -1,0 +1,41 @@
+{
+  "chat_template_kwargs": {
+    "enable_thinking": true
+  },
+  "include_reasoning": true,
+  "max_tokens": 8192,
+  "messages": [
+    {
+      "content": "Read a.py and b.py independently, then report both markers.",
+      "role": "user"
+    }
+  ],
+  "model": "mimo26-flash-lil-tp2-nospec-327k-c4-r1",
+  "return_prompt_text": true,
+  "return_token_ids": true,
+  "stream": false,
+  "temperature": 0.0,
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "function": {
+        "description": "Deterministic fixture tool read_file.",
+        "name": "read_file",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ],
+  "top_p": 1.0
+}

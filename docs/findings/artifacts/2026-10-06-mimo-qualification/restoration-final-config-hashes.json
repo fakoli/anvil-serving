@@ -1,0 +1,26 @@
+{
+  "all_unchanged": true,
+  "checks": [
+    {
+      "file": "serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "unchanged": true
+    },
+    {
+      "file": "serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "sha256": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975",
+      "unchanged": true
+    },
+    {
+      "file": "router.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "sha256": "2041bbe013d12a2a2e52d403ff5bf097095123d7699ea34a7093b7e9f1926322",
+      "unchanged": true
+    },
+    {
+      "file": "router.toml",
+      "sha256": "a3a6b679eac49508f4824df772fa4da329724c2fcfb9a50dd9035e04a21efcfa",
+      "unchanged": true
+    }
+  ],
+  "observed_at": "2026-10-06T10:49:01.982826+00:00"
+}

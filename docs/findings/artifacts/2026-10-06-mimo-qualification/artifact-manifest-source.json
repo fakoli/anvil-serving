@@ -1,0 +1,177 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "campaign": {
+    "id": "2026-10-06-mimo-qualification",
+    "capability": "model-serving quality qualification",
+    "repository_revision": "03b2c14e",
+    "dirty_state": "public publication working tree; source test receipt retained",
+    "started_at": null,
+    "started_at_note": "Unknown: no retained initializer timestamp establishes the campaign start; authorization was observed at 2026-10-06T08:06:46.188389+00:00.",
+    "completed_at": "2026-10-06T10:53:40Z",
+    "evidence_labels": [
+      "measured-quality",
+      "failed-gate",
+      "verified-restoration",
+      "external-prior"
+    ],
+    "decision_labels": [
+      "not-qualified",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.cache-cleanup-receipt/v1",
+    "anvil-serving.diagnostic-decision/v1",
+    "anvil-serving.model-cache-cleanup-free-space/v1",
+    "anvil-serving.model-cache-cleanup-receipts/v1",
+    "anvil-serving.model-cache-cleanup-terminal/v1",
+    "anvil-serving.model-cache-cleanup-verification/v1",
+    "anvil-serving.public-redaction-ledger/v1",
+    "anvil-serving.qualification-workload-manifest/v1",
+    "anvil-serving.raw-token-diagnostic/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.test-run/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "redaction-ledger.json"
+      ],
+      "reason": "Public packet map and private-to-public hash ledger."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Pinned local and external identity/source registry."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Frozen quality workload and gate definition."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "authorization.json",
+        "coverage-and-gaps.md",
+        "artifact-manifest-source.json"
+      ],
+      "reason": "Authorized campaign boundary, final coverage, and reproducible role plan."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configs/glm53-abliterated-isolated-qualification.toml",
+        "configs/glm53-abliterated-qualification.toml",
+        "configs/mimo26-isolated-qualification.toml",
+        "configs/mimo26-nospec-qualification.toml"
+      ],
+      "reason": "Sanitized model, image, engine, topology, and control reconstruction."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "baseline-agentic-a1-native.json",
+        "baseline-preflight.json",
+        "baseline-swe-a1-native.json",
+        "full-suite-03b2c14e.json",
+        "full-suite-short-temp-03b2c14e.json",
+        "full-suite-short-temp-a6255695.json",
+        "glm53-abliterated-v84-dcp1-c4-r1-startup-logs-tail500.json",
+        "glm53-abliterated-v84-dcp1-c4-r1-startup-status.json",
+        "mimo-r1-agentic-a1-native.json",
+        "mimo-r1-agentic-greedy-v2-native.json",
+        "mimo-r1-agentic-thinking-off-v3-native.json",
+        "mimo-r1-preflight-native-a2.json",
+        "mimo-r1-raw-parallel-greedy-capture.json",
+        "mimo-r1-raw-parallel-greedy-request.json",
+        "mimo-r1-raw-structured-thinking-off-capture.json",
+        "mimo-r1-raw-structured-thinking-off-request.json",
+        "mimo-r1-swe-a1-native.json",
+        "model-cache-cleanup-free-space-derived.json",
+        "model-cache-cleanup-native-stdout.json",
+        "model-cache-cleanup-post-delete-verification.json",
+        "model-cache-cleanup-terminal-tool-output.json",
+        "rejected-cache-cleanup-summary.json",
+        "rejected-cache-post-delete-verification.json",
+        "rejected-mimo-cache-remove-native.json",
+        "rejected-uncensored-cache-remove-native.json",
+        "uncensored-r1-agentic-a1-native.json",
+        "uncensored-r1-official-grade-combined.json",
+        "uncensored-r1-preflight-native.json",
+        "uncensored-r1-swe-a1-native.json"
+      ],
+      "reason": "Native quality, startup, raw diagnostic, suite, and cleanup receipts including failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "campaign-no-go-review.json",
+        "friction-log.md",
+        "mimo-r1-diagnostic-decision.json",
+        "mimo-r1-preflight-enabled.json",
+        "mimo-r1-preflight-disabled.json",
+        "uncensored-r1-django-grade.json",
+        "uncensored-r1-pylint-grade.json"
+      ],
+      "reason": "Candidate gate failures, policy friction, and official unresolved-grade evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration-cleanup-independent-review.json",
+        "restoration-direct-preflight-native.json",
+        "restoration-final-config-hashes.json",
+        "restoration-gpu-compute.json",
+        "restoration-mode-status.json",
+        "restoration-pi-max-tool-turn.json",
+        "restoration-pi-thinking-off-a1.json",
+        "restoration-recipe-status.json",
+        "restoration-routed-preflight-native.json",
+        "restoration-router-readmit.json",
+        "restoration-router-transition-after-readmit.json",
+        "restoration-shared-memory.json",
+        "restoration.json"
+      ],
+      "reason": "Verified incumbent restore, readmission, and bounded resource checks."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Machine-readable no-promotion decision and limitations."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No external post or social copy was requested; the dated finding is the public record."
+    }
+  ]
+}
