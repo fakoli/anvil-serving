@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.pi-web-bridge/v1",
+  "package": "@agegr/pi-web",
+  "version": "0.10.0",
+  "source_commit": "e44abbe63b88890c26f12c61998518e09a069c16",
+  "package_json_sha256": "9771fb8dfe481944686625a8630c44b6957f9511bd404bfb032d0e830f028f28",
+  "app_shell_sha256": "ac2ac2ec7ea199c557d6560efdf11b9b63ce0c2f6f2806f5e9b1efad441c84df",
+  "patch_sha256": "4e31a59c6612f6e17e0cc9708bf91e5db6de1aa60bcdc9761c661e9bb526d0dc"
+}

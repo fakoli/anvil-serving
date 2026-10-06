@@ -899,7 +899,7 @@ def test_bridge_snapshot_failure_prevents_promotion(
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
-@pytest.mark.parametrize("version", ["0.9.0", "0.9.2"])
+@pytest.mark.parametrize("version", ["0.9.0", "0.9.2", "0.10.0"])
 def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path, version: str) -> None:
     """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
     patch = files("anvil_serving").joinpath("_pi_web_bridge", f"{version}-host-bridge.patch")

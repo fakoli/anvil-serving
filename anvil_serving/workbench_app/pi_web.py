@@ -35,6 +35,7 @@ PACKAGE = "@agegr/pi-web"
 PACKAGE_BIN = "node_modules/@agegr/pi-web/bin/pi-web.js"
 UNIT_NAME = "anvil-pi-web.service"
 DEFAULT_VERSION = "0.9.0"
+_REVIEWED_BRIDGE_VERSIONS = ("0.9.2", "0.10.0")
 DEFAULT_PORT = 30141
 DEFAULT_IDLE_TIMEOUT_MS = 600_000
 MAX_IDLE_TIMEOUT_MS = 2_147_483_647
@@ -195,9 +196,9 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         observer_token_env_file = _absolute_path(
             observer_token_env_file, "pi_web.observer_token_env_file",
         )
-        if bridge_source is None or version != "0.9.2":
+        if bridge_source is None or version not in _REVIEWED_BRIDGE_VERSIONS:
             raise PiWebError(
-                "pi_web.observer_token_env_file requires the reviewed Pi Web 0.9.2 bridge"
+                "pi_web.observer_token_env_file requires a reviewed Pi Web bridge"
             )
     return PiWebConfig(
         version=version,
