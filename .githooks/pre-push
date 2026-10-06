@@ -55,11 +55,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   git worktree remove --force "$tmp" 2>/dev/null
   git worktree prune 2>/dev/null
+  rm -rf "$tmp" 2>/dev/null
   tmp=""
 
   if [ -n "$new_sha" ] && [ "$new_sha" != "$local_sha" ]; then
     tip=$(git rev-parse --verify --quiet "refs/heads/$branch" 2>/dev/null || true)
-    if [ -n "$tip" ] && git merge-base --is-ancestor "$local_sha" "$tip" 2>/dev/null; then
+    if [ "$tip" = "$local_sha" ]; then
       git update-ref "refs/heads/$branch" "$new_sha"
       echo "pre-push: push rejected — the pushed tree had a stale CLI-reference inventory." >&2
       echo "pre-push: regenerated artifacts committed as ${new_sha:0:12} and '$branch' fast-forwarded. Re-run: git push" >&2

@@ -18,4 +18,6 @@ share it):
   pushed SHA, fast-forwards the local branch, and rejects the push — the
   next `git push` delivers the fresh state.
 
-Both hooks are no-ops in checkouts without `scripts/audit_cli_references.py`.
+pre-commit is a no-op in checkouts without `scripts/audit_cli_references.py`;
+pre-push is fail-closed there (it cannot verify, so it rejects the push with
+a message).
