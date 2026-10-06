@@ -1,0 +1,25 @@
+{
+  "coding": {
+    "replacement_floor_passed": true,
+    "resolved": 4,
+    "total": 5
+  },
+  "created_at": "2026-10-06T10:05:59.221902+00:00",
+  "decision": "Reject this exact checkpoint/runtime/request profiles for declared role; move to pinned uncensored GLM",
+  "further_trial": "None supported. Reopen only for pinned upstream revision or documented causal control.",
+  "generation_vs_parser": {
+    "parallel-greedy": "Raw emits one tool; reasoning asserts one tool per turn; parsed result matches; generation failure reproduced",
+    "structured-thinking-off": "Raw and parsed valid JSON in replay; original stochastic failure preserved; root cause unknown"
+  },
+  "independent_review": {
+    "model": "GPT-5.6 Sol high",
+    "promoted": false,
+    "raw_generation_reviewed": true,
+    "reviewer": "rollback_review",
+    "source_request_control_reviewed": true,
+    "verdict": "STOP MiMo trials, retained18/18 gate binding"
+  },
+  "promotion_eligible": false,
+  "reason": "No tested request profile passed18/18 campaign agentic gate",
+  "schema": "anvil-serving.diagnostic-decision/v1"
+}

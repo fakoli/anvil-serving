@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-06 uncensored GLM scout:** the separate `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6a` candidate is distinct from the base and CSF/QAD lanes. Its TP2/EP2/DCP1 no-spec recipe passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. It is `not-qualified`/`no-promotion`; no capacity, context, multimodal, or speed result is claimed. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete. See the [dated scout](../../findings/2026-10-06-mimo-qualification.md).
+
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
 an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
 prefill, while its serial control passed. A single-setting DCP1 trial passed
@@ -77,7 +79,8 @@ it cannot turn these acceptance gates into capacity or speed evidence.
       crash-rate, speed, C8, full-window, video, soak, or fresh-reboot claim.
     - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
       DCP2. Selected DCP1 is a mitigation; selection does not mean the cause is fixed.
-    - **Review dates:** r11 qualification and runtime investigation 2026-09-23 UTC;
+    - **Review dates:** uncensored scout and exact r11 restoration 2026-10-06;
+      r11 qualification and runtime investigation 2026-09-23 UTC;
       APC qualification 2026-09-19 is historical performance lineage.
 
 ### Review narrative
@@ -235,6 +238,11 @@ No new promotion occurred. See the
 [native Linux comparison](../../findings/2026-09-08-glm53-linux-wsl-comparison.md).
 
 ## Immutable identity
+
+The rejected 2026-10-06 uncensored lane is separately pinned to
+`lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6aa9117c73607d692978b22f091d80450c`.
+Its [public reconstruction](../../findings/artifacts/2026-10-06-mimo-qualification/configs/glm53-abliterated-qualification.toml)
+retains the base EXL3 runtime image; edited weights do not inherit the base model's qualification.
 
 The selected 2026-09-14 text lane retains `brandonmusic/GLM-5.3-Flash-tr3-4bpw`
 at `a5fee929cf4888b1824323e33e8a19b60129e025` and
@@ -506,6 +514,7 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 | Date | Event | Result |
 |---|---|---|
+| 2026-10-06 | Separate abliterated TR3 4-bpw scout | Preflight 25/25 and agentic 18/18; all five SWE submissions graded, 3/5 resolved, below the 4/5 floor. Django/Pylint patch-quality failures; no speed/context/C4/modality qualification. `not-qualified`/`no-promotion`; exact r11 restored with direct 25/25 and routed 7/7. [Finding](../../findings/2026-10-06-mimo-qualification.md) |
 | 2026-10-05 | CSF/QAD prospective qualification scout | Max functional 25/25, Oracle 18/18, initial SWE 4/5, then fresh-reload A1 SWE 2/5 attempts and 2/4 graded (Sphinx/Xarray resolved; Django/Pylint false; Sympy ungraded at 60 steps); exact eight-image/context/offered-C4 summaries 4/4. Strict C4 is 0/4 performance-eligible. A1 misses the 4/5 floor, so B1/B2/A2 did not run and no speed comparison exists. Candidate rejected; exact r11 restored with direct 25/25, routed 7/7, and fresh Pi read-tool acceptance. [Finding](../../findings/2026-10-05-xeon-model-qualification.md) |
 | 2026-09-26 | Single-GPU challenger qualification | Exact r11 was the verified 4/5 frozen-SWE reference. Flash r3 and Swift27 r2 failed the floor; ThinkingCap's attainable upper bound was 3/5 with partial coding evidence only. Exact r11 was restored and readmitted; no alias changed. [Finding](../../findings/2026-09-26-single-gpu-qualification.md) |
 | 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected September 14 text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |

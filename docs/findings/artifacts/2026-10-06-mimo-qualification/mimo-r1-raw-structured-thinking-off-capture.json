@@ -1,0 +1,74 @@
+{
+  "case": "structured-thinking-off",
+  "created_at": "2026-10-06T10:04:51.942036+00:00",
+  "decoded_with_special_tokens": "{\"file\":\"app.py\",\"line\":12,\"value\":45}<|im_end|>",
+  "elapsed_s": 0.16128015401773155,
+  "finish_reason": "stop",
+  "http_status": 200,
+  "numeric_token_ids": [
+    4913,
+    1192,
+    3252,
+    676,
+    7197,
+    2198,
+    1056,
+    788,
+    16,
+    17,
+    1335,
+    957,
+    788,
+    19,
+    20,
+    92,
+    151645
+  ],
+  "parsed_message": {
+    "annotations": null,
+    "audio": null,
+    "content": "{\"file\":\"app.py\",\"line\":12,\"value\":45}",
+    "function_call": null,
+    "reasoning": null,
+    "refusal": null,
+    "role": "assistant"
+  },
+  "qualification_effect": "None; diagnosis only, failed qualification retained",
+  "request_sha256": "ac790fb10f7b4840d3f8608b2fc4f56e6ca3621beea12825dee5d5499d03bdd0",
+  "response_sha256": "742c397fc5e3c53ff0cf79df01baa1a12ef2e7fc00c450771bd337750902c191",
+  "schema": "anvil-serving.raw-token-diagnostic/v1",
+  "stop_reason": null,
+  "token_strings": [
+    "{\"",
+    "file",
+    "\":\"",
+    "app",
+    ".py",
+    "\",\"",
+    "line",
+    "\":",
+    "1",
+    "2",
+    ",\"",
+    "value",
+    "\":",
+    "4",
+    "5",
+    "}",
+    "<|im_end|>"
+  ],
+  "tokenizer_sha256": "ff15eb925890d6b71b5160de4b846fbd13178438ab463b38ecc953e8cd1dcb3e",
+  "usage": {
+    "completion_tokens": 17,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 32,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "created_cache_tokens": 0,
+      "multimodal_tokens": null
+    },
+    "total_tokens": 49
+  }
+}

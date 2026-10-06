@@ -1,0 +1,160 @@
+{
+  "campaign_id": "2026-10-06-mimo-qualification",
+  "complete": true,
+  "decision": {
+    "conditional_promotion_authorized_by_user": true,
+    "decision_labels": [
+      "not-qualified",
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "measured-quality",
+      "failed-gate",
+      "verified-restoration",
+      "external-prior"
+    ],
+    "next_gate": "Reopen only for a new pinned upstream/causal fix or new candidate; repeat full qualification before promotion.",
+    "promoted": false,
+    "promotion_authorized": false
+  },
+  "evidence": [
+    {
+      "path": "workload-manifest.json",
+      "sha256": "c6358c22c169b3b0c653faa4e2e837d53a810caf21ee32bc0f1c7df713ce6aa3"
+    },
+    {
+      "path": "mimo-r1-preflight-native-a2.json",
+      "sha256": "fb32d58c8c5c13d84af78651bc6794ffc9165d56b80f920a478fedb8bbc96a59"
+    },
+    {
+      "path": "mimo-r1-agentic-a1-native.json",
+      "sha256": "9c423f42f166aa0e06131edfeb3c0367b22102b15ee136bc8b7163f903d2d406"
+    },
+    {
+      "path": "mimo-r1-agentic-greedy-v2-native.json",
+      "sha256": "0e3f0cea7cc02f6eb743e2e130e703d0e3893a0ceb528f0f985605c4c72b58d0"
+    },
+    {
+      "path": "mimo-r1-agentic-thinking-off-v3-native.json",
+      "sha256": "42c5314fbe23b415de30a54208ac62dec8153532b58a8e582eb25bba39f79ced"
+    },
+    {
+      "path": "mimo-r1-swe-a1-native.json",
+      "sha256": "1b67563414a338a8d6cca01ebb6e4b2bd1435a2988ff36291be0d16d5b34c137"
+    },
+    {
+      "path": "uncensored-r1-preflight-native.json",
+      "sha256": "d3eb079d875a9a759ea4e7a2f7327b16714c348cdc0a0519b73d0d637825d4da"
+    },
+    {
+      "path": "uncensored-r1-agentic-a1-native.json",
+      "sha256": "333b6e8a3c63aa5097de46c5d2dbde5ffe75675249347935813854c141a537b9"
+    },
+    {
+      "path": "uncensored-r1-swe-a1-native.json",
+      "sha256": "5e93cf8c8c5e498d267e6b4d42793f418433f26912a2f8bae901b6fd0edc3644"
+    },
+    {
+      "path": "uncensored-r1-official-grade-combined.json",
+      "sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451"
+    },
+    {
+      "path": "campaign-no-go-review.json",
+      "sha256": "a7c5a6cea815eb95e6fe56a09eaac57a613fd41c21117519109b664fc2148cc1"
+    },
+    {
+      "path": "restoration.json",
+      "sha256": "c64ba0f9b7bf5ec46ca224b6b9a47a5a7dea53c5b1fe5925b0672e85a2964161"
+    },
+    {
+      "path": "rejected-cache-cleanup-summary.json",
+      "sha256": "69849cbe8252cfda61bf122be776c4c02ceb7ede338be8bc0178064271c8a14e"
+    },
+    {
+      "path": "rejected-cache-post-delete-verification.json",
+      "sha256": "db1a5a8aa306dda4b24d37f0ee0454c97ef8cf7d9f28d9d8c2f1b089607bd005"
+    }
+  ],
+  "failures": [
+    "MiMo strict-output/parallel-tool planning failures; raw parallel diagnostic confirms generation omitted the second call.",
+    "Uncensored Django/Pylint patch quality failures.",
+    "Pi thinking-off restoration probe exposed extra prose; single reasoning-enabled diagnostic passed."
+  ],
+  "gates": [
+    {
+      "agentic_greedy": "17/18",
+      "agentic_native": "15/18",
+      "agentic_thinking_off": "17/18",
+      "candidate": "mimo-r1",
+      "coding": "4/5",
+      "preflight": "25/25",
+      "qualified": false
+    },
+    {
+      "agentic": "18/18",
+      "candidate": "uncensored-r1",
+      "coding": "3/5",
+      "preflight": "25/25",
+      "qualified": false
+    },
+    {
+      "agentic": "18/18",
+      "candidate": "baseline-control",
+      "coding": "3/5",
+      "performance_eligible": false,
+      "preflight": "25/25"
+    },
+    {
+      "direct": "25/25",
+      "pi_max_a2": "passed",
+      "pi_thinking_off_a1": "failed",
+      "restoration": "verified",
+      "routed": "7/7"
+    }
+  ],
+  "headline_results": [
+    "Neither replacement met every predeclared quality gate; no model promoted.",
+    "MiMo solved4/5 but missed tool/output oracles in all three request policies.",
+    "Uncensored GLM solved3/5; Django and Pylint patches failed official tests with no harness/runtime errors.",
+    "Exact r11 restored and readmitted with unchanged model/router configuration.",
+    "Four unused cache revisions removed; total native logical reclamation457907478456bytes, bounded filesystem increases457870778368bytes. Images held because saved Compose image references remained unresolved."
+  ],
+  "identity": {
+    "baseline": "brandonmusic/GLM-5.3-Flash-tr3-4bpw@a5fee929cf4888b1824323e33e8a19b60129e025",
+    "hardware": "dual RTX PRO6000 Blackwell Max-Q",
+    "mimo": "XiaomiMiMo/MiMo-V2.6-Flash-RL@5711b268169967567844e1e560e8a3966da959b1",
+    "uncensored": "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6aa9117c73607d692978b22f091d80450c"
+  },
+  "limitations": [
+    "Full context/capacity/MM/stability/performance/provisioning/promotion/client matrix for candidates was not reached because prior quality gates failed.",
+    "No speed winner or globally best model claim; external speed results are priors.",
+    "Baseline SWE A1 contaminated by background router and CPU work; candidate MiMo timing overlapped full source suite. No comparative tasks/hour result.",
+    "Uncensored is the author/model-card label; no broad independent refusal or harmful-content battery was performed.",
+    "Native benchmark artifact status hashes bind canonical JSON; public byte hashes are separately recorded in the redaction ledger.",
+    "Workflow-packet validation tool unavailable; independent reviewer record retained without claiming tool validation."
+  ],
+  "measurement": {
+    "path": "online-direct quality scout; direct/routed/Pi restoration smokes",
+    "sample_count": 18,
+    "statistics": [
+      "Integer quality gate counts only; no cross-candidate throughput ratio."
+    ],
+    "warm_cold_state": "Managed candidate recreation; startup and individual native captures retained. No paired performance measurements."
+  },
+  "observed_at": "2026-10-06T10:53:40.957122+00:00",
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "agentic": "9 independent executable-oracle scenarios x2 repetitions",
+    "coding": "Frozen5SWE Verified tasks with official executable grader",
+    "configured_only": {
+      "concurrency": 4,
+      "image_limit": 8,
+      "output_reserve_tokens": 65536,
+      "total_context_tokens": 327680
+    },
+    "predeclared_floors": {
+      "agentic": "18/18",
+      "coding": "4/5"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "command": "models cache remove lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated --revision c8f58e6aa9117c73607d692978b22f091d80450c --volume vllm-hfcache --confirm",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "MODEL CACHE REMOVE PLAN\nrepository: lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated\nrevision: c8f58e6aa9117c73607d692978b22f091d80450c\nresolved snapshot: c8f58e6aa9117c73607d692978b22f091d80450c\nvolume: vllm-hfcache\ncached bytes: 175786995640\nestimated reclaimable bytes: 175786995640\nremoved lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6aa9117c73607d692978b22f091d80450c; reclaimed 175786995640 bytes; 0 repository bytes remain\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

@@ -1,0 +1,35 @@
+{
+  "command": [
+    "/var/tmp/anvil-serving/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/",
+    "-x",
+    "-q",
+    "--basetemp",
+    "/var/tmp/anvil-serving-pytest-<redacted>"
+  ],
+  "cwd": "/home/example/.codex/worktrees/066c/anvil-serving",
+  "exit_code": 0,
+  "finished_at": "2026-10-06T10:11:13.629390+00:00",
+  "interpreter": "/var/tmp/anvil-serving/.venv/bin/python",
+  "pytest_args": [
+    "tests/",
+    "-x",
+    "-q"
+  ],
+  "run_id": "9fc445ad-9cb4-42e5-8aec-e72fb55fa06d",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "a625569595bf0cd151561c52ec6b282fe90511ba",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "a625569595bf0cd151561c52ec6b282fe90511ba",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-10-06T10:03:26.381468+00:00",
+  "state": "passed"
+}

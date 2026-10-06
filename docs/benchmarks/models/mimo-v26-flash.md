@@ -4,15 +4,17 @@
 
 ## Current status and review date
 
+**Status:** `not-qualified`, `no-promotion`. **Measured:** pinned `5711b268` on the LIL vLLM image passed direct preflight 25/25 and frozen SWE 4/5. Native agentic results were 15/18 at vendor sampling, 17/18 greedy, and 17/18 thinking-off, below the required 18/18 gate. **Limits:** configured 327,680 tokens, C4, and eight images were not measured as actual context, concurrent capacity, or multimodal acceptance. No performance result exists. **Evidence:** [2026-10-06 scout](../../findings/2026-10-06-mimo-qualification.md) and [sanitized raw artifacts](../../findings/artifacts/2026-10-06-mimo-qualification/README.md). The raw greedy capture shows the model itself emitted one parallel tool call and the parser preserved it; this is not parser-loss evidence. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete.
+
 !!! info "Decision snapshot"
 
     - **Product role:** unqualified candidate.
-    - **Selected or best-qualified configuration:** none; SGLang TP2/C1 trial passed transport health and load but failed bounded correctness.
+    - **Selected or best-qualified configuration:** none; the latest pinned vLLM no-spec TP2/C4 scout passed protocol and coding checks but failed the agentic floor.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** `compatibility-only` plus bounded negative correctness; no valid visible response.
+    - **Evidence:** latest preflight 25/25 and frozen SWE 4/5; agentic 15/18, 17/18, and 17/18 across three tested request policies. The September SGLang failure remains historical evidence.
     - **Decision:** `no-promotion`; GLM retained.
-    - **Important limitation:** V3 correctness failed before capacity testing; full KV is 91,342, not requested 327,680.
-    - **Review dates:** evidence through 2026-09-21; reviewed 2026-09-21.
+    - **Important limitation:** no policy passed the required 18/18 agentic gate, so full performance, context, C4, modality, and endurance qualification did not run.
+    - **Review dates:** latest vLLM scout 2026-10-06; historical SGLang trial 2026-09-21.
 
 ### Review narrative
 
@@ -22,8 +24,10 @@ The memory-scale remedy made transport health and load pass for the TP2 candidat
 
 ## Immutable identity
 
-- **Model:** `XiaomiMiMo/MiMo-V2.6-Flash-RL@3b38d063180c3e4aed9691fdc735f3d10b266ee4`.
-- **Runtime:** SGLang v0.5.20, commit `94602c9c2b7cbdb8efd5c52802dac6a1c180089e`, pinned image in the [public reconstruction](../../findings/2026-09-21-mimo-v26-qualification-evidence/mimo-v26-sglang-tp2-c1-327k.public.toml).
+- **Latest model:** `XiaomiMiMo/MiMo-V2.6-Flash-RL@5711b268169967567844e1e560e8a3966da959b1`.
+- **Latest runtime:** LIL vLLM `23f2a1830f3d34e5587e501bb6c953bab8e7799f`, image digest `ad7b059336e539068fc8b829fee7e7db04b0c3d9c32c455e69056d704619c729`; [public reconstruction](../../findings/artifacts/2026-10-06-mimo-qualification/configs/mimo26-nospec-qualification.toml).
+- **Historical model:** `XiaomiMiMo/MiMo-V2.6-Flash-RL@3b38d063180c3e4aed9691fdc735f3d10b266ee4`.
+- **Historical runtime:** SGLang v0.5.20, commit `94602c9c2b7cbdb8efd5c52802dac6a1c180089e`, pinned image in the [public reconstruction](../../findings/2026-09-21-mimo-v26-qualification-evidence/mimo-v26-sglang-tp2-c1-327k.public.toml).
 
 ## Tested hardware and topology
 
@@ -32,9 +36,15 @@ The memory-scale remedy made transport health and load pass for the TP2 candidat
 
 ## Engine, quantization, KV, context, and concurrency recipe
 
-The candidate reconstruction specifies official mixed MXFP4/FP8, TP2, 327,680 context and C1. It is public documentation, not an executable operator recipe.
+The latest vLLM reconstruction specifies official mixed MXFP4/FP8, FP8 KV, TP2/DCP1, no speculation, 327,680 total tokens, C4 admission, and eight images. Those configured limits did not pass full workload qualification.
+
+The historical SGLang reconstruction specifies official mixed MXFP4/FP8, TP2, 327,680 context and C1. Both reconstructions are public documentation, not executable operator recipes.
 
 ## Evidence by measurement class
+
+### Quality scout, 2026-10-06
+
+Preflight passed 25/25 and frozen SWE resolved 4/5. Agentic results were 15/18 at vendor sampling, 17/18 greedy, and 17/18 thinking-off, below the required 18/18 floor. Every policy remains `not-qualified`; no comparative performance or full context/capacity/modality result exists. [Finding and native artifacts](../../findings/2026-10-06-mimo-qualification.md).
 
 ### Startup compatibility
 
@@ -51,6 +61,7 @@ The candidate reconstruction specifies official mixed MXFP4/FP8, TP2, 327,680 co
 
 ### Rejected, superseded, or incomplete
 
+- **vLLM no-spec TP2/C4:** rejected on the agentic floor despite SWE 4/5; no promotion or speed claim.
 - **SGLang TP2 v2:** incomplete after startup OOM; a supported remedy requires new pinned evidence.
 
 ## Failures and gotchas
@@ -61,4 +72,5 @@ The candidate reconstruction specifies official mixed MXFP4/FP8, TP2, 327,680 co
 
 ## Dated run history
 
+- 2026-10-06 — [Pinned vLLM no-spec TP2 quality scout](../../findings/2026-10-06-mimo-qualification.md), `not-qualified`/`no-promotion`; SWE 4/5, all three agentic policies below 18/18; exact r11 restored.
 - 2026-09-21 — [MiMo v2.6 Flash replacement qualification](../../findings/2026-09-21-mimo-v26-qualification.md), `no-promotion`.

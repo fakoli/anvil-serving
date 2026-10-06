@@ -7,6 +7,9 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-06-mimo-qualification.md`
+(dual-Max-Q MiMo and abliterated GLM direct quality scout; both candidates not qualified, no performance or full-context claim, exact r11 restoration verified: direct 25/25, routed 7/7, unchanged configuration hashes, and router readmission);
+
 `docs/findings/2026-10-05-xeon-model-qualification.md`
 (dual-Max-Q Qwen replacement and GLM CSF/QAD scout; configured context/C4 only,
 strict C4 cells are performance-ineligible; fresh-reload A1 missed the SWE

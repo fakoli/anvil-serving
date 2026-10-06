@@ -1,0 +1,108 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated"
+name = "glm53-abliterated-v84-dcp1-c4-r1"
+expected_container = "glm53-abliterated-v84-dcp1-c4-r1"
+status = "experimental"
+source = "2026-10-06 pinned abliterated checkpoint on exact incumbent runtime; experimental; independent gates required."
+family = "glm-5.3-flash-multimodal-moe"
+total_params_b = 320
+
+  [recipe.download]
+  repo = "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated"
+  revision = "c8f58e6aa9117c73607d692978b22f091d80450c"
+  volume = "vllm-hfcache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 192
+  vram_note = "Aggregate 205,283,917,824 bytes reported by nvidia-smi on 2026-09-13. Exclusive TP2/EP2/DCP1 candidate lane; pass both GPU UUIDs through --gpu-device when loading. Recipe policy reserves 3% with gpu-memory-utilization=0.970."
+
+  [recipe.serve]
+  memory_limit_mib = 53248
+  memory_swap_limit_mib = 53249
+  host_memory_reserve_mib = 12288
+  engine = "vllm-glm53-exl3-b12x-v84-fp8-control"
+  allow_cuda_visible_devices_index = true
+  image = "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+  entrypoint = [
+    "bash",
+    "-lc",
+    "test \"$(cat /sys/fs/cgroup/memory.max)\" = 55834574848 && test \"$(cat /sys/fs/cgroup/memory.swap.max)\" = 1048576 || { echo containment-failed >&2; exit 78; }; echo containment-passed; test \"$(sha256sum /models/huggingface/hub/models--lovesenko--GLM-5.3-Flash-tr3-4bpw-Abliterated/snapshots/c8f58e6aa9117c73607d692978b22f091d80450c/MANIFEST.json | cut -d ' ' -f1)\" = 45d35f1f3aa00203471362b999dde0108307c7913f359b2127b767a52b0e9be1 && exec vllm serve \"$@\"",
+    "glm53-v84-fp8-control",
+  ]
+  model_path = "/models/huggingface/hub/models--lovesenko--GLM-5.3-Flash-tr3-4bpw-Abliterated/snapshots/c8f58e6aa9117c73607d692978b22f091d80450c"
+  named_volumes = ["glm53-abliterated-v84-fp8-cache:/root/.cache"]
+  quantization = "uniform K4 EXL3/TR3 routed experts; native-precision non-routed tensors; FP8 DS-MLA KV; speculation disabled; vision enabled"
+  context_tokens = 327680
+  port = 39133
+  startup_timeout_seconds = 3600
+  served_model_name = "glm53-abliterated-exl3-v84-fp8-tp2-dcp1-c4-327k-r1"
+  ipc = "host"
+  shm_size = "32gb"
+  ulimits = ["memlock=-1"]
+  env = [
+    "HF_HUB_OFFLINE=1",
+    "CUDA_VISIBLE_DEVICES=0,1",
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+    "VLLM_B12X_GLM_NOPE_NVFP4=1",
+    "VLLM_EXL3_PREFILL_BLOCK_M=128",
+    "VLLM_EXL3_PREFILL_TRELLIS=1",
+    "B12X_GL53_ROUTE128_WIDE=1",
+    "B12X_GL53_ROUTE128_HYBRID_TAIL=1",
+    "VLLM_USE_B12X_DCP_A2A=1",
+    "VLLM_ENABLE_PCIE_ALLREDUCE=1",
+    "VLLM_PCIE_ALLREDUCE_BACKEND=cpp",
+    "VLLM_B12X_MLA_CKV_GATHER=0",
+    "KV_FP8_ROPE=0",
+    "OMP_NUM_THREADS=2",
+    "NCCL_IB_DISABLE=1",
+    "NCCL_P2P_LEVEL=4",
+    "NCCL_PROTO=LL,LL128,Simple",
+  ]
+  flags = [
+    "--served-model-name glm53-abliterated-exl3-v84-fp8-tp2-dcp1-c4-327k-r1",
+    "--host 198.51.100.10",
+    "--port 39133",
+    "--chat-template /opt/glm53/chat_template.multimodal.jinja",
+    "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'",
+    "--tensor-parallel-size 2",
+    "--enable-expert-parallel",
+    "--decode-context-parallel-size 1",
+    "--dcp-comm-backend a2a",
+    "--dtype bfloat16",
+    "--load-format safetensors",
+    "--moe-backend b12x",
+    "--attention-backend FLASHINFER_MLA_SPARSE_SM120",
+    "--kv-cache-dtype fp8_ds_mla",
+    "--max-model-len 327680",
+    "--max-num-batched-tokens 2048",
+    "--max-num-seqs 4",
+    "--gpu-memory-utilization 0.970",
+    "--enable-chunked-prefill",
+    "--enable-prefix-caching",
+    "--generation-config /models/huggingface/hub/models--lovesenko--GLM-5.3-Flash-tr3-4bpw-Abliterated/snapshots/c8f58e6aa9117c73607d692978b22f091d80450c",
+    "--reasoning-parser glm45",
+    "--reasoning-config '{}'",
+    "--tool-call-parser glm47",
+    "--enable-auto-tool-choice",
+    "--disable-custom-all-reduce",
+  ]
+  note = "Weight-space o_proj edits are the only intended compute delta versus incumbent. Keep DCP1, C4, APC, no speculation, eight images and 52GiB/1MiB containment. Upstream MANIFEST remains byte-identical to base and is an ABI identity gate, not integrity proof of edited shards; exact HF revision and downloader verification bind the variant. No route change."
+
+  [recipe.fit]
+  suited = [
+    "qualification",
+    "coding-agent",
+    "tool-use",
+    "reasoning",
+    "text",
+  ]
+  rationale = "Uncensored preference is conditional on independent matched quality and reliability. Same base architecture and TR3 expert payload per author, unverified locally."
+
+  [recipe.sources]
+  official = ["https://huggingface.co/lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated/tree/c8f58e6aa9117c73607d692978b22f091d80450c"]

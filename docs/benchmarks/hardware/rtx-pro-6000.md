@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-06 replacement-quality scout:** MiMo V2.6 Flash RL TP2 no-spec and Lovesenko GLM-5.3-Flash TR3 4-bpw Abliterated TP2 were tested on the dual-Max-Q pair. MiMo passed preflight 25/25 and frozen SWE 4/5 but missed all three 18/18 native agentic profiles; the abliterated GLM passed preflight 25/25 and agentic 18/18 but reached 3/5 SWE. Both are `not-qualified` and `no-promotion`. The configured 327,680-token/C4/eight-image settings are not capacity, context, multimodal, or speed measurements. Exact r11 restoration was verified with direct 25/25, routed 7/7, unchanged configuration hashes, readmission, zero cgroup OOM counters, and no shared-memory offload mapping. [Finding](../../findings/2026-10-06-mimo-qualification.md).
+
 **2026-10-05 Xeon qualification campaign:** an evaluated Qwen replacement was
 rejected at frozen-primary SWE 3/5 and strict C4 0/4 performance eligibility.
 The GLM CSF/QAD scout retained max functional 25/25, original Oracle 17/18,
@@ -153,6 +155,10 @@ tok/s for itself, but the next failed at 3/4 (65/64 code words); the baseline
 also had a 2/4 strict failure (63/64). No overall win, full 327K/C4 context,
 or repository/session/client qualification is established. The baseline remains
 selected and the candidate is `no-promotion`.
+
+## October 6 replacement scout
+
+The dual-Max-Q pair ran direct isolated quality scouts for MiMo V2.6 Flash RL and an abliterated GLM-5.3-Flash TR3 variant. MiMo passed preflight 25/25 and SWE 4/5 but missed its 18/18 agentic gate in all three native profiles (15/18, 17/18, 17/18). The abliterated GLM passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. Both are `not-qualified` and `no-promotion`. Configured 327,680 tokens, C4, and eight images are not measurements of capacity, context, or multimodal behavior. No speed comparison ran. [Evidence](../../findings/2026-10-06-mimo-qualification.md). Exact r11 restoration is verified: direct 25/25, routed 7/7, unchanged protected configuration hashes, and router readmission.
 
 ## Recorded promotion, rollback, and challenger state
 

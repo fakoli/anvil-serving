@@ -125,6 +125,27 @@ DUAL_MODE_MANIFEST = """
 """
 
 
+EXCLUSIVE_ROLLBACK_MANIFEST = DUAL_MODE_MANIFEST + """
+    [[serve]]
+    name = "r11"
+    container = "r11"
+    runtime = "docker"
+    port = 30004
+    model = "baseline-r11-local"
+    engine = "vllm"
+    gpu_roles = ["dark-compute-a", "dark-compute-b"]
+    vram_mib = 90000
+    residency = "on-demand"
+    operating_mode = "dual-gpu-exclusive"
+    tensor_parallel_size = 2
+    router_tier = "llm-a"
+    router_config = "{dir}/r11-router.toml"
+    rollback_router_config = "{dir}/r11-rollback-router.toml"
+    groups = ["r11-rollback"]
+    up = "docker compose -f {dir}/compose.yml up -d r11"
+"""
+
+
 def _routed_mode_manifest(tmp_path):
     def router_config(path, model):
         path.write_text(textwrap.dedent(f"""
@@ -943,6 +964,68 @@ def test_mode_leave_force_releases_exclusive_owner_before_split_restore(
     assert states["tp2"] == "absent"
     assert states["split-a"] == states["split-b"] == "running"
     assert "mode left: restored split group split-stack" in capsys.readouterr().out
+
+
+def test_mode_restores_single_exclusive_rollback_target_without_router_swap(
+    tmp_path,
+):
+    _active_router_config(tmp_path, "r11-router.toml")
+    _active_router_config(tmp_path, "r11-rollback-router.toml")
+    loaded = serves.load_manifest(_manifest(tmp_path, EXCLUSIVE_ROLLBACK_MANIFEST))
+    installed = []
+
+    def install(config_file, **_kwargs):
+        installed.append(config_file)
+        return 0
+
+    states = {"split-a": "absent", "split-b": "absent", "tp2": "running", "r11": "absent"}
+    run = _mode_run(states)
+    transitions = []
+
+    def transition(action, tier, timeout=None):
+        transitions.append((action, tier, timeout))
+        return 0
+
+    assert _cmd_mode(tmp_path,
+        loaded,
+        "leave",
+        "tp2",
+        "r11-rollback",
+        confirm=True,
+        _transition=transition,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 0
+    assert states["tp2"] == "absent"
+    assert states["r11"] == "running"
+    assert transitions == [("readmit", "llm-a", None)]
+    assert installed == []
+
+    states = {"split-a": "absent", "split-b": "absent", "tp2": "absent", "r11": "running"}
+    run = _mode_run(states, fail_service="tp2")
+    transitions = []
+    assert _cmd_mode(tmp_path,
+        loaded,
+        "enter",
+        "tp2",
+        "r11-rollback",
+        confirm=True,
+        _transition=transition,
+        _install_config=install,
+        _run=run,
+        _open=lambda *args, **kwargs: _HealthyResponse(),
+        _sleep=lambda _: None,
+    ) == 1
+    assert states["tp2"] == "absent"
+    assert states["r11"] == "running"
+    assert transitions == [
+        ("quiesce", "llm-a", None),
+        ("drain", "llm-a", 120),
+        ("readmit", "llm-a", None),
+    ]
+    assert installed == []
 
 
 def test_split_restore_skips_readmit_when_default_router_is_stopped(

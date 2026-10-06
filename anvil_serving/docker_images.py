@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 import tomllib
 
 from . import paths
@@ -18,16 +19,32 @@ from . import paths
 
 DEFAULT_TIMEOUT_SECONDS = 30
 MAX_CONFIG_BYTES = 4 * 1024 * 1024
+MAX_COMPOSE_CONFIG_FILES = 32
+MAX_COMPOSE_PARSE_SECONDS = 30
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 _FULL_IMAGE_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _DIGEST_REFERENCE_RE = re.compile(r"^[^\s@-][^\s@]*@sha256:([0-9a-f]{64})$")
 _DOCKER_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _IMAGE_KEY_RE = re.compile(r"(^|_)image($|_)")
-_YAML_IMAGE_RE = re.compile(
-    r"^\s*(?:-\s*)?(?:image|rollback_image|inspector_image)\s*:\s*"
-    r"(?P<value>[^#]+?)\s*$",
-    re.IGNORECASE,
+_COMPOSE_SERVICES_RE = re.compile(r"(?m)^services[ \t]*:")
+_YAML_POTENTIAL_IMAGE_KEY_RE = re.compile(
+    r"(?:^|[,{])\s*(?:-\s*)?[^:#\n]*image[^:#\n]*:\s*"
+    r"(?P<value>[^\n,#}\]]*)",
+    re.IGNORECASE | re.MULTILINE,
 )
+_YAML_AMBIGUOUS_SYNTAX_RE = re.compile(r"(?:\\|(?:^|[\s:\-\[{,])[&*!][A-Za-z_])")
+_YAML_NON_IMAGE_SCALAR_RE = re.compile(
+    r"(?:true|false|null|~|[-+]?[0-9]+(?:\.[0-9]+)?)", re.IGNORECASE
+)
+_YAML_IMMUTABLE_REFERENCE_RE = re.compile(
+    r"(?P<value>[A-Za-z0-9][A-Za-z0-9._/:+-]*@sha256:[0-9a-f]{64}|"
+    r"sha256:[0-9a-f]{64})"
+)
+_NON_OPERATIONAL_CONFIG_DIRS = frozenset({
+    ".git", "__pycache__", ".venv", "benchmark-harness-cache",
+    "benchmark-runs", "build-logs", "evidence", "media-artifacts", "node_modules",
+    "venv",
+})
 _SIZE_RE = re.compile(r"^(?P<value>[0-9]+(?:\.[0-9]+)?)(?P<unit>[kMGT]?B)$")
 _SIZE_FACTORS = {
     "B": 1,
@@ -228,14 +245,46 @@ def _walk_image_values(node, key_path=()):
             yield from _walk_image_values(value, (*key_path, str(index)))
 
 
-def _yaml_image_values(text):
-    for line_number, line in enumerate(text.splitlines(), 1):
-        match = _YAML_IMAGE_RE.match(line)
-        if not match:
-            continue
-        value = match.group("value").strip().strip("\"'")
-        if value:
-            yield "line:%d" % line_number, value
+def _yaml_has_potential_image_key(raw: str) -> bool:
+    for match in _YAML_POTENTIAL_IMAGE_KEY_RE.finditer(raw):
+        if not _YAML_NON_IMAGE_SCALAR_RE.fullmatch(match.group("value").strip()):
+            return True
+    return False
+
+
+def _yaml_requires_compose_validation(path: Path, raw: str) -> bool:
+    return bool(
+        _COMPOSE_SERVICES_RE.search(raw)
+        or "compose" in path.name.lower()
+        or _yaml_has_potential_image_key(raw)
+        or _YAML_AMBIGUOUS_SYNTAX_RE.search(raw)
+    )
+
+
+def _yaml_image_values(path: Path, raw: str, *, runner, timeout):
+    """Return immutable references, parsing potentially operational YAML."""
+    if not _yaml_requires_compose_validation(path, raw):
+        return (
+            ("raw:%d" % match.start("value"), match.group("value"))
+            for match in _YAML_IMMUTABLE_REFERENCE_RE.finditer(raw)
+        )
+    result = _docker_run(
+        [
+            "compose", "--env-file", os.devnull,
+            "--project-directory", str(path.parent), "--file", str(path),
+            "config", "--format", "json", "--no-interpolate",
+            "--no-env-resolution", "--no-path-resolution",
+        ],
+        runner=runner,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise OSError((result.stderr or result.stdout or "docker compose config failed").strip())
+    try:
+        payload = json.loads(result.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise OSError("docker compose config returned invalid JSON") from exc
+    return _walk_image_values(payload)
 
 
 def _path_is_link_like(path: Path) -> bool:
@@ -248,18 +297,28 @@ def _path_is_link_like(path: Path) -> bool:
     return bool(is_junction and is_junction())
 
 
-def _config_image_values(config_home):
+def _config_image_values(config_home, *, runner=subprocess.run):
     root = Path(config_home)
     references = []
     errors = []
+    compose_files = 0
+    compose_deadline = time.monotonic() + MAX_COMPOSE_PARSE_SECONDS
     if not root.exists():
         return references, errors
     if not root.is_dir() or root.is_symlink():
         return references, ["operator config home is not a plain directory"]
-    for current, dirs, filenames in os.walk(root, followlinks=False):
+
+    def walk_error(exc):
+        try:
+            relative = Path(exc.filename).relative_to(root).as_posix()
+        except (TypeError, ValueError):
+            relative = str(exc.filename or root)
+        errors.append("%s: %s" % (relative, exc))
+
+    for current, dirs, filenames in os.walk(root, followlinks=False, onerror=walk_error):
         audited_dirs = []
         for name in sorted(dirs):
-            if name == ".git":
+            if name in _NON_OPERATIONAL_CONFIG_DIRS:
                 continue
             directory = Path(current) / name
             relative = directory.relative_to(root).as_posix()
@@ -290,8 +349,31 @@ def _config_image_values(config_home):
                 elif suffix == ".json":
                     values = list(_walk_image_values(json.loads(raw.decode("utf-8"))))
                 else:
-                    values = list(_yaml_image_values(raw.decode("utf-8")))
-            except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError, json.JSONDecodeError) as exc:
+                    yaml_text = raw.decode("utf-8")
+                    if _yaml_requires_compose_validation(path, yaml_text):
+                        if compose_files >= MAX_COMPOSE_CONFIG_FILES:
+                            raise OSError(
+                                "too many Compose YAML files (maximum %d)" % MAX_COMPOSE_CONFIG_FILES
+                            )
+                        remaining = compose_deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise OSError(
+                                "Compose YAML validation exceeded %d seconds"
+                                % MAX_COMPOSE_PARSE_SECONDS
+                            )
+                        compose_files += 1
+                        values = list(_yaml_image_values(
+                            path, yaml_text, runner=runner,
+                            timeout=min(DEFAULT_TIMEOUT_SECONDS, remaining),
+                        ))
+                    else:
+                        values = list(_yaml_image_values(
+                            path, yaml_text, runner=runner, timeout=0,
+                        ))
+            except (
+                DockerImageCleanupError, OSError, UnicodeDecodeError,
+                tomllib.TOMLDecodeError, json.JSONDecodeError,
+            ) as exc:
                 errors.append("%s: %s" % (relative, exc))
                 continue
             for field, value in values:
@@ -299,8 +381,14 @@ def _config_image_values(config_home):
     return references, errors
 
 
-def _configured_references(target, *, config_home):
-    references, errors = _config_image_values(config_home)
+def _configured_references(target, *, config_home, runner):
+    references, errors = _config_image_values(config_home, runner=runner)
+    for reference in references:
+        if "$" in reference["value"]:
+            errors.append(
+                "%s: unresolved image reference at %s"
+                % (reference["path"], reference["field"])
+            )
     identities = {
         target["image_id"],
         target["image_id"].removeprefix("sha256:"),
@@ -360,7 +448,9 @@ def inspect_docker_image_removal(image, *, config_home=None, runner=subprocess.r
     images = _all_image_rows(runner=runner)
     containers = _container_references(target["image_id"], runner=runner)
     home = os.path.abspath(os.path.expanduser(config_home or paths.config_home()))
-    configured, config_errors = _configured_references(target, config_home=home)
+    configured, config_errors = _configured_references(
+        target, config_home=home, runner=runner,
+    )
     children = _dependent_images(target, images)
     estimate = _reclaim_estimate(target["image_id"], runner=runner)
     blockers = []

@@ -1,0 +1,33 @@
+{
+  "post_delete_absence_semantics": "CLI models cache remove verifies requested snapshot absence before emitting removed; latest inventory separately verifies neither rejected revision remains",
+  "provenance": "Recovered exact native CLI stdout from current chat tool history; no native CLI JSON receipt was originally saved",
+  "receipts": [
+    {
+      "native_stdout": "MODEL CACHE REMOVE PLAN\nrepository: local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD\nrevision: 4f90b74165cb1542cca35730b7dfa4d550bcf0ce\nresolved snapshot: 4f90b74165cb1542cca35730b7dfa4d550bcf0ce\nvolume: vllm-hfcache\ncached bytes: 178536426887\nestimated reclaimable bytes: 178536426887\nremoved local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD@4f90b74165cb1542cca35730b7dfa4d550bcf0ce; reclaimed 178536426887 bytes; 0 repository bytes remain\n",
+      "native_stdout_sha256": "a22eb3c965c911bcba308794b5cda7e862104bf37ac22b67106a29db8b0587c2",
+      "observed_at": "2026-10-06T06:50:09.131Z",
+      "reclaimed_bytes": 178536426887,
+      "repo_id": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+      "repository_bytes_after": 0,
+      "revision": "4f90b74165cb1542cca35730b7dfa4d550bcf0ce",
+      "session_id_in_chunk": null,
+      "source_line": 279,
+      "tool_exit_code_in_chunk": 0
+    },
+    {
+      "native_stdout": "MODEL CACHE REMOVE PLAN\nrepository: local-inference-lab/Qwen3.8-Flash-Next-NVFP4\nrevision: 6909a5bed089a48fa07e956d3915af2537de9368\nresolved snapshot: 6909a5bed089a48fa07e956d3915af2537de9368\nvolume: vllm-hfcache\ncached bytes: 209477024455\nestimated reclaimable bytes: 103580998388\nremoved local-inference-lab/Qwen3.8-Flash-Next-NVFP4@6909a5bed089a48fa07e956d3915af2537de9368; reclaimed 103580998388 bytes; 105896026067 repository bytes remain\n",
+      "native_stdout_sha256": "cd3cef8211cf1d646b70d3b54cb0152c3e82f4a4a6488fa97207b282cc2a03a9",
+      "observed_at": "2026-10-06T06:50:37.285Z",
+      "reclaimed_bytes": 103580998388,
+      "repo_id": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+      "repository_bytes_after": 105896026067,
+      "revision": "6909a5bed089a48fa07e956d3915af2537de9368",
+      "session_id_in_chunk": null,
+      "source_line": 292,
+      "tool_exit_code_in_chunk": null
+    }
+  ],
+  "schema": "anvil-serving.model-cache-cleanup-receipts/v1",
+  "source_history": "<redacted-session>.jsonl",
+  "total_reclaimed_bytes": 282117425275
+}
