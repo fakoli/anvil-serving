@@ -34,6 +34,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if ! git worktree add --detach --force -q "$tmp" "$local_sha" 2>/dev/null; then
     echo "pre-push: push rejected — could not create a throwaway worktree to verify '$branch' at ${local_sha:0:12}." >&2
     echo "pre-push: fix the local git state (git worktree list / git worktree prune) and re-run: git push" >&2
+    rm -rf "$tmp" 2>/dev/null
     tmp=""
     blocked=1
     continue
@@ -41,6 +42,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   if (cd "$tmp" && python3 scripts/audit_cli_references.py --check --scope full >/dev/null 2>&1); then
     git worktree remove --force "$tmp" 2>/dev/null
+    rm -rf "$tmp" 2>/dev/null
     tmp=""
     continue
   fi
