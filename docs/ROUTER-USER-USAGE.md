@@ -852,3 +852,19 @@ destinations; container paths are checked against the exact owned durable mounts
 Docker inspection retrieves only Id/State/Config.Labels/Mounts. Restore has no
 activation, admission, migration, overwrite or force authority. Short examples,
 settings and native-envelope limitation are in `docs/cli/router.md`.
+
+
+## Implemented epoch timestamp metadata (T011)
+
+Explicit accounting migration adds optional `usage_epoch_metadata` in schema v3
+without changing credential/Connect formats. New domain creation persists its
+actual epoch creation UTC timestamp atomically with the domain/run registration.
+Existing domains preserve their UUID and receive an unknown timestamp (`NULL`),
+never a guessed backfill from the UUID, file, first request or migration time.
+Legacy stores remain readable; migration owns installation of this extension.
+The sensitive exporter emits `coverage_epoch_timestamp_seconds NaN` when historical
+time is absent or the recorded UUID differs from the current epoch. Other fixed
+missing numeric metadata also uses NaN rather than invented zero. Committed
+observed subtotals can remain available with explicit coverage gaps. Restart and
+pruning retain the recorded epoch/time. No aggregate purge command is introduced;
+any future authorized purge must record its new epoch and actual time atomically.

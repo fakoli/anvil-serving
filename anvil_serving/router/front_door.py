@@ -1122,9 +1122,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _usage_metrics_payload(self, query):
             if query or "?" in self.path:
                 raise UsageError("accounting_invalid")
-            if usage_metrics is None:
+            if usage_metrics is not None:
+                return usage_metrics()
+            if usage_store is None or usage_domain_id is None:
                 raise UsageError("accounting_unavailable")
-            return usage_metrics()
+            from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
+            scope = usage_authority() if callable(usage_authority) else None
+            return render_usage_prometheus(collect_usage_snapshot(
+                usage_store, workload_registry, collection_clock(), domain_id=usage_domain_id, authority_scope=scope))
 
         def _usage_error(self, error):
             # Native errors are allowlisted; arbitrary exception strings/results stay private.
@@ -1245,7 +1250,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 except Exception:  # noqa: BLE001 - callback details stay private
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
-                if type(payload) is not bytes or len(payload) > _MAX_OPERATOR_RESPONSE_BYTES:
+                response_limit = 2 * 1024 * 1024 if route.path == USAGE_METRICS_ENDPOINT else _MAX_OPERATOR_RESPONSE_BYTES
+                if type(payload) is not bytes or len(payload) > response_limit:
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
                 self.send_response(200)

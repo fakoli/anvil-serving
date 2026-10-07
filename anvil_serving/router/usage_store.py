@@ -472,6 +472,31 @@ def _filter_value(name, value):
             _require(len(value) <= 64)
 
 
+_USAGE_LABELS = ("actor_kind", "actor_id", "binding_revision", "end_user_instance", "end_user_issuer",
+                 "end_user_subject", "grant_ref", "credential_id", "model", "outcome", "input_applicability",
+                 "output_applicability", "input_source", "output_source", "input_partial", "output_partial")
+
+
+def _usage_labels(dimensions):
+    """Fixed injective projection; never guess a replacement for a reserved null."""
+    for name in _QUERY_DIMENSIONS:
+        value = dimensions[name]
+        if name == "outcome" and value == "active":
+            continue
+        _filter_value(name, bool(value) if name.endswith("_partial") and type(value) is int and value in (0, 1) else value)
+    # Canonical typed JSON retains every immutable effective-grant component.
+    grant = _json([dimensions[n] for n in ("grant_kind", "grant_reference", "grant_revision",
+                  "grant_policy_digest", "grant_generation", "grant_epoch")], 2048)
+    labels = []
+    for name in _USAGE_LABELS:
+        value = grant if name == "grant_ref" else dimensions[name]
+        if value == "none":
+            raise UsageError("accounting_unavailable")  # Reserved contract sentinel would collide with null.
+        labels.append("none" if value is None else "true" if name.endswith("_partial") and value else
+                      "false" if name.endswith("_partial") else str(value))
+    return tuple(labels)
+
+
 @dataclass(frozen=True, slots=True)
 class UsageQuery:
     granularity: str = "detail"
@@ -624,12 +649,21 @@ _DDL = (
 )
 
 
+# Additive optional v3 metadata: explicit migration preserves old stores/readers.
+_EPOCH_DDL = """CREATE TABLE usage_epoch_metadata (
+    domain_id TEXT NOT NULL PRIMARY KEY, coverage_epoch TEXT NOT NULL,
+    created_at TEXT CHECK(created_at IS NULL OR (typeof(created_at)='text' AND length(CAST(created_at AS BLOB))<=32)))"""
+
+
 def _validate_schema(db: sqlite3.Connection) -> None:
     """A version marker alone cannot turn an incomplete migration into success."""
     for name, expected in _DDL:
         row = db.execute("SELECT sql FROM sqlite_master WHERE name=?", (name,)).fetchone()
         if row is None or " ".join(row[0].split()) != " ".join(expected.split()):
             raise KeyStoreError("accounting store format is unsupported")
+    epoch = db.execute("SELECT sql FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone()
+    if epoch is not None and " ".join(epoch[0].split()) != " ".join(_EPOCH_DDL.split()):
+        raise KeyStoreError("accounting store format is unsupported")
 
 
 class UsageStore:
@@ -689,8 +723,12 @@ class UsageStore:
         with self._write() as db:
             domain = db.execute("SELECT * FROM usage_domains WHERE domain_id=?", (domain_id,)).fetchone()
             if domain is None:
+                epoch = str(uuid.uuid4())
+                if db.execute("SELECT 1 FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone() is None:
+                    raise UsageError("accounting_unavailable")  # Explicit migration owns schema setup.
                 db.execute("INSERT INTO usage_domains(domain_id,coverage_epoch,configuration_revision) VALUES(?,?,?)",
-                           (domain_id, str(uuid.uuid4()), configuration_revision))
+                           (domain_id, epoch, configuration_revision))
+                db.execute("INSERT INTO usage_epoch_metadata VALUES(?,?,?)", (domain_id, epoch, _utc(_now())))
             elif domain["configuration_revision"] != configuration_revision:
                 raise UsageError("accounting_configuration_unsupported")
             db.execute("INSERT INTO usage_runs VALUES(" + ",".join("?" for _ in range(16)) + ")",
@@ -1286,6 +1324,66 @@ class UsageStore:
                 raise UsageError("usage_query_limited", {**result, "available": False, "limitations": ["usage_query_limited"]}) from None
             raise UsageError("accounting_unavailable") from None
 
+    def _usage_metrics_snapshot(self, *, domain_id, authority_scope, collected_at, deadline_seconds=2):
+        """One private fixed projection; reduce exact integers before exporter limits."""
+        _id(domain_id); collected_at = _utc(collected_at)
+        _require(type(deadline_seconds) in (int, float) and 0 < deadline_seconds <= 5)
+        deadline = time.monotonic() + deadline_seconds
+        try:
+            with self.key_store._connect() as db:
+                db.row_factory = sqlite3.Row
+                db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+                try:
+                    db.execute("BEGIN")
+                    if db.execute("PRAGMA user_version").fetchone()[0] != _VERSION:
+                        raise UsageError("accounting_unavailable")
+                    domain = db.execute("SELECT * FROM usage_domains WHERE domain_id=?", (domain_id,)).fetchone()
+                    if domain is None:
+                        raise UsageError("accounting_unavailable")
+                    metadata = self._query_metadata(db, UsageQuery(granularity="cumulative"), domain,
+                                                    authority_scope, collected_at)
+                    metadata["owner_unknown_runs"] = db.execute(
+                        "SELECT COUNT(*) FROM usage_runs WHERE domain_id=? AND state='unknown'", (domain_id,)).fetchone()[0]
+                    # Historical UUIDs never supply a guessed creation/purge timestamp.
+                    epoch = (db.execute("SELECT coverage_epoch,created_at FROM usage_epoch_metadata WHERE domain_id=?",
+                                        (domain_id,)).fetchone() if db.execute(
+                        "SELECT 1 FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone() else None)
+                    metadata["coverage_epoch_timestamp_seconds"] = (datetime.fromisoformat(_utc(epoch[1]).replace("Z", "+00:00")).timestamp()
+                        if epoch is not None and epoch[0] == domain["coverage_epoch"] and epoch[1] is not None else None)
+                    if metadata["coverage_epoch_timestamp_seconds"] is not None and epoch[1] > collected_at:
+                        raise UsageError("accounting_unavailable")
+                    groups = {}
+                    for seen, row in enumerate(db.execute("SELECT * FROM usage_cumulative WHERE domain_id=? ORDER BY group_key",
+                                                          (domain_id,)), 1):
+                        if seen > _QUERY_SCAN_LIMIT or time.monotonic() >= deadline:
+                            raise UsageError("accounting_unavailable")
+                        labels = _usage_labels(row)
+                        counts = tuple(row[n] for n in _COUNTER_NAMES)
+                        if any(type(v) is not int or not 0 <= v <= _MAX_INT for v in counts):
+                            raise UsageError("accounting_unavailable")
+                        buckets = [row[f"latency_le_{bound}_ms"] for bound in (100, 1000, 5000, 30000, 120000, 900000)] + [row["latency_le_inf"]]
+                        if buckets != sorted(buckets) or buckets[-1] != row["latency_count"]:
+                            raise UsageError("accounting_unavailable")
+                        at = _utc(row["last_activity_at"])
+                        if at > collected_at:
+                            raise UsageError("accounting_unavailable")
+                        if labels not in groups:
+                            if len(groups) >= _QUERY_GROUP_LIMIT:
+                                raise UsageError("accounting_unavailable")
+                            groups[labels] = [list(counts), at]
+                        else:
+                            prior, latest = groups[labels]
+                            for i, value in enumerate(counts):
+                                prior[i] += value  # Python integers; neither SQLite SUM nor float.
+                            groups[labels][1] = max(latest, at)
+                    if time.monotonic() >= deadline or not metadata["available"]:
+                        raise UsageError("accounting_unavailable")
+                    return metadata, tuple((labels, tuple(counts), at) for labels, (counts, at) in sorted(groups.items()))
+                finally:
+                    db.set_progress_handler(None, 0)
+        except (sqlite3.Error, KeyStoreError, OSError, ValueError, TypeError, OverflowError):
+            raise UsageError("accounting_unavailable") from None
+
     def prune(self, now, *, domain_id, detail_days=30, daily_days=365):
         """Prune one bounded resolved-detail/daily batch; cumulative is untouched."""
         _id(domain_id)
@@ -1367,9 +1465,14 @@ class UsageStore:
                         db.execute(statement)
                     _validate_schema(db)
                     db.execute(f"PRAGMA user_version={_VERSION}")
+                epoch_metadata = db.execute("SELECT 1 FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone()
+                if epoch_metadata is None:
+                    db.execute(_EPOCH_DDL)
+                    db.execute("INSERT INTO usage_epoch_metadata SELECT domain_id,coverage_epoch,NULL FROM usage_domains")
+                _validate_schema(db)
                 db.execute("COMMIT")
             self.key_store.version = _VERSION
-            return {"schema_version": _VERSION, "migrated": version != _VERSION}
+            return {"schema_version": _VERSION, "migrated": version != _VERSION or epoch_metadata is None}
         except sqlite3.Error:
             raise KeyStoreError("accounting migration is unavailable") from None
 
