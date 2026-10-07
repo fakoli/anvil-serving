@@ -1,10 +1,11 @@
 """Bounded, metadata-only router workload lifecycle projection.
 
 This module owns active observation state only. ``DecisionLog`` remains the
-sole terminal store, and no observation failure is allowed to affect routing.
+sole workload decision store; the usage ledger owns accounting terminals.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import dataclasses
 import threading
 from dataclasses import dataclass
@@ -74,6 +75,10 @@ class _ActiveEntry:
     created_at: datetime
     updated_at: datetime
     diagnostic: tuple = ()
+    usage_start: object = None
+    usage_route: object = None
+    usage_tokens: object = None
+    usage_phase: str = "checking"
 
 
 class RouterWorkloadRegistry:
@@ -101,6 +106,8 @@ class RouterWorkloadRegistry:
         self._max_active = max_active
         self._lock = threading.Lock()
         self._active: dict[str, _ActiveEntry] = {}
+        self._usage_revision = 0
+        self._usage_mutations = 0
         self._unrepresented = {state: 0 for state in _ACTIVE_PHASES}
         self._finalizing = {state: 0 for state in _ACTIVE_PHASES}
 
@@ -147,6 +154,59 @@ class RouterWorkloadRegistry:
             entry = self._active.get(request_id)
             if entry is not None:
                 self._active[request_id] = dataclasses.replace(entry, diagnostic=tuple(values.items()))
+                self._usage_revision += 1
+
+    def attach_usage(self, request_id, start):
+        from .usage_store import RequestStart
+        if type(start) is not RequestStart:
+            raise ValueError("invalid admitted usage metadata")
+        with self._lock:
+            entry = self._active.get(request_id)
+            if entry is not None:
+                if entry.usage_start is not None and entry.usage_start != start:
+                    raise ValueError("usage metadata conflict")
+                self._active[request_id] = dataclasses.replace(entry, usage_start=start)
+                self._usage_revision += 1
+
+    @contextmanager
+    def usage_mutation(self):
+        # No registry lock is held while SQLite waits or writes.
+        with self._lock:
+            self._usage_mutations += 1
+            self._usage_revision += 1
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._usage_mutations -= 1
+                self._usage_revision += 1
+
+    def observe_usage(self, request_id, *, route=None, tokens=None, phase=None):
+        from .usage_store import RouteAssociation
+        from .decision_log import TokenUsage
+        if (route is not None and type(route) is not RouteAssociation or
+                tokens is not None and type(tokens) is not TokenUsage or
+                phase is not None and phase not in {"checking", "admitted", "dispatched", "streaming", "finalizing"}):
+            raise ValueError("invalid usage observation")
+        with self._lock:
+            entry = self._active.get(request_id)
+            if entry is not None:
+                self._active[request_id] = dataclasses.replace(entry,
+                    usage_route=route if route is not None else entry.usage_route,
+                    usage_tokens=tokens if tokens is not None else entry.usage_tokens,
+                    usage_phase=phase or entry.usage_phase)
+                self._usage_revision += 1
+
+    def usage_snapshot(self):
+        """Trusted bounded collector seam, fenced across ledger writes.
+
+        Authorization precedes collection. Read twice around ledger collection;
+        refuse on busy or changed revision. Generic views never serialize this.
+        """
+        with self._lock:
+            if self._usage_mutations:
+                raise ValueError("usage observation busy")
+            return self._usage_revision, tuple(e for e in self._active.values() if e.usage_start is not None), sum(self._unrepresented.values())
 
     def active_requests(self, *, session_id=None, limit=50):
         if session_id is not None and safe_correlation(session_id) != session_id:
@@ -313,8 +373,10 @@ class RouterWorkloadRegistry:
             represented = len(self._active) < self._max_active
             if represented:
                 self._active[gateway_request_id] = entry
+                self._usage_revision += 1
             else:
                 self._unrepresented[WorkloadState.CHECKING] += 1
+                self._usage_revision += 1
             return represented, entry
 
     def _advance(
@@ -334,12 +396,18 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented and entry.gateway_request_id in self._active:
                 updated = dataclasses.replace(updated,
-                    diagnostic=self._active[entry.gateway_request_id].diagnostic)
+                    diagnostic=self._active[entry.gateway_request_id].diagnostic,
+                    usage_start=self._active[entry.gateway_request_id].usage_start,
+                    usage_route=self._active[entry.gateway_request_id].usage_route,
+                    usage_tokens=self._active[entry.gateway_request_id].usage_tokens,
+                    usage_phase=self._active[entry.gateway_request_id].usage_phase)
                 self._active[entry.gateway_request_id] = updated
+                self._usage_revision += 1
             elif not represented:
                 if self._unrepresented[entry.state]:
                     self._unrepresented[entry.state] -= 1
                 self._unrepresented[state] += 1
+                self._usage_revision += 1
         return updated
 
     def _release(
@@ -351,8 +419,10 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented:
                 self._active.pop(gateway_request_id, None)
+                self._usage_revision += 1
             elif self._unrepresented[state]:
                 self._unrepresented[state] -= 1
+                self._usage_revision += 1
 
     def _begin_finalization(
         self,
@@ -364,8 +434,10 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented:
                 self._active.pop(gateway_request_id, None)
+                self._usage_revision += 1
             elif self._unrepresented[state]:
                 self._unrepresented[state] -= 1
+                self._usage_revision += 1
             self._finalizing[state] += 1
 
     def _end_finalization(self, state: WorkloadState) -> None:

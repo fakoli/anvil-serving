@@ -362,7 +362,7 @@ class AudioGateway:
         self._limit.release()
 
     def dispatch_transcription(
-        self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None
+        self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None, invocation=None
     ) -> Dict[str, Any]:
         """Normalize a JSON/base64 STT request through the configured route."""
         route = self._resolve(AUDIO_STT, body)
@@ -427,7 +427,7 @@ class AudioGateway:
                 data,
                 {"Content-Type": "multipart/form-data; boundary=%s" % boundary},
                 started,
-                correlation=audit_correlation,
+                correlation=audit_correlation, invocation=invocation,
                 expected_content_types=("application/json",),
             )
             try:
@@ -464,7 +464,7 @@ class AudioGateway:
         }
 
     def dispatch_speech(
-        self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None
+        self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None, invocation=None
     ) -> Dict[str, Any]:
         """Normalize the raw PCM output from the configured TTS route."""
         route = self._resolve(AUDIO_TTS, body)
@@ -505,7 +505,7 @@ class AudioGateway:
                 data,
                 {"Content-Type": "application/json"},
                 started,
-                correlation=audit_correlation,
+                correlation=audit_correlation, invocation=invocation,
                 expected_audio_format=requested_format,
             )
         except AudioGatewayError as exc:
@@ -589,6 +589,7 @@ class AudioGateway:
         headers: Mapping[str, str],
         started: float,
         correlation: Optional[Mapping[str, str]] = None,
+        invocation=None,
         expected_audio_format: Optional[str] = None,
         expected_content_types: Optional[Sequence[str]] = None,
     ) -> bytes:
@@ -606,6 +607,13 @@ class AudioGateway:
         )
         if gateway_request_id is not None:
             outbound_headers["X-Request-Id"] = gateway_request_id
+        if invocation is not None:
+            from .internal import UsageInvocation
+            from .usage_store import RouteAssociation
+            if type(invocation) is not UsageInvocation:
+                raise ValueError("invalid accounting invocation")
+            invocation.route = RouteAssociation(route_id=route.id, backend_id=route.id)
+            invocation.dispatch()
         try:
             result = self._transport(
                 route.base_url.rstrip("/") + suffix,

@@ -130,7 +130,10 @@ rebinding uses expected binding revision; Connect external owner liveness checks
 validate the same frozen generation/epoch with existing checker. Perform external checker against candidate frozen generation/epoch BEFORE the
 final admission transaction; no transaction spans the external call. The final
 transaction compares every candidate revision, then consumes rate buckets and
-returns the CAS-consistent snapshot; failed CAS consumes no rate tokens. Current
+returns the CAS-consistent snapshot; failed CAS consumes no rate tokens. The
+optional trusted `local_check(admitted_snapshot, locked_clock)` runs after full
+CAS and before buckets. T008 uses it to revalidate the required local signed
+assertion after writer contention; no remote checker runs in this callback. Current
 external authority cannot be made transactionally atomic with local SQLite;
 preserve existing liveness semantics and do not promise impossible cross-system
 exactness.
@@ -432,13 +435,26 @@ Exact arithmetic means observed committed metadata, not unknown upstream work.
 returned-page subtotals are never full selected totals when truncated. Unresolved
 counts describe the requested time scope; unresolved detail has explicit status.
 
-Extend `/v1/requests?active=1` admin projection with caller/grant, selected route,
+The protected `GET /v1/admin/usage?view=active` projection uses the existing
+workload registry with caller/grant, selected route,
 phase checking/queued/admitted/dispatched/streaming/finalizing, elapsed time,
 collection timestamp, source freshness and accounting status. Terminal cleanup
 is idempotent after actual owned work/delivery finishes; unresolved durable
 starts belong in history/health, not fake live gauges. MAX_ACTIVE_WORKLOADS1024
 stays bounded; omissions explicitly reported. Generic `/v1/workloads` records
-remain unchanged and identity-free. No self-service endpoint in v1.
+remain unchanged and identity-free. The generic `/v1/requests` projection never
+serializes the new caller/grant fields. `usage_snapshot()` supplies revision,
+immutable admitted entries and bounded omissions; it refuses while any ledger
+mutation is in flight. A collector reads that revision again after ledger
+collection and refuses/retries changed snapshots. No registry lock spans SQLite.
+The front door copies normalized observations on the actual generating worker
+after upstream close, before worker completion and delivery finalization.
+Relay, purpose, audio and memory record attempts immediately before their actual
+transport invocation. Uninstrumented injected adapters retain explicit uncertain
+dispatch instead of treating a lazy iterator or first delta as execution proof.
+Runtime run/whole-authority injection is explicit: absent or unsupported trusted
+authority refuses start. These source seams do not establish T023 bootstrap
+coverage or authorize production enablement. No self-service endpoint in v1.
 
 Existing operator authentication is checked BEFORE ledger/active/metric collection;
 ordinary device/inference keys and unauthenticated callers fail. Use scoped operator route plumbing with the frozen existing `workloads:read`

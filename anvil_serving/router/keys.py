@@ -599,7 +599,7 @@ class KeyStore:
                 return None
         return principal
 
-    def admit(self, key_id: str | Principal, requested_path=None, requested_model=None, *, normalize=True):
+    def admit(self, key_id: str | Principal, requested_path=None, requested_model=None, *, normalize=True, local_check=None):
         """Tracked admission freezes the exact locally admitted candidate after commit.
 
         key_id-only callers retain their existing integer rate-admission API.
@@ -611,12 +611,14 @@ class KeyStore:
             key_id = candidate.key_id
             if candidate.caller_snapshot is None:
                 raise KeyStoreError("admission_policy_changed")
+            if local_check is not None and not callable(local_check):
+                raise KeyStoreError("invalid admission request")
             if type(normalize) is not bool:
                 raise KeyStoreError("invalid admission request")
             # External account liveness is never atomic with local SQLite.
             if candidate.owner is not None and (self.owner_check is None or not self.owner_check(*candidate.owner)):
                 raise KeyStoreError("credential key is unavailable")
-        elif requested_path is not None or requested_model is not None:
+        elif requested_path is not None or requested_model is not None or local_check is not None:
             raise KeyStoreError("tracked admission requires a principal")
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
             raise KeyStoreError("invalid credential key")
@@ -638,6 +640,8 @@ class KeyStore:
                     if not admitted.allows_path(method, requested_path) or (
                             requested_model is not None and not admitted.allows_model(requested_model, normalize=normalize)):
                         raise KeyStoreError("credential access denied")
+                    if local_check is not None:
+                        local_check(admitted.caller_snapshot, now)
                 row = connection.execute(
                     "SELECT rpm, revoked_at, expires_at FROM keys WHERE key_id = ?", (key_id,)
                 ).fetchone()

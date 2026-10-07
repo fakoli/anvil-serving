@@ -16,6 +16,7 @@ Stdlib-only by design (no third-party deps). This module defines:
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union, TYPE_CHECKING
 
@@ -255,3 +256,124 @@ def estimate_tokens(texts: Sequence[str]) -> int:
             words += len(t.split())
             utf8_bytes += len(t.encode("utf-8"))
     return max(words, utf8_bytes // 4)
+
+
+class UsageInvocation:
+    """One admitted ledger start, with generation/delivery joined before commit.
+
+    Constructed only by trusted admission, never from request JSON. The scope
+    provider must own the whole admission domain; absence fails closed.
+    """
+
+    def __init__(self, store, run_id, scope, caller, kind, model, *, registry=None, clock=None,
+                 parent=None, usage_relation="exclusive", applicability=None, gateway_request_id=None):
+        import threading
+        import time
+        import uuid
+        from datetime import datetime, timezone
+        from .decision_log import normalize_usage
+        from .usage_store import RequestStart, RouteAssociation
+        from .purpose import child_request_start, purpose_usage
+        self.store = store
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.started = time.monotonic()
+        self._lock = threading.RLock()
+        self.route = RouteAssociation()
+        initial = (normalize_usage(None, "openai", applicability) if applicability is not None else
+                   purpose_usage(kind) if kind != "chat" else normalize_usage(None, "openai"))
+        units = (initial.input.applicability, initial.output.applicability)
+        self.domain_id = scope.domain_id if scope is not None else None
+        at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
+        self.start = (child_request_start(parent, accepted_at=at, kind=kind, model=model,
+                       usage_relation=usage_relation, applicability=units) if parent is not None else
+                      RequestStart(str(uuid.uuid4()), run_id, at, caller, kind, model,
+                                   attempt_id=str(uuid.uuid4()), input_applicability=units[0], output_applicability=units[1]))
+        self.registry = registry
+        mutation = registry.usage_mutation() if registry is not None else nullcontext()
+        with mutation:
+            store.start(self.start, authority_scope=scope)
+            self.registry_id = gateway_request_id or "req_" + self.start.request_id.replace("-", "")
+            self.token = registry.begin(self.registry_id) if registry is not None else None
+            if self.token is not None:
+                self.token.activate()
+                registry.attach_usage(self.registry_id, self.start)
+        self.tokens = normalize_usage(None, "openai", units)
+        self.dispatched = False
+        self.generation = None
+        self.delivery = None
+        self.terminal = None
+
+    def failure(self):
+        try:
+            self.store.record_failure(self.domain_id)
+        except Exception:
+            pass
+
+    def dispatch(self):
+        """Commit the actual transport attempt immediately before invoking it."""
+        with self._lock, self.registry.usage_mutation() if self.registry is not None else nullcontext():
+            if self.dispatched is True:
+                return
+            self.store.note_dispatch(self.start.request_id, self.route)
+            self.dispatched = True
+            if self.registry is not None:
+                self.registry.observe_usage(self.registry_id, route=self.route, phase="dispatched")
+
+    def ambiguous_dispatch(self):
+        with self._lock:
+            if self.dispatched is False:
+                self.dispatched = None
+
+    def capture(self, backend, outcome):
+        """Called on the generating thread after closing its upstream iterator."""
+        from .decision_log import TokenUsage
+        from .usage_store import Observation
+        with self._lock, self.registry.usage_mutation() if self.registry is not None else nullcontext():
+            getter = getattr(backend, "get_last_normalized_usage", None)
+            try:
+                observed = getter() if callable(getter) else None
+                if type(observed) is TokenUsage:
+                    if (observed.input.applicability, observed.output.applicability) != (self.start.input_applicability, self.start.output_applicability):
+                        raise ValueError("usage applicability mismatch")
+                    self.tokens = observed
+                if self.dispatched is True:
+                    at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
+                    self.store.note_observation(self.start.request_id, Observation(1, at, self.tokens))
+            except Exception:
+                self.failure()
+            self.generation = outcome
+            if self.registry is not None:
+                self.registry.observe_usage(self.registry_id, tokens=self.tokens, phase="finalizing")
+
+    def finish(self, delivery):
+        import time
+        from .usage_store import Terminal
+        with self._lock, self.registry.usage_mutation() if self.registry is not None else nullcontext():
+            if self.terminal is not None:
+                return
+            self.delivery = delivery
+            generation = self.generation or "rejected"
+            coverage = ["usage_relation_unknown"] if self.start.usage_relation == "unobserved" else []
+            if self.dispatched is None:
+                coverage.append("dispatch_uncertain")
+            if self.dispatched is not False and any(d.applicability == "applicable" and (d.source != "measured" or d.partial)
+                                                    for d in (self.tokens.input, self.tokens.output)):
+                coverage.append("usage_incomplete")
+            outcome = delivery if delivery != "success" else generation
+            at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
+            self.terminal = Terminal(self.start.request_id, at, self.dispatched, generation, delivery, outcome,
+                                     self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
+                                     coverage=tuple(coverage))
+            try:
+                self.store.finalize(self.terminal)
+            except Exception:
+                self.failure()
+            finally:
+                if self.token is not None:
+                    from ..observability.workloads import WorkloadOutcome
+                    self.token.finish(WorkloadOutcome(delivery))
+
+
+def usage_invocation(request):
+    value = request.raw.get("_anvil_usage")
+    return value if type(value) is UsageInvocation else None

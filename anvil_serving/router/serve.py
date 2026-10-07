@@ -84,6 +84,7 @@ from .model_metadata import (
     build_model_fingerprints,
     build_router_status,
 )
+from .identity import load_webui_bindings
 from .purpose import PurposeRouter
 from .memory import MemoryRouter
 from .request_control import (
@@ -344,18 +345,23 @@ class ReplicaRuntime:
         """Invoke exactly one declared member and retain its side-channel owner."""
         self._thread_local.selected_backend = None
         backend = self.member_backend(member_id)
-        try:
-            iterator = iter(backend.generate(request))
-        except BaseException:
-            self._thread_local.selected_backend = None
-            raise
         self._thread_local.selected_backend = backend
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None and not getattr(backend, "usage_transport_boundary", False):
+            invocation.ambiguous_dispatch()
+        iterator = iter(backend.generate(request))
         return iterator
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         """Delegate to the member successfully invoked by this thread."""
         backend = getattr(self._thread_local, "selected_backend", None)
         fn = getattr(backend, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "selected_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -407,6 +413,11 @@ class _ConcurrencyLimitedBackend:
     def __init__(self, inner: Backend, max_concurrency: int) -> None:
         self._inner = inner
         self._sem = threading.BoundedSemaphore(max_concurrency)
+        self._usage_local = threading.local()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -425,6 +436,7 @@ class _ConcurrencyLimitedBackend:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         control = request_control(args[-1])
         if control is None:
             control = RequestControl()
@@ -435,6 +447,7 @@ class _ConcurrencyLimitedBackend:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
@@ -446,6 +459,11 @@ class _ConcurrencyLimitedBackend:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -462,6 +480,7 @@ class _AutoConcurrencyGate:
     def __init__(self, inner: Backend, tier_id: str) -> None:
         self._inner = inner
         self._tier_id = tier_id
+        self._usage_local = threading.local()
         self._cond = threading.Condition()
         self._in_flight = 0
         self._ceiling: Optional[int] = None
@@ -476,6 +495,10 @@ class _AutoConcurrencyGate:
                 return
             self._ceiling = value
             self._cond.notify_all()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -493,6 +516,7 @@ class _AutoConcurrencyGate:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         request = args[-1]
         control = request_control(request)
         if control is None:
@@ -507,6 +531,7 @@ class _AutoConcurrencyGate:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             with self._cond:
@@ -522,6 +547,11 @@ class _AutoConcurrencyGate:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -907,8 +937,10 @@ class RoutingBackend:
         return self._generate(request)
 
     def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
-        token = None
-        if self._workload_registry is not None:
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        token = invocation.token if invocation is not None else None
+        if token is None and self._workload_registry is not None:
             try:
                 token = self._workload_registry.begin(gateway_request_id)
             except Exception:
@@ -928,6 +960,7 @@ class RoutingBackend:
         control.note_activity("checking", estimated_input_tokens=self._prompt_tokens(request))
         control.check_admission()
         self._thread_local.last_result = None
+        self._thread_local.usage_backend = None
         self._thread_local.last_served_tier = None
         started = time.monotonic()
         readiness_check_ms: Optional[int] = None
@@ -1141,6 +1174,14 @@ class RoutingBackend:
             control.check_admission()
             control.note_activity("admitted", context_limit_tokens=tier.context_limit)
             advance(WorkloadState.ADMITTED)
+            from .internal import usage_invocation
+            from .usage_store import RouteAssociation
+            invocation = usage_invocation(request)
+            if invocation is not None:
+                invocation.route = RouteAssociation(route_id=tier.id, backend_id=tier.id, member_id=selected_member)
+            self._thread_local.usage_backend = backend
+            if invocation is not None and not isinstance(backend, ReplicaRuntime) and not getattr(backend, "usage_transport_boundary", False):
+                invocation.ambiguous_dispatch()
             upstream_call_started = time.monotonic()
             upstream = (
                 backend.generate_member(selected_member, relay_request)
@@ -1339,6 +1380,11 @@ class RoutingBackend:
         return _AdmissionIterator(
             relay, lease, on_complete, on_cancel=on_cancel, resources=(upstream,)
         )
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "usage_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
+        return fn() if callable(fn) else None
 
     def tier_health(self) -> dict:
         return build_tier_health(self._config, self._availability)
@@ -2033,6 +2079,7 @@ def build_server(
             workload_registry=routing._workload_registry,
             workload_clock=effective_workload_clock,
             server_config=server_config,
+            webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
         )
         cleanup.callback(httpd.server_close)
         httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]

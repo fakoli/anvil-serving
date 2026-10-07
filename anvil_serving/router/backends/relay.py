@@ -843,6 +843,8 @@ class RelayBackend:
     # ------------------------------------------------------------------ #
     # Backend protocol
     # ------------------------------------------------------------------ #
+    usage_transport_boundary = True
+
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """Dispatch: true streaming upstream for a streaming request, else buffered.
 
@@ -874,6 +876,10 @@ class RelayBackend:
         if control is not None:
             control.start_upstream()
         timeout = _control_timeout(self._timeout, control)
+        from ..internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None:
+            invocation.dispatch()
         response = None
         try:
             # Pass max_bytes to the default _urlopen_transport (keyword-only).
@@ -978,6 +984,10 @@ class RelayBackend:
         self._thread_local.last_result = None
 
         transport = self._stream_transport or _urlopen_stream_transport
+        from ..internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None:
+            invocation.dispatch()
         try:
             timeout = _control_timeout(self._timeout, control)
             resp = (

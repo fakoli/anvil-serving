@@ -45,11 +45,13 @@ import threading
 import time
 import urllib.parse
 import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
 
+from .backends.relay import _ClosingIterator
 from .audio import (
     AudioGateway,
     AudioGatewayError,
@@ -78,10 +80,14 @@ from .internal import (
     DialectError,
     ModelDelta,
     NoAvailableTierError,
+    UsageInvocation,
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
 from .keys import KeyStore, KeyStoreError
+from .identity import (IdentityError, configured_scope_caller, legacy_caller, load_webui_bindings,
+                       select_webui_binding, verify_webui, forwarded_caller)
+from .usage_store import UsageError
 from .memory import MemoryError, MemoryRouter
 from .memory_mcp import MemoryMCP
 from ..control_plane.authorization import (
@@ -468,7 +474,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_host: Optional[str] = None,
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
-                  server_config=None, api_keys=None, connect_keys=None, connect_verifier=None):
+                  server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
+                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=()):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
     connect_slots = threading.BoundedSemaphore(2)
@@ -540,6 +547,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return False
             return self._device_access()
 
+        def _tracked_request(self):
+            path = self.path.split("?", 1)[0].rstrip("/")
+            return (usage_store is not None or bool(webui_bindings)) and self.command == "POST" and (
+                path in _ROUTES or path in _PURPOSE_PATHS or path in _MEMORY_PATHS
+                or audio_purpose_for_path(path) is not None)
+
         def _device_access(self):
             """Apply device policy before every dispatch, including operator routes."""
             path = self.path.split("?", 1)[0].rstrip("/")
@@ -566,7 +579,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
             try:
-                principal = api_keys.authenticate(supplied, check_owner=False)
+                principal = api_keys.authenticate(supplied, check_owner=False, snapshot=self._tracked_request())
                 if principal is None:
                     self._device_error(401, "authentication_error", "invalid or missing API key")
                     return False
@@ -576,6 +589,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if not principal.allows_path(self.command, path):
                     self._device_error(403, "key_access_denied", "API key does not grant this endpoint")
                     return False
+                if self._tracked_request():
+                    return True  # Body/model and forwarded identity precede tracked rate admission.
                 retry_after = api_keys.admit(principal.key_id)
             except KeyStoreError:
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
@@ -635,6 +650,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return any(name.lower() in forbidden for name in self.headers)
 
         def _handle_memory(self, path: str, body: dict) -> None:
+            invocation = self._anvil_usage
+            with memory.track(invocation) if invocation is not None else nullcontext():
+                self._dispatch_memory(path, body)
+
+        def _dispatch_memory(self, path: str, body: dict) -> None:
             if not self._memory_device_allowed():
                 return
             if self._memory_header_override():
@@ -649,6 +669,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.send_header("Content-Length", "0")
                     self.end_headers()
                 else:
+                    if self._anvil_usage is not None and ("error" in result or result.get("result", {}).get("isError")):
+                        self._anvil_usage.capture(None, "rejected" if self._anvil_usage.dispatched is False else "error")
                     self._json(200, result, extra_headers={"Cache-Control": "no-store"})
                 return
             alias = body.get("alias")
@@ -675,18 +697,101 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_http_status = None
             self._anvil_client_budget_held = False
             self._anvil_worker = None
+            self._anvil_caller = None
+            self._anvil_usage = None
+
+        def _admit_usage(self, kind, model, *, normalize=True):
+            if not self._tracked_request():
+                return True
+            try:
+                principal = self._anvil_device
+                caller = principal.caller_snapshot if principal is not None else self._anvil_caller or legacy_caller()
+                binding = select_webui_binding(webui_bindings, caller)
+                end_user = verify_webui(self.headers, binding, collection_clock()) if binding is not None else None
+                if end_user is not None:
+                    forwarded_caller(caller, end_user)  # Validate bounded projection before buckets.
+                if principal is not None:
+                    slots = owner_check_slots if principal.owner is not None else key_store_slots
+                    if not slots.acquire(blocking=False):
+                        raise KeyStoreError("admission is busy")
+                    try:
+                        def local_check(admitted, now):
+                            if binding is not None:
+                                verified = verify_webui(self.headers, binding, datetime.fromtimestamp(now, timezone.utc))
+                                forwarded_caller(admitted, verified)
+                        decision = api_keys.admit(principal, self.path.split("?",1)[0].rstrip("/"), model,
+                                                  normalize=normalize, local_check=local_check)
+                    finally:
+                        slots.release()
+                    if decision.retry_after:
+                        self._device_error(429, "key_rate_limited", "API key request rate exceeded", decision.retry_after)
+                        return False
+                    caller = decision.caller_snapshot
+                if end_user is not None:
+                    caller = forwarded_caller(caller, end_user)
+                self._anvil_caller = caller
+                if usage_store is not None:
+                    scope = usage_authority() if callable(usage_authority) else None
+                    self._anvil_usage = UsageInvocation(usage_store, usage_run_id, scope, caller, kind, model,
+                                                       registry=workload_registry, clock=collection_clock,
+                                                       gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                return True
+            except IdentityError:
+                self._device_error(401, "identity_invalid", "forwarded identity invalid")
+            except (KeyStoreError, ValueError, TypeError):
+                self._device_error(503, "accounting_unavailable", "request accounting unavailable")
+            return False
 
         def _generate_deltas(self, request):
-            """Retain delivery ownership before eager routing can fail."""
-            tracked = getattr(backend, "generate_tracked", None)
-            if not callable(tracked):
-                return backend.generate(request)
-            stream = tracked(
-                request,
-                gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"),
-            )
-            self._anvil_workload_stream = stream
-            return stream.start()
+            """Preserve eager rejection; close/capture on the generating thread."""
+            invocation = self._anvil_usage
+            if invocation is not None:
+                request.raw["_anvil_usage"] = invocation
+            def outcome_for(exc):
+                return ("cancelled" if isinstance(exc, GeneratorExit) else
+                        "timeout" if isinstance(exc, RequestDeadlineExceeded) else
+                        "cancelled" if isinstance(exc, RequestControlError) else
+                        "rejected" if isinstance(exc, (NoAvailableTierError, BackendClientError)) and
+                        (invocation is None or invocation.dispatched is False) else "error")
+            try:
+                tracked = getattr(backend, "generate_tracked", None)
+                if callable(tracked):
+                    stream = tracked(request, gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                    self._anvil_workload_stream = stream
+                    deltas = stream.start()
+                else:
+                    if invocation is not None and not getattr(backend, "usage_transport_boundary", False):
+                        invocation.ambiguous_dispatch()
+                    deltas = backend.generate(request)
+            except BaseException as exc:
+                if invocation is not None:
+                    invocation.capture(backend, outcome_for(exc))
+                raise
+            outcome = "cancelled"
+            closed = False
+            def finish():
+                nonlocal closed
+                if closed:
+                    return
+                closed = True
+                try:
+                    close = getattr(deltas, "close_upstream", None) or getattr(deltas, "close", None)
+                    if callable(close):
+                        close()
+                finally:
+                    if invocation is not None:
+                        invocation.capture(backend, outcome)
+            def generate():
+                nonlocal outcome
+                try:
+                    yield from deltas
+                    outcome = "success"
+                except BaseException as exc:
+                    outcome = outcome_for(exc)
+                    raise
+                finally:
+                    finish()
+            return _ClosingIterator(generate(), finish)
 
         def _workload_render_error(self) -> None:
             stream = self._anvil_workload_stream
@@ -790,6 +895,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             ):
                 self._anvil_client_id = "_legacy"
+                self._anvil_caller = legacy_caller()
                 return True
             path = self.path.split("?", 1)[0].rstrip("/")
             required = None
@@ -803,6 +909,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 decision = check_scope(authorization_policy, supplied, required)
                 if decision.allowed:
                     self._anvil_client_id = decision.client_id
+                    if self._tracked_request():
+                        self._anvil_caller = configured_scope_caller(decision)
                     return True
             return False
 
@@ -1411,12 +1519,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     parse_embeddings_request(body)
                 else:
                     parse_rerank_request(body)
+                if not self._admit_usage(kind, body.get("model"), normalize=False):
+                    return
                 payload = purpose.dispatch(
                     kind,
                     body,
                     correlation=dict(
                         getattr(self, "_anvil_correlation", None) or {}
                     ),
+                    **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}),
                 )
             except DialectError as e:
                 self._error(e.status, e.etype, e.message,
@@ -1432,6 +1543,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(500, "internal_error", "internal error",
                             dialect=_OPENAI_DIALECT)
                 return
+            finally:
+                if self._anvil_usage is not None:
+                    self._anvil_usage.capture(purpose, "success" if "payload" in locals() else "rejected" if self._anvil_usage.dispatched is False else "error")
             self._json(200, payload)
 
         # --- normalized one-shot audio gateway ----------------------------
@@ -1446,9 +1560,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             correlation = dict(getattr(self, "_anvil_correlation", None) or {})
             try:
                 if kind == "stt":
-                    payload = audio.dispatch_transcription(body, correlation=correlation)
+                    payload = audio.dispatch_transcription(body, correlation=correlation,
+                        **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}))
                 else:
-                    payload = audio.dispatch_speech(body, correlation=correlation)
+                    payload = audio.dispatch_speech(body, correlation=correlation,
+                        **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}))
             except AudioGatewayError as e:
                 self._error(e.status, e.etype, e.message, dialect=_OPENAI_DIALECT)
                 return
@@ -2066,10 +2182,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 raise
             finally:
                 try:
+                    stream = self._anvil_workload_stream
+                    invocation = self._anvil_usage
+                    delivery = self._anvil_delivery_outcome
+                    status = self._anvil_http_status
                     def finish_delivery():
-                        stream = self._anvil_workload_stream
+                        if invocation is not None:
+                            if invocation.generation is None:
+                                invocation.capture(None, "success" if status is not None and status < 400 else "rejected" if invocation.dispatched is False else "error")
+                            invocation.finish(delivery.value if delivery is not None else "success" if status is not None and status < 400 else "error")
                         if stream is not None:
-                            stream.finish_delivery(self._anvil_delivery_outcome)
+                            stream.finish_delivery(delivery)
                     worker = self._anvil_worker
                     if worker is not None:
                         worker.when_finished(finish_delivery)
@@ -2246,6 +2369,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                 dialect=dialect)
                     return
                 try:
+                    if not self._admit_usage(audio_kind, body.get("model")):
+                        return
                     self._handle_audio(audio_kind, body)
                 finally:
                     audio.release()
@@ -2281,6 +2406,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     return
                 if not isinstance(body, dict):
                     self._error(400, "invalid_request", "body must be a JSON object")
+                    return
+                if not self._admit_usage("memory", body.get("alias")):
                     return
                 self._handle_memory(path, body)
                 return
@@ -2371,6 +2498,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             if not self._device_model_allowed(request.model):
                 return
+
+            if not self._admit_usage("chat", request.model):
+                return
+            request.raw.pop("_anvil_usage", None)
+            request.raw.pop("_anvil_parent", None)
 
             # Always overwrite caller JSON at this reserved key. Only the trusted
             # front-door lineage may reach routing, audit, or the upstream relay.
@@ -2634,6 +2766,7 @@ def make_server(host: str, port: int,
                 workload_clock: Optional[Callable[[], datetime]] = None,
                 server_config=None,
                 memory: Optional[MemoryRouter] = None,
+                usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -2695,6 +2828,8 @@ def make_server(host: str, port: int,
         if purpose is not None:
             owned_models += list(purpose.model_ids("embedding")) + list(purpose.model_ids("rerank"))
         connect_keys = ConnectKeys(api_keys, owned_models)
+    if webui_bindings is None:
+        webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),
@@ -2703,6 +2838,7 @@ def make_server(host: str, port: int,
             purpose, audio, gateway, memory, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
+            usage_store, usage_run_id, usage_authority, webui_bindings,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown

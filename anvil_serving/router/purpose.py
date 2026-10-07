@@ -192,6 +192,7 @@ class PurposeRouter:
         body: Mapping[str, Any],
         *,
         correlation: Optional[Mapping[str, str]] = None,
+        invocation=None,
     ) -> Dict[str, Any]:
         """Route one validated ``kind`` request to its serve; return the JSON.
 
@@ -233,6 +234,13 @@ class PurposeRouter:
         data = json.dumps(outbound_body).encode("utf-8")
         timeout = pm.timeout if pm.timeout is not None else self._default_timeout
 
+        if invocation is not None:
+            from .internal import UsageInvocation
+            if type(invocation) is not UsageInvocation:
+                raise ValueError("invalid accounting invocation")
+            from .usage_store import RouteAssociation
+            invocation.route = RouteAssociation(route_id=pm.id, backend_id=pm.id)
+            invocation.dispatch()
         try:
             raw = self._transport(
                 url, data=data, headers=headers, timeout=timeout,
