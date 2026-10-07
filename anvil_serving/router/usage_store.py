@@ -6,12 +6,15 @@ separate owners; schema creation neither enables accounting nor admits traffic.
 from __future__ import annotations
 
 import os
+import base64
+import hashlib
 import json
 import re
 import sqlite3
 import sys
 import time
 import uuid
+import unicodedata
 from contextlib import contextmanager
 from dataclasses import dataclass, fields, replace
 from datetime import datetime, timedelta, timezone
@@ -30,11 +33,12 @@ _MAX_INT = 2**63 - 1
 class UsageError(KeyStoreError):
     """Fixed accounting failure; never include a database/transport exception."""
 
-    def __init__(self, code="accounting_invalid"):
+    def __init__(self, code="accounting_invalid", result=None):
         self.code = code
+        self.result = result
         self.status = 503 if code == "accounting_unavailable" else 409 if code in {
             "accounting_conflict", "accounting_start_missing", "accounting_configuration_unsupported",
-        } else 400
+        } else 422 if code.startswith("usage_") else 400
         super().__init__(code)
 
 
@@ -417,6 +421,154 @@ _COUNTERS = ",\n".join(
     )
 )
 _COUNTER_NAMES = tuple(part.split()[0] for part in _COUNTERS.split(",\n"))
+_QUERY_COUNTER_NAMES = tuple(n for n in _COUNTER_NAMES if not n.startswith("latency_"))
+_QUERY_DIMENSIONS = (
+    "actor_kind", "actor_id", "binding_revision", "end_user_instance", "end_user_issuer", "end_user_subject",
+    "grant_kind", "grant_reference", "grant_revision", "grant_policy_digest", "grant_generation", "grant_epoch",
+    "credential_id", "model", "outcome", "input_applicability", "output_applicability", "input_source",
+    "output_source", "input_partial", "output_partial",
+)
+_QUERY_SCAN_LIMIT = 10000
+_QUERY_GROUP_LIMIT = 5000
+_QUERY_RESPONSE_LIMIT = 8 * 1024 * 1024
+_QUERY_COLUMNS = dict(zip(_QUERY_DIMENSIONS, _QUERY_DIMENSIONS))
+_PRUNE_LIMIT = 200
+
+
+def _filter_value(name, value):
+    if name not in _QUERY_DIMENSIONS:
+        raise UsageError("usage_granularity_unsupported")
+    if value is None:
+        return
+    if name.endswith("_partial"):
+        _require(type(value) is bool)
+    elif name in {"binding_revision", "grant_revision"}:
+        _require(type(value) is int and 1 <= value < 2**53)
+    elif name == "grant_generation":
+        _require(type(value) is str and re.fullmatch(r"(?:0|[1-9][0-9]{0,19})", value) is not None
+                 and int(value) <= 2**64 - 1)
+    elif name == "grant_policy_digest":
+        _require(type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value) is not None)
+    elif name in {"model", "end_user_subject"}:
+        _require(type(value) is str and 1 <= len(value) <= 128 and (name != "model" or "://" not in value)
+                 and not any(unicodedata.category(c).startswith("C") for c in value))
+        if name == "end_user_subject":
+            try:
+                _require(len(value.encode("utf-8")) <= 128)
+            except UnicodeError:
+                raise UsageError() from None
+    else:
+        _id(value)
+        allowed = {"actor_kind": {"human", "service", "unattributed"},
+                   "grant_kind": {"connect", "key_policy", "configured_scope", "legacy"},
+                   "outcome": _OUTCOMES, "end_user_issuer": {"open-webui"}}
+        if name.endswith("_source"):
+            _require(value in {"measured", "estimated", "unknown"})
+        elif name.endswith("_applicability"):
+            _require(value in {"applicable", "not_applicable"})
+        elif name in allowed:
+            _require(value in allowed[name])
+        elif name == "credential_id":
+            _require(len(value) <= 64)
+
+
+@dataclass(frozen=True, slots=True)
+class UsageQuery:
+    granularity: str = "detail"
+    from_utc: str | None = None
+    to_utc: str | None = None
+    filters: tuple[tuple[str, object], ...] = ()
+    group_by: tuple[str, ...] = ()
+    limit: int | None = None
+    cursor: str | None = None
+    require_complete: bool = False
+
+    def __post_init__(self):
+        if type(self.granularity) is not str or self.granularity not in {"detail", "daily", "cumulative"}:
+            raise UsageError("usage_granularity_unsupported")
+        _require(type(self.require_complete) is bool)
+        if self.granularity == "cumulative":
+            if self.from_utc is not None or self.to_utc is not None:
+                raise UsageError("usage_granularity_unsupported")
+        else:
+            lower, upper = _utc(self.from_utc), _utc(self.to_utc)
+            _require(lower < upper)
+            _require(datetime.fromisoformat(upper[:-1]) - datetime.fromisoformat(lower[:-1]) <= timedelta(days=366))
+            if self.granularity == "daily" and any(v[11:] != "00:00:00.000000Z" for v in (lower, upper)):
+                raise UsageError("usage_granularity_unsupported")
+            object.__setattr__(self, "from_utc", lower)
+            object.__setattr__(self, "to_utc", upper)
+        _require(type(self.filters) is tuple and len(self.filters) <= 16)
+        names = set()
+        for pair in self.filters:
+            _require(type(pair) is tuple and len(pair) == 2 and type(pair[0]) is str and pair[0] not in names)
+            names.add(pair[0]); _filter_value(*pair)
+        object.__setattr__(self, "filters", tuple(sorted(self.filters)))
+        _require(type(self.group_by) is tuple and len(self.group_by) <= 8
+                 and all(type(n) is str for n in self.group_by) and len(set(self.group_by)) == len(self.group_by))
+        if any(n not in _QUERY_DIMENSIONS for n in self.group_by):
+            raise UsageError("usage_granularity_unsupported")
+        records = self.granularity == "detail" and not self.group_by
+        limit = self.limit if self.limit is not None else 50 if records else 100
+        _require(type(limit) is int and 1 <= limit <= (200 if records else 500))
+        object.__setattr__(self, "limit", limit)
+        _require(self.cursor is None or type(self.cursor) is str and 1 <= len(self.cursor) <= 4096
+                 and re.fullmatch(r"[A-Za-z0-9_-]+", self.cursor) is not None)
+        _json(self.to_dict(), 8192)
+
+    def to_dict(self):
+        return {f.name: list(self.filters) if f.name == "filters" else list(self.group_by) if f.name == "group_by"
+                else getattr(self, f.name) for f in fields(self)}
+
+    @classmethod
+    def from_pairs(cls, pairs):
+        _require(type(pairs) is tuple and len(pairs) <= len(fields(cls)))
+        data = {}
+        for pair in pairs:
+            _require(type(pair) is tuple and len(pair) == 2 and type(pair[0]) is str and pair[0] not in data)
+            _require(pair[0] in {f.name for f in fields(cls)})
+            data[pair[0]] = pair[1]
+        return cls(**data)
+
+
+def _query_key(dimensions, names):
+    # Canonical typed JSON gives a stable total order including nulls and integers.
+    return _json([dimensions[n] for n in names], 2048)
+
+
+def _retention_floor(value, *, daily=False):
+    if value is not None:
+        try:
+            valid = _utc(value) == value and (not daily or value[11:] == "00:00:00.000000Z")
+        except UsageError:
+            valid = False
+        if not valid:
+            raise UsageError("accounting_unavailable")
+    return value
+
+
+def _query_cursor(value, binding, revision, last=None):
+    if last is not None:
+        raw = _json({"binding": binding, "revision": revision, "last": last}, 3072).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    if value is None:
+        return None
+    try:
+        raw = base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+        data = strict_json(raw)
+        _require(type(data) is dict and set(data) == {"binding", "revision", "last"}
+                 and type(data["revision"]) is int and type(data["last"]) is str and len(data["last"]) <= 2048)
+        if data["binding"] != binding or data["revision"] != revision:
+            raise UsageError("usage_cursor_stale")
+        return data["last"]
+    except UsageError as exc:
+        if exc.code == "accounting_invalid":
+            raise UsageError("usage_cursor_invalid") from None
+        raise
+    except (ValueError, TypeError, UnicodeError, RecursionError):
+        raise UsageError("usage_cursor_invalid") from None
+
+
 _DDL = (
     ("key_owner_bindings", """CREATE TABLE key_owner_bindings (
         key_id TEXT NOT NULL PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('human','service')),
@@ -786,8 +938,8 @@ class UsageStore:
         return "committed"
 
     @staticmethod
-    def _contribution(start, terminal, domain_id):
-        caller, usage = start.caller, terminal.tokens
+    def _dimensions(start, usage, domain_id, outcome):
+        caller = start.caller
         user = caller.end_user
         dimensions = {"domain_id": domain_id, "actor_kind": caller.actor.kind, "actor_id": caller.actor.id,
                       "binding_revision": caller.actor.binding_revision, "end_user_instance": user.instance if user else None,
@@ -795,11 +947,17 @@ class UsageStore:
                       "grant_kind": caller.grant.kind, "grant_reference": caller.grant.reference,
                       "grant_revision": caller.grant.revision, "grant_policy_digest": caller.grant.policy_digest,
                       "grant_generation": caller.grant.generation, "grant_epoch": caller.grant.epoch,
-                      "credential_id": caller.credential_id, "model": start.model, "outcome": terminal.outcome}
+                      "credential_id": caller.credential_id, "model": start.model, "outcome": outcome}
         for name, direction in (("input", usage.input), ("output", usage.output)):
             dimensions.update({name + "_applicability": direction.applicability, name + "_source": direction.source,
                                name + "_partial": int(direction.partial)})
         dimensions["group_key"] = _json({k: v for k, v in dimensions.items() if k != "domain_id"}, 8192)
+        return dimensions
+
+    @staticmethod
+    def _contribution(start, terminal, domain_id):
+        usage = terminal.tokens
+        dimensions = UsageStore._dimensions(start, usage, domain_id, terminal.outcome)
         counts = dict.fromkeys(_COUNTER_NAMES, 0)
         counts["requests"] = int(start.parent_request_id is None)
         counts["attempts"] = int(terminal.dispatched is True)
@@ -923,6 +1081,256 @@ class UsageStore:
             db.execute("UPDATE usage_domains SET accounting_failures=? WHERE domain_id=?", (row[0] + 1, domain_id))
             self._revision(db, domain_id)
         self._pending_failure = False
+
+    def _query_metadata(self, db, query, domain, authority_scope, collected_at):
+        lower, upper = query.from_utc, query.to_utc
+        if query.granularity == "cumulative":
+            lower = db.execute("SELECT MIN(started_at) FROM usage_runs WHERE domain_id=?",
+                               (domain["domain_id"],)).fetchone()[0] or collected_at
+            upper = collected_at
+        scope = authority_scope
+        if scope is not None:
+            _require(type(scope) is AuthorityScope and scope.domain_id == domain["domain_id"])
+            lo, hi = max(lower, scope.from_utc), min(upper, scope.to_utc, collected_at)
+            if lo < hi:
+                # Recorded closed lifetimes can narrow an already trusted roster;
+                # absent/unknown members stay in the scope and remain gaps.
+                runs = db.execute("SELECT run_id,started_at,ended_at FROM usage_runs WHERE domain_id=? LIMIT 1025",
+                                  (domain["domain_id"],)).fetchall()
+                known = {r["run_id"]: r for r in runs}
+                ids = tuple(rid for rid in scope.run_ids if rid not in known or
+                            known[rid]["started_at"] < hi and (known[rid]["ended_at"] is None or known[rid]["ended_at"] > lo))
+                scope = replace(scope, from_utc=lo, to_utc=hi, run_ids=ids,
+                                quiesced_run_ids=tuple(rid for rid in scope.quiesced_run_ids if rid in ids)) if ids else None
+            else:
+                scope = None
+        state = self._coverage_state(db, scope, domain_id=domain["domain_id"])
+        reasons = set(state.gaps)
+        if lower < (state.authoritative_from or upper) or upper > (state.authoritative_to or lower):
+            reasons.add("owner_roster_unknown")
+        if upper > collected_at:
+            reasons.add("owner_roster_unknown")
+        segments = []
+        for part in state.segments:
+            segment_id, did, run_id, config, enabled, start, end, reason, uncertain = part
+            end = min(end or upper, upper)
+            start = max(start, lower)
+            if start < end:
+                segments.append({"segment_id": segment_id, "domain_id": did, "run_id": run_id,
+                                 "configuration_revision": config, "enabled": bool(enabled),
+                                 "started_at": start, "ended_at": end, "closure_reason": reason,
+                                 "end_uncertain": bool(uncertain)})
+        if not segments or min(s["started_at"] for s in segments) > lower:
+            reasons.add("segment_missing")
+        bounds = (domain["domain_id"], lower, upper)
+        unresolved = db.execute("SELECT COUNT(*) FROM usage_starts s LEFT JOIN usage_details d USING(request_id) "
+                                "WHERE s.domain_id=? AND s.accepted_at>=? AND s.accepted_at<? AND d.request_id IS NULL",
+                                bounds).fetchone()[0]
+        if unresolved:
+            reasons.add("accounting_unresolved")
+        if self._pending_failure:
+            reasons.add("accounting_failure_pending")
+        return {"schema": "router-usage/v1", "collected_at": collected_at,
+                "snapshot_revision": state.snapshot_revision, "available": not self._pending_failure,
+                "granularity": query.granularity, "requested_range": {"from_utc": lower, "to_utc": upper},
+                "covered_range": {"from_utc": state.authoritative_from, "to_utc": state.authoritative_to},
+                "retained_scope": {"detail_floor_utc": _retention_floor(domain["detail_floor_utc"]),
+                                   "daily_floor_utc": _retention_floor(domain["daily_floor_utc"], daily=True),
+                                   "available_granularities": ["detail", "daily", "cumulative"]},
+                "coverage_epoch": state.coverage_epoch, "coverage_segments": segments,
+                "coverage_gaps": [{"reason": r, "from_utc": lower, "to_utc": upper} for r in sorted(reasons)],
+                "coverage_complete": not reasons, "unresolved_requests": unresolved,
+                "accounting_failures": domain["accounting_failures"],
+                "truncation": {"returned": 0, "omitted": None, "next_cursor": None}, "limitations": []}
+
+    @staticmethod
+    def _detail_query_row(row):
+        start = RequestStart.from_json(row["start_payload"])
+        final = Terminal.from_json(row["terminal_payload"]) if row["terminal_payload"] is not None else None
+        if final:
+            dimensions, counts = UsageStore._contribution(start, final, row["domain_id"])
+        else:
+            usage = Observation.from_json(row["observation_payload"]).tokens if row["observation_payload"] else TokenUsage(
+                input=TokenDirection(applicability=start.input_applicability),
+                output=TokenDirection(applicability=start.output_applicability))
+            dimensions = UsageStore._dimensions(start, usage, row["domain_id"], None)
+            counts = dict.fromkeys(_COUNTER_NAMES, 0)
+        record = start.to_dict()
+        record.update(final.to_dict() if final else {"ended_at": None, "outcome": None,
+                      "tokens": usage.to_dict(), "dispatched": None if row["dispatched"] is None else bool(row["dispatched"]),
+                      "route": RouteAssociation.from_json(row["route_association"]).to_dict() if row["route_association"] else None})
+        record["accounting_status"] = "finalized" if final else "unresolved"
+        return dimensions, counts, record
+
+    def query(self, query, *, domain_id, authority_scope=None, deadline_seconds=2):
+        """Exact retained observed arithmetic in one bounded read snapshot.
+
+        AuthorityScope is trusted owner input, never a client query field. A
+        cursor restarts after any revision/authority/query change; no long-lived
+        snapshots or pagination service are needed.
+        """
+        _require(type(query) is UsageQuery); _id(domain_id)
+        _require(type(deadline_seconds) in (int, float) and 0 < deadline_seconds <= 5)
+        deadline = time.monotonic() + deadline_seconds
+        result = {"schema": "router-usage/v1", "available": False, "granularity": query.granularity,
+                  "coverage_complete": False, "coverage_segments": [],
+                  "coverage_gaps": [{"reason": "query_snapshot_unavailable"}], "limitations": []}
+        try:
+            with self.key_store._connect() as db:
+                db.row_factory = sqlite3.Row
+                db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+                try:
+                    db.execute("BEGIN")
+                    if db.execute("PRAGMA user_version").fetchone()[0] != _VERSION:
+                        raise UsageError("accounting_unavailable")
+                    domain = db.execute("SELECT * FROM usage_domains WHERE domain_id=?", (domain_id,)).fetchone()
+                    if domain is None:
+                        raise UsageError("accounting_configuration_unsupported")
+                    result = self._query_metadata(db, query, domain, authority_scope, _now())
+                    metadata = dict(result)
+                    floor = result["retained_scope"].get(query.granularity + "_floor_utc")
+                    if floor is not None and query.from_utc < floor:
+                        raise UsageError("usage_coverage_unavailable", result)
+                    if query.require_complete and not result["coverage_complete"]:
+                        raise UsageError("usage_coverage_unavailable", result)
+                    authority = None if authority_scope is None else {f.name: getattr(authority_scope, f.name) for f in fields(authority_scope)}
+                    canonical = query.to_dict(); canonical["cursor"] = None
+                    binding = hashlib.sha256(_json({"query": canonical, "domain_id": domain_id,
+                                                  "epoch": result["coverage_epoch"], "authority": authority}, 65536).encode()).hexdigest()
+                    last = _query_cursor(query.cursor, binding, result["snapshot_revision"])
+                    parameters = [domain_id]
+                    if query.granularity == "detail":
+                        sql = ("SELECT s.*,d.terminal_payload FROM usage_starts s LEFT JOIN usage_details d USING(request_id) "
+                               "WHERE s.domain_id=? AND s.accepted_at>=? AND s.accepted_at<? ORDER BY s.accepted_at,s.request_id")
+                        parameters += [query.from_utc, query.to_utc]
+                    else:
+                        table = "usage_daily" if query.granularity == "daily" else "usage_cumulative"
+                        sql = "SELECT * FROM " + table + " WHERE domain_id=?"
+                        if query.granularity == "daily":
+                            sql += " AND accepted_day>=? AND accepted_day<?"
+                            parameters += [query.from_utc[:10], query.to_utc[:10]]
+                        for name, value in query.filters:
+                            sql += " AND " + _QUERY_COLUMNS[name] + (" IS NULL" if value is None else "=?")
+                            if value is not None:
+                                parameters.append(int(value) if type(value) is bool else value)
+                        sql += " ORDER BY " + ("accepted_day," if table == "usage_daily" else "") + "group_key"
+                    rows = db.execute(sql, parameters)
+                    groups, records, seen, matching = {}, [], 0, 0
+                    record_page = query.granularity == "detail" and not query.group_by
+                    for row in rows:
+                        seen += 1
+                        if seen > _QUERY_SCAN_LIMIT or time.monotonic() >= deadline:
+                            raise UsageError("usage_query_limited", result)
+                        if query.granularity == "detail":
+                            dimensions, counts, record = self._detail_query_row(row)
+                            if any(dimensions[n] != value for n, value in query.filters):
+                                continue
+                        else:
+                            dimensions = dict(row)
+                            counts = {n: row[n] for n in _COUNTER_NAMES}
+                            if any(type(v) is not int or not 0 <= v <= _MAX_INT for v in counts.values()):
+                                raise UsageError("accounting_unavailable")
+                        matching += 1
+                        if record_page:
+                            key = _json([record["accepted_at"], record["request_id"]], 2048)
+                            if (last is None or key > last) and len(records) <= query.limit:
+                                records.append((key, record, counts))
+                            continue
+                        key = _query_key(dimensions, query.group_by)
+                        if key not in groups:
+                            if len(groups) >= _QUERY_GROUP_LIMIT:
+                                raise UsageError("usage_query_limited", result)
+                            groups[key] = {"dimensions": {n: bool(dimensions[n]) if n.endswith("_partial") else dimensions[n]
+                                                          for n in query.group_by}, **dict.fromkeys(_QUERY_COUNTER_NAMES, 0)}
+                        for name in _QUERY_COUNTER_NAMES:
+                            groups[key][name] += counts[name]  # Python integers, never SQLite SUM/float.
+                    if time.monotonic() >= deadline:
+                        raise UsageError("usage_query_limited", result)
+                    if record_page:
+                        page = records[:query.limit]
+                        result["records"] = [r for _, r, _ in page]
+                        counts = [c for _, _, c in page]
+                        omitted = matching - len(page) if last is None else None
+                        next_key = page[-1][0] if len(records) > query.limit else None
+                    else:
+                        keys = sorted(k for k in groups if last is None or k > last)
+                        page_keys = keys[:query.limit]
+                        result["groups"] = [groups[k] for k in page_keys]
+                        counts = result["groups"]
+                        omitted = len(keys) - len(page_keys)
+                        next_key = page_keys[-1] if omitted else None
+                    for name in _QUERY_COUNTER_NAMES:
+                        result[name] = sum(c[name] for c in counts) if counts or result["coverage_complete"] else None
+                    result["truncation"] = {"returned": len(counts), "omitted": omitted,
+                                            "next_cursor": _query_cursor(None, binding, result["snapshot_revision"], next_key)
+                                            if next_key is not None else None}
+                    if not result["coverage_complete"]:
+                        result["limitations"].append("usage_coverage_unavailable")
+                    try:
+                        _json(result, _QUERY_RESPONSE_LIMIT)
+                    except UsageError:
+                        raise UsageError("usage_query_limited", metadata) from None
+                    if time.monotonic() >= deadline:
+                        raise UsageError("usage_query_limited", metadata)
+                    return result
+                finally:
+                    db.set_progress_handler(None, 0)
+        except UsageError as exc:
+            if exc.result is None and exc.code.startswith("usage_"):
+                exc.result = result
+            if exc.code.startswith("usage_"):
+                exc.result = {**exc.result, "available": False, "limitations": [exc.code]}
+            raise
+        except (sqlite3.Error, KeyStoreError, OSError):
+            if time.monotonic() >= deadline:
+                raise UsageError("usage_query_limited", {**result, "available": False, "limitations": ["usage_query_limited"]}) from None
+            raise UsageError("accounting_unavailable") from None
+
+    def prune(self, now, *, domain_id, detail_days=30, daily_days=365):
+        """Prune one bounded resolved-detail/daily batch; cumulative is untouched."""
+        _id(domain_id)
+        _require(type(detail_days) is int and type(daily_days) is int
+                 and 1 <= detail_days <= 3660 and 1 <= daily_days <= 3660)
+        now = datetime.fromisoformat(_utc(now)[:-1] + "+00:00")
+        try:
+            detail = _utc((now - timedelta(days=detail_days)).isoformat(timespec="microseconds").replace("+00:00", "Z"))
+            daily = _utc((now - timedelta(days=daily_days)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z"))
+        except OverflowError:
+            raise UsageError() from None
+        with self._write() as db:
+            deadline = time.monotonic() + 2
+            db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+            try:
+                domain = db.execute("SELECT * FROM usage_domains WHERE domain_id=?", (domain_id,)).fetchone()
+                if domain is None:
+                    raise UsageError("accounting_configuration_unsupported")
+                old_detail = _retention_floor(domain["detail_floor_utc"])
+                old_daily = _retention_floor(domain["daily_floor_utc"], daily=True)
+                detail, daily = max(detail, old_detail or detail), max(daily, old_daily or daily)
+                # ponytail: 200 rows per class/pass; owner can repeat the managed prune
+                # command if volume needs more, without an unbounded writer lock.
+                ids = db.execute("SELECT s.request_id FROM usage_starts s JOIN usage_details d USING(request_id) "
+                                 "WHERE s.domain_id=? AND s.accepted_at<? ORDER BY s.accepted_at,s.request_id LIMIT ?",
+                                 (domain_id, detail, _PRUNE_LIMIT + 1)).fetchall()
+                days = db.execute("SELECT accepted_day,group_key FROM usage_daily WHERE domain_id=? AND accepted_day<? "
+                                  "ORDER BY accepted_day,group_key LIMIT ?", (domain_id, daily[:10], _PRUNE_LIMIT + 1)).fetchall()
+                if ids:
+                    values = [r[0] for r in ids[:_PRUNE_LIMIT]]
+                    where = " WHERE request_id IN (" + ",".join("?" for _ in values) + ")"
+                    db.execute("DELETE FROM usage_details" + where, values)
+                    db.execute("DELETE FROM usage_starts" + where, values)
+                for day, key in days[:_PRUNE_LIMIT]:
+                    db.execute("DELETE FROM usage_daily WHERE domain_id=? AND accepted_day=? AND group_key=?", (domain_id, day, key))
+                if ids or days or detail != old_detail or daily != old_daily:
+                    db.execute("UPDATE usage_domains SET detail_floor_utc=?,daily_floor_utc=? WHERE domain_id=?", (detail, daily, domain_id))
+                    self._revision(db, domain_id)
+                if time.monotonic() >= deadline:
+                    raise UsageError("accounting_unavailable")
+                return {"detail_deleted": min(len(ids), _PRUNE_LIMIT), "daily_deleted": min(len(days), _PRUNE_LIMIT),
+                        "detail_floor_utc": detail, "daily_floor_utc": daily,
+                        "more": len(ids) > _PRUNE_LIMIT or len(days) > _PRUNE_LIMIT}
+            finally:
+                db.set_progress_handler(None, 0)
 
     def health(self, domain_id):
         _id(domain_id)

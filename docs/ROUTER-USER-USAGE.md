@@ -345,7 +345,10 @@ snapshot overwrite to erase new accounting. Demonstrate on synthetic state.
 ## Retained exact queries and active diagnostics (T007/T009/T010)
 
 `UsageQuery(granularity=detail|daily|cumulative,from_utc,to_utc,filters,group_by,
-limit,cursor)` rejects duplicate/unknown parameters. All intervals are start-time
+limit,cursor,require_complete=False)` rejects duplicate/unknown parameters.
+`require_complete` is a closed boolean: default results are exact observed retained
+subtotals with explicit coverage gaps; true refuses any gap with
+`usage_coverage_unavailable`. This flag never restores expired/unsupported history. All intervals are start-time
 `[from,to)` UTC. Allowed grouping/filtering is actor kind/id/binding revision,
 optional end-user instance/issuer/subject, effective grant kind/reference/revision/
 policy digest (including Connect generation/epoch), credential ID, logical model,
@@ -417,7 +420,7 @@ scan/time/row cap yields typed limitation and complete coverage metadata;
 indexes follow observed exact dimensions rather than unbounded cubes.
 
 `UsageResult` allowlist: `schema`, `collected_at`, `snapshot_revision`,
-`available`, `granularity`, `requested_range`, `covered_range`, `coverage_epoch`, `coverage_segments`, `coverage_gaps`,
+`available`, `granularity`, `requested_range`, `covered_range`, `retained_scope`, `coverage_epoch`, `coverage_segments`, `coverage_gaps`,
 `coverage_complete`,
 `groups/records`, `measured_input/output`, `estimated_input/output`,
 `unknown_input/output_requests`, `partial_input/output_requests`,
@@ -425,6 +428,9 @@ indexes follow observed exact dimensions rather than unbounded cubes.
 `unresolved_requests`, `accounting_failures`, `truncation`, `limitations`.
 Optional cache/reasoning breakdowns retain their own known/unknown coverage.
 Exact arithmetic means observed committed metadata, not unknown upstream work.
+`retained_scope` reports actual detail/daily floors and available storage classes;
+returned-page subtotals are never full selected totals when truncated. Unresolved
+counts describe the requested time scope; unresolved detail has explicit status.
 
 Extend `/v1/requests?active=1` admin projection with caller/grant, selected route,
 phase checking/queued/admitted/dispatched/streaming/finalizing, elapsed time,
