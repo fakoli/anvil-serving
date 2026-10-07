@@ -122,6 +122,10 @@ workload and independent gates pass.
 
 ## Start with comparable numbers
 
+For speech recognition, speech generation and spoken answers, start with
+**[voice model results](voice-models.md)**. The latest Apple comparison retains
+all failed gates and no-promotion decisions alongside the measured results.
+
 The **[model comparison table](comparison.md)** puts the wider measured
 configuration — TTFT, throughput, context, reasoning mode, and recipe link —
 in one place, grouped by card and workload. The

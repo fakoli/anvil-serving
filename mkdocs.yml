@@ -76,6 +76,7 @@ nav:
       - Choose and compare:
           - Find a measured recipe: benchmarks/recipe-results.md
           - Compare models: benchmarks/comparison.md
+          - Voice model results: benchmarks/voice-models.md
           - Model dossiers: benchmarks/models/index.md
           - Model and quantization selection: benchmarks/selection.md
           - Reproduce configurations: benchmarks/configurations.md

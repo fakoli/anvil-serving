@@ -13,6 +13,7 @@
 [Get started](docs/GETTING-STARTED.md) ·
 [Choose a product journey](docs/PRODUCT-FAMILIES.md) ·
 [Browse benchmark evidence](docs/benchmarks/index.md) ·
+[Read voice model results](docs/benchmarks/voice-models.md) ·
 [Open the documentation](https://fakoli.github.io/anvil-serving/)
 
 </div>
