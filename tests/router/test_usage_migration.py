@@ -401,6 +401,7 @@ def test_creation_race_preserves_newer_database_bytes_authority_and_ledger(
     newer = KeyStore.initialize(tmp_path / "newer" / "keys.sqlite3")
     revoked, token = newer.create("newer-device", ["llm.primary"], [CHAT])
     newer.revoke(revoked["key_id"])
+    newer.owner_check = lambda *actor: True
     portal = connect_keys.ConnectKeys(newer, ["llm.primary"])
     approve(portal)
     UsageStore(newer).migrate()
