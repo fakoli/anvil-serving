@@ -267,3 +267,47 @@ def test_malformed_error_decoder_is_closed_and_typed(raw):
     with pytest.raises(TransportError) as caught:
         cli._fetch("http://127.0.0.1", "/v1/admin/usage", ADMIN, 1, opener, usage=True)
     assert caught.value.code == "router_response_invalid" and body.closed
+
+
+@pytest.mark.parametrize("status", [200, 422])
+@pytest.mark.parametrize("number", [b"NaN", b"Infinity", b"-Infinity", b"1e400"])
+def test_nonfinite_http_json_is_typed_at_shared_boundary(monkeypatch, capsys, status, number):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+    body = (b'{"schema":"router-active-usage/v1","records":[{"elapsed_ms":' + number + b'}]}'
+            if status == 200 else b'{"error":{"type":"usage_coverage_unavailable"},"coverage":{"available":false,"limitations":["usage_coverage_unavailable"],"available_granularities":["detail"],"snapshot_revision":' + number + b'}}')
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args): pass
+        def do_GET(self):
+            self.send_response(status); self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body)
+    httpd = HTTPServer(("127.0.0.1", 0), Handler)
+    worker = threading.Thread(target=httpd.serve_forever); worker.start()
+    monkeypatch.setenv("SYNTHETIC_USAGE", ADMIN)
+    try:
+        rc = main(["router", "usage", "active", "--router-url", f"http://127.0.0.1:{httpd.server_port}", "--auth-env", "SYNTHETIC_USAGE"])
+        assert rc != 0
+        output = capsys.readouterr()
+        assert json.loads(output.err)["error"]["type"] == "router_response_invalid"
+        assert ADMIN not in output.out + output.err
+    finally:
+        httpd.shutdown(); httpd.server_close(); worker.join(3)
+        assert not worker.is_alive()
+
+
+def test_strict_shared_decoder_preserves_finite_values_exact_ints_and_error_format(monkeypatch):
+    import io
+    import urllib.error
+    from anvil_serving.operator_output import OperatorError
+    raw = b'{"schema":"router-active-usage/v1","records":[{"elapsed_ms":0.125,"count":10000000000000007,"missing":null}]}'
+    class Response(io.BytesIO):
+        status = 200
+    assert cli._fetch("http://127.0.0.1", "/v1/admin/usage", ADMIN, 1, lambda *a,**k: Response(raw), usage=True)["records"] == [
+        {"elapsed_ms":0.125,"count":10**16+7,"missing":None}]
+    monkeypatch.setenv("SYNTHETIC_USAGE", ADMIN)
+    def failed(*a, **k):
+        raise OperatorError("fixed", code="usage_coverage_unavailable", details={"coverage":{"value":float("inf")}})
+    monkeypatch.setattr(cli, "_fetch", failed)
+    result = cli.dispatch_usage(["active", "--auth-env", "SYNTHETIC_USAGE"])
+    assert result.error.code == "router_response_invalid"
+    assert json.loads(result.human_stderr)["error"]["type"] == "router_response_invalid"

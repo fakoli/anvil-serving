@@ -21,6 +21,7 @@ from pathlib import Path
 from . import envfile
 from .operator_output import CommandResult, OperatorError, TransportError, UsageError
 from .paths import config_path
+from .observability.dashboard.contracts import strict_json, fields, canonical, ObservatoryError
 from .router.decision_log import safe_client_id, safe_correlation, safe_gateway_request_id
 
 MAX_RESPONSE_BYTES = 128 * 1024
@@ -232,7 +233,12 @@ def _fetch(base, path, token, timeout, opener, *, max_bytes=MAX_RESPONSE_BYTES, 
             except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException):
                 raise TransportError("Router diagnostic transport failed.", code="router_unreachable") from None
             try:
-                body = json.loads(raw) if len(raw) <= max_bytes else {}
+                body = fields(strict_json(raw) if len(raw) <= max_bytes else {}, required=("error",), optional=("coverage",))
+                fields(body["error"], required=("type",), optional=("message",))
+                if "coverage" in body:
+                    fields(body["coverage"], required=("available", "limitations", "available_granularities"),
+                           optional=("gap_reasons", "requested_range", "covered_range", "retained_scope",
+                                     "snapshot_revision", "unresolved_requests", "accounting_failures", "coverage_segments"))
                 code = body["error"]["type"]
             except (ValueError, KeyError, TypeError, RecursionError):
                 code = None
@@ -254,7 +260,7 @@ def _fetch(base, path, token, timeout, opener, *, max_bytes=MAX_RESPONSE_BYTES, 
     if len(raw) > max_bytes:
         raise TransportError("Router diagnostic response exceeded the size bound.", code="router_response_oversized")
     try:
-        value = json.loads(raw)
+        value = strict_json(raw)
     except (ValueError, UnicodeDecodeError, RecursionError):
         raise TransportError("Router diagnostic response was malformed.", code="router_response_invalid") from None
     if not isinstance(value, dict):
@@ -558,7 +564,6 @@ def dispatch_usage(argv=None) -> CommandResult:
     """Native exact admin reader; the diagnostic projector is intentionally unused."""
     from datetime import datetime, timedelta, timezone
     from .router.usage_store import UsageQuery, UsageError as QueryError
-    from .observability.dashboard.contracts import strict_json
     parser = argparse.ArgumentParser(prog="anvil-serving router usage", allow_abbrev=False)
     parser.add_argument("action", choices=("active", "recent", "query"))
     for name in ("config", "router-url", "auth-env", "filters", "group-by", "granularity", "from-utc", "to-utc", "cursor"):
@@ -619,4 +624,9 @@ def dispatch_usage(argv=None) -> CommandResult:
         error = UsageError("Invalid usage query.", code="invalid_usage_query")
     # Fixed native error metadata stays useful in the exact default output too.
     body = {"error": {"type": error.code, "message": error.message}, **error.details}
-    return CommandResult(error=error, human_stderr=json.dumps(body, ensure_ascii=False, allow_nan=False) + "\n")
+    try:
+        rendered = canonical(body).decode("utf-8")
+    except (ObservatoryError, RecursionError):
+        error = TransportError("Router usage error was invalid.", code="router_response_invalid")
+        rendered = canonical({"error": {"type": error.code, "message": error.message}}).decode("utf-8")
+    return CommandResult(error=error, human_stderr=rendered + "\n")
