@@ -148,6 +148,11 @@ def test_new_schema_constraints_and_history_have_no_key_account_cascade(tmp_path
     ledger(store)
     before = rows(store)
     with store._connect() as db:
+        for table, identifier in (("key_owner_bindings", "key_id"), ("usage_domains", "domain_id"),
+                                  ("usage_runs", "run_id"), ("usage_coverage_segments", "segment_id"),
+                                  ("usage_starts", "request_id"), ("usage_details", "request_id")):
+            with pytest.raises(sqlite3.IntegrityError):
+                db.execute(f"UPDATE {table} SET {identifier}=NULL")
         for kind, owner, revision in (("admin", "owner-1", 1), ("human", "https://example.test", 1),
                                       ("service", "owner-1", 0), ("human", "owner-1", 2**53)):
             with pytest.raises(sqlite3.IntegrityError):

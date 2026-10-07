@@ -49,18 +49,18 @@ _COUNTERS = ",\n".join(
 )
 _DDL = (
     ("key_owner_bindings", """CREATE TABLE key_owner_bindings (
-        key_id TEXT PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('human','service')),
+        key_id TEXT NOT NULL PRIMARY KEY, kind TEXT NOT NULL CHECK(kind IN ('human','service')),
         owner_id TEXT NOT NULL CHECK(length(owner_id) BETWEEN 1 AND 128
             AND owner_id NOT GLOB '*[^A-Za-z0-9_:.\u002d]*'),
         revision INTEGER NOT NULL CHECK(typeof(revision)='integer'
             AND revision BETWEEN 1 AND 9007199254740991))"""),
     ("usage_domains", """CREATE TABLE usage_domains (
-        domain_id TEXT PRIMARY KEY, coverage_epoch TEXT NOT NULL,
+        domain_id TEXT NOT NULL PRIMARY KEY, coverage_epoch TEXT NOT NULL,
         configuration_revision TEXT NOT NULL,
         snapshot_revision INTEGER NOT NULL DEFAULT 0 CHECK(typeof(snapshot_revision)='integer' AND snapshot_revision>=0),
         accounting_failures INTEGER NOT NULL DEFAULT 0 CHECK(typeof(accounting_failures)='integer' AND accounting_failures>=0))"""),
     ("usage_runs", """CREATE TABLE usage_runs (
-        run_id TEXT PRIMARY KEY, domain_id TEXT NOT NULL, started_at TEXT NOT NULL,
+        run_id TEXT NOT NULL PRIMARY KEY, domain_id TEXT NOT NULL, started_at TEXT NOT NULL,
         ended_at TEXT, state TEXT NOT NULL CHECK(state IN ('live','dead','unknown')),
         host_domain_id TEXT NOT NULL, boot_id TEXT NOT NULL,
         pid_namespace_device INTEGER NOT NULL, pid_namespace_inode INTEGER NOT NULL,
@@ -69,12 +69,12 @@ _DDL = (
         user_namespace_inode INTEGER NOT NULL, pid INTEGER NOT NULL,
         start_ticks INTEGER NOT NULL)"""),
     ("usage_coverage_segments", """CREATE TABLE usage_coverage_segments (
-        segment_id TEXT PRIMARY KEY, domain_id TEXT NOT NULL, run_id TEXT NOT NULL,
+        segment_id TEXT NOT NULL PRIMARY KEY, domain_id TEXT NOT NULL, run_id TEXT NOT NULL,
         configuration_revision TEXT NOT NULL, enabled INTEGER NOT NULL CHECK(enabled IN (0,1)),
         started_at TEXT NOT NULL, ended_at TEXT, closure_reason TEXT,
         end_uncertain INTEGER NOT NULL DEFAULT 0 CHECK(end_uncertain IN (0,1)))"""),
     ("usage_starts", """CREATE TABLE usage_starts (
-        request_id TEXT PRIMARY KEY, run_id TEXT NOT NULL, domain_id TEXT NOT NULL,
+        request_id TEXT NOT NULL PRIMARY KEY, run_id TEXT NOT NULL, domain_id TEXT NOT NULL,
         segment_id TEXT NOT NULL, configuration_revision TEXT NOT NULL,
         accepted_at TEXT NOT NULL, caller TEXT NOT NULL CHECK(length(CAST(caller AS BLOB))<=16384),
         kind TEXT NOT NULL, model TEXT, parent_request_id TEXT, attempt_id TEXT,
@@ -82,7 +82,7 @@ _DDL = (
         start_payload TEXT NOT NULL CHECK(length(CAST(start_payload AS BLOB))<=32768),
         dispatched INTEGER CHECK(dispatched IN (0,1)), route_association TEXT)"""),
     ("usage_details", """CREATE TABLE usage_details (
-        request_id TEXT PRIMARY KEY, ended_at TEXT NOT NULL, outcome TEXT NOT NULL,
+        request_id TEXT NOT NULL PRIMARY KEY, ended_at TEXT NOT NULL, outcome TEXT NOT NULL,
         terminal_payload TEXT NOT NULL CHECK(length(CAST(terminal_payload AS BLOB))<=32768))"""),
     ("usage_daily", f"""CREATE TABLE usage_daily (
         accepted_day TEXT NOT NULL, {_DIMENSIONS}, {_COUNTERS},
