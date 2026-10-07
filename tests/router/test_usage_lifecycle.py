@@ -449,6 +449,43 @@ def test_restricted_procfs_mount_and_namespace_view_are_not_comparability_proof(
         _ACTUAL_LINUX_OWNER(owner.host_domain_id, owner.pid)
 
 
+@pytest.mark.parametrize("overmount", [
+    "/proc/123/stat", "/proc/123/ns", "/proc/123/ns/pid", "/proc/123/ns/user",
+    "/proc/456/stat", "/proc/456/ns/pid", "/proc/self/stat", "/proc/self/ns/pid",
+    "/proc/self/mountinfo", "/proc/1/ns/pid", "/proc/sys/kernel/random", "/proc/sys/kernel/random/boot_id",
+])
+def test_sensitive_descendant_overmount_is_unknown_and_preserves_unresolved_start(store, monkeypatch, overmount):
+    usage, owner, run, scope = store
+    start = start_at(run)
+    usage.start(start, authority_scope=scope)
+    saved_payload = rows(usage, "usage_starts")[0]["start_payload"]
+    actual_stat = ledger.os.stat
+    def read(path, **kwargs):
+        path = str(path)
+        if path == "/proc/self/mountinfo":
+            return "1 0 0:1 / /proc rw - proc proc rw\n" + f"2 1 0:2 / {overmount} rw - tmpfs tmpfs rw\n"
+        if path == "/proc/sys/kernel/random/boot_id":
+            return owner.boot_id
+        pid, ticks = (456, 100) if path == "/proc/self/stat" else (owner.pid, owner.start_ticks + 1)
+        return f"{pid} (fixture) " + " ".join(["S"] + ["0"] * 18 + [str(ticks)])
+    def metadata(path, *args, **kwargs):
+        if not str(path).startswith("/proc/"):
+            return actual_stat(path, *args, **kwargs)
+        return SimpleNamespace(st_dev=1, st_ino=3 if str(path).endswith("/user") else 2, st_uid=owner.uid)
+    monkeypatch.setattr(ledger, "_linux_owner", _ACTUAL_LINUX_OWNER)
+    monkeypatch.setattr(ledger.os, "getpid", lambda: 456)
+    monkeypatch.setattr(ledger.os, "geteuid", lambda: owner.uid)
+    monkeypatch.setattr(ledger.os, "readlink", lambda _: "456")
+    monkeypatch.setattr(ledger.os, "stat", metadata)
+    monkeypatch.setattr(Path, "read_text", read)
+    assert ledger.observe_run(owner) == "unknown"
+    recovered = usage.recover((run,), host_domain_id=owner.host_domain_id)
+    assert recovered["unknown_runs"] == 1 and recovered["dead_runs"] == recovered["recovered_requests"] == 0
+    assert rows(usage, "usage_starts")[0]["start_payload"] == saved_payload
+    assert rows(usage, "usage_runs")[0]["state"] == "unknown"
+    assert rows(usage, "usage_details") == rows(usage, "usage_daily") == rows(usage, "usage_cumulative") == []
+
+
 @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Linux-only owner proof; other platforms remain UNKNOWN")
 def test_actual_live_second_process_safety_and_recovery_requires_full_comparability(tmp_path, store, monkeypatch):
     # This host may deliberately deny proc1 namespace access. Test that real

@@ -297,7 +297,10 @@ def _linux_owner(host_domain_id, target_pid=None):
     _require(not any(o.startswith("hidepid=") and o != "hidepid=0" or o == "subset=pid" for o in options))
     sensitive = (f"/proc/{pid}", f"/proc/{target_pid}" if target_pid else f"/proc/{pid}",
                  "/proc/1", "/proc/self", "/proc/sys/kernel/random/boot_id")
-    _require(not any(m[0] != "/proc" and any(p == m[0] or p.startswith(m[0] + "/") for p in sensitive)
+    # A substituted descendant (stat/ns/mountinfo) invalidates the whole
+    # process subtree, including both self and its numeric PID alias.
+    _require(not any(m[0] != "/proc" and any(p == m[0] or p.startswith(m[0] + "/")
+                                           or m[0].startswith(p + "/") for p in sensitive)
                      for m in mounts))
     ns = os.stat("/proc/self/ns/pid")
     view = os.stat("/proc/1/ns/pid")
