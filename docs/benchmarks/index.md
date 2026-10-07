@@ -170,6 +170,8 @@ with its dated findings and raw evidence.
 
 ## Recent evidence
 
+- **2026-10-06 — Apple English voice:** [quality-first component qualification](../findings/2026-10-06-m4-max-voice-quality-qualification.md) retains all STT/TTS/LLM failures and no promotion. Human-only STT chart, complete and resource-aborted TTS arms, separate off/low / medium LLM profiles and bounded restoration are auditable; failed strict 8K cells are not performance ranked. [Hardware](hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [all runs](runs.md#2026-10-06-english-voice-campaign).
+
 - **2026-09-15 — media:** The [media finding](../findings/2026-09-15-media-bringup.md)
   records bounded workflow evidence; use its dossier and finding rather than
   treating it as a text-model selection result.

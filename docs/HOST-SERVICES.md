@@ -59,7 +59,7 @@ model, or chooses a replacement model.
 
 | Host family | Supported manager | Native engine | Docker engine | Provider lifecycle |
 | --- | --- | --- | --- | --- |
-| macOS | `launchd`, `docker` | `mlx-lm`, `mlx-vlm` | Docker-supported declared adapters; MLX is not a Docker engine | TBD |
+| macOS | `launchd`, `docker` | `mlx-lm`, `mlx-vlm`, `mlx-audio` | Docker-supported declared adapters; MLX is not a Docker engine | TBD |
 | Windows | `docker` | None | Docker-supported declared adapters | TBD |
 | Linux | `docker` | None | Docker-supported declared adapters | TBD |
 | NeoCloud: Vast.ai, Runpod | No provider adapter yet | N/A | N/A | TBD |

@@ -61,6 +61,20 @@ evidence by measured hardware.
 
 ## Apple Silicon
 
+### 2026-10-06 English voice campaign
+
+| Configuration | Measured result | Limitation / decision | Dossier |
+|---|---|---|---|
+| Parakeet Metal control | human WER 3.064%; warm C1 p95 81.68 ms | critical entity failure; retained control, not newly qualified | [Parakeet](parakeet.md) |
+| Qwen3-ASR 1.7B q8 | human WER 2.786%; C1 p95 314.25 ms | paired interval overlaps zero, critical error; no promotion | [Qwen MLX](qwen3-asr-1.7b-mlx.md) |
+| Granite TurboCTC FP16 | human WER 3.343%; C1 p95 40.16 ms | critical/point regression; q8 static stop separate | [Granite](granite-speech-turboctc.md) |
+| Kokoro 0.8.2 MPS | warm 60/60; ASR proxy8.118% | no blind naturalness/client qualification | [Kokoro](kokoro.md) |
+| Breeze BF16 / q8 stream / q8 buffer |59/60resource abort;60/60;60/60 | no human winner; exact configurations unqualified | [Breeze](breeze-tts2.md) |
+| Fish S2 Pro q8 buffered |56/60; four resource-aborted requests | no partial ranking; streaming unsupported | [Fish](fish-s2-pro.md) |
+| 4B / stock9B / private 27B off/low / medium | semantic 132/131/138/144/144 of 144 | all strict 8K ineligible, exact failures/private fixture; no promotion | [Voice LLM MLX](voice-llm-mlx.md) |
+
+[Dated finding](../../findings/2026-10-06-m4-max-voice-quality-qualification.md) binds exact model revisions, runtime controls, all populations, failures and reconstruction limits. English Nemotron is a static integration stop, not a measured quality row.
+
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
 | Qwen3.5-9B MLX 4-bit | Functional 6/6; diagnostic quality 9/12 | spoken 33/36, patch 0/3, output 0/10; `no-promotion` | 2026-09-08 | [Voice LLM MLX](voice-llm-mlx.md) |

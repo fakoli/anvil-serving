@@ -89,7 +89,8 @@ catalog untouched.
 
 ## Artifact pull
 
-`pull` downloads a Hugging Face repository into a named Docker volume. It never
+`pull` downloads a Hugging Face repository into a named Docker volume, or into
+an explicit native cache with `--cache-dir`. It never
 places a token value on the command line: `--token-env` names the source variable,
 and `--token-file` is a fallback dotenv file.
 
@@ -114,6 +115,59 @@ fails before downloading unless free bytes cover the missing artifact bytes
 plus `--headroom-gib`. The download keeps native `hf download` progress and
 resumability. Success is reported only after the exact requested snapshot
 exists with no incomplete files or broken links.
+
+For native macOS MLX artifacts or another installed native engine, select the
+exact repository and immutable 40-character lowercase commit:
+
+```bash
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --no-token --dry-run
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --no-token --confirm --json
+```
+
+Native pulls discover an already installed `hf` executable on `PATH`; use
+`--hf-executable /operator/engine/bin/hf` to select one explicitly. Anvil installs
+no downloader dependency. Pass either the direct hub-cache path or an existing
+Hugging Face home containing `hub/`; the resolved hub path is passed to
+`hf download --cache-dir`. Native pulls reject `--volume`, `--image`, mutable
+revisions, and the Docker-only `--expected-bytes` metadata override.
+
+The native preview reads public metadata for that exact commit and applies
+`--include`/`--exclude` to its complete file inventory. It checks every selected
+file's declared size and public LFS SHA-256 or Git blob hash, credits only
+hash-verified existing selected bytes, and requires missing bytes plus
+`--headroom-gib` on the target filesystem. Existing partial downloads receive
+no speculative disk credit and remain available to `hf` for resumption. Preview
+performs no writes, secret-source reads, downloads, Docker operations, or
+serving lifecycle actions. Authenticated metadata resolution is deferred to
+confirmed apply, so previews require publicly accessible metadata.
+
+Apply holds one nonblocking writer lock per repository and resolved cache,
+rechecks storage, and invokes the selected executable directly without a shell.
+On POSIX the downloader inherits the lock so an abruptly exiting parent cannot
+release it while its downloader remains alive. The download uses HTTP blobs
+with Xet's separate chunk cache disabled so disk admission covers the declared
+cache. `--no-token` strips inherited Hugging Face token variables and disables
+implicit use of a saved login. Other pulls resolve only the declared secret
+reference; native output never prints its variable name, dotenv path, or value.
+
+After `hf` succeeds, independent verification requires every selected file at
+`models--OWNER--REPO/snapshots/COMMIT`, checks its actual bytes against the
+public hashes, and refuses unsafe links, missing files, or selected incomplete
+artifacts. Unrelated cache contents are retained. Corrupt completed artifacts
+fail closed and remain available for diagnosis. Repeating the same command
+resumes the download; there is no automatic pruning or rollback.
+
+The native `--json` envelope contains a `native-model-pull/v1` report in `data`,
+including the exact inventory, storage admission, immutable snapshot path,
+downloader status, and per-file verification. Every started apply retains a
+JSON receipt outside the hub cache, under its parent's
+`.anvil-serving/model-pulls/` directory. Use
+`--evidence-out /operator/evidence/native-pull.json` to retain the report at a
+new explicit file instead. Existing evidence files are refused rather than
+overwritten, and failed or interrupted downloads retain their cache bytes and
+started receipt for recovery.
 
 ## Recipes
 

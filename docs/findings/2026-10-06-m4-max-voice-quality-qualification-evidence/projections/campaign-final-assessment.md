@@ -1,0 +1,48 @@
+Retain the current Parakeet Metal / Qwen3-4B-Instruct-2507 MLX4bit / Kokoro0.8.2 combination. No replacement is qualified for promotion. This final private assessment binds completed medium LLM and bounded restoration receipts; retaining the controls does not newly certify them against every absolute gate. Exact configurations, native metrics and original SHA/byte provenance are in [the machine-readable draft](campaign-final-assessment.json).
+
+| STT human measurement | Parakeet control | Qwen3-ASR1.7B8bit | Granite TurboCTC FP16 |
+|---|---:|---:|---:|
+| Canonical24human x3: WER |3.064%|2.786%|3.343%|
+| Canonical human warm p50/p95 |46.617/81.681ms|165.368/314.251ms|24.230/40.162ms|
+| Supplemental120distinct human: WER |3.433%|3.112%|4.399%|
+| Supplemental warm p50/p95 |47.514/84.591ms|164.677/307.584ms|21.876/37.167ms|
+
+All nine sequential/concurrent/supplemental STT lanes are complete with zero request failures; canonical C4 has24human requests plus its separately retained synthetic cases. Qwen’s paired95% WER-difference intervals overlap zero on both human sets. Granite regresses against the control. All three arms fail the frozen critical honorific/entity case; the control’s failure does not relax the gate. Reference-explained repetition flags and frozen numerical ITN scoring remain intact. Nemotron English and GraniteQ8 remain named static compatibility blocks, with no invented inference result. The120holdout human recordings do not cover the user’s own voice/accent, microphone, noise or distance conditions.
+
+| Exact TTS arm | Warm completion | Raw independent ASR WER | Status |
+|---|---:|---:|---|
+| Kokoro control, stream=true, cap unspecified |60/60|8.118%|Retain; no new voice-quality certification|
+| BreezeBF16, stream=true, server token default |59/60|11.919% of59|Reject: incomplete and swap abort|
+| Breeze8 R2, stream=true,750,S0,cache0 |60/60|8.026%|Unresolved speech quality|
+| Breeze8 R3 diagnostic, stream=false,750,S0,cache0 |8/8|10.738%|Diagnostic only; not full60|
+| Breeze8 R3 full, stream=false,750,S0,cache0 |60/60|7.749%|Unresolved speech quality/client|
+| Fish8 R2, stream=false,1024,native voice,cache0 |56/60|9.443% of56|Reject: incomplete and swap abort|
+
+BreezeR3 completed60warm plus one separate cold with no observed new swap, minimum free42%, and latest-session maximum completed-generation allocator peak12,369,302,170bytes. It still needs human resolution of technical04’s50.56seconds of nonzero output with an omitted sample-width phrase in ASR, expressive04’s added-word transcript, a name and flagged pauses. Exact-zero repeated triples explain all41native repeat flags; they do not establish spoken repetition. Fish observed728,099,718bytes new host swap, above512MiB; its interrupted generation peak is unknown. BF16’s swap threshold-crossing time was not observed during a monitoring gap. Host swap, process RSS and allocator bytes are distinct; not all host swap is causally assigned to a model.
+
+Raw ASR WER includes number/unit spelling differences and is neither a naturalness score nor a human fidelity pass. No human blind gate is complete, no acoustic listening has been performed by the auditor, and no unresolved/failed arm is ranked as a winner. The rejected/unresolved R2 research listening pack is preserved and does not qualify R3. Buffered R3 first-audio p50/p95 are5.458/17.346seconds and HTTP EOF5.459/17.348seconds;440.409seconds total includes artifact processing. These measurements do not establish playback, cancellation or endpoint throughput.
+
+| LLM exact tested profile | Frozen semantic48x3 | Strict historical12x3 | Strict8K capacity | Decision |
+|---|---:|---:|---:|---|
+| Existing Qwen3-4B control |132/144|36/36|0/3 eligible|Retain; shared-prefix tools0/3|
+| Qwen3.5-9B off |131/144|33/36|0/3 eligible|Reject: arithmetic and unchanged Tea punctuation failures|
+| Qwen3.8-27B stock off |Unrun|Unrun|Unrun|Startup resource abort before inference|
+| Qwen3.8-27B cache0 off |138/144|36/36|0/3 eligible|Reject: arithmetic and capacity|
+| Qwen3.8-27B cache0 low |144/144|33/36|0/3 eligible|Reject: unchanged No punctuation and capacity|
+| Qwen3.8-27B cache0 medium |144/144|31/36|0/3 eligible|Reject: unchanged punctuation and capacity|
+
+Low’s144/144 semantic pass is a measured improvement and remains distinct from failed historical/capacity gates. Its4608-token length-limited capacity outputs have incomplete8192-character captures; exact full-response word counts are unknown and no performance/context-utility ranking is eligible. The512visible/4096reasoning labels share one4608completion cap rather than independently enforced partitions. Cache0 is a private runtime fixture, requiring durable product integration before any promotion. Medium passed144/144semantic but31/36historical: two Tea. and three No. responses violate the unchanged strict oracle despite correct content. Capacity failed0/3eligible: two4608-token length terminals contain only reasoning with no visible answer; one4301-token stop has a truncated visible prefix with1633completecodewords, marker present once but not at the start, and one extra-prefix word of unknown origin. No full-output count or performance ranking is inferred. Both resource phases closed normally with906/834samples, the same PID/model/original swap baseline, zero observed new swap and minimum free35%/33%. The39.784031second unmonitored handover gap was sampled while inference idle. These are two bounded phases, not continuous monitoring or soak. The trial service unloaded and its immutable runtime log was captured.
+
+The full Mac product run was **31failures,9808passes,687skips**, not green. Thirty failure nodes reproduce on clean canonical HEAD6c8b061d with the same interpreter; one media SQLite failure did not reproduce in bounded replays and remains transient/unattributed. No campaign-induced failure is demonstrated. Supported Linux-amd64 platform CI and bounded SQLite custody follow-up remain separate, and the original full-run source-identity limitation is preserved.
+
+Missing gates remain user microphone/noise/accent coverage, critical TTS listening and full blind preference, actual client deadlines/reconnect/cancellation/recovery, and physical playback interruption<=250ms. The conditional replacement-versus-control100warm-turn/>=1200second combined soak is **not applicable at the current no-qualified-replacement stage and was not run**. A future exact qualified replacement must satisfy both thresholds and the original resource/protected-endpoint gates; this does not certify the retained control. No continuous protected-endpoint monitoring is claimed.
+
+Bounded restoration passed independent review. The exact production voice configSHA remains unchanged; all four original core service PIDs are running/registered, all13other declared supervisors are unloaded, and deprecated VLM remains disabled. Two unloaded legacy endpoint rows report port-based HTTP404 reachability; supervisor state governs lifecycle, so this does not mean a candidate remained loaded. The v3 protocol smoke rejected unauthenticated upgrade with401 and completed two authenticated exact-transcript, correlated nonempty-PCM turns. One synthetic audio-only TTS-to-STT loop recorded WER0 and720.05ms roundtrip; it is not promotion-quality or actual playback evidence. Ending point observations show65,525,723,136bytes disk free,80% memory-free indicator and the original protected web-fetch PID; residual swap remains nonzero. No continuous monitoring is claimed.
+
+The final native cache inventory has12snapshots:10with valid local link integrity and2unsafe Kokoro snapshots; all12upstream completeness labels are unverified. Six campaign snapshots were added and none removed. Verified campaign pull receipts remain separate from this global metadata inventory; no whole-cache safety/readiness or cache deletion/repair is claimed. The failed --tail0 usage envelope and two byte-identical audio output-path guard envelopes are preserved as argument-only errors, bounded by the reviewed source-order observation rather than retroactively attested executed CLI source. The successful path envelope does not itself record caller cwd or the evidence-directory environment value.
+
+No model was promoted. The campaign measurement and bounded restoration receipts are closed; the explicitly missing human listening/microphone and physical client/interruption coverage still blocks qualification. Hindsight is unavailable. Root handles local handoff separately; this assessment neither writes nor asserts a saved handoff.
+
+Primary private references: [STT independent assessment](stt-independent-assessment.json), [TTS final control/candidate assessment](tts-final-candidate-control-assessment.json), [low LLM independent audit](qwen38-27b-cache0-r2-low-final-independent-audit.json), [Mac test triage](product-test-triage.json), [medium phase plan](llm-medium-guarded-phases-amendment.json), [v3 offline independent clearance](realtime-restoration-probe-v3-independent-review.json). The JSON registry freezes every source SHA and byte count. This final assessment preserves all drafts and source evidence; it does not publish documentation, operate services or own state/handoff artifacts.
+
+Final private references: [medium independent final audit](qwen38-27b-cache0-r2-medium-final-independent-audit.json), [restoration independent final audit](restoration-final-independent-audit.json), [closed source ledger](campaign-final-source-ledger.json). Evidence cutoff: 2026-10-06T10:45:42.030322+00:00. 116original source files are SHA/byte-bound in the final ledger.

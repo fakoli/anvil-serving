@@ -133,7 +133,7 @@ required operands, choices, and defaults.
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
 | `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--cache-dir`<br>`--hf-executable`<br>`--evidence-out`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token`<br>`--headroom-gib`<br>`--volume`<br>`--image`<br>`--expected-bytes` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |

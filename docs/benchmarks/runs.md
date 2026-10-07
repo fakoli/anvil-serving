@@ -202,6 +202,29 @@ These records synthesize retained measurements without claiming a new run.
 
 ## Apple Silicon runs
 
+### 2026-10-06 English voice campaign
+
+All rows use one Apple M4 Max 40-core GPU/48 GiB host and direct component endpoints. Exact revisions and runtime/source bindings are in the [finding](../findings/2026-10-06-m4-max-voice-quality-qualification.md#exact-configuration) and [recipe](../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md). Control loaded checkpoint revisions remain unattested. Percentiles are client endpoint measurements, not physical playback or end-to-end voice.
+
+| Exact configuration | Functional / quality evidence | Scope, failure and decision | Dossier / finding |
+|---|---|---|---|
+| Parakeet Metal control | human C1 WER 3.064%,p95 81.68 ms |24 human×3; critical error; retained control only | [Parakeet](models/parakeet.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Qwen3-ASR 1.7B MLX q8 | human C1 WER 2.786%,p95 314.25 ms | same population; paired CI overlaps zero/critical error; no promotion | [Qwen](models/qwen3-asr-1.7b-mlx.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Granite TurboCTC FP16 | human C1 WER 3.343%,p95 40.16 ms | same population; point regression/critical error; no promotion | [Granite](models/granite-speech-turboctc.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Kokoro 0.8.2 MPS streaming |60/60; first PCM p50 1026.71 ms |60 distinct warm+separate cold; ASR proxy/no human winner | [Kokoro](models/kokoro.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze BF16 streaming |59/60 | resource abort; partial timings not ranked | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze q8 R2 streaming/cache0/750 |60/60; first PCM p50 1527.19 ms | full warm component; fidelity/listening/client gates open | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze q8 R3 buffered/cache0/750 |60/60; first PCM p50 5458.13 ms |435 resource samples/growth 0; no human/client qualification | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Fish q8 R2 buffered/cache0/1024 |56/60 | resource growth 728099718B; four failed; no partial ranking | [Fish](models/fish-s2-pro.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Baseline 4B | semantic 132/144; historical 36/36; tools 0/3 | strict 8K0/3 eligible; retain existing control only | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [4B](../findings/2026-10-06-m4-max-voice-quality-qualification.md#baseline-4b) |
+| Stock 9B off | preflight 9/9; semantic 131/144; historical 33/36 | strict 8K0/3 eligible; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [9B](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stock-9b-off) |
+| Stock 27B off | no native inference | startup 6.19 GB swap growth; post-abort probe transport-only | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [abort](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stock-27b-startup-abort) |
+| Private cache0 27B off | preflight 9/9; semantic 138/144; historical 36/36 | strict 8K0/3 eligible, substantive arithmetic/private fixture | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [off](../findings/2026-10-06-m4-max-voice-quality-qualification.md#private-cache0-27b-off) |
+| Private cache0 27B low | preflight 9/9; semantic 144/144; historical 33/36 | strict 8K0/3 eligible; prefix canary/capture failure; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [low](../findings/2026-10-06-m4-max-voice-quality-qualification.md#27b-low-reasoning) |
+| Private cache0 27B medium | preflight 9/9; semantic 144/144; historical 31/36 | strict 8K0/3 eligible;2 reasoning-only/1 capture failure; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [medium](../findings/2026-10-06-m4-max-voice-quality-qualification.md#27b-medium-reasoning) |
+
+Static compatibility stops remain separate: Granite q8 group-size mismatch and English Nemotron unsupported pinned loader. They have no latency/quality score. Both medium phases bind the same original pre-up baseline/PID with a verified no-inference handover; resource work closure does not assert correctness or qualification.
+
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|
 | 2026-09-19 | Swift / stock Qwen3.8-27B artifact feasibility screen | Pinned Swift and stock GGUF Q6_K / Q4_K_M candidates plus family-matched F16 projector; conversion runtime llama.cpp b10896 `fa676981`, managed binary/config unverified | Apple M4 Max 40-core GPU, 48 GiB unified memory | read-only disk-policy screen only; all four uncached pairs shortfall the retained reserve/allowance before temporary files; memory containment unresolved | investigation stop; no download, trial, benchmark, cleanup, route, or promotion; `no-promotion` | [Efficient variants](models/qwen38-efficient-variants.md) · [Qwen3.8 27B](models/qwen38-27b.md) · [finding](../findings/2026-09-19-swift-qwen38-apple-feasibility.md) |

@@ -370,6 +370,7 @@ def resolve_manifest(
     profile: str | None = None,
     candidate_overlay: dict | None = None,
     candidate: str | None = None,
+    tts_benchmark: bool = False,
 ) -> ResolvedVoiceConfig:
     """Load, apply profile/candidate overlays, validate, and summarize a manifest."""
     data = load_raw_manifest(path)
@@ -378,6 +379,7 @@ def resolve_manifest(
         profile=profile,
         candidate_overlay=candidate_overlay,
         candidate=candidate,
+        tts_benchmark=tts_benchmark,
     )
 
 
@@ -387,6 +389,7 @@ def resolve_manifest_data(
     profile: str | None = None,
     candidate_overlay: dict | None = None,
     candidate: str | None = None,
+    tts_benchmark: bool = False,
 ) -> ResolvedVoiceConfig:
     """Resolve an already-loaded manifest into one concrete voice config.
 
@@ -406,7 +409,7 @@ def resolve_manifest_data(
         _reject_secret_literals(candidate_overlay)
         data = apply_candidate_overlay(data, candidate_overlay, name=candidate)
     identity = _resolved_identity(data, profile=profile, candidate=candidate)
-    validate_manifest(data)
+    validate_manifest(data, tts_benchmark=tts_benchmark)
     return ResolvedVoiceConfig(data=data, **identity)
 
 
@@ -719,7 +722,9 @@ def resolve_secret(table: dict, key: str, *, required: bool = False) -> str | No
     return value
 
 
-def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) -> None:
+def _validate_endpoint(
+    data: dict, name: str, *, model_required: bool = True, tts_benchmark: bool = False,
+) -> None:
     table = _section(data, "voice", name)
     parsed = _parsed_url(_string(table, "base_url"), key="voice.%s.base_url" % name, schemes=("http", "https"))
     if model_required:
@@ -760,6 +765,16 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
             if key in table:
                 _string(table, key)
     if name == "tts":
+        if "stream" in table:
+            _bool(table, "stream", True)
+        if "max_tokens" in table:
+            from .stages.tts import MAX_TTS_GENERATION_TOKENS
+
+            value = _positive_int(table, "max_tokens")
+            if value > MAX_TTS_GENERATION_TOKENS:
+                raise ConfigError(
+                    "voice.tts.max_tokens must be from 1 through %d" % MAX_TTS_GENERATION_TOKENS
+                )
         if "protocol" in table:
             protocol = _string(table, "protocol")
             if protocol not in _TTS_PROTOCOLS:
@@ -768,8 +783,11 @@ def _validate_endpoint(data: dict, name: str, *, model_required: bool = True) ->
                 )
         if "response_format" in table:
             response_format = _string(table, "response_format")
-            if response_format not in _TTS_RESPONSE_FORMATS:
+            formats = {"pcm", "wav"} if tts_benchmark else _TTS_RESPONSE_FORMATS
+            if response_format not in formats:
                 raise ConfigError(
+                    "voice.tts.response_format must be pcm or wav for a TTS benchmark"
+                    if tts_benchmark else
                     "voice.tts.response_format must be pcm because the voice pipeline consumes raw PCM"
                 )
         for key in ("source_sample_rate", "target_sample_rate", "chunk_bytes"):
@@ -895,7 +913,7 @@ def _validate_proxy(data: dict) -> None:
     # unlike voice.realtime_host -- no realtime_token_env is required here.
 
 
-def validate_manifest(data: dict) -> None:
+def validate_manifest(data: dict, *, tts_benchmark: bool = False) -> None:
     """Validate the voice manifest without touching the network or a filesystem serve."""
     if not isinstance(data, dict):
         raise ConfigError("manifest must be a TOML table")
@@ -959,7 +977,7 @@ def validate_manifest(data: dict) -> None:
         _positive_int(llm, "speech_chunk_max_chars")
 
     _validate_endpoint(data, "stt")
-    _validate_endpoint(data, "tts")
+    _validate_endpoint(data, "tts", tts_benchmark=tts_benchmark)
     _validate_proxy(data)
 
 

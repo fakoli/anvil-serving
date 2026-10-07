@@ -813,7 +813,7 @@
         "docker"
       ],
       "gpu_role_required": false,
-      "handler": "anvil_serving.models:main",
+      "handler": "anvil_serving.models:pull_result",
       "mutation_class": "mutate",
       "options": [
         {
@@ -942,6 +942,123 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--cache-dir"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Native HF home or direct hub cache; no Docker.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--hf-executable"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Use this installed native hf executable.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--evidence-out"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Retain a native pull JSON receipt outside the hub cache.",
+          "value_name": "FILE"
+        },
+        {
+          "flags": [
+            "--revision"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exact 40 lowercase hex commit for native; Docker revision or tag.",
+          "value_name": "REVISION"
+        },
+        {
+          "flags": [
+            "--include"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Select one file glob; native refuses undeclared snapshot extras.",
+          "value_name": "GLOB"
+        },
+        {
+          "flags": [
+            "--exclude"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Exclude one file glob.",
+          "value_name": "GLOB"
+        },
+        {
+          "flags": [
+            "--token-env"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read the HF token by environment variable name.",
+          "value_name": "ENV"
+        },
+        {
+          "flags": [
+            "--token-file"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Dotenv fallback for the named token.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--no-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Disable inherited and saved HF tokens.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--headroom-gib"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Keep this much free storage after acquisition.",
+          "value_name": "GIB"
+        },
+        {
+          "flags": [
+            "--volume"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Docker cache volume; incompatible with native cache.",
+          "value_name": "VOLUME"
+        },
+        {
+          "flags": [
+            "--image"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Docker image containing hf; incompatible with native cache.",
+          "value_name": "IMAGE"
+        },
+        {
+          "flags": [
+            "--expected-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Docker storage estimate override; native uses verified inventory.",
+          "value_name": "BYTES"
         }
       ],
       "output_policy": "bounded",

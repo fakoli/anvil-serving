@@ -1,0 +1,1337 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "date": "2026-10-06",
+    "id": "2026-10-06-m4-max-voice-quality-qualification",
+    "late_common_wrapper": true,
+    "promotion_authorized": false,
+    "scope": "English personal noncommercial quality-first; direct same-host components; no qualified replacement"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving-product-test-triage/v1",
+    "anvil-serving-voice-compatibility-notes/v1",
+    "anvil-serving.allocator-memory-evidence/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.campaign-arm-closure/v1",
+    "anvil-serving.campaign-configuration-amendment/v1",
+    "anvil-serving.campaign-ending-state/v1",
+    "anvil-serving.campaign-final-assessment-independent-review/v2",
+    "anvil-serving.campaign-final-closure-addendum/v1",
+    "anvil-serving.campaign-monitoring-amendment/v1",
+    "anvil-serving.candidate-abort/v1",
+    "anvil-serving.capacity-input-calibration/v1",
+    "anvil-serving.capacity-input-calibration/v2",
+    "anvil-serving.configuration-remedy/v1",
+    "anvil-serving.control-evidence/v1",
+    "anvil-serving.corpus-freeze/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.independent-monitoring-amendment-review/v1",
+    "anvil-serving.independent-runtime-watch-llm-assessment/v1",
+    "anvil-serving.independent-semantic-audit/v1",
+    "anvil-serving.independent-stt-assessment/v1",
+    "anvil-serving.llm-arm-final-independent-audit/v1",
+    "anvil-serving.llm-control-source-evidence/v1",
+    "anvil-serving.llm-preflight-independent-audit/v1",
+    "anvil-serving.llm-semantic-independent-audit/v1",
+    "anvil-serving.llm-semantic-suite-freeze/v1",
+    "anvil-serving.log-custody/v1",
+    "anvil-serving.logfile-custody/v1",
+    "anvil-serving.mlx-allocator-log-observations/v1",
+    "anvil-serving.monitoring-phase-handover/v1",
+    "anvil-serving.paired-stt-comparison/v1",
+    "anvil-serving.post-measurement-source-amendment/v1",
+    "anvil-serving.post-measurement-source-independent-review/v1",
+    "anvil-serving.private-fixture-independent-review/v1",
+    "anvil-serving.private-independent-guard-review/v1",
+    "anvil-serving.private-independent-llm-result-audit-closure/v1",
+    "anvil-serving.private-independent-llm-result-audit/v1",
+    "anvil-serving.private-independent-runtime-fixture-review/v1",
+    "anvil-serving.private-independent-shared-capacity-audit/v1",
+    "anvil-serving.private-runtime-fixture-identity/v1",
+    "anvil-serving.realtime-restoration-smoke/v3",
+    "anvil-serving.reference-adjudication/v1",
+    "anvil-serving.resource-watch/llm-v2",
+    "anvil-serving.resource-watch/v3",
+    "anvil-serving.resource-watch/v4",
+    "anvil-serving.resource-witness/v1",
+    "anvil-serving.restoration-final-independent-audit/v1",
+    "anvil-serving.runtime-configuration-identity/v2",
+    "anvil-serving.runtime-log-custody/v1",
+    "anvil-serving.tts-blind-audio-bindings/v1",
+    "anvil-serving.tts-blind-listening-research-amendment/v1",
+    "anvil-serving.tts-blind-listening-schedule/v1",
+    "anvil-serving.tts-blind-research-pack-custody/v1",
+    "anvil-serving.tts-buffered-diagnostic-audit/v1",
+    "anvil-serving.tts-campaign-candidate-control-decision/v1",
+    "anvil-serving.tts-fidelity-subset-custody/v1",
+    "anvil-serving.tts-incomplete-resource-assessment/v1",
+    "anvil-serving.tts-independent-asr-discrepancy-audit/v1",
+    "anvil-serving.tts-independent-fidelity-subset-audit/v1",
+    "anvil-serving.tts-independent-full-corpus-audit/v1",
+    "anvil-serving.tts-listening-schedule-amendment/v1",
+    "anvil-serving.tts-listening-static-validation-amendment/v1",
+    "anvil-serving.tts-repeat-flag-adjudication/v1",
+    "anvil-serving.tts-targeted-diagnostic-freeze/v1",
+    "anvil-serving.voice-campaign-plan/v1",
+    "model-cache-native-inventory/v1",
+    "native-model-pull/v1",
+    "preflight/v2",
+    "private.realtime-restoration-probe-fixture-identity/v3",
+    "private.voice-campaign-final-assessment/v1",
+    "private.voice-campaign-final-source-ledger/v1",
+    "stt-benchmark-evidence/v1",
+    "stt-corpus/v1",
+    "tts-benchmark-evidence/v1",
+    "voice-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "6a90e77a5bd29528a3916dc66701adbe1f55c3d9200669e95ebd901b5f92f4fc",
+          "bytes": 3556
+        },
+        {
+          "path": "artifact-manifest-source.json",
+          "sha256": "1d6f578545865c30409752b31899b412884f165c99b016268ec8a9de124cfc11",
+          "bytes": 18193
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "602d693f7a05c462031263dab91599e0a0435d0df011df78d622caad952e6652",
+          "bytes": 226177
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "56a3339699d0a6253d05b68c7cfb9abbd84848fccd001ec7448d286d78deed36",
+          "bytes": 60314
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/corpus-canonical-manifest.jsonl",
+          "sha256": "f34e7ca8f20a0b998418c651f2fa39fac07f3e80f918704a507ff558f750c20e",
+          "bytes": 13553
+        },
+        {
+          "path": "projections/corpus-supplemental-manifest.jsonl",
+          "sha256": "547592b003567e11ab54f0e517278508f1d5db9e4c42e7d23faf9285c92a25dd",
+          "bytes": 55164
+        },
+        {
+          "path": "projections/llm-capacity-calibration-v2.json",
+          "sha256": "0867fdd70989d01c79666bf328be853d7bb7d773a4693d903c72f6e999e4dfb1",
+          "bytes": 2967
+        },
+        {
+          "path": "projections/llm-capacity-calibration.json",
+          "sha256": "b8164210315a86fd7810e199d34c9add8e4a2d4da73a506f8ce00a99fa6aab12",
+          "bytes": 2733
+        },
+        {
+          "path": "projections/llm-semantic-suite-freeze.json",
+          "sha256": "8d8bb1310ab77c696c1d6f76a8d50fa2988e70d56b833b2fe5f5118baf2e1c98",
+          "bytes": 44437
+        },
+        {
+          "path": "projections/llm-semantic-suite.json",
+          "sha256": "0658ae623cc95d557bc85fe6fc83b849178a1864240b7a18b39a2a721a52cc7d",
+          "bytes": 43302
+        },
+        {
+          "path": "projections/tts-breeze-stream-diagnostic-corpus.jsonl",
+          "sha256": "64e6d01bd94a9591eb627b80725e53f68d7213084ec03a8614a217c3ca3648c8",
+          "bytes": 1770
+        },
+        {
+          "path": "projections/tts-breeze-stream-diagnostic-freeze.json",
+          "sha256": "69e231fc51b1463d4f2b50e3f6d40f0631fb13b31d7971d9cfd671c91ced0cde",
+          "bytes": 5516
+        },
+        {
+          "path": "projections/tts-corpus-60.jsonl",
+          "sha256": "42f22a222a3e4ac65a1827504a1be81f0db88d9bccf7e0472344c94fc5d727e8",
+          "bytes": 12649
+        },
+        {
+          "path": "projections/tts-corpus-freeze.json",
+          "sha256": "7115a4725526c9f02c7d9f05fb18629fc0880cbd2ba7089170fda6ab8aed0b6d",
+          "bytes": 594
+        },
+        {
+          "path": "projections/tts-listening-schedule-freeze.json",
+          "sha256": "9933be9ee69eeed600432e83f62f7f12cb41cbefbac0bd843022e6aa7275bcf7",
+          "bytes": 10883
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-state.json",
+          "sha256": "f2e3bd80135ed0e6db75d4ea28a9df099e5ebd400e07d8a3e64c0f85029a8623",
+          "bytes": 1133
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "5f03a14f5baea159d4fb37ad0f6d815b243ebfc94d2ffcbb725b797e392d833e",
+          "bytes": 834
+        },
+        {
+          "path": "projections/campaign-compatibility-amendment.json",
+          "sha256": "90a5175cbd03235328254a807feee8ada777d32585020b1390e5c6fd049bc8e9",
+          "bytes": 764
+        },
+        {
+          "path": "projections/campaign-plan.json",
+          "sha256": "7f7d34ecc51edcee585316d68c1710307438a13305c1ff5c920e7606d806c562",
+          "bytes": 4701
+        },
+        {
+          "path": "projections/campaign-resource-remedy-amendment.json",
+          "sha256": "f41b33ae343af95c518e69713a31a75b63673a0535c17fd37f2732f8f554f9e6",
+          "bytes": 1389
+        },
+        {
+          "path": "projections/llm-cache0-reasoning-amendment.json",
+          "sha256": "71044fdce178e6b4716c8efecbe85b046a09e27237e5a6e0dcabe5a4ea219632",
+          "bytes": 2128
+        },
+        {
+          "path": "projections/llm-cache0-remedy-amendment.json",
+          "sha256": "d8c035528e84c7402fbb2bb7acf11c63cea9ec7f958e3a883725fcfc595c76a2",
+          "bytes": 1997
+        },
+        {
+          "path": "projections/llm-medium-guarded-phases-amendment.json",
+          "sha256": "c12c718e3c3d1cfc6e389f90348f071f3d943be9da21ad53000c37fb49156173",
+          "bytes": 2002
+        },
+        {
+          "path": "projections/llm-port30123-amendment.json",
+          "sha256": "6982adc6bc1f0da621fad29797ce32b3730aa608e51b3bb9b836e7a213205d49",
+          "bytes": 1711
+        },
+        {
+          "path": "projections/llm-port30123-fresh-identity-amendment.json",
+          "sha256": "897e40441c62180d1b44a35502c9ba901bddd5c66bc77f0d592bc6c9c5e4d12b",
+          "bytes": 1421
+        },
+        {
+          "path": "projections/tts-listening-research-amendment-02.json",
+          "sha256": "b10c8f2543ede228aadd526b3105f2beeeb5d557e59d7509e06a44eeae4509cf",
+          "bytes": 2718
+        },
+        {
+          "path": "projections/tts-listening-schedule-amendment-01.json",
+          "sha256": "a1d8d2c1b7594a984dd0d3ec2dcf10e9d5902b43caeb353b324dc3e940c9e446",
+          "bytes": 1526
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/audio-runtime-requirements.txt",
+          "sha256": "32a18a973afed95755b43b2b140422e52241dbe238e67deb78938cbffc784a64",
+          "bytes": 1299
+        },
+        {
+          "path": "projections/audio-runtime-v2-identity.json",
+          "sha256": "d06d7179ff7cfaa890c83d2afba7204cccab007b3e8010584aaf3060b5975f66",
+          "bytes": 1423
+        },
+        {
+          "path": "projections/campaign-final-closure-addendum.json",
+          "sha256": "a3873df2c69e79874474048d44ad8c409fa727b5a6fa04b6c8d1198036970ee8",
+          "bytes": 5224
+        },
+        {
+          "path": "projections/campaign-final-closure-addendum.md",
+          "sha256": "4c2a2c480749773bf79768dfb9fa10981d85829a72b19872c0bec0e74bb9baa9",
+          "bytes": 1601
+        },
+        {
+          "path": "projections/campaign-final-source-ledger.json",
+          "sha256": "6cbca7a42a6b4aba21f3a6ec1273ba0ca1e2991dfdb16dbc480f55a55a7bb46e",
+          "bytes": 33648
+        },
+        {
+          "path": "projections/llm-nonthinking-control-supported.json",
+          "sha256": "ecaa30258a27062514a96ceb56f42b790ba2511f6f6a24c72f69e5a7d50415d7",
+          "bytes": 531
+        },
+        {
+          "path": "projections/llm-runtime-control-source-evidence.json",
+          "sha256": "8b04314ce93f00d154e8b8ea6ebd4b177d8f98a1a6102be1dcb2bf3948922f96",
+          "bytes": 1736
+        },
+        {
+          "path": "projections/llm-runtime-requirements.txt",
+          "sha256": "b1d6115035a6cf838100429ef95871a7b558c717d526d8ecbbca58267ef8e320",
+          "bytes": 563
+        },
+        {
+          "path": "projections/mlx_lm_runtime_cache0_v1_identity.json",
+          "sha256": "3650503ef85665910ace0b0f5c4bb56dca94f579f5c63426a878e6ba7f03d220",
+          "bytes": 6374
+        },
+        {
+          "path": "projections/mlx_lm_runtime_cache0_v2_identity.json",
+          "sha256": "f7339a674418964f6b04d31663f56d292c6b1038fd82642edbc907f5991f1204",
+          "bytes": 7445
+        },
+        {
+          "path": "projections/product-post-measurement-lint-independent-review.json",
+          "sha256": "e421353d54ee28b049c2fbf53f741ebe68d2af34d3d6abc7514ff69afa3c11ce",
+          "bytes": 4260
+        },
+        {
+          "path": "projections/product-post-measurement-lint-remediation.json",
+          "sha256": "4108302aca11e212fcc8e79fd0bab6d5dae9c343bc21826dfd47d86143417f84",
+          "bytes": 1721
+        },
+        {
+          "path": "projections/services-before.json",
+          "sha256": "c847c157446e13fe36a638259ffb8a2e0bb3607b1186bcc0138e4705fe6186fc",
+          "bytes": 2817
+        },
+        {
+          "path": "reproduction.md",
+          "sha256": "685850910b0b3b27ecf941ad580d1ac0f5b5c47ac119de18425a19e46a6c8ae2",
+          "bytes": 6372
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "91650e8013ee2f2ef5d4c921a7880d2b16f21c0408106e8cf3a4fce3394ff2ce",
+          "bytes": 5005
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "60b478a1886c09081e1f545540f4f37f1bfe2f9f517d0e0f9ca271bafea20a73",
+          "bytes": 6994
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "af1584e0e9b4007437215f9e089bb200fdcaa810f5b316b3985bbf0250bd8c34",
+          "bytes": 2943
+        },
+        {
+          "path": "projections/baseline-llm-capacity-8k.json",
+          "sha256": "f511aa7d46d4024a0291ef8a1866d72dd78aafa16515eeddfc657769bb5ca645",
+          "bytes": 14074
+        },
+        {
+          "path": "projections/baseline-llm-historical-quality.json",
+          "sha256": "6a14e4aa663915e5d3015275f8760db7772f1275d7efe65db52bfa96f623021c",
+          "bytes": 28991
+        },
+        {
+          "path": "projections/baseline-llm-preflight.json",
+          "sha256": "9a65d4debf4a4452396f56e6bdd798b98a0f0d14045d7e33ea68e6aa01c478e8",
+          "bytes": 5324
+        },
+        {
+          "path": "projections/baseline-llm-semantic-quality.json",
+          "sha256": "43567cf409b1c9d353720f49290b6bc0b5a51c2c06359bbf870773430405803a",
+          "bytes": 105687
+        },
+        {
+          "path": "projections/baseline-stt-canonical-concurrent.json",
+          "sha256": "91e4ca615df104d923251dfd37f53a0f5d2c59feac13c0e40c1053a517a99953",
+          "bytes": 23723
+        },
+        {
+          "path": "projections/baseline-stt-canonical-sequential.json",
+          "sha256": "43bfada0c72f96744a6f78961a9d9da708e0c82860c811a9914840ad2e4bd5d2",
+          "bytes": 62156
+        },
+        {
+          "path": "projections/baseline-stt-supplemental.json",
+          "sha256": "f27dd1c0933f0f478850f761612af0bde7802c101077e3b2cf9f02ad8387d9b8",
+          "bytes": 82612
+        },
+        {
+          "path": "projections/baseline-tts-60.json",
+          "sha256": "36a1837e1e31eec00c1150087672aff818820a0739ef4014be4f69ed64595d2d",
+          "bytes": 134908
+        },
+        {
+          "path": "projections/baseline-tts-fidelity-parakeet.json",
+          "sha256": "322d5bb1dab7ac87728057a58392e13a75af486b5e2536d820901b74c8fc4d48",
+          "bytes": 46608
+        },
+        {
+          "path": "projections/breeze-8bit-config.json",
+          "sha256": "8aff35fedae0dc1523a1421e4ad9f38db4132cdfb82cf3b37650a48546e61cec",
+          "bytes": 7513
+        },
+        {
+          "path": "projections/breeze-8bit-pull.json",
+          "sha256": "4944ac76e6ace756296d973ace93b158b996e9992c742493938663199db106a3",
+          "bytes": 7099
+        },
+        {
+          "path": "projections/breeze-8bit-r2-allocator-memory-trace.json",
+          "sha256": "4d5bab582d88edabf79cac6b5b28033bcdb07c9723c9dd9157a7f5e778c14816",
+          "bytes": 33436
+        },
+        {
+          "path": "projections/breeze-8bit-r2-down.json",
+          "sha256": "ad38cb66387093581ce074807f6eb7fde1fb8f1ec881674d7cd7b9fa8db1cb3b",
+          "bytes": 1704
+        },
+        {
+          "path": "projections/breeze-8bit-r2-log-custody.json",
+          "sha256": "5ba0e02ab070c6f0fec9112c54688d12b9836c74acda1fa720a3b63cc86a19c7",
+          "bytes": 401
+        },
+        {
+          "path": "projections/breeze-8bit-r2-pre-arm-resources.json",
+          "sha256": "b9bc94e1a6376e9b1e93eac93488760335563d894847adfb77f0176cb04bd210",
+          "bytes": 232
+        },
+        {
+          "path": "projections/breeze-8bit-r2-resource-summary.json",
+          "sha256": "dab0102d6e00b163ecb288ef3cb2b0d2082f82314335ef9f8328e64f04d026e1",
+          "bytes": 1378
+        },
+        {
+          "path": "projections/breeze-8bit-r2-resource-trace.jsonl",
+          "sha256": "364de11e973a536967f316243f9808670102b828f389154a0800bae5a179f066",
+          "bytes": 70681
+        },
+        {
+          "path": "projections/breeze-8bit-r2-resource-watch-spec.json",
+          "sha256": "80fde4f869d14e0b072ea7b0ff0f87d3d66fe8c0c00dbfc9388f7c803c4b86a5",
+          "bytes": 1152
+        },
+        {
+          "path": "projections/breeze-8bit-r2-tts-60.json",
+          "sha256": "db9930dfdaf62757f85d0172b313708631d179d7c44f6c4732f2e74c48e04b8e",
+          "bytes": 135047
+        },
+        {
+          "path": "projections/breeze-8bit-r2-tts-fidelity-audit.json",
+          "sha256": "022c2153d7d85c92f5789432e565663fbff4b28c45b8cee5b647de3159032d71",
+          "bytes": 91476
+        },
+        {
+          "path": "projections/breeze-8bit-r2-tts-fidelity-parakeet.json",
+          "sha256": "9a7713564ecf07d21ff8889892a0df98020e23b5e8280e2588d3bf340fe8445e",
+          "bytes": 46374
+        },
+        {
+          "path": "projections/breeze-8bit-r2-up.json",
+          "sha256": "19df57acb9234fb2b32c4c9126ed4b4355792ad5a98a4a9bf26f7ad477c581f6",
+          "bytes": 1994
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-down.json",
+          "sha256": "f428b338553b29d2564ea29c5cd3f04eba616056cc43ee7f3b46fc7103ae15fb",
+          "bytes": 1703
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-fidelity-audit.json",
+          "sha256": "36ad7ed5f5d6b9e07bef42a158b43a11a14474367106fe2302c693c390279511",
+          "bytes": 13588
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-fidelity-corpus-custody.json",
+          "sha256": "6462cbf28b9dfb25e33cb6425090cde33614181bdfba5c7d625d0421697d9810",
+          "bytes": 626
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-fidelity-parakeet.json",
+          "sha256": "e983c60b2b3d6a075af739cb9956b651a34f33da6352966bd00f8939a21802f3",
+          "bytes": 10071
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-log-custody.json",
+          "sha256": "362eb45ae909d57ba4cefed875d96e65bafaa8435dbe3f5fd61ff2f8869ee911",
+          "bytes": 484
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-pre-arm-resources.json",
+          "sha256": "0427cb779834dffb9e2a625d239a4fca01865e8e1d62cf56f5cae39db412f7e4",
+          "bytes": 232
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-resource-summary.json",
+          "sha256": "274218e7cee158df5d641bf97b195a2a296ca9471b1b745f7ae5b2df25b48a06",
+          "bytes": 1409
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-resource-trace.jsonl",
+          "sha256": "9ae58e54f2174ef9466a94207fc4a3a9e24784831ef04601f3736a3949a594bf",
+          "bytes": 13070
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-resource-watch-spec.json",
+          "sha256": "c17ae1d8cf2b31805ec322f44a9fd27e1bb91891f1aadd455c798e92b153f506",
+          "bytes": 1224
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-tts-8.json",
+          "sha256": "c6ec707eecd30bc8120e9fe31d00386b1389b6fe8574820a104c22247250ab0a",
+          "bytes": 26143
+        },
+        {
+          "path": "projections/breeze-8bit-r3-diagnostic-up.json",
+          "sha256": "3cc2c867660d48800a46daaf9c308c65b7a3f95e703aae86c86d6949b8b75abf",
+          "bytes": 1994
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-allocator-memory-trace.json",
+          "sha256": "ed8cae8ef7a14b351e3558868e0d444873a90e04ababc0d0a0ec748ef438c89c",
+          "bytes": 40956
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-down.json",
+          "sha256": "2eb03aa5736b0392f95d7182195257071ee0edf8aca9b70aa1c3104d57833501",
+          "bytes": 1703
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-fidelity-corpus-custody.json",
+          "sha256": "07bef34f27d9781f4b3af5080abe811f7d8ecb0e91bbbcbb0472ed613eec712c",
+          "bytes": 744
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-fidelity-parakeet.json",
+          "sha256": "e143e3a9858935c3f78ebdfe40e47e1acd362ed7642de8475551fd83976366c3",
+          "bytes": 46413
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-log-custody.json",
+          "sha256": "f52f99109f06a8385c8dc7fd7953f944b3932fcd98fc69004fbe98880f8632b3",
+          "bytes": 447
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-pre-arm-resources.json",
+          "sha256": "92c54a4d80a3e9c454487608a599b9bb39a050b248cde8f0e9ea7ce2aaf6c867",
+          "bytes": 232
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-repeat-flag-adjudication.json",
+          "sha256": "5a4a9c834914381891224f8357cefee9ea68edafa00af5edf537858a14ba258f",
+          "bytes": 18955
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-resource-summary.json",
+          "sha256": "928df1eedbc05a1011e00b354b34f60152c2ea17b4a7397d9a649a3f3b4b96eb",
+          "bytes": 1412
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-resource-trace.jsonl",
+          "sha256": "5e8084eb46080c2f5e35fe27fb991e18df37ce48d8d5645a25a3ea335d3c2e04",
+          "bytes": 74673
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-resource-watch-spec.json",
+          "sha256": "736cbccb9d6e7a72bf4946ebdb3704ff6b721d2bd29baf8f5fb1190d3ff6f96b",
+          "bytes": 1197
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-tts-60.json",
+          "sha256": "95443e7d7f6cd89ff0f3d9193f1b47239b5f9c5e199bcfd3027ae4853a148997",
+          "bytes": 135140
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-tts-fidelity-audit.json",
+          "sha256": "64890bec7213611cbf078d9867d64d77023926b86103cbedf9de60707b624404",
+          "bytes": 132300
+        },
+        {
+          "path": "projections/breeze-8bit-r3-full-up.json",
+          "sha256": "c042bd24c66fea49de12876293c542eeab38cc6909193689fc13b3bd29913d93",
+          "bytes": 1994
+        },
+        {
+          "path": "projections/breeze-bf16-abort-down.json",
+          "sha256": "11de2f75365be930a072e0db4bd1d221211e642e20417aa233c7ee07190cb2a8",
+          "bytes": 1685
+        },
+        {
+          "path": "projections/breeze-bf16-config.json",
+          "sha256": "0b5bfd42dbe5ada67817cfaa3c171c147f35c58bb5c8452a536fe964923d4331",
+          "bytes": 7392
+        },
+        {
+          "path": "projections/breeze-bf16-pull.json",
+          "sha256": "9b4ac9859cb322878feaff37763fbc7e6413e7c19b5140fb3ad333f47839436d",
+          "bytes": 7563
+        },
+        {
+          "path": "projections/breeze-bf16-tts-60.json",
+          "sha256": "243ad0752e51413aba5610783978bc9713759767b351f1ee4e4d54e95acc3e50",
+          "bytes": 135117
+        },
+        {
+          "path": "projections/breeze-bf16-tts-fidelity-parakeet.json",
+          "sha256": "9500ab92aa4c0edd405b81ab98bf38526971b91fccf5c9bc9234e238c568766b",
+          "bytes": 45099
+        },
+        {
+          "path": "projections/breeze-bf16-weight-headers.json",
+          "sha256": "ddbdeaf8b0b2c798972b6b30e1c80f22dda276260831a1a9d23b529017687f4e",
+          "bytes": 202
+        },
+        {
+          "path": "projections/fish-8bit-config.json",
+          "sha256": "382c5e6a967f00e4a3e6e2caa09193a09a3ceafd0e39c034fe1db568d232a59b",
+          "bytes": 1603
+        },
+        {
+          "path": "projections/fish-8bit-pull.json",
+          "sha256": "63d49187c51f38fcbe74c62b0c04dcdd9da4c24268d92d19faafbf6016af44c2",
+          "bytes": 4956
+        },
+        {
+          "path": "projections/fish-8bit-r2-allocator-memory-trace.json",
+          "sha256": "dc5d33054ff2b2c1ca56572d8cf2230287553aa0ed5cdbcee860e344de274213",
+          "bytes": 38400
+        },
+        {
+          "path": "projections/fish-8bit-r2-fidelity-corpus-custody.json",
+          "sha256": "898d17345b45a075f3c2cfbd6ec902be4bf224c430081fb4958e9d0f4b558687",
+          "bytes": 27855
+        },
+        {
+          "path": "projections/fish-8bit-r2-fidelity-parakeet-56.json",
+          "sha256": "82d6e36c7f5b9acc0003461a834409619300877ee648a28cc4dcebe84f61499c",
+          "bytes": 42334
+        },
+        {
+          "path": "projections/fish-8bit-r2-logfile-custody.json",
+          "sha256": "2c415ff7e43755555036fad3321904c8a0f9e38dcf3b11337671f7d76f6fb674",
+          "bytes": 560
+        },
+        {
+          "path": "projections/fish-8bit-r2-pre-arm-resources.json",
+          "sha256": "f11be0ccb036dee223a66061a7e13fb01bcde94eaf34efb4acc337691150b123",
+          "bytes": 230
+        },
+        {
+          "path": "projections/fish-8bit-r2-resource-assessment.json",
+          "sha256": "c5288ee5132bb1d5c5b94f7d35a467e00f63e7f7941fa2c6f16a855df1773b4e",
+          "bytes": 5018
+        },
+        {
+          "path": "projections/fish-8bit-r2-resource-summary.json",
+          "sha256": "13bac2dd4594d10b9a35115df6f15e84878fb7feba0e8b182d037b0fdd3a9436",
+          "bytes": 3476
+        },
+        {
+          "path": "projections/fish-8bit-r2-resource-trace.jsonl",
+          "sha256": "02375b365872c42e30d217036c6b0fda7ea644ed8b57b4bcca785a5c9ee7a4e3",
+          "bytes": 89238
+        },
+        {
+          "path": "projections/fish-8bit-r2-resource-watch-spec.json",
+          "sha256": "29d2fcf760e7ff190ae75c93dd4b92146b50abc5c36db4adafd7891174e54ed1",
+          "bytes": 1139
+        },
+        {
+          "path": "projections/fish-8bit-r2-tts-60.json",
+          "sha256": "0d675eaf35272c858e57d28e8d147c012939e8d0b557aa80c83185fa14fe56d5",
+          "bytes": 136217
+        },
+        {
+          "path": "projections/fish-8bit-r2-tts-fidelity-audit.json",
+          "sha256": "dc79c5576df4d354ccc6cea152f929a48865bb11f4fa8d725ffbc9dfc88b0579",
+          "bytes": 80299
+        },
+        {
+          "path": "projections/fish-8bit-r2-up.json",
+          "sha256": "be4f7963fd5bc24c8f56383c0b5f61c21266beac1d61e4b73a847ccc394fce5e",
+          "bytes": 1983
+        },
+        {
+          "path": "projections/fish-8bit-streaming-negative-preflight.json",
+          "sha256": "632e0977de32ae4f73f8bbfe42e8c602b246e27672763e3b4c9eeccfc3b4c9e5",
+          "bytes": 1283
+        },
+        {
+          "path": "projections/granite-fp16-canonical-concurrent.json",
+          "sha256": "15de0125dd44bbd44b91cee382e7fd1673a1d057328f813d963487ed4742e951",
+          "bytes": 23947
+        },
+        {
+          "path": "projections/granite-fp16-canonical-sequential.json",
+          "sha256": "3bcdb0c55f3850436a53ee423429124e7f60f192ccb3f5465edbe6cb2d22f36c",
+          "bytes": 62215
+        },
+        {
+          "path": "projections/granite-fp16-pull.json",
+          "sha256": "ee9c54110328b77083fc824143d988901dec1cd4376bb5bc3631bc764c54a703",
+          "bytes": 5185
+        },
+        {
+          "path": "projections/granite-fp16-supplemental.json",
+          "sha256": "f8941fe0ebd4d854c4d5a9c296fd148f09038fffb6fc91f5ff31f8a718d90650",
+          "bytes": 82567
+        },
+        {
+          "path": "projections/llm-stock-logs-custody.json",
+          "sha256": "cc276b7840ea8a3f0b1f4fd395236020b9fac02d78b20ea598e849d289620132",
+          "bytes": 538
+        },
+        {
+          "path": "projections/qwen-asr-canonical-concurrent.json",
+          "sha256": "38e72dfa2bff2ec9a35a6319f18478acd1280f56ff0afd12bfaf69e670d0ae07",
+          "bytes": 24033
+        },
+        {
+          "path": "projections/qwen-asr-canonical-sequential.json",
+          "sha256": "aa19fb00c5da836574bf29cd4044cf7875983a2beb9bfdc1486c5b48e112f31d",
+          "bytes": 62543
+        },
+        {
+          "path": "projections/qwen-asr-pull.json",
+          "sha256": "dec9bfdd9ab1067de11e24df5e4cec4e7a858000ef63b1548c7a8fc504b7f28d",
+          "bytes": 5468
+        },
+        {
+          "path": "projections/qwen-asr-supplemental.json",
+          "sha256": "aa21b593b17795ceadb06a2bc6405e4a5f0038e1f98927aacc06f0b45ecd76d8",
+          "bytes": 83007
+        },
+        {
+          "path": "projections/qwen35-9b-pull.json",
+          "sha256": "48775f00a31aa7701a4aa2214c90399dfb9af677d2eefffebfb006d230d46e4b",
+          "bytes": 6377
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-arm-closure.json",
+          "sha256": "89ecf813e77155680d2d2c5aeb0a00f2d89e7b612c4ba1cfc52e74bbfe76b45c",
+          "bytes": 934
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-capacity-8k.json",
+          "sha256": "543dad8b78c6042f9847475df082a1f2bbcaf72816de600f87244ccea3419d8c",
+          "bytes": 14101
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-down.json",
+          "sha256": "8d77ad29e0f1265c44e1b5e32618b587f603c6f3450ef37f834049fc79bb1ee4",
+          "bytes": 1716
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-final-independent-audit.json",
+          "sha256": "f7d8956ebbdfd17bcd9a1c251dea0c3730ee8d330c2697a23429f5d19a5659af",
+          "bytes": 7387
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-historical-quality.json",
+          "sha256": "d152e359e20f42d782045c58971212d8b952e44a8edc0ff7d0e531817d535c71",
+          "bytes": 29486
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-pre-arm-resources.json",
+          "sha256": "8c8afbab04844eb0393a541cc2e5ed573afa29f5c2e34737a9fec53b83dc2a8b",
+          "bytes": 230
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-preflight.json",
+          "sha256": "22cddec9e9960333fb54901bb77c2a2d19e3a84b4d13dab3a4d9abcf6e8f3ad5",
+          "bytes": 5444
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-resource-summary.json",
+          "sha256": "f42966e4383674a498bdac29e7c66ead14d6eb601c6a1c1448debe1e207c3a7d",
+          "bytes": 2755
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-resource-trace.jsonl",
+          "sha256": "a96e966df32dc3779f0e34674b9288a21cd2816aa23bcc8a840a4370de0886ac",
+          "bytes": 52896
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-resource-watch-spec.json",
+          "sha256": "746908627c6d211f6d8b4f8c1bf4f1e1085643d849e3481639df5af83d2eb2d1",
+          "bytes": 1472
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-semantic-independent-audit.json",
+          "sha256": "1fdd13846e923a3e4f83502ecf11b93ef36f8faf3132c37e303ab27a64d06507",
+          "bytes": 6063
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-semantic-quality.json",
+          "sha256": "21e8e06b36f4570fda9085def2b8779ad5930c498913e5705e2921ead3086e0e",
+          "bytes": 105618
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-thinking-control.json",
+          "sha256": "177f0b853f82199a2d0717f7c3b3b90fef15dd9e3db9f7b96944b44afac48628",
+          "bytes": 1013
+        },
+        {
+          "path": "projections/qwen35-9b-r2-off-up.json",
+          "sha256": "03455f152b590ee639af056fa98e0baf9c4a11316b129380a8efbae996d50956",
+          "bytes": 2042
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-arm-closure.json",
+          "sha256": "b80406c696c9ebf68bc2b7409a6c316436ced4729e53c4cc27fe72c9346d1628",
+          "bytes": 979
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-capacity-8k.json",
+          "sha256": "c8b15b519fec06c50b8a8b8242e616334234f1453f4bc9050f6216b52cd22365",
+          "bytes": 14126
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-down.json",
+          "sha256": "d04fbc320bea709a1bf82e23d95ce093b3c08fc88847e8e24391f44a2a43f1b0",
+          "bytes": 1776
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-final-independent-audit.json",
+          "sha256": "e1829f945aab6b7eed09cdd424c96f024cf05cff2ef70a25601c28ef4083c301",
+          "bytes": 10309
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-historical-quality.json",
+          "sha256": "50e6de308a573e67a1dfccbdc4cadf0cda1ee472aa004e2f556468a7d99328ad",
+          "bytes": 35373
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-log-custody.json",
+          "sha256": "da531012b0e7e3a696e4e6fc6d6cd8c4650f0b102edf2be3ae707655fb16f7ef",
+          "bytes": 532
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-pre-arm-resources.json",
+          "sha256": "30822a7f71f8ba42a1d1c0069b01da51b47353de9975f2df038fdcbce1ef8c58",
+          "bytes": 242
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-preflight.json",
+          "sha256": "a8daabc16e53e4a5d4fd7ed0ee668b835b1e1048359e7a8849a6450c11e85ba8",
+          "bytes": 7296
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-resource-summary.json",
+          "sha256": "de17d2e0755c6841d346b987dea79ac92cc0b9d253397c18383e78740b64a121",
+          "bytes": 2816
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-resource-trace.jsonl",
+          "sha256": "d0243202485b072066ec3f6b4dd5f0ddbbf86c8da9ccf176003478534ace1e65",
+          "bytes": 264781
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-resource-watch-spec.json",
+          "sha256": "a39814184f0c3e8fe389727b90419591049bf502146ac4614fc8d33775c54f24",
+          "bytes": 1560
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-semantic-independent-audit.json",
+          "sha256": "55a27d5b7d6929591aeb1dfadf0c9d1679e8c5bed4a2a5a335870ee2a8debbc5",
+          "bytes": 7955
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-semantic-quality.json",
+          "sha256": "2bf7cb7d75bfacd983f83f19477b825b5e9610a6f58164d2da0c8f951f310e8f",
+          "bytes": 130485
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-thinking-control.json",
+          "sha256": "7fe64c62631a7dccc474c176697fe3985202f37f30501a55f9078c317a2d83db",
+          "bytes": 1322
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-low-up.json",
+          "sha256": "f7dc3d9868658cd6bfb7c801c4ac4dee9456b89d3c132a9c7437ec96bd7f1634",
+          "bytes": 2103
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-capacity-8k.json",
+          "sha256": "568b982c3af0553a3d4e09fcbb3620be8b573c02538f1fe168f76ea4e5aa17c3",
+          "bytes": 11603
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-down.json",
+          "sha256": "43a82bfae9aa22ea227fd0b5f125315abfe58912ea672136520f35e1b8433526",
+          "bytes": 1791
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-final-independent-audit.json",
+          "sha256": "2a4ef3833e36f1fbb279503d08aeda8b87afebe8eda69def67b18589bb1b79eb",
+          "bytes": 11939
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-historical-quality.json",
+          "sha256": "e85e3eed0b044bb61258513f0d13b2733161bc8ed1ed0c3516f35fac791925f6",
+          "bytes": 35997
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-log-custody.json",
+          "sha256": "5c9c9302224105efa75df8f15091a799d9daad56847fb84af33c43878e6aa276",
+          "bytes": 660
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase-handover.json",
+          "sha256": "bc0bef1fe7450bd36f7db8210e485dc2a84fec1148d27d0021ddadee3b7cb4a3",
+          "bytes": 1294
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase1-arm-closure.json",
+          "sha256": "21e4247f01779351669a4ce74f5728abca07d83eb1bd4ff407529c1a3df59489",
+          "bytes": 687
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase1-resource-summary.json",
+          "sha256": "451289c87761896bfd38e9bd605448305fe5ba1c56c2d31d38cf4825bb603ee7",
+          "bytes": 2471
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase1-resource-trace.jsonl",
+          "sha256": "1f862ba3ba567e75df25c2720137a17531343a9253e8d63d3cc8d348879dee10",
+          "bytes": 152119
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase1-resource-watch-spec.json",
+          "sha256": "9b186b5ca45157769a22fcd10890baf87ad22c483820188f10d1530ce4e30f41",
+          "bytes": 1507
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase2-arm-closure.json",
+          "sha256": "07eed5ba5e3403104977fb170714d02e9cdb8e974dda92b32514f0ff9f170928",
+          "bytes": 691
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase2-resource-summary.json",
+          "sha256": "ea04f9720c2e84fee17374fb9614684c64dbf1797efbfa3727b16c6da8856f52",
+          "bytes": 2471
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase2-resource-trace.jsonl",
+          "sha256": "05bb4c80a57d1a3460e97addc0ca3d9bf0aec2c66ce360fff04cdc705bc9652f",
+          "bytes": 143527
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-phase2-resource-watch-spec.json",
+          "sha256": "c2ecd234e8b3ab6ff45a688188e98fe3e588654d797fc4fa338782354113f89f",
+          "bytes": 1509
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-pre-arm-resources.json",
+          "sha256": "437fbef382a7bfcfa58977ef2dcdd645aae21e651c1db1410513ef69dadac7af",
+          "bytes": 245
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-preflight-independent-audit.json",
+          "sha256": "64f05b01e46aee09bf54f901dd3451f089cada1524943bd2d55f12132afdcf5c",
+          "bytes": 4244
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-preflight.json",
+          "sha256": "0d0b991aedd2c46d44a8dd714890c4e0c9027e5e0f373b7b7ae1a5e0d4c4b115",
+          "bytes": 7298
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-semantic-independent-audit.json",
+          "sha256": "a264e4615e68c94a480bbc414458f66321e1d303d1858d115ccbea0812ff5384",
+          "bytes": 5568
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-semantic-quality.json",
+          "sha256": "08387770a7a068271e14b5d0a5a32c246b3cad8bb1137b58755472e6b1634061",
+          "bytes": 133139
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-thinking-control.json",
+          "sha256": "30b802bebb916183a397006640c18a8f7651e6dd510796742eca703096efff9f",
+          "bytes": 1334
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-medium-up.json",
+          "sha256": "2cb11c4a4791ac282e6aa4b1a47d367fe4f38fff0626fd166d6df67de94f6f43",
+          "bytes": 2118
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-arm-closure.json",
+          "sha256": "ae32eccfff5b0564d49f46d45b18742b617a796391154f843359c4609804c89a",
+          "bytes": 975
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-capacity-8k.json",
+          "sha256": "be4e5a40f45c547121c69606d6cfc5e1439785e126de3c916ac737ee8532fb5a",
+          "bytes": 14097
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-down.json",
+          "sha256": "c9ec2bd46b6b4094bebfdb096892c07cafe63850e1ceca23566d7f86a05f567c",
+          "bytes": 1750
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-final-independent-audit.json",
+          "sha256": "6e181064ab920afa969781d3c61bd38a8b3124c77ece017be574d0aaac326a42",
+          "bytes": 6910
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-historical-quality.json",
+          "sha256": "49a3f2ab0ae4e9c7de32f7ab60b0837cedf6ee7f31964cee2138d7c4d94c8af9",
+          "bytes": 29195
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-log-custody.json",
+          "sha256": "3a9f911fa369c2aae8cd2b9099f5272cd0bed298d3e3fd5a8b6a642acc99a323",
+          "bytes": 534
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-pre-arm-resources.json",
+          "sha256": "2d21a33721162f5875a8827d277af2a7763b897b60d47dcd48ae0d98b45e6d24",
+          "bytes": 238
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-preflight.json",
+          "sha256": "35b425197814be8bbbee7642863f6eaa7fa0eea66823fce73ffbd85c413822ed",
+          "bytes": 5427
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-resource-summary.json",
+          "sha256": "c28a07a84c31ca89ba13a61680016768e0aedd00cccb0a8de6b27b15358b2135",
+          "bytes": 2799
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-resource-trace.jsonl",
+          "sha256": "2f3024133a5c7e6e10ea9be7806627ea67a3ec4e5d602d59d3339683aad42ca0",
+          "bytes": 72191
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-resource-watch-spec.json",
+          "sha256": "3e1da8ece7e250a7fdb698c5c7564b890ad1410d15e2ef55dd349639e51de6fb",
+          "bytes": 1526
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-semantic-independent-audit.json",
+          "sha256": "8a592b9b3e03c2735cf5372a342b5fe8a289c7a766407a78dbaf73735a461693",
+          "bytes": 6238
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-semantic-quality.json",
+          "sha256": "48f0c8e31b9b7c2b4babfb12bcd9488f3c2b257b02e3772c0a900ce8d3f3aee1",
+          "bytes": 104198
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-thinking-control.json",
+          "sha256": "82fe552a0278d3a405c84f14fc35b35973581dd734000d2d7aa99586dc12e3e4",
+          "bytes": 1318
+        },
+        {
+          "path": "projections/qwen38-27b-cache0-r2-off-up.json",
+          "sha256": "5bad2b1c81612711bc31a50d87160634815b5997ecb4363f49cf1b1cf2afbd8c",
+          "bytes": 2077
+        },
+        {
+          "path": "projections/qwen38-27b-pull.json",
+          "sha256": "90be3dd0f79240952d7f221db47598be83ce4405503c81f2cf74e1bb00599392",
+          "bytes": 7192
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-pre-arm-resources.json",
+          "sha256": "54f890a456edebfd8d73e0963c8e677009c4f13f2b78f1f76252f559c5559de1",
+          "bytes": 231
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-preflight.json",
+          "sha256": "74e44ca4518379d6635b890ecb8b05ac7a039892649703bd44b022c1888741b1",
+          "bytes": 2983
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-resource-summary.json",
+          "sha256": "052af3fc6245f1f7616f8f499df13efacc77ca4d6abdc0cf50dfed69d1a8be7f",
+          "bytes": 3780
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-resource-trace.jsonl",
+          "sha256": "b0d2d172a29c12d10417d70bf8a04a4350751f9eac6fa1420375e011f58db452",
+          "bytes": 171
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-resource-watch-spec-v2.json",
+          "sha256": "f1955a1e7ef21738b2c34a0e70d6258c08e38acfc19030d364788e3c3085c751",
+          "bytes": 1582
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-resource-watch-spec.json",
+          "sha256": "93dccc74573e9ac134bdb5136123c3d94cc9160fac4d1fa93dc4376c287ea37d",
+          "bytes": 1328
+        },
+        {
+          "path": "projections/qwen38-27b-r2-off-up.json",
+          "sha256": "f6736bfca2737b6c65c34b2f9fc1cec2776605b98e2477a4ce2572382a2c8e26",
+          "bytes": 2048
+        },
+        {
+          "path": "projections/tts-listening-audio-bindings-research-r2.json",
+          "sha256": "01dcb9ca3bf766b043df5688002b50fecdf3779d777be32e569f0fe4eb13e96f",
+          "bytes": 15988
+        },
+        {
+          "path": "projections/tts-listening-research-r2-artifact-validation.json",
+          "sha256": "df2c9d7d4be30dd632b0bc9404e810e5c31243f5ffb834000b6704a9616ae3a3",
+          "bytes": 1224
+        },
+        {
+          "path": "projections/tts-listening-research-r2-artifact.json",
+          "sha256": "4c4bb06be247d64e688c46350de5fb3759ce281a7f76927edcd429702d5b0810",
+          "bytes": 34056
+        },
+        {
+          "path": "results-tables.json",
+          "sha256": "aca561b5ef255f4130fb49ad550fe22c232a9f14f415c32d4b0945cabbe3b7f7",
+          "bytes": 12877
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "a6b2ff26ae3df99e41cd22fca23eac31b09a93291343709a2aad1bab959e42cb",
+          "bytes": 2160
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "1abb742ce16f4f9a990d53e63d70c5fdd529cf7514bbedcb9d8826bc98d3d8fe",
+          "bytes": 4969
+        },
+        {
+          "path": "projections/baseline-repetition-adjudication.json",
+          "sha256": "b905e70de9862ede4a2d074e8ee7a82c0cca06ea42f61ba8355023fc0c6fe3b3",
+          "bytes": 798
+        },
+        {
+          "path": "projections/breeze-bf16-abort-assessment.json",
+          "sha256": "a862232dbeb49b5c615816af7213f8cd76df66c215bbcf39ffeb82a050bd45da",
+          "bytes": 740
+        },
+        {
+          "path": "projections/breeze-runtime-failure-analysis.md",
+          "sha256": "555461f0bfca292f7a0e20896d210e0e7495df84f629b925b429e200df58a27f",
+          "bytes": 13994
+        },
+        {
+          "path": "projections/campaign-final-assessment-independent-review-v2.json",
+          "sha256": "b3cc54659fb6d7f5df2bda050f67a920bf160efbd8802750ac502466a690cdcf",
+          "bytes": 6571
+        },
+        {
+          "path": "projections/campaign-watch-llm-v1-independent-review.json",
+          "sha256": "e1c31504ec1ed09ec103a304c43ce691e42ad93c3d63d1d3698ad6cc85f3ce0e",
+          "bytes": 2127
+        },
+        {
+          "path": "projections/campaign-watch-llm-v2-independent-review.json",
+          "sha256": "038d4255564829029ac970113ea2ece1aa686c60bbb0740c1ca88b24eae2b7e3",
+          "bytes": 1797
+        },
+        {
+          "path": "projections/campaign-watch-v4-independent-review.json",
+          "sha256": "b69eb6c63f7d5cf91f51ad563e84cf1069160e6b5ef64387a84225e6f06b6345",
+          "bytes": 1535
+        },
+        {
+          "path": "projections/compatibility-notes.json",
+          "sha256": "2bfbc8586ca3de75f69c62232c0da1dc0fd6e983a65e251884ca51e9e1044074",
+          "bytes": 13469
+        },
+        {
+          "path": "projections/llm-medium-guarded-phases-independent-review.json",
+          "sha256": "738355a9cdd5024391405f1510fc8d43574fb9d57f4cbd50a699fe3a1ab938d3",
+          "bytes": 4337
+        },
+        {
+          "path": "projections/llm-shared-capacity-independent-audit.json",
+          "sha256": "9dfff59d87bde743463efe2a0db4fe50fc1c4932413734b000cd8c38abf904fe",
+          "bytes": 5347
+        },
+        {
+          "path": "projections/mlx-lm-runtime-cache0-v1-independent-review.json",
+          "sha256": "4074fec2c5a0ae61553c7c3ce97bb8774f744158032657646301abfa89d95d94",
+          "bytes": 3337
+        },
+        {
+          "path": "projections/mlx-lm-runtime-cache0-v2-independent-review.json",
+          "sha256": "c5a60c978e81a0ee2e232ea9e6520c95dd9200f90ca9fe2f3f1fdffbf62d9863",
+          "bytes": 3865
+        },
+        {
+          "path": "projections/product-test-triage.json",
+          "sha256": "a03dc0363b1995e41eba252d0220e38a6a0190936e4d2cc3ad70c5d501ad76c3",
+          "bytes": 37272
+        },
+        {
+          "path": "projections/qwen-asr-paired-comparison.json",
+          "sha256": "1940d056c829429f93276844689e631468472a3d214e54273064693f2e2c20b6",
+          "bytes": 63632
+        },
+        {
+          "path": "projections/runtime-v2-watch-llm-independent-assessment.json",
+          "sha256": "77112d4ac03273800724495d9489e55c1b75324793cf70448dce44d64b336462",
+          "bytes": 5392
+        },
+        {
+          "path": "projections/stt-independent-assessment.json",
+          "sha256": "6dc115ba28b9c9f8f3ad57c50eb5e70d1497bb21496fbdf478b98c5fba4c1eec",
+          "bytes": 41055
+        },
+        {
+          "path": "projections/tts-fidelity-discrepancy-audit.json",
+          "sha256": "092e8c301e6203e1612a558062c189a0e3b6ed46861783f7d2ae588a73d92752",
+          "bytes": 112396
+        },
+        {
+          "path": "projections/tts-final-candidate-control-assessment.json",
+          "sha256": "4cb0bc65fbdbacd90af71c6f8dfe82538eeccc47b9c8752a8b7f3ad3f1382f54",
+          "bytes": 15276
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-ending-state.json",
+          "sha256": "38d1b822199e0e5e0e8e7c30aa190e6324cc1ff2b554cefbabcb227acb303950",
+          "bytes": 1062
+        },
+        {
+          "path": "projections/realtime-restoration-probe-v3-independent-review.json",
+          "sha256": "14bd0075805768c8ca53e759653ab4b8250642cc6460a32fe2f4a74e9e19a4e6",
+          "bytes": 4680
+        },
+        {
+          "path": "projections/realtime_restoration_probe_v3_identity.json",
+          "sha256": "c21d57bd268c76650eeffd49a533a71db70e762945f7f6a8b6591a883754e5c2",
+          "bytes": 2990
+        },
+        {
+          "path": "projections/restoration-audio-loop-v2.cli.json",
+          "sha256": "e7964cb314a031274ec40864194aca74e3a88464e98f47ea2cab7dda71fda7e8",
+          "bytes": 724
+        },
+        {
+          "path": "projections/restoration-audio-loop-v3.cli.json",
+          "sha256": "22a9d918a874316b6116bdbee0ec7a00599affc3049ec90412bd794deafcf44e",
+          "bytes": 3494
+        },
+        {
+          "path": "projections/restoration-audio-loop.cli.json",
+          "sha256": "e7964cb314a031274ec40864194aca74e3a88464e98f47ea2cab7dda71fda7e8",
+          "bytes": 724
+        },
+        {
+          "path": "projections/restoration-audio-loop.json",
+          "sha256": "03298a8eba0188cd350d382da8a4b008eb9d3bfa3eaaefbfa9fae414f2b321e3",
+          "bytes": 988
+        },
+        {
+          "path": "projections/restoration-final-independent-audit.json",
+          "sha256": "6bf9756922734b67051e73e594a71a98e50df40d48160bcdc4111ca39545b9d1",
+          "bytes": 10057
+        },
+        {
+          "path": "projections/restoration-native-cache-inventory.json",
+          "sha256": "1bf1e6f9add141539032577816b1faa9ba838ef97e912a44d94e265eab15b163",
+          "bytes": 24925
+        },
+        {
+          "path": "projections/restoration-realtime-smoke-v3.json",
+          "sha256": "48b4a6521ce594e7ee14a1ef684a1f3ecb449709f7e7ae4c1e86048e93bac6a9",
+          "bytes": 3677
+        },
+        {
+          "path": "projections/restoration-services-final-v2.json",
+          "sha256": "12692c7446206cf8ead5190bb656f0124b0c93e1df6493f6d79c4bf88be15e74",
+          "bytes": 8167
+        },
+        {
+          "path": "projections/restoration-services-final.json",
+          "sha256": "1f4aaaf4d4a931bf168615b91241f94351195b8d159adb105f834a2d5d5f4870",
+          "bytes": 1183
+        },
+        {
+          "path": "restoration.json",
+          "sha256": "babf83288e58d67b02b8dc28bdd95a13649aa95eda602272c06adc5cd5c6be28",
+          "bytes": 6090
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-final-assessment.json",
+          "sha256": "a2b15ebe015f4ccd7a049cdf546eb29333542ef13f71cd4402fef32a273742e2",
+          "bytes": 127916
+        },
+        {
+          "path": "projections/campaign-final-assessment.md",
+          "sha256": "c80db68e44423859972f14439b2cd6a08956e3cac71553649ffd68035e1d1c5a",
+          "bytes": 9620
+        },
+        {
+          "path": "summary.json",
+          "sha256": "62781ac70f65d08b8bf12cf5e4752235d99254804f77659fd539e66b1ec23074",
+          "bytes": 24749
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "fe5e8897d0acecb615db99832ce9ba2ab6539309a2f3d56fbcfdc37dcb10ac39",
+          "bytes": 2271
+        }
+      ],
+      "reason": "Retained sanitized derivatives and bounded reconstruction evidence; missing acceptance gates remain explicit in decision/coverage, never converted to passes."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}
