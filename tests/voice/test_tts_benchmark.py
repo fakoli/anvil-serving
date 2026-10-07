@@ -350,10 +350,12 @@ response_format = "pcm"
 '''
 
 
-def test_cli_writes_tts_evidence_from_overlay_without_config_mutation(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("newline", ["\n", "\r\n"], ids=["lf", "crlf"])
+def test_cli_writes_tts_evidence_from_overlay_without_config_mutation(tmp_path, monkeypatch, capsys, newline):
     benchmark = _module()
     config = tmp_path / "voice.toml"
-    config.write_text(VOICE_MANIFEST)
+    manifest_bytes = VOICE_MANIFEST.replace("\n", newline).encode("utf-8")
+    config.write_bytes(manifest_bytes)
     overlay = tmp_path / "candidate.toml"
     overlay.write_text('''[voice.tts]
 model = "mlx-candidate"
@@ -363,6 +365,7 @@ voice_id = "voice-name"
 revision = "pinned-revision"
 runtime = "mlx-audio"
 ''')
+    overlay_bytes = overlay.read_bytes()
     monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(tmp_path))
     monkeypatch.setattr(benchmark, "_default_transport", lambda *args, **kwargs: _Response(_wav(), content_type="audio/wav"))
     evidence_path = tmp_path / "evidence.json"
@@ -377,8 +380,10 @@ runtime = "mlx-audio"
     assert evidence["endpoint"]["voice_id"] == "voice-name"
     assert evidence["endpoint"]["revision"] == "pinned-revision"
     assert evidence["configuration"]["candidate"] == "candidate"
-    assert evidence["configuration"]["manifest_sha256"] == hashlib.sha256(VOICE_MANIFEST.encode()).hexdigest()
-    assert config.read_text() == VOICE_MANIFEST
+    assert evidence["configuration"]["manifest_sha256"] == hashlib.sha256(manifest_bytes).hexdigest()
+    assert evidence["configuration"]["candidate_overlay_sha256"] == hashlib.sha256(overlay_bytes).hexdigest()
+    assert config.read_bytes() == manifest_bytes
+    assert overlay.read_bytes() == overlay_bytes
     assert str(tmp_path / "audio") not in capsys.readouterr().out
     with pytest.raises(voice_config.ConfigError, match="must be pcm"):
         voice_config.load_manifest(str(config), candidate_overlay={"voice": {"tts": {"response_format": "wav"}}})
