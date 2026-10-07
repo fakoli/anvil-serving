@@ -1,13 +1,20 @@
 """Closed immutable caller metadata; existing credentials retain all authority."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, replace
+from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
+import math
+import os
 import re
+import unicodedata
 
 from ..control_plane.authorization import ALLOWED_SCOPES, AuthorizationDecision
-from ..observability.dashboard.contracts import strict_json
+from ..observability.dashboard.access import _raw_base64url
+from ..observability.dashboard.contracts import ObservatoryError, strict_json
+from ..control_plane.mcp.auth_file import AuthFileError, read_private_auth_file
 from .keys import KeyStoreError
 
 _OPAQUE = re.compile(r"[A-Za-z0-9_:.\-]{1,128}\Z")
@@ -19,6 +26,211 @@ SCHEMA = "router-usage/v1"
 class IdentityError(KeyStoreError):
     def __init__(self):
         super().__init__("invalid caller policy metadata")
+
+
+class WebUIIdentityError(IdentityError):
+    """Fixed public failure for required native signed identity."""
+
+    code = "identity_invalid"
+    status = 401
+
+    def __init__(self):
+        KeyStoreError.__init__(self, "invalid forwarded identity")
+
+
+def _subject(value):
+    try:
+        _require(type(value) is str and 1 <= len(value.encode("utf-8")) <= 128
+                 and not any(unicodedata.category(c).startswith("C") for c in value))
+    except UnicodeError:
+        raise IdentityError() from None
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class EndUser:
+    """Verified attribution, never an authorization grant or profile claims."""
+
+    instance: str
+    issuer: str
+    subject: str
+    state: str = "verified_unmapped"
+    owner: str | None = None
+    generation: str | None = None
+    epoch: str | None = None
+    approval_revision: int | None = None
+
+    def __post_init__(self):
+        opaque_id(self.instance)
+        _require(self.issuer == "open-webui")
+        _subject(self.subject)
+        _require(type(self.state) is str and self.state in {"verified", "verified_unmapped"})
+        if self.state == "verified_unmapped":
+            _require(all(v is None for v in (self.owner, self.generation, self.epoch, self.approval_revision)))
+        else:
+            from .connect_keys import identity, Denied
+            try:
+                identity(self.owner, self.generation, self.epoch)
+                _revision(self.approval_revision)
+            except Denied:
+                raise IdentityError() from None
+
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value):
+        return cls(**_closed(cls, value))
+
+
+@dataclass(frozen=True, slots=True)
+class WebUIProfile:
+    """Secret-free operator references, bound to an authenticated service ID."""
+
+    credential_id: str
+    credential_kind: str
+    instance: str
+    signer_env: str | None = None
+    signer_file: str | None = None
+    issuer: str = "open-webui"
+    require_user: bool = True
+    clock_skew_seconds: int = 30
+
+    def __post_init__(self):
+        _require(type(self.credential_id) is str and _CREDENTIAL.fullmatch(self.credential_id) is not None)
+        _require(type(self.credential_kind) is str and self.credential_kind in {"device_key", "configured_scope"})
+        opaque_id(self.instance)
+        _require(self.issuer == "open-webui" and self.require_user is True)
+        _require(type(self.clock_skew_seconds) is int and 0 <= self.clock_skew_seconds <= 30)
+        _require((self.signer_env is None) != (self.signer_file is None))
+        if self.signer_env is not None:
+            from .config import ConfigError, _validate_auth_env
+            try:
+                _require(type(self.signer_env) is str and len(self.signer_env) <= 128)
+                _validate_auth_env(self.signer_env, "WebUI signer")
+            except (ConfigError, TypeError):
+                raise IdentityError() from None
+        else:
+            _require(type(self.signer_file) is str and 1 <= len(self.signer_file) <= 4096
+                     and os.path.isabs(self.signer_file)
+                     and not any(unicodedata.category(c).startswith("C") for c in self.signer_file))
+
+
+def validate_webui_profiles(profiles):
+    _require(type(profiles) is tuple and len(profiles) <= 32)
+    credentials, instances, references = set(), set(), set()
+    for profile in profiles:
+        _require(type(profile) is WebUIProfile)
+        reference = (profile.signer_env, profile.signer_file)
+        _require(profile.credential_id not in credentials and profile.instance not in instances
+                 and reference not in references)
+        credentials.add(profile.credential_id)
+        instances.add(profile.instance)
+        references.add(reference)
+    return profiles
+
+
+class WebUIBinding:
+    """Immutable process-local signer holder; deliberately has no serializer."""
+
+    __slots__ = ("profile", "_signer")
+
+    def __init__(self, profile, signer):
+        _require(type(profile) is WebUIProfile and type(signer) is bytes and 32 <= len(signer) <= 4096)
+        object.__setattr__(self, "profile", profile)
+        object.__setattr__(self, "_signer", signer)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("immutable WebUI binding")
+
+    def __repr__(self):
+        return "WebUIBinding(<protected>)"
+
+
+def load_webui_bindings(profiles, *, env=None):
+    """Resolve configured references at startup, never from request input."""
+    try:
+        validate_webui_profiles(profiles)
+        environment = os.environ if env is None else env
+        bindings = []
+        for profile in profiles:
+            raw = (environment.get(profile.signer_env) if profile.signer_env is not None else
+                   read_private_auth_file(profile.signer_file, max_bytes=4096).decode("utf-8"))
+            _require(type(raw) is str)
+            signer = raw.strip().encode("utf-8")  # Native WebUI trims its env reference.
+            binding = WebUIBinding(profile, signer)
+            # Native iss is global: one actual signer cannot separate instances.
+            _require(not any(hmac.compare_digest(signer, b._signer) for b in bindings))
+            bindings.append(binding)
+        return tuple(bindings)
+    except (IdentityError, AuthFileError, OSError, ValueError, TypeError, UnicodeError):
+        raise WebUIIdentityError() from None
+
+
+def select_webui_binding(bindings, caller):
+    """Select using the already authenticated CallerSnapshot, never wire IDs."""
+    try:
+        _require(type(bindings) is tuple and all(type(b) is WebUIBinding for b in bindings))
+        validate_webui_profiles(tuple(b.profile for b in bindings))
+        for index, binding in enumerate(bindings):
+            _require(not any(hmac.compare_digest(binding._signer, other._signer)
+                             for other in bindings[:index]))
+        _require(type(caller) is CallerSnapshot)
+        matches = [b for b in bindings if b.profile.credential_id == caller.credential_id]
+        if not matches:
+            return None
+        binding = matches[0]
+        kind = {"key_policy": "device_key", "configured_scope": "configured_scope"}.get(caller.grant.kind)
+        _require(caller.actor.kind == "service" and kind == binding.profile.credential_kind)
+        return binding
+    except IdentityError:
+        raise WebUIIdentityError() from None
+
+
+def verify_webui(headers, binding, now_utc) -> EndUser:
+    """Verify native HS256 assertions after service credential authentication.
+
+    The injected clock is an aware UTC datetime or finite epoch seconds.
+    Native repeated assertions remain valid; profile claims grant no authority.
+    """
+    try:
+        _require(type(binding) is WebUIBinding)
+        values = headers.get_all("X-OpenWebUI-User-Jwt", [])
+        _require(type(values) is list and len(values) == 1)
+        token = values[0]
+        _require(type(token) is str and len(token) <= 8192 and token.isascii())
+        parts = token.split(".")
+        _require(len(parts) == 3 and all(parts))
+        header_raw, payload_raw = _raw_base64url(parts[0]), _raw_base64url(parts[1])
+        signature = _raw_base64url(parts[2], size=32)
+        _require(len(header_raw) <= 512 and len(payload_raw) <= 4096)
+        header = strict_json(header_raw.decode("utf-8"))
+        claims = strict_json(payload_raw.decode("utf-8"))
+        _require(type(header) is dict and set(header) in ({"alg"}, {"alg", "typ"})
+                 and header["alg"] == "HS256" and ("typ" not in header or header["typ"] == "JWT"))
+        _require(type(claims) is dict)
+        expected = hmac.digest(binding._signer, (parts[0] + "." + parts[1]).encode("ascii"), "sha256")
+        _require(hmac.compare_digest(signature, expected))
+        _require(claims.get("iss") == binding.profile.issuer)
+        subject = _subject(claims.get("sub"))
+        iat, exp = claims.get("iat"), claims.get("exp")
+        _require(type(iat) is int and type(exp) is int and 0 < exp - iat <= 300)
+        if type(now_utc) is datetime:
+            _require(now_utc.tzinfo is not None and now_utc.utcoffset() == timezone.utc.utcoffset(now_utc))
+            now_utc = now_utc.timestamp()
+        _require(type(now_utc) in (int, float) and math.isfinite(now_utc))
+        skew = binding.profile.clock_skew_seconds
+        _require(iat <= now_utc + skew and exp > now_utc - skew)
+        return EndUser(binding.profile.instance, binding.profile.issuer, subject)
+    except (IdentityError, ObservatoryError, ValueError, TypeError, UnicodeError, RecursionError,
+            AttributeError, OverflowError):
+        raise WebUIIdentityError() from None
+
+
+def forwarded_caller(caller, end_user):
+    """Attach verified attribution while preserving every authenticated grant fact."""
+    _require(type(caller) is CallerSnapshot and type(end_user) is EndUser)
+    return replace(caller, end_user=end_user, attribution_state="verified_forwarded")
 
 
 def _require(condition):
@@ -192,14 +404,18 @@ class CallerSnapshot:
     grant: EffectiveGrant
     attribution_state: str
     schema: str = SCHEMA
-    end_user: None = None  # T004 adds the verified native EndUser projection.
+    end_user: EndUser | None = None
 
     def __post_init__(self):
-        _require(self.schema == SCHEMA and self.end_user is None)
+        _require(self.schema == SCHEMA)
+        _require(self.end_user is None or type(self.end_user) is EndUser)
         _require(type(self.actor) is Actor and type(self.grant) is EffectiveGrant)
         _require(type(self.credential_id) is str and (self.credential_id == "_legacy" or _CREDENTIAL.fullmatch(self.credential_id) is not None))
         state = "legacy" if self.grant.kind == "legacy" else (
             "unbound" if self.actor.kind == "unattributed" else "owned_" + self.actor.kind)
+        if self.end_user is not None:
+            _require(self.actor.kind == "service" and self.grant.kind in {"key_policy", "configured_scope"})
+            state = "verified_forwarded"
         _require(self.attribution_state == state)
         if self.grant.kind == "legacy":
             _require(self.credential_id == "_legacy" and self.actor.kind == "unattributed")
@@ -216,7 +432,8 @@ class CallerSnapshot:
 
     def to_dict(self):
         return {"schema": self.schema, "credential_id": self.credential_id, "actor": self.actor.to_dict(),
-                "end_user": None, "grant": self.grant.to_dict(), "attribution_state": self.attribution_state}
+                "end_user": self.end_user.to_dict() if self.end_user is not None else None,
+                "grant": self.grant.to_dict(), "attribution_state": self.attribution_state}
 
     def to_json(self):
         return _canonical(self.to_dict()).decode("utf-8")
@@ -226,6 +443,8 @@ class CallerSnapshot:
         value = _closed(cls, value)
         value["actor"] = Actor.from_dict(value["actor"])
         value["grant"] = EffectiveGrant.from_dict(value["grant"])
+        if value["end_user"] is not None:
+            value["end_user"] = EndUser.from_dict(value["end_user"])
         return cls(**value)
 
     @classmethod

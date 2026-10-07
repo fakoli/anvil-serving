@@ -41,6 +41,98 @@ auth_env = "ANVIL_PRIMARY_KEY"
 llm.primary = "primary"
 """
 
+_WEBUI_SERVER = """
+[server]
+auth_env = "SYNTHETIC_ROUTER_AUTH"
+api_keys_path = "/synthetic/private/keys.sqlite3"
+authorization_policy_path = "/synthetic/private/policy.toml"
+[[server.webui_identity]]
+credential_id = "webui_service"
+credential_kind = "device_key"
+instance = "webui:synthetic"
+signer_env = "SYNTHETIC_WEBUI_SIGNER"
+"""
+
+
+def test_webui_identity_config_is_opt_in_frozen_and_reference_only(tmp_path, monkeypatch):
+    assert load_server_config(_write(tmp_path, _ONE_TIER)).webui_identity == ()
+    class NoEnvironment(dict):
+        def get(self, *args, **kwargs):
+            raise AssertionError("config must not resolve environment")
+    monkeypatch.setattr("os.environ", NoEnvironment())
+    config = load_server_config(_write(tmp_path, _WEBUI_SERVER))
+    assert len(config.webui_identity) == 1
+    profile = config.webui_identity[0]
+    assert profile.require_user is True and profile.issuer == "open-webui" and profile.clock_skew_seconds == 30
+    with pytest.raises(FrozenInstanceError):
+        profile.instance = "changed"
+    file_config = _WEBUI_SERVER.replace('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_file = "/synthetic/protected/signer"')
+    assert load_server_config(_write(tmp_path, file_config)).webui_identity[0].signer_file == "/synthetic/protected/signer"
+
+
+@pytest.mark.parametrize("before,after", [
+    ('credential_id = "webui_service"', 'credential_id = "_legacy"'),
+    ('credential_id = "webui_service"', 'credential_id = "secret marker"'),
+    ('credential_kind = "device_key"', 'credential_kind = "human"'),
+    ('instance = "webui:synthetic"', 'instance = ""'),
+    ('instance = "webui:synthetic"', 'instance = true'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', ''),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "secret marker"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = 32'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_file = "relative"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_file = "/synthetic/file"\nsigner_env = "SYNTHETIC_WEBUI_SIGNER"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_ROUTER_AUTH"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "AKIAABCDEFGHIJKLMNOP"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nissuer = "secret marker"'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nrequire_user = false'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nclock_skew_seconds = -1'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nclock_skew_seconds = 31'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nclock_skew_seconds = true'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nclock_skew_seconds = 1.0'),
+    ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nsecret_marker = "private"'),
+    ('api_keys_path = "/synthetic/private/keys.sqlite3"', ''),
+])
+def test_webui_profile_bad_configuration_is_closed_and_redacted(tmp_path, before, after):
+    with pytest.raises(ConfigError) as caught:
+        load_server_config(_write(tmp_path, _WEBUI_SERVER.replace(before, after)))
+    assert str(caught.value) == "invalid [server].webui_identity profile"
+
+
+@pytest.mark.parametrize("same", ["credential", "instance", "reference"])
+def test_webui_profile_ambiguity_is_rejected(tmp_path, same):
+    second = ('\n[[server.webui_identity]]\ncredential_id = "second"\ncredential_kind = "configured_scope"\n'
+              'instance = "second"\nsigner_env = "SECOND_SIGNER"\n')
+    if same == "credential": second = second.replace('credential_id = "second"', 'credential_id = "webui_service"')
+    if same == "instance": second = second.replace('instance = "second"', 'instance = "webui:synthetic"')
+    if same == "reference": second = second.replace('signer_env = "SECOND_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"')
+    with pytest.raises(ConfigError, match=r"invalid \[server\].webui_identity profile"):
+        load_server_config(_write(tmp_path, _WEBUI_SERVER + second))
+
+
+def test_webui_scope_profile_requires_existing_authorization_config(tmp_path):
+    body = _WEBUI_SERVER.replace('credential_kind = "device_key"', 'credential_kind = "configured_scope"')
+    assert load_server_config(_write(tmp_path, body)).webui_identity[0].credential_kind == "configured_scope"
+    with pytest.raises(ConfigError, match=r"invalid \[server\].webui_identity profile"):
+        load_server_config(_write(tmp_path, body.replace('authorization_policy_path = "/synthetic/private/policy.toml"', '')))
+
+
+@pytest.mark.parametrize("literal", ["true", "{}", '"private"'])
+def test_webui_profiles_require_bounded_table_list(tmp_path, literal):
+    with pytest.raises(ConfigError, match=r"invalid \[server\].webui_identity profile"):
+        load_server_config(_write(tmp_path, '[server]\nwebui_identity = ' + literal))
+
+
+def test_webui_profile_list_count_and_disabled_auth_fail_closed(tmp_path):
+    repeated = _WEBUI_SERVER + ('\n[[server.webui_identity]]' +
+                               _WEBUI_SERVER.split('[[server.webui_identity]]')[1]) * 32
+    with pytest.raises(ConfigError, match=r"invalid \[server\].webui_identity profile"):
+        load_server_config(_write(tmp_path, repeated))
+    with pytest.raises(ConfigError, match=r"invalid \[server\].webui_identity profile"):
+        body = _WEBUI_SERVER.replace('auth_env = "SYNTHETIC_ROUTER_AUTH"', '').replace(
+            'api_keys_path = "/synthetic/private/keys.sqlite3"', '').replace(
+            'authorization_policy_path = "/synthetic/private/policy.toml"', '')
+        load_server_config(_write(tmp_path, body))
+
 _REPLICA_TIER = """
 [router]
 [[router.tiers]]

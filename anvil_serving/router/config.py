@@ -26,6 +26,10 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from types import MappingProxyType
 from typing import Any, Mapping, Optional, Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .identity import WebUIProfile
 
 
 # Tier dialect + privacy enums as NAMED constants, defined once here so the bare
@@ -472,6 +476,7 @@ class ServerConfig:
     total_timeout_s: float = 900.0
     heartbeat_interval_s: float = 15.0
     trace_export_url: Optional[str] = None
+    webui_identity: tuple[WebUIProfile, ...] = ()
 
 
 _SERVER_KEYS = frozenset({
@@ -484,7 +489,7 @@ _SERVER_KEYS = frozenset({
     "workload_host",
     "authorization_policy_path", "api_keys_path", "connect_keys_env", "connect_home_url", "connect_check_env", "client_limits", "admission_timeout_s",
     "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
-    "heartbeat_interval_s", "trace_export_url",
+    "heartbeat_interval_s", "trace_export_url", "webui_identity",
 })
 _WORKLOAD_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _MEDIA_SCOPES = frozenset(
@@ -602,6 +607,33 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
         except ValueError:
             raise ConfigError("[server].trace_export_url must name a private collector") from None
 
+    # References only: loading portable config never resolves signer material.
+    from .identity import IdentityError, WebUIProfile, validate_webui_profiles
+    raw_webui = server.get("webui_identity", [])
+    try:
+        if type(raw_webui) is not list or len(raw_webui) > 32:
+            raise IdentityError()
+        allowed = {"credential_id", "credential_kind", "instance", "issuer", "signer_env",
+                   "signer_file", "require_user", "clock_skew_seconds"}
+        required = {"credential_id", "credential_kind", "instance"}
+        profiles = []
+        for raw in raw_webui:
+            if type(raw) is not dict or not required <= set(raw) or not set(raw) <= allowed:
+                raise IdentityError()
+            profiles.append(WebUIProfile(**raw))
+        webui_identity = validate_webui_profiles(tuple(profiles))
+        if webui_identity and auth_env is None:
+            raise IdentityError()
+        for profile in webui_identity:
+            if profile.signer_env is not None and profile.signer_env in {auth_env, connect_keys_env, connect_check_env}:
+                raise IdentityError()
+            if profile.credential_kind == "device_key" and paths["api_keys_path"] is None:
+                raise IdentityError()
+            if profile.credential_kind == "configured_scope" and paths["authorization_policy_path"] is None:
+                raise IdentityError()
+    except (IdentityError, TypeError, UnicodeError):
+        raise ConfigError("invalid [server].webui_identity profile") from None
+
     return ServerConfig(
         auth_env=auth_env,
         admission_state_path=paths["admission_state_path"],
@@ -617,6 +649,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
         connect_check_env=connect_check_env,
         client_limits=MappingProxyType(dict(client_limits)),
         trace_export_url=trace_export_url,
+        webui_identity=webui_identity,
         **durations,
     )
 
