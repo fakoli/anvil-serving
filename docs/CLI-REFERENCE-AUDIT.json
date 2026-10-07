@@ -114,10 +114,10 @@
         "examples": 237,
         "implementation": 436,
         "skills": 21,
-        "tests": 483,
+        "tests": 484,
         "tooling": 36
       },
-      "files_scanned": 1441,
+      "files_scanned": 1442,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

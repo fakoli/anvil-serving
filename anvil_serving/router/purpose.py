@@ -33,6 +33,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
+import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from .backends.relay import RelayBackendError, Transport, _urlopen_transport
@@ -41,12 +43,15 @@ from .decision_log import (
     AttemptRecord,
     DecisionLog,
     DecisionRecord,
+    TokenUsage,
     decision_line,
+    normalize_usage,
     safe_correlation,
     safe_client_id,
     safe_gateway_request_id,
 )
 from .internal import BackendClientError
+from .usage_store import RequestStart, UsageError
 
 #: Upstream path per purpose kind, appended to the model's ``base_url``
 #: (vLLM serves the OpenAI Embeddings API at ``/v1/embeddings`` and the
@@ -60,6 +65,45 @@ _KIND_PATHS: Mapping[str, str] = {
 #: default request cap; an embeddings matrix for a large batch is well under
 #: this, and the cap keeps a misbehaving serve from OOM-ing the router.
 _MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+
+
+def purpose_usage(kind: str, raw_usage: object = None) -> TokenUsage:
+    """Normalize declared purpose units without inspecting response content."""
+    if type(kind) is not str:
+        raise ValueError("unsupported purpose units")
+    if kind in {PURPOSE_EMBEDDING, PURPOSE_RERANK}:
+        if isinstance(raw_usage, Mapping):
+            metadata = {name: raw_usage[name] for name in ("prompt_tokens", "prompt_tokens_details")
+                        if name in raw_usage}
+            if "prompt_tokens" not in raw_usage and "total_tokens" in raw_usage:
+                metadata["prompt_tokens"] = raw_usage["total_tokens"]
+        else:
+            metadata = raw_usage
+        return normalize_usage(metadata, "openai", ("applicable", "not_applicable"))
+    if kind in {"stt", "tts", "audio", "memory"}:
+        return normalize_usage(None, "openai", ("not_applicable", "not_applicable"))
+    raise ValueError("unsupported purpose units")
+
+
+def child_request_start(parent: RequestStart, *, accepted_at: str, kind: str,
+                        model: Optional[str], usage_relation: str,
+                        applicability: tuple[str, str]) -> RequestStart:
+    """Describe one actual declared child; T008 owns admission and dispatch.
+
+    A delegated wrapper is the same attempt. Remote unreported work supplies
+    no observed child IDs or token counts. The producer must declare relation
+    and units rather than infer either from parent content or wire dialect.
+    """
+    if type(parent) is not RequestStart:
+        raise UsageError()
+    if parent.usage_relation == "inclusive_parent" and usage_relation == "exclusive":
+        raise UsageError("accounting_conflict")
+    normalize_usage(None, "openai", applicability)  # reuse closed unit validation
+    child = RequestStart(str(uuid.uuid4()), parent.run_id, accepted_at, parent.caller, kind, model,
+                         parent.request_id, str(uuid.uuid4()), usage_relation, *applicability)
+    if child.accepted_at < parent.accepted_at:
+        raise UsageError("accounting_conflict")
+    return child
 
 
 class PurposeError(Exception):
@@ -107,6 +151,7 @@ class PurposeRouter:
         self._transport: Transport = transport or _urlopen_transport
         self._default_timeout = default_timeout
         self._log = decision_log
+        self._thread_local = threading.local()
         # (kind, model-name) -> (PurposeModel, resolved bearer token or None)
         self._routes: Dict[Tuple[str, str], Tuple[PurposeModel, Optional[str]]] = {}
         for pm in models:
@@ -134,6 +179,10 @@ class PurposeRouter:
     def __len__(self) -> int:
         return len(self._routes)
 
+    def get_last_normalized_usage(self) -> Optional[TokenUsage]:
+        """Immutable metadata on this dispatching thread, separate from wire JSON."""
+        return getattr(self._thread_local, "normalized_usage", None)
+
     # ------------------------------------------------------------------ #
     # dispatch
     # ------------------------------------------------------------------ #
@@ -151,6 +200,9 @@ class PurposeRouter:
         routing) or an upstream failure (502, sanitized). A dispatched attempt
         — served or errored — is recorded in the decision log.
         """
+        # Reset before route/body validation or transport, including eager errors.
+        self._thread_local.normalized_usage = normalize_usage(
+            None, "openai", ("applicable", "not_applicable"))
         model = str(body.get("model") or "")
         route = self._routes.get((kind, model))
         if route is None:
@@ -250,6 +302,7 @@ class PurposeRouter:
                 502, "upstream_error", "purpose upstream request failed",
             ) from None
 
+        self._thread_local.normalized_usage = purpose_usage(kind, payload.get("usage"))
         self._record(
             kind, pm.id, outcome="served",
             prompt_tokens=_usage_prompt_tokens(payload),
