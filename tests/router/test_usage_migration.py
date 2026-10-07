@@ -438,13 +438,24 @@ def test_creation_race_preserves_newer_database_bytes_authority_and_ledger(
         monkeypatch.setattr(keys.sqlite3, "connect", open_destination)
     else:
         connect = KeyStore._connect
+        initialize = KeyStore.initialize
+        destination_ready = False
+
+        def initialized_destination(cls, path):
+            nonlocal destination_ready
+            store = initialize(path)
+            destination_ready = True
+            return store
 
         @contextmanager
         def open_destination(store):
-            if store.path != source.path and not injected:
+            # Trigger after the exclusive initializer returned, immediately
+            # before the snapshot opens its destination connection for copying.
+            if destination_ready and store.path != source.path and not injected:
                 install_newer()
             with connect(store) as db:
                 yield db
+        monkeypatch.setattr(KeyStore, "initialize", classmethod(initialized_destination))
         monkeypatch.setattr(KeyStore, "_connect", open_destination)
 
     with pytest.raises(KeyStoreError):
