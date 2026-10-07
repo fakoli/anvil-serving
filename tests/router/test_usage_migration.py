@@ -1,4 +1,5 @@
 """Synthetic protected-store migration, authority and loss-safe snapshot checks."""
+from contextlib import contextmanager
 import os
 import sqlite3
 import time
@@ -309,3 +310,39 @@ def test_migration_contention_is_bounded_and_preserves_version(tmp_path):
         assert time.monotonic() - started < 2
         other.execute("ROLLBACK")
     assert store.version == 1
+
+
+def test_native_backup_busy_retry_is_bounded_and_cleans_partial_copy(tmp_path, monkeypatch):
+    store = store_at(tmp_path)
+    original = store._connect
+
+    class BusySource:
+        def __init__(self, db):
+            self.db = db
+
+        def execute(self, *args):
+            return self.db.execute(*args)
+
+        def backup(self, destination, **options):
+            # Lock after the initial read checks so the native backup retry
+            # callback, rather than connection setup, observes SQLITE_BUSY.
+            lock = sqlite3.connect(store.path, isolation_level=None)
+            try:
+                lock.execute("BEGIN EXCLUSIVE")
+                self.db.backup(destination, **options)
+            finally:
+                lock.execute("ROLLBACK")
+                lock.close()
+
+    @contextmanager
+    def connection():
+        with original() as db:
+            yield BusySource(db)
+
+    monkeypatch.setattr(store, "_connect", connection)
+    target = tmp_path / "backup" / "snapshot.sqlite3"
+    started = time.monotonic()
+    with pytest.raises(KeyStoreError, match="busy"):
+        UsageStore(store).backup(target)
+    assert time.monotonic() - started < 2
+    assert not target.exists()
