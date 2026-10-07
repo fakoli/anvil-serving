@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from anvil_serving.router import connect_keys, usage_store
+from anvil_serving.router import connect_keys, keys, usage_store
 from anvil_serving.router.keys import KeyStore, KeyStoreError
 from anvil_serving.router.usage_store import UsageStore
 from tests.router.key_fixtures import tmp_path as tmp_path
@@ -346,3 +346,39 @@ def test_native_backup_busy_retry_is_bounded_and_cleans_partial_copy(tmp_path, m
         UsageStore(store).backup(target)
     assert time.monotonic() - started < 2
     assert not target.exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX replacement of an open created file")
+@pytest.mark.parametrize("phase", ["descriptor", "path-check", "path-substitution", "sqlite"])
+def test_initialization_failure_preserves_substituted_target(tmp_path, monkeypatch, phase):
+    target = tmp_path / "private" / "keys.sqlite3"
+
+    def replace():
+        target.unlink()
+        target.write_bytes(b"competing target")
+        target.chmod(0o600)
+
+    if phase == "descriptor":
+        def descriptor_check(_descriptor):
+            replace()
+            raise KeyStoreError("synthetic descriptor validation failure")
+        monkeypatch.setattr(keys, "_private_created_descriptor", descriptor_check)
+    elif phase in {"path-check", "path-substitution"}:
+        original = keys._secure_database
+
+        def path_check(path, *, exists, **options):
+            if exists:
+                replace()
+                if phase == "path-check":
+                    raise KeyStoreError("synthetic path validation failure")
+            return original(path, exists=exists, **options)
+        monkeypatch.setattr(keys, "_secure_database", path_check)
+    else:
+        def connect(*_args, **_options):
+            replace()
+            raise sqlite3.OperationalError("synthetic SQLite initialization failure")
+        monkeypatch.setattr(keys.sqlite3, "connect", connect)
+    with pytest.raises(KeyStoreError):
+        KeyStore.initialize(target)
+    assert target.read_bytes() == b"competing target"
+    assert target.stat().st_mode & 0o077 == 0

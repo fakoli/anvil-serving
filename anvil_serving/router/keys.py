@@ -217,7 +217,7 @@ def _secure_directory(path: Path, *, create: bool) -> None:
     _private_path(path, directory=True)
 
 
-def _secure_database(path: Path, *, exists: bool) -> None:
+def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None) -> None:
     _secure_directory(path.parent, create=False)
     try:
         info = path.lstat()
@@ -229,6 +229,8 @@ def _secure_database(path: Path, *, exists: bool) -> None:
         raise KeyStoreError("credential store is unavailable") from exc
     if _link_or_reparse(info) or not stat.S_ISREG(info.st_mode):
         raise KeyStoreError("credential store file is unsafe")
+    if identity is not None and not os.path.samestat(info, identity):
+        raise KeyStoreError("credential store file changed during creation")
     _private_path(path, directory=False)
 
 
@@ -301,7 +303,7 @@ class KeyStore:
             finally:
                 os.close(descriptor)
         try:
-            _secure_database(target, exists=True)
+            _secure_database(target, exists=True, identity=created)
         except KeyStoreError:
             _unlink_created(target, created)
             raise
@@ -329,13 +331,17 @@ class KeyStore:
                 """)
             finally:
                 connection.close()
+            _secure_database(target, exists=True, identity=created)
             os.chmod(target, 0o600)
-        except (OSError, sqlite3.Error) as exc:
+        except (KeyStoreError, OSError, sqlite3.Error) as exc:
             _unlink_created(target, created)
             raise KeyStoreError("credential store could not be initialized") from exc
-        if not os.path.samestat(target.lstat(), created):
-            raise KeyStoreError("credential store file changed during initialization")
-        store = cls(target)
+        try:
+            store = cls(target)
+            _secure_database(target, exists=True, identity=created)
+        except (KeyStoreError, OSError):
+            _unlink_created(target, created)
+            raise
         store._created_identity = created
         return store
 

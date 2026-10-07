@@ -153,9 +153,7 @@ class UsageStore:
 
                 def progress(status, _remaining, _total):
                     nonlocal busy_since
-                    _secure_database(destination.path, exists=True)
-                    if not os.path.samestat(destination.path.lstat(), created):
-                        raise KeyStoreError("accounting snapshot target changed")
+                    _secure_database(destination.path, exists=True, identity=created)
                     if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
                         busy_since = busy_since or time.monotonic()
                         if time.monotonic() - busy_since >= 1.0:
@@ -172,9 +170,7 @@ class UsageStore:
                         _validate_schema(copied)
                     if copied.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
                         raise KeyStoreError("accounting snapshot is invalid")
-            _secure_database(destination.path, exists=True)
-            if not os.path.samestat(destination.path.lstat(), created):
-                raise KeyStoreError("accounting snapshot target changed")
+            _secure_database(destination.path, exists=True, identity=created)
             complete = True
             return {"schema_version": copied_version, "copied": True}
         except (OSError, sqlite3.Error):
