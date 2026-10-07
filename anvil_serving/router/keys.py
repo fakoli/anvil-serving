@@ -52,6 +52,7 @@ class Principal:
     models: tuple[str, ...]
     paths: tuple[str, ...]
     owner: tuple[str, str, str] | None = None
+    caller_snapshot: CallerSnapshot | None = None
 
     def allows_model(self, model: str, normalize: bool = True) -> bool:
         if not isinstance(model, str):
@@ -491,57 +492,141 @@ class KeyStore:
                 raise KeyStoreError("credential store is unavailable") from exc
         raise KeyStoreError("credential key allocation failed")
 
+    def _caller_candidate(self, connection, key_id, now):
+        """Read policy and binding together in the caller's held transaction."""
+        from .identity import Actor, CallerSnapshot, EffectiveGrant, _digest, connect_reference
+        row = connection.execute(
+            "SELECT key_id,name,models,paths,rpm,created_at,expires_at,revoked_at FROM keys WHERE key_id=?",
+            (key_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        metadata = self._metadata(row)
+        if metadata["revoked_at"] is not None or (metadata["expires_at"] is not None and metadata["expires_at"] <= int(now)):
+            return None
+        policy = {name: tuple(metadata[name]) if name in {"models", "paths"} else metadata[name]
+                  for name in ("models", "paths", "rpm", "created_at", "expires_at")}
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        owner = None
+        if version in (2, 3):
+            from .connect_keys import owned_account
+            binding, account = owned_account(connection, key_id)
+            if binding is not None:
+                owner = binding[:3]
+                actor = Actor("human", binding[0], binding[3], binding[1], binding[2])
+                grant = EffectiveGrant("connect", reference=connect_reference(*binding), revision=binding[3],
+                    owner=binding[0], generation=binding[1], epoch=binding[2], approval_revision=binding[3],
+                    account_models=tuple(account["models"]), account_paths=tuple(account["paths"]),
+                    account_rpm=account["rpm"], account_expires_days=account["expires_days"], **policy)
+                return Principal(key_id, policy["models"], policy["paths"], owner,
+                                 CallerSnapshot(key_id, actor, grant, "owned_human"))
+        actor = Actor("unattributed")
+        if version == 3:
+            binding = connection.execute("SELECT kind,owner_id,revision FROM key_owner_bindings WHERE key_id=?", (key_id,)).fetchone()
+            if binding is not None:
+                actor = Actor(*binding)
+        grant = EffectiveGrant("key_policy", reference=key_id, policy_digest=_digest(policy), **policy)
+        caller = CallerSnapshot(key_id, actor, grant, "unbound" if actor.kind == "unattributed" else "owned_" + actor.kind)
+        return Principal(key_id, policy["models"], policy["paths"], owner, caller)
+
+    def bind_owner(self, key_id, kind, owner_id, expected_revision):
+        """Operator-only ordinary-key binding CAS; grants are unchanged."""
+        from .identity import Actor
+        if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
+                or type(expected_revision) is not int or not 0 <= expected_revision < 2**53-1):
+            raise KeyStoreError("invalid owner binding")
+        actor = Actor(kind, owner_id, expected_revision + 1)
+        if actor.kind not in {"human", "service"}:
+            raise KeyStoreError("invalid owner binding")
+        try:
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                if connection.execute("PRAGMA user_version").fetchone()[0] != 3:
+                    raise KeyStoreError("owner binding requires accounting migration")
+                principal = self._caller_candidate(connection, key_id, time.time())
+                if principal is None or principal.owner is not None:
+                    raise KeyStoreError("ordinary credential key is unavailable")
+                current = principal.caller_snapshot.actor.binding_revision or 0
+                if current != expected_revision:
+                    raise KeyStoreError("admission_policy_changed")
+                connection.execute("INSERT INTO key_owner_bindings VALUES (?,?,?,?) ON CONFLICT(key_id) DO UPDATE SET kind=excluded.kind,owner_id=excluded.owner_id,revision=excluded.revision",
+                                   (key_id, kind, owner_id, actor.binding_revision))
+                connection.execute("COMMIT")
+            return actor
+        except sqlite3.Error:
+            raise KeyStoreError("owner binding is unavailable") from None
+
     def authenticate(self, token: str, *, check_owner=True) -> Principal | None:
         if not isinstance(token, str) or not 40 <= len(token) <= 128:
             return None
         digest = hashlib.sha256(token.encode("utf-8")).digest()
         try:
             with self._connect() as connection:
+                connection.execute("BEGIN")
                 rows = connection.execute(
-                    "SELECT key_id, token_hash, models, paths, expires_at, revoked_at "
+                    "SELECT key_id, token_hash "
                     "FROM keys WHERE token_hash = ? LIMIT 2", (digest,)
                 ).fetchall()
-                version = connection.execute("PRAGMA user_version").fetchone()[0]
+                if not rows:
+                    return None
+                if len(rows) != 1:
+                    raise KeyStoreError("credential store contains duplicate token hashes")
+                key_id, stored = rows[0]
+                if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
+                        or not isinstance(stored, bytes) or len(stored) != 32 or not hmac.compare_digest(stored, digest)):
+                    raise KeyStoreError("credential store token index is invalid")
+                from .connect_keys import Denied
+                try:
+                    principal = self._caller_candidate(connection, key_id, time.time())
+                except Denied:
+                    return None
+                connection.execute("COMMIT")
         except KeyStoreError:
             raise
         except sqlite3.Error as exc:
             raise KeyStoreError("credential store is unavailable") from exc
-        if not rows:
-            return None
-        if len(rows) != 1:
-            raise KeyStoreError("credential store contains duplicate token hashes")
-        key_id, stored, models, paths, expires_at, revoked_at = rows[0]
-        if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
-                or not isinstance(stored, bytes) or len(stored) != 32
-                or (expires_at is not None and (type(expires_at) is not int or isinstance(expires_at, bool)))
-                or (revoked_at is not None and (type(revoked_at) is not int or isinstance(revoked_at, bool)))):
-            raise KeyStoreError("credential store contains invalid key metadata")
-        if not hmac.compare_digest(stored, digest):
-            raise KeyStoreError("credential store token index is invalid")
-        if revoked_at is not None or (expires_at is not None and expires_at <= int(time.time())):
-            return None
-        try:
-            grants_models, grants_paths = _stored_grants(models, paths)
-            owner = None
-            if version in (2, 3):
-                from .connect_keys import owned_binding, Denied
-                try:
-                    owner = owned_binding(self, key_id)
-                except Denied:
-                    return None
-                if owner is not None and check_owner and (self.owner_check is None or not self.owner_check(*owner)):
-                    return None
-            return Principal(key_id, grants_models, grants_paths, owner)
-        except KeyStoreError:
-            raise
+        if principal is not None and principal.owner is not None and check_owner:
+            if self.owner_check is None or not self.owner_check(*principal.owner):
+                return None
+        return principal
 
-    def admit(self, key_id: str) -> int:
+    def admit(self, key_id: str | Principal, requested_path=None, requested_model=None, *, normalize=True):
+        """Tracked admission freezes the exact locally admitted candidate after commit.
+
+        key_id-only callers retain their existing integer rate-admission API.
+        T008 moves the front door to the tracked path/model form.
+        """
+        from .identity import AdmissionDecision
+        candidate = key_id if type(key_id) is Principal else None
+        if candidate is not None:
+            key_id = candidate.key_id
+            if candidate.caller_snapshot is None:
+                raise KeyStoreError("admission_policy_changed")
+            if type(normalize) is not bool:
+                raise KeyStoreError("invalid admission request")
+            # External account liveness is never atomic with local SQLite.
+            if candidate.owner is not None and (self.owner_check is None or not self.owner_check(*candidate.owner)):
+                raise KeyStoreError("credential key is unavailable")
+        elif requested_path is not None or requested_model is not None:
+            raise KeyStoreError("tracked admission requires a principal")
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
             raise KeyStoreError("invalid credential key")
         now = time.time()
         try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                if candidate is not None:
+                    from .connect_keys import Denied
+                    try:
+                        admitted = self._caller_candidate(connection, key_id, now)
+                    except Denied:
+                        raise KeyStoreError("admission_policy_changed") from None
+                    if admitted != candidate:
+                        raise KeyStoreError("admission_policy_changed")
+                    method = "GET" if requested_path == _MODELS_PATH else "POST"
+                    if not admitted.allows_path(method, requested_path) or (
+                            requested_model is not None and not admitted.allows_model(requested_model, normalize=normalize)):
+                        raise KeyStoreError("credential access denied")
                 row = connection.execute(
                     "SELECT rpm, revoked_at, expires_at FROM keys WHERE key_id = ?", (key_id,)
                 ).fetchone()
@@ -553,7 +638,7 @@ class KeyStore:
                     retry = admit_owner(connection, key_id, now)
                     if retry:
                         connection.execute("COMMIT")
-                        return retry
+                        return AdmissionDecision(retry, None) if candidate is not None else retry
                 rpm = row[0]
                 if (type(rpm) is not int or isinstance(rpm, bool) or not 1 <= rpm <= 100_000
                         or (row[1] is not None and (type(row[1]) is not int or isinstance(row[1], bool)))
@@ -585,6 +670,8 @@ class KeyStore:
                     (key_id, tokens, observed_at),
                 )
                 connection.execute("COMMIT")
+                if candidate is not None:
+                    return AdmissionDecision(retry_after, None if retry_after else admitted.caller_snapshot)
                 return retry_after
         except KeyStoreError:
             raise

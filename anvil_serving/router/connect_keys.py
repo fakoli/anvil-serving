@@ -123,7 +123,7 @@ def _account(db, owner):
         return None
     account = dict(zip(("owner", "generation", "epoch", "revision", "status", "models", "paths", "rpm", "expires_days", "updated_at", "actor"), row))
     identity(account["owner"], account["generation"], account["epoch"])
-    if account["status"] not in {"pending", "approved", "denied"} or type(account["revision"]) is not int or account["revision"] < 1:
+    if account["status"] not in {"pending", "approved", "denied"} or type(account["revision"]) is not int or not 1 <= account["revision"] < 2**53:
         raise KeyStoreError("invalid Connect access policy")
     try:
         account["models"], account["paths"] = json.loads(account["models"]), json.loads(account["paths"])
@@ -139,6 +139,9 @@ def _account(db, owner):
 
 def _approved(db, binding):
     owner, generation, epoch, revision = binding
+    identity(owner, generation, epoch)
+    if type(revision) is not int or not 1 <= revision < 2**53:
+        raise Denied("invalid Connect access revision")
     account = _account(db, owner)
     if account is None or account["status"] != "approved" or (account["generation"], account["epoch"], account["revision"]) != (generation, epoch, revision):
         raise Denied("router access is not approved")
@@ -155,23 +158,27 @@ def authorize_creation(db, binding, models, paths, rpm, days):
         raise Denied("account key limit reached")
 
 
+def owned_account(db, key_id):
+    """Read the complete binding and approved policy in the held transaction."""
+    row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+    return (None, None) if row is None else (row, _approved(db, row))
+
+
 def owned_binding(store, key_id):
     try:
         with store._connect() as db:
-            row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+            row, _account = owned_account(db, key_id)
             if row is None:
                 return None
-            _approved(db, row)
         return row[:3]
     except sqlite3.Error:
         raise KeyStoreError("Connect key ownership unavailable") from None
 
 
 def admit_owner(db, key_id, now):
-    row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+    row, account = owned_account(db, key_id)
     if row is None:
         return 0
-    account = _approved(db, row)
     rpm = account["rpm"]
     bucket_id = "connect:" + row[0]
     bucket = db.execute("SELECT tokens,updated_at FROM buckets WHERE key_id=?", (bucket_id,)).fetchone()
