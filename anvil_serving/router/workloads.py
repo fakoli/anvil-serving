@@ -165,7 +165,8 @@ class RouterWorkloadRegistry:
             if entry is not None:
                 if entry.usage_start is not None and entry.usage_start != start:
                     raise ValueError("usage metadata conflict")
-                self._active[request_id] = dataclasses.replace(entry, usage_start=start)
+                self._active[request_id] = dataclasses.replace(entry, usage_start=start,
+                    usage_phase="admitted" if entry.usage_start is None else entry.usage_phase)
                 self._usage_revision += 1
 
     @contextmanager
@@ -186,15 +187,17 @@ class RouterWorkloadRegistry:
         from .decision_log import TokenUsage
         if (route is not None and type(route) is not RouteAssociation or
                 tokens is not None and type(tokens) is not TokenUsage or
-                phase is not None and phase not in {"checking", "admitted", "dispatched", "streaming", "finalizing"}):
+                phase is not None and phase not in {"checking", "queued", "admitted", "dispatched", "streaming", "finalizing"}):
             raise ValueError("invalid usage observation")
+        updated_at = normalize_workload_timestamp(self._clock())
         with self._lock:
             entry = self._active.get(request_id)
             if entry is not None:
                 self._active[request_id] = dataclasses.replace(entry,
                     usage_route=route if route is not None else entry.usage_route,
                     usage_tokens=tokens if tokens is not None else entry.usage_tokens,
-                    usage_phase=phase or entry.usage_phase)
+                    usage_phase=phase or entry.usage_phase,
+                    updated_at=max(entry.updated_at, updated_at))
                 self._usage_revision += 1
 
     def usage_snapshot(self):
@@ -207,6 +210,47 @@ class RouterWorkloadRegistry:
             if self._usage_mutations:
                 raise ValueError("usage observation busy")
             return self._usage_revision, tuple(e for e in self._active.values() if e.usage_start is not None), sum(self._unrepresented.values())
+
+    @staticmethod
+    def active_usage_page(entries, omitted, now, *, limit=50, filters=()):
+        """Closed sensitive projection of the existing immutable snapshot."""
+        from .decision_log import TokenDirection, TokenUsage
+        from .usage_store import UsageStore, UsageQuery
+        UsageQuery(granularity="cumulative", filters=filters)
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError("invalid active limit")
+        now = normalize_workload_timestamp(now)
+        timestamp = format_workload_timestamp(now)
+        records = []
+        for entry in reversed(entries):
+            start = entry.usage_start
+            tokens = entry.usage_tokens or TokenUsage(
+                input=TokenDirection(applicability=start.input_applicability),
+                output=TokenDirection(applicability=start.output_applicability))
+            dimensions = UsageStore._dimensions(start, tokens, "active", None)
+            if any(dimensions[name] != value for name, value in filters):
+                continue
+            diagnostic_phase = dict(entry.diagnostic).get("phase")
+            phase = entry.usage_phase
+            if (phase == "admitted" and diagnostic_phase in {"checking", "queued", "admitted"}
+                    or phase == "dispatched" and diagnostic_phase == "streaming"):
+                phase = diagnostic_phase
+            records.append({"gateway_request_id": entry.gateway_request_id,
+                "request_id": start.request_id, "caller": start.caller.to_dict(),
+                "kind": start.kind, "model": start.model, "accepted_at": start.accepted_at,
+                "created_at": format_workload_timestamp(entry.created_at),
+                "updated_at": format_workload_timestamp(entry.updated_at),
+                "elapsed_ms": max(0, int((now - entry.created_at).total_seconds() * 1000)),
+                "last_activity_ms": max(0, int((now - entry.updated_at).total_seconds() * 1000)),
+                "phase": phase,
+                "route": entry.usage_route.to_dict() if entry.usage_route is not None else None,
+                "tokens": tokens.to_dict(), "accounting_status": "in_progress"})
+        return {"schema": "router-active-usage/v1", "collected_at": timestamp,
+                "source_timestamp": timestamp, "freshness": "fresh", "available": True,
+                "records": records[:limit],
+                "truncation": {"returned": min(len(records), limit),
+                               "omitted": None if omitted else max(0, len(records) - limit),
+                               "unrepresented": omitted, "truncated": bool(omitted or len(records) > limit)}}
 
     def active_requests(self, *, session_id=None, limit=50):
         if session_id is not None and safe_correlation(session_id) != session_id:

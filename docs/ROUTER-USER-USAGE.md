@@ -463,6 +463,70 @@ administrators and the dedicated scraper hold it. A browser/WebUI admin role is 
 unverified boundary keeps sensitive query/export disabled. Responses use
 `Cache-Control:no-store`; raw datasource DB access is never exposed.
 
+### Implemented administrator HTTP wire contract (T009)
+
+Both exact paths `/v1/admin/usage` and `/v1/admin/usage/metrics` are built-in
+GET-only `OperatorRoute` readers. Their strict native `workloads:read` decision
+precedes query decoding and collection on every request, including keepalive.
+Legacy/auth-off, inference/device credentials, profile roles and forged client
+headers provide no administrator authority. Aliases, trailing slashes and suffixes
+receive fixed404; other methods fixed405 with `Allow: GET`. All responses/errors
+are JSON with `Cache-Control: no-store`, except successful metrics whose fixed
+content type is `text/plain; version=0.0.4`. There is no CORS, redirect or body.
+Operator query8192 ASCII-byte, response8MiB and four-reader bounds are reused.
+The sensitive target also caps parsed aggregate headers at16384 characters;
+stdlib retains its request-line/header/count caps and finite connection timeout.
+
+Retained queries omit `view`; fields are exactly `granularity`, `from_utc`,
+`to_utc`, `filters`, `group_by`, `limit`, `cursor`, `require_complete`.
+`granularity` defaults to detail; detail/daily require both UTC RFC3339-Z bounds
+and cumulative forbids them. `filters` is a percent-encoded JSON array of unique
+`[dimension, typed_value]` pairs, maximum16. JSON null/bool/integer/string remain
+those exact types. `group_by` is a JSON string array of unique native dimensions,
+maximum8. `limit` is a canonical positive decimal integer; `require_complete`
+is exactly `true` or `false` (default false). Other fields retain native string
+syntax. Example decoded query: `granularity=cumulative&filters=[["actor_kind",
+"service"]]&group_by=["model"]&limit=100`. Clients must percent-encode JSON.
+Duplicate/unknown parameters, bad escapes/UTF-8/JSON and invalid native types
+are refused without store/registry reads. Native UsageQuery owns all semantic
+bounds, retained classes, dimension enums and cursor validation; HTTP supplies
+no roster/run/configuration/deadline authority. Native exact result arithmetic,
+coverage/provenance/retention and pagination reach the wire unchanged.
+
+`view=active` permits only `limit` (default50/max200) and the same typed `filters`;
+range/group/cursor/complete arguments are rejected. Its closed schema is
+`router-active-usage/v1`: `collected_at`, `source_timestamp`, `freshness`,
+`available`, `registry_revision`, `accounting_health`, `records`, `truncation`.
+Each record contains only `gateway_request_id`, `request_id`, frozen `caller`,
+`kind`, `model`, `accepted_at`, `created_at`, `updated_at`, `elapsed_ms`,
+`last_activity_ms`, owned `phase`, typed `route`, normalized `tokens` and
+`accounting_status=in_progress`. Existing validated CallerSnapshot, route and
+token serializers retain their closed allowlists; diagnostic session/client
+strings are excluded. The phase uses owned RequestControl diagnostics where
+available, with finalizing retained until actual owned completion. The bounded
+registry snapshot is fenced around native ledger health; busy/changed state
+returns503. `freshness=fresh` attests this direct in-process sample, not deployment
+or upstream compute freshness. `available` follows ledger health; unresolved and
+unknown-run counts remain health/history, not invented live records. Truncation
+reports returned, omitted (null when unrepresented), unrepresented and truncated;
+filtered omissions remain unknown when the registry overflowed. Generic workload
+and request projections never include the sensitive caller/grant fields.
+
+Errors use fixed safe codes: invalid wire/native query400; unsupported granularity,
+coverage unavailable, invalid/stale cursor and query limitation422;
+accounting/configuration availability503; unexpected failure500. Typed422 errors
+include bounded validated coverage ranges, retained floors, fixed gap reasons,
+closed coverage segments and health counters when the native query provides them;
+no raw query/cursor/path or exception detail is echoed. Malformed trusted error
+metadata is omitted. Metrics rejects every query (including bare `?`) before its
+callback. `make_server(..., usage_metrics=callback)` is the after-auth bounded
+zero-argument bytes seam for T011's actual persisted collector/renderer. Missing
+collector is503, never a fabricated counter. The trusted optional
+`usage_domain_id` permits incomplete retained reads without a roster;
+`usage_authority` remains the owner-only coverage supplier and domain mismatch
+refuses. Runtime installation/closed-roster/all-path bootstrap and sensitive
+credential isolation remain the separately reviewed T023/T017/T019 gates.
+
 ## Persisted telemetry and native Grafana (T011-T013)
 
 `collect_usage_snapshot(store,active_registry,now,series_budget)->UsageSnapshot`

@@ -87,7 +87,8 @@ from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
 from .keys import KeyStore, KeyStoreError
 from .identity import (IdentityError, configured_scope_caller, legacy_caller, load_webui_bindings,
                        select_webui_binding, verify_webui, forwarded_caller)
-from .usage_store import UsageError
+from .usage_store import UsageError, UsageQuery, AuthorityScope
+from ..observability.dashboard.contracts import strict_json
 from .memory import MemoryError, MemoryRouter
 from .memory_mcp import MemoryMCP
 from ..control_plane.authorization import (
@@ -166,7 +167,12 @@ class OperatorRoute:
     path: str
     scope: str
     callback: Callable[[str], bytes]
+    content_type: str = "application/json"
 
+
+USAGE_ENDPOINT = "/v1/admin/usage"
+USAGE_METRICS_ENDPOINT = USAGE_ENDPOINT + "/metrics"
+_USAGE_PATHS = {USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT}
 
 _MAX_OPERATOR_ROUTES = 8
 _MAX_OPERATOR_PATH_BYTES = 256
@@ -303,6 +309,8 @@ def _validated_operator_routes(
             or path.startswith(
                 (ARTIFACT_PREFIX, REQUEST_TRACE_PREFIX, "/.well-known/", "/v1/audio/")
             )
+            or type(route.content_type) is not str
+            or route.content_type not in {"application/json", "text/plain; version=0.0.4"}
             or not callable(callback)
         ):
             raise ValueError("operator route is invalid")
@@ -310,7 +318,7 @@ def _validated_operator_routes(
         if key in seen:
             raise ValueError("operator route is invalid")
         seen.add(key)
-        copied.append(OperatorRoute(method, path, scope, callback))
+        copied.append(OperatorRoute(method, path, scope, callback, route.content_type))
     try:
         stable_length = len(routes)
     except Exception:
@@ -475,7 +483,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
-                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=()):
+                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
     connect_slots = threading.BoundedSemaphore(2)
@@ -489,6 +497,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
     operator_route_map[("GET", WORKLOADS_ENDPOINT)] = OperatorRoute(
         "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b""
     )
+    # Built-ins use the exact scoped operator boundary, including when unconfigured.
+    if any(path in _USAGE_PATHS for _method, path in operator_route_map):
+        raise ValueError("usage routes cannot be replaced")
+    operator_route_map[("GET", USAGE_ENDPOINT)] = OperatorRoute(
+        "GET", USAGE_ENDPOINT, WORKLOADS_READ, lambda _query: b"")
+    operator_route_map[("GET", USAGE_METRICS_ENDPOINT)] = OperatorRoute(
+        "GET", USAGE_METRICS_ENDPOINT, WORKLOADS_READ, lambda _query: b"",
+        "text/plain; version=0.0.4")
     collection_clock = workload_clock or (lambda: datetime.now(timezone.utc))
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
@@ -542,10 +558,35 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_http_status = code
             super().send_response(code, message)
 
+        def send_error(self, code, message=None, explain=None):
+            words = getattr(self, "raw_requestline", b"").split()
+            target = urllib.parse.unquote(words[1][:256].decode("latin1")) if len(words) > 1 else ""
+            if target.lstrip("/").startswith(USAGE_ENDPOINT.lstrip("/")):
+                self._operator_error(code, "invalid_request", "invalid operator request")
+            else:
+                super().send_error(code, message, explain)
+
         def parse_request(self):
             if not super().parse_request():
                 return False
-            return self._device_access()
+            if not self._device_access():
+                return False
+            path = self.path.partition("?")[0]
+            raw_path = self.requestline.split()[1].partition("?")[0]
+            if urllib.parse.unquote(path, errors="replace").startswith(USAGE_ENDPOINT):
+                if sum(len(k) + len(v) + 4 for k, v in self.headers.raw_items()) > 16384:
+                    self._operator_error(431, "invalid_request", "operator headers too large")
+                    return False
+                if path not in _USAGE_PATHS or raw_path != path:
+                    self._operator_error(404, "not_found", "operator route not found")
+                    return False
+                if self.command != "GET":
+                    self.close_connection = True
+                    self._json(405, {"error": {"type": "method_not_allowed", "message": "use GET"}},
+                               extra_headers={"Cache-Control": "no-store", "Allow": "GET"})
+                    self._flush_closing_response()
+                    return False
+            return True
 
         def _tracked_request(self):
             path = self.path.split("?", 1)[0].rstrip("/")
@@ -855,7 +896,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
             self.end_headers()
-            self.wfile.write(payload)
+            if getattr(self, "command", None) != "HEAD":
+                self.wfile.write(payload)
 
         def _text(
             self, status: int, payload: str, *, content_type: str,
@@ -998,6 +1040,156 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except Exception:
                 raise _WorkloadSourceUnavailable() from None
 
+        @staticmethod
+        def _usage_query(query):
+            """Decode closed wire syntax; native types own semantic validation."""
+            try:
+                if any(c == "%" and _PERCENT_ESCAPE_RE.match(query, i) is None
+                       for i, c in enumerate(query)):
+                    raise ValueError()
+                pairs = urllib.parse.parse_qsl(query, keep_blank_values=True, strict_parsing=True,
+                                               encoding="utf-8", errors="strict", max_num_fields=9)
+                data = {}
+                for key, value in pairs:
+                    if key in data or key not in {"view", "granularity", "from_utc", "to_utc", "filters",
+                                                  "group_by", "limit", "cursor", "require_complete"}:
+                        raise ValueError()
+                    if key in {"filters", "group_by"}:
+                        value = strict_json(value.encode("utf-8"))
+                        if type(value) is not list:
+                            raise ValueError()
+                        if key == "filters":
+                            if any(type(pair) is not list or len(pair) != 2 for pair in value):
+                                raise ValueError()
+                            value = tuple(tuple(pair) for pair in value)
+                        else:
+                            value = tuple(value)
+                    elif key == "limit":
+                        if re.fullmatch(r"[1-9][0-9]{0,2}", value) is None:
+                            raise ValueError()
+                        value = int(value)
+                    elif key == "require_complete":
+                        if value not in {"true", "false"}:
+                            raise ValueError()
+                        value = value == "true"
+                    data[key] = value
+                if "view" in data:
+                    if data.pop("view") != "active" or set(data) - {"limit", "filters"}:
+                        raise ValueError()
+                    limit = data.get("limit", 50)
+                    if limit > 200:
+                        raise ValueError()
+                    native = UsageQuery(granularity="cumulative", filters=data.get("filters", ()))
+                    return "active", limit, native
+                return "retained", None, UsageQuery.from_pairs(tuple(data.items()))
+            except UsageError:
+                raise
+            except Exception:
+                raise UsageError("accounting_invalid") from None
+
+        def _usage_payload(self, query):
+            view, limit, native = self._usage_query(query)
+            if usage_store is None:
+                raise UsageError("accounting_unavailable")
+            scope = usage_authority() if callable(usage_authority) else None
+            if scope is not None and type(scope) is not AuthorityScope:
+                raise UsageError("accounting_unavailable")
+            domain = usage_domain_id or (scope.domain_id if scope is not None else None)
+            if domain is None or scope is not None and scope.domain_id != domain:
+                raise UsageError("accounting_unavailable")
+            if view == "retained":
+                result = usage_store.query(native, domain_id=domain, authority_scope=scope)
+            else:
+                if workload_registry is None:
+                    raise UsageError("accounting_unavailable")
+                try:
+                    revision, entries, omitted = workload_registry.usage_snapshot()
+                    now = collection_clock()
+                    health = usage_store.health(domain)
+                    result = workload_registry.active_usage_page(entries, omitted, now,
+                                                                 limit=limit, filters=native.filters)
+                    if workload_registry.usage_snapshot()[0] != revision:
+                        raise ValueError()
+                except UsageError:
+                    raise
+                except Exception:
+                    raise UsageError("accounting_unavailable") from None
+                result["registry_revision"] = revision
+                result["accounting_health"] = health
+                result["available"] = health["available"]
+            return json.dumps(result, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
+
+        def _usage_metrics_payload(self, query):
+            if query or "?" in self.path:
+                raise UsageError("accounting_invalid")
+            if usage_metrics is None:
+                raise UsageError("accounting_unavailable")
+            return usage_metrics()
+
+        def _usage_error(self, error):
+            # Native errors are allowlisted; arbitrary exception strings/results stay private.
+            status, code = {"accounting_invalid": (400, "invalid_usage_query"),
+                            "usage_cursor_invalid": (422, "usage_cursor_invalid"),
+                            "usage_cursor_stale": (422, "usage_cursor_stale"),
+                            "usage_query_limited": (422, "usage_query_limited"),
+                            "usage_coverage_unavailable": (422, "usage_coverage_unavailable"),
+                            "usage_granularity_unsupported": (422, "usage_granularity_unsupported")}.get(
+                                error.code, (503, "accounting_unavailable"))
+            body = {"error": {"type": code, "message": code.replace("_", " ")}}
+            if status == 422:
+                body["coverage"] = {"available": False, "limitations": [code],
+                    "available_granularities": ["detail", "daily", "cumulative"]}
+                # Only native fixed gap reasons; never arbitrary result fields or exception text.
+                result = error.result
+                reasons = {"coverage_projection_limit", "owner_roster_unknown", "configuration_mismatch",
+                           "owner_unknown", "accounting_disabled", "segment_missing", "accounting_unresolved",
+                           "accounting_failure_pending", "query_snapshot_unavailable"}
+                if (type(result) is dict and type(result.get("coverage_gaps")) is list
+                        and len(result["coverage_gaps"]) <= 16):
+                    body["coverage"]["gap_reasons"] = sorted({gap["reason"] for gap in result["coverage_gaps"]
+                        if type(gap) is dict and type(gap.get("reason")) is str and gap["reason"] in reasons})
+                if type(result) is dict:
+                    from .usage_store import _utc, _id, _uuid
+                    try:
+                        coverage = body["coverage"]
+                        for name in ("requested_range", "covered_range"):
+                            value = result.get(name)
+                            if type(value) is dict and set(value) == {"from_utc", "to_utc"}:
+                                coverage[name] = {key: _utc(at) if at is not None else None for key, at in value.items()}
+                        retained = result.get("retained_scope")
+                        if type(retained) is dict:
+                            coverage["retained_scope"] = {name: _utc(retained[name]) if retained.get(name) is not None else None
+                                for name in ("detail_floor_utc", "daily_floor_utc")}
+                            coverage["retained_scope"]["available_granularities"] = ["detail", "daily", "cumulative"]
+                        for name in ("snapshot_revision", "unresolved_requests", "accounting_failures"):
+                            if type(result.get(name)) is int and 0 <= result[name] < 2**63:
+                                coverage[name] = result[name]
+                        parts = result.get("coverage_segments")
+                        if type(parts) is list and len(parts) <= 4096:
+                            segments = []
+                            for part in parts:
+                                if type(part) is not dict or set(part) != {"segment_id", "domain_id", "run_id",
+                                        "configuration_revision", "enabled", "started_at", "ended_at", "closure_reason", "end_uncertain"}:
+                                    raise ValueError()
+                                for name in ("segment_id", "run_id"):
+                                    _uuid(part[name])
+                                for name in ("domain_id", "configuration_revision"):
+                                    _id(part[name])
+                                for name in ("started_at", "ended_at"):
+                                    _utc(part[name])
+                                if (type(part["enabled"]) is not bool or type(part["end_uncertain"]) is not bool
+                                        or part["closure_reason"] not in {None, "mode_change", "owner_dead", "owner_stop"}):
+                                    raise ValueError()
+                                segments.append(dict(part))
+                            coverage["coverage_segments"] = segments
+                    except (ValueError, KeyError, TypeError, UsageError, IdentityError):
+                        # A malformed trusted projection never exposes its raw values.
+                        body["coverage"] = {"available": False, "limitations": [code],
+                                            "available_granularities": ["detail", "daily", "cumulative"]}
+            self.close_connection = True
+            self._json(status, body, extra_headers={"Cache-Control": "no-store"})
+            self._flush_closing_response()
+
         def _handle_operator_route(self, route: OperatorRoute) -> None:
             """Run one already-identified scoped route without body handling."""
             presented = _extract_operator_token(self.headers)
@@ -1029,8 +1221,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     payload = (
                         self._workload_payload(query)
                         if route.path == WORKLOADS_ENDPOINT
+                        else self._usage_payload(query) if route.path == USAGE_ENDPOINT
+                        else self._usage_metrics_payload(query) if route.path == USAGE_METRICS_ENDPOINT
                         else route.callback(query)
                     )
+                except UsageError as exc:
+                    if route.path in _USAGE_PATHS:
+                        self._usage_error(exc)
+                    else:
+                        self._operator_error(500, "internal_error", "operator route failed")
+                    return
                 except _InvalidWorkloadQuery:
                     self._operator_error(
                         400, "invalid_workload_query", "invalid workload query"
@@ -1049,7 +1249,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Type", route.content_type)
                 self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
@@ -2767,6 +2967,7 @@ def make_server(host: str, port: int,
                 server_config=None,
                 memory: Optional[MemoryRouter] = None,
                 usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
+                usage_domain_id=None, usage_metrics=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -2838,7 +3039,7 @@ def make_server(host: str, port: int,
             purpose, audio, gateway, memory, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
-            usage_store, usage_run_id, usage_authority, webui_bindings,
+            usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics,
         ),
     )
     httpd.daemon_threads = True  # don't let connection threads block shutdown
