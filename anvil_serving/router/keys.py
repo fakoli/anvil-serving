@@ -31,6 +31,7 @@ from .. import operator_config
 _KEY_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _MAX_KEYS = 1024
 _MAX_AUDIT = 10_000
+_SUPPORTED_VERSIONS = (1, 2, 3)
 _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
     "/v1/embeddings", "/v1/rerank",
@@ -231,6 +232,16 @@ def _secure_database(path: Path, *, exists: bool) -> None:
     _private_path(path, directory=False)
 
 
+def _unlink_created(path: Path, created: os.stat_result) -> None:
+    """Failure cleanup must never remove a competing replacement file."""
+    try:
+        current = path.lstat()
+        if stat.S_ISREG(current.st_mode) and os.path.samestat(current, created):
+            path.unlink()
+    except OSError:
+        pass
+
+
 def _json_list(value: object, label: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not value or len(value) > 64:
         raise KeyStoreError("credential store contains invalid grants")
@@ -260,7 +271,7 @@ class KeyStore:
         try:
             with self._connect() as connection:
                 version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (1, 2):
+            if version not in _SUPPORTED_VERSIONS:
                 raise KeyStoreError("credential store format is unsupported")
             self.version = version
         except sqlite3.Error as exc:
@@ -281,23 +292,18 @@ class KeyStore:
         except OSError as exc:
             raise KeyStoreError("credential store could not be initialized") from exc
         else:
+            created = os.fstat(descriptor)
             try:
                 _private_created_descriptor(descriptor)
             except KeyStoreError:
-                try:
-                    target.unlink()
-                except OSError:
-                    pass
+                _unlink_created(target, created)
                 raise
             finally:
                 os.close(descriptor)
         try:
             _secure_database(target, exists=True)
         except KeyStoreError:
-            try:
-                target.unlink()
-            except OSError:
-                pass
+            _unlink_created(target, created)
             raise
         try:
             connection = sqlite3.connect(target)
@@ -325,12 +331,13 @@ class KeyStore:
                 connection.close()
             os.chmod(target, 0o600)
         except (OSError, sqlite3.Error) as exc:
-            try:
-                target.unlink()
-            except OSError:
-                pass
+            _unlink_created(target, created)
             raise KeyStoreError("credential store could not be initialized") from exc
-        return cls(target)
+        if not os.path.samestat(target.lstat(), created):
+            raise KeyStoreError("credential store file changed during initialization")
+        store = cls(target)
+        store._created_identity = created
+        return store
 
     @contextmanager
     def _connect(self):
@@ -338,6 +345,9 @@ class KeyStore:
         connection = sqlite3.connect(self.path, timeout=1.0, isolation_level=None)
         try:
             connection.execute("PRAGMA busy_timeout=1000")
+            connection.execute("PRAGMA synchronous=FULL")
+            if connection.execute("PRAGMA user_version").fetchone()[0] not in _SUPPORTED_VERSIONS:
+                raise KeyStoreError("credential store format is unsupported")
             yield connection
         finally:
             connection.close()
@@ -465,7 +475,7 @@ class KeyStore:
         try:
             grants_models, grants_paths = _stored_grants(models, paths)
             owner = None
-            if version == 2:
+            if version in (2, 3):
                 from .connect_keys import owned_binding, Denied
                 try:
                     owner = owned_binding(self, key_id)
@@ -490,7 +500,7 @@ class KeyStore:
                 if row is None or row[1] is not None or (row[2] is not None and row[2] <= int(now)):
                     connection.execute("ROLLBACK")
                     raise KeyStoreError("credential key is unavailable")
-                if connection.execute("PRAGMA user_version").fetchone()[0] == 2:
+                if connection.execute("PRAGMA user_version").fetchone()[0] in (2, 3):
                     from .connect_keys import admit_owner
                     retry = admit_owner(connection, key_id, now)
                     if retry:
@@ -651,13 +661,7 @@ def _write_secret(path: str, secret: str) -> None:
     except BaseException:
         if descriptor != -1:
             os.close(descriptor)
-        try:
-            current = target.lstat()
-            if (stat.S_ISREG(current.st_mode) and current.st_dev == created.st_dev
-                    and current.st_ino == created.st_ino):
-                target.unlink()
-        except OSError:
-            pass
+        _unlink_created(target, created)
         raise
 
 

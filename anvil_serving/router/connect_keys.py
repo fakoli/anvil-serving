@@ -77,28 +77,34 @@ def principal_checker(url, secret):
     return check
 
 
-def migrate(store):
-    """Atomic additive migration. Old routers reject v2 instead of ignoring owners."""
-    with store._connect() as db:
-        db.execute("BEGIN IMMEDIATE")
-        version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version == 1:
-            db.execute("""CREATE TABLE connect_accounts (
+def _create_schema(db):
+    """Individual DDL for the caller's existing migration transaction."""
+    db.execute("""CREATE TABLE connect_accounts (
                 owner TEXT PRIMARY KEY, generation TEXT NOT NULL, epoch TEXT NOT NULL,
                 revision INTEGER NOT NULL, status TEXT NOT NULL, models TEXT NOT NULL,
                 paths TEXT NOT NULL, rpm INTEGER NOT NULL, expires_days INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL, actor TEXT NOT NULL)""")
-            db.execute("""CREATE TABLE connect_key_owners (
+    db.execute("""CREATE TABLE connect_key_owners (
                 key_id TEXT PRIMARY KEY, owner TEXT NOT NULL, generation TEXT NOT NULL,
                 epoch TEXT NOT NULL, revision INTEGER NOT NULL)""")
-            db.execute("CREATE INDEX connect_owner_keys ON connect_key_owners(owner)")
-            db.execute("CREATE TABLE connect_sequence (revision INTEGER NOT NULL)")
-            db.execute("INSERT INTO connect_sequence VALUES (0)")
+    db.execute("CREATE INDEX connect_owner_keys ON connect_key_owners(owner)")
+    db.execute("CREATE TABLE connect_sequence (revision INTEGER NOT NULL)")
+    db.execute("INSERT INTO connect_sequence VALUES (0)")
+
+
+def migrate(store):
+    """Atomic additive migration; never downgrade a newer accounting store."""
+    with store._connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if version == 1:
+            _create_schema(db)
             db.execute("PRAGMA user_version=2")
-        elif version != 2:
+            version = 2
+        elif version not in (2, 3):
             raise KeyStoreError("credential store format is unsupported")
         db.execute("COMMIT")
-    store.version = 2
+    store.version = version
 
 
 def _next_revision(db):
