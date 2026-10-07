@@ -76,6 +76,7 @@ DEFAULT_MODEL = "tts"
 OPENAI_TTS_PROTOCOL = "openai"
 CARTESIA_TTS_PROTOCOL = "cartesia"
 GEPARD_TTS_PROTOCOL = "gepard"
+MAX_TTS_GENERATION_TOKENS = 8192
 _TTS_PROTOCOLS = {OPENAI_TTS_PROTOCOL, CARTESIA_TTS_PROTOCOL, GEPARD_TTS_PROTOCOL}
 _PRE_AUDIO_STREAM_RETRY_ATTEMPTS = 1
 _TTS_FALLBACK_SEPARATOR_RE = re.compile(r"[-/\\]+")
@@ -94,8 +95,18 @@ class TTSStageConfig:
     source_sample_rate: int = 24000    # the TTS engine's native output rate
     target_sample_rate: int = 16000    # normalized rate emitted on AudioOut
     chunk_bytes: int = 4096            # incremental read granularity
-    voice_id: Optional[str] = None      # Cartesia/Gepard cloned voice uuid, if used
-    language: Optional[str] = None      # Cartesia-compatible optional language code
+    voice_id: Optional[str] = None      # declared OpenAI voice or Cartesia/Gepard voice uuid
+    language: Optional[str] = None      # declared optional language conditioning
+    stream: bool = True                # explicit OpenAI request mode; False permits buffered adapters
+    max_tokens: Optional[int] = None    # optional explicit OpenAI generation cap; omit for server default
+
+    def __post_init__(self) -> None:
+        if self.max_tokens is not None and (
+            isinstance(self.max_tokens, bool)
+            or not isinstance(self.max_tokens, int)
+            or not 1 <= self.max_tokens <= MAX_TTS_GENERATION_TOKENS
+        ):
+            raise ValueError("TTS max_tokens must be an integer from 1 through %d" % MAX_TTS_GENERATION_TOKENS)
 
 
 class TTSClientError(Exception):
@@ -104,12 +115,19 @@ class TTSClientError(Exception):
 
 def build_speech_request_body(text: str, config: TTSStageConfig) -> Dict[str, Any]:
     """Build the ``/v1/audio/speech`` request body for one chunk of text."""
-    return {
+    body = {
         "model": config.model,
         "input": text,
         "response_format": config.response_format,
-        "stream": True,
+        "stream": config.stream,
     }
+    if config.voice_id is not None:
+        body["voice"] = config.voice_id
+    if config.language is not None:
+        body["language"] = config.language
+    if config.max_tokens is not None:
+        body["max_tokens"] = config.max_tokens
+    return body
 
 
 def build_cartesia_speech_request_body(

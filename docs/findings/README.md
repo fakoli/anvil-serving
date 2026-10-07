@@ -45,6 +45,12 @@ backing a companion `.md` narrative. For current conclusions, enter through the
 [run catalog](../benchmarks/runs.md). This page remains the complete
 chronological evidence index. Newest first.
 
+## 2026-10-06 — Apple M4 Max English voice qualification
+
+[Full finding](2026-10-06-m4-max-voice-quality-qualification.md) · [evidence index](2026-10-06-m4-max-voice-quality-qualification-evidence/README.md) · [result card](2026-10-06-m4-max-voice-quality-qualification.md#outcome-and-decision).
+
+Multiple STT/TTS and local LLM profiles were tested for English personal, noncommercial use. No candidate passes all frozen gates; existing controls remain, without new qualification. Critical STT cases, TTS resource failures and missing human/client gates, exact LLM failures and0/3 eligible strict 8K cells are retained. Low/medium semantic 144/144 does not override their historical/capacity failures; private LMcache0 is unshipped. Bounded restoration passed; full macOS product gate did not. No promotion, release, deployment or external publication is implied.
+
 ## Policy
 
 Latest runtime decision: [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) — human-approved bounded APC configuration with fresh acceptance. The historical r9 campaign close and its exact rollback remain linked evidence.

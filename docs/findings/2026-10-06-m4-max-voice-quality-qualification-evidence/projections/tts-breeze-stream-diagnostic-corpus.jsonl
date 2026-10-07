@@ -1,0 +1,8 @@
+{"category":"expressive","id":"expressive-04","language":"en","schema_version":"tts-corpus/v1","text":"Congratulations on finishing the project. You put a lot of thought into it."}
+{"category":"date-time","id":"date-time-05","language":"en","schema_version":"tts-corpus/v1","text":"We will meet every other Wednesday, beginning next week, from ten to eleven thirty."}
+{"category":"names-places","id":"names-places-03","language":"en","schema_version":"tts-corpus/v1","text":"Welcome, PERSON_NAME_REDACTED. Your voice assistant is ready, and the microphone connection is working."}
+{"category":"names-places","id":"names-places-04","language":"en","schema_version":"tts-corpus/v1","text":"Alexandra Chen will meet Professor Osei at the University of Washington library."}
+{"category":"negation","id":"negation-05","language":"en","schema_version":"tts-corpus/v1","text":"Your total is fifteen dollars, not fifty dollars. The receipt includes the discount."}
+{"category":"long-form","id":"long-form-04","language":"en","schema_version":"tts-corpus/v1","text":"Your notes describe three separate decisions. You agreed to keep the current schedule, test the new equipment with a small group, and review the results before expanding it. No one approved an additional purchase. I would make that last point explicit so the team does not confuse testing with a budget commitment."}
+{"category":"numbers","id":"numbers-06","language":"en","schema_version":"tts-corpus/v1","text":"The discount is twelve point five percent. The original price was eighty dollars."}
+{"category":"conversation","id":"conversation-02","language":"en","schema_version":"tts-corpus/v1","text":"I found three useful options. The first is the quietest, the second is closer, and the third costs less."}

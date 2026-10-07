@@ -82,6 +82,7 @@ hide:
   </div>
   <div class="anvil-resource-list">
     <a class="anvil-path--evidence" href="benchmarks/models/glm53-flash/"><strong>Latest qualified native reference — GLM-5.3-Flash</strong><span>v0.4.3 native Linux recipe: 524,288 shared tokens with C4 four-request scheduling (from 393K/C1), decode +20.5–33% and 4K time-to-first-token −31% versus the previous Windows/WSL2 serving (controlled Sep 8 A/B), unchanged ormandj W4A16/NVFP4 weights, FP8 KV, adaptive EAGLE. 14/14 Pi gates, retrieval through 497,724 measured tokens, human-gated promotion. Boundaries are stated in the dossier.</span></a>
+    <a href="benchmarks/voice-models/"><strong>Voice model results</strong><span>English STT, TTS and answer-model comparisons on Apple M4 Max. Read the October 6 results, failed gates and retained controls.</span></a>
     <a href="benchmarks/comparison/"><strong>Model comparison</strong><span>Every measured configuration in one table.</span></a>
     <a href="benchmarks/"><strong>Benchmarks overview</strong><span>Hardware-first recommendations and evidence labels.</span></a>
     <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>

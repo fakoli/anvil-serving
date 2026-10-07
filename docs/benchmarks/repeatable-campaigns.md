@@ -187,6 +187,8 @@ actual behavior before treating a reflection as a reusable rule.
 
 ## Finalize and report
 
+A dated example is the [2026-10-06 Apple English voice campaign](../findings/2026-10-06-m4-max-voice-quality-qualification.md), with an explicit [reconstruction contract](../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md). It preserves original plan timestamps, a wrapper added after first requests, separate component populations, structural/privacy projections and failed gates. It is evidence of a bounded campaign, not retroactive compliance with the wrapper-before-request rule or a release gate pass.
+
 Generate graphs from retained numeric paths, combine synchronized replicas,
 and finalize the artifact manifest as separate fail-fast steps. Run each
 deterministic helper twice and require byte-identical output.

@@ -1,0 +1,108 @@
+{
+  "charts": [
+    {
+      "metric": "summary.primary_human.micro_wer",
+      "series": [
+        {
+          "label": "Apple M4 Max / 48 GiB / direct online / warm C1",
+          "points": [
+            {
+              "artifact": "projections/baseline-stt-canonical-sequential.json",
+              "artifact_sha256": "43bfada0c72f96744a6f78961a9d9da708e0c82860c811a9914840ad2e4bd5d2",
+              "value": 0.030640669,
+              "x": "Parakeet control"
+            },
+            {
+              "artifact": "projections/qwen-asr-canonical-sequential.json",
+              "artifact_sha256": "aa19fb00c5da836574bf29cd4044cf7875983a2beb9bfdc1486c5b48e112f31d",
+              "value": 0.027855153,
+              "x": "Qwen3-ASR 1.7B q8"
+            },
+            {
+              "artifact": "projections/granite-fp16-canonical-sequential.json",
+              "artifact_sha256": "3bcdb0c55f3850436a53ee423429124e7f60f192ccb3f5465edbe6cb2d22f36c",
+              "value": 0.033426184,
+              "x": "Granite TurboCTC FP16"
+            }
+          ]
+        }
+      ],
+      "title": "Canonical human C1 micro-WER (72 requests/arm)",
+      "x_label": "Exact configuration",
+      "y_label": "Word error ratio"
+    },
+    {
+      "metric": "summary.primary_human.latency_ms.p50",
+      "series": [
+        {
+          "label": "Apple M4 Max / 48 GiB / direct online / warm C1",
+          "points": [
+            {
+              "artifact": "projections/baseline-stt-canonical-sequential.json",
+              "artifact_sha256": "43bfada0c72f96744a6f78961a9d9da708e0c82860c811a9914840ad2e4bd5d2",
+              "value": 46.616791,
+              "x": "Parakeet control"
+            },
+            {
+              "artifact": "projections/qwen-asr-canonical-sequential.json",
+              "artifact_sha256": "aa19fb00c5da836574bf29cd4044cf7875983a2beb9bfdc1486c5b48e112f31d",
+              "value": 165.368437,
+              "x": "Qwen3-ASR 1.7B q8"
+            },
+            {
+              "artifact": "projections/granite-fp16-canonical-sequential.json",
+              "artifact_sha256": "3bcdb0c55f3850436a53ee423429124e7f60f192ccb3f5465edbe6cb2d22f36c",
+              "value": 24.229625,
+              "x": "Granite TurboCTC FP16"
+            }
+          ]
+        }
+      ],
+      "title": "Canonical human C1 latency p50 (72 requests/arm)",
+      "x_label": "Exact configuration",
+      "y_label": "Milliseconds"
+    },
+    {
+      "metric": "summary.primary_human.latency_ms.p95",
+      "series": [
+        {
+          "label": "Apple M4 Max / 48 GiB / direct online / warm C1",
+          "points": [
+            {
+              "artifact": "projections/baseline-stt-canonical-sequential.json",
+              "artifact_sha256": "43bfada0c72f96744a6f78961a9d9da708e0c82860c811a9914840ad2e4bd5d2",
+              "value": 81.681292,
+              "x": "Parakeet control"
+            },
+            {
+              "artifact": "projections/qwen-asr-canonical-sequential.json",
+              "artifact_sha256": "aa19fb00c5da836574bf29cd4044cf7875983a2beb9bfdc1486c5b48e112f31d",
+              "value": 314.251211,
+              "x": "Qwen3-ASR 1.7B q8"
+            },
+            {
+              "artifact": "projections/granite-fp16-canonical-sequential.json",
+              "artifact_sha256": "3bcdb0c55f3850436a53ee423429124e7f60f192ccb3f5465edbe6cb2d22f36c",
+              "value": 40.1615,
+              "x": "Granite TurboCTC FP16"
+            }
+          ]
+        }
+      ],
+      "title": "Canonical human C1 latency p95 (72 requests/arm)",
+      "x_label": "Exact configuration",
+      "y_label": "Milliseconds"
+    }
+  ],
+  "metric_semantics": {
+    "comparison_set": "Contemporaneous Parakeet control, Qwen3-ASR 1.7B MLX8bit and Granite TurboCTC FP16; same 24-case human corpus/order/repetition schedule and hardware; model/runtime configurations intentionally different and labeled.",
+    "latency": "Client-observed transcription endpoint duration; different engines, no end-to-end voice or quality-winner claim.",
+    "percentiles": "Native p50/p95 over 72 warm primary-human requests per arm; p99 not plotted. Repeated utterances are not 72 independent corpus items.",
+    "provenance": "Each point hashes the explicit sanitized native projection; projection-ledger.json maps that SHA to original private artifact SHA and structural/redaction changes.",
+    "uncertainty": "Paired per-case bootstrap from separately retained assessment; confidence interval tabulated, not plotted via unsupported schema.",
+    "wer": "Native summary.primary_human.micro_wer is total normalized edits / reference words; ratio, not sentence-average and not percentage. Synthetic cases excluded."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Canonical primary-human warm C1: 24 distinct cases \u00d7 3 = 72 requests/arm. All arms have critical-case errors; no promotion. Qwen paired WER uncertainty overlaps zero.",
+  "title": "Local Apple M4 Max English STT comparison"
+}

@@ -2,8 +2,8 @@
 
 Sub-actions:
   * ``sync`` — scan HF caches + model dirs, pull cards, build the catalog (-> `_sync.py`).
-  * ``pull`` — download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it's ready
-    to serve natively (see ``pull_main`` / ``build_pull_argv`` below).
+  * ``pull`` — download a Hugging Face repo into a named Docker volume or an
+    explicit native cache (see ``pull_main`` / ``build_pull_argv`` below).
   * ``recipe`` — manage recorded serve recipes and candidate containers;
     benchmark ``--recipe-out`` remains the evidence-producing generate path.
 
@@ -17,7 +17,9 @@ import os
 import argparse
 import fnmatch
 import glob
+import io
 from contextlib import contextmanager
+from contextlib import redirect_stdout, redirect_stderr
 from importlib import resources
 import json
 import math
@@ -36,6 +38,7 @@ from . import config
 from . import guard
 from . import host as host_ops
 from . import model_cache_native
+from . import model_pull_native
 from . import paths
 from . import serve_recipes
 from .service_runtime.operations import execute as _service_execute
@@ -929,19 +932,82 @@ def load_model_catalog(catalog_dir=None):
     }
 
 
-def pull_main(argv):
+def pull_result(argv):
+    """Typed dispatcher result for native pulls; preserve Docker's legacy output."""
+    if argv and argv[0] == "pull":
+        argv = argv[1:]
+    if not any(token == "--cache-dir" or token.startswith("--cache-dir=") for token in argv):
+        return pull_main(argv)
+    reports = []
+    stdout, stderr = io.StringIO(), io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        rc = pull_main(argv, _result_sink=reports)
+    report = reports[-1] if reports else None
+    return CommandResult(
+        data=report,
+        error=OperatorError(
+            (report or {}).get("error") or stderr.getvalue().strip() or "model pull failed",
+            code="model_pull_failed", details={"pull_exit_code": rc},
+        ) if rc else None,
+        human_stdout=stdout.getvalue(), human_stderr=stderr.getvalue(),
+    )
+
+
+def _native_pull_main(args, *, result_sink=None):
+    """Keep native acquisition independent from Docker and WSL host policies."""
+    if args.volume is not None or args.image is not None:
+        print("--volume and --image are only supported with Docker pulls", file=sys.stderr)
+        return 2
+    if args.expected_bytes is not None:
+        print("native pulls require exact remote inventory; --expected-bytes is Docker-only", file=sys.stderr)
+        return 2
+    if not args.dry_run and not guard.confirmation_authorized():
+        print("native model pull apply requires the dispatcher --confirm gate", file=sys.stderr)
+        return 3
+    token = None
+    if not args.dry_run and not args.no_token:
+        try:
+            token = _pull_token(args.token_env, args.token_file, os.environ)
+        except ValueError:
+            print("could not resolve declared model-pull credential source", file=sys.stderr)
+            return 2
+        if not token:
+            print("declared model-pull credential source is empty; configure it or pass --no-token", file=sys.stderr)
+            return 2
+    environ = dict(os.environ)
+    if args.no_token:
+        environ.pop(args.token_env, None)
+    try:
+        report = model_pull_native.pull(
+            args.repo_id, args.revision, args.cache_dir,
+            hf_executable=args.hf_executable, include=args.include, exclude=args.exclude,
+            token=token, no_token=args.no_token,
+            headroom_bytes=round(args.headroom_gib * 1024**3),
+            evidence_out=args.evidence_out, dry_run=args.dry_run, _environ=environ,
+        )
+    except (model_pull_native.NativePullError, OSError) as exc:
+        message = str(exc) if isinstance(exc, model_pull_native.NativePullError) else "native model pull filesystem operation failed"
+        report = {"schema_version": "native-model-pull/v1", "backend": "native",
+                  "status": "refused", "exit_code": 4, "error": message}
+    if result_sink is not None:
+        result_sink.append(report)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return report["exit_code"]
+
+
+def pull_main(argv, *, _result_sink=None):
     ap = argparse.ArgumentParser(
         prog="anvil-serving models pull",
-        description="Download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it "
-                    "is ready to serve natively. On Windows+WSL2+Docker, serving "
-                    "weights from a C:/ bind mount reads over 9P (~15 MB/s, "
-                    "18-90 min loads); a named docker volume is ext4-native inside "
-                    "WSL2 (no 9P) and loads in seconds (CLAUDE.md gotcha #15). The "
-                    "download runs `hf download` INSIDE a container with the volume "
-                    "mounted at the HF cache, so bytes land on native ext4.\n\n"
+        description="Download a Hugging Face repository into a named Docker volume "
+                    "or an explicit native Hugging Face cache. Native --cache-dir "
+                    "requires an exact 40-character commit and an installed hf "
+                    "executable; it verifies selected files against public hashes "
+                    "without Docker or serving lifecycle actions.\n\n"
                     "Examples:\n"
                     "  anvil-serving models pull openai/gpt-oss-120b --dry-run\n"
-                    "  anvil-serving models pull openai/gpt-oss-120b --confirm",
+                    "  anvil-serving models pull openai/gpt-oss-120b --confirm\n"
+                    "  anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT "
+                    "--cache-dir /operator/model-cache/hub --no-token --dry-run",
         epilog="`hf download` is resumable/idempotent (it skips complete files). "
                "gotcha #12: a concurrent/interrupted download to the same cache "
                "can deadlock on .cache/huggingface/.gitignore.lock ('Still waiting "
@@ -950,28 +1016,34 @@ def pull_main(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("repo_id", help="Hugging Face repo id, e.g. openai/gpt-oss-120b")
-    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME,
-                    help="named docker volume to pull into (default: %(default)s; "
+    ap.add_argument("--volume", default=None,
+                    help="named docker volume to pull into (default: vllm-hfcache; "
                          "ext4-native inside WSL2 — avoids the 9P bind-mount tax)")
-    ap.add_argument("--image", default=DEFAULT_PULL_IMAGE,
+    ap.add_argument("--image", default=None,
                     help="container image that ships the `hf` CLI; the download runs "
-                         "inside it (default: %(default)s)")
+                         "inside it (default: vllm/vllm-openai:nightly)")
+    ap.add_argument("--cache-dir", metavar="PATH",
+                    help="native HF home containing hub/ or direct hub cache; no Docker")
+    ap.add_argument("--hf-executable", metavar="PATH",
+                    help="native installed hf executable (default: discover hf on PATH)")
+    ap.add_argument("--evidence-out", metavar="FILE",
+                    help="native JSON receipt at a new file outside the hub cache; otherwise retained beside it")
     ap.add_argument("--revision", default=None,
-                    help="git revision/branch/tag to download (passed to `hf download`)")
+                    help="git revision/branch/tag for Docker; exact 40 lowercase hex commit for native")
     ap.add_argument("--include", default=None,
                     help="glob of files to include (passed to `hf download`)")
     ap.add_argument("--exclude", default=None,
                     help="glob of files to exclude (passed to `hf download`)")
     ap.add_argument("--token-env", default=DEFAULT_PULL_TOKEN_ENV, metavar="ENV",
                     help="name of an env var holding an HF token; its value is "
-                         "forwarded into the container as HF_TOKEN by reference "
+                         "forwarded to the downloader as HF_TOKEN by reference "
                          "(never inlined on the command line). If the variable is "
                          "not exported, it is read from --token-file.")
     ap.add_argument("--token-file", default=DEFAULT_PULL_TOKEN_FILE, metavar="PATH",
                     help="dotenv file used when --token-env is not already exported "
                          "(default: %(default)s)")
     ap.add_argument("--no-token", action="store_true",
-                    help="pull explicitly without forwarding HF_TOKEN")
+                    help="pull without HF_TOKEN; native also strips inherited HF tokens and disables saved-token use")
     ap.add_argument(
         "--expected-bytes",
         type=int,
@@ -984,19 +1056,26 @@ def pull_main(argv):
         help="free space retained after the estimated download (default: %(default)s GiB)",
     )
     ap.add_argument("--dry-run", action="store_true",
-                    help="print the docker command that WOULD run, then exit")
+                    help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
-    operation = "models pull"
-    try:
-        policy = host_ops.load_cache_reclaim_policy()
-    except host_ops.HostConfigError as exc:
-        print("[anvil-serving] %s" % exc, file=sys.stderr)
-        return 2
     if a.expected_bytes is not None and a.expected_bytes <= 0:
         print("[anvil-serving] --expected-bytes must be positive", file=sys.stderr)
         return 2
     if not math.isfinite(a.headroom_gib) or a.headroom_gib < 0:
         print("[anvil-serving] --headroom-gib must be a finite nonnegative number", file=sys.stderr)
+        return 2
+    if a.cache_dir is not None:
+        return _native_pull_main(a, result_sink=_result_sink)
+    if a.hf_executable is not None or a.evidence_out is not None:
+        print("--hf-executable and --evidence-out require native --cache-dir", file=sys.stderr)
+        return 2
+    a.volume = a.volume or DEFAULT_PULL_VOLUME
+    a.image = a.image or DEFAULT_PULL_IMAGE
+    operation = "models pull"
+    try:
+        policy = host_ops.load_cache_reclaim_policy()
+    except host_ops.HostConfigError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
         return 2
     if not a.dry_run:
         try:
@@ -2803,7 +2882,7 @@ def main(argv):
     argv = list(argv)
     ap = argparse.ArgumentParser(
         prog="anvil-serving models",
-        description="Model catalog, Hugging Face volume pulls, and recorded serve recipes.",
+        description="Model catalog, Hugging Face artifact pulls, and recorded serve recipes.",
     )
     sub = ap.add_subparsers(dest="action", required=True)
 
@@ -2826,7 +2905,7 @@ def main(argv):
     sync.add_argument("--dry-run", action="store_true",
                       help="resolve sources and preview catalog writes without scanning or writing")
 
-    sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
+    sub.add_parser("pull", help="download a Hugging Face repo into Docker or a native cache")
     sub.add_parser("recipe", help="create, inspect, edit, delete, or load serve recipes")
     sub.add_parser("cache", help="model cache inspection and cleanup helpers")
     sub.add_parser("score", help="rank models for roles from benchmark evidence")

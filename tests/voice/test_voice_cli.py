@@ -1742,7 +1742,7 @@ def test_candidate_overlay_rejects_oversized_input(tmp_path):
         voice_cli._load_candidate_overlay(str(oversized))
 
 
-def test_benchmark_evidence_write_is_atomic_on_replace_failure(tmp_path, monkeypatch):
+def test_benchmark_evidence_write_is_atomic_on_publication_failure(tmp_path, monkeypatch):
     evidence_root = tmp_path / "evidence-root"
     evidence_root.mkdir()
     target = evidence_root / "voice.json"
@@ -1750,11 +1750,11 @@ def test_benchmark_evidence_write_is_atomic_on_replace_failure(tmp_path, monkeyp
     monkeypatch.setenv("ANVIL_BENCHMARK_EVIDENCE_DIR", str(evidence_root))
     monkeypatch.setattr(
         voice_cli.os,
-        "replace",
-        lambda source, destination: (_ for _ in ()).throw(OSError("replace failed")),
+        "link",
+        lambda source, destination: (_ for _ in ()).throw(OSError("publication failed")),
     )
 
-    with pytest.raises(OSError, match="replace failed"):
+    with pytest.raises(OSError, match="publication failed"):
         voice_cli._write_benchmark_evidence(str(target), {"new": True})
 
     assert target.read_text(encoding="utf-8") == '{"old": true}\n'

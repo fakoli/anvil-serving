@@ -70,7 +70,8 @@ def _compile_safe_check_regex(pattern):
     or general quantifiers: all can create catastrophic backtracking over a
     retained model answer. The supported subset is intentionally enough for
     deterministic markers (anchors, boundaries, character classes, literals,
-    and ``\\s*`` between fields). Anything more expressive should be a purpose-
+    and ``\\s*`` between fields). A single terminal ``[.!?]?`` may precede
+    the end anchor or its whitespace suffix. Anything more expressive should be a purpose-
     built validator rather than executable regex from a suite file.
     """
     if len(pattern) > _MAX_CHECK_REGEX_CHARS:
@@ -95,6 +96,13 @@ def _compile_safe_check_regex(pattern):
             i += 1
             continue
         if in_character_class:
+            i += 1
+            continue
+        if char == "?" and pattern[max(0, i - 5):i] == "[.!?]" and (
+                pattern[i + 1:] in {"$", r"\s*$"}
+                and pattern.count("[.!?]?") == 1):
+            # One optional terminal punctuation character is bounded. This
+            # permits spoken-answer grading without general regex quantifiers.
             i += 1
             continue
         if char in "()|{}+?" or char == ".":

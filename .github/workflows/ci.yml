@@ -59,10 +59,19 @@ jobs:
       - name: Check Node.js
         run: node --version
 
+      - name: Run native checkpoint acquisition contracts before the full suite
+        # Exercise Windows handle sharing and executable fixtures before a
+        # complete suite run, as well as the POSIX replacement guard.
+        run: python -m pytest tests/test_model_pull_native.py tests/test_model_pull_native_review.py -q
+
       - name: Run Connect contracts before the full suite
         # Catch portable schema/renderer and platform-boundary regressions
         # before spending a complete Linux or Windows suite run.
         run: python -m pytest tests/connect/ -q
+
+      - name: Run TTS benchmark contracts before the full suite
+        # Verify exact configuration byte custody with LF and CRLF inputs.
+        run: python -m pytest tests/voice/test_tts_benchmark.py -q
 
       - name: Run tests
         run: python -m pytest tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
