@@ -17,9 +17,12 @@ Stdlib-only by design (no third-party deps). This module defines:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union, TYPE_CHECKING
 
 from typing import Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from .decision_log import TokenUsage
 
 
 class DialectError(Exception):
@@ -120,7 +123,6 @@ class ModelDelta:
     text: Optional[str] = None
     reasoning: Optional[str] = None
 
-
 BackendDelta = Union[str, ModelDelta]
 
 
@@ -164,6 +166,9 @@ class StructuredResult:
     tool_calls: Optional[List[Dict[str, Any]]] = None
     usage: Optional[Dict[str, int]] = None
     reasoning: Optional[str] = None
+    # Accounting metadata stays separate from the legacy dialect wire counts.
+    # Completion metadata does not change legacy wire-result equality.
+    normalized_usage: Optional[TokenUsage] = field(default=None, compare=False)
 
 
 @runtime_checkable

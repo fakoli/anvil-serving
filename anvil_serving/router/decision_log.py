@@ -51,6 +51,220 @@ _MAX_MEASUREMENT = 1_000_000_000_000_000
 _REPLICA_MEMBER_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 
 
+@dataclass(frozen=True, slots=True)
+class TokenDirection:
+    """One applicable count; missing and non-token units never become zero."""
+
+    count: Optional[int] = None
+    source: str = "unknown"
+    applicability: str = "applicable"
+    partial: bool = False
+
+    def __post_init__(self) -> None:
+        if (type(self.source) is not str or self.source not in {"measured", "estimated", "unknown"}
+                or type(self.applicability) is not str
+                or self.applicability not in {"applicable", "not_applicable"}
+                or type(self.partial) is not bool
+                or (self.count is not None and _optional_nonnegative(self.count) is None)
+                or (self.source == "unknown") != (self.count is None)
+                or (self.applicability == "not_applicable"
+                    and (self.count is not None or self.partial))):
+            raise ValueError("invalid token direction")
+
+    def to_dict(self) -> dict:
+        if type(self) is not TokenDirection:
+            raise ValueError("invalid token direction")
+        return {"count": self.count, "source": self.source,
+                "applicability": self.applicability, "partial": self.partial}
+
+    @classmethod
+    def from_dict(cls, value: object) -> TokenDirection:
+        if type(value) is not dict or set(value) != {"count", "source", "applicability", "partial"}:
+            raise ValueError("invalid token direction")
+        return cls(**value)
+
+
+_TOKEN_BREAKDOWNS = ("uncached_input_tokens", "cache_read_input_tokens",
+                     "cache_creation_input_tokens", "reasoning_output_tokens")
+_TOKEN_LIMITATIONS = frozenset({"usage_invalid", "input_count_invalid", "output_count_invalid",
+                              "cache_read_invalid", "cache_creation_invalid", "reasoning_invalid",
+                              "input_incomplete", "input_count_overflow"})
+
+
+@dataclass(frozen=True, slots=True)
+class TokenUsage:
+    """Closed content-free observation, separate from legacy wire/diagnostic usage."""
+
+    input: TokenDirection = field(default_factory=TokenDirection)
+    output: TokenDirection = field(default_factory=TokenDirection)
+    uncached_input_tokens: Optional[int] = None
+    cache_read_input_tokens: Optional[int] = None
+    cache_creation_input_tokens: Optional[int] = None
+    reasoning_output_tokens: Optional[int] = None
+    limitations: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if (type(self.input) is not TokenDirection or type(self.output) is not TokenDirection
+                or any(getattr(self, name) is not None
+                       and _optional_nonnegative(getattr(self, name)) is None for name in _TOKEN_BREAKDOWNS)
+                or type(self.limitations) is not tuple
+                or any(type(code) is not str or code not in _TOKEN_LIMITATIONS for code in self.limitations)
+                or len(set(self.limitations)) != len(self.limitations)):
+            raise ValueError("invalid token usage")
+
+    def to_dict(self) -> dict:
+        if type(self) is not TokenUsage:
+            raise ValueError("invalid token usage")
+        return {"input": self.input.to_dict(), "output": self.output.to_dict(),
+                **{name: getattr(self, name) for name in _TOKEN_BREAKDOWNS
+                   if getattr(self, name) is not None},
+                "limitations": list(self.limitations)}
+
+    @classmethod
+    def from_dict(cls, value: object) -> TokenUsage:
+        required = {"input", "output", "limitations"}
+        if (type(value) is not dict or not required <= set(value)
+                or set(value) - required - set(_TOKEN_BREAKDOWNS)
+                or type(value["limitations"]) is not list):
+            raise ValueError("invalid token usage")
+        return cls(input=TokenDirection.from_dict(value["input"]),
+                   output=TokenDirection.from_dict(value["output"]),
+                   limitations=tuple(value["limitations"]),
+                   **{name: value[name] for name in _TOKEN_BREAKDOWNS if name in value})
+
+
+def merge_usage_metadata(previous: dict, raw: object, backend_dialect: str) -> None:
+    """Retain only bounded usage scalars; SSE values replace cumulative values."""
+    if backend_dialect not in {"anthropic", "openai", "responses"}:
+        raise ValueError("unsupported token usage dialect")
+    if raw is None:
+        return
+    if not isinstance(raw, Mapping):
+        previous["_invalid"] = True
+        return
+    if raw.get("_invalid") is True:
+        previous["_invalid"] = True
+    if backend_dialect == "anthropic":
+        scalar = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+        nested = {"cache_creation": ("ephemeral_5m_input_tokens", "ephemeral_1h_input_tokens")}
+    elif backend_dialect == "openai":
+        scalar = ("prompt_tokens", "completion_tokens", "reasoning_tokens")
+        nested = {"prompt_tokens_details": ("cached_tokens",),
+                  "completion_tokens_details": ("reasoning_tokens",)}
+    elif backend_dialect == "responses":
+        scalar = ("input_tokens", "output_tokens")
+        nested = {"input_tokens_details": ("cached_tokens",),
+                  "output_tokens_details": ("reasoning_tokens",)}
+    else:
+        raise ValueError("unsupported token usage dialect")
+    for key in scalar:
+        if key in raw:
+            previous[key] = _optional_nonnegative(raw[key])
+    for key, names in nested.items():
+        if key not in raw:
+            continue
+        source = raw[key]
+        if not isinstance(source, Mapping):
+            previous[key] = None
+            continue
+        target = previous.get(key)
+        if not isinstance(target, dict):
+            target = previous[key] = {}
+        for name in names:
+            if name in source:
+                target[name] = _optional_nonnegative(source[name])
+
+
+def normalize_usage(
+    raw_usage: object,
+    backend_dialect: str,
+    applicability: tuple[str, str] = ("applicable", "applicable"),
+    *,
+    partial: tuple[bool, bool] = (False, False),
+    estimates: tuple[Optional[int], Optional[int]] = (None, None),
+) -> TokenUsage:
+    """Normalize usage metadata only; never infer tokens from response content.
+
+    Estimates are already-observed scalar lower bounds from the existing text
+    estimator. Zero visible output is unknown, and every estimate is partial.
+    """
+    if (type(applicability) is not tuple or len(applicability) != 2
+            or type(partial) is not tuple or len(partial) != 2
+            or type(estimates) is not tuple or len(estimates) != 2
+            or any(type(value) is not str or value not in {"applicable", "not_applicable"}
+                   for value in applicability)
+            or any(type(value) is not bool for value in partial)
+            or any(value is not None and _optional_nonnegative(value) is None for value in estimates)):
+        raise ValueError("invalid token usage options")
+    metadata: dict = {}
+    merge_usage_metadata(metadata, raw_usage, backend_dialect)
+    limitations = {"usage_invalid"} if metadata.get("_invalid") else set()
+
+    def count(source: Mapping, key: str, code: str) -> Optional[int]:
+        value = source.get(key)
+        if key in source and value is None:
+            limitations.add(code)
+        return value
+
+    def detail(key: str, name: str, code: str) -> Optional[int]:
+        source = metadata.get(key)
+        if key in metadata and source is None:
+            limitations.add(code)
+        return count(source, name, code) if isinstance(source, Mapping) else None
+
+    uncached = creation = None
+    if backend_dialect == "anthropic":
+        uncached = count(metadata, "input_tokens", "input_count_invalid")
+        output_count = count(metadata, "output_tokens", "output_count_invalid")
+        cached = count(metadata, "cache_read_input_tokens", "cache_read_invalid")
+        if "cache_creation_input_tokens" in metadata:
+            creation = count(metadata, "cache_creation_input_tokens", "cache_creation_invalid")
+        elif "cache_creation" in metadata:
+            five = detail("cache_creation", "ephemeral_5m_input_tokens", "cache_creation_invalid")
+            hour = detail("cache_creation", "ephemeral_1h_input_tokens", "cache_creation_invalid")
+            if five is not None and hour is not None:
+                creation = _optional_nonnegative(five + hour)
+                if creation is None:
+                    limitations.add("cache_creation_invalid")
+        input_count = None
+        if all(value is not None for value in (uncached, cached, creation)):
+            input_count = _optional_nonnegative(uncached + cached + creation)
+            if input_count is None:
+                limitations.add("input_count_overflow")
+        elif any(value is not None for value in (uncached, cached, creation)):
+            limitations.add("input_incomplete")
+        reasoning = None
+    else:
+        responses = backend_dialect == "responses"
+        input_count = count(metadata, "input_tokens" if responses else "prompt_tokens", "input_count_invalid")
+        output_count = count(metadata, "output_tokens" if responses else "completion_tokens", "output_count_invalid")
+        cached = detail("input_tokens_details" if responses else "prompt_tokens_details", "cached_tokens", "cache_read_invalid")
+        reasoning = detail("output_tokens_details" if responses else "completion_tokens_details", "reasoning_tokens", "reasoning_invalid")
+        # Match the existing OpenAI-compatible direct extension precedence.
+        if not responses and reasoning is None:
+            reasoning = count(metadata, "reasoning_tokens", "reasoning_invalid")
+
+    directions = []
+    for index, measured in enumerate((input_count, output_count)):
+        if applicability[index] == "not_applicable":
+            directions.append(TokenDirection(applicability="not_applicable"))
+            continue
+        incomplete = partial[index] or (index == 0 and backend_dialect == "anthropic"
+                                       and measured is None and bool(metadata))
+        estimate = _optional_nonnegative(estimates[index])
+        if measured is not None:
+            directions.append(TokenDirection(measured, "measured", applicability[index], incomplete))
+        elif estimate is not None and (index == 0 or estimate > 0):
+            directions.append(TokenDirection(estimate, "estimated", applicability[index], True))
+        else:
+            directions.append(TokenDirection(None, "unknown", applicability[index], incomplete))
+    if applicability[0] == "not_applicable":
+        uncached = cached = creation = None
+    if applicability[1] == "not_applicable":
+        reasoning = None
+    return TokenUsage(*directions, uncached, cached, creation, reasoning, tuple(sorted(limitations)))
+
+
 @dataclass(frozen=True)
 class AttemptRecord:
     """One direct tier attempt with content-free outcome metadata."""

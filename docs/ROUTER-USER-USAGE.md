@@ -191,7 +191,7 @@ and output. Unknown means count null; measured zero is count0. Not-applicable
 means count null/source unknown/partial false, with explicit applicability.
 Counts reject bool, negatives, floats and values >10^15 (existing request-control
 ceiling); retain fixed parsing limitation, not malformed raw values. Optional
-`cache_read_input_tokens`, `cache_creation_input_tokens`, `reasoning_output_tokens`
+`uncached_input_tokens`, `cache_read_input_tokens`, `cache_creation_input_tokens`, `reasoning_output_tokens`
 are validated counts or absent, never defaulted to zero. Checked integer sums
 must not overflow SQLite signed64; exact query arithmetic uses Python integers
 and API decimal integers (Grafana float precision is explicitly limited).
@@ -206,6 +206,18 @@ components, never sum each event; final output count supersedes partial count.
 Capture cache creation 5-minute/1-hour total according to native schema without
 adding nested subtotals to an already reported creation total. Requested wire
 dialect does not decide backend usage semantics; relay backend contract does.
+
+T005 retains native Anthropic `uncached_input_tokens` in the closed normalized
+observation even when total input is unknown. `TokenUsage.to_dict/from_dict`
+serialize only input/output directions, these optional component counts and fixed
+`limitations` codes. No content or malformed raw values survive. Shared
+`normalize_usage` accepts optional per-direction partial flags and already-observed
+scalar estimates; every fallback estimate is partial and zero visible output is
+unknown. `StructuredResult.normalized_usage` and the relay's per-thread
+`get_last_normalized_usage()` carry the same immutable observation separately from
+legacy wire usage. Assemblers expose `get_normalized_usage()` without assembling
+tool/reasoning content. T008 forwards this metadata through existing wrappers and
+copies it on the owning worker before handler-thread delivery finalization.
 
 Embedding/rerank reported prompt/total input is applicable; output is
 not-applicable. Missing input is unknown, never zero. Audio/non-token memory
