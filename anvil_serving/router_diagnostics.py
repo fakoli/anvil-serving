@@ -226,14 +226,17 @@ def _fetch(base, path, token, timeout, opener, *, max_bytes=MAX_RESPONSE_BYTES, 
     except urllib.error.HTTPError as exc:
         status = exc.code
         if usage and status in {400, 422, 503}:
-            raw = exc.read(max_bytes + 1)
-            exc.close()
+            try:
+                with exc:
+                    raw = exc.read(max_bytes + 1)
+            except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException):
+                raise TransportError("Router diagnostic transport failed.", code="router_unreachable") from None
             try:
                 body = json.loads(raw) if len(raw) <= max_bytes else {}
                 code = body["error"]["type"]
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, RecursionError):
                 code = None
-            if code in {"invalid_usage_query", "usage_cursor_invalid", "usage_cursor_stale", "usage_query_limited",
+            if type(code) is str and code in {"invalid_usage_query", "usage_cursor_invalid", "usage_cursor_stale", "usage_query_limited",
                         "usage_coverage_unavailable", "usage_granularity_unsupported", "accounting_unavailable"}:
                 raise OperatorError(code.replace("_", " "), code=code, details={"coverage": body["coverage"]} if status == 422 and type(body.get("coverage")) is dict else None) from None
             raise TransportError("Router usage error was invalid.", code="router_response_invalid") from None

@@ -222,3 +222,48 @@ def test_container_binding_and_snapshot_commands_use_actual_pipe(tmp_path, monke
     assert keys.KeyStore(restored).list_keys()==store.list_keys()
     assert keys.dispatch(['restore',*options,'--snapshot',str(backup),'--out',str(restored)])==2
     assert 'service_fixture' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("status", [400, 422, 503])
+def test_stalled_error_body_is_closed_typed_and_secret_free(monkeypatch, capsys, status):
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    import threading
+    import urllib.error
+    release = threading.Event()
+    closed = []
+    original_close = urllib.error.HTTPError.close
+    def close(response):
+        closed.append(response.code)
+        return original_close(response)
+    monkeypatch.setattr(urllib.error.HTTPError, "close", close)
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args): pass
+        def do_GET(self):
+            self.send_response(status); self.send_header("Content-Length", "100")
+            self.end_headers(); self.wfile.flush(); release.wait(2)
+    httpd = HTTPServer(("127.0.0.1", 0), Handler)
+    worker = threading.Thread(target=httpd.serve_forever); worker.start()
+    monkeypatch.setenv("SYNTHETIC_USAGE", ADMIN)
+    try:
+        result = main(["router", "usage", "active", "--router-url", f"http://127.0.0.1:{httpd.server_port}",
+                       "--auth-env", "SYNTHETIC_USAGE", "--timeout", "0.05"])
+        assert result != 0 and status in closed
+        output = capsys.readouterr()
+        assert json.loads(output.err)["error"]["type"] == "router_unreachable"
+        assert ADMIN not in output.out + output.err
+    finally:
+        release.set(); httpd.shutdown(); httpd.server_close(); worker.join(3)
+        assert not worker.is_alive()
+
+
+@pytest.mark.parametrize("raw", [b"invalid JSON", b'{"error":{"type":[]}}', b"["*1200])
+def test_malformed_error_decoder_is_closed_and_typed(raw):
+    import io
+    import urllib.error
+    from anvil_serving.operator_output import TransportError
+    body = io.BytesIO(raw)
+    def opener(*args, **kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1", 503, "unavailable", {}, body)
+    with pytest.raises(TransportError) as caught:
+        cli._fetch("http://127.0.0.1", "/v1/admin/usage", ADMIN, 1, opener, usage=True)
+    assert caught.value.code == "router_response_invalid" and body.closed
