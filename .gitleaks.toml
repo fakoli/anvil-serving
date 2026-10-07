@@ -3,6 +3,24 @@ title = "anvil-serving secret scan"
 [extend]
 useDefault = true
 
+# Exact hashes in the frozen Apple voice evidence. Scope each exception to
+# its provenance field, value and source path; adjacent credentials still fail.
+[[allowlists]]
+description = "Pinned MLX-LM tokenizer source fingerprint in cache diagnostics"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-06-m4-max-voice-quality-qualification-evidence/projections/mlx_lm_runtime_cache0_v[12]_identity\.json$''']
+regexes = ['''tokenizer_utils\.py[^\r\n]{0,8}ecb52655e86ff6d6db6a657601ece11f195e85971482eb2d0f40c20de17eb4c5["']?''']
+
+[[allowlists]]
+description = "Frozen blind-listening schedule file fingerprint"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-06-m4-max-voice-quality-qualification-evidence/projections/tts-listening-schedule-amendment-01\.json$''']
+regexes = ['''original_reveal_key_sha256[^\r\n]{0,8}3cd47d23e898c5efddfc2e20ab82092fc74a1458e18a318a151e705132a4ae11["']?''']
+
 # Public/synthetic values used to prove redaction and validation behavior.
 # Keep these value-specific: never allowlist an entire test directory.
 [[allowlists]]
