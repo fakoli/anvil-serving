@@ -611,10 +611,12 @@ class KeyStore:
             raise KeyStoreError("tracked admission requires a principal")
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
             raise KeyStoreError("invalid credential key")
-        now = time.time()
         try:
             with self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                # Lock contention may outlive the credential. Check authority
+                # and refill rate buckets using the time we acquire the lock.
+                now = time.time()
                 if candidate is not None:
                     from .connect_keys import Denied
                     try:

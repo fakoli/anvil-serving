@@ -5,6 +5,8 @@ from dataclasses import FrozenInstanceError, replace
 import json
 import secrets
 import sqlite3
+from threading import Event
+import time
 
 import pytest
 
@@ -112,6 +114,60 @@ def test_policy_races_refuse_before_any_bucket_write(tmp_path, change):
         with store._connect() as db: db.execute(f"UPDATE keys SET {field}=? WHERE key_id=?", (value, key_id))
     with pytest.raises(keys.KeyStoreError, match="admission_policy_changed"): store.admit(principal, CHAT, "llm.primary")
     assert buckets(store) == []
+
+
+@pytest.mark.parametrize("owned", [False, True], ids=["ordinary", "connect"])
+@pytest.mark.parametrize("tracked", [False, True], ids=["legacy", "tracked"])
+@pytest.mark.parametrize("populated", [False, True], ids=["empty", "existing"])
+def test_expiry_during_sqlite_writer_wait_consumes_no_buckets(tmp_path, monkeypatch, owned, tracked, populated):
+    if owned:
+        store, _, key_id, token, _ = connect(tmp_path)
+    else:
+        store, key_id, token = ordinary(tmp_path)
+    if populated:
+        assert store.admit(key_id) == 0
+    before = buckets(store)
+    expiry = int(time.time()) + 2
+    original = store._connect
+    with original() as db:
+        db.execute("UPDATE keys SET expires_at=? WHERE key_id=?", (expiry, key_id))
+    principal = store.authenticate(token, check_owner=False)
+    assert principal is not None
+    checked = []
+    store.owner_check = lambda *owner: checked.append(owner) or True
+    attempting = Event()
+    attempted_at = []
+
+    @contextmanager
+    def observed_connection():
+        with original() as db:
+            def observe(sql):
+                if sql == "BEGIN IMMEDIATE":
+                    attempted_at.append(time.time())
+                    attempting.set()
+            db.set_trace_callback(observe)
+            yield db
+
+    monkeypatch.setattr(store, "_connect", observed_connection)
+    # The real SQLite writer remains held across expiry. The trace callback
+    # observes the competing BEGIN; it never replaces SQLite or the clock.
+    with original() as writer, ThreadPoolExecutor(max_workers=1) as pool:
+        writer.execute("BEGIN IMMEDIATE")
+        time.sleep(max(0, expiry - 0.25 - time.time()))
+        pending = pool.submit(store.admit, principal, CHAT, "llm.primary") if tracked else pool.submit(store.admit, key_id)
+        try:
+            assert attempting.wait(0.5)
+            assert attempted_at[0] < expiry and not pending.done()
+            time.sleep(max(0, expiry + 0.1 - time.time()))
+        finally:
+            writer.execute("COMMIT")
+        error = "admission_policy_changed" if tracked else "credential key is unavailable"
+        with pytest.raises(keys.KeyStoreError, match=error):
+            pending.result(timeout=2)
+    assert time.time() >= expiry
+    assert buckets(store) == before  # Includes the shared Connect account bucket.
+    assert checked == ([(OWNER, "1", EPOCH)] if tracked and owned else [])
+    assert store.authenticate(token, check_owner=False) is None
 
 
 def test_authentication_reads_key_and_binding_in_one_transaction(tmp_path, monkeypatch):
