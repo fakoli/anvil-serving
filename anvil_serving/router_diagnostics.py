@@ -29,7 +29,7 @@ _LABEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\Z")
 _SECRET = re.compile(r"(?i)(?:bearer|sk-|hf_|token|secret|password|api.key)")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 _ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}\Z")
-_CONFIG_KEYS = frozenset({"router_url", "auth_env", "credential_env_file", "timeout"})
+_CONFIG_KEYS = frozenset({"router_url", "auth_env", "credential_env_file", "credential_file", "timeout"})
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -67,7 +67,7 @@ def _read_bounded_toml(path: Path, *, missing_ok: bool) -> dict:
     return value
 
 
-def _credential_file(value: object, config: Path) -> Path:
+def _credential_file(value: object, config: Path, *, resolve=True) -> Path:
     """Resolve only an operator-selected credential file beside this config."""
     if not isinstance(value, str) or not value or len(value) > 1024 or any(ord(char) <= 32 for char in value):
         raise _config_error()
@@ -75,7 +75,7 @@ def _credential_file(value: object, config: Path) -> Path:
     if not candidate.is_absolute():
         candidate = config.parent / candidate
     try:
-        candidate = candidate.resolve(strict=False)
+        candidate = candidate.resolve(strict=False) if resolve else Path(os.path.abspath(candidate))
     except OSError:
         raise _config_error() from None
     # This command intentionally does not participate in envfile's shared
@@ -111,6 +111,9 @@ def _load_cli_settings(path: str | None) -> tuple[dict, Path | None]:
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 30:
             raise _config_error()
         settings["timeout"] = float(timeout)
+    credential = value.get("credential_file")
+    if credential is not None:
+        settings["credential_file"] = _credential_file(credential, source, resolve=False)
     credential = value.get("credential_env_file")
     if credential is not None:
         settings["credential_env_file"] = _credential_file(credential, source)
@@ -130,7 +133,7 @@ def _read_configured_credential(path: Path, name: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _dispatch_settings(args) -> tuple[str, str | None, float]:
+def _dispatch_settings(args, *, protected=False) -> tuple[str, str | None, float]:
     """Apply CLI, process, and optional config defaults without exposing secrets."""
     settings, _ = _load_cli_settings(args.config)
     router_url = (
@@ -144,7 +147,17 @@ def _dispatch_settings(args) -> tuple[str, str | None, float]:
         raise _config_error()
     token = os.environ.get(auth_env)
     credential_file = settings.get("credential_env_file")
-    if not token and isinstance(credential_file, Path):
+    if protected:
+        from .control_plane.mcp.auth_file import read_private_auth_file, AuthFileError
+        raw_file = settings.get("credential_file")
+        try:
+            if not token and isinstance(raw_file, Path):
+                token = read_private_auth_file(str(raw_file), max_bytes=4096).decode("ascii").strip()
+            elif not token and isinstance(credential_file, Path):
+                raise _config_error()
+        except (AuthFileError, UnicodeError):
+            raise _config_error() from None
+    elif not token and isinstance(credential_file, Path):
         token = _read_configured_credential(credential_file, auth_env)
     return router_url, token, timeout
 
@@ -200,7 +213,7 @@ def _client_label(value):
     return value if safe_client_id(value) is not None else None
 
 
-def _fetch(base, path, token, timeout, opener):
+def _fetch(base, path, token, timeout, opener, *, max_bytes=MAX_RESPONSE_BYTES, usage=False):
     request = urllib.request.Request(
         base + path, headers={"Accept": "application/json", "Authorization": "Bearer " + token},
         method="GET",
@@ -209,9 +222,21 @@ def _fetch(base, path, token, timeout, opener):
         with opener(request, timeout=timeout) as response:
             if response.status != 200:
                 raise TransportError("Router returned an unexpected status.", code="router_http_error")
-            raw = response.read(MAX_RESPONSE_BYTES + 1)
+            raw = response.read(max_bytes + 1)
     except urllib.error.HTTPError as exc:
         status = exc.code
+        if usage and status in {400, 422, 503}:
+            raw = exc.read(max_bytes + 1)
+            exc.close()
+            try:
+                body = json.loads(raw) if len(raw) <= max_bytes else {}
+                code = body["error"]["type"]
+            except (ValueError, KeyError, TypeError):
+                code = None
+            if code in {"invalid_usage_query", "usage_cursor_invalid", "usage_cursor_stale", "usage_query_limited",
+                        "usage_coverage_unavailable", "usage_granularity_unsupported", "accounting_unavailable"}:
+                raise OperatorError(code.replace("_", " "), code=code, details={"coverage": body["coverage"]} if status == 422 and type(body.get("coverage")) is dict else None) from None
+            raise TransportError("Router usage error was invalid.", code="router_response_invalid") from None
         exc.close()
         if status == 404:
             raise OperatorError(
@@ -223,7 +248,7 @@ def _fetch(base, path, token, timeout, opener):
         raise TransportError("Router returned an HTTP error.", code="router_http_error") from None
     except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException):
         raise TransportError("Router diagnostic transport failed.", code="router_unreachable") from None
-    if len(raw) > MAX_RESPONSE_BYTES:
+    if len(raw) > max_bytes:
         raise TransportError("Router diagnostic response exceeded the size bound.", code="router_response_oversized")
     try:
         value = json.loads(raw)
@@ -524,3 +549,71 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
+
+
+def dispatch_usage(argv=None) -> CommandResult:
+    """Native exact admin reader; the diagnostic projector is intentionally unused."""
+    from datetime import datetime, timedelta, timezone
+    from .router.usage_store import UsageQuery, UsageError as QueryError
+    from .observability.dashboard.contracts import strict_json
+    parser = argparse.ArgumentParser(prog="anvil-serving router usage", allow_abbrev=False)
+    parser.add_argument("action", choices=("active", "recent", "query"))
+    for name in ("config", "router-url", "auth-env", "filters", "group-by", "granularity", "from-utc", "to-utc", "cursor"):
+        parser.add_argument("--" + name)
+    parser.add_argument("--limit", type=int)
+    parser.add_argument("--timeout", type=float)
+    parser.add_argument("--require-complete", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        filters = strict_json(args.filters.encode("utf-8")) if args.filters is not None else []
+        groups = strict_json(args.group_by.encode("utf-8")) if args.group_by is not None else []
+        if type(filters) is not list or any(type(p) is not list or len(p) != 2 for p in filters) or type(groups) is not list:
+            raise ValueError()
+        filters = tuple(tuple(p) for p in filters)
+        params = {}
+        if args.action == "active":
+            if any(v is not None for v in (args.granularity, args.from_utc, args.to_utc, args.group_by, args.cursor)) or args.require_complete:
+                raise ValueError()
+            UsageQuery(granularity="cumulative", filters=filters)
+            limit = 50 if args.limit is None else args.limit
+            if not 1 <= limit <= 200:
+                raise ValueError()
+            params = {"view": "active", "limit": str(limit), "filters": json.dumps(filters, ensure_ascii=False)}
+        else:
+            lower, upper = args.from_utc, args.to_utc
+            if args.action == "recent":
+                if any(v is not None for v in (args.granularity, lower, upper, args.group_by, args.cursor)):
+                    raise ValueError()
+                now = datetime.now(timezone.utc)
+                lower, upper = ((now - timedelta(hours=24)).isoformat().replace("+00:00", "Z"), now.isoformat().replace("+00:00", "Z"))
+            native = UsageQuery(granularity=args.granularity or "detail", from_utc=lower, to_utc=upper,
+                                filters=filters, group_by=tuple(groups), limit=args.limit, cursor=args.cursor,
+                                require_complete=args.require_complete)
+            params = {k: v for k, v in native.to_dict().items() if v is not None}
+            params["filters"] = json.dumps(params["filters"], ensure_ascii=False)
+            params["group_by"] = json.dumps(params["group_by"])
+            params["require_complete"] = "true" if native.require_complete else "false"
+        query = urllib.parse.urlencode(params)
+        if len(query) > 8192:
+            raise ValueError()
+        base, token, timeout = _dispatch_settings(args, protected=True)
+        base = _router_url(base)
+        if not isinstance(token, str) or not token or any(ord(c) <= 32 or ord(c) >= 127 for c in token):
+            raise UsageError("A scoped operator credential is required.", code="router_credential_required")
+        if not 0 < timeout <= 30:
+            raise ValueError()
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect()).open
+        data = _fetch(base, "/v1/admin/usage?" + query, token, timeout, opener, max_bytes=8*1024*1024, usage=True)
+        expected = "router-active-usage/v1" if args.action == "active" else "router-usage/v1"
+        if data.get("schema") != expected:
+            raise TransportError("Router usage schema was invalid.", code="router_response_invalid")
+        return CommandResult(data=data, human_stdout=json.dumps(data, ensure_ascii=False, allow_nan=False) + "\n")
+    except QueryError as exc:
+        error = UsageError(exc.code.replace("_", " "), code=exc.code)
+    except OperatorError as exc:
+        error = exc
+    except (ValueError, TypeError, KeyError, UnicodeError):
+        error = UsageError("Invalid usage query.", code="invalid_usage_query")
+    # Fixed native error metadata stays useful in the exact default output too.
+    body = {"error": {"type": error.code, "message": error.message}, **error.details}
+    return CommandResult(error=error, human_stderr=json.dumps(body, ensure_ascii=False, allow_nan=False) + "\n")

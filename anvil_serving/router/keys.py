@@ -535,11 +535,13 @@ class KeyStore:
         caller = CallerSnapshot(key_id, actor, grant, "unbound" if actor.kind == "unattributed" else "owned_" + actor.kind)
         return Principal(key_id, policy["models"], policy["paths"], owner, caller)
 
-    def bind_owner(self, key_id, kind, owner_id, expected_revision):
+    def bind_owner(self, key_id, kind, owner_id, expected_revision, *, dry_run=False):
         """Operator-only ordinary-key binding CAS; grants are unchanged."""
         from .identity import Actor
         if (not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None
                 or type(expected_revision) is not int or not 0 <= expected_revision < 2**53-1):
+            raise KeyStoreError("invalid owner binding")
+        if type(dry_run) is not bool:
             raise KeyStoreError("invalid owner binding")
         actor = Actor(kind, owner_id, expected_revision + 1)
         if actor.kind not in {"human", "service"}:
@@ -555,6 +557,9 @@ class KeyStore:
                 current = self._bound_actor(connection, key_id).binding_revision or 0
                 if current != expected_revision:
                     raise KeyStoreError("admission_policy_changed")
+                if dry_run:
+                    connection.execute("ROLLBACK")
+                    return actor
                 connection.execute("INSERT INTO key_owner_bindings VALUES (?,?,?,?) ON CONFLICT(key_id) DO UPDATE SET kind=excluded.kind,owner_id=excluded.owner_id,revision=excluded.revision",
                                    (key_id, kind, owner_id, actor.binding_revision))
                 connection.execute("COMMIT")
@@ -766,7 +771,7 @@ class _Parser(argparse.ArgumentParser):
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="anvil-serving router keys", allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    for action in ("init", "create", "list", "revoke", "usage"):
+    for action in ("init", "create", "list", "revoke", "usage", "bind", "backup", "restore"):
         item = actions.add_parser(action, allow_abbrev=False)
         item.add_argument("--config", metavar="PATH")
         item.add_argument("--container", metavar="NAME")
@@ -779,6 +784,16 @@ def _parser() -> argparse.ArgumentParser:
             item.add_argument("--out", required=True, metavar="PATH")
         elif action == "revoke":
             item.add_argument("--key-id", required=True)
+        elif action == "bind":
+            item.add_argument("--key-id", required=True)
+            item.add_argument("--kind", choices=("human", "service"), required=True)
+            item.add_argument("--owner-id", required=True)
+            item.add_argument("--expected-revision", type=int, required=True)
+            item.add_argument("--dry-run", action="store_true")
+        elif action in {"backup", "restore"}:
+            item.add_argument("--out", required=True, metavar="PATH")
+            if action == "restore":
+                item.add_argument("--snapshot", required=True, metavar="PATH")
         elif action == "usage":
             item.add_argument("--key-id")
             item.add_argument("--limit", type=int, default=50)
@@ -840,10 +855,18 @@ def dispatch(argv: list[str] | None = None) -> int:
                     pass
                 raise KeyStoreError("credential output could not be written") from exc
             result = metadata
+        elif args.action in {"backup", "restore"}:
+            from .usage_store import UsageStore
+            result = (UsageStore(_store_from_config(args.config, initialize=False)).backup(args.out)
+                      if args.action == "backup" else UsageStore.restore(args.snapshot, args.out))
         else:
             store = _store_from_config(args.config, initialize=False)
             if args.action == "list":
                 result = store.list_keys()
+            elif args.action == "bind":
+                actor = store.bind_owner(args.key_id, args.kind, args.owner_id, args.expected_revision,
+                                         dry_run=args.dry_run)
+                result = {"key_id": args.key_id, "actor": actor.to_dict(), "dry_run": args.dry_run}
             elif args.action == "revoke":
                 if not store.revoke(args.key_id):
                     raise KeyStoreError("credential key was not found")

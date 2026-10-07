@@ -828,3 +828,27 @@ the claim-bound contract-review artifact. Draft readiness is insufficient.
 Later implementation tasks supply source behavior checks; T017-T021 separately
 prove operational preview, delivery, drained installation, clients, access
 isolation and recovery. No source test substitutes for those live gates.
+
+
+## Implemented operator CLI binding (T010)
+
+`anvil-serving router usage active|recent|query` reuses bounded no-redirect native
+HTTP and the exact T009 wire contract. The default supported command prints exact
+protected response JSON without the generic diagnostic projector. The optional
+standard `--json` envelope retains existing key redaction, including non-secret
+`credential_id`; it does not promise complete identity readback. Counts stay exact
+integers. `recent` selects the preceding24 UTC hours of retained detail; neither
+it nor an observed subtotal promises complete consumption. Scoped protected raw-token
+references and conventional non-secret defaults load from `router-diagnostics.toml`;
+shared dotenv fallback is excluded. Fixed API refusal codes and coverage metadata
+remain available in command errors.
+
+`router keys bind` calls existing `KeyStore.bind_owner(...,dry_run=False)`; the
+optional true preview checks the same writer-locked fresh expiry/revision/ordinary
+key predicates and rolls back without writes. Applied output reports the committed
+actor revision. It changes neither grants nor historical callers. `router keys
+backup|restore` call existing protected UsageStore operations with absent-only
+destinations; container paths are checked against the exact owned durable mounts.
+Docker inspection retrieves only Id/State/Config.Labels/Mounts. Restore has no
+activation, admission, migration, overwrite or force authority. Short examples,
+settings and native-envelope limitation are in `docs/cli/router.md`.

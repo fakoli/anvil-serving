@@ -426,3 +426,60 @@ backing serves had been off for hours with no signal anywhere. See
 - [Configuration](../CONFIGURATION.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)
+
+
+## Caller accounting
+
+Use the supported operator commands:
+
+```bash
+anvil-serving router usage active
+anvil-serving router usage recent
+anvil-serving router usage query --granularity cumulative
+anvil-serving router keys bind --key-id key_fixture --kind human --owner-id human_fixture --expected-revision 0 --dry-run
+anvil-serving router keys backup --out /protected/snapshots/router.sqlite3
+anvil-serving router keys restore --snapshot /protected/snapshots/router.sqlite3 --out /protected/restore/router.sqlite3
+```
+
+`router-diagnostics.toml` loads automatically from the operator configuration home.
+Save the non-secret router origin, timeout and a protected raw-token file reference:
+
+```toml
+router_url = "https://example.test"
+timeout = 5
+credential_file = "secrets/usage-admin.token"
+```
+
+Installation owns creating that owner-only token file and enrolling its existing
+`workloads:read` authority. The CLI rejects links, unsafe ancestors and shared
+home `.env`; it never reads the diagnostic dotenv file for accounting. A selected
+process credential (`--auth-env NAME`) may override the file; credentials are never
+command arguments. This scope must be restricted to administrators and the dedicated
+scraper before sensitive usage is enabled. Inference/device/profile authority is
+insufficient. No read command replays inference or changes configuration.
+
+Default output is exact protected API JSON. Native `--json` adds the standard CLI
+envelope and its existing secret-key redaction, including `credential_id`; use
+default output for complete exact identity readback. Exact integers are never
+converted to floats or capped by the generic diagnostic projector.
+
+`recent` is the last24 UTC hours of detail, not a completeness claim. Exact `query`
+accepts `--granularity detail|daily|cumulative`, `--from-utc`, `--to-utc`, JSON
+`--filters '[["actor_kind","service"]]'`, JSON `--group-by '["model"]'`, `--limit`,
+`--cursor` and `--require-complete`. Null, boolean and integer filter values keep
+their native JSON types. Detail/daily require both UTC Z bounds; daily boundaries
+must be midnight. Cumulative forbids windows. Active allows only filters and limit
+(default50/max200). Coverage, retained floors, unknown/partial/not-applicable tokens,
+truncation, omissions, cursor and fixed refusal codes retain their API meanings.
+Missing/invalid activity samples or clock rewind produce null age; polling/phase
+updates never reset activity. See [the retained contract](../ROUTER-USER-USAGE.md).
+
+Binding is an operator-local ordinary-key revision CAS. `--dry-run` performs the
+same validation without writes; omit it to apply and read back the new actor revision.
+It preserves grants and immutable history, refusing stale revisions, expired or
+Connect-owned keys. No binding or snapshot command migrates schema automatically.
+Backup/restore reuse consistent protected SQLite snapshots and require an absent
+destination. Existing/newer/substituted files are never overwritten. Container
+operations use `--container NAME` with paths inside verified durable writable mounts;
+backup and restore outputs stay inside that container. Restore does not install,
+activate, re-admit or claim that active requests have drained.

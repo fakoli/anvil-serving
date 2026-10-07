@@ -32,7 +32,7 @@ def commands() -> CommandNode:
                     _node(
                         action, summary,
                         handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,)),
-                        mutation_class="mutate" if action in {"init", "create", "revoke"} else "read",
+                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
                             _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
@@ -53,12 +53,49 @@ def commands() -> CommandNode:
                         ("revoke", "Revoke a device key for subsequent requests.", (
                             _option("--key-id", summary="Device key ID to revoke (required).", value_name="ID"),
                         )),
+                        ("bind", "Bind an ordinary key to an operator-controlled owner with revision CAS.", (
+                            _option("--key-id", summary="Ordinary key ID (required).", value_name="ID"),
+                            _option("--kind", summary="human or service (required).", value_name="KIND"),
+                            _option("--owner-id", summary="Trusted opaque owner ID (required).", value_name="ID"),
+                            _option("--expected-revision", summary="Current binding revision; zero for unbound (required).", value_name="COUNT"),
+                            _option("--dry-run", summary="Validate without changing binding."),
+                        )),
+                        ("backup", "Take a consistent protected key/accounting snapshot.", (
+                            _option("--out", summary="Absent protected destination (required).", value_name="PATH"),
+                        )),
+                        ("restore", "Restore a protected snapshot to an absent destination without activation.", (
+                            _option("--snapshot", summary="Protected source snapshot (required).", value_name="PATH"),
+                            _option("--out", summary="Absent protected destination (required).", value_name="PATH"),
+                        )),
                         ("usage", "Read bounded key access history.", (
                             _option("--key-id", summary="Filter history to one key ID; _legacy selects the master.", value_name="ID"),
                             _option("--limit", summary="Maximum recent request records (default 50).", value_name="COUNT"),
                         )),
                     )
                 ),
+            ),
+            _node(
+                "usage", "Read protected exact retained or active caller accounting.",
+                children=tuple(_node(
+                    action, summary,
+                    handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch_usage", argv_prefix=(action,)),
+                    options=tuple(_option(name, summary=help, value_name=value) for name, help, value in (
+                        ("--config", "Saved router-diagnostics.toml; defaults to operator home.", "PATH"),
+                        ("--router-url", "Router HTTP(S) origin.", "URL"),
+                        ("--auth-env", "Process variable containing scoped operator credential.", "NAME"),
+                        ("--timeout", "Socket timeout, at most30 seconds.", "SECONDS"),
+                        ("--filters", "JSON array of unique typed dimension/value pairs.", "JSON"),
+                        ("--limit", "Bounded record/group limit.", "COUNT"),
+                    )) + (() if action == "active" else tuple(_option(name, summary=help, value_name=value) for name, help, value in (
+                        ("--granularity", "detail, daily or cumulative (default detail).", "CLASS"),
+                        ("--from-utc", "Inclusive UTC Z start bound.", "TIME"),
+                        ("--to-utc", "Exclusive UTC Z end bound.", "TIME"),
+                        ("--group-by", "JSON array of unique dimensions.", "JSON"),
+                        ("--cursor", "Opaque retained-query cursor.", "CURSOR"),
+                        ("--require-complete", "Refuse incomplete coverage.", None),
+                    ))),
+                    docs_anchor="docs/cli/router.md#caller-accounting",
+                ) for action, summary in (("active", "Read owned active samples."), ("recent", "Read last24h retained detail."), ("query", "Read exact supported retained history."))),
             ),
             _node(
                 "workloads",
