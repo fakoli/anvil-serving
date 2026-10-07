@@ -24,6 +24,16 @@ def test_receipt_creation_is_exclusive_and_never_replaces_another_file(tmp_path)
         with pytest.raises(native.NativePullError, match="new file"):
             native._reserve_receipt(target)
         native._write_receipt(target, {"status": "downloading"}, first)
+        if os.name == "nt":
+            # The Windows handle denies deletion/rename while reserved. The
+            # POSIX replacement attempt below is prevented at the OS boundary.
+            with pytest.raises(PermissionError):
+                target.rename(tmp_path / "original.json")
+            assert not (tmp_path / "original.json").exists()
+            assert json.loads(target.read_text())["status"] == "downloading"
+            native._write_receipt(target, {"status": "verified"}, first)
+            assert json.loads(target.read_text())["status"] == "verified"
+            return
         target.rename(tmp_path / "original.json")
         target.write_text('prior evidence')
         with pytest.raises(native.NativePullError, match="path changed"):
@@ -48,10 +58,17 @@ def test_downloader_version_rejects_python_interpreter():
 
 
 def test_real_process_records_bounded_hf_version(tmp_path):
-    executable = tmp_path / "hf"
-    executable.write_text('#!/bin/sh\nprintf "1.33.0\\n"\n')
+    executable = tmp_path / ("hf.cmd" if os.name == "nt" else "hf")
+
+    def write_version(version):
+        if os.name == "nt":
+            executable.write_bytes(f"@echo off\r\n@echo {version}\r\n".encode())
+        else:
+            executable.write_text(f'#!/bin/sh\nprintf "{version}\\n"\n')
+
+    write_version("1.33.0")
     executable.chmod(0o700)
     assert native._downloader_version(str(executable), dict(os.environ)) == "1.33.0"
     before = native._executable_identity(str(executable))
-    executable.write_text('#!/bin/sh\nprintf "1.34.0\\n"\n')
+    write_version("1.34.0")
     assert before != native._executable_identity(str(executable))
