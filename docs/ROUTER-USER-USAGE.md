@@ -106,7 +106,18 @@ Current display labels are resolved only in an independently authorized view;
 missing/deleted mappings preserve opaque historical identity.
 
 Successful admission must return the snapshot that actually authorized the
-request, never enrich it using a later mutable binding read. Minimum shared
+request, never enrich it using a later mutable binding read. Tracked paths opt in
+with `KeyStore.authenticate(token, snapshot=True, check_owner=False)` to capture
+the complete bounded candidate before admission. Default `snapshot=False`
+preserves the existing `Principal` with its complete model/path grants and
+Connect owner checks, without serializing accounting metadata. It remains usable
+with legacy `admit(principal.key_id) -> int`, including valid grants whose full
+accounting projection exceeds 16 KiB. Explicit tracked authentication refuses an
+oversized full snapshot with a fixed policy error; it never truncates authority.
+The snapshot flag must be a bool. Typed `bind_owner` validates the current Actor
+and expected revision within its existing writer transaction independently of
+full grant serialization, while retaining live ordinary-key and non-Connect
+fences. Minimum shared
 change: `KeyStore.admit(principal, requested_path, requested_model) ->
 AdmissionDecision(retry_after, caller_snapshot)` replaces key_id-only integer
 return for tracked paths. Within existing BEGIN IMMEDIATE, reread key/grants/
@@ -599,7 +610,7 @@ network gate or drain of unrelated controllers substitutes for that proof.
 | Owner task | Minimum seam contract | Writer coordination |
 |---|---|---|
 | T002 | `UsageStore.migrate/backup/restore`, same KeyStore `_connect`; schema compatibility, protected refs and coverage segments | Own schema first; no second connection/security layer. |
-| T003 | Extend `Principal` with frozen caller/effective-grant snapshot; `authenticate` returns trusted state; preserve Connect four-field binding and supported typed `bind_owner(key_id,kind,id,expected_revision)` | Keys/connect files serialized with T002/T010. |
+| T003 | `authenticate(...,snapshot=True)` captures frozen caller/effective-grant candidate; default Principal preserves complete legacy grants without snapshot serialization; preserve Connect four-field binding and typed `bind_owner(key_id,kind,id,expected_revision)` CAS | Keys/connect files serialized with T002/T010. |
 | T004 | `identity.verify_webui(headers,binding,now)->EndUser`; validated config binding selected by authenticated credential ID | Pure metadata verifier; no side-effect permission engine. |
 | T005 | Shared frozen `TokenUsage/TokenDirection` and `normalize_usage`; relay/SSE usage metadata propagation | Keep existing `StructuredResult` wire rendering; serialize decision_log edits. |
 | T006/T007 | UsageStore lifecycle then queries/prune | Same file, sequential owners; immutable normalized fields from T005. |

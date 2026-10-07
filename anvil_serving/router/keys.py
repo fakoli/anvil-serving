@@ -492,9 +492,15 @@ class KeyStore:
                 raise KeyStoreError("credential store is unavailable") from exc
         raise KeyStoreError("credential key allocation failed")
 
-    def _caller_candidate(self, connection, key_id, now):
-        """Read policy and binding together in the caller's held transaction."""
-        from .identity import Actor, CallerSnapshot, EffectiveGrant, _digest, connect_reference
+    @staticmethod
+    def _bound_actor(connection, key_id):
+        """Validate the current ordinary binding without serializing its grants."""
+        from .identity import Actor
+        binding = connection.execute("SELECT kind,owner_id,revision FROM key_owner_bindings WHERE key_id=?", (key_id,)).fetchone()
+        return Actor("unattributed") if binding is None else Actor(*binding)
+
+    def _caller_candidate(self, connection, key_id, now, *, snapshot=False):
+        """Read authority together; build bounded metadata only for tracked callers."""
         row = connection.execute(
             "SELECT key_id,name,models,paths,rpm,created_at,expires_at,revoked_at FROM keys WHERE key_id=?",
             (key_id,),
@@ -513,18 +519,18 @@ class KeyStore:
             binding, account = owned_account(connection, key_id)
             if binding is not None:
                 owner = binding[:3]
-                actor = Actor("human", binding[0], binding[3], binding[1], binding[2])
-                grant = EffectiveGrant("connect", reference=connect_reference(*binding), revision=binding[3],
-                    owner=binding[0], generation=binding[1], epoch=binding[2], approval_revision=binding[3],
-                    account_models=tuple(account["models"]), account_paths=tuple(account["paths"]),
-                    account_rpm=account["rpm"], account_expires_days=account["expires_days"], **policy)
-                return Principal(key_id, policy["models"], policy["paths"], owner,
-                                 CallerSnapshot(key_id, actor, grant, "owned_human"))
-        actor = Actor("unattributed")
-        if version == 3:
-            binding = connection.execute("SELECT kind,owner_id,revision FROM key_owner_bindings WHERE key_id=?", (key_id,)).fetchone()
-            if binding is not None:
-                actor = Actor(*binding)
+        if not snapshot:
+            return Principal(key_id, policy["models"], policy["paths"], owner)
+        from .identity import Actor, CallerSnapshot, EffectiveGrant, _digest, connect_reference
+        if owner is not None:
+            actor = Actor("human", binding[0], binding[3], binding[1], binding[2])
+            grant = EffectiveGrant("connect", reference=connect_reference(*binding), revision=binding[3],
+                owner=binding[0], generation=binding[1], epoch=binding[2], approval_revision=binding[3],
+                account_models=tuple(account["models"]), account_paths=tuple(account["paths"]),
+                account_rpm=account["rpm"], account_expires_days=account["expires_days"], **policy)
+            return Principal(key_id, policy["models"], policy["paths"], owner,
+                             CallerSnapshot(key_id, actor, grant, "owned_human"))
+        actor = self._bound_actor(connection, key_id) if version == 3 else Actor("unattributed")
         grant = EffectiveGrant("key_policy", reference=key_id, policy_digest=_digest(policy), **policy)
         caller = CallerSnapshot(key_id, actor, grant, "unbound" if actor.kind == "unattributed" else "owned_" + actor.kind)
         return Principal(key_id, policy["models"], policy["paths"], owner, caller)
@@ -546,7 +552,7 @@ class KeyStore:
                 principal = self._caller_candidate(connection, key_id, time.time())
                 if principal is None or principal.owner is not None:
                     raise KeyStoreError("ordinary credential key is unavailable")
-                current = principal.caller_snapshot.actor.binding_revision or 0
+                current = self._bound_actor(connection, key_id).binding_revision or 0
                 if current != expected_revision:
                     raise KeyStoreError("admission_policy_changed")
                 connection.execute("INSERT INTO key_owner_bindings VALUES (?,?,?,?) ON CONFLICT(key_id) DO UPDATE SET kind=excluded.kind,owner_id=excluded.owner_id,revision=excluded.revision",
@@ -556,7 +562,10 @@ class KeyStore:
         except sqlite3.Error:
             raise KeyStoreError("owner binding is unavailable") from None
 
-    def authenticate(self, token: str, *, check_owner=True) -> Principal | None:
+    def authenticate(self, token: str, *, check_owner=True, snapshot=False) -> Principal | None:
+        """Authenticate complete grants; opt into bounded tracked metadata explicitly."""
+        if type(snapshot) is not bool:
+            raise KeyStoreError("invalid authentication request")
         if not isinstance(token, str) or not 40 <= len(token) <= 128:
             return None
         digest = hashlib.sha256(token.encode("utf-8")).digest()
@@ -577,7 +586,7 @@ class KeyStore:
                     raise KeyStoreError("credential store token index is invalid")
                 from .connect_keys import Denied
                 try:
-                    principal = self._caller_candidate(connection, key_id, time.time())
+                    principal = self._caller_candidate(connection, key_id, time.time(), snapshot=snapshot)
                 except Denied:
                     return None
                 connection.execute("COMMIT")
@@ -620,7 +629,7 @@ class KeyStore:
                 if candidate is not None:
                     from .connect_keys import Denied
                     try:
-                        admitted = self._caller_candidate(connection, key_id, now)
+                        admitted = self._caller_candidate(connection, key_id, now, snapshot=True)
                     except Denied:
                         raise KeyStoreError("admission_policy_changed") from None
                     if admitted != candidate:

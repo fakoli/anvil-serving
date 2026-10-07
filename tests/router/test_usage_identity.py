@@ -52,12 +52,104 @@ def buckets(store):
         return db.execute("SELECT * FROM buckets ORDER BY key_id").fetchall()
 
 
+def wide_key(tmp_path, owned, migrated):
+    store = keys.KeyStore.initialize(tmp_path / "private" / "keys.sqlite3")
+    if migrated:
+        UsageStore(store).migrate()
+    models = [f"m{i:02d}_" + ("x" if owned else "é") * 124 for i in range(61 if owned else 64)]
+    assert all(len(model) == 128 for model in models)
+    store.owner_check = lambda *owner: True
+    binding = None
+    if owned:
+        portal = connect_keys.ConnectKeys(store, models)
+        who = (OWNER, "1", EPOCH)
+        portal.dispatch({"principal": OWNER, "generation": "1", "epoch": EPOCH, "administrator": False,
+                         "operation": {"action": "request"}})
+        revision = portal.view(who, False)["account"]["revision"]
+        portal.approve((ADMIN, "1", EPOCH), {"owner": OWNER, "revision": revision, "status": "approved",
+            "models": models, "paths": [CHAT], "rpm": 60, "expires_days": 7})
+        binding = (*who, portal.view(who, False)["account"]["revision"])
+    metadata, token = store.create("synthetic wide grants", models, [CHAT], expires_days=1, owner=binding)
+    return store, metadata, token, models
+
+
+@pytest.mark.parametrize("owned,migrated,schema", [(False, False, 1), (False, True, 3),
+    (True, False, 2), (True, True, 3)], ids=["ordinary-v1", "ordinary-v3", "connect-v2", "connect-v3"])
+def test_wide_default_grants_remain_complete_but_tracked_metadata_refuses(tmp_path, owned, migrated, schema):
+    store, metadata, token, models = wide_key(tmp_path, owned, migrated)
+    with store._connect() as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == schema
+    assert store.list_keys()[0]["models"] == models
+    checked = []
+    store.owner_check = lambda *owner: checked.append(owner) or True
+    principal = store.authenticate(token)
+    assert principal is not None and principal.caller_snapshot is None
+    assert principal.models == tuple(models) and principal.paths == tuple(metadata["paths"])
+    assert all(principal.allows_model(model, normalize=False) for model in models)
+    assert principal.allows_path("POST", CHAT) and not principal.allows_model("llm.ungranted")
+    assert principal.owner == ((OWNER, "1", EPOCH) if owned else None)
+    assert checked == ([(OWNER, "1", EPOCH)] if owned else [])
+    assert store.authenticate(token, check_owner=False) == principal
+    assert buckets(store) == []
+    with pytest.raises(IdentityError, match="^invalid caller policy metadata$"):
+        store.authenticate(token, snapshot=True, check_owner=False)
+    assert buckets(store) == []
+    assert store.admit(principal.key_id) == 0
+    assert len(buckets(store)) == (2 if owned else 1)
+    if owned:
+        store.owner_check = lambda *owner: False
+        assert store.authenticate(token) is None
+
+
+def test_wide_typed_binding_cas_is_independent_of_full_snapshot(tmp_path):
+    store, metadata, token, models = wide_key(tmp_path, False, True)
+    key_id = metadata["key_id"]
+    first = store.bind_owner(key_id, "service", "service:first", 0)
+    second = store.bind_owner(key_id, "human", "human:second", 1)
+    assert first == Actor("service", "service:first", 1)
+    assert second == Actor("human", "human:second", 2)
+    with pytest.raises(keys.KeyStoreError, match="admission_policy_changed"):
+        store.bind_owner(key_id, "service", "service:stale", 1)
+    with store._connect() as db:
+        assert store._bound_actor(db, key_id) == second
+    assert store.authenticate(token).models == tuple(models)
+    with pytest.raises(IdentityError, match="^invalid caller policy metadata$"):
+        store.authenticate(token, snapshot=True)
+    assert buckets(store) == []
+    store.revoke(key_id)
+    with pytest.raises(keys.KeyStoreError, match="ordinary credential key is unavailable"):
+        store.bind_owner(key_id, "service", "service:revoked", 2)
+    assert first.binding_revision == 1 and second.binding_revision == 2
+
+
+@pytest.mark.parametrize("snapshot", [None, 0, 1, "true", [], {}])
+def test_snapshot_flag_requires_bool(tmp_path, snapshot):
+    store, _, token = ordinary(tmp_path)
+    with pytest.raises(keys.KeyStoreError, match="^invalid authentication request$"):
+        store.authenticate(token, snapshot=snapshot)
+    assert buckets(store) == []
+
+
+def test_default_principal_requires_explicit_tracked_snapshot(tmp_path):
+    store, _, token = ordinary(tmp_path)
+    legacy = store.authenticate(token)
+    assert legacy.caller_snapshot is None
+    with pytest.raises(keys.KeyStoreError, match="admission_policy_changed"):
+        store.admit(legacy, CHAT, "llm.primary")
+    assert buckets(store) == []
+    tracked = store.authenticate(token, snapshot=True)
+    assert (legacy.key_id, legacy.models, legacy.paths, legacy.owner) == (
+        tracked.key_id, tracked.models, tracked.paths, tracked.owner)
+    decision = store.admit(tracked, CHAT, "llm.primary")
+    assert decision.retry_after == 0 and decision.caller_snapshot == tracked.caller_snapshot
+
+
 def test_binding_cas_and_immutable_history_without_labels(tmp_path):
     store, key_id, token = ordinary(tmp_path)
-    before = store.authenticate(token)
+    before = store.authenticate(token, snapshot=True)
     assert before.caller_snapshot.attribution_state == "unbound"
     human = store.bind_owner(key_id, "human", "human:synthetic", 0)
-    principal = store.authenticate(token)
+    principal = store.authenticate(token, snapshot=True)
     admitted = store.admit(principal, CHAT, "LLM.Primary").caller_snapshot
     saved = admitted.to_json()
     assert admitted.actor == human and admitted.credential_id == key_id
@@ -66,12 +158,12 @@ def test_binding_cas_and_immutable_history_without_labels(tmp_path):
     service = store.bind_owner(key_id, "service", "service:synthetic", 1)
     assert service.binding_revision == 2
     assert CallerSnapshot.from_json(saved) == admitted
-    assert store.authenticate(token).caller_snapshot.actor == service
+    assert store.authenticate(token, snapshot=True).caller_snapshot.actor == service
     with pytest.raises(keys.KeyStoreError, match="admission_policy_changed"):
         store.bind_owner(key_id, "human", "stale", 1)
-    assert store.authenticate(token).caller_snapshot.actor == service
+    assert store.authenticate(token, snapshot=True).caller_snapshot.actor == service
     assert store.revoke(key_id)
-    assert store.authenticate(token) is None and admitted.to_json() == saved
+    assert store.authenticate(token, snapshot=True) is None and admitted.to_json() == saved
 
 
 def test_two_binding_writers_have_one_cas_winner(tmp_path):
@@ -106,7 +198,7 @@ def test_binding_requires_migration_live_ordinary_key(tmp_path):
 @pytest.mark.parametrize("change", ["binding", "models", "paths", "rpm", "expires", "revoked"])
 def test_policy_races_refuse_before_any_bucket_write(tmp_path, change):
     store, key_id, token = ordinary(tmp_path)
-    principal = store.authenticate(token)
+    principal = store.authenticate(token, snapshot=True)
     if change == "binding": store.bind_owner(key_id, "human", "human:changed", 0)
     else:
         field, value = {"models": ("models", '["llm.other"]'), "paths": ("paths", '["/v1/models","/v1/embeddings"]'),
@@ -131,7 +223,7 @@ def test_expiry_during_sqlite_writer_wait_consumes_no_buckets(tmp_path, monkeypa
     original = store._connect
     with original() as db:
         db.execute("UPDATE keys SET expires_at=? WHERE key_id=?", (expiry, key_id))
-    principal = store.authenticate(token, check_owner=False)
+    principal = store.authenticate(token, check_owner=False, snapshot=True)
     assert principal is not None
     checked = []
     store.owner_check = lambda *owner: checked.append(owner) or True
@@ -167,22 +259,22 @@ def test_expiry_during_sqlite_writer_wait_consumes_no_buckets(tmp_path, monkeypa
     assert time.time() >= expiry
     assert buckets(store) == before  # Includes the shared Connect account bucket.
     assert checked == ([(OWNER, "1", EPOCH)] if tracked and owned else [])
-    assert store.authenticate(token, check_owner=False) is None
+    assert store.authenticate(token, check_owner=False, snapshot=True) is None
 
 
 def test_authentication_reads_key_and_binding_in_one_transaction(tmp_path, monkeypatch):
     store, key_id, token = ordinary(tmp_path)
     original = store._caller_candidate
-    def inspect_transaction(db, *args):
+    def inspect_transaction(db, *args, **kwargs):
         assert db.in_transaction
-        return original(db, *args)
+        return original(db, *args, **kwargs)
     monkeypatch.setattr(store, "_caller_candidate", inspect_transaction)
-    assert store.authenticate(token).key_id == key_id
+    assert store.authenticate(token, snapshot=True).key_id == key_id
 
 
 def test_connect_snapshot_exact_narrowing_and_rotation(tmp_path):
     store, _, key_id, token, account = connect(tmp_path)
-    principal = store.authenticate(token)
+    principal = store.authenticate(token, snapshot=True)
     caller = store.admit(principal, CHAT, "llm.primary").caller_snapshot
     grant = caller.grant
     assert principal.owner == (OWNER, "1", EPOCH)
@@ -194,7 +286,7 @@ def test_connect_snapshot_exact_narrowing_and_rotation(tmp_path):
     with pytest.raises(keys.KeyStoreError): store.bind_owner(key_id, "service", "service:fake", 0)
     metadata, rotated = store.create("rotation", ["llm.primary"], [CHAT], 60, 7,
                                      owner=(OWNER, "1", EPOCH, account["revision"]))
-    rotated_caller = store.admit(store.authenticate(rotated), CHAT, "llm.primary").caller_snapshot
+    rotated_caller = store.admit(store.authenticate(rotated, snapshot=True), CHAT, "llm.primary").caller_snapshot
     assert rotated_caller.credential_id == metadata["key_id"] != caller.credential_id
     assert rotated_caller.actor == caller.actor and rotated_caller.grant.reference == caller.grant.reference
     saved = caller.to_json()
@@ -205,7 +297,7 @@ def test_connect_snapshot_exact_narrowing_and_rotation(tmp_path):
 @pytest.mark.parametrize("change", ["approval", "binding", "generation", "epoch", "denied", "forgotten"])
 def test_connect_local_cas_changes_consume_no_tokens(tmp_path, change):
     store, _, key_id, token, _ = connect(tmp_path)
-    principal = store.authenticate(token, check_owner=False)
+    principal = store.authenticate(token, check_owner=False, snapshot=True)
     store.owner_check = lambda *identity: True
     with store._connect() as db:
         if change == "approval": db.execute("UPDATE connect_accounts SET revision=revision+1 WHERE owner=?", (OWNER,))
@@ -220,7 +312,7 @@ def test_connect_local_cas_changes_consume_no_tokens(tmp_path, change):
 
 def test_external_check_holds_no_sqlite_transaction_and_final_cas_wins(tmp_path):
     store, _, key_id, token, _ = connect(tmp_path)
-    principal = store.authenticate(token, check_owner=False)
+    principal = store.authenticate(token, check_owner=False, snapshot=True)
     checked = []
     def checker(*owner):
         checked.append(owner)
@@ -236,20 +328,20 @@ def test_external_check_holds_no_sqlite_transaction_and_final_cas_wins(tmp_path)
 
 def test_connect_checker_denial_and_shared_rpm(tmp_path):
     store, _, _, token, account = connect(tmp_path, rpm=1)
-    principal = store.authenticate(token, check_owner=False)
+    principal = store.authenticate(token, check_owner=False, snapshot=True)
     store.owner_check = lambda *identity: False
     with pytest.raises(keys.KeyStoreError): store.admit(principal, CHAT, "llm.primary")
     assert buckets(store) == []
     store.owner_check = lambda *identity: True
     assert store.admit(principal, CHAT, "llm.primary").caller_snapshot is not None
     _, second = store.create("second", ["llm.primary"], [CHAT], 1, 7, owner=(OWNER,"1",EPOCH,account["revision"]))
-    decision = store.admit(store.authenticate(second), CHAT, "llm.primary")
+    decision = store.admit(store.authenticate(second, snapshot=True), CHAT, "llm.primary")
     assert decision.retry_after > 0 and decision.caller_snapshot is None
 
 
 def test_denied_model_path_and_rate_have_no_snapshot(tmp_path, monkeypatch):
     store, key_id, token = ordinary(tmp_path, rpm=1)
-    principal = store.authenticate(token)
+    principal = store.authenticate(token, snapshot=True)
     for path, model in [("/v1/embeddings", "llm.primary"), (CHAT, "llm.other")]:
         with pytest.raises(keys.KeyStoreError): store.admit(principal, path, model)
     assert buckets(store) == []
@@ -262,7 +354,7 @@ def test_denied_model_path_and_rate_have_no_snapshot(tmp_path, monkeypatch):
 
 def test_failed_commit_returns_no_snapshot_and_rolls_back(tmp_path, monkeypatch):
     store, _, token = ordinary(tmp_path)
-    principal = store.authenticate(token)
+    principal = store.authenticate(token, snapshot=True)
     original = store._connect
     class Connection:
         def __init__(self, db): self.db = db
@@ -318,7 +410,7 @@ def test_configured_invalid_decisions_cannot_make_caller(decision):
 def test_closed_metadata_rejects_unknown_and_inconsistent_fields(tmp_path, mutate):
     store, key_id, token = ordinary(tmp_path)
     store.bind_owner(key_id, "human", "human:example", 0)
-    value = store.authenticate(token).caller_snapshot.to_dict()
+    value = store.authenticate(token, snapshot=True).caller_snapshot.to_dict()
     mutate(value)
     with pytest.raises(IdentityError): CallerSnapshot.from_dict(value)
 
@@ -334,4 +426,4 @@ def test_duplicate_json_and_bound_overflow_refuse(tmp_path):
         db.execute("UPDATE keys SET models=? WHERE key_id=?", (json.dumps(models), owned_key))
         db.execute("UPDATE connect_accounts SET models=? WHERE owner=?", (json.dumps(models), OWNER))
     with portal_store._connect() as db:
-        with pytest.raises(IdentityError): portal_store._caller_candidate(db, owned_key, keys.time.time())
+        with pytest.raises(IdentityError): portal_store._caller_candidate(db, owned_key, keys.time.time(), snapshot=True)
