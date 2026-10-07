@@ -383,6 +383,9 @@ Default request page50/max200 (reuse diagnostic bounds), grouped page100/max500;
 maximum query8192 ASCII bytes before decoding (existing operator-route cap),16 filter fields, eight grouping fields per request,
 maximum366 UTC days per detail/daily query. Range cap bounds scanning, not storage
 retention. Cumulative has no range and selects retained dimensional groups.
+Persist actual monotone detail/daily retention floors on the domain row in the
+prune transaction; they survive restart and clock rewind, cannot regress, and
+must not be inferred from the minimum remaining row timestamp.
 Stable opaque cursor binds snapshot/revision, canonical filters and last ordered
 key; cursor cannot change query authority. Truncation provides returned/omitted
 or unknown omitted and next cursor; truncated totals never masquerade as full

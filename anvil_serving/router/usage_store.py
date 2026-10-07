@@ -60,7 +60,11 @@ _DDL = (
         domain_id TEXT NOT NULL PRIMARY KEY, coverage_epoch TEXT NOT NULL,
         configuration_revision TEXT NOT NULL,
         snapshot_revision INTEGER NOT NULL DEFAULT 0 CHECK(typeof(snapshot_revision)='integer' AND snapshot_revision>=0),
-        accounting_failures INTEGER NOT NULL DEFAULT 0 CHECK(typeof(accounting_failures)='integer' AND accounting_failures>=0))"""),
+        accounting_failures INTEGER NOT NULL DEFAULT 0 CHECK(typeof(accounting_failures)='integer' AND accounting_failures>=0),
+        detail_floor_utc TEXT CHECK(detail_floor_utc IS NULL OR
+            (typeof(detail_floor_utc)='text' AND length(CAST(detail_floor_utc AS BLOB))<=32)),
+        daily_floor_utc TEXT CHECK(daily_floor_utc IS NULL OR
+            (typeof(daily_floor_utc)='text' AND length(CAST(daily_floor_utc AS BLOB))<=32)))"""),
     ("usage_runs", """CREATE TABLE usage_runs (
         run_id TEXT NOT NULL PRIMARY KEY, domain_id TEXT NOT NULL, started_at TEXT NOT NULL,
         ended_at TEXT, state TEXT NOT NULL CHECK(state IN ('live','dead','unknown')),

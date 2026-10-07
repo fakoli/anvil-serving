@@ -45,7 +45,7 @@ def group(db, table, **counters):
 def ledger(store):
     with store._connect() as db:
         db.execute("INSERT INTO key_owner_bindings VALUES ('key_fixture','human','human:synthetic',1)")
-        db.execute("INSERT INTO usage_domains VALUES ('router-domain','2026-01-01T00:00:00Z','config-1',1,0)")
+        db.execute("INSERT INTO usage_domains (domain_id,coverage_epoch,configuration_revision,snapshot_revision,accounting_failures) VALUES ('router-domain','2026-01-01T00:00:00Z','config-1',1,0)")
         db.execute("INSERT INTO usage_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             "run-1", "router-domain", "2026-01-01T00:00:00Z", None, "live",
             "synthetic-host-domain", "synthetic-boot", 1, 2, 1, 2, 1000, 1, 3, 123, 456))
@@ -490,3 +490,22 @@ def test_observation_checkpoint_is_nullable_bounded_text_and_preserved_in_snapsh
     UsageStore(store).backup(target)
     with KeyStore(target)._connect() as db:
         assert db.execute("SELECT observation_payload FROM usage_starts").fetchone() == (checkpoint,)
+
+
+def test_retention_floors_are_nullable_bounded_text_and_survive_snapshot(tmp_path):
+    store = store_at(tmp_path)
+    UsageStore(store).migrate()
+    ledger(store)
+    with store._connect() as db:
+        assert db.execute("SELECT detail_floor_utc,daily_floor_utc FROM usage_domains").fetchone() == (None, None)
+        for field in ("detail_floor_utc", "daily_floor_utc"):
+            for invalid in ("x" * 33, "é" * 17, sqlite3.Binary(b"not text")):
+                with pytest.raises(sqlite3.IntegrityError):
+                    db.execute(f"UPDATE usage_domains SET {field}=?", (invalid,))
+        db.execute("UPDATE usage_domains SET detail_floor_utc=?,daily_floor_utc=?", (
+            "2026-01-01T00:00:00Z", "2025-12-01T00:00:00Z"))
+    target = tmp_path / "snapshot" / "keys.sqlite3"
+    UsageStore(store).backup(target)
+    with KeyStore(target)._connect() as db:
+        assert db.execute("SELECT detail_floor_utc,daily_floor_utc FROM usage_domains").fetchone() == (
+            "2026-01-01T00:00:00Z", "2025-12-01T00:00:00Z")
