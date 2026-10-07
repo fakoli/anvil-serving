@@ -75,6 +75,7 @@ class _ActiveEntry:
     created_at: datetime
     updated_at: datetime
     diagnostic: tuple = ()
+    diagnostic_at: datetime | None = None
     usage_start: object = None
     usage_route: object = None
     usage_tokens: object = None
@@ -150,10 +151,12 @@ class RouterWorkloadRegistry:
             value = measurements.get(key)
             if type(value) is int and 0 <= value <= MAX_COUNT:
                 values[key] = value
+        sampled_at = self._now()
         with self._lock:
             entry = self._active.get(request_id)
             if entry is not None:
-                self._active[request_id] = dataclasses.replace(entry, diagnostic=tuple(values.items()))
+                self._active[request_id] = dataclasses.replace(entry,
+                    diagnostic=tuple(values.items()), diagnostic_at=sampled_at)
                 self._usage_revision += 1
 
     def attach_usage(self, request_id, start):
@@ -230,7 +233,13 @@ class RouterWorkloadRegistry:
             dimensions = UsageStore._dimensions(start, tokens, "active", None)
             if any(dimensions[name] != value for name, value in filters):
                 continue
-            diagnostic_phase = dict(entry.diagnostic).get("phase")
+            diagnostic = dict(entry.diagnostic)
+            diagnostic_phase = diagnostic.get("phase")
+            last_activity = diagnostic.get("last_activity_ms")
+            if last_activity is not None and entry.diagnostic_at is not None and entry.diagnostic_at <= now:
+                last_activity = min(MAX_COUNT, last_activity + int((now - entry.diagnostic_at).total_seconds() * 1000))
+            else:
+                last_activity = None
             phase = entry.usage_phase
             if (phase == "admitted" and diagnostic_phase in {"checking", "queued", "admitted"}
                     or phase == "dispatched" and diagnostic_phase == "streaming"):
@@ -241,7 +250,7 @@ class RouterWorkloadRegistry:
                 "created_at": format_workload_timestamp(entry.created_at),
                 "updated_at": format_workload_timestamp(entry.updated_at),
                 "elapsed_ms": max(0, int((now - entry.created_at).total_seconds() * 1000)),
-                "last_activity_ms": max(0, int((now - entry.updated_at).total_seconds() * 1000)),
+                "last_activity_ms": last_activity,
                 "phase": phase,
                 "route": entry.usage_route.to_dict() if entry.usage_route is not None else None,
                 "tokens": tokens.to_dict(), "accounting_status": "in_progress"})
@@ -441,6 +450,7 @@ class RouterWorkloadRegistry:
             if represented and entry.gateway_request_id in self._active:
                 updated = dataclasses.replace(updated,
                     diagnostic=self._active[entry.gateway_request_id].diagnostic,
+                    diagnostic_at=self._active[entry.gateway_request_id].diagnostic_at,
                     usage_start=self._active[entry.gateway_request_id].usage_start,
                     usage_route=self._active[entry.gateway_request_id].usage_route,
                     usage_tokens=self._active[entry.gateway_request_id].usage_tokens,

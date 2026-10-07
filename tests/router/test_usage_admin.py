@@ -299,3 +299,69 @@ def test_actual_frontdoor_request_visible_then_owned_cleanup(policy,store,monkey
         fields={'granularity':'detail','from_utc':AT,'to_utc':'2026-10-07T13:00:00Z'}
         status,_,raw=request(address,USAGE_ENDPOINT+'?'+urlencode(fields))
         assert status==200 and json.loads(raw)['records'][0]['caller']==record['caller']
+
+
+def test_owned_stream_activity_ages_between_samples_without_poll_or_phase_reset(store):
+    from datetime import timedelta
+    from anvil_serving.router.request_control import RequestControl
+    usage,_,run,scope=store
+    clock=[datetime.fromisoformat(AT.replace('Z','+00:00'))]
+    monotonic=[0.0]
+    registry=RouterWorkloadRegistry(DecisionLog(),clock=lambda:clock[0])
+    inv=UsageInvocation(usage,run,scope,forwarded_caller(),'chat','llm.primary',registry=registry,clock=lambda:clock[0])
+    inv.dispatch()
+    control=RequestControl(clock=lambda:monotonic[0],idle_timeout_s=120,total_timeout_s=600)
+    def advance(seconds):
+        monotonic[0]+=seconds;clock[0]+=timedelta(seconds=seconds)
+    def poll():
+        # The common delivery loop passes the OWNED RequestControl snapshot.
+        registry.observe_request(inv.registry_id,{},'llm.primary',control.snapshot())
+    def age():
+        _,entries,omitted=registry.usage_snapshot()
+        return registry.active_usage_page(entries,omitted,clock[0])['records'][0]['last_activity_ms']
+    assert age() is None
+    advance(60);poll();assert age() is None  # No upstream activity yet.
+    control.note_activity('streaming');advance(.005);poll()
+    assert age()==control.snapshot()['last_activity_ms']==5  # Not the60s phase age.
+    from anvil_serving.observability.workloads import WorkloadState
+    assert inv.token.advance(WorkloadState.ADMITTED) and age()==5
+    advance(10);assert age()==10005  # Stopped sampling still ages.
+    advance(20);poll();activity_age=control.snapshot()['last_activity_ms']
+    assert age()==activity_age and activity_age>=30000
+    poll();assert age()==activity_age  # Polling does not fake upstream activity.
+    registry.observe_usage(inv.registry_id,phase='finalizing')
+    assert age()==activity_age  # Changing phase cannot reset stream inactivity.
+    advance(5);assert age()==activity_age+5000
+    control.note_activity('streaming');poll();assert age()==0
+    clock[0]-=timedelta(seconds=1);assert age() is None  # Clock rewind is unknown.
+    inv.finish('error')
+
+
+@pytest.mark.parametrize('value',[None,True,-1,10**100,'5'])
+def test_missing_or_invalid_owned_activity_is_unknown(store,value):
+    usage,_,run,scope=store
+    clock=lambda:datetime.fromisoformat(AT.replace('Z','+00:00'))
+    registry=RouterWorkloadRegistry(DecisionLog(),clock=clock)
+    inv=UsageInvocation(usage,run,scope,forwarded_caller(),'chat','llm.primary',registry=registry,clock=clock)
+    registry.observe_request(inv.registry_id,{},'llm.primary',{'phase':'streaming','last_activity_ms':value})
+    _,entries,omitted=registry.usage_snapshot()
+    assert registry.active_usage_page(entries,omitted,clock())['records'][0]['last_activity_ms'] is None
+    inv.finish('error')
+
+
+def test_activity_sample_clock_and_count_bounds(store):
+    from datetime import timedelta
+    from anvil_serving.observability.workloads import MAX_COUNT
+    usage,_,run,scope=store
+    clock=[datetime.fromisoformat(AT.replace('Z','+00:00'))]
+    registry=RouterWorkloadRegistry(DecisionLog(),clock=lambda:clock[0])
+    inv=UsageInvocation(usage,run,scope,forwarded_caller(),'chat','llm.primary',registry=registry,clock=lambda:clock[0])
+    registry.observe_request(inv.registry_id,{},'llm.primary',{'last_activity_ms':MAX_COUNT})
+    clock[0]+=timedelta(seconds=2)
+    _,entries,omitted=registry.usage_snapshot()
+    assert registry.active_usage_page(entries,omitted,clock[0])['records'][0]['last_activity_ms']==MAX_COUNT
+    registry._clock=lambda:None
+    registry.observe_request(inv.registry_id,{},'llm.primary',{'last_activity_ms':5})
+    _,entries,omitted=registry.usage_snapshot()
+    assert registry.active_usage_page(entries,omitted,clock[0])['records'][0]['last_activity_ms'] is None
+    registry._clock=lambda:clock[0];inv.finish('error')

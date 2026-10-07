@@ -500,7 +500,11 @@ range/group/cursor/complete arguments are rejected. Its closed schema is
 Each record contains only `gateway_request_id`, `request_id`, frozen `caller`,
 `kind`, `model`, `accepted_at`, `created_at`, `updated_at`, `elapsed_ms`,
 `last_activity_ms`, owned `phase`, typed `route`, normalized `tokens` and
-`accounting_status=in_progress`. Existing validated CallerSnapshot, route and
+`accounting_status=in_progress`. `last_activity_ms` uses the owned RequestControl
+activity age plus time since its diagnostic sample, capped at the existing count
+bound. It is null before observed streaming activity, for missing/invalid samples
+or collection clock rewind; phase transitions and repeated delivery polls do not
+reset upstream activity age. Existing validated CallerSnapshot, route and
 token serializers retain their closed allowlists; diagnostic session/client
 strings are excluded. The phase uses owned RequestControl diagnostics where
 available, with finalizing retained until actual owned completion. The bounded
