@@ -8,8 +8,10 @@ from __future__ import annotations
 import os
 import sqlite3
 import time
+from pathlib import Path
 
-from .keys import KeyStore, KeyStoreError, _secure_database, _unlink_created
+from .keys import (KeyStore, KeyStoreError, _publish_database, _secure_database,
+                   _staged_database, _unlink_created)
 
 _VERSION = 3
 
@@ -80,7 +82,9 @@ _DDL = (
         kind TEXT NOT NULL, model TEXT, parent_request_id TEXT, attempt_id TEXT,
         usage_relation TEXT NOT NULL CHECK(usage_relation IN ('exclusive','inclusive_parent','unobserved')),
         start_payload TEXT NOT NULL CHECK(length(CAST(start_payload AS BLOB))<=32768),
-        dispatched INTEGER CHECK(dispatched IN (0,1)), route_association TEXT)"""),
+        dispatched INTEGER CHECK(dispatched IN (0,1)), route_association TEXT,
+        observation_payload TEXT CHECK(observation_payload IS NULL OR
+            (typeof(observation_payload)='text' AND length(CAST(observation_payload AS BLOB))<=4096)))"""),
     ("usage_details", """CREATE TABLE usage_details (
         request_id TEXT NOT NULL PRIMARY KEY, ended_at TEXT NOT NULL, outcome TEXT NOT NULL,
         terminal_payload TEXT NOT NULL CHECK(length(CAST(terminal_payload AS BLOB))<=32768))"""),
@@ -140,43 +144,43 @@ class UsageStore:
         This contains protected authority state as well as accounting metadata;
         callers must keep the snapshot private. Never replace an existing file.
         """
-        destination = None
-        complete = False
+        target = Path(target).expanduser().absolute()
         try:
-            with self.key_store._connect() as source:
-                version = source.execute("PRAGMA user_version").fetchone()[0]
-                if version == _VERSION:
-                    _validate_schema(source)
-                destination = KeyStore.initialize(target)
-                created = destination._created_identity
-                busy_deadline = time.monotonic() + 1.0
-
-                def progress(status, _remaining, _total):
-                    nonlocal busy_deadline
-                    _secure_database(destination.path, exists=True, identity=created)
-                    if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
-                        if time.monotonic() >= busy_deadline:
-                            raise KeyStoreError("accounting snapshot is busy")
-                    else:
-                        busy_deadline = time.monotonic() + 1.0
-
-                with destination._connect() as copied:
-                    source.backup(copied, pages=128, progress=progress, sleep=0.01)
-                    copied_version = copied.execute("PRAGMA user_version").fetchone()[0]
-                    if copied_version not in (1, 2, _VERSION):
-                        raise KeyStoreError("accounting snapshot format is unsupported")
-                    if copied_version == _VERSION:
-                        _validate_schema(copied)
-                    if copied.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
-                        raise KeyStoreError("accounting snapshot is invalid")
-            _secure_database(destination.path, exists=True, identity=created)
-            complete = True
+            with self.key_store._connect() as source, _staged_database(target) as staged:
+                destination = None
+                try:
+                    version = source.execute("PRAGMA user_version").fetchone()[0]
+                    if version == _VERSION:
+                        _validate_schema(source)
+                    destination = KeyStore.initialize(staged)
+                    created = destination._created_identity
+                    busy_deadline = time.monotonic() + 1.0
+    
+                    def progress(status, _remaining, _total):
+                        nonlocal busy_deadline
+                        _secure_database(destination.path, exists=True, identity=created)
+                        if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                            if time.monotonic() >= busy_deadline:
+                                raise KeyStoreError("accounting snapshot is busy")
+                        else:
+                            busy_deadline = time.monotonic() + 1.0
+    
+                    with destination._connect() as copied:
+                        source.backup(copied, pages=128, progress=progress, sleep=0.01)
+                        copied_version = copied.execute("PRAGMA user_version").fetchone()[0]
+                        if copied_version not in (1, 2, _VERSION):
+                            raise KeyStoreError("accounting snapshot format is unsupported")
+                        if copied_version == _VERSION:
+                            _validate_schema(copied)
+                        if copied.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
+                            raise KeyStoreError("accounting snapshot is invalid")
+                    _publish_database(destination.path, target, created)
+                finally:
+                    if destination is not None:
+                        _unlink_created(destination.path, destination._created_identity)
             return {"schema_version": copied_version, "copied": True}
         except (OSError, sqlite3.Error):
             raise KeyStoreError("accounting snapshot is unavailable") from None
-        finally:
-            if destination is not None and not complete:
-                _unlink_created(destination.path, destination._created_identity)
 
     @classmethod
     def restore(cls, snapshot: str | os.PathLike[str], target: str | os.PathLike[str]) -> dict:

@@ -52,7 +52,7 @@ def ledger(store):
         db.execute("INSERT INTO usage_coverage_segments VALUES (?,?,?,?,?,?,?,?,?)", (
             "segment-1", "router-domain", "run-1", "config-1", 1,
             "2026-01-01T00:00:00Z", None, None, 0))
-        db.execute("INSERT INTO usage_starts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        db.execute("INSERT INTO usage_starts (request_id,run_id,domain_id,segment_id,configuration_revision,accepted_at,caller,kind,model,parent_request_id,attempt_id,usage_relation,start_payload,dispatched,route_association) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             "request-1", "run-1", "router-domain", "segment-1", "config-1",
             "2026-01-01T00:00:00Z", '{"schema":"router-usage/v1"}', "chat", "llm.primary",
             None, "attempt-1", "exclusive", '{"request_id":"request-1"}', 1, None))
@@ -279,7 +279,8 @@ def test_backup_failure_preserves_competing_replacement(tmp_path, monkeypatch):
         nonlocal calls
         calls += 1
         if calls == 2:
-            target.unlink()
+            if target.exists():
+                target.unlink()
             target.write_bytes(b"competing target")
             target.chmod(0o600)
             raise KeyStoreError("synthetic replacement failure")
@@ -359,7 +360,8 @@ def test_initialization_failure_preserves_substituted_target(tmp_path, monkeypat
     target = tmp_path / "private" / "keys.sqlite3"
 
     def replace():
-        target.unlink()
+        if target.exists():
+            target.unlink()
         target.write_bytes(b"competing target")
         target.chmod(0o600)
 
@@ -387,3 +389,92 @@ def test_initialization_failure_preserves_substituted_target(tmp_path, monkeypat
         KeyStore.initialize(target)
     assert target.read_bytes() == b"competing target"
     assert target.stat().st_mode & 0o077 == 0
+
+
+@pytest.mark.parametrize("operation", ["initialize", "backup", "restore"])
+@pytest.mark.parametrize("phase", ["destination-open", "publication"])
+def test_creation_race_preserves_newer_database_bytes_authority_and_ledger(
+        tmp_path, monkeypatch, operation, phase):
+    source = store_at(tmp_path)
+    UsageStore(source).migrate()
+    ledger(source)
+    newer = KeyStore.initialize(tmp_path / "newer" / "keys.sqlite3")
+    revoked, token = newer.create("newer-device", ["llm.primary"], [CHAT])
+    newer.revoke(revoked["key_id"])
+    portal = connect_keys.ConnectKeys(newer, ["llm.primary"])
+    approve(portal)
+    UsageStore(newer).migrate()
+    ledger(newer)
+    with newer._connect() as db:
+        db.execute("UPDATE usage_cumulative SET requests=9,measured_input=99")
+    expected_rows = rows(newer)
+    expected_bytes = newer.path.read_bytes()
+    target = tmp_path / "destination" / "keys.sqlite3"
+    injected = False
+
+    def install_newer():
+        nonlocal injected
+        if target.exists():
+            target.unlink()
+        target.write_bytes(expected_bytes)
+        target.chmod(0o600)
+        injected = True
+
+    if phase == "publication":
+        link = keys.os.link
+
+        def publish(staged, destination, *args, **options):
+            if destination == target and not injected:
+                install_newer()
+            return link(staged, destination, *args, **options)
+        monkeypatch.setattr(keys.os, "link", publish)
+    elif operation == "initialize":
+        connect = keys.sqlite3.connect
+
+        def open_destination(path, *args, **options):
+            if not injected:
+                install_newer()
+            return connect(path, *args, **options)
+        monkeypatch.setattr(keys.sqlite3, "connect", open_destination)
+    else:
+        connect = KeyStore._connect
+
+        @contextmanager
+        def open_destination(store):
+            if store.path != source.path and not injected:
+                install_newer()
+            with connect(store) as db:
+                yield db
+        monkeypatch.setattr(KeyStore, "_connect", open_destination)
+
+    with pytest.raises(KeyStoreError):
+        if operation == "initialize":
+            KeyStore.initialize(target)
+        elif operation == "backup":
+            UsageStore(source).backup(target)
+        else:
+            UsageStore.restore(source.path, target)
+    assert injected
+    assert target.read_bytes() == expected_bytes
+    preserved = KeyStore(target)
+    assert rows(preserved) == expected_rows
+    assert preserved.authenticate(token) is None
+    assert target.stat().st_mode & 0o077 == 0
+    assert list(target.parent.iterdir()) == [target]
+
+
+def test_observation_checkpoint_is_nullable_bounded_text_and_preserved_in_snapshot(tmp_path):
+    store = store_at(tmp_path)
+    UsageStore(store).migrate()
+    ledger(store)
+    with store._connect() as db:
+        assert db.execute("SELECT observation_payload FROM usage_starts").fetchone() == (None,)
+        for invalid in ("x" * 4097, "é" * 2049, sqlite3.Binary(b"not text")):
+            with pytest.raises(sqlite3.IntegrityError):
+                db.execute("UPDATE usage_starts SET observation_payload=?", (invalid,))
+        checkpoint = '{"schema":"router-observation/v1","sequence":1,"tokens":{}}'
+        db.execute("UPDATE usage_starts SET observation_payload=?", (checkpoint,))
+    target = tmp_path / "snapshot" / "keys.sqlite3"
+    UsageStore(store).backup(target)
+    with KeyStore(target)._connect() as db:
+        assert db.execute("SELECT observation_payload FROM usage_starts").fetchone() == (checkpoint,)

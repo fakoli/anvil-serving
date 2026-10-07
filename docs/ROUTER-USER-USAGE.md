@@ -228,7 +228,8 @@ claim to exact complete consumption. No duplicate based on user session IDs.
 Minimal `UsageStore` lives in `router/usage_store.py`, receives existing protected
 `KeyStore` connection boundary, and owns only accounting tables:
 `migrate()`, `register_run(owner)->run_id`, `start(RequestStart)->started|same`,
-`note_dispatch(request_id,attempt_route)`, `finalize(Terminal)->committed|same`,
+`note_dispatch(request_id,attempt_route)`, `note_observation(request_id,checkpoint)`,
+`finalize(Terminal)->committed|same`,
 `query(UsageQuery)->UsageResult`, `prune(now)->PruneResult`,
 `recover(proven_dead_run_ids)->RecoveryResult`, `health()->UsageHealth`.
 No store calls inference. T002 owns schema/backup/compatibility; T006 owns
@@ -252,6 +253,13 @@ selected from declared configuration; record optional selected route before or
 with actual dispatch marker. A crash around dispatch cannot prove whether
 upstream execution occurred: interrupted records expose dispatch uncertainty,
 not an invented zero or inferred successful attempt.
+
+
+The start row retains a nullable, bounded 4096-byte text observation checkpoint.
+`note_observation` commits the latest ordered observation for an unresolved
+request; it changes no aggregate. The latest committed bounded observation
+survives proven-dead recovery, with recovered observed components marked partial.
+An uncommitted observation remains unknown; NULL means unobserved, never zero.
 
 Finalize changes unresolved row and daily/cumulative contribution in one
 `BEGIN IMMEDIATE` transaction. Same canonical terminal payload is a no-op;

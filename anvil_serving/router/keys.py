@@ -244,6 +244,60 @@ def _unlink_created(path: Path, created: os.stat_result) -> None:
         pass
 
 
+
+@contextmanager
+def _staged_database(target: Path):
+    """Keep SQLite writes in a fresh private directory on the target filesystem."""
+    _secure_directory(target.parent, create=True)
+    _secure_database(target, exists=False)
+    if target.exists():
+        raise KeyStoreError("credential store already exists")
+    directory = target.parent / (".anvil-keys-" + secrets.token_hex(16))
+    directory.mkdir(mode=0o777 if _is_windows() else 0o700)
+    created = directory.lstat()
+    try:
+        _secure_directory(directory, create=False)
+        yield directory / "database.sqlite3"
+    finally:
+        try:
+            if os.path.samestat(directory.lstat(), created):
+                directory.rmdir()
+        except OSError:
+            pass
+
+
+def _publish_database(staged: Path, target: Path, created: os.stat_result) -> None:
+    """Publish a completed snapshot atomically; never open the final path for writing."""
+    _secure_database(staged, exists=True, identity=created)
+    _secure_directory(target.parent, create=False)
+    descriptor = os.open(staged, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        if not os.path.samestat(os.fstat(descriptor), created):
+            raise KeyStoreError("credential store file changed during creation")
+        _private_created_descriptor(descriptor)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    try:
+        # Native create-if-absent, as in service installation. Rename/replace
+        # would erase a newer database that appeared while SQLite was working.
+        os.link(staged, target)
+    except FileExistsError:
+        raise KeyStoreError("credential store already exists") from None
+    try:
+        _unlink_created(staged, created)
+        _secure_database(target, exists=True, identity=created)
+        if not _is_windows():
+            descriptor = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    except (KeyStoreError, OSError):
+        _unlink_created(target, created)
+        raise
+
+
 def _json_list(value: object, label: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not value or len(value) > 64:
         raise KeyStoreError("credential store contains invalid grants")
@@ -282,68 +336,53 @@ class KeyStore:
     @classmethod
     def initialize(cls, path: str | os.PathLike[str]) -> "KeyStore":
         target = Path(path).expanduser().absolute()
-        _secure_directory(target.parent, create=True)
-        _secure_database(target, exists=False)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        try:
-            descriptor = os.open(target, flags, 0o600)
-        except FileExistsError:
-            raise KeyStoreError("credential store already exists") from None
-        except OSError as exc:
-            raise KeyStoreError("credential store could not be initialized") from exc
-        else:
-            created = os.fstat(descriptor)
+        with _staged_database(target) as staged:
+            created = None
             try:
-                _private_created_descriptor(descriptor)
-            except KeyStoreError:
-                _unlink_created(target, created)
-                raise
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+                descriptor = os.open(staged, flags, 0o600)
+                try:
+                    created = os.fstat(descriptor)
+                    _private_created_descriptor(descriptor)
+                finally:
+                    os.close(descriptor)
+                _secure_database(staged, exists=True, identity=created)
+                connection = sqlite3.connect(staged)
+                try:
+                    connection.executescript("""
+                        PRAGMA journal_mode=DELETE;
+                        PRAGMA user_version=1;
+                        CREATE TABLE keys (
+                            key_id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash BLOB NOT NULL,
+                            models TEXT NOT NULL, paths TEXT NOT NULL, rpm INTEGER NOT NULL,
+                            created_at INTEGER NOT NULL, expires_at INTEGER, revoked_at INTEGER
+                        );
+                        CREATE TABLE buckets (
+                            key_id TEXT PRIMARY KEY, tokens REAL NOT NULL, updated_at REAL NOT NULL
+                        );
+                        CREATE TABLE audit (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT, recorded_at INTEGER NOT NULL,
+                            key_id TEXT, request_id TEXT NOT NULL, method TEXT NOT NULL,
+                            path TEXT NOT NULL, status INTEGER NOT NULL, elapsed_ms INTEGER NOT NULL
+                        );
+                        CREATE UNIQUE INDEX keys_token_hash ON keys(token_hash);
+                        CREATE INDEX audit_key_id_id ON audit(key_id, id DESC);
+                    """)
+                finally:
+                    connection.close()
+                _secure_database(staged, exists=True, identity=created)
+                _publish_database(staged, target, created)
+                store = cls(target)
+                _secure_database(target, exists=True, identity=created)
+                store._created_identity = created
+                return store
+            except (KeyStoreError, OSError, sqlite3.Error) as exc:
+                if created is not None:
+                    _unlink_created(target, created)
+                raise KeyStoreError("credential store could not be initialized") from exc
             finally:
-                os.close(descriptor)
-        try:
-            _secure_database(target, exists=True, identity=created)
-        except KeyStoreError:
-            _unlink_created(target, created)
-            raise
-        try:
-            connection = sqlite3.connect(target)
-            try:
-                connection.executescript("""
-                    PRAGMA journal_mode=DELETE;
-                    PRAGMA user_version=1;
-                    CREATE TABLE keys (
-                        key_id TEXT PRIMARY KEY, name TEXT NOT NULL, token_hash BLOB NOT NULL,
-                        models TEXT NOT NULL, paths TEXT NOT NULL, rpm INTEGER NOT NULL,
-                        created_at INTEGER NOT NULL, expires_at INTEGER, revoked_at INTEGER
-                    );
-                    CREATE TABLE buckets (
-                        key_id TEXT PRIMARY KEY, tokens REAL NOT NULL, updated_at REAL NOT NULL
-                    );
-                    CREATE TABLE audit (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT, recorded_at INTEGER NOT NULL,
-                        key_id TEXT, request_id TEXT NOT NULL, method TEXT NOT NULL,
-                        path TEXT NOT NULL, status INTEGER NOT NULL, elapsed_ms INTEGER NOT NULL
-                    );
-                    CREATE UNIQUE INDEX keys_token_hash ON keys(token_hash);
-                    CREATE INDEX audit_key_id_id ON audit(key_id, id DESC);
-                """)
-            finally:
-                connection.close()
-            _secure_database(target, exists=True, identity=created)
-            os.chmod(target, 0o600)
-        except (KeyStoreError, OSError, sqlite3.Error) as exc:
-            _unlink_created(target, created)
-            raise KeyStoreError("credential store could not be initialized") from exc
-        try:
-            store = cls(target)
-            _secure_database(target, exists=True, identity=created)
-        except (KeyStoreError, OSError):
-            _unlink_created(target, created)
-            raise
-        store._created_identity = created
-        return store
+                if created is not None:
+                    _unlink_created(staged, created)
 
     @contextmanager
     def _connect(self):
