@@ -52,6 +52,20 @@ def test_filtered_snapshot_refuses_prior_excluded_files_without_deletion(tmp_pat
     assert (tmp_path / "excluded.py").read_text() == 'unexpected runtime code'
 
 
+def test_receipt_repeated_writes_remain_complete_json(tmp_path):
+    target = tmp_path / "result.json"
+    descriptor = native._reserve_receipt(target)
+    try:
+        for result in ({"status": "downloading", "note": "voice café"},
+                       {"status": "verified"}):
+            native._write_receipt(target, result, descriptor)
+            raw = target.read_bytes()
+            assert json.loads(raw) == result
+            assert raw.endswith(b"}\n")
+    finally:
+        os.close(descriptor)
+
+
 def test_downloader_version_rejects_python_interpreter():
     with pytest.raises(native.NativePullError, match="bounded hf version"):
         native._downloader_version(sys.executable, dict(os.environ))

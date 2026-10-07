@@ -378,7 +378,10 @@ def _reserve_receipt(target):
     _safe_ancestry(target.parent)
     target.parent.mkdir(parents=True, exist_ok=True)
     try:
-        return os.open(target, os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        # Receipt writes and truncation use encoded-byte lengths. On Windows,
+        # text-mode newline translation would expand writes and truncate JSON.
+        return os.open(target, os.O_RDWR | os.O_CREAT | os.O_EXCL
+                       | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
     except FileExistsError:
         raise NativePullError("--evidence-out must be a new file; prior evidence is retained") from None
 
