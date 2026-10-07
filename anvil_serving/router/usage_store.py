@@ -149,17 +149,16 @@ class UsageStore:
                     _validate_schema(source)
                 destination = KeyStore.initialize(target)
                 created = destination._created_identity
-                busy_since = None
+                busy_deadline = time.monotonic() + 1.0
 
                 def progress(status, _remaining, _total):
-                    nonlocal busy_since
+                    nonlocal busy_deadline
                     _secure_database(destination.path, exists=True, identity=created)
                     if status in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
-                        busy_since = busy_since or time.monotonic()
-                        if time.monotonic() - busy_since >= 1.0:
+                        if time.monotonic() >= busy_deadline:
                             raise KeyStoreError("accounting snapshot is busy")
                     else:
-                        busy_since = None
+                        busy_deadline = time.monotonic() + 1.0
 
                 with destination._connect() as copied:
                     source.backup(copied, pages=128, progress=progress, sleep=0.01)
