@@ -155,7 +155,7 @@ class UsageStore:
                     destination = KeyStore.initialize(staged)
                     created = destination._created_identity
                     busy_deadline = time.monotonic() + 1.0
-    
+
                     def progress(status, _remaining, _total):
                         nonlocal busy_deadline
                         _secure_database(destination.path, exists=True, identity=created)
@@ -164,7 +164,7 @@ class UsageStore:
                                 raise KeyStoreError("accounting snapshot is busy")
                         else:
                             busy_deadline = time.monotonic() + 1.0
-    
+
                     with destination._connect() as copied:
                         source.backup(copied, pages=128, progress=progress, sleep=0.01)
                         copied_version = copied.execute("PRAGMA user_version").fetchone()[0]

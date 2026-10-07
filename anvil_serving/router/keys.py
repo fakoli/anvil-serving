@@ -253,7 +253,10 @@ def _staged_database(target: Path):
     if target.exists():
         raise KeyStoreError("credential store already exists")
     directory = target.parent / (".anvil-keys-" + secrets.token_hex(16))
-    directory.mkdir(mode=0o777 if _is_windows() else 0o700)
+    try:
+        directory.mkdir(mode=0o777 if _is_windows() else 0o700)
+    except OSError:
+        raise KeyStoreError("credential store staging is unavailable") from None
     created = directory.lstat()
     try:
         _secure_directory(directory, create=False)
@@ -270,7 +273,7 @@ def _publish_database(staged: Path, target: Path, created: os.stat_result) -> No
     """Publish a completed snapshot atomically; never open the final path for writing."""
     _secure_database(staged, exists=True, identity=created)
     _secure_directory(target.parent, create=False)
-    descriptor = os.open(staged, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    descriptor = os.open(staged, os.O_RDWR | getattr(os, "O_NOFOLLOW", 0))
     try:
         if not os.path.samestat(os.fstat(descriptor), created):
             raise KeyStoreError("credential store file changed during creation")
