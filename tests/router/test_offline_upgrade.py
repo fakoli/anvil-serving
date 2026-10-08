@@ -11,6 +11,11 @@ from anvil_serving.router.usage_store import UsageStore
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 
+@pytest.fixture(autouse=True)
+def isolated_operator_home(tmp_path, monkeypatch):
+    monkeypatch.setenv('ANVIL_SERVING_HOME', str(tmp_path / 'operator-home'))
+
+
 def fixture(tmp_path):
     store = keys.KeyStore.initialize(tmp_path / 'owned' / 'keys.sqlite3')
     metadata, secret = store.create('synthetic', ['llm.primary'], ['/v1/chat/completions'])
@@ -21,6 +26,7 @@ def fixture(tmp_path):
     return store, metadata, secret, config
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='native managed owner requires POSIX locks')
 def test_offline_cli_migration_preserves_authority_and_protected_snapshot(tmp_path, capsys):
     from anvil_serving.cli import main
     store, metadata, secret, config = fixture(tmp_path)
@@ -53,6 +59,7 @@ def test_offline_migration_refuses_actual_competing_lock_before_snapshot(tmp_pat
     assert keys.KeyStore(store.path).version == 1
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='native managed owner requires POSIX locks')
 def test_offline_migration_preserves_bound_closure_and_refuses_unknown_owner(tmp_path):
     store, _, _, config = fixture(tmp_path)
     state = store.path.parent / 'admission.json.router'
@@ -153,3 +160,12 @@ def test_offline_migration_requires_closed_owner_and_explicit_confirmation(tmp_p
                                               'router_owner_roster=["synthetic-owner","other-owner"]'))
     assert keys.dispatch(base + ['--offline', '--confirm']) == 2
     assert keys.KeyStore(store.path).version == 1 and not backup.exists()
+
+
+def test_offline_custody_refuses_unsupported_platform(tmp_path, monkeypatch):
+    from anvil_serving.router.config import load_server_config
+    store, _, _, config = fixture(tmp_path)
+    monkeypatch.setattr(keys, 'os', SimpleNamespace(name='nt'))
+    with pytest.raises(keys.KeyStoreError, match='custody is unavailable'):
+        with store._offline_custody(load_server_config(str(config))):
+            pytest.fail('unsupported writer custody')
