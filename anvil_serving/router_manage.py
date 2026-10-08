@@ -365,11 +365,15 @@ def cmd_up(
             return 1
     if not dry_run:
         try:
-            require_router_drain(container, _run=_run, compose=compose, service=service,
-                                 env_file=env_file, execution_env=execution_env,
-                                 allow_foreign=recreate)
+            if state in {'absent', 'exited', 'created'}:
+                require_router_offline(compose, service, container=container, _run=_run,
+                                       env_file=env_file, execution_env=execution_env)
+            else:
+                require_router_drain(container, _run=_run, compose=compose, service=service,
+                                     env_file=env_file, execution_env=execution_env,
+                                     allow_foreign=recreate)
         except ValueError:
-            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
+            print("router lifecycle HOLD: native drain or exclusive offline custody is required", file=sys.stderr)
             return 1
     if state != "absent" and observed_project != DEFAULT_COMPOSE_PROJECT and not dry_run:
         remove_rc = _run_argv(["docker", "rm", "-f", container], _run)
@@ -1428,3 +1432,148 @@ def require_router_drain(container, *, _run=subprocess.run, timeout=30,
         _verify_compose_target(compose, service, after, _run=_run, env_file=env_file,
                                execution_env=execution_env, allow_foreign=allow_foreign)
     return {**receipt, "container_id":before["container_id"], "image_id":before["image_id"]}
+
+
+def _offline_router_start():
+    """Candidate-native first bootstrap; never consumes predecessor ownership."""
+    from .router.config import load_server_config
+    from .router.keys import KeyStore
+    from .router.usage_store import _validate_schema
+    settings = load_server_config(DEFAULT_INSTALLED_CONFIG)
+    store = KeyStore(settings.api_keys_path)
+    with store._offline_custody(settings), store._connect() as db:
+        if store.version != 3:
+            raise ValueError('router_accounting_migration_required')
+        _validate_schema(db)
+    return {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+
+
+def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None):
+    """Verify the selected service and every active durable-mount consumer."""
+    def read(argv):
+        result = _run(argv, capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
+        if result.returncode or len(result.stdout or '') > MAX_COMPOSE_FILE_BYTES:
+            raise ValueError('router_offline_roster_unknown')
+        return result.stdout or ''
+    from .observability.dashboard.contracts import strict_json
+    rendered = strict_json(read([*_compose_argv(compose, env_file=env_file), 'config', '--format', 'json']).encode())
+    if (type(rendered) is not dict or type(rendered.get('services')) is not dict
+            or type(rendered.get('volumes', {})) is not dict):
+        raise ValueError('router_offline_roster_unknown')
+    selected = rendered['services'].get(service, {})
+    if type(selected) is not dict:
+        raise ValueError('router_offline_target_mismatch')
+    if (service != DEFAULT_SERVICE or rendered.get('name') != DEFAULT_COMPOSE_PROJECT
+            or selected.get('container_name') != container):
+        raise ValueError('router_offline_target_mismatch')
+    mounts = selected.get('volumes')
+    if not isinstance(mounts, list) or any(type(row) is not dict for row in mounts):
+        raise ValueError('router_offline_storage_unknown')
+    config_mounts = [row for row in mounts if row.get('target') == DEFAULT_INSTALLED_CONFIG]
+    if (len(config_mounts) != 1 or config_mounts[0].get('type') != 'bind'
+            or config_mounts[0].get('read_only') is not True):
+        raise ValueError('router_offline_config_mount_unknown')
+    sources = set()
+    for row in mounts:
+        if row.get('type') not in {'bind', 'volume'} or not isinstance(row.get('source'), str):
+            raise ValueError('router_offline_storage_unknown')
+        if row.get('read_only') is not True:
+            source = row['source']
+            if row['type'] == 'volume':
+                declaration = rendered.get('volumes', {}).get(source, {})
+                if type(declaration) is not dict:
+                    raise ValueError('router_offline_storage_unknown')
+                source = declaration.get('name')
+            if not isinstance(source, str) or not source:
+                raise ValueError('router_offline_storage_unknown')
+            sources.add((row['type'], source))
+    if not sources:
+        raise ValueError('router_offline_storage_unknown')
+    ids = read(['docker', 'ps', '--all', '--quiet', '--no-trunc']).split()
+    if len(ids) > 1024 or len(set(ids)) != len(ids) or any(not re.fullmatch('[a-f0-9]{64}', value) for value in ids):
+        raise ValueError('router_offline_roster_unknown')
+    rows = []
+    if ids:
+        projection = ('{"id":{{json .Id}},"status":{{json .State.Status}},'
+                      '"mounts":{{json .Mounts}}}')
+        rows = [strict_json(line.encode()) for line in read(['docker', 'inspect', '--format', projection, *ids]).splitlines()]
+        if (len(rows) != len(ids) or any(type(row) is not dict for row in rows)
+                or {row.get('id') for row in rows} != set(ids)):
+            raise ValueError('router_offline_roster_unknown')
+        for row in rows:
+            status = row.get('status')
+            if status not in {'created', 'exited', 'dead', 'running', 'paused', 'restarting', 'removing'}:
+                raise ValueError('router_offline_roster_unknown')
+            if not isinstance(row.get('mounts'), list):
+                raise ValueError('router_offline_storage_unknown')
+            for mount in row['mounts']:
+                if type(mount) is not dict or type(mount.get('RW')) is not bool:
+                    raise ValueError('router_offline_storage_unknown')
+                identity = (mount.get('Type'), mount.get('Name') if mount.get('Type') == 'volume' else mount.get('Source'))
+                if status not in {'created', 'exited', 'dead'} and mount['RW'] and identity in sources:
+                    raise ValueError('router_offline_storage_busy')
+    state, project = _container_compose_project(container, _run=_run)
+    if state not in {'absent', 'exited', 'created'} or (state != 'absent' and project != DEFAULT_COMPOSE_PROJECT):
+        raise ValueError('router_offline_target_active_or_unknown')
+    custody = None if state == 'absent' else _restart_custody(container, _run)
+    if custody is not None:
+        if custody.get('available') is not True:
+            raise ValueError('router_offline_target_unknown')
+        _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env)
+    elif read([*_compose_argv(compose, env_file=env_file), 'ps', '--all', '--quiet', service]).strip():
+        raise ValueError('router_offline_target_mismatch')
+    return {'rendered': rendered, 'roster': rows, 'target': custody}
+
+
+def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None):
+    before = _offline_compose_roster(compose, service, container, _run=_run,
+                                    env_file=env_file, execution_env=execution_env)
+    result = _run([*_compose_argv(compose, env_file=env_file), 'run', '--rm', '--no-deps',
+                   '--entrypoint', 'python', service, '-c', code], capture_output=True,
+                  text=True, encoding='utf-8', timeout=30, env=execution_env)
+    if result.returncode or len(result.stdout or '') > 131072:
+        raise ValueError('router_offline_custody_refused')
+    from .observability.dashboard.contracts import strict_json
+    receipt = strict_json((result.stdout or '').encode())
+    after = _offline_compose_roster(compose, service, container, _run=_run,
+                                   env_file=env_file, execution_env=execution_env)
+    if before != after:
+        raise ValueError('router_offline_roster_changed')
+    return receipt
+
+
+def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _run=subprocess.run,
+                           env_file=None, execution_env=None):
+    """Offline first start under the caller's lifecycle lock, not a drain proof.
+
+    Probe locks end before launch. Actual managed startup reacquires its producer
+    lock and checks retained ownership; external producer holds remain required.
+    """
+    try:
+        code = ('import json; from anvil_serving.router_manage import _offline_router_start; '
+                'print(json.dumps(_offline_router_start(),sort_keys=True))')
+        receipt = _offline_compose_run(compose, service, container, code, _run=_run,
+                                      env_file=env_file, execution_env=execution_env)
+        if receipt != {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}:
+            raise ValueError('router_offline_custody_refused')
+        return receipt
+    except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError, AttributeError):
+        raise ValueError('router_offline_custody_refused') from None
+
+
+@_serving_authority_mutation
+def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subprocess.run):
+    from pathlib import PurePosixPath
+    target = PurePosixPath(backup_out)
+    if not target.is_relative_to('/var/lib/anvil-serving/router-keys') or '..' in target.parts:
+        raise ValueError('router_offline_backup_must_be_durable')
+    execution_env = _compose_execution_env(compose, env_file)
+    code = ('import json; from anvil_serving.router.keys import _migrate_offline; '
+            f'print(json.dumps(_migrate_offline({DEFAULT_INSTALLED_CONFIG!r},{backup_out!r}),sort_keys=True))')
+    result = _offline_compose_run(compose, DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
+                                 env_file=env_file, execution_env=execution_env)
+    if (type(result) is not dict or set(result) != {'schema_version', 'migrated', 'backup_schema_version', 'offline'}
+            or result['schema_version'] != 3 or type(result['migrated']) is not bool
+            or result['backup_schema_version'] not in {1, 2, 3} or result['offline'] is not True):
+        raise ValueError('router_offline_migration_refused')
+    return result

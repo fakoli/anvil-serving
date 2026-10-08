@@ -9,6 +9,15 @@ are portable and synthetic.
 
 ## Authority and ownership
 
+First native bootstrap uses the supported `router keys migrate` command with a
+protected rollback snapshot and explicit offline confirmation. The operator
+must separately hold legacy producers stopped; confirmation does not prove that
+hold. Managed cold start verifies the selected Compose target and durable-mount
+consumers, then the actual router independently acquires its owner fence. The
+probe releases its locks before launch. Retained owner markers, closures or runs
+require owner reconciliation and are never cleared by offline migration. See
+[the tested migration and cold-start commands](cli/router.md).
+
 The approved router-user-usage PRD controls R001-R020, F001-F005 and its retention
 matrix. Attribution records the API permission that actually admitted a request.
 It grants no new permission. Browser access, service credentials and optional

@@ -46,8 +46,9 @@ def commands() -> CommandNode:
                 children=tuple(
                     _node(
                         action, summary,
-                        handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,)),
-                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore"} else "read",
+                        handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,),
+                                         forward_confirm_flag=action == "migrate"),
+                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore", "migrate"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
                             _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
@@ -56,6 +57,13 @@ def commands() -> CommandNode:
                     )
                     for action, summary, options in (
                         ("init", "Initialize protected device-key storage without changing the master key.", ()),
+                        ("migrate", "Migrate first-bootstrap accounting offline with an absent protected backup.", (
+                            _option("--backup-out", summary="Absent protected rollback snapshot (required).", value_name="PATH"),
+                            _option("--offline", summary="Require exclusive offline custody; producer maintenance hold is separate."),
+                            _option("--confirm", summary="Permit snapshot and explicit schema migration.", requires_confirmation=True),
+                            _option("--compose", summary="Selected stopped router Compose service; uses mounted config and durable backup path.", value_name="PATH"),
+                            _option("--env-file", summary="Explicit dedicated Compose environment file.", value_name="PATH"),
+                        )),
                         ("create", "Create a scoped device key and save its secret once to a protected file.", (
                             _option("--name", summary="Device label (required).", value_name="NAME"),
                             _option("--model", summary="Allowed alias or purpose-model name; repeat for multiple grants (required).", value_name="MODEL"),

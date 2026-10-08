@@ -14,13 +14,14 @@ import os
 import re
 import secrets
 import sqlite3
+import subprocess
 import stat
 import threading
 from collections import deque
 import sys
 import time
 import unicodedata
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -516,6 +517,9 @@ class KeyStore:
         Ordinary reads keep their existing authentication/snapshot semantics.
         Storage ownership cannot be inherited as inference admission.
         """
+        if getattr(self._writer_context, 'offline_custody', False):
+            yield
+            return
         owner = getattr(self, "_router_admission", None)
         if owner is None:
             with self._external_ownership():
@@ -531,6 +535,49 @@ class KeyStore:
                 yield
         finally:
             permit.release()
+
+    @contextmanager
+    def _offline_custody(self, server):
+        """Own first-bootstrap storage; retained native ownership requires transfer.
+
+        The operator separately holds legacy producers stopped. These fences
+        exclude current native producers/admin writers; a flag is not that hold.
+        """
+        if (os.name != 'posix' or not server.router_owner_id
+                or server.router_owner_roster != (server.router_owner_id,)
+                or not server.admission_state_path
+                or Path(server.api_keys_path).expanduser().absolute() != self.path
+                or getattr(self._writer_context, 'offline_custody', False)):
+            raise KeyStoreError('offline router custody is unavailable')
+        import fcntl
+        state = Path(server.admission_state_path + '.router').expanduser().absolute()
+        _secure_directory(state.parent, create=False)
+        producer = Path(str(state) + '.lock')
+        gate = Path(str(self.path) + '.router-writers.lock')
+        with ExitStack() as held:
+            for path in (producer, gate):
+                if os.path.lexists(path):
+                    _secure_database(path, exists=True)
+                fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+                held.callback(os.close, fd)
+                _private_created_descriptor(fd)
+                _secure_database(path, exists=True, identity=os.fstat(fd))
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise KeyStoreError('offline router custody is busy') from None
+                if path == gate and os.read(fd, 64):
+                    raise KeyStoreError('retained router ownership requires transfer')
+            if os.path.lexists(state) or os.path.lexists(Path(str(self.path) + '.router-owner')):
+                raise KeyStoreError('retained router ownership requires transfer')
+            with self._connect() as db:
+                if self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
+                    raise KeyStoreError('retained router runs require owner reconciliation')
+            self._writer_context.offline_custody = True
+            try:
+                yield
+            finally:
+                del self._writer_context.offline_custody
 
     @contextmanager
     def _external_ownership(self):
@@ -996,11 +1043,17 @@ class _Parser(argparse.ArgumentParser):
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="anvil-serving router keys", allow_abbrev=False)
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
-    for action in ("init", "create", "list", "revoke", "usage", "bind", "backup", "restore"):
+    for action in ("init", "create", "list", "revoke", "usage", "bind", "backup", "restore", "migrate"):
         item = actions.add_parser(action, allow_abbrev=False)
         item.add_argument("--config", metavar="PATH")
         item.add_argument("--container", metavar="NAME")
-        if action == "create":
+        if action == 'migrate':
+            item.add_argument('--backup-out', required=True, metavar='PATH')
+            item.add_argument('--offline', action='store_true')
+            item.add_argument('--confirm', action='store_true')
+            item.add_argument('--compose', metavar='PATH')
+            item.add_argument('--env-file', metavar='PATH')
+        elif action == "create":
             item.add_argument("--name", required=True)
             item.add_argument("--model", action="append", required=True)
             item.add_argument("--path", action="append", required=True)
@@ -1059,6 +1112,18 @@ def dispatch(argv: list[str] | None = None) -> int:
     """Run the local credential CLI; stdout is always public JSON."""
     try:
         args = _parser().parse_args(argv)
+        if args.action == 'migrate':
+            if not args.offline or not args.confirm or args.container:
+                raise KeyStoreError('explicit offline migration is required')
+            if args.compose:
+                if args.config:
+                    raise KeyStoreError('Compose migration uses its mounted router config')
+                from ..router_manage import migrate_router_offline
+                result = migrate_router_offline(args.compose, args.backup_out, env_file=args.env_file)
+            else:
+                result = _migrate_offline(args.config, args.backup_out)
+            print(json.dumps(result, sort_keys=True))
+            return 0
         if args.container:
             from .key_container import dispatch_container
             return dispatch_container(args)
@@ -1100,9 +1165,22 @@ def dispatch(argv: list[str] | None = None) -> int:
                 result = store.usage(args.key_id, args.limit)
         print(json.dumps(result, sort_keys=True))
         return 0
-    except (KeyStoreError, OSError, sqlite3.Error, ValueError):
+    except (KeyStoreError, OSError, sqlite3.Error, ValueError, RuntimeError, subprocess.SubprocessError):
         print("anvil-serving router keys: command failed", file=sys.stderr)
         return 2
+
+
+def _migrate_offline(config_path, backup_out):
+    from .config import load_server_config
+    from .serve import resolve_config_path
+    from .usage_store import UsageStore
+    from ..serves import _switch_role_lock
+    server = load_server_config(resolve_config_path(config_path))
+    store = _store_from_config(config_path, initialize=False)
+    with _switch_role_lock('promotion'), store._offline_custody(server):
+        usage = UsageStore(store)
+        snapshot = usage.backup(backup_out)
+        return {**usage.migrate(), 'backup_schema_version': snapshot['schema_version'], 'offline': True}
 
 
 if __name__ == "__main__":

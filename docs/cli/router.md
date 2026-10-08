@@ -564,6 +564,32 @@ and scoped authorization. Installation owns these private settings. A second
 process cannot acquire the same persistent native owner lock. Foreign/unknown
 runs or unsupported shared authority refuse startup and authoritative coverage.
 
+After independently holding every producer and proving terminal predecessor
+work, a stopped first-upgrade router can migrate its existing protected store:
+
+```bash
+anvil-serving router keys migrate --compose docker-compose.yml --env-file router.env --backup-out /var/lib/anvil-serving/router-keys/pre-accounting.sqlite3 --offline --confirm
+anvil-serving router up --compose docker-compose.yml --env-file router.env --confirm
+```
+
+Migration uses only the selected router service in its candidate image, with no
+dependencies started. The mounted configuration selects storage and the declared
+single owner. The absent backup destination must be in the durable router-key
+directory. Native installations instead use `--config PATH` and a protected
+`--backup-out PATH`, without `--compose`. A live `--container` migration is refused.
+The producer and store-writer fences remain held through snapshot and migration;
+the existing bounded SQLite writer transaction preserves keys, grants and audit.
+Never restore that older snapshot over later committed authority or accounting.
+
+Cold `up` distinguishes an exact absent/created/exited managed target from live
+replacement. It verifies the complete Docker mount-consumer roster and executes
+an offline candidate custody check under the same lifecycle lock as launch.
+This is offline startup, not predecessor drain. Probe locks end before launch;
+the actual new process must acquire its own producer fence and reject competing
+or retained owners. External producer maintenance holds remain necessary.
+Prior owner markers, admission state/closure or retained runs require supported
+reconciliation; these commands never erase them or fabricate a dead predecessor.
+
 Router restart/reload/recreate/down/config install require the actual old
 container's supported all-path barrier, owned zero and consumed persistent closure.
 The running old version cannot acquire this capability from new source tests.

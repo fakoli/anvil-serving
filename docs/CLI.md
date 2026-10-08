@@ -183,6 +183,7 @@ required operands, choices, and defaults.
 | `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
+| `router keys migrate` | Migrate first-bootstrap accounting offline with an absent protected backup. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--backup-out`<br>`--offline`<br>`--confirm`<br>`--compose`<br>`--env-file` |
 | `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
 | `router keys list` | List key IDs, grants, and lifecycle state without secrets. | `read` / `bounded` | `--config`<br>`--container` |
 | `router keys revoke` | Revoke a device key for subsequent requests. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id` |
