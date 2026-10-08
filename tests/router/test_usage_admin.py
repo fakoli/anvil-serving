@@ -1,6 +1,6 @@
 """Protected real HTTP usage dispatch; all fixtures and credentials are synthetic."""
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from dataclasses import replace
 import http.client
 import json
@@ -20,13 +20,14 @@ from anvil_serving.router.usage_store import UsageError
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from tests.router.helpers import StaticBackend
 from tests.router.test_front_door_auth import _scoped_policy
-from tests.router.test_usage_lifecycle import store, ident, terminal, tokens, AT, END
+from tests.router.test_usage_lifecycle import store as store, ident, terminal, tokens, AT, END
 from tests.router.test_usage_retention import forwarded_caller
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 ADMIN = 'synthetic-admin-token'
 LEGACY = 'synthetic-legacy-token'
-CLOCK = lambda: datetime.fromisoformat(END.replace('Z', '+00:00'))
+def CLOCK():
+    return datetime.fromisoformat(END.replace('Z', '+00:00'))
 
 
 @pytest.fixture
@@ -340,7 +341,8 @@ def test_owned_stream_activity_ages_between_samples_without_poll_or_phase_reset(
 @pytest.mark.parametrize('value',[None,True,-1,10**100,'5'])
 def test_missing_or_invalid_owned_activity_is_unknown(store,value):
     usage,_,run,scope=store
-    clock=lambda:datetime.fromisoformat(AT.replace('Z','+00:00'))
+    def clock():
+        return datetime.fromisoformat(AT.replace('Z','+00:00'))
     registry=RouterWorkloadRegistry(DecisionLog(),clock=clock)
     inv=UsageInvocation(usage,run,scope,forwarded_caller(),'chat','llm.primary',registry=registry,clock=clock)
     registry.observe_request(inv.registry_id,{},'llm.primary',{'phase':'streaming','last_activity_ms':value})

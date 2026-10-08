@@ -709,7 +709,30 @@ class UsageStore:
     def _run_owner(row):
         return RunOwner(**{f.name: row[f.name] for f in fields(RunOwner)})
 
-    def register_run(self, owner, *, domain_id, configuration_revision, enabled=False, started_at=None):
+    def inactive_native_runs(self, owner, *, domain_id):
+        """Bounded physical-death readback under the native producer/writer fences.
+
+        This says nothing about retained remote execution. Recovery records its
+        local interrupted/unknown result; admission has its separate owner gate.
+        """
+        _id(domain_id)
+        _require(type(owner) is RunOwner and RunOwner.observe(owner.host_domain_id) == owner)
+        try:
+            with self.key_store._connect() as db:
+                db.row_factory = sqlite3.Row
+                rows = db.execute('SELECT * FROM usage_runs WHERE domain_id=? ORDER BY started_at,run_id LIMIT 1025',
+                                  (domain_id,)).fetchall()
+        except (sqlite3.Error, KeyStoreError, OSError):
+            raise UsageError('accounting_unavailable') from None
+        _require(len(rows) <= 1024)
+        for row in rows:
+            retained = self._run_owner(row)
+            _require(retained.host_domain_id == owner.host_domain_id and observe_run(retained) == 'dead')
+        _require(RunOwner.observe(owner.host_domain_id) == owner)
+        return tuple(row['run_id'] for row in rows)
+
+    def register_run(self, owner, *, domain_id, configuration_revision, enabled=False, started_at=None,
+                     previous_revision=None):
         """Register actual local ownership; this alone never proves closed roster."""
         _require(type(owner) is RunOwner and type(enabled) is bool)
         _id(domain_id); _id(configuration_revision)
@@ -730,7 +753,13 @@ class UsageStore:
                            (domain_id, epoch, configuration_revision))
                 db.execute("INSERT INTO usage_epoch_metadata VALUES(?,?,?)", (domain_id, epoch, _utc(_now())))
             elif domain["configuration_revision"] != configuration_revision:
-                raise UsageError("accounting_configuration_unsupported")
+                _require(previous_revision == domain['configuration_revision']
+                         and getattr(self.key_store._writer_context, 'offline_custody', False))
+                rows = db.execute('SELECT * FROM usage_runs WHERE domain_id=? LIMIT 1025', (domain_id,)).fetchall()
+                _require(0 < len(rows) <= 1024 and all(row['state'] == 'dead' and row['ended_at'] is not None
+                         and observe_run(self._run_owner(row)) == 'dead' for row in rows))
+                db.execute('UPDATE usage_domains SET configuration_revision=? WHERE domain_id=?',
+                           (configuration_revision, domain_id))
             db.execute("INSERT INTO usage_runs VALUES(" + ",".join("?" for _ in range(16)) + ")",
                        (run_id, domain_id, at, None, "live", *(getattr(owner, f.name) for f in fields(owner))))
             db.execute("INSERT INTO usage_coverage_segments VALUES(?,?,?,?,?,?,?,?,?)",

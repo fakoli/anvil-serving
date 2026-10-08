@@ -14,7 +14,7 @@ import pytest
 
 from anvil_serving.control_plane.authorization import AuthorizationDecision, INFERENCE_USE
 from anvil_serving.router.identity import (
-    Actor, CallerSnapshot, EndUser, IdentityError, WebUIBinding, WebUIIdentityError,
+    CallerSnapshot, EndUser, IdentityError, WebUIBinding, WebUIIdentityError,
     WebUIProfile, configured_scope_caller, forwarded_caller, legacy_caller,
     load_webui_bindings, select_webui_binding, verify_webui,
 )

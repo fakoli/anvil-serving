@@ -1,7 +1,7 @@
 """Synthetic admission snapshots, authority races and closed privacy projection."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError
 import json
 import secrets
 import sqlite3

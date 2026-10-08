@@ -15,10 +15,10 @@ from anvil_serving.router.internal import UsageInvocation
 from anvil_serving.router.keys import KeyStore
 from anvil_serving.router.usage_store import Observation, UsageError, UsageQuery, UsageStore
 from tests.router.key_fixtures import tmp_path as tmp_path
-from tests.router.test_usage_lifecycle import store, start_at, terminal, tokens, rows, AT, END, ROUTE
+from tests.router.test_usage_lifecycle import store as store, start_at, terminal, tokens, rows, AT, END, ROUTE
 from tests.router.test_usage_retention import forwarded_caller
 from tests.router.test_usage_metrics import registry, render, metric, global_value
-from tests.router.test_usage_admin import policy, server, request, ADMIN, LEGACY
+from tests.router.test_usage_admin import policy as policy, server, request, ADMIN, LEGACY
 
 NOW = datetime.fromisoformat(END.replace('Z', '+00:00'))
 DOMAIN = 'domain_fixture'

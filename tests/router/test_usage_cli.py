@@ -12,8 +12,8 @@ from anvil_serving.router import keys, key_container
 from anvil_serving.router.usage_store import UsageStore, RequestStart
 from anvil_serving.router.identity import legacy_caller
 from tests.router.key_fixtures import tmp_path as tmp_path
-from tests.router.test_usage_admin import policy, server, ADMIN
-from tests.router.test_usage_lifecycle import store, ident, terminal, tokens, AT, END
+from tests.router.test_usage_admin import policy as policy, server, ADMIN
+from tests.router.test_usage_lifecycle import store as store, ident, terminal, AT, END
 
 
 def local(tmp_path):
@@ -297,7 +297,6 @@ def test_nonfinite_http_json_is_typed_at_shared_boundary(monkeypatch, capsys, st
 
 def test_strict_shared_decoder_preserves_finite_values_exact_ints_and_error_format(monkeypatch):
     import io
-    import urllib.error
     from anvil_serving.operator_output import OperatorError
     raw = b'{"schema":"router-active-usage/v1","records":[{"elapsed_ms":0.125,"count":10000000000000007,"missing":null}]}'
     class Response(io.BytesIO):

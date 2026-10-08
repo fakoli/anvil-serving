@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,10 @@ _EXAMPLE = _ROOT / "configs" / "example.toml"
 
 
 def _write(tmp_path, router: str) -> Path:
+    for declared, name in (('/synthetic/private/keys.sqlite3', 'keys.sqlite3'),
+                           ('/synthetic/private/policy.toml', 'policy.toml'),
+                           ('/synthetic/protected/signer', 'signer')):
+        router = router.replace(json.dumps(declared), json.dumps(str(tmp_path / name)))
     path = tmp_path / "router.toml"
     path.write_text(router, encoding="utf-8")
     return path
@@ -67,7 +72,7 @@ def test_webui_identity_config_is_opt_in_frozen_and_reference_only(tmp_path, mon
     with pytest.raises(FrozenInstanceError):
         profile.instance = "changed"
     file_config = _WEBUI_SERVER.replace('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_file = "/synthetic/protected/signer"')
-    assert load_server_config(_write(tmp_path, file_config)).webui_identity[0].signer_file == "/synthetic/protected/signer"
+    assert load_server_config(_write(tmp_path, file_config)).webui_identity[0].signer_file == str(tmp_path / 'signer')
 
 
 @pytest.mark.parametrize("before,after", [

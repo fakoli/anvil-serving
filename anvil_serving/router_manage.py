@@ -1441,10 +1441,13 @@ def _offline_router_start():
     from .router.usage_store import _validate_schema
     settings = load_server_config(DEFAULT_INSTALLED_CONFIG)
     store = KeyStore(settings.api_keys_path)
-    with store._offline_custody(settings), store._connect() as db:
+    with store._offline_custody(settings, allow_retained=True), store._connect() as db:
         if store.version != 3:
             raise ValueError('router_accounting_migration_required')
         _validate_schema(db)
+        from .router.usage_store import UsageStore, RunOwner
+        UsageStore(store).inactive_native_runs(RunOwner.observe(settings.router_owner_id),
+                                               domain_id=settings.usage_domain_id)
     return {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
 
 

@@ -12,7 +12,7 @@ from anvil_serving.router.identity import EndUser, forwarded_caller
 from anvil_serving.router.purpose import PurposeError, PurposeRouter, child_request_start, purpose_usage
 from anvil_serving.router.usage_store import Observation, RequestStart, RouteAssociation, Terminal, UsageError
 from tests.router.test_embeddings import EMBED_PM, RERANK_PM, FakeTransport
-from tests.router.test_usage_lifecycle import AT, END, rows, start_at, store
+from tests.router.test_usage_lifecycle import AT, END, rows, start_at, store as store
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 

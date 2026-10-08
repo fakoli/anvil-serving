@@ -12,9 +12,9 @@ from anvil_serving.router.keys import KeyStore
 from anvil_serving.router.usage_store import RequestStart, UsageError, UsageQuery, UsageStore
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from anvil_serving.router.internal import UsageInvocation
-from tests.router.test_usage_lifecycle import store, ident, terminal, tokens, AT, END, ROUTE
+from tests.router.test_usage_lifecycle import store as store, ident, terminal, tokens, AT, END, ROUTE
 from tests.router.test_usage_retention import connect_caller, forwarded_caller
-from tests.router.test_usage_admin import policy, server, request, ADMIN, LEGACY
+from tests.router.test_usage_admin import policy as policy, server, request, LEGACY
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 NOW = datetime.fromisoformat(END.replace('Z', '+00:00'))

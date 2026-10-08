@@ -1,5 +1,4 @@
 """Portable managed attribution through the real public command and key store."""
-import copy
 import json
 import os
 from pathlib import Path
@@ -157,7 +156,6 @@ def test_owner_expiry_is_sampled_after_writer_lock(tmp_path, capsys, monkeypatch
     store, config, value = setup(tmp_path)
     assert command(capsys, 'install', config, '--confirm')[0] == 0
     with store._connect() as db: db.execute('UPDATE keys SET expires_at=100')
-    original = client.time.time
     class Connection:
         def __init__(self, wrapped): self.wrapped = wrapped
         def execute(self, sql, *args):

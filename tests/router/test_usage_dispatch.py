@@ -22,10 +22,11 @@ from anvil_serving.router.usage_store import Terminal, UsageError
 from anvil_serving.router.workloads import RouterWorkloadRegistry
 from tests.router.helpers import make_tier
 from tests.router.test_embeddings import EMBED_PM, RERANK_PM, FakeTransport
-from tests.router.test_usage_lifecycle import AT, END, rows, store
+from tests.router.test_usage_lifecycle import AT, rows, store as store
 from tests.router.key_fixtures import tmp_path as tmp_path
 
-CLOCK = lambda: datetime.fromisoformat(AT.replace("Z", "+00:00"))
+def CLOCK():
+    return datetime.fromisoformat(AT.replace("Z", "+00:00"))
 CHAT = "/v1/chat/completions"
 
 
@@ -337,7 +338,7 @@ def test_declared_actual_child_inherits_caller_and_contributes_once(store,relati
 def test_connect_checker_once_outside_sqlite_and_full_local_cas(store,tmp_path,monkeypatch):
     from tests.router.test_usage_identity import connect
     from anvil_serving.router import front_door
-    from anvil_serving.router.usage_store import UsageStore,AuthorityScope
+    from anvil_serving.router.usage_store import UsageStore
     _,owner,_,scope=store
     keys,_,key_id,secret,account=connect(tmp_path / "second")
     usage=UsageStore(keys)

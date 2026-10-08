@@ -139,9 +139,13 @@ def test_actual_start_refuses_producer_acquired_after_offline_probe(tmp_path, mo
     import fcntl
     from anvil_serving.router.config import load_server_config
     from anvil_serving.router.admission import managed_router_admission
+    from anvil_serving.router.usage_store import RunOwner
+    import uuid
     store, _, _, config = fixture(tmp_path)
     UsageStore(store).migrate()
     monkeypatch.setattr(router_manage, 'DEFAULT_INSTALLED_CONFIG', str(config))
+    physical = RunOwner('synthetic-owner', str(uuid.uuid4()), 1, 2, 1, 2, 1000, 1, 3, 123, 456)
+    monkeypatch.setattr(RunOwner, 'observe', lambda *args: physical)
     assert router_manage._offline_router_start()['offline'] is True
     lock = store.path.parent / 'admission.json.router.lock'
     with lock.open('r+') as held:

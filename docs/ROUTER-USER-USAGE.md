@@ -14,8 +14,11 @@ protected rollback snapshot and explicit offline confirmation. The operator
 must separately hold legacy producers stopped; confirmation does not prove that
 hold. Managed cold start verifies the selected Compose target and durable-mount
 consumers, then the actual router independently acquires its owner fence. The
-probe releases its locks before launch. Retained owner markers, closures or runs
-require owner reconciliation and are never cleared by offline migration. See
+probe releases its locks before launch. Retained matching native ownership uses
+physically verified local run reconciliation and a new closed generation; only
+the assembled owner readmit gate can reopen it. Offline migration cannot clear
+retained ownership. Configured remote memory remains UNKNOWN, so local recovery
+does not unlock restart qualification or readmission for that topology. See
 [the tested migration and cold-start commands](cli/router.md).
 
 The approved router-user-usage PRD controls R001-R020, F001-F005 and its retention
@@ -917,8 +920,12 @@ tier/member intentions. Changed policy/roster/owner, consumption and write failu
 refuse automatic restoration. Lifecycle commands and the native config installer
 consume old-owner verified zero before any backup/replacement/restart. Native
 container readback binds that gate to the selected actual container/image and
-current loaded config. Successor custody is not reconstructed or automatically
-readmitted: its retained closure requires reviewed transfer. First old-runtime
+current loaded config. Under actual producer/writer exclusion, startup can
+reconcile physically proven inactive local runs and transfer retained closure
+to a new closed generation. Existing assembled-owner readmit remains required.
+A changed container PID namespace remains incomparable and refuses recovery;
+configured remote-memory completion remains UNKNOWN and refuses readmission.
+First old-runtime
 bootstrap, shared/multiple potential admitters and remote native drain without an
 owner readback remain operational HOLD. This source is not live closure proof.
 

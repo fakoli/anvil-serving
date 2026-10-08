@@ -587,8 +587,36 @@ an offline candidate custody check under the same lifecycle lock as launch.
 This is offline startup, not predecessor drain. Probe locks end before launch;
 the actual new process must acquire its own producer fence and reject competing
 or retained owners. External producer maintenance holds remain necessary.
-Prior owner markers, admission state/closure or retained runs require supported
-reconciliation; these commands never erase them or fabricate a dead predecessor.
+Migration remains a first-bootstrap operation and refuses retained native
+ownership. Cold startup can probe an existing owner only with matching protected
+store binding, actual producer/writer exclusion and physically proven inactive
+local runs. Actual startup rechecks that proof, reconciles local interrupted
+requests through the ledger's recovery operation, preserves committed rows and
+registers the real successor. The old closure stays durable through that
+verification; transfer persists a new closed generation with a new barrier.
+Live, foreign, incomparable or unknown old runs refuse before transfer.
+Physical classification requires the same verified boot, PID/user namespaces
+and unrestricted procfs view. A replacement Docker container normally has a new
+PID namespace; that change remains UNKNOWN even after the old process exits.
+This path does not establish restart recovery across container namespaces. The
+deployment must supply independently reviewed comparable owner proof before
+such a successor can start; releasing the old lock is insufficient.
+
+The successor remains quiesced. Use the existing management commands to obtain
+its new barrier and request readmission after the assembled owner roster is safe:
+
+```bash
+anvil-serving router quiesce --scope router --confirm
+anvil-serving router readmit --scope router --barrier-token NEW_BARRIER --confirm
+```
+
+Local inactive-run recovery does not prove remote execution completed. Configured
+memory currently has no terminal owner readback, so its observer remains UNKNOWN:
+local reconciliation can finish while successor readmission and managed close
+stay held. An external pause or bounded interruption does not supply a native
+remote terminal contract. This configured topology cannot complete later restart
+qualification/readmission with the present capability. These commands do not
+disable memory, erase closure or turn UNKNOWN into zero.
 
 Router restart/reload/recreate/down/config install require the actual old
 container's supported all-path barrier, owned zero and consumed persistent closure.

@@ -1,11 +1,8 @@
 """Hermetic all-path ownership and native managed-drain checks."""
-import contextvars
 import http.client
 import json
 import os
 import threading
-import time
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -13,14 +10,14 @@ import pytest
 from anvil_serving.router.admission import (
     RouterAdmission, RouterAdmissionClosed, managed_router_admission, owned_dispatch,
 )
-from anvil_serving.router.config import ServerConfig, load_server_config, ConfigError
+from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.front_door_runtime import DeliveryWorker
 from anvil_serving.router.request_control import RequestControl
 from anvil_serving.router import usage_store as ledger
 from anvil_serving.router.usage_store import UsageError
 from anvil_serving import router_manage, serves
-from tests.router.test_usage_lifecycle import store, AT, END, rows
+from tests.router.test_usage_lifecycle import store as store, END, rows
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 

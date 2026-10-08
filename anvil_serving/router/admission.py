@@ -942,7 +942,10 @@ def managed_router_admission(server_config, revision):
     """Production producer bound to one explicitly configured native owner.
 
     Uses the existing protected owner directory and usage store, never creates
-    schemas or recovers foreign runs at startup. Linux ownership is required;
+    schemas or recovers foreign runs at startup. Proven inactive local runs are
+    reconciled under both native fences; successor admission stays closed until
+    the existing whole-owner readmit verifies its assembled roster.
+    Linux ownership is required;
     incomparable platforms and multiple potential admitters fail closed.
     """
     owner_id = server_config.router_owner_id
@@ -1014,21 +1017,40 @@ def managed_router_admission(server_config, revision):
                     os.unlink(temporary)
 
         usage = UsageStore(KeyStore(server_config.api_keys_path))
-        run_id = usage.register_run(actual_owner, domain_id=server_config.usage_domain_id,
-                                    configuration_revision=revision, enabled=server_config.usage_enabled)
-        def scope():
-            return usage.managed_owner_scope(run_id, actual_owner, domain_id=server_config.usage_domain_id,
-                                              configuration_revision=revision)
-        scope()  # Incomparable/foreign runs refuse before the listener exists.
-        owner = RouterAdmission(revision, persist=persist, restored=restored, owner_scope=scope,
-                                roster_revision=roster_revision)
-        usage.key_store._router_admission = owner
-        owner._assembling = True
-        owner._store_writer_readback = _bind_router_store(usage.key_store.path, path, owner_id)
-        owner._owner_descriptor = descriptor
-        owner.usage_scope = scope
-        owner.usage_run_id = run_id
-        persist(owner._state())
+        with usage.key_store._offline_custody(server_config, producer_descriptor=descriptor, allow_retained=True):
+            retained = usage.inactive_native_runs(actual_owner, domain_id=server_config.usage_domain_id)
+            with usage.key_store._connect() as db:
+                previous = db.execute('SELECT configuration_revision FROM usage_domains WHERE domain_id=?',
+                                      (server_config.usage_domain_id,)).fetchone()
+            if retained:
+                recovery = usage.recover(retained, host_domain_id=owner_id)
+                if recovery['live_runs'] or recovery['unknown_runs']:
+                    raise ValueError('router_owner_recovery_unknown')
+            run_id = usage.register_run(actual_owner, domain_id=server_config.usage_domain_id,
+                                        configuration_revision=revision, enabled=server_config.usage_enabled,
+                                        previous_revision=previous[0] if previous else None)
+            def scope():
+                return usage.managed_owner_scope(run_id, actual_owner, domain_id=server_config.usage_domain_id,
+                                                  configuration_revision=revision)
+            scope()  # Incomparable/foreign runs refuse before the listener exists.
+            successor = bool(retained or restored is not None)
+            if successor:
+                # The predecessor closure remains durable through reconciliation
+                # and actual new-run verification. Transfer writes a new closed
+                # generation; it never reuses a consumed admission permission.
+                restored = {'barrier_token': secrets.token_hex(32), 'configuration_revision': revision,
+                            'roster_revision': roster_revision, 'policy_revision': revision,
+                            'generation': (restored['generation'] if restored else 0) + 1, 'consumed': False}
+            owner = RouterAdmission(revision, persist=persist, restored=restored, owner_scope=scope,
+                                    roster_revision=roster_revision)
+            usage.key_store._router_admission = owner
+            owner._assembling = True
+            owner._successor_pending = successor
+            owner._store_writer_readback = _bind_router_store(usage.key_store.path, path, owner_id)
+            owner._owner_descriptor = descriptor
+            owner.usage_scope = scope
+            owner.usage_run_id = run_id
+            persist(owner._state())
         return owner, usage, run_id
     except BaseException:
         os.close(descriptor)

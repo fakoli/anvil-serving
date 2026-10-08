@@ -2146,6 +2146,12 @@ def build_server(
         if media_worker is not None:
             router_owner.observe("media", media_worker.drain_readback)
         router_owner._assembling = False
+        if getattr(router_owner, '_successor_pending', False):
+            # Bind the new closed generation to the actual assembled policy.
+            # Existing readmit checks every observer; remote UNKNOWN stays HOLD.
+            router_owner._barrier_policy = admission_policy_revision()
+            router_owner._save()
+            router_owner._successor_pending = False
         def usage_metrics():
             from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
             return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,

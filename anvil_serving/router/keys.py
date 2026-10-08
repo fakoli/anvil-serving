@@ -24,7 +24,10 @@ import unicodedata
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .identity import CallerSnapshot
 
 from ..control_plane import bootstrap_shim
 from ..control_plane.mcp import auth_file
@@ -537,8 +540,8 @@ class KeyStore:
             permit.release()
 
     @contextmanager
-    def _offline_custody(self, server):
-        """Own first-bootstrap storage; retained native ownership requires transfer.
+    def _offline_custody(self, server, *, producer_descriptor=None, allow_retained=False):
+        """Own protected storage with actual producer and writer exclusion.
 
         The operator separately holds legacy producers stopped. These fences
         exclude current native producers/admin writers; a flag is not that hold.
@@ -558,20 +561,34 @@ class KeyStore:
             for path in (producer, gate):
                 if os.path.lexists(path):
                     _secure_database(path, exists=True)
-                fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
-                held.callback(os.close, fd)
+                if path == producer and producer_descriptor is not None:
+                    fd = producer_descriptor
+                else:
+                    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+                    held.callback(os.close, fd)
                 _private_created_descriptor(fd)
                 _secure_database(path, exists=True, identity=os.fstat(fd))
                 try:
                     fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except BlockingIOError:
                     raise KeyStoreError('offline router custody is busy') from None
-                if path == gate and os.read(fd, 64):
-                    raise KeyStoreError('retained router ownership requires transfer')
-            if os.path.lexists(state) or os.path.lexists(Path(str(self.path) + '.router-owner')):
+                if path == gate:
+                    gate_identity, gate_bound = os.fstat(fd), bool(os.read(fd, 64))
+            marker = Path(str(self.path) + '.router-owner')
+            if allow_retained:
+                if os.path.lexists(marker):
+                    binding = _private_json(marker)
+                    _validate_store_binding(binding, self.path)
+                    if (binding['owner_id'] != server.router_owner_id
+                            or binding['state_path'] != str(state)
+                            or tuple(binding['gate_identity']) != (gate_identity.st_dev, gate_identity.st_ino)):
+                        raise KeyStoreError('retained router ownership differs')
+                elif gate_bound:
+                    raise KeyStoreError('retained router ownership is unavailable')
+            elif gate_bound or os.path.lexists(state) or os.path.lexists(marker):
                 raise KeyStoreError('retained router ownership requires transfer')
             with self._connect() as db:
-                if self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
+                if not allow_retained and self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
                     raise KeyStoreError('retained router runs require owner reconciliation')
             self._writer_context.offline_custody = True
             try:
