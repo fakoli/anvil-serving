@@ -430,10 +430,9 @@ class _WriterConnection(sqlite3.Connection):
     def execute(self, sql, parameters=(), /):
         if self.writer_deadline is not None:
             remaining = self.writer_deadline - time.monotonic()
-            # Cleanup must run even after admission has exhausted its budget.
-            rollback = sql.strip().upper() == "ROLLBACK"
-            if remaining <= 0 and not rollback:
-                raise KeyStoreError("credential writer wait expired")
+            # This bounds waiting, not an already-owned transaction's work.
+            # After expiry an immediately available statement (including commit
+            # or rollback) may finish, but no further lock wait is allowed.
             sqlite3.Connection.execute(
                 self, "PRAGMA busy_timeout=" + str(max(0, int(remaining * 1000)))
             )
