@@ -46,6 +46,8 @@ def _native_gate_output(argv, project="anvil-serving"):
         return proc(0, json.dumps({"container_id":"a"*64,"image_id":"sha256:"+"b"*64,
             "image_reference":"anvil-serving:synthetic","started_at":"2026-01-01T00:00:00Z",
             "restart_count":0,"compose_project":project,"compose_service":"router","mounts":[]}))
+    if argv[:2] == ["docker", "compose"] and "ps" in argv:
+        return proc(0, "a"*64 if project == "anvil-serving" else "")
     if argv[:3] == ["docker", "image", "inspect"]:
         return proc(0, "sha256:"+"b"*64)
     if argv[:2] == ["docker", "exec"] and "_local_router_cutover" in argv[-1]:
@@ -158,7 +160,7 @@ def test_down_uses_stable_anvil_serving_compose_project():
         "router",
         _run=lambda argv, **kwargs: calls.append(argv) or _run(argv, **kwargs),
     ) == 0
-    assert [argv for argv in calls if argv[:2] == ["docker", "compose"]] == [[
+    assert [argv for argv in calls if argv[:2] == ["docker", "compose"] and "stop" in argv] == [[
         "docker", "compose", "--project-name", "anvil-serving",
         "-f", "compose.yml", "stop", "router",
     ]]

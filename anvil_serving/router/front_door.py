@@ -507,6 +507,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         "GET", USAGE_METRICS_ENDPOINT, WORKLOADS_READ, lambda _query: b"",
         "text/plain; version=0.0.4")
     collection_clock = workload_clock or (lambda: datetime.now(timezone.utc))
+    def router_entry(operation):
+        # Public handler methods can also be invoked by an embedded owner. The
+        # stdlib HTTP entry retains ownership through its later final flush.
+        def dispatch(self, *args, **kwargs):
+            try:
+                return operation(self, *args, **kwargs)
+            finally:
+                if not getattr(self, "_anvil_handler_active", False):
+                    self._finish_router()
+        return dispatch
+
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -523,6 +534,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._reset_request_correlation()
             if not isinstance(self.wfile, _ResponseWriter):
                 self.wfile = _ResponseWriter(self.wfile)
+            self._anvil_handler_active = True
             try:
                 super().handle_one_request()
             except _ClientDisconnected as exc:
@@ -536,15 +548,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     flush=True,
                 )
             finally:
-                permit, binding = self._anvil_router_permit, self._anvil_router_binding
-                if binding is not None:
-                    binding.__exit__(None, None, None)
-                if permit is not None:
-                    worker = self._anvil_worker
-                    if worker is not None:
-                        worker.when_finished(permit.release)
-                    else:
-                        permit.release()
+                self._anvil_handler_active = False
+                self._finish_router()
                 if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
                     acquired = key_store_slots.acquire(blocking=False)
                     try:
@@ -752,6 +757,19 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_usage = None
             self._anvil_router_permit = None
             self._anvil_router_binding = None
+
+        def _finish_router(self):
+            permit = getattr(self, "_anvil_router_permit", None)
+            binding = getattr(self, "_anvil_router_binding", None)
+            self._anvil_router_permit = self._anvil_router_binding = None
+            if binding is not None:
+                binding.__exit__(None, None, None)
+            if permit is not None:
+                worker = getattr(self, "_anvil_worker", None)
+                if worker is not None:
+                    worker.when_finished(permit.release)
+                else:
+                    permit.release()
 
         def _admit_router(self, family, *, completion=False):
             if self._anvil_router_permit is not None:
@@ -1940,6 +1958,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._json(200, {"applied": True, "action": action, "result": result})
 
         # --- routes ----------------------------------------------------------
+        @router_entry
         def do_GET(self) -> None:
             if api_keys is None:
                 self._reset_request_correlation()
@@ -2407,6 +2426,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             finally:
                 connect_slots.release()
 
+        @router_entry
         def do_POST(self) -> None:
             if self.path == "/v1/connect/keys" and connect_keys is not None:
                 self._connect_keys()
@@ -2497,6 +2517,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         _CONCURRENCY_LIMIT.release()
 
+        @router_entry
         def do_DELETE(self) -> None:
             if api_keys is None:
                 self._reset_request_correlation()
@@ -3122,7 +3143,12 @@ def make_server(host: str, port: int,
         if dispatcher is not None:
             dispatcher._router_admission = router_admission
     if gateway is not None:
-        gateway.tasks.operations._router_admission = router_admission
+        operations = getattr(getattr(gateway, "tasks", None), "operations", None)
+        if operations is not None:
+            operations._router_admission = router_admission
+        elif router_admission._persist is not None:
+            # An opaque injected producer cannot establish complete native scope.
+            router_admission.unknown("media")
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),

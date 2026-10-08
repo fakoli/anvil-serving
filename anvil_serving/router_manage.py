@@ -365,7 +365,9 @@ def cmd_up(
             return 1
     if not dry_run:
         try:
-            require_router_drain(container, _run=_run)
+            require_router_drain(container, _run=_run, compose=compose, service=service,
+                                 env_file=env_file, execution_env=execution_env,
+                                 allow_foreign=recreate)
         except ValueError:
             print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
             return 1
@@ -385,7 +387,7 @@ def cmd_up(
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
     if not dry_run:
         try:
-            require_router_drain(DEFAULT_CONTAINER, _run=_run)
+            require_router_drain(DEFAULT_CONTAINER, _run=_run, compose=compose, service=service)
         except ValueError:
             print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
             return 1
@@ -1368,13 +1370,42 @@ def _local_router_cutover(timeout=30):
             "drained":True, "closed":True}
 
 
-def require_router_drain(container, *, _run=subprocess.run, timeout=30):
+def _verify_compose_target(compose, service, custody, *, _run, env_file=None,
+                           execution_env=None, allow_foreign=False):
+    """Bind a Compose operation to the one actual owner consumed by its gate."""
+    if (not isinstance(service, str) or not _CONTAINER_NAME_RE.fullmatch(service)
+            or custody.get("compose_service") != service):
+        raise ValueError("router_compose_target_mismatch")
+    result = _run([*_compose_argv(compose, env_file=env_file), "ps", "--all", "--quiet", service],
+                  capture_output=True, text=True, encoding="utf-8", timeout=5,
+                  env=execution_env)
+    raw = result.stdout or ""
+    if result.returncode or len(raw) > 131072:
+        raise ValueError("router_compose_target_unknown")
+    ids = raw.split()
+    expected = [custody["container_id"]]
+    if custody.get("compose_project") != DEFAULT_COMPOSE_PROJECT:
+        # Explicit foreign replacement may remove its consumed owner only when
+        # the destination project has no other potential target to mutate.
+        if not allow_foreign:
+            raise ValueError("router_compose_target_mismatch")
+        expected = []
+    if ids != expected:
+        raise ValueError("router_compose_target_mismatch")
+
+
+def require_router_drain(container, *, _run=subprocess.run, timeout=30,
+                         compose=None, service=None, env_file=None,
+                         execution_env=None, allow_foreign=False):
     """Shared mutation gate: exact container, actual old-owner zero, retained closure."""
     if type(timeout) is not int or not 1 <= timeout <= 900:
         raise ValueError("timeout_must_be_integer_1_900")
     before = _restart_custody(container, _run)
     if before.get("available") is not True:
         raise ValueError("router_old_runtime_bootstrap_hold")
+    if compose is not None:
+        _verify_compose_target(compose, service, before, _run=_run, env_file=env_file,
+                               execution_env=execution_env, allow_foreign=allow_foreign)
     code = ("import json; from anvil_serving.router_manage import _local_router_cutover; "
             f"print(json.dumps(_local_router_cutover(timeout={timeout}),sort_keys=True))")
     result = _run(["docker", "exec", container, "python", "-c", code], capture_output=True,
@@ -1383,11 +1414,17 @@ def require_router_drain(container, *, _run=subprocess.run, timeout=30):
         from .observability.dashboard.contracts import strict_json
         receipt = strict_json((result.stdout or "").encode())
         if (result.returncode or type(receipt) is not dict or receipt.get("schema") != "router-native-cutover/v1"
-                or receipt.get("closed") is not True or receipt.get("drained") is not True):
+                or receipt.get("closed") is not True or receipt.get("drained") is not True
+                or any(type(receipt.get(key)) is not str or not re.fullmatch(r"[a-f0-9]{64}", receipt[key])
+                       for key in ("configuration_revision", "roster_revision"))
+                or type(receipt.get("generation")) is not int or receipt["generation"] < 1):
             raise ValueError()
     except Exception:
         raise ValueError("router_old_runtime_bootstrap_hold") from None
     after = _restart_custody(container, _run)
     if before != after:
         raise ValueError("router_owner_binding_changed")
+    if compose is not None:
+        _verify_compose_target(compose, service, after, _run=_run, env_file=env_file,
+                               execution_env=execution_env, allow_foreign=allow_foreign)
     return {**receipt, "container_id":before["container_id"], "image_id":before["image_id"]}

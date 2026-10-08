@@ -471,3 +471,26 @@ def test_failed_iterator_cleanup_keeps_owned_reference_and_unknown(gate):
     stream.close()
     result=gate.drain_router(token,1)
     assert not result['drained'] and result['counts']['internal']==1 and 'internal' in result['unknown']
+
+
+@pytest.mark.parametrize("target", ["different-service", "different-container", "multiple", "unknown"])
+def test_compose_mutation_target_refused_before_old_owner_transition(target):
+    from tests.conftest import proc
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:3] == ["docker", "inspect", "--format"]:
+            return proc(0, json.dumps({"container_id":"a"*64,"image_id":"sha256:"+"b"*64,
+                "image_reference":"anvil-serving:synthetic","started_at":"2026-01-01T00:00:00Z",
+                "restart_count":0,"compose_project":"anvil-serving",
+                "compose_service":"other" if target == "different-service" else "router","mounts":[]}))
+        if argv[:3] == ["docker", "image", "inspect"]:
+            return proc(0, "sha256:"+"b"*64)
+        if argv[:2] == ["docker", "compose"]:
+            return proc(1 if target == "unknown" else 0,
+                        "c"*64 if target == "different-container" else "a"*64+"\n"+"c"*64)
+        raise AssertionError("old owner was closed or mutation ran")
+    with pytest.raises(ValueError):
+        router_manage.require_router_drain("synthetic-router", compose="synthetic-compose",
+                                          service="router", _run=run)
+    assert not any(argv[:2] == ["docker", "exec"] for argv in calls)

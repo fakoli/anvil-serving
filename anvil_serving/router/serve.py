@@ -1988,7 +1988,8 @@ def build_server(
         cleanup.callback(routing.close)
         routing._trace_exporter = trace_exporter
         import hashlib
-        configuration_revision = hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+        configuration_revision = (hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+                                  if server_config.router_owner_id else "unmanaged")
         router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
         routing._router_admission = router_owner
         def admission_policy_revision():
