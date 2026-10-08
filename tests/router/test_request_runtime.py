@@ -522,8 +522,18 @@ def test_client_cap_covers_slow_body_and_releases_after_close_or_bad_json(tmp_pa
                 assert time.monotonic() < end
                 time.sleep(0.01)
             assert len(upstream.requests) == 1  # aborted upload never invokes inference
-            with socket.create_connection((host, port), timeout=1) as admitted:
-                _post(admitted, token="limited-token-012345")
-                assert b" 200 " in _read_until(admitted, b"\r\n\r\n")
+            # Reading response headers does not join the handler's delivery
+            # finalizer. Keep the real admission gate and bound eventual release
+            # after the malformed request socket closes, as for aborted upload.
+            end = time.monotonic() + 1
+            while True:
+                with socket.create_connection((host, port), timeout=1) as admitted:
+                    _post(admitted, token="limited-token-012345")
+                    wire = _read_until(admitted, b"\r\n\r\n")
+                if b" 200 " in wire:
+                    break
+                assert b" 429 " in wire
+                assert time.monotonic() < end
+                time.sleep(0.01)
         finally:
             first.close()
