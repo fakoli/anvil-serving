@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
@@ -318,17 +319,32 @@ class MediaReconciliationLoop:
 
     def drain_readback(self):
         store = self.reconciler.store
-        with self._lock:
-            # A terminal facade or cancellation is not proof of remote death.
+        if not self._lock.acquire(blocking=False):
+            return 1, True
+        try:
             ambiguous = False
             if isinstance(store, MediaJobStore):
-                with store._lock, store._connect() as db:
-                    ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE "
-                        "(j.state='canceled' AND j.backend_prompt_id IS NOT NULL) OR "
-                        "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
-                        "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
-                        "'backend_submission_recovery_unavailable','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
-            return len(store.nonterminal()) + int(self.is_alive), bool(ambiguous or self._unknown_jobs or self._busy)
+                if not store._lock.acquire(blocking=False):
+                    return 1, True
+                try:
+                    with store._connect() as db:
+                        db.execute("PRAGMA busy_timeout=0")
+                        deadline = time.monotonic() + .05
+                        db.set_progress_handler(lambda:int(time.monotonic() >= deadline), 1000)
+                        count = db.execute("SELECT COUNT(*) FROM media_jobs WHERE state NOT IN ('completed','failed','canceled')").fetchone()[0]
+                        # Terminal facades and cancellation cannot attest remote death.
+                        ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE "
+                            "(j.state='canceled' AND j.backend_prompt_id IS NOT NULL) OR "
+                            "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
+                            "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
+                            "'backend_submission_recovery_unavailable','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
+                finally:
+                    store._lock.release()
+            else:
+                count = len(store.nonterminal())
+            return count + int(self.is_alive), bool(ambiguous or self._unknown_jobs or self._busy)
+        finally:
+            self._lock.release()
 
     def reconcile_once(self) -> list[MediaJob]:
         with self._lock:

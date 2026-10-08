@@ -255,11 +255,16 @@ def test_native_scope_foreign_run_and_unknown_process_hold(store,monkeypatch):
 def test_old_runtime_lifecycle_refuses_before_any_mutating_docker(action,monkeypatch):
     commands=[]
     monkeypatch.setattr(router_manage,'require_router_drain',lambda *a,**k: (_ for _ in ()).throw(ValueError('hold')))
-    def run(argv,**kwargs):commands.append(argv);raise AssertionError('mutation bypass')
+    def run(argv,**kwargs):
+        from tests.conftest import proc
+        commands.append(argv)
+        if argv[:2]==['docker','inspect']:
+            return proc(0,'running\n' if 'State.Status' in ' '.join(argv) else 'anvil-serving\n')
+        raise AssertionError('mutation bypass')
     if action in {'restart','reload'}:result=getattr(router_manage,'cmd_'+action)('synthetic-router',_run=run)
     elif action=='down':result=router_manage.cmd_down('synthetic-compose','router',_run=run)
     else:result=router_manage.cmd_up('synthetic-compose','router',_run=run)
-    assert result==1 and not commands
+    assert result==1 and all(argv[:2]==['docker','inspect'] for argv in commands)
 
 
 def test_install_shared_native_seam_holds_before_backup_or_replacement(monkeypatch):
@@ -383,3 +388,86 @@ def test_real_native_factory_and_http_management_share_owner(store,tmp_path,monk
     finally:
         conn.close();server.shutdown();server.server_close();thread.join(3)
     assert not thread.is_alive() and owner._owner_descriptor is None
+
+
+def test_eager_dispatch_returned_iterator_remains_owned_until_real_cleanup(gate):
+    events=[]
+    class Dispatcher:
+        _router_admission=gate
+        @owned_dispatch('internal')
+        def generate(self):
+            events.append('opened')
+            return iter(['first','second'])
+    stream=Dispatcher().generate();token=close(gate)
+    assert events==['opened'] and gate.status()['counts']['internal']==1
+    assert list(stream)==['first','second']
+    assert gate.drain_router(token,1)['drained']
+
+
+def test_direct_tracked_checking_root_can_finish_children_after_closure(gate):
+    from anvil_serving.router.serve import RoutingBackend
+    from anvil_serving.router.config import load
+    from anvil_serving.router.internal import InternalRequest,Message
+    from tests.router.helpers import StaticBackend
+    routing=RoutingBackend(load('configs/example.toml'),{'primary-local':StaticBackend(['ok'])})
+    routing._router_admission=gate
+    stream=routing.generate_tracked(InternalRequest(model='llm.primary',messages=(Message('user','synthetic'),)),gateway_request_id='synthetic')
+    token=close(gate)
+    assert gate.status()['counts']['chat']==1
+    assert list(stream)
+    assert gate.status()['counts']['chat']==1
+    stream.finish_delivery()
+    assert gate.drain_router(token,1)['drained']
+    routing.close()
+
+
+@pytest.mark.parametrize('stale',[False,True])
+def test_native_local_cutover_consumes_actual_owner_zero_and_refuses_stale(gate,tmp_path,monkeypatch,stale):
+    import hashlib
+    config=tmp_path/'local-config.toml';config.write_text('synthetic owner bytes')
+    gate.revision=hashlib.sha256(config.read_bytes()).hexdigest()
+    monkeypatch.setattr(router_manage,'DEFAULT_INSTALLED_CONFIG',str(config))
+    monkeypatch.setenv('SYNTHETIC_NATIVE_TOKEN','synthetic')
+    monkeypatch.setattr('anvil_serving.router.config.load_server_config',lambda _:ServerConfig(router_owner_id='owner_fixture',auth_env='SYNTHETIC_NATIVE_TOKEN'))
+    calls=[]
+    def transition(action,**kwargs):
+        calls.append(action)
+        assert kwargs['scope']=='router' and kwargs['router_url']=='http://127.0.0.1:8000'
+        if action=='status':result=gate.status()
+        elif action=='quiesce':result=gate.quiesce_router(confirm=True,dry_run=False)
+        elif action=='drain':result=gate.drain_router(kwargs['barrier_token'],kwargs['timeout'])
+        else:
+            if stale:gate.roster_revision='changed'
+            result=gate.consume(kwargs['barrier_token'])
+        return {'scope':'router','result':result}
+    monkeypatch.setattr(router_manage,'_transition_request',transition)
+    if stale:
+        with pytest.raises(ValueError):router_manage._local_router_cutover(timeout=1)
+        assert gate.status()['state']=='quiesced' and not gate.status()['cutover_pending']
+    else:
+        receipt=router_manage._local_router_cutover(timeout=1)
+        assert receipt['closed'] and receipt['drained'] and gate.status()['cutover_pending']
+        assert router_manage._local_router_cutover(timeout=1)==receipt
+    assert calls[:4]==['status','quiesce','drain','consume']
+
+
+def test_readmit_checks_fresh_native_owner_scope(gate):
+    token=close(gate)
+    gate._owner_scope=lambda:(_ for _ in ()).throw(ValueError('foreign_live_run'))
+    with pytest.raises(ValueError):gate.readmit_router(token,confirm=True,dry_run=False)
+    assert gate.status()['state']=='quiesced'
+
+
+def test_failed_iterator_cleanup_keeps_owned_reference_and_unknown(gate):
+    class BadIterator:
+        def __iter__(self):return self
+        def __next__(self):raise StopIteration
+        def close(self):raise OSError('synthetic cleanup failure')
+    class Dispatcher:
+        _router_admission=gate
+        @owned_dispatch('internal')
+        def generate(self):return BadIterator()
+    stream=Dispatcher().generate();token=close(gate)
+    stream.close()
+    result=gate.drain_router(token,1)
+    assert not result['drained'] and result['counts']['internal']==1 and 'internal' in result['unknown']

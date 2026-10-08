@@ -9,7 +9,6 @@ import threading
 import time
 import contextvars
 import functools
-import inspect
 import json
 import os
 import secrets
@@ -850,6 +849,9 @@ class RouterAdmission:
                 raise ValueError("router_cutover_pending")
             if dry_run or not confirm:
                 return {"applied":False, "dry_run":True, **self.status()}
+            _counts, unknown = self._drain_counts()
+            if unknown:
+                raise ValueError("router_owner_roster_unknown")
             # Persist removal before opening. Tier/member intentions are untouched.
             saved = self._state()
             self._closed = False
@@ -868,7 +870,7 @@ class RouterAdmission:
 
 
 def owned_dispatch(family):
-    """Guard the existing common dispatcher, including direct internal callers."""
+    """Guard eager dispatch and retain returned iterators through real cleanup."""
     def decorate(operation):
         @functools.wraps(operation)
         def call(self, *args, **kwargs):
@@ -876,34 +878,53 @@ def owned_dispatch(family):
             if owner is None:
                 return operation(self, *args, **kwargs)
             permit = owner.acquire(family)
-            if inspect.isgeneratorfunction(operation):
-                started = False
-                def generate():
-                    nonlocal started
-                    started = True
-                    inner = operation(self, *args, **kwargs)
-                    try:
-                        while True:
-                            try:
-                                with permit.bind():
-                                    value = next(inner)
-                            except StopIteration:
-                                return
-                            yield value
-                    finally:
-                        try:
-                            with permit.bind():
-                                inner.close()
-                        finally:
-                            permit.release()
-                from .backends.relay import _ClosingIterator
-                # A concurrent generator.close refusal is not worker completion.
-                return _ClosingIterator(generate(), lambda:permit.release() if not started else None)
             try:
                 with permit.bind():
-                    return operation(self, *args, **kwargs)
-            finally:
+                    result = operation(self, *args, **kwargs)
+                from collections.abc import Iterator
+                if not isinstance(result, Iterator):
+                    permit.release()
+                    return result
+            except BaseException:
                 permit.release()
+                raise
+            started = False
+            def generate():
+                nonlocal started
+                started = True
+                try:
+                    while True:
+                        try:
+                            with permit.bind():
+                                value = next(result)
+                        except StopIteration:
+                            return
+                        yield value
+                finally:
+                    try:
+                        with permit.bind():
+                            closer = getattr(result, "close", None)
+                            if callable(closer):
+                                closer()
+                    except BaseException:
+                        owner.unknown(family)
+                        raise
+                    else:
+                        permit.release()
+            def close_unstarted():
+                if not started:
+                    try:
+                        with permit.bind():
+                            closer = getattr(result, "close", None)
+                            if callable(closer):
+                                closer()
+                    except BaseException:
+                        owner.unknown(family)
+                        raise
+                    else:
+                        permit.release()
+            from .backends.relay import _ClosingIterator
+            return _ClosingIterator(generate(), close_unstarted)
         return call
     return decorate
 

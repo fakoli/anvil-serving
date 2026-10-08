@@ -204,7 +204,8 @@ class RouterWorkloadStream:
     iterator callers may use it directly; close() is the fallback disconnect.
     """
 
-    def __init__(self, factory, token: Optional[RouterWorkloadToken]) -> None:
+    def __init__(self, factory, token: Optional[RouterWorkloadToken], router_permit=None) -> None:
+        self._router_permit = router_permit
         self._factory = factory
         self._token = token
         self._inner = None
@@ -217,7 +218,11 @@ class RouterWorkloadStream:
         if not self._started and not self._closed:
             self._started = True
             try:
-                self._inner = self._factory()
+                if self._router_permit is None:
+                    self._inner = self._factory()
+                else:
+                    with self._router_permit.bind():
+                        self._inner = self._factory()
             except BaseException:
                 self.generation_failed = True
                 raise
@@ -245,24 +250,26 @@ class RouterWorkloadStream:
     def close_upstream(self) -> None:
         if self._closed:
             return
-        self._closed = True
-        self._factory = None
         closer = getattr(self._inner, "close", None)
         if callable(closer):
             closer()
+        self._closed = True
+        self._factory = None
 
     def finish_delivery(self, outcome: Optional[WorkloadOutcome] = None) -> None:
         if self._finished:
             return
+        self.close_upstream()  # A refused concurrent close is still owned work.
         self._finished = True
         try:
-            self.close_upstream()
-        finally:
             if self._token is not None:
                 try:
                     self._token.finish(outcome)
                 except Exception:
                     pass  # observation never owns response or admission success
+        finally:
+            if self._router_permit is not None:
+                self._router_permit.release()
 
     def close(self) -> None:
         self.finish_delivery(None if self.generation_failed else WorkloadOutcome.DISCONNECTED)
@@ -938,6 +945,7 @@ class RoutingBackend:
         return self._generate(request)
 
     def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
+        permit = self._router_admission.acquire("chat")
         from .internal import usage_invocation
         invocation = usage_invocation(request)
         token = invocation.token if invocation is not None else None
@@ -946,7 +954,7 @@ class RoutingBackend:
                 token = self._workload_registry.begin(gateway_request_id)
             except Exception:
                 pass
-        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
+        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token, permit)
 
     @owned_dispatch("chat")
     def _generate(

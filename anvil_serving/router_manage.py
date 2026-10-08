@@ -340,12 +340,6 @@ def cmd_up(
     container=DEFAULT_CONTAINER,
     environ=None,
 ):
-    if not dry_run:
-        try:
-            require_router_drain(container, _run=_run)
-        except ValueError:
-            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
-            return 1
     try:
         execution_env = _compose_execution_env(
             compose,
@@ -369,13 +363,16 @@ def cmd_up(
                 file=sys.stderr,
             )
             return 1
-        if not dry_run:
-            remove_rc = _run_argv(
-                ["docker", "rm", "-f", container],
-                _run,
-            )
-            if remove_rc:
-                return remove_rc
+    if not dry_run:
+        try:
+            require_router_drain(container, _run=_run)
+        except ValueError:
+            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
+            return 1
+    if state != "absent" and observed_project != DEFAULT_COMPOSE_PROJECT and not dry_run:
+        remove_rc = _run_argv(["docker", "rm", "-f", container], _run)
+        if remove_rc:
+            return remove_rc
     return _run_argv(
         _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
         _run,

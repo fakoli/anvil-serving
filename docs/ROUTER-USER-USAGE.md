@@ -889,6 +889,9 @@ checks actual thread liveness. Common direct chat/relay, purpose, audio, memory,
 and media dispatch seams share that owner. Inherited declared child work retains
 its own references; detached work cannot inherit a caller JSON object. Media
 retained nonterminal jobs and actual reconciliation thread completion join drain.
+Retained ambiguous terminal facades and canceled remote prompts remain UNKNOWN.
+Metadata and trace observers stop scheduling only after owned inference finishes;
+zero includes their actual thread completion. Same-owner readmit resumes them.
 Ambiguous submission/recovery and current remote-memory ownership remain UNKNOWN,
 never zero. Read-only protocol discovery/status stays available; subscription
 completion is counted and consumption prevents new storage/delivery ownership.
