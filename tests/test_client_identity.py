@@ -236,3 +236,43 @@ def test_installed_destination_cannot_inspect_signer_reference(tmp_path, capsys,
         return original(path)
     monkeypatch.setattr(client, '_read', read)
     assert command(capsys, 'install', config, '--confirm')[0] == 2
+
+
+@pytest.mark.parametrize('action', ['preview', 'readback', 'install'])
+def test_real_concurrent_rebind_cannot_splice_owner_observations(tmp_path, monkeypatch, action):
+    """A second SQLite writer at the old second-read boundary, always joined."""
+    import threading
+    store, config, value = setup(tmp_path)
+    client.run('install', config, confirm=True)
+    original = client._owner
+    release_writer, writer_done = threading.Event(), threading.Event()
+    errors, calls = [], []
+    old_second_read = 4 if action == 'install' else 2
+    def rebind():
+        try:
+            assert release_writer.wait(5)
+            store.bind_owner(value['bindings'][0]['key_id'], 'service', 'service:replacement', 1)
+        except BaseException as error:
+            errors.append(type(error).__name__)
+        finally:
+            writer_done.set()
+    thread = threading.Thread(target=rebind)
+    thread.start()
+    def interleave(current_store, binding):
+        calls.append(binding['key_id'])
+        if len(calls) == old_second_read:
+            release_writer.set()
+            assert writer_done.wait(5)
+        return original(current_store, binding)
+    monkeypatch.setattr(client, '_owner', interleave)
+    try:
+        result = client.run(action, config, confirm=action == 'install')
+    finally:
+        release_writer.set()
+        thread.join(5)
+    assert not thread.is_alive() and not errors
+    status = result['clients'][0]
+    assert status['binding_installed'] == (status['current_actor'] == status['desired_actor'])
+    assert result['configuration_status'] != 'installed' or status['current_actor'] == status['desired_actor']
+    assert len(calls) == (2 if action == 'install' else 1)
+    assert original(store, value['bindings'][0]).id == 'service:replacement'

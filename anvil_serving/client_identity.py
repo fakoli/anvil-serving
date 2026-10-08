@@ -145,6 +145,9 @@ def _owner(store, binding):
 
 
 def _state(store, binding):
+    # One validated owner sample supplies both public status and current_actor.
+    # A later writer can change current state, but cannot splice two revisions
+    # into an internally contradictory installed readback.
     actor = _owner(store, binding)
     revision = actor.binding_revision if actor.kind != "unattributed" else 0
     same = (actor.kind == binding["kind"] and actor.id == binding["owner_id"]
@@ -152,7 +155,7 @@ def _state(store, binding):
     if not same:
         store.bind_owner(binding["key_id"], binding["kind"], binding["owner_id"],
                          binding["expected_revision"], dry_run=True)
-    return same
+    return same, actor
 
 
 def run(action, path, *, confirm=False, dry_run=False):
@@ -167,11 +170,11 @@ def run(action, path, *, confirm=False, dry_run=False):
         _require(installed == payload)  # Never overwrite a different binding.
     statuses = []
     for binding in value["bindings"]:
-        same = _state(store, binding)
+        same, actor = _state(store, binding)
         statuses.append({"client_id": binding["client_id"], "policy": binding["policy"],
                          "binding_installed": same, "key_id": binding["key_id"],
                          "desired_actor": Actor(binding["kind"], binding["owner_id"], binding["expected_revision"] + 1).to_dict(),
-                         "current_actor": _owner(store, binding).to_dict()})
+                         "current_actor": actor.to_dict()})
     apply = action == "install" and confirm and not dry_run
     if apply:
         for binding, status in zip(value["bindings"], statuses):
@@ -185,8 +188,9 @@ def run(action, path, *, confirm=False, dry_run=False):
         installed = canonical(_read(target)) + b"\n"
         _require(installed == payload)
         for binding, status in zip(value["bindings"], statuses):
-            status["binding_installed"] = _state(store, binding)
-            status["current_actor"] = _owner(store, binding).to_dict()
+            same, actor = _state(store, binding)
+            status["binding_installed"] = same
+            status["current_actor"] = actor.to_dict()
     ready = installed == payload and all(s["binding_installed"] for s in statuses)
     return {"schema": SCHEMA, "action": action, "applied": apply,
             "configuration_status": "installed" if ready else "incomplete",
