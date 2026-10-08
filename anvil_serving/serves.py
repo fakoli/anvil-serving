@@ -1446,6 +1446,13 @@ def _install_router_config(
         config_bytes = config_text.encode("utf-8")
         config_label = "direct config"
 
+    from .router_manage import require_router_drain
+    try:
+        require_router_drain(container, _run=_run)
+    except ValueError:
+        print("  router install HOLD: old runtime all-path owned drain is required")
+        return 1
+
     validate = [
         "docker", "exec", "-i", container, "python", "-c",
         _DIRECT_CONFIG_VALIDATOR,

@@ -51,6 +51,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
 
+from .admission import RouterAdmission, RouterAdmissionClosed
 from .backends.relay import _ClosingIterator
 from .audio import (
     AudioGateway,
@@ -483,7 +484,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
-                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None):
+                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None):
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
     connect_slots = threading.BoundedSemaphore(2)
@@ -535,6 +536,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     flush=True,
                 )
             finally:
+                permit, binding = self._anvil_router_permit, self._anvil_router_binding
+                if binding is not None:
+                    binding.__exit__(None, None, None)
+                if permit is not None:
+                    worker = self._anvil_worker
+                    if worker is not None:
+                        worker.when_finished(permit.release)
+                    else:
+                        permit.release()
                 if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
                     acquired = key_store_slots.acquire(blocking=False)
                     try:
@@ -740,8 +750,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_worker = None
             self._anvil_caller = None
             self._anvil_usage = None
+            self._anvil_router_permit = None
+            self._anvil_router_binding = None
+
+        def _admit_router(self, family, *, completion=False):
+            if self._anvil_router_permit is not None:
+                return True
+            try:
+                permit = router_admission.acquire(family, completion=completion)
+                binding = permit.bind()
+                binding.__enter__()
+                self._anvil_router_permit, self._anvil_router_binding = permit, binding
+                return True
+            except RouterAdmissionClosed:
+                self._device_error(503, "router_quiesced", "router admission is closed")
+                return False
 
         def _admit_usage(self, kind, model, *, normalize=True):
+            family = "chat" if kind == "chat" else "audio" if kind in {"stt", "tts"} else "purpose" if kind in {"embedding", "rerank"} else kind
+            if not self._admit_router(family):
+                return False
             if not self._tracked_request():
                 return True
             try:
@@ -1371,6 +1399,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             body = self._protocol_body()
             if body is None:
                 return
+            inference = (body.get("method") == "tools/call" and (body.get("params") if isinstance(body.get("params"), dict) else {}).get("name") in {"media_workflow_run", "workflow_run"}) if route == MCP_PATH else body.get("method") in {"SendMessage", "SendStreamingMessage"}
+            if inference and not self._admit_router("media"):
+                return
+            if not inference and body.get("method") == "SubscribeToTask" and not self._admit_router("delivery", completion=True):
+                return
             if route == MCP_PATH:
                 result = gateway.mcp_request(body)
                 if result is None:
@@ -1814,6 +1847,39 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _handle_transition(self, body: dict) -> None:
             action = body.get("action")
             tier_id = body.get("tier_id")
+            if body.get("scope") == "router":
+                if set(body) - {"scope", "action", "reason", "barrier_token", "timeout", "confirm", "dry_run"}:
+                    self._error(400, "invalid_transition", "invalid router scope")
+                    return
+                if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
+                    self._error(503, "server_busy", "transition mutation busy")
+                    return
+                try:
+                    if action == "status":
+                        result = router_admission.status()
+                    elif action == "quiesce":
+                        result = router_admission.quiesce_router(body.get("reason", "operator"), dry_run=body.get("dry_run", True), confirm=body.get("confirm", False))
+                    elif action == "drain":
+                        result = router_admission.drain_router(body.get("barrier_token"), body.get("timeout", 30))
+                    elif action == "readmit":
+                        result = router_admission.readmit_router(body.get("barrier_token"), dry_run=body.get("dry_run", True), confirm=body.get("confirm", False))
+                    elif action == "consume":
+                        if body.get("confirm") is not True or body.get("dry_run", True) is not False:
+                            raise ValueError("confirmation_required")
+                        result = router_admission.consume(body.get("barrier_token"))
+                    else:
+                        raise ValueError("unsupported_action")
+                    self._json(200, {"scope":"router", "action":action, "result":result})
+                except ValueError:
+                    self._error(400, "invalid_transition", "invalid router transition")
+                except Exception:
+                    self._error(503, "transition_failed", "router transition failed")
+                finally:
+                    _MANAGEMENT_MUTATION_LIMIT.release()
+                return
+            if "scope" in body and body["scope"] != "tier":
+                self._error(400, "invalid_transition", "invalid transition scope")
+                return
             try:
                 member_kwargs = self._transition_member_kwargs(body)
             except (KeyError, ValueError):
@@ -1908,7 +1974,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         query = urllib.parse.parse_qs(
                             urllib.parse.urlparse(self.path).query, keep_blank_values=True,
                         )
-                        if "member_id" in query:
+                        if "scope" in query:
+                            if query != {"scope":["router"]}:
+                                self._error(400, "invalid_transition", "invalid router scope")
+                                return
+                            self._handle_transition({"scope":"router", "action":"status"})
+                        elif "member_id" in query:
                             if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
                                 self._error(400, "invalid_transition", "invalid transition request")
                                 return
@@ -2838,6 +2909,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             close()
 
             worker = self._anvil_worker = DeliveryWorker(operation, control)
+            router_admission.track_thread(worker.thread)
             heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
             connection = getattr(self, "connection", None)
             previous_timeout = connection.gettimeout() if connection is not None else None
@@ -2973,7 +3045,7 @@ def make_server(host: str, port: int,
                 server_config=None,
                 memory: Optional[MemoryRouter] = None,
                 usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
-                usage_domain_id=None, usage_metrics=None,
+                usage_domain_id=None, usage_metrics=None, router_admission=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -3037,6 +3109,12 @@ def make_server(host: str, port: int,
         connect_keys = ConnectKeys(api_keys, owned_models)
     if webui_bindings is None:
         webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())
+    router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
+    for dispatcher in (backend, purpose, audio, memory):
+        if dispatcher is not None:
+            dispatcher._router_admission = router_admission
+    if gateway is not None:
+        gateway.tasks.operations._router_admission = router_admission
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),
@@ -3045,9 +3123,10 @@ def make_server(host: str, port: int,
             purpose, audio, gateway, memory, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
-            usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics,
+            usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
         ),
     )
+    httpd.anvil_router_admission = router_admission
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
 

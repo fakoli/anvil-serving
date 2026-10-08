@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from ..router.admission import owned_dispatch
+
 import hashlib
 import json
 import threading
@@ -73,6 +75,7 @@ class MediaOperations:
         workflow = self.registry.get(workflow_id, version)
         return {"compatibility": backend.compatibility(workflow).as_public_dict()}
 
+    @owned_dispatch("media")
     def workflow_run(
         self,
         workflow_id: str,
@@ -292,6 +295,7 @@ class MediaOperations:
                     status=503,
                 ) from exc
 
+    @owned_dispatch("media")
     def _resume_existing(
         self,
         job_id: str,
@@ -326,6 +330,7 @@ class MediaOperations:
             )
         return {"job": current.as_public_dict(), "created": False}
 
+    @owned_dispatch("media")
     def _resume_accepted(
         self,
         job_id: str,
@@ -376,6 +381,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
+    @owned_dispatch("media")
     def _resume_preparing(
         self,
         job_id: str,
@@ -426,6 +432,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
+    @owned_dispatch("media")
     def _submit_rendered(
         self,
         job_id: str,

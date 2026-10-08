@@ -738,6 +738,38 @@ class UsageStore:
             self._revision(db, domain_id)
         return run_id
 
+    def managed_owner_scope(self, run_id, owner, *, domain_id, configuration_revision):
+        """Read the native single owner's retained roster, with physical ownership.
+
+        Called only by the exclusive managed admission producer. The query API
+        cannot supply this authority. Unsettled earlier owners remain HOLD.
+        """
+        _uuid(run_id); _id(domain_id); _id(configuration_revision)
+        _require(type(owner) is RunOwner and RunOwner.observe(owner.host_domain_id) == owner)
+        try:
+            with self.key_store._connect() as db:
+                db.row_factory = sqlite3.Row
+                db.execute("BEGIN")
+                domain = db.execute("SELECT configuration_revision FROM usage_domains WHERE domain_id=?", (domain_id,)).fetchone()
+                rows = db.execute("SELECT * FROM usage_runs WHERE domain_id=? ORDER BY started_at,run_id LIMIT 1025", (domain_id,)).fetchall()
+                _require(domain is not None and domain[0] == configuration_revision and 0 < len(rows) <= 1024)
+                current = [r for r in rows if r["run_id"] == run_id]
+                _require(len(current) == 1 and self._run_owner(current[0]) == owner and current[0]["state"] == "live")
+                for row in rows:
+                    if row["run_id"] == run_id:
+                        continue
+                    _require(row["state"] == "dead" and row["ended_at"] is not None
+                             and observe_run(self._run_owner(row)) == "dead")
+                # Bounded native authority lease spans the existing one-second
+                # writer wait; query collection still clamps to its actual time.
+                at = (datetime.fromisoformat(_now().replace("Z", "+00:00")) + timedelta(seconds=2)).isoformat(timespec="microseconds").replace("+00:00", "Z")
+                scope = AuthorityScope(domain_id, configuration_revision, tuple(r["run_id"] for r in rows),
+                                       min(r["started_at"] for r in rows), at)
+                _require(RunOwner.observe(owner.host_domain_id) == owner)
+                return scope
+        except (sqlite3.Error, KeyStoreError, OSError):
+            raise UsageError("accounting_unavailable") from None
+
     def _coverage_state(self, db, authority_scope=None, *, domain_id=None):
         """T007 consumes this in its counter read snapshot; no owner RPC here."""
         if authority_scope is not None:

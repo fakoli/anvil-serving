@@ -205,10 +205,10 @@ required operands, choices, and defaults.
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
-| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url` |
-| `router quiesce` | Quiesce one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
-| `router drain` | Wait for a quiesced tier or declared member to drain. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url`<br>`--timeout` |
-| `router readmit` | Safely readmit one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router quiesce` | Quiesce one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router drain` | Wait for a quiesced tier or declared member to drain. | `read` / `bounded` | `--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url`<br>`--timeout` |
+| `router readmit` | Safely readmit one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |

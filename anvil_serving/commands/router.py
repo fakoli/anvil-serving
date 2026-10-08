@@ -308,6 +308,8 @@ def commands() -> CommandNode:
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Optional tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -315,7 +317,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "status"),),
-                    allowed=("tier", "member", "router_url"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url"),
                 ),
             ),
             _resource_node(
@@ -325,6 +327,8 @@ def commands() -> CommandNode:
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -333,7 +337,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "quiesce"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
@@ -342,6 +346,8 @@ def commands() -> CommandNode:
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -350,7 +356,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "drain"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
@@ -360,6 +366,8 @@ def commands() -> CommandNode:
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -368,7 +376,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "readmit"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(

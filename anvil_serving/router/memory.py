@@ -7,6 +7,8 @@ caller-selected upstream settings never cross this boundary.
 
 from __future__ import annotations
 
+from .admission import owned_dispatch
+
 from contextlib import contextmanager
 import json
 import os
@@ -114,6 +116,7 @@ class MemoryRouter:
         finally:
             self._tracking.invocation = prior
 
+    @owned_dispatch("memory")
     def dispatch(self, body: Mapping[str, Any], *, principal: str) -> dict:
         """Validate and dispatch one memory request for ``principal``."""
         if not isinstance(principal, str) or not principal.strip():

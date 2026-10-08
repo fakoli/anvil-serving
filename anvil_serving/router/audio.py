@@ -18,6 +18,8 @@ and elapsed time.
 
 from __future__ import annotations
 
+from .admission import owned_dispatch
+
 import base64
 import http.client
 import io
@@ -361,6 +363,7 @@ class AudioGateway:
     def release(self) -> None:
         self._limit.release()
 
+    @owned_dispatch("audio")
     def dispatch_transcription(
         self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None, invocation=None
     ) -> Dict[str, Any]:
@@ -463,6 +466,7 @@ class AudioGateway:
             "latency_ms": elapsed,
         }
 
+    @owned_dispatch("audio")
     def dispatch_speech(
         self, body: Mapping[str, Any], *, correlation: Optional[Mapping[str, str]] = None, invocation=None
     ) -> Dict[str, Any]:

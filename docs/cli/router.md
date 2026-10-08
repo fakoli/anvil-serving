@@ -543,3 +543,33 @@ and `live_status: unqualified` distinguish source/configuration proof from live 
 T015 native adapter provisioning and independent T020 foreground/title/tag/background,
 direct/service, recipient privacy and provider-continuity qualification remain required
 before rollout. The exact CLI accounting ledger remains separate from sampled dashboards.
+
+## Whole-router admission
+
+`anvil-serving router quiesce --scope router --confirm` closes the configured
+native owner's complete inference admission and prints its opaque barrier token.
+Use `anvil-serving router drain --scope router --barrier-token TOKEN --timeout 30`
+for bounded actual ownership readback. The timeout is an integer from 1 to 900;
+a timeout leaves work and admission closure intact. Readmission uses
+`anvil-serving router readmit --scope router --barrier-token TOKEN --confirm`.
+Tier/member commands retain their existing scopes; they do not prove router drain.
+
+The native single-owner producer requires explicit `server.router_owner_id`,
+`router_owner_roster = ["owner_fixture"]`, `usage_domain_id`, an absolute protected
+`admission_state_path`, the existing protected `api_keys_path`, and authentication.
+The roster must name exactly that owner. The existing explicitly migrated usage
+schema records enabled and disabled runs before traffic; `usage_enabled = false`
+is the default. Sensitive metrics require separate `usage_metrics_enabled = true`
+and scoped authorization. Installation owns these private settings. A second
+process cannot acquire the same persistent native owner lock. Foreign/unknown
+runs or unsupported shared authority refuse startup and authoritative coverage.
+
+Router restart/reload/recreate/down/config install require the actual old
+container's supported all-path barrier, owned zero and consumed persistent closure.
+The running old version cannot acquire this capability from new source tests.
+Missing old support is a bootstrap HOLD. Successor identity or configuration
+changes retain closure and require reviewed owner transfer before readmission;
+a stale old-owner token never automatically opens a replacement process. Current
+remote memory transport supplies no native retained-inference drain readback and
+therefore holds router replacement while configured. Ambiguous media submission
+also remains HOLD even if ordinary recovery marks the local job failed.

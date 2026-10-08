@@ -24,7 +24,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .admission import AdmissionLease, TierAdmission, _member_id, _reason_code
+from .admission import AdmissionLease, TierAdmission, RouterAdmission, owned_dispatch, managed_router_admission, _member_id, _reason_code
 from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
@@ -731,6 +731,7 @@ class RoutingBackend:
         self._thread_local: threading.local = threading.local()
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
         self._trace_exporter: Optional[TraceExporter] = None
+        self._router_admission = RouterAdmission(self._request_config_sha256)
 
     def close(self) -> None:
         """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
@@ -947,6 +948,7 @@ class RoutingBackend:
                 pass
         return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
 
+    @owned_dispatch("chat")
     def _generate(
         self, request: InternalRequest, *, workload_token=None
     ) -> Iterator[BackendDelta]:
@@ -1977,6 +1979,17 @@ def build_server(
         )
         cleanup.callback(routing.close)
         routing._trace_exporter = trace_exporter
+        import hashlib
+        configuration_revision = hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+        router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
+        routing._router_admission = router_owner
+        def admission_policy_revision():
+            snapshots = routing._admission.snapshots() if routing._admission is not None else ()
+            policy = [(s.tier_id,s.state,s.reason,[(m.member_id,m.state,m.reason) for m in s.members]) for s in snapshots]
+            return hashlib.sha256(json.dumps(policy,sort_keys=True,separators=(",", ":")).encode()).hexdigest()
+        router_owner._policy_revision = admission_policy_revision
+        for owned_backend in backends.values():
+            owned_backend._router_admission = router_owner
         effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
         if observe_workloads:
             routing._workload_registry = RouterWorkloadRegistry(
@@ -2044,6 +2057,7 @@ def build_server(
                     else None
                 ),
             )
+            operations._router_admission = router_owner
             media_backend = ComfyUIClient(backend_url)
             gateway = ProtocolGateway(
                 caller={
@@ -2068,7 +2082,66 @@ def build_server(
                     backend_endpoint=media_backend.base_url,
                 ),
                 maintenance=operations.artifacts.prune,
+                router_admission=router_owner,
             )
+        def metadata_drain_readback():
+            # Stop scheduling metadata work, then observe actual completion.
+            if router_owner._closed and not any(router_owner._counts.values()):
+                if routing._auto_refresher is not None:
+                    routing._auto_refresher._stop.set()
+                    routing._auto_refresher._wake.set()
+                routing._replica_pressure.close()
+                if trace_exporter is not None:
+                    with trace_exporter._lock:
+                        trace_exporter._closed = True
+            threads = list(routing._replica_pressure._workers)
+            if trace_exporter is not None:
+                threads.append(trace_exporter._worker)
+            if routing._auto_refresher is not None and routing._auto_refresher._thread is not None:
+                threads.append(routing._auto_refresher._thread)
+            return sum(thread.is_alive() for thread in threads), False
+
+        def resume_background():
+            pressure = routing._replica_pressure
+            with pressure._condition:
+                if any(thread.is_alive() for thread in pressure._workers):
+                    raise ValueError("router_metadata_not_drained")
+                pressure._closed = False
+                pressure._workers.clear()
+                for entry in pressure._entries.values():
+                    entry.queued = False
+            refresher = routing._auto_refresher
+            if refresher is not None:
+                if refresher._thread is not None and refresher._thread.is_alive():
+                    raise ValueError("router_metadata_not_drained")
+                refresher._thread = None
+                refresher._stop.clear()
+                refresher._wake.clear()
+                refresher.start()
+            if trace_exporter is not None:
+                with trace_exporter._lock:
+                    if trace_exporter._worker.is_alive():
+                        raise ValueError("router_metadata_not_drained")
+                    trace_exporter._closed = False
+                    trace_exporter._worker = threading.Thread(target=trace_exporter._run, name="anvil-router-traces", daemon=True)
+                    trace_exporter._worker.start()
+            if media_worker is not None:
+                media_worker.start()
+
+        router_owner.observe("maintenance", metadata_drain_readback)
+        router_owner._on_readmit.append(resume_background)
+        if memory is not None:
+            # Remote memory may retain inference beyond the outer HTTP result.
+            # No native owner readback is declared by this transport contract.
+            router_owner.observe("memory", lambda:(0, True))
+        if media_worker is not None:
+            router_owner.observe("media", media_worker.drain_readback)
+        router_owner._assembling = False
+        def usage_metrics():
+            from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
+            return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,
+                effective_workload_clock(), domain_id=server_config.usage_domain_id,
+                authority_scope=router_owner.usage_scope())).encode("utf-8")
         httpd = make_server(
             host, port, routing, timeout=timeout, model_routes=config.model_routes,
             exhaustion_status=config.exhaustion_status, auth_token=auth_token,
@@ -2078,7 +2151,10 @@ def build_server(
             workload_host=server_config.workload_host,
             workload_registry=routing._workload_registry,
             workload_clock=effective_workload_clock,
-            server_config=server_config,
+            server_config=server_config, router_admission=router_owner,
+            usage_store=owner_usage if server_config.usage_enabled else None, usage_run_id=owner_run,
+            usage_authority=getattr(router_owner, "usage_scope", None), usage_domain_id=server_config.usage_domain_id,
+            usage_metrics=usage_metrics if server_config.usage_metrics_enabled else None,
             webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
         )
         cleanup.callback(httpd.server_close)
@@ -2099,6 +2175,10 @@ def build_server(
         def close_router_server() -> None:
             nonlocal closed
             with close_lock:
+                if getattr(router_owner, "_owner_descriptor", None) is not None:
+                    counts, unknown = router_owner._drain_counts()
+                    if not router_owner._closed or any(counts.values()) or unknown:
+                        raise ValueError("router_owned_work_not_drained")
                 if closed:
                     return
                 closed = True
@@ -2110,6 +2190,10 @@ def build_server(
                     routing.close()
                 finally:
                     original_server_close()
+                    descriptor = getattr(router_owner, "_owner_descriptor", None)
+                    if descriptor is not None:
+                        os.close(descriptor)
+                        router_owner._owner_descriptor = None
 
         httpd.server_close = close_router_server  # type: ignore[method-assign]
         if media_worker is not None:

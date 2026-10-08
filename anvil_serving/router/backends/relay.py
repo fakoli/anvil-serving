@@ -8,6 +8,8 @@ hermetic.
 
 from __future__ import annotations
 
+from ..admission import owned_dispatch
+
 import json
 import http.client
 import os
@@ -108,11 +110,13 @@ class _ClosingIterator:
     def close(self) -> None:
         if self._closed:
             return
-        self._closed = True
         try:
             closer = getattr(self._inner, "close", None)
             if callable(closer):
                 closer()
+            # A concurrent generator.close refusal is not completion. Its
+            # owning worker must still be able to perform final cleanup.
+            self._closed = True
         finally:
             try:
                 self._close()
@@ -845,6 +849,7 @@ class RelayBackend:
     # ------------------------------------------------------------------ #
     usage_transport_boundary = True
 
+    @owned_dispatch("internal")
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """Dispatch: true streaming upstream for a streaming request, else buffered.
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import queue
+import contextvars
 import threading
 import logging
 
@@ -44,7 +45,8 @@ class DeliveryWorker:
         self.finished = threading.Event()
         self._lock = threading.Lock()
         self._cleanup = []
-        self.thread = threading.Thread(target=self._run, args=(operation,), daemon=True)
+        context = contextvars.copy_context()
+        self.thread = threading.Thread(target=context.run, args=(self._run, operation), daemon=True)
         self.thread.start()
 
     def send(self, kind, value=None):

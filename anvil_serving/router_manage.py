@@ -129,22 +129,28 @@ def _safe_router_url(value):
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "", "", "")).rstrip("/")
 
 
-def transition_request(action, *, tier_id=None, member_id=None, timeout=None, router_url=None,
+def transition_request(action, *, tier_id=None, member_id=None, scope="tier", barrier_token=None, timeout=None, router_url=None,
                        confirm=False, dry_run=True, reason="operator", env=None, _open=None):
     if action != "status" and confirm and not dry_run:
         from .serves import _switch_role_lock
         with _switch_role_lock("promotion"):
-            return _transition_request(action, tier_id=tier_id, member_id=member_id, timeout=timeout,
+            return _transition_request(action, tier_id=tier_id, member_id=member_id, scope=scope, barrier_token=barrier_token, timeout=timeout,
                 router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
-    return _transition_request(action, tier_id=tier_id, member_id=member_id, timeout=timeout,
+    return _transition_request(action, tier_id=tier_id, member_id=member_id, scope=scope, barrier_token=barrier_token, timeout=timeout,
         router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
 
 
-def _transition_request(action, *, tier_id=None, member_id=None, timeout=None, router_url=None,
+def _transition_request(action, *, tier_id=None, member_id=None, scope="tier", barrier_token=None, timeout=None, router_url=None,
                         confirm=False, dry_run=True, reason="operator", env=None, _open=None):
-    if action not in ("status", "quiesce", "drain", "readmit"):
+    if action not in ("status", "quiesce", "drain", "readmit", "consume"):
         raise ValueError("unsupported transition action")
-    if action != "status" and not tier_id:
+    if scope not in {"tier", "router"} or (scope == "router" and (tier_id is not None or member_id is not None)):
+        raise ValueError("router scope excludes tier/member")
+    if action == "consume" and scope != "router":
+        raise ValueError("consume requires router scope")
+    if scope == "router" and action in {"drain", "readmit", "consume"} and (type(barrier_token) is not str or not re.fullmatch("[0-9a-f]{64}", barrier_token)):
+        raise ValueError("router barrier token is required")
+    if action != "status" and scope != "router" and not tier_id:
         raise ValueError("tier_id is required")
     if member_id is not None:
         from .router.config import _REPLICA_ID_RE
@@ -155,30 +161,39 @@ def _transition_request(action, *, tier_id=None, member_id=None, timeout=None, r
             raise ValueError("tier_id is required for member transitions")
     base = _safe_router_url(router_url or (env or os.environ).get("ANVIL_ROUTER_URL") or DEFAULT_ROUTER_URL)
     preview = action in ("quiesce", "readmit") and (not confirm or dry_run)
-    if preview and member_id is None:
+    if preview and member_id is None and scope != "router":
         return {"applied": False, "dry_run": True, "action": action, "tier_id": tier_id, "router_url": base}
     token = (env or os.environ).get("ANVIL_ROUTER_TOKEN") or ""
     if not token:
         raise ValueError("ANVIL_ROUTER_TOKEN is required")
     headers = {"Accept": "application/json", "Authorization": "Bearer " + token}
     if action == "status":
-        scope = {"tier_id": tier_id} if tier_id else {}
+        target = {"scope":"router"} if scope == "router" else {"tier_id": tier_id} if tier_id else {}
         if member_id is not None:
-            scope["member_id"] = member_id
-        suffix = "?" + urllib.parse.urlencode(scope) if scope else ""
+            target["member_id"] = member_id
+        suffix = "?" + urllib.parse.urlencode(target) if target else ""
         request = urllib.request.Request(base + TRANSITION_PATH + suffix, headers=headers)
         request_timeout = 5.0
     else:
         body = {"action": action, "tier_id": tier_id, "confirm": bool(confirm), "dry_run": bool(dry_run), "reason": reason}
+        if scope == "router":
+            body.pop("tier_id")
+            body["scope"] = "router"
+            if barrier_token is not None:
+                body["barrier_token"] = barrier_token
         if member_id is not None:
             body["member_id"] = member_id
             if preview:
                 body["dry_run"] = True
         request_timeout = 5.0
         if action == "drain":
+            if scope == "router":
+                timeout = 30 if timeout is None else timeout
+                if type(timeout) is not int or not 1 <= timeout <= 900:
+                    raise ValueError("router timeout must be an integer between 1 and 900")
             if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 3600:
                 raise ValueError("timeout must be between 0 and 3600 seconds")
-            body["timeout"] = float(timeout)
+            body["timeout"] = timeout if scope == "router" else float(timeout)
             request_timeout += float(timeout)
         headers["Content-Type"] = "application/json"
         request = urllib.request.Request(base + TRANSITION_PATH, data=json.dumps(body).encode(), headers=headers, method="POST")
@@ -193,7 +208,8 @@ def _transition_request(action, *, tier_id=None, member_id=None, timeout=None, r
     if len(raw) > 256 * 1024:
         raise ValueError("router transition response was oversized")
     try:
-        result = json.loads(raw)
+        from .observability.dashboard.contracts import strict_json
+        result = strict_json(raw)
     except ValueError:
         raise ValueError("router transition response was malformed") from None
     if not isinstance(result, dict):
@@ -324,6 +340,12 @@ def cmd_up(
     container=DEFAULT_CONTAINER,
     environ=None,
 ):
+    if not dry_run:
+        try:
+            require_router_drain(container, _run=_run)
+        except ValueError:
+            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
+            return 1
     try:
         execution_env = _compose_execution_env(
             compose,
@@ -364,6 +386,12 @@ def cmd_up(
 
 @_serving_authority_mutation
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
+    if not dry_run:
+        try:
+            require_router_drain(DEFAULT_CONTAINER, _run=_run)
+        except ValueError:
+            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
+            return 1
     return _run_argv(
         [*_compose_argv(compose), "stop", service],
         _run,
@@ -373,6 +401,12 @@ def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
 
 @_serving_authority_mutation
 def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
+    if not dry_run:
+        try:
+            require_router_drain(container, _run=_run)
+        except ValueError:
+            print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
+            return 1
     return _run_argv(["docker", "restart", container], _run, dry_run=dry_run)
 
 
@@ -575,10 +609,9 @@ def install_config(
 ):
     """Safely replace a deployed router config even when its tier set changes.
 
-    Installation verifies that the restarted router exposes the exact desired
-    tier IDs.  Per-tier readiness is reported, but an intentionally stopped or
-    otherwise unavailable serve does not make a structurally successful config
-    installation fail.
+    The old owner must close, drain and consume its complete barrier before
+    any installer callback may replace source or configuration. A successor
+    stays closed until its changed ownership can be reviewed.
     """
     from .router.topology_validation import load_validated_router_snapshot
     from .serves import _install_router_config
@@ -604,11 +637,6 @@ def install_config(
         row.get("tier_id") for row in rows
         if isinstance(row, dict) and isinstance(row.get("tier_id"), str)
     ]
-    restore_admission = [
-        row.get("tier_id") for row in rows
-        if isinstance(row, dict) and row.get("state", "admitting") == "admitting"
-        and isinstance(row.get("tier_id"), str)
-    ]
     plan = {
         "config_sha256": snapshot.config_sha256,
         "current_tiers": current,
@@ -618,45 +646,30 @@ def install_config(
     if dry_run or not confirm:
         return {"applied": False, "dry_run": True, **plan}
 
-    quiesced = []
-    try:
-        for tier_id in restore_admission:
-            _transition(
-                "quiesce", tier_id=tier_id, router_url=router_url,
-                confirm=True, dry_run=False,
-            )
-            quiesced.append(tier_id)
-        for tier_id in current:
-            result = _transition(
-                "drain", tier_id=tier_id, timeout=drain_timeout,
-                router_url=router_url, confirm=True, dry_run=False,
-            )
-            payload = result.get("result", result)
-            if not isinstance(payload, dict) or not payload.get("drained", False):
-                raise ValueError("router tier %r did not drain" % tier_id)
-    except Exception:
-        for tier_id in reversed(quiesced):
-            try:
-                _transition(
-                    "readmit", tier_id=tier_id, router_url=router_url,
-                    confirm=True, dry_run=False,
-                )
-            except Exception:
-                pass
-        raise
+    closure = _transition("quiesce", scope="router", router_url=router_url,
+                          confirm=True, dry_run=False).get("result", {})
+    barrier = closure.get("barrier_token")
+    if (closure.get("durable") is not True or closure.get("state") != "quiesced"
+            or type(barrier) is not str or re.fullmatch("[0-9a-f]{64}", barrier) is None):
+        raise ValueError("router old-owner all-path barrier is unavailable")
+    drained = _transition("drain", scope="router", router_url=router_url,
+                          barrier_token=barrier, timeout=drain_timeout).get("result", {})
+    counts = drained.get("counts")
+    if (drained.get("drained") is not True or drained.get("unknown") != []
+            or type(counts) is not dict
+            or set(counts) != {"chat", "purpose", "audio", "memory", "media", "internal", "delivery", "maintenance"}
+            or any(type(v) is not int or v != 0 for v in counts.values())
+            or any(drained.get(k) != closure.get(k) for k in ("configuration_revision", "roster_revision", "generation"))):
+        raise ValueError("router owned-work drain remains held")
+    consumed = _transition("consume", scope="router", router_url=router_url,
+                           barrier_token=barrier, confirm=True, dry_run=False).get("result", {})
+    if (consumed.get("drained") is not True or consumed.get("cutover_pending") is not True
+            or any(consumed.get(k) != closure.get(k) for k in ("configuration_revision", "roster_revision", "generation"))):
+        raise ValueError("router barrier consumption is unverified")
 
     installer = _install or _install_router_config
     if installer(snapshot) != 0:
-        for tier_id in reversed(quiesced):
-            try:
-                _transition(
-                    "readmit", tier_id=tier_id, router_url=router_url,
-                    confirm=True, dry_run=False,
-                )
-            except Exception:
-                pass
-        raise ValueError("router config install failed or was rolled back")
-
+        raise ValueError("router config install held or failed; admission remains closed")
     deadline = time.monotonic() + 60
     while True:
         try:
@@ -669,43 +682,19 @@ def install_config(
                 if not isinstance(row, dict) or not isinstance(row.get("tier_id"), str):
                     raise ValueError("router transition status was malformed")
                 tier_ids.append(row["tier_id"])
-            well_formed = len(tier_ids) == len(set(tier_ids))
-            if well_formed and set(tier_ids) == set(desired):
-                unavailable = [
-                    tier_id for tier_id, row in zip(tier_ids, post_rows)
-                    if row.get("ready") is not True
-                ]
-                restored = []
-                for tier_id in restore_admission:
-                    if tier_id not in desired:
-                        continue
-                    _transition(
-                        "readmit", tier_id=tier_id, router_url=router_url,
-                        confirm=True, dry_run=False,
-                    )
-                    restored.append(tier_id)
-                return {
-                    "applied": True,
-                    "dry_run": False,
-                    "tier_status": post_rows,
-                    "unavailable_tiers": unavailable,
-                    "readmitted_tiers": restored,
-                    **plan,
-                }
+            if len(tier_ids) == len(set(tier_ids)) and set(tier_ids) == set(desired):
+                closed = _transition("status", scope="router", router_url=router_url).get("result", {})
+                if (closed.get("state") != "quiesced" or closed.get("durable") is not True
+                        or closed.get("configuration_revision") != snapshot.config_sha256):
+                    raise ValueError("installed router closure is unverified")
+                return {"applied":True, "dry_run":False, "tier_status":post_rows,
+                        "unavailable_tiers":[tid for tid,row in zip(tier_ids,post_rows) if row.get("ready") is not True],
+                        "readmitted_tiers":[], "admission":"quiesced",
+                        "readmission_hold":"successor_owner_transfer_required", **plan}
         except ValueError:
             pass
         if time.monotonic() >= deadline:
-            for tier_id in reversed(restore_admission):
-                if tier_id not in desired:
-                    continue
-                try:
-                    _transition(
-                        "readmit", tier_id=tier_id, router_url=router_url,
-                        confirm=True, dry_run=False,
-                    )
-                except Exception:
-                    pass
-            raise ValueError("installed router config did not expose the desired tier set")
+            raise ValueError("installed router config did not expose the desired tier set and durable closure; admission remains closed")
         _sleep(1)
 
 
@@ -757,11 +746,13 @@ def _build_parser():
             item.add_argument("--follow", action="store_true")
     for action in ("transition-status", "quiesce", "drain", "readmit"):
         item = actions.add_parser(action)
-        item.add_argument("--tier", required=action != "transition-status")
+        item.add_argument("--tier")
+        item.add_argument("--scope", choices=("tier", "router"), default="tier")
+        item.add_argument("--barrier-token")
         item.add_argument("--member", help="optional declared replica member; requires --tier")
         item.add_argument("--router-url")
         if action == "drain":
-            item.add_argument("--timeout", type=float, required=True)
+            item.add_argument("--timeout", type=lambda value: int(value) if value.isdecimal() else float(value), default=30)
         if action in ("quiesce", "readmit"):
             item.add_argument("--confirm", action="store_true")
             item.add_argument("--dry-run", action="store_true")
@@ -776,7 +767,7 @@ def _build_parser():
     install.add_argument("--topology")
     install.add_argument("--topology-overlay")
     install.add_argument("--router-url")
-    install.add_argument("--drain-timeout", type=float, default=120)
+    install.add_argument("--drain-timeout", type=int, default=120)
     install.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -862,7 +853,7 @@ def main(argv=None):
         try:
             result = transition_request(
                 action,
-                tier_id=getattr(args, "tier", None),
+                tier_id=getattr(args, "tier", None), scope=args.scope, barrier_token=args.barrier_token,
                 **({"member_id": args.member} if args.member is not None else {}),
                 timeout=getattr(args, "timeout", None),
                 router_url=args.router_url,
@@ -1329,3 +1320,77 @@ def _print_fleet_status(report):
         print("aliases with no reachable backing serve: %s"
               % ", ".join(report["unreachable_aliases"]))
     return 1 if report["unreachable_aliases"] else 0
+
+
+def _local_router_cutover(timeout=30):
+    """Run inside the selected native container; never follows a remote URL.
+
+    The old image must implement the all-path boundary itself. Import or
+    protocol failures leave bootstrap on HOLD. No host dotenv resolution.
+    """
+    from pathlib import Path
+    from .router.config import load_server_config
+    settings = load_server_config(DEFAULT_INSTALLED_CONFIG)
+    if settings.router_owner_id is None:
+        raise ValueError("router_owner_roster_unknown")
+    token = os.environ.get(settings.auth_env or "")
+    if not token:
+        raise ValueError("router_owner_auth_unavailable")
+    local_env = {"ANVIL_ROUTER_TOKEN":token}
+    expected = hashlib.sha256(Path(DEFAULT_INSTALLED_CONFIG).read_bytes()).hexdigest()
+    status = _transition_request("status", scope="router", router_url="http://127.0.0.1:8000", env=local_env).get("result", {})
+    if status.get("cutover_pending") is True:
+        # Repeat native verification within the same closed owner transaction;
+        # source bytes may already have been replaced under that barrier.
+        expected = status.get("configuration_revision")
+        if type(expected) is not str or re.fullmatch("[0-9a-f]{64}", expected) is None:
+            raise ValueError("router_owner_binding_changed")
+    def request(action, **kwargs):
+        result = _transition_request(action, scope="router", router_url="http://127.0.0.1:8000",
+                                     confirm=True, dry_run=False, env=local_env, **kwargs)
+        payload = result.get("result")
+        if (result.get("scope") != "router" or type(payload) is not dict
+                or payload.get("scope") != "router" or payload.get("configuration_revision") != expected
+                or payload.get("durable") is not True):
+            raise ValueError("router_owner_binding_changed")
+        return payload
+    closure = request("quiesce")
+    barrier_token = closure.get("barrier_token")
+    drained = request("drain", barrier_token=barrier_token, timeout=timeout)
+    if (drained.get("drained") is not True or drained.get("unknown") != []
+            or type(drained.get("counts")) is not dict
+            or set(drained["counts"]) != {"chat", "purpose", "audio", "memory", "media", "internal", "delivery", "maintenance"}
+            or any(type(v) is not int or v != 0 for v in drained["counts"].values())
+            or drained.get("roster_revision") != closure.get("roster_revision")):
+        raise ValueError("router_owned_work_not_drained")
+    consumed = request("consume", barrier_token=barrier_token)
+    if consumed.get("drained") is not True or consumed.get("cutover_pending") is not True:
+        raise ValueError("router_barrier_not_consumed")
+    return {"schema":"router-native-cutover/v1", "configuration_revision":expected,
+            "roster_revision":consumed["roster_revision"], "generation":consumed["generation"],
+            "drained":True, "closed":True}
+
+
+def require_router_drain(container, *, _run=subprocess.run, timeout=30):
+    """Shared mutation gate: exact container, actual old-owner zero, retained closure."""
+    if type(timeout) is not int or not 1 <= timeout <= 900:
+        raise ValueError("timeout_must_be_integer_1_900")
+    before = _restart_custody(container, _run)
+    if before.get("available") is not True:
+        raise ValueError("router_old_runtime_bootstrap_hold")
+    code = ("import json; from anvil_serving.router_manage import _local_router_cutover; "
+            f"print(json.dumps(_local_router_cutover(timeout={timeout}),sort_keys=True))")
+    result = _run(["docker", "exec", container, "python", "-c", code], capture_output=True,
+                  text=True, encoding="utf-8", timeout=timeout+15)
+    try:
+        from .observability.dashboard.contracts import strict_json
+        receipt = strict_json((result.stdout or "").encode())
+        if (result.returncode or type(receipt) is not dict or receipt.get("schema") != "router-native-cutover/v1"
+                or receipt.get("closed") is not True or receipt.get("drained") is not True):
+            raise ValueError()
+    except Exception:
+        raise ValueError("router_old_runtime_bootstrap_hold") from None
+    after = _restart_custody(container, _run)
+    if before != after:
+        raise ValueError("router_owner_binding_changed")
+    return {**receipt, "container_id":before["container_id"], "image_id":before["image_id"]}

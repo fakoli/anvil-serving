@@ -868,3 +868,39 @@ missing numeric metadata also uses NaN rather than invented zero. Committed
 observed subtotals can remain available with explicit coverage gaps. Restart and
 pruning retain the recorded epoch/time. No aggregate purge command is introduced;
 any future authorized purge must record its new epoch and actual time atomically.
+
+## Implemented native barrier and roster producer (T023 source)
+
+`RouterAdmission` owns one condition lock for all root acquisition, inherited
+child references, quiesce, zero recheck and consumption. Native construction
+binds one explicit configured potential admitter to the existing protected
+admission owner directory with an exclusive process lock. It registers the actual
+`RunOwner` and enabled/disabled coverage segment through the existing UsageStore
+before creating the listener. `managed_owner_scope` produces bounded authority
+from that exclusive native producer, verifies the actual physical owner and every
+retained run, and refuses foreign/live/unknown predecessors. Query parameters and
+fixtures cannot produce this authority. No database/schema is initialized or
+migrated during startup. A two-second bounded authority lease covers the existing
+one-second writer wait; collected queries still clamp to actual collection time.
+
+All exposed chat dialect/mode paths retain a handler permit through final flush;
+managed chat retains it until the real worker finishes and drain additionally
+checks actual thread liveness. Common direct chat/relay, purpose, audio, memory,
+and media dispatch seams share that owner. Inherited declared child work retains
+its own references; detached work cannot inherit a caller JSON object. Media
+retained nonterminal jobs and actual reconciliation thread completion join drain.
+Ambiguous submission/recovery and current remote-memory ownership remain UNKNOWN,
+never zero. Read-only protocol discovery/status stays available; subscription
+completion is counted and consumption prevents new storage/delivery ownership.
+
+Persistent closure is written and fsynced before quiesce returns; persistence
+failure leaves closure in place. Readmit checks token, loaded configuration,
+actual owner roster and per-tier/member intent revision. It preserves independent
+tier/member intentions. Changed policy/roster/owner, consumption and write failure
+refuse automatic restoration. Lifecycle commands and the native config installer
+consume old-owner verified zero before any backup/replacement/restart. Native
+container readback binds that gate to the selected actual container/image and
+current loaded config. Successor custody is not reconstructed or automatically
+readmitted: its retained closure requires reviewed transfer. First old-runtime
+bootstrap, shared/multiple potential admitters and remote native drain without an
+owner readback remain operational HOLD. This source is not live closure proof.

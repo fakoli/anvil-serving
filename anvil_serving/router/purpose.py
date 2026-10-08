@@ -30,6 +30,8 @@ Stdlib-only.
 
 from __future__ import annotations
 
+from .admission import owned_dispatch
+
 import json
 import os
 import sys
@@ -186,6 +188,7 @@ class PurposeRouter:
     # ------------------------------------------------------------------ #
     # dispatch
     # ------------------------------------------------------------------ #
+    @owned_dispatch("purpose")
     def dispatch(
         self,
         kind: str,

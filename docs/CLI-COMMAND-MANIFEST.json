@@ -12529,6 +12529,24 @@
         },
         {
           "flags": [
+            "--scope"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "tier or whole router.",
+          "value_name": "SCOPE"
+        },
+        {
+          "flags": [
+            "--barrier-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned whole-router barrier token.",
+          "value_name": "TOKEN"
+        },
+        {
+          "flags": [
             "--tier"
           ],
           "output_policy": null,
@@ -12563,6 +12581,8 @@
         "allowed_arguments": [
           "tier",
           "member",
+          "scope",
+          "barrier_token",
           "router_url"
         ],
         "argument_aliases": {},
@@ -12725,6 +12745,24 @@
         },
         {
           "flags": [
+            "--scope"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "tier or whole router.",
+          "value_name": "SCOPE"
+        },
+        {
+          "flags": [
+            "--barrier-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned whole-router barrier token.",
+          "value_name": "TOKEN"
+        },
+        {
+          "flags": [
             "--tier"
           ],
           "output_policy": null,
@@ -12759,6 +12797,8 @@
         "allowed_arguments": [
           "tier",
           "member",
+          "scope",
+          "barrier_token",
           "router_url",
           "timeout",
           "dry_run"
@@ -12905,6 +12945,24 @@
         },
         {
           "flags": [
+            "--scope"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "tier or whole router.",
+          "value_name": "SCOPE"
+        },
+        {
+          "flags": [
+            "--barrier-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned whole-router barrier token.",
+          "value_name": "TOKEN"
+        },
+        {
+          "flags": [
             "--tier"
           ],
           "output_policy": null,
@@ -12948,6 +13006,8 @@
         "allowed_arguments": [
           "tier",
           "member",
+          "scope",
+          "barrier_token",
           "router_url",
           "timeout",
           "dry_run"
@@ -13112,6 +13172,24 @@
         },
         {
           "flags": [
+            "--scope"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "tier or whole router.",
+          "value_name": "SCOPE"
+        },
+        {
+          "flags": [
+            "--barrier-token"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Owned whole-router barrier token.",
+          "value_name": "TOKEN"
+        },
+        {
+          "flags": [
             "--tier"
           ],
           "output_policy": null,
@@ -13146,6 +13224,8 @@
         "allowed_arguments": [
           "tier",
           "member",
+          "scope",
+          "barrier_token",
           "router_url",
           "timeout",
           "dry_run"

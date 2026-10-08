@@ -477,6 +477,11 @@ class ServerConfig:
     heartbeat_interval_s: float = 15.0
     trace_export_url: Optional[str] = None
     webui_identity: tuple[WebUIProfile, ...] = ()
+    router_owner_id: Optional[str] = None
+    router_owner_roster: tuple[str, ...] = ()
+    usage_domain_id: Optional[str] = None
+    usage_enabled: bool = False
+    usage_metrics_enabled: bool = False
 
 
 _SERVER_KEYS = frozenset({
@@ -490,6 +495,7 @@ _SERVER_KEYS = frozenset({
     "authorization_policy_path", "api_keys_path", "connect_keys_env", "connect_home_url", "connect_check_env", "client_limits", "admission_timeout_s",
     "startup_timeout_s", "idle_timeout_s", "total_timeout_s",
     "heartbeat_interval_s", "trace_export_url", "webui_identity",
+    "router_owner_id", "router_owner_roster", "usage_domain_id", "usage_enabled", "usage_metrics_enabled",
 })
 _WORKLOAD_HOST_RE = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}")
 _MEDIA_SCOPES = frozenset(
@@ -634,6 +640,27 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
     except (IdentityError, TypeError, UnicodeError):
         raise ConfigError("invalid [server].webui_identity profile") from None
 
+    owner_id = server.get("router_owner_id")
+    owner_roster = server.get("router_owner_roster", [])
+    usage_domain = server.get("usage_domain_id")
+    usage_enabled = server.get("usage_enabled", False)
+    usage_metrics_enabled = server.get("usage_metrics_enabled", False)
+    if type(usage_metrics_enabled) is not bool or usage_metrics_enabled and (not usage_enabled or paths["authorization_policy_path"] is None):
+        raise ConfigError("sensitive usage metrics require accounting and scoped authorization")
+    if type(usage_enabled) is not bool:
+        raise ConfigError("[server].usage_enabled must be a boolean")
+    if owner_id is not None:
+        from .usage_store import _id
+        try:
+            _id(owner_id); _id(usage_domain)
+        except ValueError:
+            raise ConfigError("invalid managed router owner binding") from None
+        if (type(owner_roster) is not list or owner_roster != [owner_id]
+                or paths["admission_state_path"] is None or paths["api_keys_path"] is None
+                or not is_absolute(paths["admission_state_path"]) or auth_env is None):
+            raise ConfigError("managed router requires one explicit owner, protected durable paths and authentication")
+    elif owner_roster or usage_domain is not None or usage_enabled:
+        raise ConfigError("usage requires a managed router owner")
     return ServerConfig(
         auth_env=auth_env,
         admission_state_path=paths["admission_state_path"],
@@ -650,6 +677,8 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
         client_limits=MappingProxyType(dict(client_limits)),
         trace_export_url=trace_export_url,
         webui_identity=webui_identity,
+        router_owner_id=owner_id, router_owner_roster=tuple(owner_roster),
+        usage_domain_id=usage_domain, usage_enabled=usage_enabled, usage_metrics_enabled=usage_metrics_enabled,
         **durations,
     )
 
