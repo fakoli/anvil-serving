@@ -209,27 +209,41 @@ def test_container_binding_and_snapshot_commands_use_actual_pipe(tmp_path, monke
     import sys
     store, common = local(tmp_path)
     metadata, _ = store.create('fixture', ['llm.primary'], ['/v1/chat/completions'])
+    # Docker paths are POSIX even when the real pipe child runs on Windows.
+    (tmp_path/'router.toml').write_text('[server]\nauth_env="SYNTHETIC_MASTER"\n'
+        'api_keys_path="/fixture/private/keys.sqlite3"\n')
+    backup=tmp_path/'snapshots'/'backup.sqlite3'; restored=tmp_path/'restore'/'keys.sqlite3'
+    native_paths={'/fixture/private/keys.sqlite3':str(store.path),
+        '/fixture/snapshots/backup.sqlite3':str(backup),'/fixture/restore/keys.sqlite3':str(restored)}
     calls=[]; original=subprocess.run
     row={'Id':'a'*64,'State':{'Running':True},'Config':{'Labels':{
         'com.docker.compose.project':'anvil-serving','com.docker.compose.service':'router'}},
-        'Mounts':[{'Destination':str(tmp_path),'Type':'volume','RW':True}]}
+        'Mounts':[{'Destination':'/fixture','Type':'volume','RW':True}]}
     def run(argv, **kwargs):
         calls.append(argv)
         if argv[1]=='inspect':
             return SimpleNamespace(returncode=0,stdout=json.dumps(row))
         assert argv[:4]==['docker','exec','-i','a'*64]
-        return original([sys.executable,'-m',key_container.__name__], **kwargs)
+        assert len(kwargs['input'])<=16_384
+        payload=json.loads(kwargs['input'])
+        for field in ('store_path','out','snapshot'):
+            if payload.get(field) is not None:
+                assert payload[field] in native_paths
+                payload[field]=native_paths[payload[field]]
+        return original([sys.executable,'-m',key_container.__name__],
+                        **{**kwargs,'input':json.dumps(payload)})
     monkeypatch.setattr(key_container.subprocess,'run',run)
     options=[*common,'--container','synthetic-router']
     binding=['bind',*options,'--key-id',metadata['key_id'],'--kind','service',
              '--owner-id','service_fixture','--expected-revision','0']
     assert keys.dispatch([*binding,'--dry-run'])==0
     assert keys.dispatch(binding)==0
-    backup=tmp_path/'snapshots'/'backup.sqlite3'; restored=tmp_path/'restore'/'keys.sqlite3'
-    assert keys.dispatch(['backup',*options,'--out',str(backup)])==0
-    assert keys.dispatch(['restore',*options,'--snapshot',str(backup),'--out',str(restored)])==0
+    assert keys.dispatch(['backup',*options,'--out','/fixture/snapshots/backup.sqlite3'])==0
+    assert keys.dispatch(['restore',*options,'--snapshot','/fixture/snapshots/backup.sqlite3',
+                          '--out','/fixture/restore/keys.sqlite3'])==0
     assert keys.KeyStore(restored).list_keys()==store.list_keys()
-    assert keys.dispatch(['restore',*options,'--snapshot',str(backup),'--out',str(restored)])==2
+    assert keys.dispatch(['restore',*options,'--snapshot','/fixture/snapshots/backup.sqlite3',
+                          '--out','/fixture/restore/keys.sqlite3'])==2
     assert 'service_fixture' in capsys.readouterr().out
 
 
