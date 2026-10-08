@@ -432,15 +432,24 @@ class _WriterConnection(sqlite3.Connection):
     writer_deadline: float | None = None
 
     def execute(self, sql, parameters=(), /):
-        if self.writer_deadline is not None:
-            remaining = self.writer_deadline - time.monotonic()
-            # This bounds waiting, not an already-owned transaction's work.
-            # After expiry an immediately available statement (including commit
-            # or rollback) may finish, but no further lock wait is allowed.
-            sqlite3.Connection.execute(
-                self, "PRAGMA busy_timeout=" + str(max(0, int(remaining * 1000)))
-            )
-        return super().execute(sql, parameters)
+        if self.writer_deadline is None:
+            return super().execute(sql, parameters)
+        # One original owner/FIFO deadline, without an unbounded native wait.
+        # Always try immediately: available commit/rollback may finish expired.
+        sqlite3.Connection.execute(self, "PRAGMA busy_timeout=0")
+        while True:
+            try:
+                return super().execute(sql, parameters)
+            except sqlite3.OperationalError as exc:
+                if (getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY
+                        or (self.in_transaction and sql != "COMMIT")):
+                    raise
+                remaining = self.writer_deadline - time.monotonic()
+                if remaining <= 0:
+                    raise
+                time.sleep(min(.01, remaining))
+                if time.monotonic() >= self.writer_deadline:
+                    raise
 
 
 class KeyStore:
