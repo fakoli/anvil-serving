@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 import json
 from statistics import median
-from threading import Barrier, Event
+from threading import Barrier, Event, get_ident
 from time import perf_counter, sleep
 
 import pytest
@@ -166,9 +166,40 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     assert len(rows(db, 'usage_details')) == 64
 
 
-def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store):
+def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store, monkeypatch):
     db, _, run, scope = store
     entered, release = Event(), Event()
+    queued = Event()
+    observed = {}
+    from anvil_serving.router import keys
+    original_wait = db.key_store._writer_condition.wait
+    original_execute = keys._WriterConnection.execute
+
+    def queue_wait(timeout=None):
+        if not queued.is_set():
+            observed['entered'] = perf_counter()
+            observed['queue_remaining'] = timeout
+            queued.set()
+        return original_wait(timeout)
+
+    def execute(connection, sql, parameters=(), /):
+        if get_ident() == observed.get('worker') and sql == 'PRAGMA synchronous=FULL':
+            observed['sqlite_remaining_ms'] = keys.sqlite3.Connection.execute(
+                connection, 'PRAGMA busy_timeout').fetchone()[0]
+        return original_execute(connection, sql, parameters)
+
+    monkeypatch.setattr(db.key_store._writer_condition, 'wait', queue_wait)
+    monkeypatch.setattr(keys._WriterConnection, 'execute', execute)
+    request_start = start_at(run)
+
+    def waiting_writer():
+        observed['worker'] = get_ident()
+        try:
+            db.start(request_start, authority_scope=scope)
+        except UsageError:
+            observed['refused'] = perf_counter()
+            raise
+
     def prior_writer():
         with db.key_store._write():
             entered.set()
@@ -179,16 +210,18 @@ def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store):
         try:
             with db.key_store._connect() as external:
                 external.execute('BEGIN EXCLUSIVE')
-                started = perf_counter()
-                waiting = pool.submit(db.start, start_at(run), authority_scope=scope)
+                waiting = pool.submit(waiting_writer)
+                assert queued.wait(2)
                 sleep(.55)
                 assert not waiting.done()
                 release.set()
                 first.result(timeout=2)
                 with pytest.raises(UsageError, match='accounting_unavailable'):
                     waiting.result(timeout=2)
-                elapsed = perf_counter() - started
+                elapsed = observed['refused'] - observed['entered']
                 assert .85 <= elapsed < 1.35
+                assert 0 < observed['queue_remaining'] <= 1
+                assert 0 <= observed['sqlite_remaining_ms'] <= 500
                 external.execute('ROLLBACK')
         finally:
             release.set()

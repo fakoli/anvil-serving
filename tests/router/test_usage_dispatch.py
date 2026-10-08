@@ -39,12 +39,45 @@ def server(backend, store_tuple, *, managed=True, accounting=True, **options):
     httpd = make_server("127.0.0.1", 0, backend, auth_token="synthetic-token",
                         server_config=config, usage_store=usage if accounting else None, usage_run_id=run,
                         usage_authority=authority, workload_clock=clock, **options)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    try:
-        yield http.client.HTTPConnection(*httpd.server_address, timeout=10)
-    finally:
-        httpd.shutdown(); httpd.server_close(); thread.join(5)
+    events = {}
+    lock = threading.Lock()
+    original_init, original_finish = UsageInvocation.__init__, UsageInvocation.finish
+
+    def initialize(invocation, *args, **kwargs):
+        original_init(invocation, *args, **kwargs)
+        if invocation.store is usage:
+            with lock:
+                events[invocation.start.request_id] = threading.Event()
+
+    def finish(invocation, *args, **kwargs):
+        try:
+            return original_finish(invocation, *args, **kwargs)
+        finally:
+            with lock:
+                event = events.get(invocation.start.request_id)
+            if event is not None:
+                event.set()  # Includes failure handling and registry token cleanup.
+
+    def wait_finalizers():
+        end = time.monotonic() + 5
+        with lock:
+            pending = tuple(events.values())
+        for event in pending:
+            assert event.wait(max(0, end-time.monotonic())), "request finalizer did not complete"
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(UsageInvocation, "__init__", initialize)
+        patch.setattr(UsageInvocation, "finish", finish)
+        patch.setattr(usage, "_wait_dispatch_fixture_finalizers", wait_finalizers, raising=False)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        conn = http.client.HTTPConnection(*httpd.server_address, timeout=10)
+        try:
+            yield conn
+        finally:
+            conn.close()
+            httpd.shutdown(); httpd.server_close(); thread.join(5)
+            wait_finalizers()
 
 
 def post(conn, path=CHAT, body=None, headers=None):
@@ -56,6 +89,9 @@ def post(conn, path=CHAT, body=None, headers=None):
 
 
 def wait_details(usage, count=1):
+    wait = getattr(usage, "_wait_dispatch_fixture_finalizers", None)
+    if wait is not None:
+        wait()  # A flushed chunk terminator/worker.finished is not finalization.
     end = time.monotonic()+5
     while time.monotonic()<end:
         result = rows(usage,"usage_details")
@@ -96,6 +132,67 @@ def test_three_dialects_both_modes_actual_transport_start_and_worker_capture(sto
     assert rows(usage,"usage_cumulative")[0]["requests"]==1
     assert registry.active_count==0
     assert backend.get_last_normalized_usage() is None  # Handler/test cannot read worker TLS.
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_streaming_readback_waits_for_actual_finalizer_completion(store, monkeypatch, failure):
+    usage, *_ = store
+    finalizing, release, waiting, completed, opened = (threading.Event() for _ in range(5))
+    reader_thread = {}
+    finalize = usage.finalize
+    original_connect = usage.key_store._connect
+
+    def held_finalizer(terminal):
+        finalizing.set()
+        assert release.wait(5)
+        if failure:
+            raise UsageError()
+        return finalize(terminal)
+
+    @contextmanager
+    def observed_connect():
+        if threading.get_ident() == reader_thread.get("id"):
+            opened.set()
+            assert completed.is_set(), "readback opened before finalizer completion"
+        with original_connect() as connection:
+            yield connection
+
+    monkeypatch.setattr(usage, "finalize", held_finalizer)
+    monkeypatch.setattr(usage.key_store, "_connect", observed_connect)
+    with server(relay(usage, []), store, managed=False) as conn:
+        wait = usage._wait_dispatch_fixture_finalizers
+
+        def observed_wait():
+            waiting.set()
+            result = wait()
+            completed.set()
+            return result
+
+        def read_details():
+            reader_thread["id"] = threading.get_ident()
+            return wait_details(usage)
+
+        monkeypatch.setattr(usage, "_wait_dispatch_fixture_finalizers", observed_wait)
+        assert post(conn, body={"model":"llm.primary", "messages":[{"role":"user", "content":"hello"}], "stream":True})[0] == 200
+        assert finalizing.wait(2)  # Client already consumed the terminal chunk.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(read_details)
+            try:
+                assert waiting.wait(2)
+                assert not future.done() and not opened.is_set()
+            finally:
+                release.set()
+            if failure:
+                with pytest.raises(AssertionError, match="worker accounting did not finalize"):
+                    future.result(timeout=7)
+            else:
+                [terminal] = future.result(timeout=7)
+                assert (terminal.tokens.input.count, terminal.tokens.output.count) == (7, 3)
+                assert terminal.outcome == "success"
+    assert opened.is_set()
+    assert len(rows(usage, "usage_details")) == (0 if failure else 1)
+    if failure:
+        assert usage.health("domain_fixture")["accounting_failures"] == 1
 
 
 @pytest.mark.parametrize("kind,pm,path,body", [
