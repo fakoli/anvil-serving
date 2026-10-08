@@ -678,7 +678,7 @@ class UsageStore:
     @contextmanager
     def _write(self):
         try:
-            with self.key_store._connect() as db:
+            with self.key_store._write() as db:
                 db.row_factory = sqlite3.Row
                 db.execute("BEGIN IMMEDIATE")
                 if db.execute("PRAGMA user_version").fetchone()[0] != _VERSION:
@@ -1484,7 +1484,7 @@ class UsageStore:
     def migrate(self) -> dict:
         """Add schema atomically; preserve all credential, Connect and audit rows."""
         try:
-            with self.key_store._connect() as db:
+            with self.key_store._write() as db:
                 db.execute("BEGIN IMMEDIATE")
                 version = db.execute("PRAGMA user_version").fetchone()[0]
                 if version == _VERSION:

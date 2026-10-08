@@ -135,7 +135,7 @@ def _load(path):
 def _owner(store, binding):
     # Owner-only non-secret readback uses the original full Principal, and a
     # writer lock before sampling time just like bind_owner's expiry boundary.
-    with store._connect() as connection:
+    with store._write() as connection:
         connection.execute("BEGIN IMMEDIATE")
         principal = store._caller_candidate(connection, binding["key_id"], time.time())
         _require(principal is not None and principal.owner is None)

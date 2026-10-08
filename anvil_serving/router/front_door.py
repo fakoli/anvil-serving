@@ -485,6 +485,13 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
                   usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None):
+    router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
+    for store in (api_keys, getattr(usage_store, "key_store", None)):
+        if isinstance(store, KeyStore):
+            existing = getattr(store, "_router_admission", router_admission)
+            if existing is not router_admission:
+                raise ValueError("credential store ownership differs")
+            store._router_admission = router_admission
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
     connect_slots = threading.BoundedSemaphore(2)
@@ -515,6 +522,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return operation(self, *args, **kwargs)
             finally:
                 if not getattr(self, "_anvil_handler_active", False):
+                    self._finish_key_store()
                     self._finish_router()
         return dispatch
 
@@ -548,9 +556,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     flush=True,
                 )
             finally:
-                self._anvil_handler_active = False
-                self._finish_router()
-                if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                try:
+                    self._record_key_audit()
+                finally:
+                    self._finish_key_store()
+                    self._finish_router()
+                    self._anvil_handler_active = False
+
+        def _record_key_audit(self):
+            if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                # Stateless control calls do not count themselves while draining.
+                # Their optional audit is a new writer and must refuse closure.
+                if not self._admit_key_store(quiet=True):
+                    print("[anvil] event=key_audit_unavailable", file=sys.stderr, flush=True)
+                    return
+                with self._anvil_key_permit.bind():
                     acquired = key_store_slots.acquire(blocking=False)
                     try:
                         if not acquired:
@@ -624,6 +644,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(401, "authentication_error", "invalid or missing API key")
                 return False
             if hmac.compare_digest(supplied.encode(), auth_token.encode()):
+                if self.command != "GET" and path != TRANSITION_ENDPOINT and not self._admit_key_store():
+                    return False
                 self._anvil_client_id = "_legacy"
                 self._start_request_correlation()
                 return True
@@ -631,11 +653,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # operator credentials do not depend on availability of this store.
             if not supplied.startswith("ask_"):
                 return True
+            if not self._admit_key_store():
+                return False
             if not key_store_slots.acquire(blocking=False):
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
             try:
-                principal = api_keys.authenticate(supplied, check_owner=False, snapshot=self._tracked_request())
+                with self._anvil_key_permit.bind():
+                    principal = api_keys.authenticate(supplied, check_owner=False, snapshot=self._tracked_request())
                 if principal is None:
                     self._device_error(401, "authentication_error", "invalid or missing API key")
                     return False
@@ -647,7 +672,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     return False
                 if self._tracked_request():
                     return True  # Body/model and forwarded identity precede tracked rate admission.
-                retry_after = api_keys.admit(principal.key_id)
+                with self._anvil_key_permit.bind():
+                    retry_after = api_keys.admit(principal.key_id)
             except KeyStoreError:
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
@@ -757,6 +783,25 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_usage = None
             self._anvil_router_permit = None
             self._anvil_router_binding = None
+            self._anvil_key_permit = None
+
+        def _admit_key_store(self, *, quiet=False):
+            if getattr(self, "_anvil_key_permit", None) is not None:
+                return True
+            try:
+                self._anvil_key_permit = router_admission.acquire(
+                    "maintenance", parent=getattr(self, "_anvil_router_permit", None), storage_only=True)
+                return True
+            except RouterAdmissionClosed:
+                if not quiet:
+                    self._device_error(503, "router_quiesced", "router admission is closed")
+                return False
+
+        def _finish_key_store(self):
+            permit = getattr(self, "_anvil_key_permit", None)
+            self._anvil_key_permit = None
+            if permit is not None:
+                permit.release()
 
         def _finish_router(self):
             permit = getattr(self, "_anvil_router_permit", None)
@@ -2392,13 +2437,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _connect_keys(self):
             self.close_connection = True
+            if not self._admit_key_store():
+                return
             if not connect_slots.acquire(blocking=False):
                 self._device_error(503, "server_busy", "key management busy")
                 return
             try:
                 from ..observability.dashboard.contracts import ObservatoryError
                 try:
-                    assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
+                    with self._anvil_key_permit.bind():
+                        assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
                 except ObservatoryError:
                     self._device_error(401, "authentication_error", "invalid Connect assertion")
                     return
@@ -2410,9 +2458,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 import sqlite3
                 try:
                     binding = assertion.binding
-                    result = connect_keys.dispatch({"principal": binding.subject,
-                        "generation": str(binding.policy_generation), "epoch": binding.epoch,
-                        "administrator": binding.role == "admin", "operation": body})
+                    with self._anvil_key_permit.bind():
+                        result = connect_keys.dispatch({"principal": binding.subject,
+                            "generation": str(binding.policy_generation), "epoch": binding.epoch,
+                            "administrator": binding.role == "admin", "operation": body})
                 except Denied:
                     self._device_error(403, "access_denied", "access changed or operation not allowed")
                     return

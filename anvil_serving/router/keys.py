@@ -389,6 +389,33 @@ class KeyStore:
                     _unlink_created(staged, created)
 
     @contextmanager
+    def _ownership(self):
+        """Own shared-store work before any writer wait or mutation.
+
+        Ordinary reads keep their existing authentication/snapshot semantics.
+        Storage ownership cannot be inherited as inference admission.
+        """
+        owner = getattr(self, "_router_admission", None)
+        if owner is None:
+            yield
+            return
+        from .admission import RouterAdmissionClosed
+        try:
+            permit = owner.acquire("maintenance", storage_only=True)
+        except RouterAdmissionClosed:
+            raise KeyStoreError("credential store is quiesced") from None
+        try:
+            with permit.bind():
+                yield
+        finally:
+            permit.release()
+
+    @contextmanager
+    def _write(self):
+        with self._ownership(), self._connect() as connection:
+            yield connection
+
+    @contextmanager
     def _connect(self):
         _secure_database(self.path, exists=True)
         connection = sqlite3.connect(self.path, timeout=1.0, isolation_level=None)
@@ -457,7 +484,7 @@ class KeyStore:
         for _ in range(4):
             key_id = "key_" + secrets.token_hex(8)
             try:
-                with self._connect() as connection:
+                with self._write() as connection:
                     connection.execute("BEGIN IMMEDIATE")
                     if owner is not None:
                         from .connect_keys import authorize_creation
@@ -547,7 +574,7 @@ class KeyStore:
         if actor.kind not in {"human", "service"}:
             raise KeyStoreError("invalid owner binding")
         try:
-            with self._connect() as connection:
+            with self._write() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 if connection.execute("PRAGMA user_version").fetchone()[0] != 3:
                     raise KeyStoreError("owner binding requires accounting migration")
@@ -628,7 +655,7 @@ class KeyStore:
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
             raise KeyStoreError("invalid credential key")
         try:
-            with self._connect() as connection:
+            with self._write() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 # Lock contention may outlive the credential. Check authority
                 # and refill rate buckets using the time we acquire the lock.
@@ -702,7 +729,7 @@ class KeyStore:
         if not isinstance(key_id, str) or _KEY_ID_RE.fullmatch(key_id) is None:
             raise KeyStoreError("invalid credential key")
         try:
-            with self._connect() as connection:
+            with self._write() as connection:
                 cursor = connection.execute(
                     "UPDATE keys SET revoked_at = COALESCE(revoked_at, ?) WHERE key_id = ?",
                     (int(time.time()), key_id),
@@ -731,7 +758,7 @@ class KeyStore:
                 or type(elapsed_ms) is not int or not 0 <= elapsed_ms <= 86_400_000):
             raise KeyStoreError("invalid credential audit record")
         try:
-            with self._connect() as connection:
+            with self._write() as connection:
                 connection.execute("BEGIN IMMEDIATE")
                 connection.execute(
                     "INSERT INTO audit(recorded_at, key_id, request_id, method, path, status, elapsed_ms) VALUES (?, ?, ?, ?, ?, ?, ?)",

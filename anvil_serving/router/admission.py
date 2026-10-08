@@ -654,9 +654,10 @@ class RouterAdmissionClosed(ValueError):
 
 
 class RouterPermit(AdmissionLease):
-    def __init__(self, owner, family, release):
+    def __init__(self, owner, family, release, *, storage_only=False):
         super().__init__(release)
         self.owner, self.family = owner, family
+        self.storage_only = storage_only
 
     @contextmanager
     def bind(self):
@@ -699,21 +700,25 @@ class RouterAdmission:
         self._consumed = bool(restored and restored.get("consumed"))
         self._failed = False
 
-    def acquire(self, family, *, parent=None, completion=False):
+    def acquire(self, family, *, parent=None, completion=False, storage_only=False):
         if family not in _WORK_FAMILIES:
             raise ValueError("unknown_work_family")
+        if type(storage_only) is not bool or (storage_only and family != "maintenance"):
+            raise ValueError("invalid_storage_ownership")
         parent = _ROUTER_WORK.get() if parent is None else parent
         with self._condition:
             inherited = (type(parent) is RouterPermit and parent.owner is self
                          and parent in self._permits and not parent._released)
             if parent is not None and not inherited:
                 raise RouterAdmissionClosed("router_ownership_invalid")
+            if inherited and parent.storage_only and not storage_only:
+                raise RouterAdmissionClosed("router_storage_ownership_only")
             if self._closed and not inherited and not completion:
                 raise RouterAdmissionClosed("router_quiesced")
             if self._consumed:
                 raise RouterAdmissionClosed("router_cutover_pending")
             self._counts[family] += 1
-            permit = RouterPermit(self, family, lambda:self._release(permit))
+            permit = RouterPermit(self, family, lambda:self._release(permit), storage_only=storage_only)
             self._permits.add(permit)
             return permit
 
@@ -1013,6 +1018,7 @@ def managed_router_admission(server_config, revision):
         scope()  # Incomparable/foreign runs refuse before the listener exists.
         owner = RouterAdmission(revision, persist=persist, restored=restored, owner_scope=scope,
                                 roster_revision=roster_revision)
+        usage.key_store._router_admission = owner
         owner._assembling = True
         owner._owner_descriptor = descriptor
         owner.usage_scope = scope

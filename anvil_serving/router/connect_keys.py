@@ -94,7 +94,7 @@ def _create_schema(db):
 
 def migrate(store):
     """Atomic additive migration; never downgrade a newer accounting store."""
-    with store._connect() as db:
+    with store._write() as db:
         db.execute("BEGIN IMMEDIATE")
         version = db.execute("PRAGMA user_version").fetchone()[0]
         if version == 1:
@@ -203,6 +203,10 @@ class ConnectKeys:
 
     def dispatch(self, value):
         """Called only after the front door authenticates the dedicated broker."""
+        with self.store._ownership():
+            return self._dispatch(value)
+
+    def _dispatch(self, value):
         if not isinstance(value, dict) or set(value) != {"principal", "generation", "epoch", "administrator", "operation"}:
             raise Denied("invalid Connect request")
         actor = identity(value["principal"], value["generation"], value["epoch"])
@@ -215,7 +219,7 @@ class ConnectKeys:
         if action == "view" and set(operation) == {"action"}:
             return self.view(actor, admin)
         if action == "request" and set(operation) == {"action"}:
-            with self.store._connect() as db:
+            with self.store._write() as db:
                 db.execute("BEGIN IMMEDIATE")
                 old = _account(db, actor[0])
                 if old is None and db.execute("SELECT COUNT(*) FROM connect_accounts").fetchone()[0] >= 256:
@@ -232,7 +236,7 @@ class ConnectKeys:
             metadata, secret = self.store.create(operation["name"], operation["models"], operation["paths"], operation["rpm"], operation["expires_days"], owner=(*actor, operation["revision"]))
             return {"key": metadata, "secret": secret}
         if action == "revoke" and set(operation) == {"action", "key_id"} and isinstance(operation["key_id"], str):
-            with self.store._connect() as db:
+            with self.store._write() as db:
                 result = db.execute("UPDATE keys SET revoked_at=COALESCE(revoked_at,?) WHERE key_id=? AND key_id IN (SELECT key_id FROM connect_key_owners WHERE owner=?)", (int(time.time()), operation["key_id"], actor[0]))
             if result.rowcount != 1:
                 raise Denied("key unavailable")
@@ -258,7 +262,7 @@ class ConnectKeys:
             account = _account(db, owner)
         if account is None or not self.store.owner_check(owner, account["generation"], account["epoch"]):
             raise Denied("account changed; request access again")
-        with self.store._connect() as db:
+        with self.store._write() as db:
             db.execute("BEGIN IMMEDIATE")
             result = db.execute("UPDATE connect_accounts SET revision=?,status=?,models=?,paths=?,rpm=?,expires_days=?,updated_at=?,actor=? WHERE owner=? AND revision=?", (_next_revision(db), status, json.dumps(models), json.dumps(paths), rpm, days, int(time.time()), actor[0], owner, revision))
             if result.rowcount != 1:
@@ -276,7 +280,7 @@ class ConnectKeys:
             account = _account(db, owner)
         if account is None or (account["status"] != "denied" and self.store.owner_check(owner, account["generation"], account["epoch"])):
             raise Denied("remove access before removing this record")
-        with self.store._connect() as db:
+        with self.store._write() as db:
             db.execute("BEGIN IMMEDIATE")
             if db.execute("DELETE FROM connect_accounts WHERE owner=? AND revision=?", (owner, revision)).rowcount != 1:
                 raise Denied("account changed; refresh before removing")

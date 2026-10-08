@@ -895,6 +895,11 @@ zero includes their actual thread completion. Same-owner readmit resumes them.
 Ambiguous submission/recovery and current remote-memory ownership remain UNKNOWN,
 never zero. Read-only protocol discovery/status stays available; subscription
 completion is counted and consumption prevents new storage/delivery ownership.
+Credential, Connect and accounting writers share that same owner at the protected
+SQLite write boundary, including writer-lock waits and final credential audit.
+Storage-only ownership cannot admit inference. Stateless authenticated control
+calls do not count themselves in drain; their optional audit refuses closure and
+reports the existing audit-unavailable event instead of writing after consumption.
 
 Persistent closure is written and fsynced before quiesce returns; persistence
 failure leaves closure in place. Readmit checks token, loaded configuration,

@@ -38,6 +38,234 @@ def close(gate):
     return gate.quiesce_router(confirm=True, dry_run=False)['barrier_token']
 
 
+def test_storage_completion_never_grants_inference_ownership(gate):
+    permit = gate.acquire('maintenance', storage_only=True)
+    token = close(gate)
+    with permit.bind():
+        with pytest.raises(RouterAdmissionClosed):
+            gate.acquire('chat')
+        child = gate.acquire('maintenance', storage_only=True)
+    permit.release()
+    with pytest.raises(ValueError, match='router_drain_required'):
+        gate.consume(token)
+    child.release()
+    assert gate.consume(token)['drained']
+
+
+def test_final_audit_retains_request_and_storage_ownership(gate, monkeypatch):
+    import io
+    from http.server import BaseHTTPRequestHandler
+    from anvil_serving.router.front_door import _make_handler
+    entered, release = threading.Event(), threading.Event()
+    class Keys:
+        def record(self, *args):
+            entered.set()
+            assert release.wait(5)
+    kind = _make_handler(object(), None, {}, api_keys=Keys(), router_admission=gate)
+    handler = object.__new__(kind)
+    handler.wfile = io.BytesIO()
+    handler.command, handler.path = 'POST', '/v1/chat/completions'
+    def request(self):
+        assert self._admit_router('chat')
+        self._anvil_client_id, self._anvil_http_status = 'key_fixture', 200
+    monkeypatch.setattr(BaseHTTPRequestHandler, 'handle_one_request', request)
+    errors = []
+    def serve():
+        try:
+            handler.handle_one_request()
+        except BaseException as error:
+            errors.append(error)
+    thread = threading.Thread(target=serve)
+    thread.start()
+    try:
+        assert entered.wait(2)
+        token = close(gate)
+        result = gate.drain_router(token, 1)
+        assert not result['drained'] and result['counts']['chat'] == 1
+        assert result['counts']['maintenance'] == 1 and thread.is_alive()
+        with pytest.raises(ValueError, match='router_drain_required'):
+            gate.consume(token)
+    finally:
+        release.set(); thread.join(3)
+    assert not thread.is_alive() and not errors
+    assert gate.consume(token)['drained']
+
+
+def test_consumed_device_request_cannot_enter_a_credential_writer(gate):
+    from email.message import Message
+    from types import SimpleNamespace
+    from anvil_serving.router.front_door import _make_handler
+    writes = []
+    class Keys:
+        def authenticate(self, *args, **kwargs):
+            return SimpleNamespace(key_id='key_fixture', owner=None, allows_path=lambda *args: True)
+        def admit(self, *args):
+            writes.append('admit')
+            return 0
+    kind = _make_handler(object(), None, {}, auth_token='legacy_fixture', api_keys=Keys(), router_admission=gate)
+    handler = object.__new__(kind); handler._reset_request_correlation()
+    handler.command, handler.path = 'GET', '/v1/models'
+    handler.headers = Message(); handler.headers['Authorization'] = 'Bearer ask_fixture'
+    errors = []; handler._device_error = lambda *args: errors.append(args)
+    token = close(gate); gate.consume(token)
+    assert handler._device_access() is False
+    assert writes == [] and errors[0][0] == 503
+    assert not any(gate.status()['counts'].values())
+
+
+@pytest.mark.parametrize('action', ['status', 'drain', 'readmit', 'consume'])
+def test_stateless_management_never_counts_itself_or_writes_after_closure(gate, monkeypatch, action):
+    import io
+    from email.message import Message
+    from http.server import BaseHTTPRequestHandler
+    from anvil_serving.router.front_door import _make_handler
+    writes = []
+    class Keys:
+        def record(self, *args):
+            writes.append(args)
+    kind = _make_handler(object(), None, {}, auth_token='legacy_fixture', api_keys=Keys(), router_admission=gate)
+    handler = object.__new__(kind); handler.wfile = io.BytesIO()
+    handler.command, handler.path = 'POST', '/v1/admin/transition'
+    handler.headers = Message(); handler.headers['Authorization'] = 'Bearer legacy_fixture'
+    token = close(gate); responses = []
+    def respond(code, value, **kwargs):
+        handler._anvil_http_status = code
+        responses.append(value)
+    handler._json = respond
+    def request(self):
+        assert self._device_access()
+        self._handle_transition({'scope':'router', 'action':action, 'barrier_token':token,
+                                 'timeout':1, 'confirm':True, 'dry_run':False})
+    monkeypatch.setattr(BaseHTTPRequestHandler, 'handle_one_request', request)
+    handler.handle_one_request()
+    assert handler._anvil_http_status == 200 and responses
+    assert not any(gate.status()['counts'].values())
+    if action == 'readmit':
+        assert writes and gate.status()['state'] == 'admitting'
+    else:
+        assert writes == []
+    if action == 'consume':
+        assert gate.status()['cutover_pending']
+
+
+@pytest.mark.parametrize('phase', ['replay', 'dispatch'])
+def test_connect_replay_and_dispatch_stay_owned_and_refuse_new_closed_work(gate, monkeypatch, phase):
+    from types import SimpleNamespace
+    from anvil_serving.router.front_door import _make_handler
+    entered, release = threading.Event(), threading.Event()
+    calls, errors = [], []
+    def operation(name):
+        calls.append(name)
+        if phase == name:
+            entered.set(); assert release.wait(5)
+    class Verifier:
+        def verify(self, *args, **kwargs):
+            operation('replay')
+            return SimpleNamespace(binding=SimpleNamespace(subject='fixture', policy_generation=1, epoch='fixture', role='admin'))
+    class Connect:
+        def dispatch(self, value):
+            operation('dispatch')
+            return {'ok':True}
+    kind = _make_handler(object(), None, {}, api_keys=object(), connect_keys=Connect(),
+                         connect_verifier=Verifier(), router_admission=gate)
+    def handler():
+        h = object.__new__(kind); h._reset_request_correlation()
+        h.path, h.headers = '/v1/connect/keys', {}
+        h.connection = SimpleNamespace(settimeout=lambda _:None)
+        h._protocol_body = lambda **kwargs: {'action':'request'}
+        h._json = lambda *args, **kwargs: None
+        h._device_error = lambda *args: calls.append('refused')
+        return h
+    first = handler()
+    def serve():
+        try:
+            first.do_POST()
+        except BaseException as error:
+            errors.append(error)
+    thread = threading.Thread(target=serve); thread.start()
+    try:
+        assert entered.wait(2)
+        token = close(gate)
+        assert not gate.drain_router(token, 1)['drained']
+        with pytest.raises(ValueError, match='router_drain_required'):
+            gate.consume(token)
+    finally:
+        release.set(); thread.join(3)
+    assert not thread.is_alive() and not errors
+    gate.consume(token)
+    before = list(calls); handler().do_POST()
+    assert calls == before + ['refused']
+    assert not any(gate.status()['counts'].values())
+
+
+@pytest.mark.parametrize('operation', ['create', 'bind', 'admit', 'revoke', 'audit', 'connect', 'migrate', 'usage'])
+def test_shared_store_writers_refuse_before_sqlite_but_authentication_stays_read_only(gate, tmp_path, monkeypatch, operation):
+    from anvil_serving.router.keys import KeyStore, KeyStoreError
+    from anvil_serving.router.connect_keys import ConnectKeys
+    keys = KeyStore.initialize(tmp_path/'private'/'keys.sqlite3')
+    metadata, secret = keys.create('fixture', ['model_fixture'], ['/v1/models', '/v1/chat/completions'])
+    usage = ledger.UsageStore(keys); usage.migrate()
+    connect = ConnectKeys(keys, ['model_fixture'])
+    keys.owner_check = lambda *args: True
+    keys._router_admission = gate
+    token = close(gate); gate.consume(token)
+    assert keys.authenticate(secret) is not None
+    def opened():
+        pytest.fail('closed writer opened SQLite')
+    monkeypatch.setattr(keys, '_connect', opened)
+    actions = {
+        'create':lambda: keys.create('new', ['model_fixture'], ['/v1/models', '/v1/chat/completions']),
+        'bind':lambda: keys.bind_owner(metadata['key_id'], 'service', 'service_fixture', 0),
+        'admit':lambda: keys.admit(metadata['key_id']),
+        'revoke':lambda: keys.revoke(metadata['key_id']),
+        'audit':lambda: keys.record(metadata['key_id'], None, 'GET', '/v1/models', 200, 0),
+        'connect':lambda: connect.dispatch({'principal':'human:'+'a'*64,'generation':'1','epoch':'b'*64,
+                                           'administrator':False,'operation':{'action':'request'}}),
+        'migrate':usage.migrate,
+    }
+    with pytest.raises((KeyStoreError, UsageError)):
+        if operation == 'usage':
+            with usage._write():
+                pytest.fail('closed accounting writer entered')
+        else:
+            actions[operation]()
+    assert not any(gate.status()['counts'].values())
+
+
+def test_real_sqlite_writer_wait_is_owned_and_finishes_normally_after_quiesce(gate, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from anvil_serving.router.keys import KeyStore
+    keys = KeyStore.initialize(tmp_path/'private'/'keys.sqlite3')
+    keys._router_admission = gate
+    entered, errors = threading.Event(), []
+    original = keys._connect
+    @contextmanager
+    def connected():
+        with original() as db:
+            db.set_trace_callback(lambda sql: entered.set() if sql == 'BEGIN IMMEDIATE' else None)
+            yield db
+    def write():
+        try:
+            keys.record('_legacy', 'request_fixture', 'GET', '/v1/models', 200, 0)
+        except BaseException as error:
+            errors.append(error)
+    with original() as blocker:
+        blocker.execute('BEGIN IMMEDIATE')
+        monkeypatch.setattr(keys, '_connect', connected)
+        thread = threading.Thread(target=write); thread.start()
+        try:
+            assert entered.wait(2)
+            token = close(gate)
+            assert gate.status()['counts']['maintenance'] == 1
+            with pytest.raises(ValueError, match='router_drain_required'):
+                gate.consume(token)
+        finally:
+            blocker.execute('ROLLBACK'); thread.join(3)
+    assert not thread.is_alive() and not errors
+    assert keys.usage('_legacy')[0]['request_id'] == 'request_fixture'
+    assert gate.consume(token)['drained']
+
+
 def test_acquire_and_closure_share_one_lock_and_persist_before_response(gate):
     ready = threading.Barrier(2)
     acquired = []
