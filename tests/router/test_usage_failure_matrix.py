@@ -4,8 +4,8 @@ from dataclasses import replace
 from datetime import datetime
 import json
 from statistics import median
-from threading import Barrier
-from time import perf_counter
+from threading import Barrier, Event
+from time import perf_counter, sleep
 
 import pytest
 
@@ -164,3 +164,37 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     result = cumulative(db)
     assert result['requests'] == 64 and result['measured_input'] == 448 and result['measured_output'] == 320
     assert len(rows(db, 'usage_details')) == 64
+
+
+def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store):
+    db, _, run, scope = store
+    entered, release = Event(), Event()
+    def prior_writer():
+        with db.key_store._write():
+            entered.set()
+            assert release.wait(5)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(prior_writer)
+        assert entered.wait(2)
+        try:
+            with db.key_store._connect() as external:
+                external.execute('BEGIN EXCLUSIVE')
+                started = perf_counter()
+                waiting = pool.submit(db.start, start_at(run), authority_scope=scope)
+                sleep(.55)
+                assert not waiting.done()
+                release.set()
+                first.result(timeout=2)
+                with pytest.raises(UsageError, match='accounting_unavailable'):
+                    waiting.result(timeout=2)
+                elapsed = perf_counter() - started
+                assert .85 <= elapsed < 1.35
+                external.execute('ROLLBACK')
+        finally:
+            release.set()
+    assert rows(db, 'usage_starts') == []
+    # A timed-out ticket cannot strand later credential/accounting writers.
+    start = start_at(run)
+    db.start(start, authority_scope=scope)
+    db.finalize(terminal(start))
+    assert cumulative(db)['requests'] == 1

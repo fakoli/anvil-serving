@@ -15,6 +15,8 @@ import re
 import secrets
 import sqlite3
 import stat
+import threading
+from collections import deque
 import sys
 import time
 import unicodedata
@@ -425,6 +427,9 @@ class KeyStore:
 
     def __init__(self, path: str | os.PathLike[str], *, owner_check=None) -> None:
         self.owner_check = owner_check
+        self._writer_condition = threading.Condition()
+        self._writer_queue = deque()
+        self._writer_context = threading.local()
         self.path = Path(path).expanduser().absolute()
         _secure_database(self.path, exists=True)
         try:
@@ -551,18 +556,53 @@ class KeyStore:
 
     @contextmanager
     def _write(self):
-        with self._ownership(), self._connect() as connection:
-            yield connection
+        # SQLite's busy handler does not fairly order local connections. Queue
+        # the producer's writers before connection setup too: its PRAGMAs can
+        # otherwise starve behind another writer before BEGIN IMMEDIATE.
+        with self._ownership():
+            deadline = time.monotonic() + 1.0
+            ticket = object()
+            with self._writer_condition:
+                self._writer_queue.append(ticket)
+                try:
+                    while self._writer_queue[0] is not ticket:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise KeyStoreError("credential writer wait expired")
+                        self._writer_condition.wait(remaining)
+                except BaseException:
+                    self._writer_queue.remove(ticket)
+                    self._writer_condition.notify_all()
+                    raise
+            self._writer_context.deadline = deadline
+            try:
+                with self._connect() as connection:
+                    yield connection
+            finally:
+                del self._writer_context.deadline
+                with self._writer_condition:
+                    self._writer_queue.popleft()
+                    self._writer_condition.notify_all()
 
     @contextmanager
     def _connect(self):
         _secure_database(self.path, exists=True)
-        connection = sqlite3.connect(self.path, timeout=1.0, isolation_level=None)
+        deadline = getattr(self._writer_context, "deadline", None)
+        def remaining():
+            value = 1.0 if deadline is None else deadline - time.monotonic()
+            if value <= 0:
+                raise KeyStoreError("credential writer wait expired")
+            return value
+        connection = sqlite3.connect(self.path, timeout=remaining(), isolation_level=None)
         try:
-            connection.execute("PRAGMA busy_timeout=1000")
+            def bound_wait():
+                connection.execute("PRAGMA busy_timeout=" + str(max(1, int(remaining() * 1000))))
+            bound_wait()
             connection.execute("PRAGMA synchronous=FULL")
+            bound_wait()
             if connection.execute("PRAGMA user_version").fetchone()[0] not in _SUPPORTED_VERSIONS:
                 raise KeyStoreError("credential store format is unsupported")
+            bound_wait()  # Queue/setup time cannot become a second SQLite wait.
             yield connection
         finally:
             connection.close()
