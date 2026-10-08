@@ -2,6 +2,7 @@
 import http.client
 import json
 import os
+import sys
 import threading
 from pathlib import Path
 
@@ -434,6 +435,7 @@ def test_actual_common_internal_dispatchers_share_gate_before_validation(gate,mo
     assert not any(gate.status()['counts'].values())
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='native Linux owner factory and POSIX producer locks')
 def test_native_producer_registers_actual_owner_and_disabled_segment(store,tmp_path,monkeypatch):
     usage,owner,run,_=store
     # Separate empty protected native domain, same synthetic physical owner.
@@ -467,6 +469,7 @@ def test_native_producer_registers_actual_owner_and_disabled_segment(store,tmp_p
         os.close(native._owner_descriptor)
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='actual POSIX producer/writer flock fence')
 def test_native_external_admin_writers_share_producer_fence(store, monkeypatch):
     import subprocess
     import sys
@@ -517,6 +520,7 @@ with store._write() as db:
     assert KeyStore(external.path).list_keys() == external.list_keys()
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='actual POSIX producer/writer flock fence')
 def test_external_writer_entered_before_native_binding_is_observed(store):
     from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
     usage, _, _, _ = store
@@ -539,6 +543,7 @@ def test_external_writer_entered_before_native_binding_is_observed(store):
         KeyStore(external.path).record(None, 'request_fixture', 'GET', '/v1/models', 200, 1)
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='actual POSIX producer/writer flock fence')
 def test_external_writer_missing_or_replaced_native_custody_holds(store):
     from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
     usage, _, _, _ = store
@@ -562,6 +567,7 @@ def test_external_writer_missing_or_replaced_native_custody_holds(store):
 
 
 @pytest.mark.parametrize('roster',[(),('other',),('owner','owner'),('owner','other')])
+@pytest.mark.skipif(sys.platform != 'linux', reason='native Linux owner factory')
 def test_native_roster_requires_one_closed_configured_owner(tmp_path,roster):
     config=ServerConfig(router_owner_id='owner',router_owner_roster=roster)
     with pytest.raises(ValueError):managed_router_admission(config,'config')
@@ -672,6 +678,7 @@ def test_completion_delivery_can_finish_while_closed_and_blocks_consume(gate):
 
 
 @pytest.mark.parametrize('kind',['fifo','symlink','public'])
+@pytest.mark.skipif(sys.platform != 'linux', reason='native Linux state-file guard and procfs owner factory')
 def test_native_state_file_guard_refuses_before_open(store,tmp_path,kind):
     usage,owner,run,_=store
     private=usage.key_store.path.parent
@@ -685,6 +692,7 @@ def test_native_state_file_guard_refuses_before_open(store,tmp_path,kind):
     with pytest.raises(Exception):managed_router_admission(config,'config_fixture')
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='native Linux owner factory and POSIX producer locks')
 def test_real_native_factory_and_http_management_share_owner(store,tmp_path,monkeypatch):
     from anvil_serving.router.serve import build_server
     from tests.router.helpers import StaticBackend

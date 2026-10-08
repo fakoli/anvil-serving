@@ -241,6 +241,15 @@ def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | Non
     _private_path(path, directory=False)
 
 
+def _secure_journal(path: Path) -> None:
+    """Validate a retained rollback journal before SQLite can recover it.
+
+    SQLite owns hot-journal recovery and legitimate journal creation/removal.
+    Never adopt, chmod or delete a sidecar on behalf of an unsafe opener.
+    """
+    _secure_database(Path(str(path) + "-journal"), exists=False)
+
+
 def _unlink_created(path: Path, created: os.stat_result) -> None:
     """Failure cleanup must never remove a competing replacement file."""
     try:
@@ -259,6 +268,8 @@ def _staged_database(target: Path):
     _secure_database(target, exists=False)
     if target.exists():
         raise KeyStoreError("credential store already exists")
+    if os.path.lexists(str(target) + "-journal"):
+        raise KeyStoreError("credential store journal already exists")
     directory = target.parent / (".anvil-keys-" + secrets.token_hex(16))
     try:
         directory.mkdir(mode=0o777 if _is_windows() else 0o700)
@@ -280,6 +291,10 @@ def _publish_database(staged: Path, target: Path, created: os.stat_result) -> No
     """Publish a completed snapshot atomically; never open the final path for writing."""
     _secure_database(staged, exists=True, identity=created)
     _secure_directory(target.parent, create=False)
+    # A published snapshot must stand alone. Never pair it with an orphan or
+    # strip a journal from a staging database that still requires recovery.
+    if os.path.lexists(str(staged) + "-journal") or os.path.lexists(str(target) + "-journal"):
+        raise KeyStoreError("credential snapshot journal is unavailable")
     descriptor = os.open(staged, os.O_RDWR | getattr(os, "O_NOFOLLOW", 0))
     try:
         if not os.path.samestat(os.fstat(descriptor), created):
@@ -476,6 +491,7 @@ class KeyStore:
                 finally:
                     os.close(descriptor)
                 _secure_database(staged, exists=True, identity=created)
+                _secure_journal(staged)
                 connection = sqlite3.connect(staged)
                 try:
                     connection.executescript("""
@@ -499,6 +515,7 @@ class KeyStore:
                     """)
                 finally:
                     connection.close()
+                _secure_journal(staged)
                 _secure_database(staged, exists=True, identity=created)
                 _publish_database(staged, target, created)
                 store = cls(target)
@@ -658,6 +675,19 @@ class KeyStore:
             self._writer_context.deadline = deadline
             try:
                 with self._connect() as connection:
+                    # Both mode acquisition and readback use this ticket's
+                    # original budget. Readers and staged copies keep DELETE.
+                    for statement, expected in (("PRAGMA journal_mode=PERSIST", "persist"),
+                                                ("PRAGMA synchronous=EXTRA", None),
+                                                ("PRAGMA synchronous", 3)):
+                        if time.monotonic() >= deadline:
+                            raise KeyStoreError("credential writer wait expired")
+                        try:
+                            result = connection.execute(statement).fetchone()
+                        except sqlite3.Error:
+                            raise KeyStoreError("credential writer durability is unavailable") from None
+                        if expected is not None and result != (expected,):
+                            raise KeyStoreError("credential writer durability is unavailable")
                     yield connection
             finally:
                 del self._writer_context.deadline
@@ -668,6 +698,7 @@ class KeyStore:
     @contextmanager
     def _connect(self):
         _secure_database(self.path, exists=True)
+        _secure_journal(self.path)
         deadline = getattr(self._writer_context, "deadline", None)
         def remaining():
             value = 1.0 if deadline is None else deadline - time.monotonic()
@@ -689,6 +720,7 @@ class KeyStore:
             yield connection
         finally:
             connection.close()
+            _secure_journal(self.path)
 
     @staticmethod
     def _metadata(row: sqlite3.Row | tuple[Any, ...]) -> dict[str, Any]:
