@@ -274,16 +274,9 @@ No store calls inference. T002 owns schema/backup/compatibility; T006 owns
 lifecycle/recovery; T007 owns query/retention; serialize usage_store edits.
 
 Reuse owner-only database and parent, no-link/reparse/hardlink protections and
-Windows DACL handling. Readers and standalone staged snapshots use DELETE
-journal and explicit `synchronous=FULL`. Shared writers request PERSIST and
-verify `synchronous=EXTRA` under the existing one-second FIFO/SQLite wait budget.
-Every opener validates any retained owner-only `-journal` before SQLite can
-recover it. Keep that sidecar with its database; never delete a hot journal or
-copy a live database file instead of using managed backup. Retained journal
-space belongs in storage capacity planning. EXTRA adds directory synchronization
-after DELETE unlink; it provides no special extra PERSIST synchronization.
-Use per-thread short connections. No WAL switch without measured contention
-and reviewed sidecar/backup durability. Atomic
+Windows DACL handling. Start with DELETE journal, explicit `synchronous=FULL`,
+existing1-second busy timeout, per-thread short connections. No WAL switch
+without measured contention and reviewed sidecar/backup durability. Atomic
 migration uses individual DDL in `BEGIN IMMEDIATE`, not executescript inside
 transaction. Support legacy v1/v2 inputs; advance format version only after
 complete migration. Old binaries must refuse new incompatible schema; never
