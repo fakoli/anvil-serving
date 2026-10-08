@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..router.admission import owned_dispatch
+import functools
 
 import hashlib
 import json
@@ -21,6 +21,15 @@ from .workflows import WorkflowRegistry
 
 
 LifecyclePreview = Callable[[str, str, str], Mapping[str, Any]]
+
+
+def _owned_media(operation):
+    """Resolve the shared native permit only after media construction completes."""
+    @functools.wraps(operation)
+    def call(self, *args, **kwargs):
+        from ..router.admission import owned_dispatch
+        return owned_dispatch("media")(operation)(self, *args, **kwargs)
+    return call
 
 
 def _backend_method(backend: ComfyUIClient, name: str) -> Callable[..., Any]:
@@ -75,7 +84,7 @@ class MediaOperations:
         workflow = self.registry.get(workflow_id, version)
         return {"compatibility": backend.compatibility(workflow).as_public_dict()}
 
-    @owned_dispatch("media")
+    @_owned_media
     def workflow_run(
         self,
         workflow_id: str,
@@ -295,7 +304,7 @@ class MediaOperations:
                     status=503,
                 ) from exc
 
-    @owned_dispatch("media")
+    @_owned_media
     def _resume_existing(
         self,
         job_id: str,
@@ -330,7 +339,7 @@ class MediaOperations:
             )
         return {"job": current.as_public_dict(), "created": False}
 
-    @owned_dispatch("media")
+    @_owned_media
     def _resume_accepted(
         self,
         job_id: str,
@@ -381,7 +390,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
-    @owned_dispatch("media")
+    @_owned_media
     def _resume_preparing(
         self,
         job_id: str,
@@ -432,7 +441,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
-    @owned_dispatch("media")
+    @_owned_media
     def _submit_rendered(
         self,
         job_id: str,
@@ -557,7 +566,7 @@ class MediaOperations:
     def job_status(self, job_id: str, *, principal: str) -> dict[str, Any]:
         return {"job": self.jobs.get(job_id, principal=principal).as_public_dict()}
 
-    @owned_dispatch("media")
+    @_owned_media
     def job_cancel(
         self, job_id: str, *, principal: str, backend: ComfyUIClient
     ) -> dict[str, Any]:

@@ -141,6 +141,14 @@ def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable
     # public discovery.  Keep the pre-propagation public compatibility digest.
     public_tools = mcp.list_tools()
     assert "propagation_capabilities" not in [tool["name"] for tool in public_tools]
+    # T023 adds exactly the explicit whole-router selector and owner token.
+    # Normalize those additions to retain the accepted legacy catalog digest.
+    public_tools = deepcopy(public_tools)
+    schema = next(tool for tool in public_tools if tool["name"] == "router_transition")["inputSchema"]
+    assert schema["maxProperties"] == 9
+    assert schema["properties"].pop("scope") == {"type": "string", "enum": ["tier", "router"]}
+    assert schema["properties"].pop("barrier_token") == {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    schema["maxProperties"] = 7
     assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
 
 
@@ -154,11 +162,14 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     )
     assert schema["type"] == "object"
     assert schema["additionalProperties"] is False
-    assert schema["maxProperties"] == 7
+    assert schema["maxProperties"] == 9
     assert schema["required"] == ["action"]
     assert set(schema["properties"]) == {
-        "action", "tier", "member", "router_url", "timeout", "dry_run", "confirm",
+        "action", "tier", "member", "router_url", "timeout", "dry_run", "confirm", "scope", "barrier_token",
     }
+    assert schema["properties"].pop("scope") == {"type": "string", "enum": ["tier", "router"]}
+    assert schema["properties"].pop("barrier_token") == {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    schema["maxProperties"] = 7
     assert schema["properties"].pop("member") == {
         "type": "string", "minLength": 1, "maxLength": 64,
         "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
