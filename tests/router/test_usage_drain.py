@@ -454,7 +454,12 @@ def test_native_producer_registers_actual_owner_and_disabled_segment(store,tmp_p
         assert native.usage_scope().run_ids==(registered,)
         segments=[r for r in rows(actual,'usage_coverage_segments') if r['run_id']==registered]
         assert len(segments)==1 and segments[0]['enabled']==0
+        from anvil_serving.router.keys import KeyStore, KeyStoreError
+        external = KeyStore(actual.key_store.path)
+        external.create('native_admin_fixture', ['llm.primary'], ['/v1/chat/completions'])
         token=close(native);assert native.drain_router(token,1)['drained']
+        with pytest.raises(KeyStoreError, match='quiesced'):
+            external.create('closed_admin_fixture', ['llm.primary'], ['/v1/chat/completions'])
         with pytest.raises(BlockingIOError):managed_router_admission(config,'config_fixture')
         # Restore retains closure and refuses a different actual owner identity.
         state=json.loads(Path(config.admission_state_path+'.router').read_text())['closure']
@@ -463,6 +468,96 @@ def test_native_producer_registers_actual_owner_and_disabled_segment(store,tmp_p
         with pytest.raises(ValueError):restored.readmit_router(token,confirm=True,dry_run=False)
     finally:
         os.close(native._owner_descriptor)
+
+
+def test_native_external_admin_writers_share_producer_fence(store, monkeypatch):
+    import subprocess
+    import sys
+    from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
+    usage, _, _, _ = store
+    state = usage.key_store.path.parent / 'external-owner.json'
+    def persist(closure):
+        state.write_text(json.dumps({'schema':'router-admission/v1', 'owner_id':'owner_fixture', 'closure':closure}))
+        state.chmod(0o600)
+    persist(None)
+    owner = RouterAdmission('external_fixture', persist=persist, owner_scope=lambda:object(), roster_revision='external_roster')
+    owner.observe('maintenance', _bind_router_store(usage.key_store.path, state, 'owner_fixture'))
+    external = KeyStore(usage.key_store.path)
+    # The protected producer binding keeps ordinary admitting administration.
+    external.create('admin_fixture', ['llm.primary'], ['/v1/chat/completions'])
+    script = """import sys
+from anvil_serving.router.keys import KeyStore
+store = KeyStore(sys.argv[1])
+with store._write() as db:
+    db.execute('BEGIN IMMEDIATE')
+    print('writer-entered', flush=True)
+    sys.stdin.readline()
+    db.execute('COMMIT')
+"""
+    worker = subprocess.Popen([sys.executable, '-c', script, str(external.path)], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        assert worker.stdout.readline().strip() == 'writer-entered'
+        token = close(owner)
+        result = owner.drain_router(token, 1)
+        assert not result['drained'] and result['counts']['maintenance'] == 1
+        with pytest.raises(ValueError, match='router_drain_required'):
+            owner.consume(token)
+        with pytest.raises(KeyStoreError, match='quiesced'):
+            external.create('closed_fixture', ['llm.primary'], ['/v1/chat/completions'])
+        # Ordinary protected-store snapshot reads do not count or deadlock.
+        assert external.list_keys()[0]['name'] == 'admin_fixture'
+    finally:
+        stdout, stderr = worker.communicate('\n', timeout=5)
+        assert worker.returncode == 0, stderr
+    assert owner.consume(token)['drained']
+    # The actual private container pipe also constructs a standalone store.
+    result = subprocess.run([sys.executable, '-m', 'anvil_serving.router.key_container'],
+                            input=json.dumps({'action':'revoke', 'store_path':str(external.path),
+                                              'key_id':external.list_keys()[0]['key_id']}),
+                            capture_output=True, text=True, timeout=5)
+    assert result.returncode == 2 and external.list_keys()[0]['revoked_at'] is None
+    assert KeyStore(external.path).list_keys() == external.list_keys()
+
+
+def test_external_writer_entered_before_native_binding_is_observed(store):
+    from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
+    usage, _, _, _ = store
+    external = KeyStore(usage.key_store.path)
+    state = external.path.parent / 'bootstrap-owner.json'
+    def persist(closure):
+        state.write_text(json.dumps({'schema':'router-admission/v1', 'owner_id':'owner_fixture', 'closure':closure}))
+        state.chmod(0o600)
+    persist(None)
+    owner = RouterAdmission('external_fixture', persist=persist, owner_scope=lambda:object(), roster_revision='external_roster')
+    with external._write() as db:
+        db.execute('BEGIN IMMEDIATE')
+        owner.observe('maintenance', _bind_router_store(external.path, state, 'owner_fixture'))
+        token = close(owner)
+        assert not owner.drain_router(token, 1)['drained']
+        db.execute('COMMIT')
+    assert owner.consume(token)['drained']
+    # Custody persists across new CLI/store objects after consumption.
+    with pytest.raises(KeyStoreError, match='quiesced'):
+        KeyStore(external.path).record(None, 'request_fixture', 'GET', '/v1/models', 200, 1)
+
+
+def test_external_writer_missing_or_replaced_native_custody_holds(store):
+    from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
+    usage, _, _, _ = store
+    external = KeyStore(usage.key_store.path)
+    state = external.path.parent / 'missing-owner.json'
+    owner = RouterAdmission('external_fixture', persist=lambda _:None, owner_scope=lambda:object(), roster_revision='external_roster')
+    owner.observe('maintenance', _bind_router_store(external.path, state, 'owner_fixture'))
+    with pytest.raises(KeyStoreError):
+        external.create('missing_fixture', ['llm.primary'], ['/v1/chat/completions'])
+    gate_path = Path(str(external.path) + '.router-writers.lock')
+    replacement = gate_path.with_suffix('.replacement')
+    replacement.write_bytes(b''); replacement.chmod(0o600); replacement.replace(gate_path)
+    token = close(owner)
+    assert owner.drain_router(token, 1)['unknown'] == ['maintenance']
+    with pytest.raises(KeyStoreError):
+        external.create('changed_fixture', ['llm.primary'], ['/v1/chat/completions'])
 
 
 @pytest.mark.parametrize('roster',[(),('other',),('owner','owner'),('owner','other')])

@@ -321,6 +321,96 @@ def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tupl
         raise KeyStoreError("credential store contains invalid grants") from None
 
 
+def _private_json(path):
+    _secure_database(path, exists=True)
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        _private_created_descriptor(descriptor)
+        _secure_database(path, exists=True, identity=os.fstat(descriptor))
+        raw = os.read(descriptor, 16385)
+        from ..observability.dashboard.contracts import strict_json
+        if len(raw) > 16384:
+            raise KeyStoreError("credential writer ownership is invalid")
+        return strict_json(raw)
+    finally:
+        os.close(descriptor)
+
+
+def _validate_store_binding(binding, path):
+    if (type(binding) is not dict or set(binding) != {"schema", "store_identity", "gate_identity", "state_path", "owner_id"}
+            or binding["schema"] != "router-store-owner/v1"
+            or type(binding["owner_id"]) is not str or not 1 <= len(binding["owner_id"]) <= 256
+            or type(binding["state_path"]) is not str or not Path(binding["state_path"]).is_absolute()
+            or any(type(binding[key]) is not list or len(binding[key]) != 2
+                   or any(type(item) is not int or item < 0 for item in binding[key])
+                   for key in ("store_identity", "gate_identity"))):
+        raise KeyStoreError("credential writer ownership is invalid")
+    _secure_database(path, exists=True)
+    actual = path.stat()
+    if (actual.st_dev, actual.st_ino) != tuple(binding["store_identity"]):
+        raise KeyStoreError("credential writer ownership changed")
+
+
+def _bind_router_store(path, state_path, owner_id):
+    """Only the verified native producer binds custody; CLI callers cannot mint it."""
+    import fcntl
+    path = Path(path).absolute()
+    _secure_database(path, exists=True)
+    gate = Path(str(path) + ".router-writers.lock")
+    if os.path.lexists(gate):
+        _secure_database(gate, exists=True)
+    descriptor = os.open(gate, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    try:
+        _private_created_descriptor(descriptor)
+        identity = os.fstat(descriptor)
+        _secure_database(gate, exists=True, identity=identity)
+    finally:
+        os.close(descriptor)
+    store_identity = path.stat()
+    binding = {"schema": "router-store-owner/v1", "owner_id": owner_id,
+               "state_path": str(Path(state_path).absolute()),
+               "store_identity": [store_identity.st_dev, store_identity.st_ino],
+               "gate_identity": [identity.st_dev, identity.st_ino]}
+    marker = Path(str(path) + ".router-owner")
+    if not os.path.lexists(marker):
+        descriptor = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        try:
+            _private_created_descriptor(descriptor)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as out:
+                descriptor = -1
+                json.dump(binding, out, sort_keys=True, separators=(",", ":"), allow_nan=False)
+                out.flush(); os.fsync(out.fileno())
+            directory = os.open(marker.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+        finally:
+            if descriptor != -1:
+                os.close(descriptor)
+    if _private_json(marker) != binding:
+        raise KeyStoreError("credential writer ownership differs")
+    def observe():
+        _validate_store_binding(_private_json(marker), path)
+        if _private_json(marker) != binding:
+            raise KeyStoreError("credential writer ownership changed")
+        _secure_database(gate, exists=True, identity=identity)
+        descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            _private_created_descriptor(descriptor)
+            if not os.path.samestat(identity, os.fstat(descriptor)):
+                raise KeyStoreError("credential writer ownership changed")
+            _secure_database(gate, exists=True, identity=identity)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return 1, False
+            return 0, False
+        finally:
+            os.close(descriptor)
+    return observe
+
+
 class KeyStore:
     """A small SQLite-backed device-key store with fail-closed reads."""
 
@@ -397,7 +487,8 @@ class KeyStore:
         """
         owner = getattr(self, "_router_admission", None)
         if owner is None:
-            yield
+            with self._external_ownership():
+                yield
             return
         from .admission import RouterAdmissionClosed
         try:
@@ -409,6 +500,43 @@ class KeyStore:
                 yield
         finally:
             permit.release()
+
+    @contextmanager
+    def _external_ownership(self):
+        """Standalone admin writers join the native producer's platform fence."""
+        marker = Path(str(self.path) + ".router-owner")
+        if os.name != "posix":
+            if os.path.lexists(marker):
+                raise KeyStoreError("credential writer ownership is unavailable")
+            yield
+            return
+        import fcntl
+        gate = Path(str(self.path) + ".router-writers.lock")
+        if os.path.lexists(gate):
+            _secure_database(gate, exists=True)
+        descriptor = os.open(gate, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        try:
+            _private_created_descriptor(descriptor)
+            identity = os.fstat(descriptor)
+            _secure_database(gate, exists=True, identity=identity)
+            fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            if not os.path.lexists(marker):
+                yield
+                return
+            binding = _private_json(marker)
+            _validate_store_binding(binding, self.path)
+            if (identity.st_dev, identity.st_ino) != tuple(binding["gate_identity"]):
+                raise KeyStoreError("credential writer ownership changed")
+            state = _private_json(Path(binding["state_path"]))
+            if (type(state) is not dict or set(state) != {"schema", "owner_id", "closure"}
+                    or state["schema"] != "router-admission/v1" or state["owner_id"] != binding["owner_id"]
+                    or state["closure"] is not None):
+                raise KeyStoreError("credential store is quiesced")
+            # The shared lock stays held through the actual SQLite writer wait,
+            # commit and cleanup. Closure persists before the owner probes zero.
+            yield
+        finally:
+            os.close(descriptor)
 
     @contextmanager
     def _write(self):

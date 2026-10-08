@@ -912,3 +912,5 @@ current loaded config. Successor custody is not reconstructed or automatically
 readmitted: its retained closure requires reviewed transfer. First old-runtime
 bootstrap, shared/multiple potential admitters and remote native drain without an
 owner readback remain operational HOLD. This source is not live closure proof.
+
+Native standalone credential administration shares a protected platform writer lock bound by the actual router producer to its persisted admission state. Admitting administration remains available; closure refuses new writes, and an earlier external writer keeps the maintenance family busy until its actual SQLite completion. Missing or replaced native custody remains HOLD. Read-only credential snapshots and source backup reads remain available.

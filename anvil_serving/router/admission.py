@@ -944,7 +944,7 @@ def managed_router_admission(server_config, revision):
     owner_id = server_config.router_owner_id
     if owner_id is None:
         return RouterAdmission(revision), None, None
-    from .keys import KeyStore, _secure_directory, _private_created_descriptor, _secure_database
+    from .keys import KeyStore, _secure_directory, _private_created_descriptor, _secure_database, _bind_router_store
     from .usage_store import UsageStore, RunOwner
     import fcntl
     import hashlib
@@ -1020,6 +1020,7 @@ def managed_router_admission(server_config, revision):
                                 roster_revision=roster_revision)
         usage.key_store._router_admission = owner
         owner._assembling = True
+        owner.observe("maintenance", _bind_router_store(usage.key_store.path, path, owner_id))
         owner._owner_descriptor = descriptor
         owner.usage_scope = scope
         owner.usage_run_id = run_id

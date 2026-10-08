@@ -486,8 +486,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
                   usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None):
     router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
+    from .keys import KeyStore as NativeKeyStore
     for store in (api_keys, getattr(usage_store, "key_store", None)):
-        if isinstance(store, KeyStore):
+        if isinstance(store, NativeKeyStore):
             existing = getattr(store, "_router_admission", router_admission)
             if existing is not router_admission:
                 raise ValueError("credential store ownership differs")
@@ -3187,7 +3188,9 @@ def make_server(host: str, port: int,
         connect_keys = ConnectKeys(api_keys, owned_models)
     if webui_bindings is None:
         webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())
-    router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
+    router_admission = (router_admission or getattr(backend, "_router_admission", None)
+                        or getattr(getattr(usage_store, "key_store", None), "_router_admission", None)
+                        or getattr(api_keys, "_router_admission", None) or RouterAdmission())
     for dispatcher in (backend, purpose, audio, memory):
         if dispatcher is not None:
             dispatcher._router_admission = router_admission
