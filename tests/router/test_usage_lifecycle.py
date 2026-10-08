@@ -426,6 +426,7 @@ def test_comparable_view_process_instance_lookup_and_read_stability(store, monke
 
 
 @pytest.mark.parametrize("restriction", ["hidepid=2", "subset=pid", "overmount", "wrong_view"])
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="actual Linux procfs oracle")
 def test_restricted_procfs_mount_and_namespace_view_are_not_comparability_proof(store, monkeypatch, restriction):
     _, owner, _, _ = store
     monkeypatch.setattr(ledger.os, "getpid", lambda: owner.pid)
@@ -454,6 +455,7 @@ def test_restricted_procfs_mount_and_namespace_view_are_not_comparability_proof(
     "/proc/456/stat", "/proc/456/ns/pid", "/proc/self/stat", "/proc/self/ns/pid",
     "/proc/self/mountinfo", "/proc/1/ns/pid", "/proc/sys/kernel/random", "/proc/sys/kernel/random/boot_id",
 ])
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="actual Linux procfs oracle")
 def test_sensitive_descendant_overmount_is_unknown_and_preserves_unresolved_start(store, monkeypatch, overmount):
     usage, owner, run, scope = store
     start = start_at(run)
@@ -472,12 +474,17 @@ def test_sensitive_descendant_overmount_is_unknown_and_preserves_unresolved_star
         if not str(path).startswith("/proc/"):
             return actual_stat(path, *args, **kwargs)
         return SimpleNamespace(st_dev=1, st_ino=3 if str(path).endswith("/user") else 2, st_uid=owner.uid)
-    monkeypatch.setattr(ledger, "_linux_owner", _ACTUAL_LINUX_OWNER)
-    monkeypatch.setattr(ledger.os, "getpid", lambda: 456)
-    monkeypatch.setattr(ledger.os, "geteuid", lambda: owner.uid)
-    monkeypatch.setattr(ledger.os, "readlink", lambda _: "456")
-    monkeypatch.setattr(ledger.os, "stat", metadata)
-    monkeypatch.setattr(Path, "read_text", read)
+    def view(*args):
+        # Scope synthetic procfs to the oracle; protected SQLite I/O must use
+        # the real process identity even when the runner UID is not 1000.
+        with monkeypatch.context() as patch:
+            patch.setattr(ledger.os, "getpid", lambda: 456)
+            patch.setattr(ledger.os, "geteuid", lambda: owner.uid)
+            patch.setattr(ledger.os, "readlink", lambda _: "456")
+            patch.setattr(ledger.os, "stat", metadata)
+            patch.setattr(Path, "read_text", read)
+            return _ACTUAL_LINUX_OWNER(*args)
+    monkeypatch.setattr(ledger, "_linux_owner", view)
     assert ledger.observe_run(owner) == "unknown"
     recovered = usage.recover((run,), host_domain_id=owner.host_domain_id)
     assert recovered["unknown_runs"] == 1 and recovered["dead_runs"] == recovered["recovered_requests"] == 0

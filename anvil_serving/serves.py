@@ -1448,7 +1448,10 @@ def _install_router_config(
 
     from .router_manage import require_router_drain
     try:
-        require_router_drain(container, _run=_run)
+        receipt = require_router_drain(container, _run=_run)
+        if receipt.get('owner_backend', 'native-process') == 'managed-container':
+            print('  router install HOLD: managed-container config changes require managed down/up custody')
+            return 1
     except ValueError:
         print("  router install HOLD: old runtime all-path owned drain is required")
         return 1

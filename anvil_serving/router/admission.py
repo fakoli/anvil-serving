@@ -949,7 +949,10 @@ def managed_router_admission(server_config, revision):
     incomparable platforms and multiple potential admitters fail closed.
     """
     owner_id = server_config.router_owner_id
+    managed = server_config.router_owner_backend == "managed-container"
     if owner_id is None:
+        if managed:
+            raise ValueError("router_owner_roster_unsupported")
         return RouterAdmission(revision), None, None
     from .keys import KeyStore, _secure_directory, _private_created_descriptor, _secure_database, _bind_router_store
     from .usage_store import UsageStore, RunOwner
@@ -966,7 +969,7 @@ def managed_router_admission(server_config, revision):
     try:
         _private_created_descriptor(descriptor)
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        actual_owner = RunOwner.observe(owner_id)
+        actual_owner = RunOwner.observe(owner_id, managed=True) if managed else RunOwner.observe(owner_id)
         restored = None
         if os.path.lexists(path):
             _secure_database(path, exists=True)
@@ -1017,7 +1020,10 @@ def managed_router_admission(server_config, revision):
                     os.unlink(temporary)
 
         usage = UsageStore(KeyStore(server_config.api_keys_path))
+        usage.owner_config = server_config
         with usage.key_store._offline_custody(server_config, producer_descriptor=descriptor, allow_retained=True):
+            from .container_owner import ready_transfers, finish_transfers
+            transfers = ready_transfers(usage) if managed else []
             retained = usage.inactive_native_runs(actual_owner, domain_id=server_config.usage_domain_id)
             with usage.key_store._connect() as db:
                 previous = db.execute('SELECT configuration_revision FROM usage_domains WHERE domain_id=?',
@@ -1032,8 +1038,9 @@ def managed_router_admission(server_config, revision):
             def scope():
                 return usage.managed_owner_scope(run_id, actual_owner, domain_id=server_config.usage_domain_id,
                                                   configuration_revision=revision)
-            scope()  # Incomparable/foreign runs refuse before the listener exists.
-            successor = bool(retained or restored is not None)
+            if not managed:
+                scope()  # Native-process ownership stays unchanged.
+            successor = bool(managed or retained or restored is not None)
             if successor:
                 # The predecessor closure remains durable through reconciliation
                 # and actual new-run verification. Transfer writes a new closed
@@ -1051,6 +1058,8 @@ def managed_router_admission(server_config, revision):
             owner.usage_scope = scope
             owner.usage_run_id = run_id
             persist(owner._state())
+            if managed:
+                finish_transfers(usage, transfers, run_id, actual_owner, revision, owner._state())
         return owner, usage, run_id
     except BaseException:
         os.close(descriptor)

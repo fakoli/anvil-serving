@@ -76,6 +76,7 @@ def test_offline_migration_preserves_bound_closure_and_refuses_unknown_owner(tmp
 @pytest.mark.parametrize('state', ['absent', 'exited', 'created'])
 def test_cold_up_uses_offline_custody_without_fabricating_old_drain(monkeypatch, state):
     calls = []
+    monkeypatch.setattr(router_manage, '_compose_owner_backend', lambda *a, **k: 'native-process')
     monkeypatch.setattr(router_manage, '_container_compose_project', lambda *a, **k: (state, None if state == 'absent' else 'anvil-serving'))
     monkeypatch.setattr(router_manage, 'require_router_drain', lambda *a, **k: pytest.fail('cold predecessor drain'))
     monkeypatch.setattr(router_manage, 'require_router_offline', lambda *a, **k: calls.append('offline'))

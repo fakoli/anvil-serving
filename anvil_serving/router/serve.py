@@ -682,6 +682,7 @@ class RoutingBackend:
         admission: Optional[TierAdmission] = None,
         capacity_metrics: Optional[MetricsProvider] = None,
         decision_log: Optional[DecisionLog] = None,
+        start_background: bool = True,
     ) -> None:
         self._config = config
         self._backends: Dict[str, Backend] = {}
@@ -709,7 +710,7 @@ class RoutingBackend:
             if auto_gates
             else None
         )
-        if self._auto_refresher is not None:
+        if self._auto_refresher is not None and start_background:
             self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
         # A valid media-only gateway has no chat tiers to admit. Its chat
@@ -1959,6 +1960,16 @@ def build_server(
     ):
         admission = _durable_admission(server_config.admission_state_path, config)
     with ExitStack() as cleanup:
+        import hashlib
+        configuration_revision = (hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+                                  if server_config.router_owner_id else "unmanaged")
+        router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
+        def release_unassembled_owner():
+            descriptor = getattr(router_owner, '_owner_descriptor', None)
+            if descriptor is not None:
+                os.close(descriptor)
+                router_owner._owner_descriptor = None
+        cleanup.callback(release_unassembled_owner)
         decision_log: Optional[DecisionLog] = None
         trace_exporter: Optional[TraceExporter] = None
         if server_config.decision_log_path:
@@ -1984,13 +1995,10 @@ def build_server(
             admission=admission,
             capacity_metrics=capacity_metrics,
             decision_log=decision_log,
+            start_background=server_config.router_owner_backend != "managed-container",
         )
         cleanup.callback(routing.close)
         routing._trace_exporter = trace_exporter
-        import hashlib
-        configuration_revision = (hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
-                                  if server_config.router_owner_id else "unmanaged")
-        router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
         routing._router_admission = router_owner
         def admission_policy_revision():
             snapshots = routing._admission.snapshots() if routing._admission is not None else ()
@@ -2211,7 +2219,7 @@ def build_server(
                         router_owner._owner_descriptor = None
 
         httpd.server_close = close_router_server  # type: ignore[method-assign]
-        if media_worker is not None:
+        if media_worker is not None and server_config.router_owner_backend != "managed-container":
             try:
                 media_worker.start()
             except BaseException:

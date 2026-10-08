@@ -274,8 +274,8 @@ class RunOwner:
         _require(self.pid > 0 and self.start_ticks > 0)
 
     @classmethod
-    def observe(cls, host_domain_id):
-        return _linux_owner(host_domain_id)[0]
+    def observe(cls, host_domain_id, *, managed=False):
+        return (_linux_managed_owner if managed else _linux_owner)(host_domain_id)[0]
 
 
 def _stat_ticks(raw, pid):
@@ -284,17 +284,25 @@ def _stat_ticks(raw, pid):
     return int(tail[19])
 
 
-def _linux_owner(host_domain_id, target_pid=None):
+def _linux_owner(host_domain_id, target_pid=None, *, _managed=False):
     """Establish comparable unrestricted procfs before interpreting missing PIDs."""
     _require(sys.platform.startswith("linux"))
     pid = os.getpid()
     _require(os.readlink("/proc/self") == str(pid))
     raw_mounts = Path("/proc/self/mountinfo").read_text(encoding="ascii")
-    mounts = []
+    mounts, identities = [], []
+    _require(not _managed or len(raw_mounts) <= 1048576 and len(raw_mounts.splitlines()) <= 4096)
     for line in raw_mounts.splitlines():
         left, right = line.split(" - ", 1)
         a, b = left.split(), right.split()
         mounts.append((a[4], a[3], b[0], a[5] + "," + b[2]))
+        if _managed:
+            _require(len(a) >= 6 and len(b) == 3 and all(x.isdecimal() for x in a[:2])
+                     and re.fullmatch(r'[0-9]+:[0-9]+', a[2]) is not None
+                     and a[3].startswith('/') and a[4].startswith('/')
+                     and all(x and all(32 < ord(c) < 127 for c in x) for x in (*a, *b)))
+            _require(all(re.fullmatch(r'(shared|master|propagate_from):[0-9]+|unbindable', x) is not None for x in a[6:]))
+            identities.append((int(a[0]), int(a[1]), a[2], a[3], a[4], a[5], tuple(a[6:]), *b))
     proc = [m for m in mounts if m[0] == "/proc"]
     _require(len(proc) == 1 and proc[0][1:3] == ("/", "proc"))
     options = proc[0][3].split(",")
@@ -303,7 +311,26 @@ def _linux_owner(host_domain_id, target_pid=None):
                  "/proc/1", "/proc/self", "/proc/sys/kernel/random/boot_id")
     # A substituted descendant (stat/ns/mountinfo) invalidates the whole
     # process subtree, including both self and its numeric PID alias.
-    _require(not any(m[0] != "/proc" and any(p == m[0] or p.startswith(m[0] + "/")
+    eligible = None
+    if _managed:
+        base = [m for m in identities if m[4] == '/proc']
+        child = [m for m in identities if m[4] == '/proc/sys']
+        _require(len(base) == 1 and len(child) <= 1 and len({m[0] for m in identities}) == len(identities))
+        if child:
+            root, sub = base[0], child[0]
+            allowed = {'rw','ro','nosuid','nodev','noexec','relatime','noatime','strictatime','seclabel','hidepid=0'}
+            _require(all(o in allowed for m in (root, sub) for o in (m[5] + ',' + m[9]).split(',')))
+            root_stat, sub_stat = os.stat('/proc'), os.stat('/proc/sys')
+            _require(root[3] == '/' and root[7:9] == ('proc', 'proc')
+                     and sub[1] == root[0] and sub[2] == root[2] and sub[3] == '/sys'
+                     and sub[7:9] == ('proc', 'proc') and 'ro' in sub[5].split(',')
+                     and 'rw' not in sub[5].split(',') and root_stat.st_dev == sub_stat.st_dev
+                     and f'{os.major(root_stat.st_dev)}:{os.minor(root_stat.st_dev)}' == root[2]
+                     and not any(o.startswith('hidepid=') and o != 'hidepid=0' or o.startswith('subset=')
+                                 for m in (root, sub) for o in (m[5] + ',' + m[9]).split(',')))
+            eligible = '/proc/sys'
+            identities.append(('filesystem', root_stat.st_dev, root_stat.st_ino, sub_stat.st_dev, sub_stat.st_ino))
+    _require(not any(m[0] != "/proc" and m[0] != eligible and any(p == m[0] or p.startswith(m[0] + "/")
                                            or m[0].startswith(p + "/") for p in sensitive)
                      for m in mounts))
     ns = os.stat("/proc/self/ns/pid")
@@ -313,13 +340,18 @@ def _linux_owner(host_domain_id, target_pid=None):
     owner = RunOwner(host_domain_id, Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip(),
                      ns.st_dev, ns.st_ino, view.st_dev, view.st_ino, os.geteuid(),
                      user.st_dev, user.st_ino, pid, _stat_ticks(Path("/proc/self/stat").read_text(encoding="ascii"), pid))
-    return owner, tuple(mounts)
+    return owner, tuple(identities if _managed else mounts)
 
 
-def observe_run(owner):
+def _linux_managed_owner(host_domain_id, target_pid=None):
+    return _linux_owner(host_domain_id, target_pid, _managed=True)
+
+
+def observe_run(owner, *, managed=False):
     """LIVE/DEAD only within a stable full owner domain; other boots stay UNKNOWN."""
     try:
-        before, view = _linux_owner(owner.host_domain_id, owner.pid)
+        observer = _linux_managed_owner if managed else _linux_owner
+        before, view = observer(owner.host_domain_id, owner.pid)
         names = tuple(f.name for f in fields(RunOwner) if f.name not in {"pid", "start_ticks"})
         if any(getattr(before, n) != getattr(owner, n) for n in names):
             return "unknown"
@@ -341,7 +373,7 @@ def observe_run(owner):
         else:
             # ENOENT counts only after _linux_owner established unrestricted view.
             state = "dead"
-        after, after_view = _linux_owner(owner.host_domain_id, owner.pid)
+        after, after_view = observer(owner.host_domain_id, owner.pid)
         return state if before == after and view == after_view else "unknown"
     except (OSError, ValueError, UnicodeError, IndexError):
         return "unknown"
@@ -674,6 +706,7 @@ class UsageStore:
             raise TypeError("accounting requires a protected key store")
         self.key_store = key_store
         self._pending_failure = False
+        self.owner_config = None
 
     @contextmanager
     def _write(self):
@@ -709,6 +742,44 @@ class UsageStore:
     def _run_owner(row):
         return RunOwner(**{f.name: row[f.name] for f in fields(RunOwner)})
 
+    def _observed_owner(self, owner_id):
+        if self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container':
+            return RunOwner.observe(owner_id, managed=True)
+        return RunOwner.observe(owner_id)
+
+    def _physical_owner(self, owner):
+        if self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container':
+            return observe_run(owner, managed=True)
+        return observe_run(owner)
+
+    def _owner_state(self, row, *, db, current=False):
+        """One classifier for probe, registration, recovery and owner scope.
+
+        Only configured native custody can select the protected Docker adjunct.
+        Pending records never classify a run. A comparable LIVE observation
+        always vetoes retained death evidence.
+        """
+        owner = self._run_owner(row)
+        physical = self._physical_owner(owner)
+        from .container_owner import location, read
+        managed = self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container'
+        if not managed:
+            return 'unknown' if os.path.lexists(location(self.key_store, row['run_id'])) else physical
+        try:
+            revision = db.execute('SELECT configuration_revision FROM usage_coverage_segments WHERE run_id=? '
+                                  'ORDER BY started_at,segment_id LIMIT 1', (row['run_id'],)).fetchone()
+            if revision is None:
+                return 'unknown'
+            record = read(self.key_store, row, revision[0])
+            if current:
+                return 'live' if (physical == 'live' and record['phase'] == 'live'
+                                  and record['anchor']['owner_id'] == self.owner_config.router_owner_id) else 'unknown'
+            if physical == 'live':
+                return 'live'
+            return 'dead' if record['phase'] in {'ready', 'transferred'} else 'unknown'
+        except (KeyStoreError, sqlite3.Error, OSError, ValueError, TypeError, KeyError):
+            return 'unknown'
+
     def inactive_native_runs(self, owner, *, domain_id):
         """Bounded physical-death readback under the native producer/writer fences.
 
@@ -716,19 +787,19 @@ class UsageStore:
         local interrupted/unknown result; admission has its separate owner gate.
         """
         _id(domain_id)
-        _require(type(owner) is RunOwner and RunOwner.observe(owner.host_domain_id) == owner)
+        _require(type(owner) is RunOwner and self._observed_owner(owner.host_domain_id) == owner)
         try:
             with self.key_store._connect() as db:
                 db.row_factory = sqlite3.Row
                 rows = db.execute('SELECT * FROM usage_runs WHERE domain_id=? ORDER BY started_at,run_id LIMIT 1025',
                                   (domain_id,)).fetchall()
+                _require(len(rows) <= 1024)
+                for row in rows:
+                    retained = self._run_owner(row)
+                    _require(retained.host_domain_id == owner.host_domain_id and self._owner_state(row, db=db) == 'dead')
         except (sqlite3.Error, KeyStoreError, OSError):
             raise UsageError('accounting_unavailable') from None
-        _require(len(rows) <= 1024)
-        for row in rows:
-            retained = self._run_owner(row)
-            _require(retained.host_domain_id == owner.host_domain_id and observe_run(retained) == 'dead')
-        _require(RunOwner.observe(owner.host_domain_id) == owner)
+        _require(self._observed_owner(owner.host_domain_id) == owner)
         return tuple(row['run_id'] for row in rows)
 
     def register_run(self, owner, *, domain_id, configuration_revision, enabled=False, started_at=None,
@@ -738,8 +809,9 @@ class UsageStore:
         _id(domain_id); _id(configuration_revision)
         at = _utc(started_at or _now())
         try:
-            first = _linux_owner(owner.host_domain_id)
-            _require(first[0] == owner and first == _linux_owner(owner.host_domain_id))
+            observer = _linux_managed_owner if self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container' else _linux_owner
+            first = observer(owner.host_domain_id)
+            _require(first[0] == owner and first == observer(owner.host_domain_id))
         except (OSError, ValueError, UnicodeError, IndexError):
             raise UsageError("accounting_configuration_unsupported") from None
         run_id, segment_id = str(uuid.uuid4()), str(uuid.uuid4())
@@ -757,7 +829,7 @@ class UsageStore:
                          and getattr(self.key_store._writer_context, 'offline_custody', False))
                 rows = db.execute('SELECT * FROM usage_runs WHERE domain_id=? LIMIT 1025', (domain_id,)).fetchall()
                 _require(0 < len(rows) <= 1024 and all(row['state'] == 'dead' and row['ended_at'] is not None
-                         and observe_run(self._run_owner(row)) == 'dead' for row in rows))
+                         and self._owner_state(row, db=db) == 'dead' for row in rows))
                 db.execute('UPDATE usage_domains SET configuration_revision=? WHERE domain_id=?',
                            (configuration_revision, domain_id))
             db.execute("INSERT INTO usage_runs VALUES(" + ",".join("?" for _ in range(16)) + ")",
@@ -774,7 +846,7 @@ class UsageStore:
         cannot supply this authority. Unsettled earlier owners remain HOLD.
         """
         _uuid(run_id); _id(domain_id); _id(configuration_revision)
-        _require(type(owner) is RunOwner and RunOwner.observe(owner.host_domain_id) == owner)
+        _require(type(owner) is RunOwner and self._observed_owner(owner.host_domain_id) == owner)
         try:
             with self.key_store._connect() as db:
                 db.row_factory = sqlite3.Row
@@ -784,17 +856,25 @@ class UsageStore:
                 _require(domain is not None and domain[0] == configuration_revision and 0 < len(rows) <= 1024)
                 current = [r for r in rows if r["run_id"] == run_id]
                 _require(len(current) == 1 and self._run_owner(current[0]) == owner and current[0]["state"] == "live")
+                if self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container':
+                    _require(self._owner_state(current[0], db=db, current=True) == 'live')
                 for row in rows:
                     if row["run_id"] == run_id:
                         continue
                     _require(row["state"] == "dead" and row["ended_at"] is not None
-                             and observe_run(self._run_owner(row)) == "dead")
+                             and self._owner_state(row, db=db) == "dead")
                 # Bounded native authority lease spans the existing one-second
                 # writer wait; query collection still clamps to its actual time.
                 at = (datetime.fromisoformat(_now().replace("Z", "+00:00")) + timedelta(seconds=2)).isoformat(timespec="microseconds").replace("+00:00", "Z")
-                scope = AuthorityScope(domain_id, configuration_revision, tuple(r["run_id"] for r in rows),
-                                       min(r["started_at"] for r in rows), at)
-                _require(RunOwner.observe(owner.host_domain_id) == owner)
+                # Retained predecessors are verified above, but their earlier
+                # configuration/uncertain segments cannot confer current write
+                # authority. Historical queries retain their measured rows and
+                # report coverage outside this generation as incomplete.
+                managed = self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container'
+                scope = AuthorityScope(domain_id, configuration_revision,
+                                       (run_id,) if managed else tuple(r["run_id"] for r in rows),
+                                       current[0]['started_at'] if managed else min(r["started_at"] for r in rows), at)
+                _require(self._observed_owner(owner.host_domain_id) == owner)
                 return scope
         except (sqlite3.Error, KeyStoreError, OSError):
             raise UsageError("accounting_unavailable") from None
@@ -869,7 +949,9 @@ class UsageStore:
         at = _utc(at or _now())
         with self._write() as db:
             run = db.execute("SELECT * FROM usage_runs WHERE run_id=?", (run_id,)).fetchone()
-            if run is None or run["state"] != "live" or self._run_owner(run) != RunOwner.observe(run["host_domain_id"]):
+            if (run is None or run["state"] != "live" or self._run_owner(run) != self._observed_owner(run["host_domain_id"])
+                    or (self.owner_config is not None and self.owner_config.router_owner_backend == "managed-container"
+                        and self._owner_state(run, db=db, current=True) != "live")):
                 raise UsageError("accounting_configuration_unsupported")
             parts = db.execute("SELECT * FROM usage_coverage_segments WHERE run_id=? AND ended_at IS NULL", (run_id,)).fetchall()
             if len(parts) != 1 or at < parts[0]["started_at"]:
@@ -925,7 +1007,9 @@ class UsageStore:
                     raise UsageError("accounting_conflict")
                 return "same"
             run = db.execute("SELECT * FROM usage_runs WHERE run_id=?", (start.run_id,)).fetchone()
-            if run is None or run["state"] != "live" or self._run_owner(run) != RunOwner.observe(run["host_domain_id"]):
+            if (run is None or run["state"] != "live" or self._run_owner(run) != self._observed_owner(run["host_domain_id"])
+                    or (self.owner_config is not None and self.owner_config.router_owner_backend == "managed-container"
+                        and self._owner_state(run, db=db, current=True) != "live")):
                 raise UsageError("accounting_configuration_unsupported")
             domain = db.execute("SELECT * FROM usage_domains WHERE domain_id=?", (run["domain_id"],)).fetchone()
             if domain["detail_floor_utc"] is not None and start.accepted_at < domain["detail_floor_utc"]:
@@ -1121,15 +1205,14 @@ class UsageStore:
             with self.key_store._connect() as db:
                 db.row_factory = sqlite3.Row
                 db.execute("BEGIN")
-                owners = {}
+                owners, states = {}, {}
                 for rid in run_ids:
                     row = db.execute("SELECT * FROM usage_runs WHERE run_id=?", (rid,)).fetchone()
                     if row is not None:
                         owners[rid] = self._run_owner(row)
+                        states[rid] = self._owner_state(row, db=db) if owners[rid].host_domain_id == host_domain_id else "unknown"
         except (sqlite3.Error, KeyStoreError, OSError):
             raise UsageError("accounting_unavailable") from None
-        states = {rid: observe_run(owner) if owner.host_domain_id == host_domain_id else "unknown"
-                  for rid, owner in owners.items()}
         result = {"recovered_requests": 0, "dead_runs": 0, "live_runs": 0, "unknown_runs": len(run_ids) - len(owners)}
         with self._write() as db:
             at = _now()
@@ -1138,6 +1221,9 @@ class UsageStore:
                 if run is None or self._run_owner(run) != owners[rid]:
                     result["unknown_runs"] += 1
                     continue
+                # Recheck the immutable proof/run under the actual ledger writer.
+                if self._owner_state(run, db=db) != state:
+                    state = "unknown"
                 result[state + "_runs"] += 1
                 if state == "dead":
                     for row in db.execute("SELECT s.* FROM usage_starts s LEFT JOIN usage_details d USING(request_id) "

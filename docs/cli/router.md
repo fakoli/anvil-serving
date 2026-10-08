@@ -595,12 +595,43 @@ requests through the ledger's recovery operation, preserves committed rows and
 registers the real successor. The old closure stays durable through that
 verification; transfer persists a new closed generation with a new barrier.
 Live, foreign, incomparable or unknown old runs refuse before transfer.
-Physical classification requires the same verified boot, PID/user namespaces
-and unrestricted procfs view. A replacement Docker container normally has a new
-PID namespace; that change remains UNKNOWN even after the old process exits.
-This path does not establish restart recovery across container namespaces. The
-deployment must supply independently reviewed comparable owner proof before
-such a successor can start; releasing the old lock is insufficient.
+The default `server.router_owner_backend="native-process"` requires the same
+verified boot, PID/user namespaces and unrestricted procfs view. A replacement
+namespace remains UNKNOWN in that mode. The opt-in `managed-container` mode uses
+protected per-run custody recorded by the native managed Docker lifecycle. Every
+initial and successor process is durably quiesced before listening or starting
+background work. The native helper verifies its actual live PID/start and
+container namespace, while the host verifies the exact full container ID, image,
+incarnation, Docker daemon, selected Compose service and mounted-state consumers.
+The helper holds the actual storage fence while the host repeats that readback;
+only an exact staged-digest commit finalizes the anchor. Pending custody never
+allows readmission. Managed observation recognizes only Docker's exact read-only
+`/proc/sys` subtree on the same procfs superblock; other sensitive substitutions
+and restricted or incomparable views still refuse.
+
+Managed `down`, `restart` and `up --recreate` stop the drained old incarnation,
+verify it is actually stopped under the lifecycle/storage fences and preserve its
+immutable physical-death proof before starting a successor. Cold `up` can perform
+the same check for an anchored crashed incarnation without inventing consumption
+or upstream completion. Probe, recovery, changed-config registration and ongoing
+scope share that exact proof. Recovery preserves committed accounting and records
+unfinished local requests as interrupted with unknown upstream outcome. Transfer
+keeps the old closure through verification, then persists a new closed generation
+and binds the proof once to the actual registered successor. Prior barrier tokens
+cannot admit the new owner. Current accounting write authority begins with that
+new generation; queries of earlier configurations retain measured rows and report
+coverage outside the current authoritative window as incomplete.
+
+A missing live anchor cannot be fabricated after death. Legacy/unanchored runs,
+removed or changed incarnations, inaccessible native metadata and a partially
+registered unanchored successor remain HOLD. This includes a crash between ledger
+registration, closure persistence and custody transfer; conservative refusal is
+an explicit recovery limit. Releasing an old file lock alone is never proof.
+The managed profile must use the selected supported Compose configuration;
+`restart`/`reload` accept `--compose`, `--service` and `--env-file`. The direct
+`install-config` operation refuses this mode before replacement writes because it
+cannot preserve the predecessor config for custody; stage config changes while
+managed `down`, then use managed `up` with the declared profile.
 
 The successor remains quiesced. Use the existing management commands to obtain
 its new barrier and request readmission after the assembled owner roster is safe:

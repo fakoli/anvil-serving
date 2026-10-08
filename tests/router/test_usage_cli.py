@@ -125,12 +125,21 @@ def test_protected_autoload_file_no_shared_fallback(tmp_path, monkeypatch):
     captured = []
     monkeypatch.setattr(cli, '_fetch', lambda base, path, token, *a, **k: captured.append(token) or {'schema':'router-active-usage/v1'})
     assert cli.dispatch_usage(['active']).error is None and captured == [ADMIN]
-    secret.chmod(0o644)
-    assert cli.dispatch_usage(['active']).error.code == 'router_diagnostics_config_invalid'
-    secret.chmod(0o600)
+    if os.name == 'nt':
+        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+        tree = WindowsFixtureTree(tmp_path)
+        tree.owner_readonly_with_everyone_write(secret)
+        try:
+            assert cli.dispatch_usage(['active']).error.code == 'router_diagnostics_config_invalid'
+        finally:
+            tree.restore_full_control(secret)
+    else:
+        secret.chmod(0o644)
+        assert cli.dispatch_usage(['active']).error.code == 'router_diagnostics_config_invalid'
+        secret.chmod(0o600)
     target=tmp_path/'private-token'; secret.rename(target); secret.symlink_to(target)
     assert cli.dispatch_usage(['active']).error.code == 'router_diagnostics_config_invalid'
-    config.write_text('credential_file="' + str(os.path.expanduser('~/.env')) + '"\n')
+    config.write_text('credential_file=' + json.dumps(os.path.expanduser('~/.env')) + '\n')
     assert cli.dispatch_usage(['active']).error.code == 'router_diagnostics_config_invalid'
 
 

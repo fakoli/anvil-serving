@@ -366,57 +366,96 @@ def cmd_up(
     if not dry_run:
         try:
             if state in {'absent', 'exited', 'created'}:
+                managed = _compose_owner_backend(compose, service, _run=_run, env_file=env_file,
+                                                   execution_env=execution_env) == 'managed-container'
+                if managed and state != 'absent' and observed_project != DEFAULT_COMPOSE_PROJECT:
+                    raise ValueError('router_managed_target_mismatch')
+                if managed and state == 'exited':
+                    _managed_container_custody('dead', compose, service, container, _run=_run,
+                                               env_file=env_file, execution_env=execution_env)
                 require_router_offline(compose, service, container=container, _run=_run,
                                        env_file=env_file, execution_env=execution_env)
             else:
-                require_router_drain(container, _run=_run, compose=compose, service=service,
-                                     env_file=env_file, execution_env=execution_env,
-                                     allow_foreign=recreate)
-        except ValueError:
+                receipt = require_router_drain(container, _run=_run, compose=compose, service=service,
+                                               env_file=env_file, execution_env=execution_env,
+                                               allow_foreign=recreate)
+                managed = receipt.get('owner_backend', 'native-process') == 'managed-container'
+                if managed:
+                    if observed_project != DEFAULT_COMPOSE_PROJECT:
+                        raise ValueError('router_managed_target_mismatch')
+                    if _run_argv(['docker', 'stop', container], _run):
+                        return 1
+                    _managed_container_custody('dead', compose, service, container, _run=_run,
+                                               env_file=env_file, execution_env=execution_env)
+        except (ValueError, OSError, subprocess.SubprocessError):
             print("router lifecycle HOLD: native drain or exclusive offline custody is required", file=sys.stderr)
             return 1
     if state != "absent" and observed_project != DEFAULT_COMPOSE_PROJECT and not dry_run:
         remove_rc = _run_argv(["docker", "rm", "-f", container], _run)
         if remove_rc:
             return remove_rc
-    return _run_argv(
-        _compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
-        _run,
-        dry_run=dry_run,
-        env=execution_env,
-    )
+    rc = _run_argv(_compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
+                   _run, dry_run=dry_run, env=execution_env)
+    if rc == 0 and not dry_run and managed:
+        try:
+            _managed_container_custody('live', compose, service, container, _run=_run,
+                                       env_file=env_file, execution_env=execution_env)
+        except (ValueError, OSError, subprocess.SubprocessError):
+            print('router lifecycle HOLD: new owner remains closed without finalized native custody', file=sys.stderr)
+            return 1
+    return rc
+
 
 
 @_serving_authority_mutation
 def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
     if not dry_run:
         try:
-            require_router_drain(DEFAULT_CONTAINER, _run=_run, compose=compose, service=service)
+            receipt = require_router_drain(DEFAULT_CONTAINER, _run=_run, compose=compose, service=service)
+            managed = receipt.get('owner_backend', 'native-process') == 'managed-container'
         except ValueError:
             print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
             return 1
-    return _run_argv(
-        [*_compose_argv(compose), "stop", service],
-        _run,
-        dry_run=dry_run,
-    )
+    rc = _run_argv([*_compose_argv(compose), "stop", service], _run, dry_run=dry_run)
+    if rc == 0 and not dry_run and managed:
+        try:
+            _managed_container_custody('dead', compose, service, DEFAULT_CONTAINER, _run=_run)
+        except (ValueError, OSError, subprocess.SubprocessError):
+            print('router lifecycle HOLD: stopped owner lacks finalized native custody', file=sys.stderr)
+            return 1
+    return rc
+
 
 
 @_serving_authority_mutation
-def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
+def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None,
+                compose=None, service=DEFAULT_SERVICE, env_file=None):
     if not dry_run:
         try:
-            require_router_drain(container, _run=_run)
-        except ValueError:
+            receipt = require_router_drain(container, _run=_run)
+            managed = receipt.get('owner_backend', 'native-process') == 'managed-container'
+            if managed:
+                compose = resolve_compose_path(compose)
+                execution_env = _compose_execution_env(compose, env_file)
+                if _run_argv(['docker', 'stop', container], _run):
+                    return 1
+                _managed_container_custody('dead', compose, service, container, _run=_run,
+                                           env_file=env_file, execution_env=execution_env)
+                if _run_argv(['docker', 'start', container], _run):
+                    return 1
+                _managed_container_custody('live', compose, service, container, _run=_run,
+                                           env_file=env_file, execution_env=execution_env)
+                return 0
+        except (ValueError, OSError, subprocess.SubprocessError):
             print("router lifecycle HOLD: old runtime all-path owned drain is required", file=sys.stderr)
             return 1
     return _run_argv(["docker", "restart", container], _run, dry_run=dry_run)
 
 
 @_serving_authority_mutation
-def cmd_reload(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None):
+def cmd_reload(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None, **kwargs):
     print("router reload restarts the container because configuration is startup-read")
-    return cmd_restart(container, dry_run=dry_run, verify=verify, _run=_run, _sleep=_sleep)
+    return cmd_restart(container, dry_run=dry_run, verify=verify, _run=_run, _sleep=_sleep, **kwargs)
 
 
 def lifecycle_plan(action, *, compose=None, service=DEFAULT_SERVICE, env_file=None,
@@ -739,6 +778,9 @@ def _build_parser():
         item.add_argument("--container", default=DEFAULT_CONTAINER)
         item.add_argument("--dry-run", action="store_true")
         item.add_argument("--no-verify", action="store_true")
+        item.add_argument("--compose")
+        item.add_argument("--service", default=DEFAULT_SERVICE)
+        item.add_argument("--env-file")
     for name in ("status", "token", "logs"):
         item = actions.add_parser(name)
         item.add_argument("--container", default=DEFAULT_CONTAINER)
@@ -804,7 +846,7 @@ def main(argv=None):
             rc = cmd_down(plan["compose"], plan["service"])
         else:
             rc = (cmd_restart if args.action == "restart" else cmd_reload)(
-                plan["container"], verify=not args.no_verify
+                plan["container"], verify=not args.no_verify, compose=args.compose, service=args.service, env_file=args.env_file
             )
         print(json.dumps({"applied": rc == 0, "dry_run": False, **plan}, sort_keys=True))
         return rc
@@ -1369,13 +1411,13 @@ def _local_router_cutover(timeout=30):
     consumed = request("consume", barrier_token=barrier_token)
     if consumed.get("drained") is not True or consumed.get("cutover_pending") is not True:
         raise ValueError("router_barrier_not_consumed")
-    return {"schema":"router-native-cutover/v1", "configuration_revision":expected,
+    return {"schema":"router-native-cutover/v1", "owner_backend":settings.router_owner_backend, "configuration_revision":expected,
             "roster_revision":consumed["roster_revision"], "generation":consumed["generation"],
             "drained":True, "closed":True}
 
 
 def _verify_compose_target(compose, service, custody, *, _run, env_file=None,
-                           execution_env=None, allow_foreign=False):
+                           execution_env=None, allow_foreign=False, exclude_oneoff=None):
     """Bind a Compose operation to the one actual owner consumed by its gate."""
     if (not isinstance(service, str) or not _CONTAINER_NAME_RE.fullmatch(service)
             or custody.get("compose_service") != service):
@@ -1387,6 +1429,10 @@ def _verify_compose_target(compose, service, custody, *, _run, env_file=None,
     if result.returncode or len(raw) > 131072:
         raise ValueError("router_compose_target_unknown")
     ids = raw.split()
+    if exclude_oneoff is not None:
+        if ids.count(exclude_oneoff) != 1 or not re.fullmatch("[a-f0-9]{64}", exclude_oneoff):
+            raise ValueError("router_offline_helper_unknown")
+        ids.remove(exclude_oneoff)
     expected = [custody["container_id"]]
     if custody.get("compose_project") != DEFAULT_COMPOSE_PROJECT:
         # Explicit foreign replacement may remove its consumed owner only when
@@ -1425,6 +1471,9 @@ def require_router_drain(container, *, _run=subprocess.run, timeout=30,
             raise ValueError()
     except Exception:
         raise ValueError("router_old_runtime_bootstrap_hold") from None
+    backend = receipt.get('owner_backend', 'native-process')
+    if backend not in {'native-process', 'managed-container'}:
+        raise ValueError('router_owner_backend_unknown')
     after = _restart_custody(container, _run)
     if before != after:
         raise ValueError("router_owner_binding_changed")
@@ -1445,13 +1494,14 @@ def _offline_router_start():
         if store.version != 3:
             raise ValueError('router_accounting_migration_required')
         _validate_schema(db)
-        from .router.usage_store import UsageStore, RunOwner
-        UsageStore(store).inactive_native_runs(RunOwner.observe(settings.router_owner_id),
-                                               domain_id=settings.usage_domain_id)
+        from .router.usage_store import UsageStore
+        usage = UsageStore(store)
+        usage.owner_config = settings
+        usage.inactive_native_runs(usage._observed_owner(settings.router_owner_id), domain_id=settings.usage_domain_id)
     return {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
 
 
-def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None):
+def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None):
     """Verify the selected service and every active durable-mount consumer."""
     def read(argv):
         result = _run(argv, capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
@@ -1495,7 +1545,7 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
     ids = read(['docker', 'ps', '--all', '--quiet', '--no-trunc']).split()
     if len(ids) > 1024 or len(set(ids)) != len(ids) or any(not re.fullmatch('[a-f0-9]{64}', value) for value in ids):
         raise ValueError('router_offline_roster_unknown')
-    rows = []
+    rows, helper_id = [], None
     if ids:
         projection = ('{"id":{{json .Id}},"status":{{json .State.Status}},'
                       '"mounts":{{json .Mounts}}}')
@@ -1503,6 +1553,16 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
         if (len(rows) != len(ids) or any(type(row) is not dict for row in rows)
                 or {row.get('id') for row in rows} != set(ids)):
             raise ValueError('router_offline_roster_unknown')
+        if helper_container is not None:
+            helper = _restart_custody(helper_container, _run)
+            if helper.get('available') is True:
+                image = read(['docker', 'image', 'inspect', '--format', '{{.Id}}', selected['image']]).strip()
+                if (helper['container_id'] not in ids or helper['compose_project'] != DEFAULT_COMPOSE_PROJECT
+                        or helper['compose_service'] != service or helper['image_id'] != image):
+                    raise ValueError('router_offline_helper_unknown')
+                helper_id = helper['container_id']
+                rows = [r for r in rows if r['id'] != helper_id]
+        selected_id = (_restart_custody(container, _run).get('container_id') if live_target else None)
         for row in rows:
             status = row.get('status')
             if status not in {'created', 'exited', 'dead', 'running', 'paused', 'restarting', 'removing'}:
@@ -1513,19 +1573,158 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
                 if type(mount) is not dict or type(mount.get('RW')) is not bool:
                     raise ValueError('router_offline_storage_unknown')
                 identity = (mount.get('Type'), mount.get('Name') if mount.get('Type') == 'volume' else mount.get('Source'))
-                if status not in {'created', 'exited', 'dead'} and mount['RW'] and identity in sources:
+                if status not in {'created', 'exited', 'dead'} and mount['RW'] and identity in sources and row['id'] != selected_id:
                     raise ValueError('router_offline_storage_busy')
     state, project = _container_compose_project(container, _run=_run)
-    if state not in {'absent', 'exited', 'created'} or (state != 'absent' and project != DEFAULT_COMPOSE_PROJECT):
+    allowed = {'running'} if live_target else {'absent', 'exited', 'created'}
+    if state not in allowed or (state != 'absent' and project != DEFAULT_COMPOSE_PROJECT):
         raise ValueError('router_offline_target_active_or_unknown')
     custody = None if state == 'absent' else _restart_custody(container, _run)
     if custody is not None:
         if custody.get('available') is not True:
             raise ValueError('router_offline_target_unknown')
-        _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env)
+        _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env,
+                               exclude_oneoff=helper_id)
     elif read([*_compose_argv(compose, env_file=env_file), 'ps', '--all', '--quiet', service]).strip():
         raise ValueError('router_offline_target_mismatch')
     return {'rendered': rendered, 'roster': rows, 'target': custody}
+
+
+def _compose_owner_backend(compose, service, *, _run, env_file=None, execution_env=None):
+    result = _run([*_compose_argv(compose, env_file=env_file), 'config', '--format', 'json'],
+                  capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
+    from .observability.dashboard.contracts import strict_json
+    value = strict_json((result.stdout or '').encode())
+    if result.returncode or type(value) is not dict or len(result.stdout or '') > MAX_COMPOSE_FILE_BYTES:
+        raise ValueError('router_owner_backend_unknown')
+    mounts = value.get('services', {}).get(service, {}).get('volumes', [])
+    config = [m for m in mounts if m.get('target') == DEFAULT_INSTALLED_CONFIG]
+    if len(config) != 1 or config[0].get('type') != 'bind' or config[0].get('read_only') is not True:
+        raise ValueError('router_owner_backend_unknown')
+    from pathlib import Path
+    import tomllib
+    path = Path(config[0]['source'])
+    # Read only the declared non-secret config. No dotenv or token resolution.
+    if path.expanduser().resolve() == (Path.home() / '.env').resolve():
+        raise ValueError('router_owner_backend_unknown')
+    raw = path.read_bytes()
+    if len(raw) > MAX_COMPOSE_FILE_BYTES:
+        raise ValueError('router_owner_backend_unknown')
+    backend = tomllib.loads(raw.decode()).get('server', {}).get('router_owner_backend', 'native-process')
+    if backend not in {'native-process', 'managed-container'}:
+        raise ValueError('router_owner_backend_unknown')
+    return backend
+
+
+def _container_incarnation(container, *, _run, stopped=False):
+    from .router.container_owner import docker_identity
+    custody = _restart_custody(container, _run)
+    if custody.get('available') is not True:
+        raise ValueError('router_container_custody_unknown')
+    daemon = _run(['docker', 'info', '--format', '{{.ID}}'], capture_output=True,
+                  text=True, encoding='utf-8', timeout=10)
+    if daemon.returncode:
+        raise ValueError('router_container_custody_unknown')
+    value = {k: custody[k] for k in ('container_id', 'image_id', 'started_at', 'restart_count',
+                                    'compose_project', 'compose_service')}
+    value['daemon_id'] = (daemon.stdout or '').strip()
+    result = _run(['docker', 'inspect', '--format', '{{json .State}}', custody['container_id']],
+                  capture_output=True, text=True, encoding='utf-8', timeout=10)
+    from .observability.dashboard.contracts import strict_json
+    state = strict_json((result.stdout or '').encode())
+    if result.returncode or type(state) is not dict:
+        raise ValueError('router_container_custody_unknown')
+    if stopped:
+        value.update(finished_at=state.get('FinishedAt'), status=state.get('Status'), running=state.get('Running'),
+                     paused=state.get('Paused'), restarting=state.get('Restarting'), pid=state.get('Pid'))
+    elif (state.get('Status') != 'running' or state.get('Running') is not True
+          or state.get('Paused') is not False or state.get('Restarting') is not False
+          or type(state.get('Pid')) is not int or state['Pid'] <= 0):
+        raise ValueError('router_container_custody_unknown')
+    docker_identity(value, stopped=stopped)
+    return value
+
+
+def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, execution_env=None):
+    """Host after-check completes while the native helper still holds its fences.
+
+    This bounded pipe is native operator authority, never an inference endpoint.
+    Host failure/EOF leaves non-authoritative pending custody and a closed owner.
+    """
+    import select
+    from .observability.dashboard.contracts import strict_json
+    if os.name != 'posix':
+        raise ValueError('router_native_container_custody_unsupported')
+    before = observation()
+    process = _popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                     env=execution_env)
+    def read():
+        if not select.select([process.stdout], [], [], 35)[0]:
+            raise ValueError('router_container_custody_timeout')
+        raw = process.stdout.readline(16385)
+        if len(raw) > 16384:
+            raise ValueError('router_container_custody_unknown')
+        return strict_json(raw)
+    try:
+        pending = read()
+        if (type(pending) is not dict or set(pending) != {'pending_sha256', 'run_id'}
+                or type(pending['pending_sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', pending['pending_sha256'])):
+            raise ValueError('router_container_custody_unknown')
+        if before != observation():
+            raise ValueError('router_container_custody_changed')
+        process.stdin.write(json.dumps({'commit': pending['pending_sha256']}).encode() + b'\n')
+        process.stdin.flush()
+        final = read()
+        if (final != {'finalized': 'live', 'run_id': pending['run_id']}
+                and final != {'finalized': 'dead', 'run_id': pending['run_id']}):
+            raise ValueError('router_container_custody_unknown')
+        if process.wait(timeout=10):
+            raise ValueError('router_container_custody_refused')
+        return final
+    finally:
+        process.stdin.close(); process.stdout.close()
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.wait(timeout=5)
+
+
+def _managed_container_custody(kind, compose, service, container, *, _run=subprocess.run,
+                               env_file=None, execution_env=None, _popen=subprocess.Popen):
+    import uuid
+    helper = 'router-custody-' + uuid.uuid4().hex if kind == 'dead' else None
+    def observation():
+        roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
+                                         execution_env=execution_env, live_target=kind == 'live', helper_container=helper)
+        return {'roster': roster, 'incarnation': _container_incarnation(container, _run=_run, stopped=kind == 'dead')}
+    before = observation()
+    if kind == 'live':
+        ready = ('from anvil_serving.router.container_owner import native_ready; native_ready()')
+        deadline = time.monotonic() + 20
+        while True:
+            result = _run(['docker', 'exec', before['incarnation']['container_id'], 'python', '-c', ready],
+                          capture_output=True, text=True, encoding='utf-8', timeout=3)
+            if result.returncode == 0 and (result.stdout or '').strip() == 'ready':
+                break
+            if time.monotonic() >= deadline:
+                raise ValueError('router_managed_owner_not_ready')
+            time.sleep(.2)
+    code = ('from anvil_serving.router.container_owner import native_transaction; '
+            f'native_transaction({kind!r}, {before["incarnation"]!r})')
+    if kind == 'live':
+        argv = ['docker', 'exec', '-i', before['incarnation']['container_id'], 'python', '-c', code]
+    else:
+        argv = [*_compose_argv(compose, env_file=env_file), 'run', '--rm', '--no-deps', '-T', '--name', helper,
+                '--entrypoint', 'python', service, '-c', code]
+    # Repeated host observation is compared against the identity sent to native.
+    def unchanged():
+        current = observation()
+        if current != before:
+            raise ValueError('router_container_custody_changed')
+        return current
+    return _native_owner_commit(argv, unchanged, _popen=_popen, execution_env=execution_env)
 
 
 def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None):
