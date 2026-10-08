@@ -483,3 +483,63 @@ destination. Existing/newer/substituted files are never overwritten. Container
 operations use `--container NAME` with paths inside verified durable writable mounts;
 backup and restore outputs stay inside that container. Restore does not install,
 activate, re-admit or claim that active requests have drained.
+
+## Managed client attribution
+
+```sh
+anvil-serving router clients preview
+anvil-serving router clients install --confirm
+anvil-serving router clients readback
+```
+
+These offline commands load `client-identity.json` beside the conventional operator-home
+router config. `--config PATH` selects an explicit managed declaration. Install without
+`--confirm`, or with `--dry-run`, previews only. Default JSON includes the exact desired
+and currently read owner bindings. The global `--json` envelope captures this complete
+JSON as its `data` string; the default output is the direct, structured binding document.
+
+T015's owner adapter supplies a bounded, protected nonsecret declaration; credentials
+and signer material remain in protected referenced files. The closed declaration schema
+`anvil.managed-client-identity/v1` contains `router_config`, `installed_path`, `bindings`
+and `webui`. Each binding contains `client_id`, `key_id`, `kind` (`human` or `service`),
+`owner_id`, `expected_revision`, and `policy` (`direct`, `service`, `webui`, or explicit
+`detached_service_only`). Non-direct policies require service ownership. Installation
+uses ordinary-key owner revision CAS and preserves the entire existing grant. Connect
+account-owned keys are refused. Storage must already have the accepted accounting
+migration; this command does not initialize, migrate, issue or widen credentials.
+
+Each WebUI entry contains `client_id`, `instance`, `native`, `approved_recipients` and
+`request_paths`. The instance must join the actual router's native signed-forwarding
+profile: matching device key, required user, and dedicated protected signer-file reference.
+No signer file is opened by this offline command. `native` is T015's nonsecret projection
+of `openai.api_base_urls`, `openai.api_configs` and explicit `other_recipients`. The config
+map must include every URL index, with exact boolean `enable` and `custom_header_names`
+fields. Header **names only** are projected, never values or API keys. Every enabled URL
+and every plugin/tool/other recipient must equal the approved destination set. Custom
+forwarded-user header overrides are refused because native custom headers apply last.
+`request_paths` must explicitly map all four `foreground`, `title`, `tag` and `background`
+paths to enabled native connection indices. Unknown fields, duplicate fields, nonfinite
+JSON, absent inventory entries and invented completeness flags are refused.
+
+This validates the declared native inventory, not discovery of live account state. The
+adapter must produce the complete actual recipient/task-model/custom-header projection
+before global WebUI forwarding can be enabled. Independently selected providers, models,
+routes, active grants and sessions are not rewritten or contacted. Native no-user omission
+and plaintext signer-error fallback must still be rejected by the router's require-user
+verifier; detached service-only clients use their separate explicit policy.
+
+Install writes only the protected feature binding document at an **absent** destination,
+then independently rereads it and current key ownership. Matching repeats are idempotent;
+a differing existing document is never overwritten. No client adapter or service is
+activated. If file installation fails after enrollment, some keys may already be bound:
+retry validates the exact original CAS and readback reports failure/incomplete state;
+there is no unsafe grant rollback. Corrected declarations need a separately chosen absent
+feature destination and appropriate new owner revision.
+
+Readback checks actual installed bytes and current unexpired, unrecalled key ownership,
+not an echo of the requested declaration. Unmigrated/unconfigured state is incomplete or
+a safe failure. `configuration_present_live_pending`, `declared_inventory_validated_live_pending`
+and `live_status: unqualified` distinguish source/configuration proof from live behavior.
+T015 native adapter provisioning and independent T020 foreground/title/tag/background,
+direct/service, recipient privacy and provider-continuity qualification remain required
+before rollout. The exact CLI accounting ledger remains separate from sampled dashboards.

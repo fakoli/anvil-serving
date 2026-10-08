@@ -177,12 +177,23 @@ required operands, choices, and defaults.
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
 | `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
+| `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
+| `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config` |
+| `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
 | `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
 | `router keys list` | List key IDs, grants, and lifecycle state without secrets. | `read` / `bounded` | `--config`<br>`--container` |
 | `router keys revoke` | Revoke a device key for subsequent requests. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id` |
+| `router keys bind` | Bind an ordinary key to an operator-controlled owner with revision CAS. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--kind`<br>`--owner-id`<br>`--expected-revision`<br>`--dry-run` |
+| `router keys backup` | Take a consistent protected key/accounting snapshot. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--out` |
+| `router keys restore` | Restore a protected snapshot to an absent destination without activation. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--snapshot`<br>`--out` |
 | `router keys usage` | Read bounded key access history. | `read` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--limit` |
+| `router usage` | Read protected exact retained or active caller accounting. | `read` / `bounded` | - |
+| `router usage active` | Read owned active samples. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit` |
+| `router usage recent` | Read last24h retained detail. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit`<br>`--granularity`<br>`--from-utc`<br>`--to-utc`<br>`--group-by`<br>`--cursor`<br>`--require-complete` |
+| `router usage query` | Read exact supported retained history. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit`<br>`--granularity`<br>`--from-utc`<br>`--to-utc`<br>`--group-by`<br>`--cursor`<br>`--require-complete` |
 | `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Inspect active requests or retained request/session evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--session-id`<br>`--active`<br>`--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
