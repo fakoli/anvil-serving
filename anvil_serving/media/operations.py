@@ -557,6 +557,7 @@ class MediaOperations:
     def job_status(self, job_id: str, *, principal: str) -> dict[str, Any]:
         return {"job": self.jobs.get(job_id, principal=principal).as_public_dict()}
 
+    @owned_dispatch("media")
     def job_cancel(
         self, job_id: str, *, principal: str, backend: ComfyUIClient
     ) -> dict[str, Any]:

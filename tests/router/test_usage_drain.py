@@ -330,7 +330,7 @@ def test_retained_media_thread_and_ambiguous_submission_never_become_zero(gate):
     assert not worker.is_alive
 
 
-@pytest.mark.parametrize('method',['workflow_run','_resume_existing','_resume_accepted','_resume_preparing','_submit_rendered'])
+@pytest.mark.parametrize('method',['workflow_run','_resume_existing','_resume_accepted','_resume_preparing','_submit_rendered','job_cancel'])
 def test_all_media_submit_resume_common_paths_refuse_before_backend(gate,method):
     from anvil_serving.media.operations import MediaOperations
     operations=MediaOperations.__new__(MediaOperations);operations._router_admission=gate

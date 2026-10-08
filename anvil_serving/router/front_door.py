@@ -1246,6 +1246,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if len(query_bytes) > _MAX_OPERATOR_QUERY_BYTES:
                 self._operator_error(400, "invalid_request", "invalid query")
                 return
+            if route.path in {USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT, WORKLOADS_ENDPOINT} and not self._admit_router("delivery", completion=True):
+                return
             if not _OPERATOR_READ_LIMIT.acquire(blocking=False):
                 self._operator_error(503, "server_busy", "operator route busy")
                 return
@@ -1402,7 +1404,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             inference = (body.get("method") == "tools/call" and (body.get("params") if isinstance(body.get("params"), dict) else {}).get("name") in {"media_workflow_run", "workflow_run"}) if route == MCP_PATH else body.get("method") in {"SendMessage", "SendStreamingMessage"}
             if inference and not self._admit_router("media"):
                 return
-            if not inference and body.get("method") == "SubscribeToTask" and not self._admit_router("delivery", completion=True):
+            tool_name = (body.get("params") if isinstance(body.get("params"), dict) else {}).get("name")
+            completion = body.get("method") in {"SubscribeToTask", "CancelTask"} or (
+                route == MCP_PATH and body.get("method") == "tools/call"
+                and tool_name in {"media_job_cancel", "media_artifact_inspect", "media_job_status"})
+            if completion and not self._admit_router("delivery", completion=True):
                 return
             if route == MCP_PATH:
                 result = gateway.mcp_request(body)
@@ -1461,6 +1467,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             artifact_id = urllib.parse.unquote(encoded_id)
             if not artifact_id or "/" in artifact_id or "?" in artifact_id:
                 self._protocol_json_error(404, "artifact_not_found", "artifact was not found")
+                return
+            if not self._admit_router("delivery", completion=True):
                 return
             range_header = self.headers.get("Range")
             try:
