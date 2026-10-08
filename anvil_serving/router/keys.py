@@ -422,6 +422,24 @@ def _bind_router_store(path, state_path, owner_id):
     return observe
 
 
+class _WriterConnection(sqlite3.Connection):
+    """Apply one owned writer budget to each lock-acquiring statement."""
+
+    writer_deadline: float | None = None
+
+    def execute(self, sql, parameters=(), /):
+        if self.writer_deadline is not None:
+            remaining = self.writer_deadline - time.monotonic()
+            # Cleanup must run even after admission has exhausted its budget.
+            rollback = sql.strip().upper() == "ROLLBACK"
+            if remaining <= 0 and not rollback:
+                raise KeyStoreError("credential writer wait expired")
+            sqlite3.Connection.execute(
+                self, "PRAGMA busy_timeout=" + str(max(0, int(remaining * 1000)))
+            )
+        return super().execute(sql, parameters)
+
+
 class KeyStore:
     """A small SQLite-backed device-key store with fail-closed reads."""
 
@@ -593,7 +611,9 @@ class KeyStore:
             if value <= 0:
                 raise KeyStoreError("credential writer wait expired")
             return value
-        connection = sqlite3.connect(self.path, timeout=remaining(), isolation_level=None)
+        connection = sqlite3.connect(self.path, timeout=remaining(), isolation_level=None,
+                                     factory=_WriterConnection)
+        connection.writer_deadline = deadline
         try:
             def bound_wait():
                 connection.execute("PRAGMA busy_timeout=" + str(max(1, int(remaining() * 1000))))

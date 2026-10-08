@@ -198,3 +198,42 @@ def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store):
     db.start(start, authority_scope=scope)
     db.finalize(terminal(start))
     assert cumulative(db)['requests'] == 1
+
+
+def test_writer_begin_and_commit_share_one_actual_wait_bound(store, monkeypatch):
+    db, _, run, scope = store
+    original = db.key_store._connect
+    attempting = Event()
+    from contextlib import contextmanager
+    @contextmanager
+    def traced_connection():
+        with original() as connection:
+            connection.set_trace_callback(
+                lambda sql: attempting.set() if sql == 'BEGIN IMMEDIATE' else None
+            )
+            yield connection
+    monkeypatch.setattr(db.key_store, '_connect', traced_connection)
+    with original() as reader, original() as prior_writer, ThreadPoolExecutor(max_workers=1) as pool:
+        assert reader.execute('PRAGMA journal_mode').fetchone()[0] == 'delete'
+        reader.execute('BEGIN')
+        reader.execute('SELECT COUNT(*) FROM usage_domains').fetchone()
+        prior_writer.execute('BEGIN IMMEDIATE')
+        started = perf_counter()
+        waiting = pool.submit(db.start, start_at(run), authority_scope=scope)
+        try:
+            assert attempting.wait(1)
+            sleep(.65)
+            prior_writer.execute('ROLLBACK')
+            with pytest.raises(UsageError, match='accounting_unavailable'):
+                waiting.result(timeout=2)
+            assert .85 <= perf_counter() - started < 1.35
+        finally:
+            if prior_writer.in_transaction:
+                prior_writer.execute('ROLLBACK')
+            reader.execute('ROLLBACK')
+    assert rows(db, 'usage_starts') == []
+    monkeypatch.setattr(db.key_store, '_connect', original)
+    start = start_at(run)
+    assert db.start(start, authority_scope=scope) == 'started'
+    db.finalize(terminal(start))
+    assert cumulative(db)['requests'] == 1
