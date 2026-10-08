@@ -390,6 +390,15 @@ def _bind_router_store(path, state_path, owner_id):
                 os.close(descriptor)
     if _private_json(marker) != binding:
         raise KeyStoreError("credential writer ownership differs")
+    descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        _private_created_descriptor(descriptor)
+        if not os.path.samestat(identity, os.fstat(descriptor)):
+            raise KeyStoreError("credential writer ownership changed")
+        os.write(descriptor, b"router-managed-store/v1\n")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
     def observe():
         _validate_store_binding(_private_json(marker), path)
         if _private_json(marker) != binding:
@@ -521,6 +530,8 @@ class KeyStore:
             _secure_database(gate, exists=True, identity=identity)
             fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
             if not os.path.lexists(marker):
+                if os.read(descriptor, 64):
+                    raise KeyStoreError("credential writer ownership is unavailable")
                 yield
                 return
             binding = _private_json(marker)

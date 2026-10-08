@@ -558,6 +558,10 @@ def test_external_writer_missing_or_replaced_native_custody_holds(store):
     assert owner.drain_router(token, 1)['unknown'] == ['maintenance']
     with pytest.raises(KeyStoreError):
         external.create('changed_fixture', ['llm.primary'], ['/v1/chat/completions'])
+    Path(str(external.path) + '.router-owner').unlink()
+    gate_path.write_bytes(b'router-managed-store/v1\n')
+    with pytest.raises(KeyStoreError):
+        external.create('lost_fixture', ['llm.primary'], ['/v1/chat/completions'])
 
 
 @pytest.mark.parametrize('roster',[(),('other',),('owner','owner'),('owner','other')])

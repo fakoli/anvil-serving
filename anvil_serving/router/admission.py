@@ -683,6 +683,7 @@ class RouterAdmission:
         self._condition = threading.Condition(threading.RLock())
         self.revision, self.roster_revision = revision, roster_revision
         self._persist, self._owner_scope = persist, owner_scope
+        self._store_writer_readback = None
         self._policy_revision = policy_revision or (lambda:revision)
         self._permits = set()
         self._counts = dict.fromkeys(_WORK_FAMILIES, 0)
@@ -808,7 +809,10 @@ class RouterAdmission:
                 self._owner_scope()
             except Exception:
                 unknown.add("owner_roster_unknown")
-        for family, callback in self._observers.items():
+        callbacks = tuple(self._observers.items())
+        if self._store_writer_readback is not None:
+            callbacks += (("maintenance", self._store_writer_readback),)
+        for family, callback in callbacks:
             try:
                 count, unresolved = callback()
                 if type(count) is not int or not 0 <= count <= 100000 or type(unresolved) is not bool:
@@ -1020,7 +1024,7 @@ def managed_router_admission(server_config, revision):
                                 roster_revision=roster_revision)
         usage.key_store._router_admission = owner
         owner._assembling = True
-        owner.observe("maintenance", _bind_router_store(usage.key_store.path, path, owner_id))
+        owner._store_writer_readback = _bind_router_store(usage.key_store.path, path, owner_id)
         owner._owner_descriptor = descriptor
         owner.usage_scope = scope
         owner.usage_run_id = run_id
