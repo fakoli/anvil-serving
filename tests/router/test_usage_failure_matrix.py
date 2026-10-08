@@ -126,7 +126,7 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
         for _ in range(16):
             start = start_at(run)
             before = perf_counter()
-            principal = db.key_store.authenticate(credential, snapshot=True)
+            principal = db.key_store.authenticate(credential, snapshot=tracked)
             assert principal is not None
             if tracked:
                 db.start(start, authority_scope=scope)
@@ -149,16 +149,18 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     starts = [pair[0] for pair in tracked]
     finishes = [pair[1] for pair in tracked]
     added_p95 = p95(starts) - p95(base)
-    report = dict(workers=4, samples=len(tracked), baseline='same-store authenticate(snapshot=True), accounting disabled',
+    report = dict(workers=4, samples=len(tracked), baseline='same-store authenticate(snapshot=False), accounting disabled',
                   baseline_p50_ms=median(base), baseline_p95_ms=p95(base), tracked_p50_ms=median(starts),
                   tracked_p95_ms=p95(starts), added_p50_ms=median(starts)-median(base), added_p95_ms=added_p95,
                   finalize_p50_ms=median(finishes), finalize_p95_ms=p95(finishes),
+                  admission_max_ms=max(starts), finalize_max_ms=max(finishes),
                   provisional_target_ms=20, provisional_target_met=added_p95 <= 20, source_only=True)
     print('SOURCE_C4_COST '+json.dumps(report, sort_keys=True))
-    # The provisional 20ms target is reported honestly, not a timing-sensitive CI
-    # waiver or claim about live capacity. Actual operation remains bounded by the
-    # one-second store wait contract; lock timeouts would fail the calls above.
-    assert max(starts + finishes) < 1000
+    # The target is reported for independent acceptance; a miss holds capacity
+    # qualification. Several sequential operations/fsyncs are not one lock wait.
+    # Verify the actual per-connection SQLite bound without weakening durability.
+    with db.key_store._connect() as connection:
+        assert connection.execute('PRAGMA busy_timeout').fetchone()[0] == 1000
     result = cumulative(db)
     assert result['requests'] == 64 and result['measured_input'] == 448 and result['measured_output'] == 320
     assert len(rows(db, 'usage_details')) == 64
