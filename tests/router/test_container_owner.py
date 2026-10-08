@@ -182,6 +182,42 @@ def test_comparable_live_vetoes_even_finalized_retained_death(record, monkeypatc
         assert usage._owner_state(row,db=db)=='unknown'
 
 
+@pytest.mark.parametrize('change', ['same', 'stopped', 'closure', 'live', 'transferred'])
+def test_repeated_finalized_death_preserves_proof_and_refuses_changed_authority(record, monkeypatch, change):
+    store,usage,value=record
+    usage.owner_config=SimpleNamespace(usage_domain_id='fixture')
+    monkeypatch.setattr(ledger,'observe_run',lambda *a,**k:'unknown')
+    stopped={**value['anchor']['docker'],'finished_at':'2026-01-01T00:01:00Z',
+             'status':'exited','running':False,'paused':False,'restarting':False,'pid':0}
+    custody.write(store,{**value,'phase':'live'},None)
+    proposed=custody.stopped_record(usage,stopped)
+    ready={**proposed,'phase':'ready','sequence':1}
+    # A historical implementation hash is immutable across native upgrades.
+    ready['death']['implementation_sha256']='d'*64
+    path=custody.location(store,value['anchor']['run_id'])
+    custody.write(store,ready,custody.digest({**value,'phase':'live'}))
+    before=path.read_bytes()
+    if change=='stopped':stopped={**stopped,'finished_at':'2026-01-01T00:02:00Z'}
+    elif change=='closure':
+        current=custody.closure(store)
+        changed={**current,'closure':{'configuration_revision':value['anchor']['configuration_revision'],
+            'roster_revision':value['anchor']['roster_revision'],'generation':1,'consumed':False,
+            'barrier_token':'e'*64,'policy_revision':'f'*64}}
+        monkeypatch.setattr(custody,'closure',lambda store:changed)
+    elif change=='live':monkeypatch.setattr(ledger,'observe_run',lambda *a,**k:'live')
+    elif change=='transferred':
+        moved={**ready,'phase':'transferred','sequence':2,'transfer':{
+            'successor_run_id':str(uuid.uuid4()),'successor_roster_revision':'e'*64,
+            'successor_configuration_revision':'f'*64,'successor_generation':1}}
+        custody.write(store,moved,custody.digest(ready));before=path.read_bytes()
+    if change=='same':
+        assert custody.stopped_record(usage,stopped)==ready
+        assert custody.validate(custody.stopped_record(usage,stopped))['sequence']==1
+    else:
+        with pytest.raises(ValueError):custody.stopped_record(usage,stopped)
+    assert path.read_bytes()==before
+
+
 @pytest.mark.parametrize('backend',['unknown',False,1,[]])
 def test_managed_backend_configuration_is_explicit(config, backend):
     text=config.read_text()+'\nrouter_owner_backend='+json.dumps(backend)+'\n'

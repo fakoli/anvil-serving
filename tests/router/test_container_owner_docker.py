@@ -246,6 +246,38 @@ def test_real_docker_consumed_restart_crash_and_second_successor(docker_owner):
             committed=later
 
 
+def test_supported_down_up_revalidates_identical_finalized_death(docker_owner, monkeypatch):
+    f=docker_owner
+    # Keep the actual lifecycle lock/experiment guard within this owned fixture.
+    monkeypatch.setenv('ANVIL_SERVING_HOME',str(f['private']/'operator-home'))
+    f['start']();f['custody']('live')
+    token=f['transition']('quiesce')['barrier_token']
+    assert f['transition']('readmit',barrier_token=token)['applied']
+    assert router_manage.cmd_down(str(f['compose']),'router',_run=f['run'])==0
+    [path]=list((f['private']/'keys.sqlite3.router-incarnations').glob('*.json'))
+    before=path.read_bytes();ready=json.loads(before)
+    assert ready['phase']=='ready' and ready['sequence']==1
+    import fcntl
+    for name in ('intent.json.router.lock','keys.sqlite3.router-writers.lock'):
+        with (f['private']/name).open('r+') as held:
+            fcntl.flock(held,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with pytest.raises(ValueError):f['custody']('dead')
+        assert path.read_bytes()==before
+    assert f['custody']('dead')['finalized']=='dead'
+    assert path.read_bytes()==before
+    assert router_manage.cmd_up(str(f['compose']),'router',container=f['name'],_run=f['run'])==0
+    f['start']()  # Track the actual successor ID/namespace for owned cleanup.
+    after=json.loads(path.read_text())
+    assert after['phase']=='transferred' and after['sequence']==2
+    assert after['anchor']==ready['anchor'] and after['death']==ready['death']
+    assert len(f['rows']('SELECT run_id FROM usage_runs'))==2
+    assert f['transition']('status')['state']=='quiesced'
+    token=f['transition']('quiesce')['barrier_token']
+    assert f['transition']('readmit',barrier_token=token)['applied']
+    print(json.dumps({'supported_down_up':'PASS','repeat_death_preserved':True,
+        'old_sequence':ready['sequence'],'transferred_sequence':after['sequence']}),flush=True)
+
+
 def test_real_native_after_check_failure_is_pending_and_retryable(docker_owner, monkeypatch):
     f=docker_owner; f['start']()
     actual=router_manage._offline_compose_roster

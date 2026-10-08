@@ -311,6 +311,11 @@ def stopped_record(usage, stopped):
     dead = {'anchor_sha256': digest(record['anchor']), 'closure_sha256': digest(state),
             'closure_generation': c['generation'] if c else None, 'closure_consumed': c['consumed'] if c else None,
             'stopped': stopped, 'implementation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    if record['phase'] == 'ready':
+        # The implementation hash belongs to the original proof. Revalidate
+        # its exact death and current closure without replacing that history.
+        require(all(record['death'][k] == v for k, v in dead.items() if k != 'implementation_sha256'))
+        return record
     return {**record, 'phase': 'dead-pending', 'death': dead}
 
 
@@ -355,7 +360,8 @@ def native_transaction(kind, docker):
             else:
                 require(old['phase'] in {'live', 'dead-pending', 'ready'})
                 require(old['death'] is None or old['death'] == proposed['death'])
-        if old is None or old['phase'] != 'live' or kind != 'live':
+        repeated_ready = kind == 'dead' and old is not None and old['phase'] == 'ready'
+        if not repeated_ready and (old is None or old['phase'] != 'live' or kind != 'live'):
             write(store, proposed, digest(old) if old else None)
         else:
             proposed = old
@@ -369,5 +375,8 @@ def native_transaction(kind, docker):
         check = live_record(usage, docker) if kind == 'live' else stopped_record(usage, docker)
         require(check['anchor'] == proposed['anchor'] and (kind == 'live' or check['death'] == proposed['death']))
         finalized = {**proposed, 'phase': 'live' if kind == 'live' else 'ready', 'sequence': 0 if kind == 'live' else 1}
-        write(store, finalized, pending)
+        if repeated_ready:
+            require(finalized == proposed and digest(validate(_private_json(path))) == pending)
+        else:
+            write(store, finalized, pending)
         print(json.dumps({'finalized': kind, 'run_id': proposed['anchor']['run_id']}), flush=True)
