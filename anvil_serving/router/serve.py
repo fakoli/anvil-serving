@@ -2165,7 +2165,7 @@ def build_server(
             from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
             return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,
                 effective_workload_clock(), domain_id=server_config.usage_domain_id,
-                authority_scope=router_owner.usage_scope())).encode("utf-8")
+                authority_scope=router_owner.usage_scope()))
         httpd = make_server(
             host, port, routing, timeout=timeout, model_routes=config.model_routes,
             exhaustion_status=config.exhaustion_status, auth_token=auth_token,

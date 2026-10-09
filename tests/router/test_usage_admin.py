@@ -41,6 +41,9 @@ def policy(tmp_path):
 def server(policy, **options):
     httpd = make_server('127.0.0.1', 0, options.pop('backend', StaticBackend(['ok'])), authorization_policy=policy,
                         auth_token=options.pop('auth_token', LEGACY), workload_clock=CLOCK, **options)
+    # This fixture owns every handler: accept-loop completion alone is insufficient.
+    httpd.daemon_threads = False
+    httpd.block_on_close = True
     thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
     try:
         yield httpd.server_address
@@ -367,3 +370,56 @@ def test_activity_sample_clock_and_count_bounds(store):
     _,entries,omitted=registry.usage_snapshot()
     assert registry.active_usage_page(entries,omitted,clock[0])['records'][0]['last_activity_ms'] is None
     registry._clock=lambda:clock[0];inv.finish('error')
+
+
+def test_server_fixture_waits_for_owned_handler_database_release(policy, store, monkeypatch):
+    usage = store[0]
+    entered, release, finished = (threading.Event() for _ in range(3))
+    accept_stopped, closed = threading.Event(), threading.Event()
+    actual_make_server = make_server
+    errors = []
+    def tracked_server(*args, **kwargs):
+        httpd = actual_make_server(*args, **kwargs)
+        original_finish = httpd.RequestHandlerClass.finish
+        original_shutdown = httpd.shutdown
+        def delayed_finish(handler):
+            try:
+                with usage.key_store._connect():
+                    entered.set()
+                    assert release.wait(5), 'owned handler release timed out'
+                    original_finish(handler)
+            finally:
+                finished.set()
+        def shutdown():
+            original_shutdown()
+            accept_stopped.set()
+        monkeypatch.setattr(httpd.RequestHandlerClass, 'finish', delayed_finish)
+        httpd.shutdown = shutdown
+        return httpd
+    monkeypatch.setattr(__name__ + '.make_server', tracked_server)
+    context = server(policy, usage_metrics=lambda: b'synthetic_metric 1\n')
+    address = context.__enter__()
+    def close():
+        try:
+            context.__exit__(None, None, None)
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            closed.set()
+    closer = None
+    try:
+        assert request(address, USAGE_METRICS_ENDPOINT)[0] == 200
+        assert entered.wait(5)
+        closer = threading.Thread(target=close)
+        closer.start()
+        assert accept_stopped.wait(5)
+        assert not closed.wait(0.05), 'fixture exited while its handler held the database'
+    finally:
+        release.set()
+        if closer is None:
+            context.__exit__(None, None, None)
+        else:
+            closer.join(5)
+    assert finished.is_set() and closed.is_set()
+    assert closer is not None and not closer.is_alive()
+    assert not errors
