@@ -13,7 +13,7 @@ Focused `--help` is the complete flag reference for every command below.
 | Configure a new installation | `init` | Review detected host values and remaining placeholders, then run `doctor`. |
 | Check whether this machine is ready | `doctor --no-config` | Add `--config PATH` when the router config exists. |
 | Inspect a topology-owned host | `host status` | Use `host doctor` for a recommendation or `host memory` for WSL details. |
-| Operate a declared supervisor-owned service | `host services status` | Preview `adopt`, `install`, `up`, `down`, `restart`, `enable`, or `disable`; apply only with `--no-dry-run --confirm`. See [Host-supervised services](../HOST-SERVICES.md). |
+| Operate a declared supervisor-owned service | `host services status` | Preview `adopt`, `install`, `up`, `down`, `restart`, `enable`, or `disable`; apply only with `--no-dry-run --confirm`. Retained Docker incarnations additionally require `--expected-preview-sha256` and `--operator-authorization-file`. See [Host-supervised services](../HOST-SERVICES.md). |
 | Inventory private operator config safely | `host config inventory` | Review classifications and dependency closure, then use the sanitized export. |
 | Change the WSL memory cap safely | `host doctor` | Preview `host wsl-config`, apply it, then restart Docker Desktop. |
 | Recover a wedged WSL backend | `host reset-wsl --dry-run` | Apply only after reviewing the process and container disruption. |

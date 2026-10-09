@@ -107,6 +107,86 @@ its container name, immutable image ID, and Anvil identity labels. Docker
 discovery returns only eligible Anvil-owned containers; it is not an arbitrary
 container-management tool.
 
+### Retained Docker incarnations
+
+`retained_container = true` is a separate native host-service contract for an
+operator-reviewed container that already exists and must be stopped and started
+as the same Docker object. It is not adoption, recipe ownership, or external
+Compose ownership. A retained declaration pins the full 64-character
+`container_id`, name, immutable `image_id`, complete `identity_labels`, exact
+`restart_count`, `restart_policy`, `restart_maximum_retry_count`, and SHA-256
+digests of the exact writable-mount set and a closed security projection. It
+also pins a separate, reviewed, nonsecret `definition` file with
+`definition_sha256`. `shutdown_grace_seconds` pins the deliberate Docker stop
+grace; the operation timeout must leave at least five more seconds for physical
+verification. The closed provenance JSON binds the service, container and image
+identities, reviewed nonsecret source and review digests, and the reviewed
+Docker healthcheck digest. `healthcheck_required = true` is mandatory. The
+definition is provenance only; the lifecycle never
+executes it, renders Compose, loads an environment file, pulls an image, or
+creates or removes a container.
+
+Retained inspection asks Docker for a fixed projection. It never requests the
+container environment, command, or full inspect document. Added or removed
+labels, a changed container ID, name, image, writable mount, restart count or
+policy, or security projection all fail closed. A missing container is drift,
+including after a stop; it is not a successful stop. Status and exact `up` and
+`down` are the only supported actions. Dependencies, model/serve declarations,
+install, adoption, restart, enable, disable, and logs are refused.
+
+The first command produces a reviewable `retained_container.preview_sha256`:
+
+```bash
+anvil-serving host services down SERVICE
+```
+
+Apply requires that digest and a protected owner authorization created after
+the operator's storage-custody, ingress-state, drain-state, and human-approval
+gates:
+
+```bash
+anvil-serving host services down SERVICE --expected-preview-sha256 SHA256 --operator-authorization-file PATH --no-dry-run --confirm
+```
+
+The authorization is an owner-only, non-symlink JSON file with schema
+`anvil-retained-container-authorization/v1`, scope
+`retained-container-lifecycle`, a five-minute-or-shorter expiry, and exact
+service, action, manifest, preview, container, custody, definition, and evidence
+digests. A stop requires `storage_consumer_state = "clear"` with its evidence
+digest. It records `ingress_idle_state` as `quiesced` or `unknown` and
+`drain_state` as `complete` or `bounded`, each with its evidence digest. An
+unknown ingress state or bounded drain is accepted only when the same protected
+authorization explicitly sets `uncertain_interruption_risk_accepted = true` and
+binds the fresh human-approval digest; it is never relabeled as idle or drained. The
+executor rechecks the manifest, definition, authorization, physical container,
+and custody projection under its operator lock immediately before issuing one
+exact `docker stop --timeout SECONDS CID` or `docker start CID`. The preview and
+pre-mutation comparison bind Docker's lifecycle timestamps as well as its PID
+and state, so a copied authorization cannot survive an intervening manual
+start/stop cycle. Immediately before
+the command it durably creates an exclusive consumption marker beside the
+authorization. Reusing the authorization is refused even after a manual state
+cycle, and a failed or uncertain command still consumes it. It never retries a mutation. A
+failed start may issue one rollback stop only while the original CID and full
+custody projection still match; replacement or configuration drift leaves an
+explicit hold. The preview reports a separate `rollback_timeout_seconds` of the
+declared shutdown grace plus five seconds for physical verification, along with
+`maximum_total_seconds` for the primary action and that failure-only reserve.
+
+This contract is available only through the owning native Linux CLI. The MCP
+service tool does not accept authorization-file paths. A start receipt proves
+that the same physical Docker incarnation reached `running` with its declared
+Docker health status `healthy`; it does not claim application or router health.
+Operational activation still performs the separately reviewed native health
+readback. Starting an already running object or stopping an already stopped
+object is refused rather than reported as an applied no-op.
+
+Ordinary Docker bindings require the first-party recipe ownership label.
+External Compose bindings keep their exact project, service, image, and
+read-only configuration-mount checks. Neither sibling mode can be used as a
+retained-container shortcut. Declaring or previewing retained custody does not
+authorize an actual pause, router stop, readmission, or any later recovery step.
+
 `startup_policy` is the policy enabled by `enable`: it may be `always` or
 `unless-stopped`. `disable` is the separate operation that removes automatic
 start; there is no `startup_policy = "no"` adoption value.

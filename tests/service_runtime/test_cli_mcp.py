@@ -394,3 +394,32 @@ workload = "service"
     assert calls[1][0:2] == ("up", "events")
     assert calls[1][2]["dry_run"] is False
     assert calls[1][2]["confirm"] is True
+
+
+def test_retained_approval_is_forwarded_only_by_local_cli(monkeypatch):
+    cli = _cli_module()
+    services = _service_tools_module()
+    errors = importlib.import_module("anvil_serving.control_plane.mcp.errors")
+    seen = []
+
+    def execute(*_args, **kwargs):
+        seen.append(kwargs)
+        return {"applied": False}
+
+    digest = "a" * 64
+    monkeypatch.setattr(cli, "execute", execute)
+    assert cli.main([
+        "down", "retained-service", "--expected-preview-sha256", digest,
+        "--operator-authorization-file", "/protected/authorization.json",
+    ]) == 0
+    assert seen[0]["expected_preview_sha256"] == digest
+    assert seen[0]["operator_authorization_file"] == "/protected/authorization.json"
+    monkeypatch.setattr(services, "execute", execute)
+    with pytest.raises(errors.ToolError) as raised:
+        services.tool_host_services_manage({
+            "action": "down", "service": "retained-service",
+            "expected_preview_sha256": digest,
+            "operator_authorization_file": "/protected/authorization.json",
+        })
+    assert raised.value.code == "local_owner_required"
+    assert len(seen) == 1

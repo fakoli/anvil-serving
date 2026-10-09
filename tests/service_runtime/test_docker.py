@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 
 import pytest
@@ -69,6 +70,56 @@ def external_compose_inspection(**changes):
     return result
 
 
+def _sha(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def retained_inspection(*, running=False, labels=None, mounts=None, restart_count=0):
+    return {
+        "Id": CONTAINER_ID,
+        "Name": "/retained-service",
+        "Image": IMAGE_ID,
+        "RestartCount": restart_count,
+        "State": {"Status": "running" if running else "exited", "Running": running,
+                  "Pid": 321 if running else 0, "Paused": False, "Restarting": False, "Dead": False,
+                  "StartedAt": "2026-10-10T04:00:00.123456789Z",
+                  "FinishedAt": "2026-10-10T04:01:00.123456789Z",
+                  "HealthStatus": "healthy" if running else None},
+        "Config": {"Labels": labels or {"owner": "reviewed"}, "User": "1000:1000", "WorkingDir": "/app",
+                   "HealthcheckDeclared": True},
+        "HostConfig": {"RestartPolicy": {"Name": "unless-stopped", "MaximumRetryCount": 0},
+                       "ReadonlyRootfs": True, "Privileged": False, "CapAdd": None, "CapDrop": ["ALL"],
+                       "SecurityOpt": ["no-new-privileges:true"], "NetworkMode": "bridge", "PidMode": "",
+                       "IpcMode": "private", "UTSMode": "", "Devices": [], "PortBindings": {}},
+        "Mounts": mounts or [{"Type": "volume", "Name": "state", "Source": "/var/lib/docker/volumes/state/_data",
+                               "Destination": "/state", "Driver": "local", "RW": True, "Mode": "z",
+                               "Propagation": ""}],
+    }
+
+
+def retained_binding(**changes):
+    row = retained_inspection()
+    writable = [{key: row["Mounts"][0].get(key) for key in
+                 ("Type", "Name", "Source", "Destination", "Driver", "RW", "Mode", "Propagation")}]
+    security = {
+        "config": {key: row["Config"].get(key) for key in ("User", "WorkingDir")},
+        "host_config": {key: row["HostConfig"].get(key) for key in (
+            "ReadonlyRootfs", "Privileged", "CapAdd", "CapDrop", "SecurityOpt", "NetworkMode",
+            "PidMode", "IpcMode", "UTSMode", "Devices", "PortBindings")},
+    }
+    result = binding(
+        id="retained", resource="retained", engine="none", container="retained-service",
+        identity_labels={"owner": "reviewed"}, retained_container=True, container_id=CONTAINER_ID,
+        restart_count=0, restart_policy="unless-stopped", restart_maximum_retry_count=0,
+        writable_mounts_sha256=_sha(writable), security_projection_sha256=_sha(security),
+        shutdown_grace_seconds=20,
+        healthcheck_required=True, healthcheck_sha256="e" * 64,
+        definition="/reviewed/retained.json", definition_sha256="d" * 64,
+    )
+    result.update(changes)
+    return result
+
+
 class FakeRun:
     """The Docker CLI boundary: every response is independently supplied."""
 
@@ -84,6 +135,69 @@ class FakeRun:
                     raise response
                 return response
         raise AssertionError("unexpected Docker command: %r" % (argv,))
+
+
+def test_retained_inspect_uses_closed_projection_and_exact_incarnation():
+    from anvil_serving.service_runtime.docker import Adapter
+
+    runner = FakeRun([(["docker", "inspect", "--format"], completed(json.dumps(retained_inspection())))])
+    observed = Adapter(run=runner).inspect(retained_binding())
+
+    argv = runner.calls[0][0]
+    assert argv[-1] == CONTAINER_ID
+    assert "Config.Env" not in argv[3] and ".Config.Cmd" not in argv[3]
+    assert observed["registered"] is True and observed["identity"] == CONTAINER_ID
+    assert observed["custody_sha256"]
+    assert observed["started_at"] == "2026-10-10T04:00:00.123456789Z"
+    assert observed["finished_at"] == "2026-10-10T04:01:00.123456789Z"
+
+
+def test_retained_inspect_rejects_malformed_lifecycle_timestamp():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    row = retained_inspection()
+    row["State"]["FinishedAt"] = "not-a-docker-timestamp"
+    runner = FakeRun([(["docker", "inspect", "--format"], completed(json.dumps(row)))])
+    with pytest.raises(ServiceError, match="lifecycle timestamp"):
+        Adapter(run=runner).inspect(retained_binding())
+
+
+@pytest.mark.parametrize("change", ["id", "labels", "mounts", "restart", "security"])
+def test_retained_inspect_fails_closed_on_custody_drift(change):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    row = retained_inspection()
+    if change == "id":
+        row["Id"] = "c" * 64
+    elif change == "labels":
+        row["Config"]["Labels"]["extra"] = "drift"
+    elif change == "mounts":
+        row["Mounts"][0]["Destination"] = "/other"
+    elif change == "restart":
+        row["RestartCount"] = 1
+    else:
+        row["HostConfig"]["Privileged"] = True
+    runner = FakeRun([(["docker", "inspect", "--format"], completed(json.dumps(row)))])
+    with pytest.raises(ServiceError, match="retained Docker"):
+        Adapter(run=runner).inspect(retained_binding())
+
+
+def test_retained_plan_never_targets_name_or_replacement():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter, _retained_custody_sha256
+
+    binding = retained_binding()
+    state = {"registered": True, "running": True, "identity": CONTAINER_ID,
+             "custody_sha256": _retained_custody_sha256(binding)}
+    assert Adapter(run=FakeRun([])).plan(binding, "down", state) == [["docker", "stop", "--timeout", "20", CONTAINER_ID]]
+    with pytest.raises(ServiceError, match="already running"):
+        Adapter(run=FakeRun([])).plan(binding, "up", state)
+    with pytest.raises(ServiceError, match="already stopped"):
+        Adapter(run=FakeRun([])).plan(binding, "down", {**state, "running": False})
+    with pytest.raises(ServiceError, match="pinned incarnation"):
+        Adapter(run=FakeRun([])).plan(binding, "down", {**state, "identity": "c" * 64})
 
 
 def test_external_compose_adoption_pins_project_service_and_config_mount():
