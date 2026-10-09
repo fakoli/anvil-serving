@@ -167,6 +167,31 @@ def commands() -> CommandNode:
                 "Preview or transact split and exclusive TP=2 operating modes.",
                 children=(
                     _resource_node(
+                        "restore-retained",
+                        "Restore an exact stopped exclusive owner without router changes or replacement models.",
+                        "anvil_serving.serves",
+                        role="model-serve",
+                        mutation="mutate",
+                        gpu=True,
+                        execution_runtime_roles=("native",),
+                        options=(
+                            _option("--dry-run", summary="Preview without changing the retained owner."),
+                            _option("--confirm", summary="Restore only the exact retained owner.", requires_confirmation=True),
+                        ) + tuple(
+                            _option(flag, summary=summary, value_name="IDENTITY")
+                            for flag, summary in (
+                                ("--expected-container-id", "Full retained container ID."),
+                                ("--expected-image", "Immutable retained image digest."),
+                                ("--manifest-sha256", "Exact selected manifest digest."),
+                                ("--registry-sha256", "Exact recipe registry digest."),
+                            )
+                        ),
+                        argv_prefix=("mode", "restore-retained"),
+                        forward_confirm_flag=True,
+                        forward_resolution_options=True,
+                        docs_anchor="docs/cli/serves.md#retained-exclusive-restoration",
+                    ),
+                    _resource_node(
                         "status",
                         "Show the active split or exclusive TP=2 mode.",
                         "anvil_serving.serves",

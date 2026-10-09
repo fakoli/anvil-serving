@@ -99,7 +99,7 @@
         "mcp-serve": 19,
         "mcp-tools": 5,
         "models-cache-prune": 9,
-        "models-recipes": 74,
+        "models-recipes": 75,
         "models-score": 5,
         "router-run": 36,
         "serves-multiplex": 4,
@@ -114,10 +114,10 @@
         "examples": 237,
         "implementation": 439,
         "skills": 21,
-        "tests": 501,
+        "tests": 502,
         "tooling": 36
       },
-      "files_scanned": 1462,
+      "files_scanned": 1463,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

@@ -4640,7 +4640,7 @@ def _volume_other_users(volume, container, _run):
     return [n for n in r.stdout.split() if n and n != container]
 
 
-def _storage_write_check(s, _run):
+def _storage_write_check(s, _run, *, repair=True):
     """Post-start guard: the container must be able to WRITE its volume mounts.
 
     Docker copies an image directory's contents and their uid/gid into a named
@@ -4694,6 +4694,10 @@ def _storage_write_check(s, _run):
         print("  storage: %d/%d volume mounts writable (uid %d)"
               % (len(volumes), len(volumes), uid))
         return True
+
+    if not repair:
+        print("  storage: retained owner write check failed; no ownership repair or restart")
+        return False
 
     declared_shared = set(s.get("shared_volumes") or [])
     declared, undeclared = {}, {}
@@ -5051,6 +5055,179 @@ def cmd_up(serves, names, dry_run=False, recreate=False, _run=subprocess.run,
                 ):
                     rc = 1
     return rc
+
+
+def _retained_exclusive_identity(serve, recipe, expected_id, expected_image, devices,
+                                 *, _run=subprocess.run, running=False):
+    """Read only launch identity; never inspect or forward container environment."""
+    template = ('{"Id":{{json .Id}},"Name":{{json .Name}},"Image":{{json .Image}},'
+                '"State":{{json .State}},"Config":{"Image":{{json .Config.Image}},'
+                '"Cmd":{{json .Config.Cmd}},"Labels":{{json .Config.Labels}}},'
+                '"Args":{{json .Args}},"HostConfig":{"DeviceRequests":'
+                '{{json .HostConfig.DeviceRequests}},"PortBindings":'
+                '{{json .HostConfig.PortBindings}}}}')
+    result = _run(["docker", "inspect", "--format", template, serve["container"]],
+                  capture_output=True, text=True, timeout=30)
+    if result.returncode or len(result.stdout) > 65536:
+        raise ValueError("retained identity unavailable")
+    row = json.loads(result.stdout)
+    state = row["State"]
+    labels = row["Config"]["Labels"] or {}
+    requests = row["HostConfig"]["DeviceRequests"]
+    expected_cmd = serve_recipes.docker_run_argv(recipe, gpu_device=",".join(devices))
+    expected_cmd = expected_cmd[expected_cmd.index(recipe["serve"]["image"]) + 1:]
+    if (
+        row["Id"] != expected_id or row["Image"] != expected_image
+        or row["Name"] != "/" + serve["container"]
+        or row["Config"]["Image"] != recipe["serve"]["image"]
+        or row["Config"]["Cmd"] != expected_cmd
+        or _model_from_argv(row["Args"]) != serve["served_name"]
+        or labels.get(serve_recipes.RECIPE_MANAGED_LABEL) != serve_recipes.RECIPE_MANAGED_VALUE
+        or labels.get(serve_recipes.RECIPE_MODEL_LABEL) != recipe["model"]
+        or labels.get(serve_recipes.RECIPE_DIGEST_LABEL) != serve_recipes.recipe_digest(recipe)
+        or labels.get(serve_recipes.RECIPE_REVISION_LABEL) != (recipe.get("download") or {}).get("revision")
+        or not isinstance(requests, list) or len(requests) != 1
+        or requests[0].get("Driver") not in {"", "nvidia"}
+        or requests[0].get("Count") != 0
+        or requests[0].get("Capabilities") != [["gpu"]]
+        or (requests[0].get("Options") is not None and requests[0].get("Options") != {})
+        or sorted(serve_recipes._recipe_gpu_selection(row)) != sorted(devices)
+        or serve_recipes._recipe_bound_ports(row) != [serve["port"]]
+        or state.get("Paused") or state.get("Restarting")
+        or (running and (state.get("Status") != "running" or not state.get("Running") or not state.get("Pid")))
+        or (not running and (state.get("Status") != "exited" or state.get("Running") or state.get("Pid") != 0
+                            or state.get("StartedAt") in {None, "", "0001-01-01T00:00:00Z"}))
+    ):
+        raise ValueError("retained launch identity or incarnation mismatch")
+    return row
+
+
+@_serving_authority_mutation
+def cmd_restore_retained(serves, target_name, *, manifest_path, manifest_sha256,
+                         expected_id, expected_image, registry_sha256,
+                         dry_run=True, confirm=False, _run=subprocess.run,
+                         _open=urllib.request.urlopen, _sleep=time.sleep, topology_path=None):
+    """Restore only an exact stopped exclusive owner; no router or fallback path."""
+    try:
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_id or "") or not re.fullmatch(
+            r"sha256:[0-9a-f]{64}", expected_image or ""
+        ):
+            raise ValueError("exact full retained container ID and image digest required")
+        if any(not re.fullmatch(r"[0-9a-f]{64}", digest or "")
+               for digest in (manifest_sha256, registry_sha256)):
+            raise ValueError("exact manifest and registry digests required")
+        manifest_path = os.path.abspath(os.path.expanduser(manifest_path))
+        target = _serve_by_name(load_manifest(manifest_path), target_name)
+        if not target or target.get("runtime", "docker") != "docker" or not reservations.is_exclusive(target):
+            raise ValueError("exact declared Docker exclusive target required")
+        if target.get("router_tier"):
+            raise ValueError("retained restoration cannot change a routed mode profile")
+        registry_path = _registry_path_of(target)
+        up = target.get("up") or []
+        if not registry_path or ["models", "recipes", "load"] != up[up.index("models"):up.index("models") + 3]:
+            raise ValueError("manifest-owned recipe load declaration required")
+        selector = up[up.index("load") + 1]
+        source_hashes = {path: serve_recipes.registry_digest(path)
+                         for path in manifest_set_paths(manifest_path)}
+        if source_hashes.get(manifest_path) != manifest_sha256:
+            raise ValueError("selected manifest digest mismatch")
+        registry_fence = nullcontext() if dry_run or not confirm else serve_recipes.registry_lock(registry_path)
+        with registry_fence:
+            if serve_recipes.registry_digest(registry_path) != registry_sha256:
+                raise ValueError("recipe registry digest mismatch")
+            recipe = serve_recipes.find_recipe(serve_recipes.load_registry(registry_path), selector)
+            if not recipe:
+                raise ValueError("selected recipe missing")
+            from .topology import load_topology
+            topology_path = resolve_topology_path(topology_path)
+            topology_hash = serve_recipes.registry_digest(topology_path)
+            topology = load_topology(topology_path)
+            roles = [r.gpu_role for r in reservations.reservations_of(target)]
+            devices = [topology.gpu_role(role).uuid for role in roles]
+            if len(devices) != 2 or len(set(devices)) != 2 or target.get("tensor_parallel_size") != 2:
+                raise ValueError("complete UUID-backed TP2 ownership required")
+            if any(not isinstance(device, str) or not device.startswith("GPU-") for device in devices) or any(
+                role not in reservations.budgets_of(serves) for role in roles
+            ):
+                raise ValueError("complete native GPU reservation budget required")
+            declared_devices = up[up.index("--gpu-device") + 1].split(",")
+            if sorted(declared_devices) != sorted(devices):
+                raise ValueError("manifest GPU selection differs from native ownership")
+
+            def preflight():
+                if serve_recipes.registry_digest(topology_path) != topology_hash or any(
+                    serve_recipes.registry_digest(path) != digest for path, digest in source_hashes.items()
+                ) or (
+                    serve_recipes.registry_digest(registry_path) != registry_sha256
+                ):
+                    raise ValueError("manifest or recipe changed after selection")
+                scope = load_manifest_set(manifest_path)
+                if scope != serves:
+                    raise ValueError("complete manifest reservation scope changed")
+                states = docker_states([s["container"] for s in scope], _run=_run)
+                if any(states.get(s["container"]) not in {"absent", "exited", "dead"}
+                       for s in scope if s["name"] != target_name and reservations.is_gpu_inference(s)):
+                    raise ValueError("competing or unresolved GPU owner")
+                owners = _unmanaged_recipe_ownership(scope, _run=_run, topology_path=topology_path)
+                if owners.get("owners") or owners.get("discovery_error"):
+                    raise ValueError("unmanaged or unresolved recipe ownership")
+                listed = _docker_ps_lines(_run=_run)
+                if listed is None or len(listed) > serve_recipes.MAX_DISCOVERED_RECIPE_CONTAINERS:
+                    raise ValueError("complete container ownership unavailable")
+                for line in listed:
+                    owner = json.loads(line)
+                    if owner["State"] in {"exited", "dead"} or owner["Names"] == target["container"]:
+                        continue
+                    result = _run([
+                        "docker", "inspect", "--format", "{{json .HostConfig.DeviceRequests}}", owner["Names"],
+                    ], capture_output=True, text=True, timeout=30)
+                    if result.returncode or len(result.stdout) > 65536:
+                        raise ValueError("container GPU ownership unavailable")
+                    requests = json.loads(result.stdout)
+                    if requests is not None and requests != []:
+                        raise ValueError("competing or unresolved container GPU ownership")
+                denial = reservations.deny_over_budget(scope, [target], lambda name: states.get(name, "unknown"))
+                if denial:
+                    raise ValueError("retained reservation exceeds native budget")
+                from .nccl_probe import inventory
+                _physical_gpus, blockers = inventory(devices, _runner=_run)
+                if blockers:
+                    raise ValueError("native GPU process custody is busy or unknown")
+                return _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run)
+
+            preflight()
+            print("retained exclusive restore: exact existing ID only; no router, create, pull or alternate model")
+            if dry_run or not confirm:
+                print("preview only; --confirm required")
+                return 0
+            preflight()  # Last owner/source/incarnation check under the same authority.
+            try:
+                result = _run(["docker", "start", expected_id], capture_output=True, text=True, timeout=30)
+                if result.returncode:
+                    raise ValueError("retained start failed")
+                _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run, running=True)
+                if not _storage_write_check({**target, "container": expected_id}, _run, repair=False) or not _await_healthy(
+                    target, LIFECYCLE_READINESS_TIMEOUT_SECONDS, LIFECYCLE_READINESS_POLL_SECONDS,
+                    _open=_open, _sleep=_sleep,
+                ) or not _serve_identity_ready(target, _open=_open):
+                    raise ValueError("retained readiness failed")
+                _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run, running=True)
+            except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError):
+                # Identity-bound compensation only. Never touch a replacement or split group.
+                try:
+                    _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run)
+                except ValueError:
+                    _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run, running=True)
+                    stopped = _run(["docker", "stop", expected_id], capture_output=True, text=True, timeout=60)
+                    if stopped.returncode:
+                        raise ValueError("retained cleanup HOLD: stop unproven")
+                _retained_exclusive_identity(target, recipe, expected_id, expected_image, devices, _run=_run)
+                raise ValueError("retained restoration HOLD: same container stopped and retained")
+            print("retained exclusive owner restored; exact identity and protocol readiness verified")
+            return 0
+    except (ValueError, OSError, subprocess.SubprocessError, KeyError, TypeError, IndexError, AttributeError, RuntimeError):
+        print("retained restoration HOLD: identity, ownership, source or readiness guard refused", file=sys.stderr)
+        return 1
 
 
 def operating_mode_plan(serves, target_name, restore_group, state_of):
@@ -6259,13 +6436,20 @@ def _build_action_parser(action):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     if action == "mode":
+        p.add_argument("--topology", help="Native owner topology (retained restoration only)")
+        p.add_argument("--topology-overlay", help="Unsupported for retained restoration")
+        p.add_argument("--command-host")
+        p.add_argument("--command-runtime")
+        p.add_argument("--target", dest="owner_target")
+        p.add_argument("--transport", choices=("auto", "local"), default="local")
+        p.add_argument("--operation-timeout", type=int, default=30)
         p.add_argument(
             "--config", metavar="PATH",
             help="active router config TOML (default: operator config home).",
         )
         p.add_argument(
             "mode_action",
-            choices=("status", "preview", "enter", "leave"),
+            choices=("status", "preview", "enter", "leave", "restore-retained"),
             help="mode operation to perform",
         )
         p.add_argument(
@@ -6389,6 +6573,8 @@ def _build_action_parser(action):
                        drain_timeout=EVICTION_DRAIN_TIMEOUT, router_url=None,
                        no_router=False)
     if action == "mode":
+        for flag in ("--expected-container-id", "--expected-image", "--manifest-sha256", "--registry-sha256"):
+            p.add_argument(flag, metavar="IDENTITY", help="Exact retained restoration binding (restore-retained only)")
         p.add_argument(
             "--restore-group",
             metavar="NAME",
@@ -6877,6 +7063,20 @@ def main(argv=None):
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,
         )
     if a.action == "mode":
+        if a.mode_action == "restore-retained":
+            if not a.target or a.restore_group or a.preserve_on_failure or a.skip_preflight_checks or a.router_url or a.config or a.topology_overlay:
+                print("restore-retained requires only TARGET and exact retained bindings; no router or rollback options", file=sys.stderr)
+                return 2
+            return cmd_restore_retained(
+                ledger_serves, a.target, manifest_path=manifest_path,
+                manifest_sha256=a.manifest_sha256, registry_sha256=a.registry_sha256,
+                expected_id=a.expected_container_id, expected_image=a.expected_image,
+                dry_run=a.dry_run or not a.confirm, confirm=a.confirm,
+                topology_path=a.topology,
+            )
+        if any((a.expected_container_id, a.expected_image, a.manifest_sha256, a.registry_sha256)):
+            print("retained bindings are only valid with mode restore-retained", file=sys.stderr)
+            return 2
         if a.mode_action == "status":
             if a.target or a.restore_group:
                 print("mode status does not accept TARGET or --restore-group", file=sys.stderr)

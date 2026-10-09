@@ -160,6 +160,7 @@ required operands, choices, and defaults.
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--skip-preflight-checks`<br>`--derive`<br>`--router-config`<br>`--rollback-router-config`<br>`--out` |
 | `serves mode` | Preview or transact split and exclusive TP=2 operating modes. | `read` / `bounded` | - |
+| `serves mode restore-retained` | Restore an exact stopped exclusive owner without router changes or replacement models. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--expected-container-id`<br>`--expected-image`<br>`--manifest-sha256`<br>`--registry-sha256` |
 | `serves mode status` | Show the active split or exclusive TP=2 mode. | `read` / `bounded` | - |
 | `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--config`<br>`--restore-group` |
 | `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url`<br>`--skip-preflight-checks` |

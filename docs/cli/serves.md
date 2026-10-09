@@ -197,6 +197,25 @@ unavailable. Discover and inspect that owner with
 or add the intended durable manifest ownership before retrying the mode
 transaction.
 
+## Retained exclusive restoration
+
+`anvil-serving serves mode restore-retained NAME --manifest FILE --expected-container-id ID --expected-image DIGEST --manifest-sha256 SHA --registry-sha256 SHA`
+previews restoration of an already-started, now-exited exclusive recipe owner.
+Add `--confirm` to start only that exact retained container ID. This local native
+operation requires the complete manifest reservation scope, native UUID-backed
+TP=2 ownership, exact recipe/launch identity, no competing or unresolved GPU
+owners, and the existing serving authority and experiment fences. Ordinary
+exclusive `serves up` remains refused.
+
+The selected manifest must declare the unrouted retained owner and its recipe
+registry. No recipe execution, creation, recreation, pull, environment rewriting,
+router profile change or alternate-model recovery is available. Readiness checks
+health and exact served identity. Failed readiness stops and retains only the
+same identity-bound container; unresolved identity or cleanup stays HOLD. Storage
+checks do not repair ownership or restart the container. Preserve failed evidence
+and resolve custody before another attempt. Use explicit operator-home selection;
+this path does not read home dotenv files.
+
 ## Serving profiles
 
 A serving profile is a small operator-owned TOML selector that binds one
