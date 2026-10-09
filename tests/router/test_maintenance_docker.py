@@ -34,9 +34,10 @@ def auth(phase, incarnation, revision, **changes):
         'ingress_barrier':'exact-container-stop' if phase=='legacy-stop' else 'closed-generation', **changes}
 
 
-def test_supported_legacy_stop_import_successor_fenced_readmit_and_replay(docker_owner):
+def test_supported_legacy_stop_import_successor_fenced_readmit_and_replay(docker_owner, monkeypatch):
     import fcntl
     f=docker_owner
+    monkeypatch.setenv('ANVIL_SERVING_HOME',str(f['private']/'operator-home'))
     # Legacy has no usage run and no complete all-path instrumentation. Its
     # actual process owns the same synthetic ledger and may still have work.
     f['main'].write_text("import time\nfrom anvil_serving.router.keys import KeyStore\n"
@@ -47,6 +48,21 @@ def test_supported_legacy_stop_import_successor_fenced_readmit_and_replay(docker
     f['config'].chmod(0o664)  # Actual admitted non-secret legacy mode is preserved.
     composed=json.loads(f['compose'].read_text())
     composed['services']['router']['volumes'][0]['target']='/var/lib/anvil-serving/router-keys'
+    # Optional exact-image compatibility lane: the router and every native
+    # helper import the real predecessor package, not the copied test source.
+    predecessor=os.environ.get('ANVIL_ROUTER_DOCKER_PREDECESSOR')
+    successor_image=os.environ.get('ANVIL_ROUTER_DOCKER_SUCCESSOR')
+    if predecessor:
+        from pathlib import Path
+        assert successor_image
+        for reference, key in ((predecessor,'ANVIL_ROUTER_DOCKER_PREDECESSOR_ID'),
+                               (successor_image,'ANVIL_ROUTER_DOCKER_SUCCESSOR_ID')):
+            assert subprocess.check_output(['docker','image','inspect','--format','{{.Id}}',reference],text=True).strip()==os.environ[key]
+        composed['services']['router']['image']=predecessor
+        composed['services']['router']['environment']['PYTHONPATH']='/fixture-only'
+        composed['services']['router']['volumes'].append({'type':'bind',
+            'source':str(Path(__file__).resolve().parent/'helpers.py'),
+            'target':'/fixture-only/fixture_helpers.py','read_only':True})
     protected(f['compose'],composed)
     f['start'](legacy=True)
     for _ in range(100):
@@ -164,6 +180,48 @@ server.serve_forever()
     with pytest.raises(subprocess.CalledProcessError):f['transition']('readmit',barrier_token=token)
     with pytest.raises(ValueError):maintenance.run(config,confirm=True,_run=f['run'])
     assert f['transition']('status')['state']=='quiesced'
+
+    # A current instrumented owner has a distinct approved stop vocabulary.
+    # The native helper holds the real writer gate until this exact incarnation
+    # stops; ordinary drain still refuses the remote terminal gap.
+    candidate=dict(composed,services={'router':dict(composed['services']['router'])})
+    if successor_image:candidate['services']['router']['image']=successor_image
+    candidate_compose=protected(root/'candidate-compose.json',candidate)
+    candidate_id=(os.environ['ANVIL_ROUTER_DOCKER_SUCCESSOR_ID'] if successor_image else successor['image_id'])
+    if predecessor:
+        assert successor['image_id']==os.environ['ANVIL_ROUTER_DOCKER_PREDECESSOR_ID']
+        assert f['code']("import json,anvil_serving;print(json.dumps('/fixture-source/' not in anvil_serving.__file__))") is True
+    current_auth=auth('current-instrumented-stop',successor,revision,
+        schema='router-current-stop-authorization/v1',operation_id='8'*64,
+        ingress_barrier='closed-generation-exact-container-stop',
+        legacy_receipt_sha256=result['receipt_sha256'],
+        successor={'image_id':candidate_id,'configuration_revision':revision,
+                   'compose':str(candidate_compose),
+                   'compose_sha256':hashlib.sha256(candidate_compose.read_bytes()).hexdigest()})
+    protected(authorization,current_auth)
+    values['receipt_out']=str(root/'current-stop.json');protected(config,values)
+    current_preview=maintenance.run(config,_run=f['run'])
+    assert current_preview['local_frontier']=='instrumented-quiesced'
+    assert current_preview['drained'] is False
+    assert router_manage._container_incarnation(f['name'],_run=f['run'])==successor
+    current_auth['preview_sha256']=maintenance.digest(current_preview)
+    protected(authorization,current_auth)
+    current_result=maintenance.run(config,confirm=True,_run=f['run'])
+    assert current_result['stopped'] and not current_result['drained']
+    assert current_result['unknown']==['memory'] and current_result['death_sha256']
+    assert f['rows']('SELECT count(*) FROM usage_details')==[(1,)]
+    with pytest.raises(ValueError):maintenance.run(config,confirm=True,_run=f['run'])
+    # Cold startup consumes the unchanged death-proof vocabulary. It does not
+    # need the new maintenance phase in its ordinary recovery/readmit path.
+    if successor_image:
+        protected(f['compose'],candidate)
+    assert router_manage.cmd_up(str(f['compose']),service='router',container=f['name'],_run=diagnostic_run)==0
+    f['start']()
+    assert f['transition']('status')['state']=='quiesced'
+    assert f['rows']('SELECT count(*) FROM usage_details')==[(1,)]
+    with pytest.raises(ValueError):maintenance.run(config,confirm=True,_run=f['run'])
+    successor=router_manage._container_incarnation(f['name'],_run=f['run'])
+    if successor_image:assert successor['image_id']==candidate_id
 
     # Physical crash/restart cannot inherit the one-time exception. Native
     # stopped-incarnation proof preserves the committed ledger; startup creates

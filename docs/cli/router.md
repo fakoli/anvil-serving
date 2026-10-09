@@ -747,6 +747,63 @@ rows and interruption metadata remain intact. Preserve the named store volume,
 including protected custody and acknowledgement sidecars, for rollback; never
 replace newer committed state with an older snapshot.
 
+### Current instrumented owner replacement
+
+```bash
+anvil-serving router maintenance --config current-stop.json --preview-out current-stop-preview.json
+anvil-serving router maintenance --config current-stop.json --confirm
+```
+
+The distinct `current-instrumented-stop` phase is for a managed-container owner
+that is already durably quiesced and has a finalized live anchor. It requires
+all eight local workload families to be exactly zero and only the typed remote
+memory terminal gap to remain unknown. Ordinary drain, consume, down, recreate
+and readmit still reject that gap. A successful stop receipt says
+`local_frontier="instrumented-quiesced"`, `remote_memory_terminal="UNKNOWN"` and
+`drained=false`; it never calls the current local frontier uninstrumented.
+
+Installation prepares the existing `router-maintenance-config/v1` declaration
+with the admitted Compose path/hash, protected authorization path and an absent
+receipt destination. This phase requires the distinct
+`router-current-stop-authorization/v1` schema, the normal exact old
+container/image/configuration and operation/expiry bindings, a retained
+`legacy_receipt_sha256`, `acknowledge_uncertainty="remote-memory-terminal-only"`
+and `ingress_barrier="closed-generation-exact-container-stop"`. Its additional
+closed `successor` object declares `image_id`, `configuration_revision`,
+`compose` and `compose_sha256`. Preview verifies the successor's actual pinned
+image and read-only mounted configuration using metadata-only Compose rendering;
+it does not resolve project dotenv or service environment files. The stopped
+owner's native preview binds its actual run, store, anchor, closed generation,
+roster and policy, while host observation binds daemon/start identity and the
+complete mounted-state consumer roster. Confirmation requires the exact fresh
+preview digest and a new explicit human acknowledgement of remote uncertainty.
+Neither a legacy-stop grant nor an earlier readmission grant can authorize it.
+
+A fixed native helper uses the predecessor's existing maintenance-preview and
+writer-exclusion primitives. It keeps the actual writer fence through the final
+host checks and physical stop; unsupported old images refuse before stopping.
+Confirmation durably publishes a canonical one-time operation record in the
+protected store before any stop, then a host pending receipt. A changed output
+path cannot replay that operation. An existing host pending receipt can only
+finish evidence for the same already-stopped incarnation while the original
+approval remains valid; it cannot issue another stop of a live, restarted or
+successor process. Failure leaves admission closed and never starts a service.
+
+After the exact incarnation stops, the existing offline producer/writer fences
+and staged native custody commit establish its immutable death proof. Committed
+accounting and historical gaps are preserved; no migration or old-snapshot
+restore occurs. The intended successor is only an approved intent, not an
+automatic activation: use guarded `router up` separately. It starts CLOSED and
+requires a new successor-readmit preview and separate human acknowledgement.
+
+This phase keeps the existing closure/anchor/death schemas. A predecessor that
+supports native maintenance-preview can be observed without replacing its
+running code. A successor supporting those custody schemas can recover the
+stopped owner without understanding the new external stop receipt. That receipt
+is operator evidence; existing runtime history continues to show its retained
+legacy and remote UNKNOWN frontier. The phase neither rewrites that history nor
+claims that an older runtime exposes the new stop receipt in its history API.
+
 ## Fixed native SQLite storage
 
 The opt-in router runtime uses a verified fixed SQLite build and its native
