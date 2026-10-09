@@ -10,7 +10,7 @@ from tests.conftest import proc
 
 CID = 'a' * 64
 IMAGE = 'sha256:' + 'b' * 64
-DEVICES = ['GPU-01234567-89ab-cdef-0123-456789abcdef', 'GPU-fedcba98-7654-3210-fedc-ba9876543210']
+DEVICES = ['GPU-11111111-2222-3333-4444-555555555555', 'GPU-99999999-8888-7777-6666-555555555555']
 
 
 @pytest.fixture
