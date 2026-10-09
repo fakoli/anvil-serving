@@ -1,4 +1,8 @@
 """Protected persisted exporter checks; synthetic fixtures are not live proof."""
+import ast
+import inspect
+from types import SimpleNamespace
+
 from dataclasses import replace
 from datetime import datetime
 import sqlite3
@@ -331,3 +335,28 @@ def test_invalid_or_future_recorded_epoch_time_refuses_collection(store,at):
     with store[0].key_store._connect() as conn:
         conn.execute('UPDATE usage_epoch_metadata SET created_at=?',(at,))
     with pytest.raises(UsageError,match='accounting_unavailable'):render(store)
+
+
+def test_production_usage_metrics_callback_returns_rendered_bytes_over_protected_http(store, policy):
+    from anvil_serving.router import serve
+    # Execute the exact production closure, preserving its real collector/renderer.
+    tree = ast.parse(inspect.getsource(serve.build_server))
+    callbacks = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'usage_metrics']
+    assert len(callbacks) == 1
+    module = ast.Module(body=callbacks, type_ignores=[])
+    namespace = {
+        '__package__': serve.__package__, 'owner_usage': store[0],
+        'routing': SimpleNamespace(_workload_registry=registry()),
+        'effective_workload_clock': lambda: NOW,
+        'server_config': SimpleNamespace(usage_domain_id=DOMAIN),
+        'router_owner': SimpleNamespace(usage_scope=lambda: store[3]),
+    }
+    exec(compile(ast.fix_missing_locations(module), serve.__file__, 'exec'), namespace)
+    callback = namespace['usage_metrics']
+    expected = render(store)
+    assert isinstance(expected, bytes) and callback() == expected
+    with server(policy, usage_metrics=callback) as address:
+        assert request(address, '/v1/admin/usage/metrics', token=LEGACY)[0] == 403
+        status, _, raw = request(address, '/v1/admin/usage/metrics')
+        assert status == 200 and raw == expected

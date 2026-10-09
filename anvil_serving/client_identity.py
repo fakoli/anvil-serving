@@ -197,7 +197,7 @@ def _native_readback(store, payload):
         binding = bindings[0]
         with store._write() as db:
             db.execute("BEGIN IMMEDIATE")
-            principal = store.authenticate(payload["credential"], check_owner=False)
+            principal = store._authenticate_in_transaction(db, payload["credential"])
             actor = store._bound_actor(db, binding["key_id"])
             _require(principal is not None and principal.owner is None
                      and principal.key_id == binding["key_id"]

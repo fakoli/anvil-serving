@@ -24,7 +24,7 @@ def commands() -> CommandNode:
                 "Start manifest-owned model serves.",
                 "anvil_serving.serves",
                 role="model-serve",
-                options=CONFIRM_OPTIONS,
+                options=CONFIRM_OPTIONS + (_option("--no-deps", summary="With --compose, update only named services."),),
                 mutation="mutate",
                 gpu=True,
                 remote_operation=_remote(
@@ -166,6 +166,30 @@ def commands() -> CommandNode:
                 "mode",
                 "Preview or transact split and exclusive TP=2 operating modes.",
                 children=(
+                    _resource_node(
+                        "restore-retained",
+                        "Restore an exact stopped exclusive owner without router changes or replacement models.",
+                        "anvil_serving.serves",
+                        role="model-serve",
+                        mutation="mutate",
+                        gpu=True,
+                        options=(
+                            _option("--dry-run", summary="Preview without changing the retained owner."),
+                            _option("--confirm", summary="Restore only the exact retained owner.", requires_confirmation=True),
+                        ) + tuple(
+                            _option(flag, summary=summary, value_name="IDENTITY")
+                            for flag, summary in (
+                                ("--expected-container-id", "Full retained container ID."),
+                                ("--expected-image", "Immutable retained image digest."),
+                                ("--manifest-sha256", "Exact selected manifest digest."),
+                                ("--registry-sha256", "Exact recipe registry digest."),
+                            )
+                        ),
+                        argv_prefix=("mode", "restore-retained"),
+                        forward_confirm_flag=True,
+                        forward_resolution_options=True,
+                        docs_anchor="docs/cli/serves.md#retained-exclusive-restoration",
+                    ),
                     _resource_node(
                         "status",
                         "Show the active split or exclusive TP=2 mode.",
