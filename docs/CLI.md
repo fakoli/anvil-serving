@@ -152,7 +152,7 @@ required operands, choices, and defaults.
 | `models cache remove` | Remove one Docker revision or preview native-cache removal. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
-| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-deps` |
 | `serves up-for` | Resolve a chat alias to its backing serve and start it. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `serves down` | Stop and remove manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--keep-container` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

@@ -3789,6 +3789,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--no-deps"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "With --compose, update only named services.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",
@@ -5025,7 +5034,8 @@
       "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native"
+        "native",
+        "docker"
       ],
       "gpu_role_required": true,
       "handler": "anvil_serving.serves:main",
