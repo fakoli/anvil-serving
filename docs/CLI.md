@@ -181,10 +181,11 @@ required operands, choices, and defaults.
 | `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
 | `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--dry-run`<br>`--confirm` |
 | `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config`<br>`--compose` |
+| `router maintenance` | Preview or execute one protected acknowledged router maintenance operation. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
-| `router keys migrate` | Migrate first-bootstrap accounting offline with an absent protected backup. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--backup-out`<br>`--offline`<br>`--confirm`<br>`--compose`<br>`--env-file` |
-| `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
+| `router keys migrate` | Migrate first-bootstrap accounting offline with an absent protected backup. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--backup-out`<br>`--offline`<br>`--confirm`<br>`--compose`<br>`--env-file`<br>`--journal-mode`<br>`--maintenance-receipt` |
+| `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--compose`<br>`--offline`<br>`--confirm`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
 | `router keys list` | List key IDs, grants, and lifecycle state without secrets. | `read` / `bounded` | `--config`<br>`--container` |
 | `router keys revoke` | Revoke a device key for subsequent requests. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id` |
 | `router keys bind` | Bind an ordinary key to an operator-controlled owner with revision CAS. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--kind`<br>`--owner-id`<br>`--expected-revision`<br>`--dry-run` |

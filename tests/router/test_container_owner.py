@@ -231,3 +231,28 @@ def test_managed_mode_without_owner_cannot_fall_through_unmanaged(config):
     settings=replace(load_server_config(str(config)),router_owner_backend='managed-container',
                      router_owner_id=None,router_owner_roster=())
     with pytest.raises(ValueError,match='roster_unsupported'):managed_router_admission(settings,'a'*64)
+
+
+def test_actual_native_writer_fence_only_lends_reader_custody_to_same_store(record):
+    import fcntl
+    store,_,_=record
+    producer=Path(custody.binding(store)['state_path']+'.lock')
+    descriptor=os.open(producer,os.O_CREAT|os.O_RDWR,0o600)
+    try:
+        fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        with custody.live_writer(store):
+            with store._connect() as db:
+                assert db.execute('SELECT 1').fetchone()==(1,)
+            with pytest.raises(KeyStoreError,match='custody is busy'):
+                KeyStore(store.path)  # Another instance cannot inherit custody.
+            gate=Path(str(store.path)+'.router-writers.lock')
+            held=gate.with_suffix('.held');gate.rename(held)
+            gate.write_bytes(b'');gate.chmod(0o600)
+            try:
+                with pytest.raises(KeyStoreError):
+                    with store._connect():pytest.fail('replacement inherited held custody')
+            finally:
+                gate.unlink();held.rename(gate)
+        assert not hasattr(store._writer_context,'native_reader_custody')
+        with KeyStore(store.path)._connect() as db:assert db.execute('SELECT 1').fetchone()==(1,)
+    finally:os.close(descriptor)

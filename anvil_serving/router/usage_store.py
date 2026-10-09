@@ -1291,6 +1291,12 @@ class UsageStore:
                 scope = None
         state = self._coverage_state(db, scope, domain_id=domain["domain_id"])
         reasons = set(state.gaps)
+        from .maintenance import history
+        maintenance = history(self.key_store)
+        if maintenance is not None:
+            # This is acknowledged uncertainty, not retroactive complete
+            # coverage or proof that the remote operation completed.
+            reasons.add('acknowledged_maintenance_uncertainty')
         if lower < (state.authoritative_from or upper) or upper > (state.authoritative_to or lower):
             reasons.add("owner_roster_unknown")
         if upper > collected_at:
@@ -1316,6 +1322,7 @@ class UsageStore:
         if self._pending_failure:
             reasons.add("accounting_failure_pending")
         return {"schema": "router-usage/v1", "collected_at": collected_at,
+                **({'maintenance': maintenance} if maintenance is not None else {}),
                 "snapshot_revision": state.snapshot_revision, "available": not self._pending_failure,
                 "granularity": query.granularity, "requested_range": {"from_utc": lower, "to_utc": upper},
                 "covered_range": {"from_utc": state.authoritative_from, "to_utc": state.authoritative_to},
@@ -1589,10 +1596,13 @@ class UsageStore:
                 unresolved = db.execute("SELECT COUNT(*) FROM usage_starts s LEFT JOIN usage_details d USING(request_id) "
                                         "WHERE s.domain_id=? AND d.request_id IS NULL", (domain_id,)).fetchone()[0]
                 unknown = db.execute("SELECT COUNT(*) FROM usage_runs WHERE domain_id=? AND state='unknown'", (domain_id,)).fetchone()[0]
+                from .maintenance import history
+                maintenance = history(self.key_store)
                 return {"available": not self._pending_failure, "snapshot_revision": domain["snapshot_revision"],
                         "unresolved_requests": unresolved, "unknown_runs": unknown,
                         "accounting_failures": domain["accounting_failures"], "failure_pending": self._pending_failure,
-                        "coverage_complete": False}  # health alone supplies no trusted owner roster
+                        "coverage_complete": False,
+                        **({"maintenance": maintenance} if maintenance is not None else {})}  # No trusted owner roster
         except (sqlite3.Error, KeyStoreError, OSError):
             raise UsageError("accounting_unavailable") from None
 
@@ -1652,6 +1662,10 @@ class UsageStore:
 
                     with destination._connect() as copied:
                         source.backup(copied, pages=128, progress=progress, sleep=0.01)
+                        # A WAL source's header must not escape as a main-file
+                        # snapshot needing sidecars or the native WAL policy.
+                        if copied.execute('PRAGMA journal_mode=DELETE').fetchone() != ('delete',):
+                            raise KeyStoreError('accounting snapshot is not standalone')
                         copied_version = copied.execute("PRAGMA user_version").fetchone()[0]
                         if copied_version not in (1, 2, _VERSION):
                             raise KeyStoreError("accounting snapshot format is unsupported")

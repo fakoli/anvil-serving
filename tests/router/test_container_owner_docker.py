@@ -113,7 +113,7 @@ def docker_owner(tmp_path, monkeypatch):
     owned_ids, namespace_fds = [], []
     def run(argv, **kwargs):
         return subprocess.run(argv, **kwargs)
-    def start(*, failed=False):
+    def start(*, failed=False, legacy=False):
         subprocess.run(router_manage._compose_up_argv(str(compose), 'router'), check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env, timeout=30)
         cid = subprocess.check_output(['docker','inspect','--format','{{.Id}}',name],text=True).strip()
@@ -128,6 +128,9 @@ def docker_owner(tmp_path, monkeypatch):
                 if not failed:raise
         else:
             assert failed, 'unexpected stopped fixture before live qualification'
+        if legacy:
+            assert int(host_pid)>0
+            return cid
         ready = ('import json; from anvil_serving.router_manage import _transition_request; '
                  "print(json.dumps(_transition_request('status',scope='router',router_url='http://127.0.0.1:8000',env={'ANVIL_ROUTER_TOKEN':'synthetic'})))")
         for _ in range(100):

@@ -772,11 +772,16 @@ class RouterAdmission:
 
     def status(self):
         with self._condition:
-            return {"scope":"router", "state":"quiesced" if self._closed else "admitting",
+            result = {"scope":"router", "state":"quiesced" if self._closed else "admitting",
                     "configuration_revision":self.revision, "roster_revision":self.roster_revision,
                     "generation":self._generation, "counts":dict(self._counts),
                     "durable":self._persist is not None and not self._failed,
                     "cutover_pending":self._consumed}
+            if hasattr(self, '_usage'):
+                from .maintenance import history
+                acknowledgement = history(self._usage.key_store)
+                if acknowledgement is not None: result['maintenance'] = acknowledgement
+            return result
 
     def quiesce_router(self, reason="operator", *, dry_run=True, confirm=False):
         _reason_code(reason)
@@ -798,8 +803,9 @@ class RouterAdmission:
             self._condition.notify_all()
             return {"applied":True, **self.status(), "barrier_token":self._token}
 
-    def _drain_counts(self):
+    def _drain_counts(self, *, _writer_exclusive=False):
         counts, unknown = dict(self._counts), set(self._unknown)
+        self._remote_memory_gap = False
         self._threads = {thread for thread in self._threads if thread.is_alive()}
         counts["delivery"] += len(self._threads)
         if self._owner_scope is None:
@@ -810,17 +816,22 @@ class RouterAdmission:
             except Exception:
                 unknown.add("owner_roster_unknown")
         callbacks = tuple(self._observers.items())
-        if self._store_writer_readback is not None:
+        if self._store_writer_readback is not None and not _writer_exclusive:
             callbacks += (("maintenance", self._store_writer_readback),)
         for family, callback in callbacks:
             try:
                 count, unresolved = callback()
+                from .maintenance import REMOTE_MEMORY_TERMINAL_UNKNOWN
+                if family == 'memory' and type(count) is int and count == 0 and unresolved is REMOTE_MEMORY_TERMINAL_UNKNOWN:
+                    self._remote_memory_gap = 'memory' not in self._unknown
+                    unresolved = True
                 if type(count) is not int or not 0 <= count <= 100000 or type(unresolved) is not bool:
                     raise ValueError("invalid_owner_readback")
                 counts[family] += count
                 if unresolved:
                     unknown.add(family)
             except Exception:
+                if family == 'memory': self._remote_memory_gap = False
                 unknown.add(family)
         return counts, sorted(unknown)
 
@@ -1055,6 +1066,7 @@ def managed_router_admission(server_config, revision):
             owner._successor_pending = successor
             owner._store_writer_readback = _bind_router_store(usage.key_store.path, path, owner_id)
             owner._owner_descriptor = descriptor
+            owner._usage, owner._server_config = usage, server_config
             owner.usage_scope = scope
             owner.usage_run_id = run_id
             persist(owner._state())

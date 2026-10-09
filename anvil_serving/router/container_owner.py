@@ -253,7 +253,12 @@ def live_writer(store):
             pass
         else:
             raise KeyStoreError('router native producer unavailable')
-        yield
+        require(not getattr(store._writer_context,'native_reader_custody',False))
+        store._writer_context.native_reader_custody=(fd,os.fstat(fd),store.path.stat())
+        try:
+            yield
+        finally:
+            del store._writer_context.native_reader_custody
     finally:
         os.close(producer); os.close(fd)
 

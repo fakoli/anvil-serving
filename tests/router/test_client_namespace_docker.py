@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 import uuid
 
 import pytest
@@ -36,6 +37,7 @@ def native_clients(tmp_path, monkeypatch):
     name = 'ruu-clients-' + uuid.uuid4().hex
     (build / 'Dockerfile').write_text('FROM ' + base + '\nUSER 0:0\n'
         'RUN mkdir -p /var/lib/anvil-serving/router-keys && chown 1000:1000 /var/lib/anvil-serving/router-keys && chmod 700 /var/lib/anvil-serving/router-keys\n'
+        'RUN chown 0:0 /etc/anvil && chmod 755 /etc/anvil\n'
         'COPY --chown=1000:1000 anvil_serving /fixture-source/anvil_serving\n'
         'ENV PYTHONPATH=/fixture-source\nUSER 1000:1000\n')
     monkeypatch.setattr(router_manage, 'DEFAULT_COMPOSE_PROJECT', name)
@@ -84,6 +86,54 @@ def test_supported_offline_worker_actual_namespace_publication_auth_and_expiry(n
     if webui:
         config += '[[server.webui_identity]]\ncredential_id=' + json.dumps(f['key_id']) + '\ncredential_kind="device_key"\ninstance="synthetic"\nsigner_file=' + json.dumps(str(material / 'signer')) + '\n'
     router.write_text(config); router.chmod(0o600)
+    # Initial issuance uses only the mounted config, named authority volume
+    # and exclusive material parent. It precedes any client declaration/job.
+    issuance = f['root'] / 'issuance.json'
+    save(issuance, {'name': f['name'], 'services': {'router': {'image': f['tag'], 'container_name': f['name'],
+        'network_mode': 'none', 'read_only': True, 'init': True, 'user': '1000:1000', 'cpus': 2,
+        'mem_limit': 512*1024**2, 'memswap_limit': 512*1024**2, 'pids_limit': 64,
+        'cap_drop': ['ALL'], 'security_opt': ['no-new-privileges:true'], 'restart': 'no',
+        'entrypoint': ['/bin/false'], 'command': [], 'volumes': [
+            {'type': 'volume', 'source': 'keys', 'target': '/var/lib/anvil-serving/router-keys'},
+            {'type': 'bind', 'source': str(router), 'target': router_manage.DEFAULT_INSTALLED_CONFIG, 'read_only': True},
+            {'type': 'bind', 'source': str(material), 'target': str(material)}]}},
+        'volumes': {'keys': {'name': f['volume']}}})
+    from anvil_serving.router.keys import KeyStore
+    def no_host_store(*args, **kwargs):
+        raise AssertionError('host must not open the namespaced key store')
+    monkeypatch.setattr(KeyStore, '__init__', no_host_store)
+    request = {'name': 'unique synthetic client', 'model': ['llm.primary'],
+               'path': ['/v1/chat/completions'], 'rpm': 60, 'expires_days': None,
+               'out': str(material / 'issued-credential')}
+    with tempfile.TemporaryFile() as error:
+        def native_popen(argv, **options):
+            options['stderr'] = error
+            return subprocess.Popen(argv, **options)
+        try:
+            metadata = router_manage.create_key_offline(str(issuance), request, _popen=native_popen)
+        except BaseException:
+            error.seek(0); raw = error.read(65537)
+            # Owned synthetic worker only; retain numeric/type failure context,
+            # never source lines, arguments or credential contents.
+            lines = raw.decode('utf-8', errors='replace').splitlines()
+            exceptions = [line.split(':', 1)[0] for line in lines if re.fullmatch(r'[A-Za-z_.]*Error:.*', line)]
+            print('NATIVE_ISSUANCE_FAILURE ' + json.dumps({'stderr_sha256': hashlib.sha256(raw).hexdigest(),
+                'exception_type': exceptions[-1:] if exceptions else None,
+                'safe_auth_refusal': [line for line in lines if line.startswith('anvil_serving.control_plane.mcp.auth_file.AuthFileError:')],
+                'mount_guard': [line for line in lines if line.startswith(('FIXTURE_MOUNT_METADATA ', 'FIXTURE_GUARD_METADATA '))],
+                'stage': re.findall(r'in ([A-Za-z_][A-Za-z_0-9]*)\n', raw.decode('utf-8', errors='replace'))[-1:]}))
+            raise
+    new_secret = Path(request['out']).read_text().strip()
+    assert metadata['key_id'] != f['key_id'] and new_secret != f['credential']
+    assert new_secret not in json.dumps(metadata)
+    assert metadata['models'] == ['llm.primary'] and metadata['paths'] == ['/v1/models', '/v1/chat/completions']
+    with pytest.raises(ValueError):
+        router_manage.create_key_offline(str(issuance), request)
+    assert Path(request['out']).read_text().strip() == new_secret
+    if webui:
+        config = config.replace(json.dumps(f['key_id']), json.dumps(metadata['key_id']))
+        router.write_text(config)
+    f['key_id'], f['credential'] = metadata['key_id'], new_secret
     origin = router.with_name('client-router-origin.json'); save(origin, {'origin': 'https://router.invalid/v1'})
     declaration = {'schema': client.SCHEMA, 'router_config': str(router), 'installed_path': str(material / 'bindings.json'),
         'bindings': [{'client_id': 'synthetic-client', 'key_id': f['key_id'], 'kind': 'service' if webui else 'human',
@@ -134,10 +184,6 @@ def test_supported_offline_worker_actual_namespace_publication_auth_and_expiry(n
         'entrypoint': ['/bin/false'], 'command': [], 'volumes': mounts}}, 'volumes': {'keys': {'name': f['volume']}}})
     namespace = {'compose': str(compose), 'container': f['name'], 'expected_image_id': f['image'],
                  'declaration_path': '/run/anvil-client-worker/client-identity.json'}
-    from anvil_serving.router.keys import KeyStore
-    def no_host_store(*args, **kwargs):
-        raise AssertionError('host must not open the namespaced key store')
-    monkeypatch.setattr(KeyStore, '__init__', no_host_store)
     def native_run(argv, **kwargs):
         result = subprocess.run(argv, **kwargs)
         if result.returncode:

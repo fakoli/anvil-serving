@@ -1,4 +1,6 @@
 """Real SQLite writer frontiers; no serving or account databases."""
+from contextlib import closing
+import os
 import sqlite3
 import time
 
@@ -78,13 +80,17 @@ def test_inside_transaction_busy_never_replays_body(tmp_path, monkeypatch):
 
 
 def test_extended_busy_snapshot_propagates_without_body_replay(tmp_path, monkeypatch):
-    key = store(tmp_path)
-    # Sequential synthetic WAL operations only: no concurrent writer/checkpoint
-    # or close/reset. This produces SQLite's real extended error, not a product
-    # journal-mode change or WAL runtime qualification.
-    with key._connect() as db:
+    # Sequential integer-only WAL fixture: no concurrent writer/checkpoint or
+    # close/reset. Exercise the actual shared native wrapper/extended error;
+    # no unapproved KeyStore mode change or WAL runtime qualification is implied.
+    path=tmp_path/'snapshot.sqlite3'
+    descriptor=os.open(path,os.O_CREAT|os.O_EXCL|os.O_RDWR,0o600);os.close(descriptor)
+    with closing(sqlite3.connect(path,isolation_level=None,factory=keys._WriterConnection)) as db, \
+            closing(sqlite3.connect(path,isolation_level=None)) as other:
         assert db.execute("PRAGMA journal_mode=WAL").fetchone() == ("wal",)
-    with key._write() as db, key._connect() as other:
+        db.execute("CREATE TABLE writer_fixture(value INTEGER)")
+        db.execute("INSERT INTO writer_fixture VALUES(1)")
+        db.writer_deadline=time.monotonic()+1
         db.execute("BEGIN")
         assert db.execute("SELECT value FROM writer_fixture").fetchone() == (1,)
         other.execute("BEGIN IMMEDIATE")
@@ -95,7 +101,6 @@ def test_extended_busy_snapshot_propagates_without_body_replay(tmp_path, monkeyp
             db.execute("UPDATE writer_fixture SET value=3")
         assert caught.value.sqlite_errorcode == sqlite3.SQLITE_BUSY_SNAPSHOT and db.in_transaction
         db.execute("ROLLBACK")
-    with key._connect() as db:
         assert db.execute("SELECT value FROM writer_fixture").fetchone() == (2,)
 
 

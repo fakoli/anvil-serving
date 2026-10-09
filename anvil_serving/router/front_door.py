@@ -1939,6 +1939,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         if body.get("confirm") is not True or body.get("dry_run", True) is not False:
                             raise ValueError("confirmation_required")
                         result = router_admission.consume(body.get("barrier_token"))
+                    elif action == "maintenance-preview":
+                        from .maintenance import preview
+                        result = preview(router_admission)
+                    elif action == "maintenance-readmit":
+                        if body.get('confirm') is not True or body.get('dry_run', True) is not False:
+                            raise ValueError('confirmation_required')
+                        from .maintenance import readmit
+                        result = readmit(router_admission)
                     else:
                         raise ValueError("unsupported_action")
                     self._json(200, {"scope":"router", "action":action, "result":result})

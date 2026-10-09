@@ -142,8 +142,10 @@ def transition_request(action, *, tier_id=None, member_id=None, scope="tier", ba
 
 def _transition_request(action, *, tier_id=None, member_id=None, scope="tier", barrier_token=None, timeout=None, router_url=None,
                         confirm=False, dry_run=True, reason="operator", env=None, _open=None):
-    if action not in ("status", "quiesce", "drain", "readmit", "consume"):
+    if action not in ("status", "quiesce", "drain", "readmit", "consume", "maintenance-preview", "maintenance-readmit"):
         raise ValueError("unsupported transition action")
+    if action.startswith('maintenance-') and scope != 'router':
+        raise ValueError('maintenance requires router scope')
     if scope not in {"tier", "router"} or (scope == "router" and (tier_id is not None or member_id is not None)):
         raise ValueError("router scope excludes tier/member")
     if action == "consume" and scope != "router":
@@ -371,8 +373,15 @@ def cmd_up(
                 if managed and state != 'absent' and observed_project != DEFAULT_COMPOSE_PROJECT:
                     raise ValueError('router_managed_target_mismatch')
                 if managed and state == 'exited':
-                    _managed_container_custody('dead', compose, service, container, _run=_run,
-                                               env_file=env_file, execution_env=execution_env)
+                    before = _container_incarnation(container, _run=_run, stopped=True)
+                    try:
+                        require_router_offline(compose,service,container=container,_run=_run,
+                            env_file=env_file,execution_env=execution_env,_legacy_incarnation=before)
+                        if before != _container_incarnation(container,_run=_run,stopped=True):
+                            raise ValueError('router_legacy_incarnation_changed')
+                    except ValueError:
+                        _managed_container_custody('dead', compose, service, container, _run=_run,
+                                                   env_file=env_file, execution_env=execution_env)
                 require_router_offline(compose, service, container=container, _run=_run,
                                        env_file=env_file, execution_env=execution_env)
             else:
@@ -1483,7 +1492,7 @@ def require_router_drain(container, *, _run=subprocess.run, timeout=30,
     return {**receipt, "container_id":before["container_id"], "image_id":before["image_id"]}
 
 
-def _offline_router_start():
+def _offline_router_start(*, _legacy_incarnation=None):
     """Candidate-native first bootstrap; never consumes predecessor ownership."""
     from .router.config import load_server_config
     from .router.keys import KeyStore
@@ -1498,10 +1507,20 @@ def _offline_router_start():
         usage = UsageStore(store)
         usage.owner_config = settings
         usage.inactive_native_runs(usage._observed_owner(settings.router_owner_id), domain_id=settings.usage_domain_id)
-    return {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+        if _legacy_incarnation is not None:
+            from .router.maintenance import legacy_frontier
+            from .router.container_owner import require
+            from .router.keys import _private_json
+            from pathlib import Path
+            legacy = legacy_frontier(store)
+            require(legacy is not None and db.execute('SELECT count(*) FROM usage_runs').fetchone()==(0,)
+                and _private_json(Path(str(store.path)+'.maintenance-legacy.json'))['receipt']['stopped']==_legacy_incarnation)
+    result = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+    if _legacy_incarnation is not None: result['legacy_receipt_sha256']=legacy
+    return result
 
 
-def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None):
+def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None, _metadata_only=False):
     """Verify the selected service and every active durable-mount consumer."""
     def read(argv):
         result = _run(argv, capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
@@ -1509,7 +1528,12 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             raise ValueError('router_offline_roster_unknown')
         return result.stdout or ''
     from .observability.dashboard.contracts import strict_json
-    rendered = strict_json(read([*_compose_argv(compose, env_file=env_file), 'config', '--format', 'json']).encode())
+    # Acknowledged legacy STOP reads only declared metadata, never resolves a
+    # service/shared dotenv. The actual mount/consumer roster is Docker-native.
+    metadata_flags = ['--no-env-resolution','--no-interpolate'] if _metadata_only else []
+    selected_env = os.devnull if _metadata_only else env_file
+    rendered = strict_json(read([*_compose_argv(compose, env_file=selected_env), 'config',
+                                *metadata_flags, '--format', 'json']).encode())
     if (type(rendered) is not dict or type(rendered.get('services')) is not dict
             or type(rendered.get('volumes', {})) is not dict):
         raise ValueError('router_offline_roster_unknown')
@@ -1583,8 +1607,15 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
     if custody is not None:
         if custody.get('available') is not True:
             raise ValueError('router_offline_target_unknown')
-        _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env,
-                               exclude_oneoff=helper_id)
+        if _metadata_only:
+            ids = read(['docker','ps','--all','--quiet','--no-trunc',
+                '--filter','label=com.docker.compose.project='+DEFAULT_COMPOSE_PROJECT,
+                '--filter','label=com.docker.compose.service='+service]).split()
+            if ids != [custody['container_id']]:
+                raise ValueError('router_offline_target_mismatch')
+        else:
+            _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env,
+                                   exclude_oneoff=helper_id)
     else:
         selected_ids = read([*_compose_argv(compose, env_file=env_file), 'ps', '--all', '--quiet', service]).split()
         if helper_id is not None:
@@ -1651,7 +1682,7 @@ def _container_incarnation(container, *, _run, stopped=False):
     return value
 
 
-def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, execution_env=None, _clients=False, _client_auth=None):
+def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, execution_env=None, _clients=False, _client_auth=None, _keys=False):
     """Host after-check completes while the native helper still holds its fences.
 
     This bounded pipe is native operator authority, never an inference endpoint.
@@ -1676,6 +1707,9 @@ def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, executio
         if (type(pending) is not dict or set(pending) != {'pending_sha256', 'run_id'}
                 or type(pending['pending_sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', pending['pending_sha256'])):
             raise ValueError('router_container_custody_unknown')
+        if _keys and (pending['pending_sha256'] != before['request_sha256']
+                      or pending['run_id'] != before['config_sha256']):
+            raise ValueError('router_key_binding_changed')
         if _clients and (pending['pending_sha256'] != before['inputs']['job_sha256']
                          or pending['run_id'] != before['inputs']['declaration_sha256']):
             raise ValueError('router_client_binding_changed')
@@ -1713,7 +1747,19 @@ def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, executio
                                     for k in ('clients_count', 'recipients_staged')))
         if _clients and not client_final:
             raise ValueError('router_client_worker_refused')
-        if (not client_final and final != {'finalized': 'live', 'run_id': pending['run_id']}
+        key_final = (_keys and type(final) is dict and set(final) == {'finalized', 'run_id', 'result'}
+                     and final['finalized'] == 'keys' and final['run_id'] == pending['run_id'])
+        if key_final:
+            from .router.keys import KeyStore
+            value = final['result']
+            if (type(value) is not dict or set(value) != {'key_id', 'name', 'models', 'paths', 'rpm', 'created_at', 'expires_at', 'revoked_at'}):
+                raise ValueError('router_key_worker_refused')
+            KeyStore._metadata(tuple(value[k] for k in ('key_id', 'name', 'models', 'paths', 'rpm', 'created_at', 'expires_at', 'revoked_at'))[:2]
+                               + (json.dumps(value['models']), json.dumps(value['paths']))
+                               + tuple(value[k] for k in ('rpm', 'created_at', 'expires_at', 'revoked_at')))
+        if _keys and not key_final:
+            raise ValueError('router_key_worker_refused')
+        if (not client_final and not key_final and final != {'finalized': 'live', 'run_id': pending['run_id']}
                 and final != {'finalized': 'dead', 'run_id': pending['run_id']}):
             raise ValueError('router_container_custody_unknown')
         if process.wait(timeout=10):
@@ -1783,7 +1829,7 @@ def _offline_compose_run(compose, service, container, code, *, _run, env_file=No
 
 
 def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _run=subprocess.run,
-                           env_file=None, execution_env=None):
+                           env_file=None, execution_env=None, _legacy_incarnation=None):
     """Offline first start under the caller's lifecycle lock, not a drain proof.
 
     Probe locks end before launch. Actual managed startup reacquires its producer
@@ -1791,10 +1837,16 @@ def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _ru
     """
     try:
         code = ('import json; from anvil_serving.router_manage import _offline_router_start; '
-                'print(json.dumps(_offline_router_start(),sort_keys=True))')
+                f'print(json.dumps(_offline_router_start(_legacy_incarnation={_legacy_incarnation!r}),sort_keys=True))')
         receipt = _offline_compose_run(compose, service, container, code, _run=_run,
                                       env_file=env_file, execution_env=execution_env)
-        if receipt != {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}:
+        expected = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+        if _legacy_incarnation is not None:
+            legacy = receipt.get('legacy_receipt_sha256') if type(receipt) is dict else None
+            if type(legacy) is not str or not re.fullmatch('[0-9a-f]{64}',legacy):
+                raise ValueError('router_legacy_custody_refused')
+            expected['legacy_receipt_sha256']=legacy
+        if receipt != expected:
             raise ValueError('router_offline_custody_refused')
         return receipt
     except (OSError, subprocess.SubprocessError, ValueError, TypeError, KeyError, AttributeError):
@@ -1802,27 +1854,44 @@ def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _ru
 
 
 @_serving_authority_mutation
-def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subprocess.run):
+def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subprocess.run, journal_mode=None, maintenance_receipt=None):
     from pathlib import PurePosixPath
     target = PurePosixPath(backup_out)
     if not target.is_relative_to('/var/lib/anvil-serving/router-keys') or '..' in target.parts:
         raise ValueError('router_offline_backup_must_be_durable')
     execution_env = _compose_execution_env(compose, env_file)
+    if journal_mode not in {None, 'WAL'}:
+        raise ValueError('router_offline_storage_unsupported')
+    legacy = None
+    if maintenance_receipt is not None:
+        from .control_plane.mcp.auth_file import read_private_auth_file
+        from .observability.dashboard.contracts import strict_json
+        from .router.maintenance import authorization, validate_legacy
+        legacy = validate_legacy(strict_json(read_private_auth_file(maintenance_receipt,max_bytes=16384)))
+        authorization(legacy['authorization'])
+        if _container_incarnation(DEFAULT_CONTAINER,_run=_run,stopped=True) != legacy['stopped']:
+            raise ValueError('router_legacy_incarnation_changed')
     code = ('import json; from anvil_serving.router.keys import _migrate_offline; '
-            f'print(json.dumps(_migrate_offline({DEFAULT_INSTALLED_CONFIG!r},{backup_out!r}),sort_keys=True))')
+            f'print(json.dumps(_migrate_offline({DEFAULT_INSTALLED_CONFIG!r},{backup_out!r},journal_mode={journal_mode!r},_legacy_receipt={legacy!r},_managed_worker=True),sort_keys=True))')
     result = _offline_compose_run(compose, DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
                                  env_file=env_file, execution_env=execution_env)
-    if (type(result) is not dict or set(result) != {'schema_version', 'migrated', 'backup_schema_version', 'offline'}
+    if maintenance_receipt is not None and _container_incarnation(DEFAULT_CONTAINER,_run=_run,stopped=True) != legacy['stopped']:
+        raise ValueError('router_legacy_incarnation_changed')
+    if (type(result) is not dict or set(result) != {'schema_version', 'migrated', 'backup_schema_version', 'offline'} | ({'journal_mode', 'checkpoint_frames'} if journal_mode else set()) | ({'legacy_receipt_sha256'} if legacy else set())
             or result['schema_version'] != 3 or type(result['migrated']) is not bool
-            or result['backup_schema_version'] not in {1, 2, 3} or result['offline'] is not True):
+            or result['backup_schema_version'] not in {1, 2, 3} or result['offline'] is not True
+            or journal_mode and (result['journal_mode'] != 'wal' or type(result['checkpoint_frames']) is not int
+                                or not 0 <= result['checkpoint_frames'] < 2**53)):
         raise ValueError('router_offline_migration_refused')
+    if legacy is not None:
+        from .router.container_owner import digest
+        if result['legacy_receipt_sha256'] != digest(legacy):
+            raise ValueError('router_legacy_receipt_changed')
     return result
 
-def _client_worker_inputs(roster, namespace, declaration_sha, *, _run=subprocess.run):
-    from pathlib import Path
-    from .client_identity import _read, _load, _require, WORKER_ROOT, WORKER_SCHEMA, canonical
-    from .control_plane.mcp.auth_file import read_private_auth_file
-
+def _bounded_offline_worker(roster):
+    """The fixed inert, resource-bounded native worker envelope."""
+    from .client_identity import _require
     rendered = roster['rendered']
     selected = rendered['services'][DEFAULT_SERVICE]
     memory = selected.get('mem_limit')
@@ -1843,6 +1912,78 @@ def _client_worker_inputs(roster, namespace, declaration_sha, *, _run=subprocess
              and selected.get('entrypoint') == ['/bin/false'] and selected.get('command') == [])
     mounts = {m['target']: m for m in selected['volumes']}
     _require(len(mounts) == len(selected['volumes']))
+    return selected, mounts
+
+
+@_serving_authority_mutation
+def create_key_offline(compose, request, *, _run=subprocess.run, _popen=subprocess.Popen):
+    """Issue one unique narrow key through the existing native custody pipe."""
+    import uuid
+    from pathlib import Path
+    from .client_identity import _require
+    from .router.config import load_server_config
+    from .router.keys import _secure_directory
+    from .control_plane.mcp.auth_file import read_private_auth_file
+    _require(type(request) is dict and set(request) == {'name', 'model', 'path', 'rpm', 'expires_days', 'out'})
+    output = Path(request['out'])
+    _require(output.is_absolute() and '..' not in output.parts and len(output.parent.parts) >= 6)
+    helper = 'router-keys-' + uuid.uuid4().hex
+    def observation():
+        roster = _offline_compose_roster(compose, DEFAULT_SERVICE, DEFAULT_CONTAINER,
+                                        _run=_run, helper_container=helper)
+        selected, mounts = _bounded_offline_worker(roster)
+        _require(set(mounts) == {DEFAULT_INSTALLED_CONFIG, '/var/lib/anvil-serving/router-keys', str(output.parent)})
+        config = mounts[DEFAULT_INSTALLED_CONFIG]
+        volume = mounts['/var/lib/anvil-serving/router-keys']
+        material = mounts[str(output.parent)]
+        _require(config['type'] == 'bind' and config.get('read_only') is True
+                 and volume['type'] == 'volume' and volume.get('read_only', False) is False
+                 and material['type'] == 'bind' and material['source'] == str(output.parent)
+                 and material.get('read_only', False) is False)
+        _secure_directory(output.parent, create=False)
+        server = load_server_config(config['source'])
+        _require(Path(server.api_keys_path).is_relative_to('/var/lib/anvil-serving/router-keys'))
+        raw = read_private_auth_file(config['source'], max_bytes=2*1024**2)
+        image = _run(['docker', 'image', 'inspect', '--format', '{{.Id}}', selected['image']],
+                     capture_output=True, text=True, timeout=5)
+        _require(image.returncode == 0 and re.fullmatch('sha256:[a-f0-9]{64}', image.stdout.strip()))
+        actual = []
+        for target, mount in mounts.items():
+            source = roster['rendered']['volumes'][mount['source']]['name'] if mount['type'] == 'volume' else mount['source']
+            actual.append((mount['type'], source, target, mount.get('read_only', False)))
+        custody = _restart_custody(helper, _run)
+        if custody.get('available') is True:
+            _require(custody['image_id'] == image.stdout.strip()
+                     and sorted((m['type'], m['name'] if m['type'] == 'volume' else m['source'],
+                                 m['destination'], m['read_only']) for m in custody['mounts']) == sorted(actual))
+        return {'roster': roster, 'image_id': image.stdout.strip(), 'mounts': sorted(actual),
+                'config_sha256': hashlib.sha256(raw).hexdigest(),
+                'request_sha256': hashlib.sha256(json.dumps(request, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()}
+    original = observation()
+    code = ('from anvil_serving.router.keys import _create_offline; '
+            f'_create_offline({request!r})')
+    argv = [*_compose_argv(compose), 'run', '--rm', '--no-deps', '-T', '--name', helper,
+            '--entrypoint', 'python', DEFAULT_SERVICE, '-c', code]
+    try:
+        return _native_owner_commit(argv, observation, _popen=_popen, _keys=True)['result']
+    finally:
+        state, project = _container_compose_project(helper, _run=_run)
+        if state != 'absent':
+            owned = _restart_custody(helper, _run)
+            _require(project == DEFAULT_COMPOSE_PROJECT and owned.get('available') is True
+                     and owned['compose_service'] == DEFAULT_SERVICE and owned['image_id'] == original['image_id'])
+            _run(['docker', 'rm', '--force', owned['container_id']], capture_output=True, text=True, timeout=10)
+            _require(docker_state(owned['container_id'], _run=_run) == 'absent'
+                     and _container_compose_project(helper, _run=_run)[0] == 'absent')
+
+
+def _client_worker_inputs(roster, namespace, declaration_sha, *, _run=subprocess.run):
+    from pathlib import Path
+    from .client_identity import _read, _load, _require, WORKER_ROOT, WORKER_SCHEMA, canonical
+    from .control_plane.mcp.auth_file import read_private_auth_file
+
+    rendered = roster['rendered']
+    selected, mounts = _bounded_offline_worker(roster)
     for target in (str(WORKER_ROOT / 'worker.json'), str(WORKER_ROOT / 'client-identity.json')):
         _require(target in mounts and mounts[target]['type'] == 'bind' and mounts[target].get('read_only') is True)
     job = _read(mounts[str(WORKER_ROOT / 'worker.json')]['source'])

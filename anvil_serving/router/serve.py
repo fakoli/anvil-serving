@@ -2150,7 +2150,8 @@ def build_server(
         if memory is not None:
             # Remote memory may retain inference beyond the outer HTTP result.
             # No native owner readback is declared by this transport contract.
-            router_owner.observe("memory", lambda:(0, True))
+            from .maintenance import REMOTE_MEMORY_TERMINAL_UNKNOWN
+            router_owner.observe("memory", lambda:(0, REMOTE_MEMORY_TERMINAL_UNKNOWN))
         if media_worker is not None:
             router_owner.observe("media", media_worker.drain_readback)
         router_owner._assembling = False

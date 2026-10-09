@@ -41,6 +41,13 @@ def commands() -> CommandNode:
                                            ("install", "Enroll owned keys and install protected feature bindings."),
                                            ("readback", "Independently read installed feature bindings and current key owners."))),
             ),
+            _node("maintenance", "Preview or execute one protected acknowledged router maintenance operation.",
+                handler=_handler("anvil_serving.router.maintenance",attribute="dispatch",forward_confirm_flag=True),
+                mutation_class="mutate",execution_policy="offline",
+                options=(_option("--config",summary="Protected exact two-phase maintenance declaration.",value_name="PATH"),
+                         _option("--preview-out",summary="Absent protected native preview file.",value_name="PATH"),
+                         _option("--confirm",summary="Apply only the previewed one-time acknowledgement.",requires_confirmation=True)),
+                docs_anchor="docs/cli/router.md#acknowledged-router-maintenance"),
             _node(
                 "keys",
                 "Manage local device API keys and inspect bounded access history.",
@@ -48,7 +55,7 @@ def commands() -> CommandNode:
                     _node(
                         action, summary,
                         handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,),
-                                         forward_confirm_flag=action == "migrate"),
+                                         forward_confirm_flag=action in {"migrate", "create"}),
                         mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore", "migrate"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
@@ -64,8 +71,13 @@ def commands() -> CommandNode:
                             _option("--confirm", summary="Permit snapshot and explicit schema migration.", requires_confirmation=True),
                             _option("--compose", summary="Selected stopped router Compose service; uses mounted config and durable backup path.", value_name="PATH"),
                             _option("--env-file", summary="Explicit dedicated Compose environment file.", value_name="PATH"),
+                            _option("--journal-mode", summary="Explicit offline WAL conversion; requires the fixed native SQLite runtime.", value_name="WAL"),
+                            _option("--maintenance-receipt", summary="Protected exact legacy-stop receipt to retain unknown pre-accounting coverage.", value_name="PATH"),
                         )),
                         ("create", "Create a scoped device key and save its secret once to a protected file.", (
+                            _option("--compose", summary="Selected bounded offline native issuance worker.", value_name="PATH"),
+                            _option("--offline", summary="Issue under exclusive producer/writer custody in the stopped native store."),
+                            _option("--confirm", summary="Confirm offline unique-key issuance.", requires_confirmation=True),
                             _option("--name", summary="Device label (required).", value_name="NAME"),
                             _option("--model", summary="Allowed alias or purpose-model name; repeat for multiple grants (required).", value_name="MODEL"),
                             _option("--path", summary="Allowed inference endpoint; repeat for multiple grants (required).", value_name="PATH"),

@@ -100,9 +100,18 @@ def test_duplicate_json_protected_files_and_absent_destination(tmp_path, capsys)
     config.write_text(original[:-1] + ',"schema":"duplicate"}')
     assert command(capsys, 'preview', config)[0] == 2
     config.write_text(original)
-    os.chmod(config, 0o644)
-    assert command(capsys, 'preview', config)[0] == 2
-    os.chmod(config, 0o600)
+    if os.name == 'nt':
+        from tests.bootstrap_windows_fixtures import WindowsFixtureTree
+        tree = WindowsFixtureTree(tmp_path)
+        tree.owner_readonly_with_everyone_write(config)
+        try:
+            assert command(capsys, 'preview', config)[0] == 2
+        finally:
+            tree.restore_full_control(config)
+    else:
+        os.chmod(config, 0o644)
+        assert command(capsys, 'preview', config)[0] == 2
+        os.chmod(config, 0o600)
     link = config.parent / 'hardlink.json'; os.link(config, link)
     assert command(capsys, 'preview', config)[0] == 2
     link.unlink()

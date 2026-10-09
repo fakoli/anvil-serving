@@ -673,8 +673,9 @@ Local inactive-run recovery does not prove remote execution completed. Configure
 memory currently has no terminal owner readback, so its observer remains UNKNOWN:
 local reconciliation can finish while successor readmission and managed close
 stay held. An external pause or bounded interruption does not supply a native
-remote terminal contract. This configured topology cannot complete later restart
-qualification/readmission with the present capability. These commands do not
+remote terminal contract. Ordinary readmission for this topology remains held. A separately authorized
+one-time native acknowledgement is described below; it accepts uncertainty,
+not terminal remote completion. These commands do not
 disable memory, erase closure or turn UNKNOWN into zero.
 
 Router restart/reload/recreate/down/config install require the actual old
@@ -686,3 +687,96 @@ a stale old-owner token never automatically opens a replacement process. Current
 remote memory transport supplies no native retained-inference drain readback and
 therefore holds router replacement while configured. Ambiguous media submission
 also remains HOLD even if ordinary recovery marks the local job failed.
+
+
+## Acknowledged router maintenance
+
+```bash
+anvil-serving router maintenance --config maintenance.json --preview-out preview.json
+anvil-serving router maintenance --config maintenance.json --confirm
+```
+
+Installation prepares the protected declaration and authorization from the
+explicit human decision, final artifact identities and the fresh native preview.
+The declaration names the exact Compose profile and its SHA-256, the protected
+authorization, and an absent protected receipt destination. Preview does not
+stop or reopen the router. Confirmation requires the exact preview digest and a
+short, unexpired one-time operation identity. Credentials never appear in argv
+or output.
+
+The first `legacy-stop` phase binds the actual admitted legacy profile, mounted
+non-secret config, container/image/daemon/start identity and consumer roster.
+Metadata rendering explicitly disables project dotenv and service env-file
+resolution. It acknowledges UNKNOWN old submissions and remote work; it does
+not claim submitters were paused or drained. A protected pending acknowledgement
+precedes the exact container stop. Independently verified stopped identity
+establishes the ingress barrier before offline storage operations. Existing
+non-secret legacy config permissions are preserved.
+
+The candidate can then import that stopped receipt with its newest exclusive
+rollback snapshot and schema migration:
+
+```bash
+anvil-serving router keys migrate --compose router-worker.json --backup-out /var/lib/anvil-serving/router-keys/pre-accounting.sqlite3 --maintenance-receipt legacy-receipt.json --offline --confirm
+```
+
+Import requires actual producer and writer exclusion, the same stopped
+incarnation, the same protected store, and no retained usage runs. Unanchored or
+unresolved retained rows remain HOLD. It never retrofits a legacy run, anchor,
+closure or terminal receipt. The supported cold-start probe verifies this
+import before a fresh managed owner registers CLOSED and finalizes its live
+container anchor.
+
+The separate `successor-readmit` authorization binds that new generation,
+owner/domain/store/gate, config/roster/policy revisions, live anchor and native
+observation. Every local request, delivery, worker and writer must be terminal;
+owner, storage, callback and untyped uncertainty all refuse. Only the native
+remote-memory terminal gap is eligible. The protected operator helper publishes
+permission over private stdin; the HTTP endpoint cannot mint it. The owner
+rechecks the preview under real producer/writer fences and durably consumes the
+operation before opening. Replayed, expired or changed inputs refuse. Failure
+leaves the gate closed and consumes any already-published acknowledgement.
+Crash/restart creates another CLOSED generation without inheriting permission.
+
+Bind accounting and protected metrics in the final configuration before this
+first CLOSED startup. Scoped admin/nonadmin/datasource isolation and metadata
+readback can be checked while inference stays closed; let those counted reads
+finish before the final maintenance preview. Status, health and retained query
+coverage keep acknowledged legacy and remote uncertainty visible. Committed
+rows and interruption metadata remain intact. Preserve the named store volume,
+including protected custody and acknowledgement sidecars, for rollback; never
+replace newer committed state with an older snapshot.
+
+## Fixed native SQLite storage
+
+The opt-in router runtime uses a verified fixed SQLite build and its native
+`SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE` API. All file openers verify the runtime before
+file SQL, guard retained sidecars, and retain FULL durability. Ordinary DELETE
+stores stay unchanged. Explicit offline conversion uses the same custody and
+newest rollback snapshot:
+
+```bash
+anvil-serving router keys migrate --compose router-worker.json --backup-out /var/lib/anvil-serving/router-keys/pre-wal.sqlite3 --journal-mode WAL --offline --confirm
+```
+
+WAL conversion binds a protected mode record to the actual database inode. A
+pending or unsupported policy refuses rather than being guessed or downgraded.
+Read leases exclude conversion; the native helper can read through only its
+own still-held exclusive gate. Default checkpoint behavior stays enabled.
+A held reader can defer checkpoint progress. The existing 64 MiB ceiling
+refuses new mutations while allowing a consistent newest backup and explicit
+offline checkpoint under custody. Backups are independent DELETE snapshots;
+close never substitutes for remote completion or drops FULL durability.
+The runtime and WAL mode alone do not prove the durable latency gate.
+
+Offline unique client credentials can be issued into the same stopped named
+store through the bounded selected worker:
+
+```bash
+anvil-serving router keys create --compose router-key-issuance.json --offline --confirm --name client --model llm.primary --path /v1/chat/completions --out /protected/clients/client-token
+```
+
+The output is exclusive, owner-only and never overwritten. Public output lists
+only the new key ID and grants. Enrollment and fresh native authorization use
+the existing namespace worker with the same KeyStore and current owner/grant
+CAS; host processes never open the Docker volume as a second store.

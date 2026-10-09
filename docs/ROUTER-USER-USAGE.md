@@ -18,7 +18,10 @@ probe releases its locks before launch. Retained matching native ownership uses
 physically verified local run reconciliation and a new closed generation; only
 the assembled owner readmit gate can reopen it. Offline migration cannot clear
 retained ownership. Configured remote memory remains UNKNOWN, so local recovery
-does not unlock restart qualification or readmission for that topology. See
+does not unlock ordinary restart qualification or readmission for that topology.
+A separately approved one-time native maintenance acknowledgement can accept
+only the typed remote terminal uncertainty after all local work has finished.
+It preserves legacy/history UNKNOWN and does not create standing permission. See
 [the tested migration and cold-start commands](cli/router.md).
 
 The approved router-user-usage PRD controls R001-R020, F001-F005 and its retention

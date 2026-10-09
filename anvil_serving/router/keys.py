@@ -37,6 +37,7 @@ from .. import operator_config
 _KEY_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _MAX_KEYS = 1024
 _MAX_AUDIT = 10_000
+_MAX_WAL_BYTES = 64 * 1024**2
 _SUPPORTED_VERSIONS = (1, 2, 3)
 _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
@@ -143,7 +144,7 @@ def _windows_open_verification_file(path: Path) -> int:
         raise
 
 
-def _windows_private_path(path: Path, *, directory: bool) -> None:
+def _windows_private_path(path: Path, *, directory: bool, header=False):
     """Validate the held Windows object with the shared DACL policy."""
     try:
         descriptor = (
@@ -155,6 +156,7 @@ def _windows_private_path(path: Path, *, directory: bool) -> None:
             if is_directory != directory or (not directory and links != 1):
                 raise KeyStoreError("credential store path is unsafe")
             auth_file._require_windows_private_descriptor(descriptor)
+            return os.read(descriptor, 100) if header else None
         finally:
             os.close(descriptor)
     except KeyStoreError:
@@ -163,7 +165,7 @@ def _windows_private_path(path: Path, *, directory: bool) -> None:
         raise KeyStoreError("credential store path is not private") from None
 
 
-def _posix_private_path(path: Path, *, directory: bool) -> None:
+def _posix_private_path(path: Path, *, directory: bool, header=False):
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     if directory:
         flags |= getattr(os, "O_DIRECTORY", 0)
@@ -176,20 +178,20 @@ def _posix_private_path(path: Path, *, directory: bool) -> None:
                     or stat.S_ISDIR(info.st_mode) != directory or info.st_uid != os.geteuid()
                     or info.st_mode & 0o077 or (not directory and info.st_nlink != 1)):
                 raise KeyStoreError("credential store path must be owner-only")
+            return os.read(descriptor, 100) if header else None
         finally:
             os.close(descriptor)
     except KeyStoreError:
         raise
-    except (AttributeError, OSError, ValueError):
-        raise KeyStoreError("credential store path is unavailable") from None
+    except (AttributeError, OSError, ValueError) as exc:
+        raise KeyStoreError("credential store path is unavailable") from exc
 
 
-def _private_path(path: Path, *, directory: bool) -> None:
+def _private_path(path: Path, *, directory: bool, header=False):
     _safe_ancestors(path)
     if _is_windows():
-        _windows_private_path(path, directory=directory)
-    else:
-        _posix_private_path(path, directory=directory)
+        return _windows_private_path(path, directory=directory, header=header)
+    return _posix_private_path(path, directory=directory, header=header)
 
 
 def _private_created_descriptor(descriptor: int) -> None:
@@ -224,7 +226,7 @@ def _secure_directory(path: Path, *, create: bool) -> None:
     _private_path(path, directory=True)
 
 
-def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None) -> None:
+def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None, header=False):
     _secure_directory(path.parent, create=False)
     try:
         info = path.lstat()
@@ -238,7 +240,70 @@ def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | Non
         raise KeyStoreError("credential store file is unsafe")
     if identity is not None and not os.path.samestat(info, identity):
         raise KeyStoreError("credential store file changed during creation")
-    _private_path(path, directory=False)
+    return _private_path(path, directory=False, header=header)
+
+
+def _secure_sidecars(path: Path) -> int:
+    """Guard retained recovery inputs; tolerate only a proven absent leaf.
+
+    SQLite legitimately removes transient journal/SHM files at close. Missing
+    parents, unsafe retained objects and every other validation failure refuse.
+    """
+    _secure_directory(path.parent, create=False)
+    parent = path.parent.lstat()
+    wal_bytes = 0
+    for suffix in ('-journal', '-wal', '-shm'):
+        leaf = Path(str(path) + suffix)
+        if not os.path.lexists(leaf):
+            continue
+        try:
+            _secure_database(leaf, exists=False)
+            if suffix == '-wal':
+                try:
+                    wal_bytes = leaf.lstat().st_size
+                except FileNotFoundError:
+                    pass
+        except KeyStoreError as exc:
+            cause = exc.__cause__
+            if not (isinstance(cause, FileNotFoundError) and cause.filename == str(leaf)
+                    and not os.path.lexists(leaf)):
+                raise
+            _secure_directory(path.parent, create=False)
+            if not os.path.samestat(parent, path.parent.lstat()) or os.path.lexists(leaf):
+                raise KeyStoreError('credential sidecar changed') from exc
+    return wal_bytes
+
+
+def _wal_runtime() -> int:
+    """Require the fixed linked library and real native no-close-checkpoint API."""
+    version = sqlite3.sqlite_version_info
+    flag = getattr(sqlite3, 'SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE', None)
+    if (version < (3, 51, 3) and version not in {(3, 44, 6), (3, 50, 7)}
+            or type(flag) is not int or not hasattr(sqlite3.Connection, 'setconfig')
+            or not hasattr(sqlite3.Connection, 'getconfig')):
+        raise KeyStoreError('credential WAL runtime is unsupported')
+    return flag
+
+
+def _storage_policy(path: Path):
+    marker = Path(str(path) + '.sqlite-policy')
+    if not os.path.lexists(marker):
+        return None
+    value = _private_json(marker)
+    info = path.stat()
+    if (type(value) is not dict or set(value) != {'schema', 'store_identity', 'journal_mode'}
+            or value['schema'] != 'router-sqlite-policy/v1' or value['journal_mode'] != 'wal'
+            or type(value['store_identity']) is not list
+            or any(type(i) is not int for i in value['store_identity'])
+            or value['store_identity'] != [info.st_dev, info.st_ino]):
+        raise KeyStoreError('credential storage policy differs')
+    return value
+
+
+def _database_wal(header) -> bool:
+    if len(header) != 100 or header[:16] != b'SQLite format 3\x00' or header[18:20] not in (b'\x01\x01', b'\x02\x02'):
+        raise KeyStoreError('credential store header is invalid')
+    return header[18:20] == b'\x02\x02'
 
 
 def _unlink_created(path: Path, created: os.stat_result) -> None:
@@ -455,13 +520,16 @@ class _WriterConnection(sqlite3.Connection):
 class KeyStore:
     """A small SQLite-backed device-key store with fail-closed reads."""
 
-    def __init__(self, path: str | os.PathLike[str], *, owner_check=None) -> None:
+    def __init__(self, path: str | os.PathLike[str], *, owner_check=None, _defer_open=False) -> None:
         self.owner_check = owner_check
         self._writer_condition = threading.Condition()
         self._writer_queue = deque()
         self._writer_context = threading.local()
         self.path = Path(path).expanduser().absolute()
         _secure_database(self.path, exists=True)
+        self.version = None
+        if _defer_open:
+            return  # Only the explicit offline conversion opens after both fences.
         try:
             with self._connect() as connection:
                 version = connection.execute("PRAGMA user_version").fetchone()[0]
@@ -549,7 +617,7 @@ class KeyStore:
             permit.release()
 
     @contextmanager
-    def _offline_custody(self, server, *, producer_descriptor=None, allow_retained=False):
+    def _offline_custody(self, server, *, producer_descriptor=None, allow_retained=False, _wal_conversion=False):
         """Own protected storage with actual producer and writer exclusion.
 
         The operator separately holds legacy producers stopped. These fences
@@ -592,18 +660,23 @@ class KeyStore:
                             or binding['state_path'] != str(state)
                             or tuple(binding['gate_identity']) != (gate_identity.st_dev, gate_identity.st_ino)):
                         raise KeyStoreError('retained router ownership differs')
+                    from .container_owner import closure
+                    closure(self)  # Retained proof must include a valid durable closure.
                 elif gate_bound:
                     raise KeyStoreError('retained router ownership is unavailable')
             elif gate_bound or os.path.lexists(state) or os.path.lexists(marker):
                 raise KeyStoreError('retained router ownership requires transfer')
-            with self._connect() as db:
-                if not allow_retained and self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
-                    raise KeyStoreError('retained router runs require owner reconciliation')
             self._writer_context.offline_custody = True
+            self._writer_context.wal_conversion = _wal_conversion
             try:
+                with self._connect() as db:
+                    self.version = db.execute('PRAGMA user_version').fetchone()[0]
+                    if not allow_retained and self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
+                        raise KeyStoreError('retained router runs require owner reconciliation')
                 yield
             finally:
                 del self._writer_context.offline_custody
+                del self._writer_context.wal_conversion
 
     @contextmanager
     def _external_ownership(self):
@@ -675,9 +748,75 @@ class KeyStore:
                     self._writer_condition.notify_all()
 
     @contextmanager
+    def _reader_custody(self):
+        """Read leases exclude mode conversion without granting admission."""
+        if os.name != 'posix' or getattr(self._writer_context, 'offline_custody', False):
+            yield
+            return
+        gate = Path(str(self.path) + '.router-writers.lock')
+        native = getattr(self._writer_context,'native_reader_custody',None)
+        if native is not None:
+            descriptor, gate_identity, store_identity = native
+            if not os.path.samestat(os.fstat(descriptor),gate_identity):
+                raise KeyStoreError('native reader custody changed')
+            _secure_database(gate,exists=True,identity=gate_identity)
+            _secure_database(self.path,exists=True,identity=store_identity)
+            yield
+            return
+        import fcntl
+        if not os.path.lexists(gate):
+            if os.path.lexists(Path(str(self.path) + '.sqlite-policy')) or os.path.lexists(Path(str(self.path) + '.router-owner')):
+                raise KeyStoreError('credential reader custody unavailable')
+            # Standalone DELETE snapshots stay immutable. Legacy unbound
+            # consumers require the separate physical maintenance hold before
+            # the offline owner creates the gate and opts into WAL.
+            yield
+            return
+        _secure_database(gate, exists=True)
+        descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            _private_created_descriptor(descriptor)
+            identity = os.fstat(descriptor)
+            _secure_database(gate, exists=True, identity=identity)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise KeyStoreError('credential storage custody is busy') from None
+            marker = Path(str(self.path) + '.router-owner')
+            if os.path.lexists(marker):
+                binding = _private_json(marker)
+                _validate_store_binding(binding, self.path)
+                if binding['gate_identity'] != [identity.st_dev, identity.st_ino]:
+                    raise KeyStoreError('credential reader custody changed')
+            elif os.read(descriptor, 64):
+                raise KeyStoreError('credential reader custody unavailable')
+            yield
+            _secure_database(gate, exists=True, identity=identity)
+        finally:
+            os.close(descriptor)
+
+    @contextmanager
     def _connect(self):
-        _secure_database(self.path, exists=True)
+        with self._reader_custody(), self._open_connection() as connection:
+            yield connection
+
+    @contextmanager
+    def _open_connection(self):
+        header = _secure_database(self.path, exists=True, header=True)
+        wal_bytes = _secure_sidecars(self.path)  # Before SQLite may recover a hot journal.
+        policy = _storage_policy(self.path)
+        converting = bool(getattr(self._writer_context, 'wal_conversion', False)
+                          and getattr(self._writer_context, 'offline_custody', False))
+        wal = _database_wal(header)
+        if not converting and wal != (policy is not None):
+            raise KeyStoreError('credential storage requires offline conversion')
+        flag = _wal_runtime() if policy is not None or converting else None
         deadline = getattr(self._writer_context, "deadline", None)
+        if (deadline is not None and policy is not None and wal_bytes > _MAX_WAL_BYTES
+                and not getattr(self._writer_context, 'offline_custody', False)):
+            # Refuse new owned mutations, preserving read/consistent backup and
+            # the explicitly fenced maintenance checkpoint recovery path.
+            raise KeyStoreError('credential WAL capacity requires offline maintenance')
         def remaining():
             value = 1.0 if deadline is None else deadline - time.monotonic()
             if value <= 0:
@@ -687,14 +826,25 @@ class KeyStore:
                                      factory=_WriterConnection)
         connection.writer_deadline = deadline
         try:
+            if flag is not None:
+                connection.setconfig(flag, True)
+                if connection.getconfig(flag) is not True:
+                    raise KeyStoreError('credential native checkpoint policy differs')
             def bound_wait():
                 connection.execute("PRAGMA busy_timeout=" + str(max(1, int(remaining() * 1000))))
             bound_wait()
             connection.execute("PRAGMA synchronous=FULL")
+            if flag is not None:
+                if (connection.execute('PRAGMA synchronous').fetchone() != (2,)
+                        or connection.execute('PRAGMA wal_autocheckpoint').fetchone() != (1000,)):
+                    raise KeyStoreError('credential durability policy differs')
             bound_wait()
             if connection.execute("PRAGMA user_version").fetchone()[0] not in _SUPPORTED_VERSIONS:
                 raise KeyStoreError("credential store format is unsupported")
             bound_wait()  # Queue/setup time cannot become a second SQLite wait.
+            _secure_sidecars(self.path)
+            if _storage_policy(self.path) != policy:
+                raise KeyStoreError('credential storage policy changed')
             yield connection
         finally:
             connection.close()
@@ -1079,7 +1229,12 @@ def _parser() -> argparse.ArgumentParser:
             item.add_argument('--confirm', action='store_true')
             item.add_argument('--compose', metavar='PATH')
             item.add_argument('--env-file', metavar='PATH')
+            item.add_argument('--journal-mode', choices=('WAL',))
+            item.add_argument('--maintenance-receipt', metavar='PATH')
         elif action == "create":
+            item.add_argument("--compose", metavar="PATH")
+            item.add_argument("--offline", action="store_true")
+            item.add_argument("--confirm", action="store_true")
             item.add_argument("--name", required=True)
             item.add_argument("--model", action="append", required=True)
             item.add_argument("--path", action="append", required=True)
@@ -1145,9 +1300,20 @@ def dispatch(argv: list[str] | None = None) -> int:
                 if args.config:
                     raise KeyStoreError('Compose migration uses its mounted router config')
                 from ..router_manage import migrate_router_offline
-                result = migrate_router_offline(args.compose, args.backup_out, env_file=args.env_file)
+                result = migrate_router_offline(args.compose, args.backup_out, env_file=args.env_file,
+                                               journal_mode=args.journal_mode, maintenance_receipt=args.maintenance_receipt)
             else:
-                result = _migrate_offline(args.config, args.backup_out)
+                if args.maintenance_receipt:
+                    raise KeyStoreError('legacy receipt requires verified native Compose custody')
+                result = _migrate_offline(args.config, args.backup_out, journal_mode=args.journal_mode)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.action == 'create' and (args.compose or args.offline or args.confirm):
+            if not args.compose or not args.offline or not args.confirm or args.container or args.config:
+                raise KeyStoreError('explicit Compose offline issuance is required')
+            from ..router_manage import create_key_offline
+            result = create_key_offline(args.compose, {k: getattr(args, k) for k in
+                ('name', 'model', 'path', 'rpm', 'expires_days', 'out')})
             print(json.dumps(result, sort_keys=True))
             return 0
         if args.container:
@@ -1196,17 +1362,114 @@ def dispatch(argv: list[str] | None = None) -> int:
         return 2
 
 
-def _migrate_offline(config_path, backup_out):
+def _migrate_offline(config_path, backup_out, *, journal_mode=None, _legacy_receipt=None, _managed_worker=False):
     from .config import load_server_config
     from .serve import resolve_config_path
     from .usage_store import UsageStore
     from ..serves import _switch_role_lock
     server = load_server_config(resolve_config_path(config_path))
-    store = _store_from_config(config_path, initialize=False)
-    with _switch_role_lock('promotion'), store._offline_custody(server):
+    if journal_mode not in {None, 'WAL'}:
+        raise KeyStoreError('unsupported offline storage policy')
+    if journal_mode == 'WAL':
+        _wal_runtime()  # Refuse before any file SQL on an unsupported binary.
+    store = KeyStore(server.api_keys_path, _defer_open=journal_mode == 'WAL')
+    # The fixed Compose caller continuously owns the host lifecycle lock. Its
+    # native worker needs only the independent real producer/writer exclusion,
+    # not a second unrelated lock beneath a container-local HOME.
+    from contextlib import nullcontext
+    role = nullcontext() if _managed_worker else _switch_role_lock('promotion')
+    with role, store._offline_custody(server, allow_retained=journal_mode == 'WAL',
+                                                            _wal_conversion=journal_mode == 'WAL'):
         usage = UsageStore(store)
+        if store.version == 3:
+            with store._connect() as connection:
+                retained = connection.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone()
+            if retained:
+                usage.owner_config = server
+                usage.inactive_native_runs(usage._observed_owner(server.router_owner_id), domain_id=server.usage_domain_id)
         snapshot = usage.backup(backup_out)
-        return {**usage.migrate(), 'backup_schema_version': snapshot['schema_version'], 'offline': True}
+        result = {**usage.migrate(), 'backup_schema_version': snapshot['schema_version'], 'offline': True}
+        if _legacy_receipt is not None:
+            from .maintenance import authorization, record_legacy
+            authorization(_legacy_receipt['authorization'])  # Same bounded maintenance window.
+            revision = hashlib.sha256(Path(resolve_config_path(config_path)).read_bytes()).hexdigest()
+            record_legacy(store, _legacy_receipt, revision)
+            result['legacy_receipt_sha256'] = hashlib.sha256(json.dumps(_legacy_receipt, sort_keys=True,
+                separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+        if journal_mode == 'WAL':
+            identity = store.path.stat()
+            policy = {'schema': 'router-sqlite-policy/v1', 'store_identity': [identity.st_dev, identity.st_ino],
+                      'journal_mode': 'wal'}
+            marker = Path(str(store.path) + '.sqlite-policy')
+            if not os.path.lexists(marker):
+                _write_secret(str(marker), json.dumps(policy, sort_keys=True, separators=(',', ':')))
+                descriptor = os.open(marker, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+                try:
+                    _private_created_descriptor(descriptor)
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+                descriptor = os.open(marker.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                try:
+                    os.fsync(descriptor)
+                finally:
+                    os.close(descriptor)
+            if _storage_policy(store.path) != policy:
+                raise KeyStoreError('credential storage policy changed')
+            # The permission record commits first. A crash before mode change
+            # stays unavailable to normal readers; this fenced command can
+            # finish it. Neither pending permission nor a flag opens admission.
+            with store._write() as connection:
+                if connection.execute('PRAGMA journal_mode=WAL').fetchone() != ('wal',):
+                    raise KeyStoreError('credential WAL conversion refused')
+                busy, frames, copied = connection.execute('PRAGMA wal_checkpoint(FULL)').fetchone()
+                if busy or copied != frames:
+                    raise KeyStoreError('credential checkpoint requires terminal readers')
+            result['journal_mode'] = 'wal'
+            result['checkpoint_frames'] = frames
+        return result
+
+
+def _create_offline(request):
+    """Fixed issuance operation in the selected native store, never host SQL."""
+    import select
+    from .config import load_server_config
+    from .usage_store import UsageStore
+    from ..router_manage import DEFAULT_INSTALLED_CONFIG
+    from ..observability.dashboard.contracts import strict_json
+    from ..control_plane.mcp.auth_file import read_private_auth_file
+    if type(request) is not dict or set(request) != {'name', 'model', 'path', 'rpm', 'expires_days', 'out'}:
+        raise KeyStoreError('invalid offline issuance')
+    raw = read_private_auth_file(DEFAULT_INSTALLED_CONFIG, max_bytes=2*1024**2)
+    revision = hashlib.sha256(raw).hexdigest()
+    digest = hashlib.sha256(json.dumps(request, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
+    server = load_server_config(DEFAULT_INSTALLED_CONFIG)
+    store = KeyStore(server.api_keys_path)
+    target = Path(request['out'])
+    _secure_directory(target.parent, create=False)
+    if not target.is_absolute() or os.path.lexists(target):
+        raise KeyStoreError('credential output file already exists')
+    with store._offline_custody(server, allow_retained=True):
+        if store.version != 3:
+            raise KeyStoreError('offline issuance requires accounting migration')
+        usage = UsageStore(store)
+        usage.owner_config = server
+        usage.inactive_native_runs(usage._observed_owner(server.router_owner_id), domain_id=server.usage_domain_id)
+        print(json.dumps({'pending_sha256': digest, 'run_id': revision}), flush=True)
+        if not select.select([sys.stdin], [], [], 30)[0]:
+            raise KeyStoreError('offline issuance timed out')
+        acknowledgement = sys.stdin.buffer.readline(16385)
+        if len(acknowledgement) > 16384 or strict_json(acknowledgement) != {'commit': digest}:
+            raise KeyStoreError('offline issuance refused')
+        if read_private_auth_file(DEFAULT_INSTALLED_CONFIG, max_bytes=2*1024**2) != raw:
+            raise KeyStoreError('offline issuance config changed')
+        metadata, secret = store.create(request['name'], request['model'], request['path'], request['rpm'], request['expires_days'])
+        try:
+            _write_secret(str(target), secret)
+        except (KeyStoreError, OSError):
+            store.revoke(metadata['key_id'])
+            raise
+        print(json.dumps({'finalized': 'keys', 'run_id': revision, 'result': metadata}), flush=True)
 
 
 if __name__ == "__main__":
