@@ -169,14 +169,16 @@ def _windows_private_path(path: Path, *, directory: bool, header=False):
         raise KeyStoreError("credential store path is not private") from None
 
 
-def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=None):
+def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=None,
+                        _parent_fd=None, _size=False):
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     if directory:
         flags |= getattr(os, "O_DIRECTORY", 0)
     try:
-        listed = path.lstat()
+        listed = path.lstat() if _parent_fd is None else os.stat(path.name, dir_fd=_parent_fd, follow_symlinks=False)
         retained = None if _proof is None else _proof['objects'].get(path)
-        descriptor = os.open(path, flags) if retained is None else retained
+        descriptor = os.open(path if _parent_fd is None else path.name, flags,
+                             dir_fd=_parent_fd) if retained is None else retained
         keep = False
         try:
             info = os.fstat(descriptor)
@@ -187,7 +189,7 @@ def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=Non
             if _proof is not None:
                 _proof['objects'][path] = descriptor
                 keep = True
-            return os.pread(descriptor, 100, 0) if header else None
+            return os.pread(descriptor, 100, 0) if header else info.st_size if _size else None
         finally:
             if not keep and retained is None:
                 os.close(descriptor)
@@ -197,11 +199,14 @@ def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=Non
         raise KeyStoreError("credential store path is unavailable") from exc
 
 
-def _private_path(path: Path, *, directory: bool, header=False, _proof=None):
-    _safe_ancestors(path, _proof=_proof)
+def _private_path(path: Path, *, directory: bool, header=False, _proof=None,
+                  _parent_fd=None, _size=False):
+    if _parent_fd is None:
+        _safe_ancestors(path, _proof=_proof)
     if _is_windows():
         return _windows_private_path(path, directory=directory, header=header)
-    return _posix_private_path(path, directory=directory, header=header, _proof=_proof)
+    return _posix_private_path(path, directory=directory, header=header, _proof=_proof,
+                               _parent_fd=_parent_fd, _size=_size)
 
 
 def _private_created_descriptor(descriptor: int) -> None:
@@ -237,21 +242,28 @@ def _secure_directory(path: Path, *, create: bool, _proof=None) -> None:
 
 
 def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None, header=False,
-                     _proof=None, _retain=True):
-    _secure_directory(path.parent, create=False, _proof=_proof)
+                     _proof=None, _retain=True, _parent_checked=False, _size=False):
+    if not _parent_checked:
+        _secure_directory(path.parent, create=False, _proof=_proof)
+    parent_fd = None if _proof is None else _proof['objects'][path.parent]
     try:
-        info = path.lstat()
-    except FileNotFoundError:
-        if exists:
-            raise KeyStoreError("credential store is not initialized") from None
-        return
-    except OSError as exc:
-        raise KeyStoreError("credential store is unavailable") from exc
-    if _link_or_reparse(info) or not stat.S_ISREG(info.st_mode):
-        raise KeyStoreError("credential store file is unsafe")
-    if identity is not None and not os.path.samestat(info, identity):
-        raise KeyStoreError("credential store file changed during creation")
-    return _private_path(path, directory=False, header=header, _proof=_proof if _retain else None)
+        try:
+            info = path.lstat() if parent_fd is None else os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            if exists:
+                raise KeyStoreError("credential store is not initialized") from None
+            return
+        except OSError as exc:
+            raise KeyStoreError("credential store is unavailable") from exc
+        if _link_or_reparse(info) or not stat.S_ISREG(info.st_mode):
+            raise KeyStoreError("credential store file is unsafe")
+        if identity is not None and not os.path.samestat(info, identity):
+            raise KeyStoreError("credential store file changed during creation")
+        return _private_path(path, directory=False, header=header, _proof=_proof if _retain else None,
+                             _parent_fd=parent_fd, _size=_size)
+    finally:
+        if _proof is not None and not _parent_checked:
+            _secure_directory(path.parent, create=False, _proof=_proof)
 
 
 def _secure_sidecars(path: Path, *, _proof=None) -> int:
@@ -263,25 +275,34 @@ def _secure_sidecars(path: Path, *, _proof=None) -> int:
     _secure_directory(path.parent, create=False, _proof=_proof)
     parent = path.parent.lstat()
     wal_bytes = 0
-    for suffix in ('-journal', '-wal', '-shm'):
-        leaf = Path(str(path) + suffix)
-        if not os.path.lexists(leaf):
-            continue
-        try:
-            _secure_database(leaf, exists=False, _proof=_proof, _retain=False)
-            if suffix == '-wal':
-                try:
-                    wal_bytes = leaf.lstat().st_size
-                except FileNotFoundError:
-                    pass
-        except KeyStoreError as exc:
-            cause = exc.__cause__
-            if not (isinstance(cause, FileNotFoundError) and cause.filename == str(leaf)
-                    and not os.path.lexists(leaf)):
-                raise
+    try:
+        for suffix in ('-journal', '-wal', '-shm'):
+            leaf = Path(str(path) + suffix)
+            if _proof is None and not os.path.lexists(leaf):
+                continue
+            try:
+                size = _secure_database(leaf, exists=False, _proof=_proof, _retain=False,
+                                        _parent_checked=_proof is not None, _size=suffix == '-wal')
+                if suffix == '-wal':
+                    if _proof is not None:
+                        wal_bytes = size or 0
+                    else:
+                        try:
+                            wal_bytes = leaf.lstat().st_size
+                        except FileNotFoundError:
+                            pass
+            except KeyStoreError as exc:
+                cause = exc.__cause__
+                filenames = {str(leaf)} if _proof is None else {str(leaf), leaf.name}
+                if not (isinstance(cause, FileNotFoundError) and cause.filename in filenames
+                        and not os.path.lexists(leaf)):
+                    raise
+                _secure_directory(path.parent, create=False, _proof=_proof)
+                if not os.path.samestat(parent, path.parent.lstat()) or os.path.lexists(leaf):
+                    raise KeyStoreError('credential sidecar changed') from exc
+    finally:
+        if _proof is not None:
             _secure_directory(path.parent, create=False, _proof=_proof)
-            if not os.path.samestat(parent, path.parent.lstat()) or os.path.lexists(leaf):
-                raise KeyStoreError('credential sidecar changed') from exc
     return wal_bytes
 
 
@@ -404,6 +425,20 @@ def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tupl
 
 
 def _private_json(path, *, _proof=None):
+    if _proof is not None:
+        _secure_directory(path.parent, create=False, _proof=_proof)
+        try:
+            _secure_database(path, exists=True, _proof=_proof, _parent_checked=True)
+            descriptor = _proof['objects'][path]
+            raw = os.pread(descriptor, 16385, 0)
+            _secure_database(path, exists=True, identity=os.fstat(descriptor),
+                             _proof=_proof, _parent_checked=True)
+            from ..observability.dashboard.contracts import strict_json
+            if len(raw) > 16384:
+                raise KeyStoreError("credential writer ownership is invalid")
+            return strict_json(raw)
+        finally:
+            _secure_directory(path.parent, create=False, _proof=_proof)
     _secure_database(path, exists=True, _proof=_proof)
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
@@ -847,6 +882,10 @@ class KeyStore:
             if value <= 0:
                 raise KeyStoreError("credential writer wait expired")
             return value
+        # SQLite opens the named path, not our descriptor. A replaced named
+        # ancestor must refuse even when anchored leaf checks saw the old tree.
+        if _proof is not None:
+            _secure_database(self.path, exists=True, _proof=_proof)
         connection = sqlite3.connect(self.path, timeout=remaining(), isolation_level=None,
                                      factory=_WriterConnection)
         connection.writer_deadline = deadline

@@ -203,6 +203,63 @@ def test_per_open_proof_rechecks_new_sidecar_after_setup(tmp_path, monkeypatch):
     assert sidecar.is_symlink() and foreign.read_bytes() == b'owned foreign'
 
 
+@pytest.mark.skipif(os.name != 'posix', reason='held POSIX parent descriptors')
+@pytest.mark.parametrize('changed', ['parent', 'ancestor', 'database'])
+def test_anchored_old_parent_never_authorizes_sql_through_replaced_named_tree(tmp_path, monkeypatch, changed):
+    root = tmp_path / 'ancestor'; root.mkdir(mode=0o700)
+    store, _ = configured(root)
+    sidecar = Path(str(store.path) + '-shm'); sidecar.write_bytes(b'owned leaf'); sidecar.chmod(0o600)
+    original = keys._posix_private_path
+    swapped = []
+    def replace(path, **kwargs):
+        result = original(path, **kwargs)
+        if path == sidecar and kwargs.get('_parent_fd') is not None:
+            if changed == 'database':
+                before = store.path.read_bytes()
+                store.path.unlink(); store.path.write_bytes(before); store.path.chmod(0o600)
+            else:
+                target = store.path.parent if changed == 'parent' else root
+                target.rename(tmp_path / 'displaced'); target.mkdir(mode=0o700)
+                if changed == 'ancestor':
+                    # The immediate held parent is still the SAME inode. Only
+                    # the higher named ancestor changed and must still veto SQL.
+                    (tmp_path / 'displaced' / 'store').rename(root / 'store')
+            swapped.append(changed)
+        return result
+    def no_file_sql(*args, **kwargs):
+        pytest.fail('anchored old tree must not authorize the replaced SQL path')
+    monkeypatch.setattr(keys, '_posix_private_path', replace)
+    monkeypatch.setattr(sqlite3, 'connect', no_file_sql)
+    with pytest.raises(keys.KeyStoreError):
+        with store._connect(): pass
+    assert swapped == [changed]
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='native dir_fd no-follow leaf race')
+@pytest.mark.parametrize('replacement', [False, True])
+def test_anchored_sidecar_open_tolerates_only_actual_leaf_disappearance(tmp_path, monkeypatch, replacement):
+    store, _ = configured(tmp_path)
+    sidecar = Path(str(store.path) + '-shm'); sidecar.write_bytes(b'owned leaf'); sidecar.chmod(0o600)
+    foreign = tmp_path / 'foreign'; foreign.write_bytes(b'foreign'); foreign.chmod(0o600)
+    original = os.open
+    opened = []
+    def race(path, flags, *args, **kwargs):
+        if path == sidecar.name and kwargs.get('dir_fd') is not None and not opened:
+            opened.append(True); sidecar.unlink()
+            if replacement: sidecar.symlink_to(foreign)
+        return original(path, flags, *args, **kwargs)
+    monkeypatch.setattr(os, 'open', race)
+    if replacement:
+        with pytest.raises(keys.KeyStoreError):
+            with store._connect(): pass
+        assert sidecar.is_symlink()
+    else:
+        with store._connect() as connection:
+            assert connection.execute('SELECT count(*) FROM keys').fetchone() == (0,)
+        assert not sidecar.exists()
+    assert opened == [True] and foreign.read_bytes() == b'foreign'
+
+
 @native
 def test_default_checkpoint_threshold_and_long_reader_preserve_latest_rows(tmp_path):
     store, config = configured(tmp_path)
