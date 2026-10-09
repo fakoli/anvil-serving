@@ -136,20 +136,71 @@ def test_transient_leaf_disappears_at_native_ancestor_guard_but_parent_error_ref
     store, _ = configured(tmp_path)
     sidecar = Path(str(store.path) + '-shm'); sidecar.write_bytes(b'owned transient'); sidecar.chmod(0o600)
     original = keys._safe_ancestors
-    def disappear(path):
+    def disappear(path, **kwargs):
         if path == sidecar: sidecar.unlink()
-        return original(path)
+        return original(path, **kwargs)
     monkeypatch.setattr(keys, '_safe_ancestors', disappear)
     keys._secure_sidecars(store.path)
     sidecar.write_bytes(b'owned transient'); sidecar.chmod(0o600)
-    def parent_error(path):
+    def parent_error(path, **kwargs):
         if path == sidecar:
             try: raise FileNotFoundError(2, 'synthetic parent absent', str(sidecar.parent))
             except FileNotFoundError as exc: raise keys.KeyStoreError('unavailable') from exc
-        return original(path)
+        return original(path, **kwargs)
     monkeypatch.setattr(keys, '_safe_ancestors', parent_error)
     with pytest.raises(keys.KeyStoreError): keys._secure_sidecars(store.path)
     assert sidecar.exists()
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='held POSIX verifier descriptors')
+@pytest.mark.parametrize('changed', ['database', 'parent', 'ancestor', 'permissions', 'hardlink'])
+def test_per_open_held_proof_refuses_setup_substitution_and_closes_descriptors(tmp_path, monkeypatch, changed):
+    root = tmp_path / 'ancestor'; root.mkdir(mode=0o700)
+    store, _ = configured(root)
+    original = keys._WriterConnection.execute
+    captured = []
+    reader = store._reader_custody
+    def custody(**kwargs):
+        captured.append(kwargs['_proof'])
+        return reader(**kwargs)
+    monkeypatch.setattr(store, '_reader_custody', custody)
+    def replace(self, sql, *args):
+        result = original(self, sql, *args)
+        if sql == 'PRAGMA user_version':
+            if changed == 'permissions': store.path.chmod(0o644)
+            elif changed == 'hardlink': os.link(store.path, tmp_path / 'extra-link')
+            elif changed == 'database':
+                before = store.path.read_bytes()
+                store.path.unlink(); store.path.write_bytes(before); store.path.chmod(0o600)
+            else:
+                target = store.path.parent if changed == 'parent' else root
+                target.rename(tmp_path / 'displaced')
+                target.mkdir(mode=0o700)
+        return result
+    monkeypatch.setattr(keys._WriterConnection, 'execute', replace)
+    with pytest.raises(keys.KeyStoreError):
+        with store._connect():
+            pytest.fail('a changed path must refuse before a connection escapes')
+    assert captured and captured[0]['objects']
+    for descriptor in captured[0]['objects'].values():
+        with pytest.raises(OSError): os.fstat(descriptor)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='held POSIX verifier descriptors')
+def test_per_open_proof_rechecks_new_sidecar_after_setup(tmp_path, monkeypatch):
+    store, _ = configured(tmp_path)
+    foreign = tmp_path / 'foreign'; foreign.write_bytes(b'owned foreign'); foreign.chmod(0o600)
+    sidecar = Path(str(store.path) + '-shm')
+    original = keys._WriterConnection.execute
+    def insert(self, sql, *args):
+        result = original(self, sql, *args)
+        if sql == 'PRAGMA user_version': sidecar.symlink_to(foreign)
+        return result
+    monkeypatch.setattr(keys._WriterConnection, 'execute', insert)
+    with pytest.raises(keys.KeyStoreError):
+        with store._connect():
+            pytest.fail('post-setup sidecar checks must remain active')
+    assert sidecar.is_symlink() and foreign.read_bytes() == b'owned foreign'
 
 
 @native

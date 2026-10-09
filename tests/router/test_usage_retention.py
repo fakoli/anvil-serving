@@ -274,8 +274,13 @@ def test_python_integer_overflow_safe_reduction_and_native_limits(store, monkeyp
     monkeypatch.setattr(ledger, "_QUERY_GROUP_LIMIT", 1)
     with pytest.raises(UsageError, match="usage_query_limited"): query(store, group_by=("model",))
     monkeypatch.setattr(ledger, "_QUERY_GROUP_LIMIT", 5000)
-    with pytest.raises(UsageError, match="usage_query_limited"):
-        db.query(UsageQuery("cumulative"), domain_id=DOMAIN, deadline_seconds=1e-12)
+    # A sub-clock-resolution budget need not cross a native Windows tick.
+    # Cross that same deadline deterministically while the native query runs.
+    with monkeypatch.context() as clock:
+        ticks = iter((0.0, 1.0))
+        clock.setattr(ledger.time, "monotonic", lambda: next(ticks, 1.0))
+        with pytest.raises(UsageError, match="usage_query_limited"):
+            db.query(UsageQuery("cumulative"), domain_id=DOMAIN, deadline_seconds=1e-12)
     with pytest.raises(UsageError): db.query(UsageQuery("cumulative"), domain_id=DOMAIN, deadline_seconds=6)
     # Connection/transaction was released after each failed bounded query.
     assert query(store)["measured_input"] == ledger._MAX_INT * 2

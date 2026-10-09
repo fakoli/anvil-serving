@@ -106,7 +106,7 @@ def _link_or_reparse(info: os.stat_result) -> bool:
     )
 
 
-def _safe_ancestors(path: Path) -> None:
+def _safe_ancestors(path: Path, *, _proof=None) -> None:
     """Reject lexical link/reparse substitutions without resolving them."""
     for candidate in (path, *path.parents):
         try:
@@ -115,6 +115,10 @@ def _safe_ancestors(path: Path) -> None:
             raise KeyStoreError("credential store path is unavailable") from exc
         if _link_or_reparse(info):
             raise KeyStoreError("credential store path is unsafe")
+        if _proof is not None and stat.S_ISDIR(info.st_mode):
+            original = _proof['ancestors'].setdefault(candidate, info)
+            if not os.path.samestat(original, info):
+                raise KeyStoreError("credential store ancestor changed")
 
 
 def _windows_open_verification_file(path: Path) -> int:
@@ -165,33 +169,39 @@ def _windows_private_path(path: Path, *, directory: bool, header=False):
         raise KeyStoreError("credential store path is not private") from None
 
 
-def _posix_private_path(path: Path, *, directory: bool, header=False):
+def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=None):
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     if directory:
         flags |= getattr(os, "O_DIRECTORY", 0)
     try:
         listed = path.lstat()
-        descriptor = os.open(path, flags)
+        retained = None if _proof is None else _proof['objects'].get(path)
+        descriptor = os.open(path, flags) if retained is None else retained
+        keep = False
         try:
             info = os.fstat(descriptor)
             if (not os.path.samestat(listed, info)
                     or stat.S_ISDIR(info.st_mode) != directory or info.st_uid != os.geteuid()
                     or info.st_mode & 0o077 or (not directory and info.st_nlink != 1)):
                 raise KeyStoreError("credential store path must be owner-only")
-            return os.read(descriptor, 100) if header else None
+            if _proof is not None:
+                _proof['objects'][path] = descriptor
+                keep = True
+            return os.pread(descriptor, 100, 0) if header else None
         finally:
-            os.close(descriptor)
+            if not keep and retained is None:
+                os.close(descriptor)
     except KeyStoreError:
         raise
     except (AttributeError, OSError, ValueError) as exc:
         raise KeyStoreError("credential store path is unavailable") from exc
 
 
-def _private_path(path: Path, *, directory: bool, header=False):
-    _safe_ancestors(path)
+def _private_path(path: Path, *, directory: bool, header=False, _proof=None):
+    _safe_ancestors(path, _proof=_proof)
     if _is_windows():
         return _windows_private_path(path, directory=directory, header=header)
-    return _posix_private_path(path, directory=directory, header=header)
+    return _posix_private_path(path, directory=directory, header=header, _proof=_proof)
 
 
 def _private_created_descriptor(descriptor: int) -> None:
@@ -211,7 +221,7 @@ def _private_created_descriptor(descriptor: int) -> None:
         raise KeyStoreError("credential store file is not private") from None
 
 
-def _secure_directory(path: Path, *, create: bool) -> None:
+def _secure_directory(path: Path, *, create: bool, _proof=None) -> None:
     if create:
         # CPython's Windows ``mode=0o700`` adds an effective OWNER_RIGHTS ACE
         # even below a protected owner-only parent. Use the inherited DACL,
@@ -223,11 +233,12 @@ def _secure_directory(path: Path, *, create: bool) -> None:
         raise KeyStoreError("credential store directory is unavailable") from exc
     if _link_or_reparse(info) or not stat.S_ISDIR(info.st_mode):
         raise KeyStoreError("credential store directory is unsafe")
-    _private_path(path, directory=True)
+    _private_path(path, directory=True, _proof=_proof)
 
 
-def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None, header=False):
-    _secure_directory(path.parent, create=False)
+def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None, header=False,
+                     _proof=None, _retain=True):
+    _secure_directory(path.parent, create=False, _proof=_proof)
     try:
         info = path.lstat()
     except FileNotFoundError:
@@ -240,16 +251,16 @@ def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | Non
         raise KeyStoreError("credential store file is unsafe")
     if identity is not None and not os.path.samestat(info, identity):
         raise KeyStoreError("credential store file changed during creation")
-    return _private_path(path, directory=False, header=header)
+    return _private_path(path, directory=False, header=header, _proof=_proof if _retain else None)
 
 
-def _secure_sidecars(path: Path) -> int:
+def _secure_sidecars(path: Path, *, _proof=None) -> int:
     """Guard retained recovery inputs; tolerate only a proven absent leaf.
 
     SQLite legitimately removes transient journal/SHM files at close. Missing
     parents, unsafe retained objects and every other validation failure refuse.
     """
-    _secure_directory(path.parent, create=False)
+    _secure_directory(path.parent, create=False, _proof=_proof)
     parent = path.parent.lstat()
     wal_bytes = 0
     for suffix in ('-journal', '-wal', '-shm'):
@@ -257,7 +268,7 @@ def _secure_sidecars(path: Path) -> int:
         if not os.path.lexists(leaf):
             continue
         try:
-            _secure_database(leaf, exists=False)
+            _secure_database(leaf, exists=False, _proof=_proof, _retain=False)
             if suffix == '-wal':
                 try:
                     wal_bytes = leaf.lstat().st_size
@@ -268,7 +279,7 @@ def _secure_sidecars(path: Path) -> int:
             if not (isinstance(cause, FileNotFoundError) and cause.filename == str(leaf)
                     and not os.path.lexists(leaf)):
                 raise
-            _secure_directory(path.parent, create=False)
+            _secure_directory(path.parent, create=False, _proof=_proof)
             if not os.path.samestat(parent, path.parent.lstat()) or os.path.lexists(leaf):
                 raise KeyStoreError('credential sidecar changed') from exc
     return wal_bytes
@@ -285,11 +296,11 @@ def _wal_runtime() -> int:
     return flag
 
 
-def _storage_policy(path: Path):
+def _storage_policy(path: Path, *, _proof=None):
     marker = Path(str(path) + '.sqlite-policy')
     if not os.path.lexists(marker):
         return None
-    value = _private_json(marker)
+    value = _private_json(marker, _proof=_proof)
     info = path.stat()
     if (type(value) is not dict or set(value) != {'schema', 'store_identity', 'journal_mode'}
             or value['schema'] != 'router-sqlite-policy/v1' or value['journal_mode'] != 'wal'
@@ -392,12 +403,12 @@ def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tupl
         raise KeyStoreError("credential store contains invalid grants") from None
 
 
-def _private_json(path):
-    _secure_database(path, exists=True)
+def _private_json(path, *, _proof=None):
+    _secure_database(path, exists=True, _proof=_proof)
     descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
         _private_created_descriptor(descriptor)
-        _secure_database(path, exists=True, identity=os.fstat(descriptor))
+        _secure_database(path, exists=True, identity=os.fstat(descriptor), _proof=_proof)
         raw = os.read(descriptor, 16385)
         from ..observability.dashboard.contracts import strict_json
         if len(raw) > 16384:
@@ -754,7 +765,7 @@ class KeyStore:
                     self._writer_condition.notify_all()
 
     @contextmanager
-    def _reader_custody(self):
+    def _reader_custody(self, *, _proof=None):
         """Read leases exclude mode conversion without granting admission."""
         if os.name != 'posix' or getattr(self._writer_context, 'offline_custody', False):
             yield
@@ -765,8 +776,8 @@ class KeyStore:
             descriptor, gate_identity, store_identity = native
             if not os.path.samestat(os.fstat(descriptor),gate_identity):
                 raise KeyStoreError('native reader custody changed')
-            _secure_database(gate,exists=True,identity=gate_identity)
-            _secure_database(self.path,exists=True,identity=store_identity)
+            _secure_database(gate,exists=True,identity=gate_identity,_proof=_proof)
+            _secure_database(self.path,exists=True,identity=store_identity,_proof=_proof)
             yield
             return
         import fcntl
@@ -778,39 +789,47 @@ class KeyStore:
             # the offline owner creates the gate and opts into WAL.
             yield
             return
-        _secure_database(gate, exists=True)
+        _secure_database(gate, exists=True, _proof=_proof)
         descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
         try:
             _private_created_descriptor(descriptor)
             identity = os.fstat(descriptor)
-            _secure_database(gate, exists=True, identity=identity)
+            _secure_database(gate, exists=True, identity=identity, _proof=_proof)
             try:
                 fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
             except BlockingIOError:
                 raise KeyStoreError('credential storage custody is busy') from None
             marker = Path(str(self.path) + '.router-owner')
             if os.path.lexists(marker):
-                binding = _private_json(marker)
+                binding = _private_json(marker, _proof=_proof)
                 _validate_store_binding(binding, self.path)
                 if binding['gate_identity'] != [identity.st_dev, identity.st_ino]:
                     raise KeyStoreError('credential reader custody changed')
             elif os.read(descriptor, 64):
                 raise KeyStoreError('credential reader custody unavailable')
             yield
-            _secure_database(gate, exists=True, identity=identity)
+            _secure_database(gate, exists=True, identity=identity, _proof=_proof)
         finally:
             os.close(descriptor)
 
     @contextmanager
     def _connect(self):
-        with self._reader_custody(), self._open_connection() as connection:
-            yield connection
+        # Verifier descriptors belong only to this open. Each reuse still
+        # checks current paths, ancestors, identities and private permissions.
+        proof = {'objects': {}, 'ancestors': {}} if os.name == 'posix' else None
+        try:
+            with self._reader_custody(_proof=proof), self._open_connection(_proof=proof) as connection:
+                yield connection
+        finally:
+            if proof is not None:
+                for descriptor in proof['objects'].values():
+                    os.close(descriptor)
 
     @contextmanager
-    def _open_connection(self):
-        header = _secure_database(self.path, exists=True, header=True)
-        wal_bytes = _secure_sidecars(self.path)  # Before SQLite may recover a hot journal.
-        policy = _storage_policy(self.path)
+    def _open_connection(self, *, _proof=None):
+        header = _secure_database(self.path, exists=True, header=True, _proof=_proof)
+        wal_bytes = _secure_sidecars(self.path, _proof=_proof)  # Before SQLite may recover a hot journal.
+        policy = _storage_policy(self.path, _proof=_proof)
         converting = bool(getattr(self._writer_context, 'wal_conversion', False)
                           and getattr(self._writer_context, 'offline_custody', False))
         wal = _database_wal(header)
@@ -848,8 +867,9 @@ class KeyStore:
             if connection.execute("PRAGMA user_version").fetchone()[0] not in _SUPPORTED_VERSIONS:
                 raise KeyStoreError("credential store format is unsupported")
             bound_wait()  # Queue/setup time cannot become a second SQLite wait.
-            _secure_sidecars(self.path)
-            if _storage_policy(self.path) != policy:
+            _secure_database(self.path, exists=True, _proof=_proof)
+            _secure_sidecars(self.path, _proof=_proof)
+            if _storage_policy(self.path, _proof=_proof) != policy:
                 raise KeyStoreError('credential storage policy changed')
             yield connection
         finally:

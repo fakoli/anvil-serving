@@ -18,8 +18,11 @@ from tests.router.key_fixtures import tmp_path as tmp_path
 
 
 def fixture(tmp_path):
-    private = tmp_path / 'material'; private.mkdir(mode=0o700)
-    worker = tmp_path / 'worker'; worker.mkdir(mode=0o700)
+    # Native Windows 3.13 mode700 adds an untrusted OWNER_RIGHTS ACE.
+    # Inherit the fixture's protected owner-only DACL, as KeyStore does.
+    mode = 0o777 if os.name == 'nt' else 0o700
+    private = tmp_path / 'material'; private.mkdir(mode=mode)
+    worker = tmp_path / 'worker'; worker.mkdir(mode=mode)
     store = KeyStore.initialize(tmp_path / 'store' / 'keys.sqlite3')
     UsageStore(store).migrate()
     metadata, credential = store.create('synthetic enrollment', ['llm.primary'], ['/v1/chat/completions'])
