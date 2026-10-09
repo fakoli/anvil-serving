@@ -148,7 +148,40 @@ def _windows_open_verification_file(path: Path) -> int:
         raise
 
 
-def _windows_private_path(path: Path, *, directory: bool, header=False):
+def _windows_leaf_absent(path: Path) -> bool:
+    """Only ERROR_FILE_NOT_FOUND proves this named leaf absent, not its parent."""
+    import ctypes
+    from ctypes import wintypes
+
+    get_attributes = ctypes.WinDLL("kernel32", use_last_error=True).GetFileAttributesW
+    get_attributes.argtypes = [wintypes.LPCWSTR]
+    get_attributes.restype = wintypes.DWORD
+    return get_attributes(str(path)) == 0xFFFFFFFF and ctypes.get_last_error() == 2
+
+
+def _windows_unlinked_sidecar(descriptor: int, path: Path) -> bool:
+    """A held, deleted sidecar is not a retained recovery input."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    class StandardInfo(ctypes.Structure):
+        _fields_ = [("allocation", ctypes.c_longlong), ("size", ctypes.c_longlong),
+                    ("links", wintypes.DWORD), ("delete_pending", ctypes.c_ubyte),
+                    ("directory", ctypes.c_ubyte)]
+
+    get_information = ctypes.WinDLL("kernel32", use_last_error=True).GetFileInformationByHandleEx
+    get_information.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    get_information.restype = wintypes.BOOL
+    information = StandardInfo()
+    if not get_information(msvcrt.get_osfhandle(descriptor), 1,
+                           ctypes.byref(information), ctypes.sizeof(information)):
+        return False
+    return (information.links == 0 and information.delete_pending == 1
+            and information.directory == 0 and _windows_leaf_absent(path))
+
+
+def _windows_private_path(path: Path, *, directory: bool, header=False, _sidecar=False):
     """Validate the held Windows object with the shared DACL policy."""
     try:
         descriptor = (
@@ -158,6 +191,13 @@ def _windows_private_path(path: Path, *, directory: bool, header=False):
         try:
             is_directory, _identity, links = bootstrap_shim._windows_handle_details_from_descriptor(descriptor)
             if is_directory != directory or (not directory and links != 1):
+                if _sidecar and not directory and not is_directory and links == 0:
+                    auth_file._require_windows_private_descriptor(descriptor)
+                    if _windows_unlinked_sidecar(descriptor, path):
+                        # Never accept the zero-link object. The sidecar caller
+                        # must revalidate its parent and repeated leaf absence.
+                        raise KeyStoreError("credential sidecar disappeared") from FileNotFoundError(
+                            2, "credential sidecar disappeared", str(path))
                 raise KeyStoreError("credential store path is unsafe")
             auth_file._require_windows_private_descriptor(descriptor)
             return os.read(descriptor, 100) if header else None
@@ -200,11 +240,11 @@ def _posix_private_path(path: Path, *, directory: bool, header=False, _proof=Non
 
 
 def _private_path(path: Path, *, directory: bool, header=False, _proof=None,
-                  _parent_fd=None, _size=False):
+                  _parent_fd=None, _size=False, _sidecar=False):
     if _parent_fd is None:
         _safe_ancestors(path, _proof=_proof)
     if _is_windows():
-        return _windows_private_path(path, directory=directory, header=header)
+        return _windows_private_path(path, directory=directory, header=header, _sidecar=_sidecar)
     return _posix_private_path(path, directory=directory, header=header, _proof=_proof,
                                _parent_fd=_parent_fd, _size=_size)
 
@@ -242,16 +282,18 @@ def _secure_directory(path: Path, *, create: bool, _proof=None) -> None:
 
 
 def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | None = None, header=False,
-                     _proof=None, _retain=True, _parent_checked=False, _size=False):
+                     _proof=None, _retain=True, _parent_checked=False, _size=False, _sidecar=False):
     if not _parent_checked:
         _secure_directory(path.parent, create=False, _proof=_proof)
     parent_fd = None if _proof is None else _proof['objects'][path.parent]
     try:
         try:
             info = path.lstat() if parent_fd is None else os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
             if exists:
                 raise KeyStoreError("credential store is not initialized") from None
+            if _sidecar and _is_windows():
+                raise KeyStoreError("credential sidecar disappeared") from exc
             return
         except OSError as exc:
             raise KeyStoreError("credential store is unavailable") from exc
@@ -260,7 +302,7 @@ def _secure_database(path: Path, *, exists: bool, identity: os.stat_result | Non
         if identity is not None and not os.path.samestat(info, identity):
             raise KeyStoreError("credential store file changed during creation")
         return _private_path(path, directory=False, header=header, _proof=_proof if _retain else None,
-                             _parent_fd=parent_fd, _size=_size)
+                             _parent_fd=parent_fd, _size=_size, _sidecar=_sidecar)
     finally:
         if _proof is not None and not _parent_checked:
             _secure_directory(path.parent, create=False, _proof=_proof)
@@ -278,11 +320,12 @@ def _secure_sidecars(path: Path, *, _proof=None) -> int:
     try:
         for suffix in ('-journal', '-wal', '-shm'):
             leaf = Path(str(path) + suffix)
-            if _proof is None and not os.path.lexists(leaf):
+            if _proof is None and (_windows_leaf_absent(leaf) if _is_windows() else not os.path.lexists(leaf)):
                 continue
             try:
                 size = _secure_database(leaf, exists=False, _proof=_proof, _retain=False,
-                                        _parent_checked=_proof is not None, _size=suffix == '-wal')
+                                        _parent_checked=_proof is not None, _size=suffix == '-wal',
+                                        _sidecar=True)
                 if suffix == '-wal':
                     if _proof is not None:
                         wal_bytes = size or 0
@@ -294,11 +337,13 @@ def _secure_sidecars(path: Path, *, _proof=None) -> int:
             except KeyStoreError as exc:
                 cause = exc.__cause__
                 filenames = {str(leaf)} if _proof is None else {str(leaf), leaf.name}
+                def absent_leaf():
+                    return _windows_leaf_absent(leaf) if _is_windows() else not os.path.lexists(leaf)
                 if not (isinstance(cause, FileNotFoundError) and cause.filename in filenames
-                        and not os.path.lexists(leaf)):
+                        and absent_leaf()):
                     raise
                 _secure_directory(path.parent, create=False, _proof=_proof)
-                if not os.path.samestat(parent, path.parent.lstat()) or os.path.lexists(leaf):
+                if not os.path.samestat(parent, path.parent.lstat()) or not absent_leaf():
                     raise KeyStoreError('credential sidecar changed') from exc
     finally:
         if _proof is not None:
