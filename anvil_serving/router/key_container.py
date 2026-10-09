@@ -122,6 +122,9 @@ def main() -> int:
             data = store.list_keys()
         elif action == "usage":
             data = store.usage(payload["key_id"], payload["limit"])
+        elif action == "client-readback":
+            from ..client_identity import _native_readback
+            data = _native_readback(store, payload)
         elif action == "bind":
             actor = store.bind_owner(payload["key_id"], payload["kind"], payload["owner_id"],
                                      payload["expected_revision"], dry_run=payload["dry_run"])

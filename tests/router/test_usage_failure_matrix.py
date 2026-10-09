@@ -126,15 +126,39 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
         for _ in range(16):
             start = start_at(run)
             before = perf_counter()
-            principal = db.key_store.authenticate(credential, snapshot=tracked)
-            assert principal is not None
-            if tracked:
-                db.start(start, authority_scope=scope)
-            admission_ms = (perf_counter() - before) * 1000
-            before = perf_counter()
-            if tracked:
-                db.finalize(terminal(start))
-            observations.append((admission_ms, (perf_counter() - before) * 1000))
+            phase = 'authenticate'
+            try:
+                principal = db.key_store.authenticate(credential, snapshot=tracked)
+                assert principal is not None
+                if tracked:
+                    phase = 'start'
+                    db.start(start, authority_scope=scope)
+                admission_ms = (perf_counter() - before) * 1000
+                before = perf_counter()
+                if tracked:
+                    phase = 'finalize'
+                    db.finalize(terminal(start))
+                observations.append((admission_ms, (perf_counter() - before) * 1000))
+            except Exception as error:
+                # Native failures retain their exception context even when the
+                # public typed refusal intentionally hides its diagnostic text.
+                # Emit bounded numeric/type metadata only; no SQL or key data.
+                import sqlite3
+                chain, seen, current = [], set(), error
+                while current is not None and id(current) not in seen and len(chain) < 4:
+                    seen.add(id(current))
+                    frames, trace = [], current.__traceback__
+                    while trace is not None and len(frames) < 16:
+                        frames.append({'function': trace.tb_frame.f_code.co_name, 'line': trace.tb_lineno})
+                        trace = trace.tb_next
+                    chain.append({'exception': type(current).__name__, 'frames': frames,
+                                  **{name: getattr(current, name, None) for name in
+                                     ('sqlite_errorcode', 'errno', 'winerror')}})
+                    current = current.__cause__ or current.__context__
+                print('SOURCE_C4_FAILURE ' + json.dumps({'phase': phase, 'tracked': tracked,
+                      'elapsed_ms': (perf_counter() - before) * 1000,
+                      'sqlite_version': sqlite3.sqlite_version, 'chain': chain}, sort_keys=True))
+                raise
         return observations
     def sample(tracked):
         with ThreadPoolExecutor(max_workers=4) as pool:

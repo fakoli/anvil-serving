@@ -7907,6 +7907,15 @@
           "requires_confirmation": false,
           "summary": "Managed client declaration; defaults beside router config.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--compose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protected offline client worker Compose profile.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -8045,6 +8054,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Managed client declaration; defaults beside router config.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--compose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protected offline client worker Compose profile.",
           "value_name": "PATH"
         },
         {
@@ -8202,6 +8220,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Managed client declaration; defaults beside router config.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--compose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Protected offline client worker Compose profile.",
           "value_name": "PATH"
         }
       ],

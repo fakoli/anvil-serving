@@ -1585,8 +1585,14 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             raise ValueError('router_offline_target_unknown')
         _verify_compose_target(compose, service, custody, _run=_run, env_file=env_file, execution_env=execution_env,
                                exclude_oneoff=helper_id)
-    elif read([*_compose_argv(compose, env_file=env_file), 'ps', '--all', '--quiet', service]).strip():
-        raise ValueError('router_offline_target_mismatch')
+    else:
+        selected_ids = read([*_compose_argv(compose, env_file=env_file), 'ps', '--all', '--quiet', service]).split()
+        if helper_id is not None:
+            if selected_ids.count(helper_id) != 1:
+                raise ValueError('router_offline_helper_unknown')
+            selected_ids.remove(helper_id)
+        if selected_ids:
+            raise ValueError('router_offline_target_mismatch')
     return {'rendered': rendered, 'roster': rows, 'target': custody}
 
 
@@ -1645,7 +1651,7 @@ def _container_incarnation(container, *, _run, stopped=False):
     return value
 
 
-def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, execution_env=None):
+def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, execution_env=None, _clients=False, _client_auth=None):
     """Host after-check completes while the native helper still holds its fences.
 
     This bounded pipe is native operator authority, never an inference endpoint.
@@ -1670,12 +1676,44 @@ def _native_owner_commit(argv, observation, *, _popen=subprocess.Popen, executio
         if (type(pending) is not dict or set(pending) != {'pending_sha256', 'run_id'}
                 or type(pending['pending_sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', pending['pending_sha256'])):
             raise ValueError('router_container_custody_unknown')
+        if _clients and (pending['pending_sha256'] != before['inputs']['job_sha256']
+                         or pending['run_id'] != before['inputs']['declaration_sha256']):
+            raise ValueError('router_client_binding_changed')
         if before != observation():
             raise ValueError('router_container_custody_changed')
-        process.stdin.write(json.dumps({'commit': pending['pending_sha256']}).encode() + b'\n')
+        ack = {'commit': pending['pending_sha256']}
+        if _clients and _client_auth is not None:
+            if (type(_client_auth) is not dict
+                    or set(_client_auth) != {'client_id', 'credential', 'router_config_sha256'}
+                    or type(_client_auth['credential']) is not str or len(_client_auth['credential']) > 8192):
+                raise ValueError('router_client_auth_invalid')
+            ack.update(_client_auth)
+        process.stdin.write(json.dumps(ack).encode() + b'\n')
         process.stdin.flush()
         final = read()
-        if (final != {'finalized': 'live', 'run_id': pending['run_id']}
+        client_final = (_clients and type(final) is dict
+                        and set(final) == {'finalized', 'run_id', 'result'}
+                        and final['finalized'] == 'clients' and final['run_id'] == pending['run_id']
+                        and type(final['result']) is dict
+                        and final['result'].get('schema') == 'anvil.client-worker/v1'
+                        and final['result'].get('live_status') == 'unqualified'
+                        and final['result'].get('providers_modified') is False)
+        if client_final:
+            value = final['result']
+            auth_keys = {'credential_validated', 'grant_sha256'} if _client_auth is not None else set()
+            client_final = (set(value) == {'schema', 'configuration_status', 'installed_sha256', 'clients_count',
+                                          'recipients_staged', 'providers_modified', 'live_status'} | auth_keys
+                            and (_client_auth is None or (value['credential_validated'] is True
+                                 and type(value['grant_sha256']) is str
+                                 and re.fullmatch('[a-f0-9]{64}', value['grant_sha256'])))
+                            and value['configuration_status'] in {'installed', 'incomplete'}
+                            and (value['installed_sha256'] is None or (type(value['installed_sha256']) is str
+                                 and re.fullmatch('[a-f0-9]{64}', value['installed_sha256'])))
+                            and all(type(value[k]) is int and 0 <= value[k] <= 128
+                                    for k in ('clients_count', 'recipients_staged')))
+        if _clients and not client_final:
+            raise ValueError('router_client_worker_refused')
+        if (not client_final and final != {'finalized': 'live', 'run_id': pending['run_id']}
                 and final != {'finalized': 'dead', 'run_id': pending['run_id']}):
             raise ValueError('router_container_custody_unknown')
         if process.wait(timeout=10):
@@ -1779,3 +1817,129 @@ def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subproces
             or result['backup_schema_version'] not in {1, 2, 3} or result['offline'] is not True):
         raise ValueError('router_offline_migration_refused')
     return result
+
+def _client_worker_inputs(roster, namespace, declaration_sha, *, _run=subprocess.run):
+    from pathlib import Path
+    from .client_identity import _read, _load, _require, WORKER_ROOT, WORKER_SCHEMA, canonical
+    from .control_plane.mcp.auth_file import read_private_auth_file
+
+    rendered = roster['rendered']
+    selected = rendered['services'][DEFAULT_SERVICE]
+    memory = selected.get('mem_limit')
+    swap = selected.get('memswap_limit', memory)
+    _require(all(type(v) is int or type(v) is str and re.fullmatch('[0-9]{1,10}', v) for v in (memory, swap)))
+    memory, swap = int(memory), int(swap)
+    allowed = {'image', 'container_name', 'volumes', 'network_mode', 'read_only', 'init', 'cap_drop',
+               'security_opt', 'user', 'cpus', 'mem_limit', 'memswap_limit', 'pids_limit', 'restart', 'entrypoint', 'command'}
+    _require(not set(selected) - allowed and selected.get('network_mode') == 'none'
+             and selected.get('read_only') is True and selected.get('init') is True
+             and selected.get('cap_drop') == ['ALL']
+             and selected.get('security_opt') == ['no-new-privileges:true']
+             and re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*', str(selected.get('user', ''))) is not None
+             and type(selected.get('cpus')) in {int, float} and 0 < selected['cpus'] <= 2
+             and type(selected.get('pids_limit')) is int and 1 <= selected['pids_limit'] <= 128
+             and 0 < memory <= 1024**3 and swap == memory
+             and selected.get('restart', 'no') == 'no'
+             and selected.get('entrypoint') == ['/bin/false'] and selected.get('command') == [])
+    mounts = {m['target']: m for m in selected['volumes']}
+    _require(len(mounts) == len(selected['volumes']))
+    for target in (str(WORKER_ROOT / 'worker.json'), str(WORKER_ROOT / 'client-identity.json')):
+        _require(target in mounts and mounts[target]['type'] == 'bind' and mounts[target].get('read_only') is True)
+    job = _read(mounts[str(WORKER_ROOT / 'worker.json')]['source'])
+    declaration, server = _load(mounts[str(WORKER_ROOT / 'client-identity.json')]['source'])
+    _require(type(job) is dict and set(job) == {'schema', 'declaration_sha256', 'helper_sha256', 'recipients', 'material_directories'}
+             and job['schema'] == WORKER_SCHEMA and job['declaration_sha256'] == declaration_sha
+             and hashlib.sha256(canonical(declaration)).hexdigest() == declaration_sha)
+    directories = job['material_directories']
+    _require(type(directories) is list and len(directories) <= 128
+             and len(set(directories)) == len(directories)
+             and all(type(p) is str and Path(p).is_absolute() and '..' not in Path(p).parts
+                     and len(Path(p).parts) >= 6 and not WORKER_ROOT.is_relative_to(p)
+                     and not Path(declaration['router_config']).is_relative_to(p)
+                     and not Path(server.api_keys_path).is_relative_to(p) for p in directories))
+    readonly = {DEFAULT_INSTALLED_CONFIG, str(WORKER_ROOT / 'worker.json'), str(WORKER_ROOT / 'client-identity.json'),
+                declaration['router_config'], str(Path(declaration['router_config']).with_name('client-router-origin.json'))}
+    config = declaration['router_config']
+    origin = str(Path(config).with_name('client-router-origin.json'))
+    _require(all(p in mounts and mounts[p].get('source') == p for p in (config, origin))
+             and mounts[DEFAULT_INSTALLED_CONFIG]['source'] == config)
+    for kind, name in (('webui', 'webui-integrations.py'), ('recipient', 'configure-pi.py')):
+        digest = job['helper_sha256'][kind]
+        if digest is not None:
+            target = str(WORKER_ROOT / name)
+            _require(target in mounts)
+            raw = read_private_auth_file(mounts[target]['source'], max_bytes=1024**2)
+            _require(hashlib.sha256(raw).hexdigest() == digest)
+            readonly.add(target)
+    fingerprints = []
+    expected_mounts = []
+    volumes = []
+    for target, mount in mounts.items():
+        _require(target in readonly or target in directories or target == '/var/lib/anvil-serving/router-keys')
+        if target == '/var/lib/anvil-serving/router-keys':
+            _require(mount['type'] == 'volume' and mount.get('read_only', False) is False)
+            source = rendered['volumes'][mount['source']]['name']
+            volumes.append(source)
+        elif target in directories:
+            _require(mount['type'] == 'bind' and mount.get('read_only', False) is False
+                     and mount['source'] == target)
+            from .router.keys import _secure_directory
+            _secure_directory(Path(target), create=False)
+            source = mount['source']
+        else:
+            _require(mount['type'] == 'bind' and mount.get('read_only') is True)
+            source = mount['source']
+            raw = read_private_auth_file(source, max_bytes=2*1024**2)
+            fingerprints.append((target, hashlib.sha256(raw).hexdigest()))
+        expected_mounts.append((mount['type'], source, target, mount.get('read_only', False)))
+    _require(len(volumes) == 1 and all(p in mounts for p in directories))
+    image = _run(['docker', 'image', 'inspect', '--format', '{{.Id}}', selected['image']],
+                           capture_output=True, text=True, timeout=5)
+    _require(image.returncode == 0 and image.stdout.strip() == namespace['expected_image_id'])
+    return {'inputs': sorted(fingerprints), 'mounts': sorted(expected_mounts),
+            'job_sha256': hashlib.sha256(canonical(job)).hexdigest(), 'declaration_sha256': declaration_sha}
+
+
+@_serving_authority_mutation
+def enroll_clients_offline(namespace, action, declaration_sha, *, confirm=False, dry_run=False,
+                           _run=subprocess.run, _popen=subprocess.Popen, _client_auth=None):
+    """One fixed native enrollment worker; never activates router or clients."""
+    import uuid
+    from .client_identity import _require
+    helper = 'router-clients-' + uuid.uuid4().hex
+    compose = namespace['compose']
+    def observation():
+        roster = _offline_compose_roster(compose, DEFAULT_SERVICE, namespace['container'], _run=_run,
+                                        helper_container=helper)
+        inputs = _client_worker_inputs(roster, namespace, declaration_sha, _run=_run)
+        custody = _restart_custody(helper, _run)
+        if custody.get('available') is True:
+            _require(custody['image_id'] == namespace['expected_image_id'])
+            actual = [(m['type'], m['name'] if m['type'] == 'volume' else m['source'],
+                       m['destination'], m['read_only']) for m in custody['mounts']]
+            _require(sorted(actual) == inputs['mounts'])
+        return {'roster': roster, 'inputs': inputs}
+    code = ('from anvil_serving.client_identity import _native_offline_clients; '
+            f'_native_offline_clients({action!r},{namespace["declaration_path"]!r},'
+            f'confirm={confirm!r},dry_run={dry_run!r})')
+    argv = [*_compose_argv(compose), 'run', '--rm', '--no-deps', '-T', '--name', helper,
+            '--entrypoint', 'python', DEFAULT_SERVICE, '-c', code]
+    try:
+        result = _native_owner_commit(argv, observation, _popen=_popen, _clients=True, _client_auth=_client_auth)
+        _require(result['run_id'] == declaration_sha)
+        return result['result']
+    finally:
+        # EOF normally unwinds custody and --rm removes the worker. On failure
+        # remove only this exact owned helper after native image/label proof.
+        state, project = _container_compose_project(helper, _run=_run)
+        if state != 'absent':
+            owned = _restart_custody(helper, _run)
+            _require(project == DEFAULT_COMPOSE_PROJECT and owned.get('available') is True
+                     and owned['compose_service'] == DEFAULT_SERVICE
+                     and owned['image_id'] == namespace['expected_image_id'])
+            _run(['docker', 'rm', '--force', owned['container_id']],
+                 capture_output=True, text=True, timeout=10)
+            # --rm may finish between inspection and exact-ID cleanup. Only
+            # native absence of BOTH the captured ID and its name proves STOP.
+            _require(docker_state(owned['container_id'], _run=_run) == 'absent'
+                     and _container_compose_project(helper, _run=_run)[0] == 'absent')

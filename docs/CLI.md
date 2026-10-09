@@ -178,9 +178,9 @@ required operands, choices, and defaults.
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
 | `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
 | `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
-| `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config` |
-| `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
-| `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config` |
+| `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
+| `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--dry-run`<br>`--confirm` |
+| `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config`<br>`--compose` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
 | `router keys migrate` | Migrate first-bootstrap accounting offline with an absent protected backup. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--backup-out`<br>`--offline`<br>`--confirm`<br>`--compose`<br>`--env-file` |

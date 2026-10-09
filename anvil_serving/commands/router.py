@@ -32,7 +32,8 @@ def commands() -> CommandNode:
                     handler=_handler("anvil_serving.client_identity", attribute="dispatch", argv_prefix=(action,),
                                      forward_confirm_flag=action == "install"),
                     mutation_class="mutate" if action == "install" else "read", execution_policy="offline",
-                    options=(_option("--config", summary="Managed client declaration; defaults beside router config.", value_name="PATH"),)
+                    options=(_option("--config", summary="Managed client declaration; defaults beside router config.", value_name="PATH"),
+                             _option("--compose", summary="Protected offline client worker Compose profile.", value_name="PATH"))
                     + ((_option("--dry-run", summary="Preview only."),
                         _option("--confirm", summary="Enroll and install feature bindings.", requires_confirmation=True)) if action == "install" else ()),
                     docs_anchor="docs/cli/router.md#managed-client-attribution",

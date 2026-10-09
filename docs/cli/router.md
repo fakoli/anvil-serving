@@ -498,6 +498,32 @@ router config. `--config PATH` selects an explicit managed declaration. Install 
 and currently read owner bindings. The global `--json` envelope captures this complete
 JSON as its `data` string; the default output is the direct, structured binding document.
 
+For a managed container, installation also supplies a protected `client-namespace.json`
+beside that declaration. The same short commands then select its dedicated offline Compose
+worker; `--compose PATH` explicitly selects another accepted worker profile. The worker
+opens the existing mounted KeyStore inside its namespace and holds native producer and
+writer custody continuously through owner enrollment, WebUI approval publication and
+declared recipient staging. The host never opens the container's database or its volume.
+Running-router preview/readback uses the exact current container incarnation and performs
+fresh native owner, grant and expiry checks. Credentials travel on the private stdin pipe,
+never arguments or output. A prior successful readback is not later authority.
+
+The namespace schema `anvil.client-namespace/v1` has exactly `compose`, `container`,
+`expected_image_id` and `declaration_path` in addition to `schema`. Installation binds the
+full immutable image ID and fixed `/run/anvil-client-worker/client-identity.json` location.
+Its `anvil.client-worker/v1` job declares the canonical declaration digest, accepted helper
+digests, fixed recipient operations and individual material directories. The dedicated
+profile uses the existing named key volume, readonly declared inputs, and only explicit
+private feature directories writable at their same paths. Its inert `/bin/false` entrypoint
+prevents accidental service startup; only the bounded native enrollment command overrides
+it. It has no network, ports, GPU, shared environment or account mounts.
+
+Closed, live, competing or unknown retained ownership still refuses unsafe custody. The
+operator separately holds legacy producers stopped; this command does not prove upstream
+completion, drain work, activate WebUI, restart a router or authorize an interruption.
+Partial publication stays available for independent readback and is not blindly rolled
+back. Installation and current-grant validation remain distinct from live qualification.
+
 T015's owner adapter supplies a bounded, protected nonsecret declaration; credentials
 and signer material remain in protected referenced files. The closed declaration schema
 `anvil.managed-client-identity/v1` contains `router_config`, `installed_path`, `bindings`
@@ -511,7 +537,9 @@ migration; this command does not initialize, migrate, issue or widen credentials
 Each WebUI entry contains `client_id`, `instance`, `native`, `approved_recipients` and
 `request_paths`. The instance must join the actual router's native signed-forwarding
 profile: matching device key, required user, and dedicated protected signer-file reference.
-No signer file is opened by this offline command. `native` is T015's nonsecret projection
+The direct enrollment command does not open signer material. The managed worker's fixed
+WebUI preparation validates and publishes its dedicated protected signer and approval
+inputs under the same custody. `native` is T015's nonsecret projection
 of `openai.api_base_urls`, `openai.api_configs` and explicit `other_recipients`. The config
 map must include every URL index, with exact boolean `enable` and `custom_header_names`
 fields. Header **names only** are projected, never values or API keys. Every enabled URL
