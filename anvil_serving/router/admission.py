@@ -7,6 +7,13 @@ import math
 import re
 import threading
 import time
+import contextvars
+import functools
+import json
+import os
+import secrets
+from contextlib import contextmanager
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable, Iterable, Optional
 
@@ -636,3 +643,436 @@ class TierAdmission:
                 for member in state.members
             ),
         )
+
+
+_ROUTER_WORK = contextvars.ContextVar("router_owned_work", default=None)
+_WORK_FAMILIES = ("chat", "purpose", "audio", "memory", "media", "internal", "delivery", "maintenance")
+
+
+class RouterAdmissionClosed(ValueError):
+    """Fixed refusal; callers cannot mint an ownership permit."""
+
+
+class RouterPermit(AdmissionLease):
+    def __init__(self, owner, family, release, *, storage_only=False):
+        super().__init__(release)
+        self.owner, self.family = owner, family
+        self.storage_only = storage_only
+
+    @contextmanager
+    def bind(self):
+        with self.owner._condition:
+            if self._released or self not in self.owner._permits:
+                raise RouterAdmissionClosed("router_ownership_invalid")
+        token = _ROUTER_WORK.set(self)
+        try:
+            yield self
+        finally:
+            _ROUTER_WORK.reset(token)
+
+
+class RouterAdmission:
+    """One process barrier, with actual root/child/delivery ownership.
+
+    Native construction owns the protected persistent state and exclusive
+    single-owner lock. An in-memory fixture cannot establish durable coverage.
+    """
+
+    def __init__(self, revision="unconfigured", *, persist=None, restored=None,
+                 owner_scope=None, roster_revision="unconfigured", policy_revision=None):
+        self._condition = threading.Condition(threading.RLock())
+        self.revision, self.roster_revision = revision, roster_revision
+        self._persist, self._owner_scope = persist, owner_scope
+        self._store_writer_readback = None
+        self._policy_revision = policy_revision or (lambda:revision)
+        self._permits = set()
+        self._counts = dict.fromkeys(_WORK_FAMILIES, 0)
+        self._unknown = set()
+        self._observers = {}
+        self._threads = set()
+        self._on_readmit = []
+        self._assembling = False
+        self._closed = restored is not None
+        self._token = restored.get("barrier_token") if restored else None
+        self._barrier_revision = restored.get("configuration_revision") if restored else None
+        self._barrier_roster = restored.get("roster_revision") if restored else None
+        self._barrier_policy = restored.get("policy_revision") if restored else None
+        self._generation = restored.get("generation", 0) if restored else 0
+        self._consumed = bool(restored and restored.get("consumed"))
+        self._failed = False
+
+    def acquire(self, family, *, parent=None, completion=False, storage_only=False):
+        if family not in _WORK_FAMILIES:
+            raise ValueError("unknown_work_family")
+        if type(storage_only) is not bool or (storage_only and family != "maintenance"):
+            raise ValueError("invalid_storage_ownership")
+        parent = _ROUTER_WORK.get() if parent is None else parent
+        with self._condition:
+            inherited = (type(parent) is RouterPermit and parent.owner is self
+                         and parent in self._permits and not parent._released)
+            if parent is not None and not inherited:
+                raise RouterAdmissionClosed("router_ownership_invalid")
+            if inherited and parent.storage_only and not storage_only:
+                raise RouterAdmissionClosed("router_storage_ownership_only")
+            if self._closed and not inherited and not completion:
+                raise RouterAdmissionClosed("router_quiesced")
+            if self._consumed:
+                raise RouterAdmissionClosed("router_cutover_pending")
+            self._counts[family] += 1
+            permit = RouterPermit(self, family, lambda:self._release(permit), storage_only=storage_only)
+            self._permits.add(permit)
+            return permit
+
+    def _release(self, permit):
+        with self._condition:
+            if permit in self._permits:
+                self._permits.remove(permit)
+                self._counts[permit.family] -= 1
+                self._condition.notify_all()
+
+    def unknown(self, family):
+        with self._condition:
+            self._unknown.add(family)
+            self._condition.notify_all()
+
+    def track_thread(self, thread):
+        with self._condition:
+            self._threads.add(thread)
+
+    def observe(self, family, callback):
+        if family not in _WORK_FAMILIES or not callable(callback):
+            raise ValueError("invalid_owner_observer")
+        with self._condition:
+            if family in self._observers or (self._closed and not self._assembling):
+                raise ValueError("owner_roster_changed")
+            self._observers[family] = callback
+
+    def _state(self):
+        return {"barrier_token":self._token, "configuration_revision":self._barrier_revision,
+                "roster_revision":self._barrier_roster, "generation":self._generation,
+                "policy_revision":self._barrier_policy,
+                "consumed":self._consumed} if self._closed else None
+
+    def _save(self):
+        if self._persist is None:
+            raise ValueError("router_persistence_unavailable")
+        try:
+            self._persist(self._state())
+        except BaseException:
+            self._failed = True
+            raise
+
+    def _check(self, token):
+        if (type(token) is not str or not self._closed or not self._token
+                or not secrets.compare_digest(token, self._token)
+                or self._barrier_revision != self.revision
+                or self._barrier_policy != self._policy_revision()
+                or self._barrier_roster != self.roster_revision or self._failed):
+            raise ValueError("router_barrier_stale")
+
+    def status(self):
+        with self._condition:
+            result = {"scope":"router", "state":"quiesced" if self._closed else "admitting",
+                    "configuration_revision":self.revision, "roster_revision":self.roster_revision,
+                    "generation":self._generation, "counts":dict(self._counts),
+                    "durable":self._persist is not None and not self._failed,
+                    "cutover_pending":self._consumed}
+            if hasattr(self, '_usage'):
+                from .maintenance import history
+                acknowledgement = history(self._usage.key_store)
+                if acknowledgement is not None: result['maintenance'] = acknowledgement
+            return result
+
+    def quiesce_router(self, reason="operator", *, dry_run=True, confirm=False):
+        _reason_code(reason)
+        if type(dry_run) is not bool or type(confirm) is not bool:
+            raise ValueError("confirmation_must_be_boolean")
+        with self._condition:
+            if dry_run or not confirm:
+                return {"applied":False, "dry_run":True, **self.status()}
+            if self._closed:
+                self._check(self._token)
+                return {"applied":True, **self.status(), "barrier_token":self._token}
+            # Closure commits under the acquisition lock before the receipt.
+            self._closed = True
+            self._token = secrets.token_hex(32)
+            self._barrier_revision, self._barrier_roster = self.revision, self.roster_revision
+            self._barrier_policy = self._policy_revision()
+            self._generation += 1
+            self._save()  # Failure leaves the gate closed, never success.
+            self._condition.notify_all()
+            return {"applied":True, **self.status(), "barrier_token":self._token}
+
+    def _drain_counts(self, *, _writer_exclusive=False):
+        counts, unknown = dict(self._counts), set(self._unknown)
+        self._remote_memory_gap = False
+        self._threads = {thread for thread in self._threads if thread.is_alive()}
+        counts["delivery"] += len(self._threads)
+        if self._owner_scope is None:
+            unknown.add("owner_roster_unknown")
+        else:
+            try:
+                self._owner_scope()
+            except Exception:
+                unknown.add("owner_roster_unknown")
+        callbacks = tuple(self._observers.items())
+        if self._store_writer_readback is not None and not _writer_exclusive:
+            callbacks += (("maintenance", self._store_writer_readback),)
+        for family, callback in callbacks:
+            try:
+                count, unresolved = callback()
+                from .maintenance import REMOTE_MEMORY_TERMINAL_UNKNOWN
+                if family == 'memory' and type(count) is int and count == 0 and unresolved is REMOTE_MEMORY_TERMINAL_UNKNOWN:
+                    self._remote_memory_gap = 'memory' not in self._unknown
+                    unresolved = True
+                if type(count) is not int or not 0 <= count <= 100000 or type(unresolved) is not bool:
+                    raise ValueError("invalid_owner_readback")
+                counts[family] += count
+                if unresolved:
+                    unknown.add(family)
+            except Exception:
+                if family == 'memory': self._remote_memory_gap = False
+                unknown.add(family)
+        return counts, sorted(unknown)
+
+    def drain_router(self, barrier_token, timeout_s=30):
+        if type(timeout_s) is not int or not 1 <= timeout_s <= 900:
+            raise ValueError("timeout_must_be_integer_1_900")
+        deadline = time.monotonic() + timeout_s
+        with self._condition:
+            while True:
+                self._check(barrier_token)
+                counts, unknown = self._drain_counts()
+                drained = not any(counts.values()) and not unknown
+                if drained or time.monotonic() >= deadline:
+                    return {**self.status(), "barrier_token":barrier_token, "counts":counts,
+                            "unknown":unknown, "drained":drained, "timed_out":not drained}
+                self._condition.wait(min(.1, max(0, deadline-time.monotonic())))
+
+    def consume(self, barrier_token):
+        """Recheck zero and persist consumption under the acquisition lock."""
+        with self._condition:
+            self._check(barrier_token)
+            counts, unknown = self._drain_counts()
+            if any(counts.values()) or unknown:
+                raise ValueError("router_drain_required")
+            self._consumed = True
+            self._save()
+            return {**self.status(), "barrier_token":barrier_token, "drained":True}
+
+    def readmit_router(self, barrier_token, *, dry_run=True, confirm=False):
+        if type(dry_run) is not bool or type(confirm) is not bool:
+            raise ValueError("confirmation_must_be_boolean")
+        with self._condition:
+            self._check(barrier_token)
+            if self._consumed:
+                raise ValueError("router_cutover_pending")
+            if dry_run or not confirm:
+                return {"applied":False, "dry_run":True, **self.status()}
+            _counts, unknown = self._drain_counts()
+            if unknown:
+                raise ValueError("router_owner_roster_unknown")
+            # Persist removal before opening. Tier/member intentions are untouched.
+            saved = self._state()
+            self._closed = False
+            try:
+                self._save()
+                for resume in self._on_readmit:
+                    resume()
+            except BaseException:
+                self._closed = True
+                self._token = saved["barrier_token"]
+                self._save()
+                raise
+            self._token = None
+            self._condition.notify_all()
+            return {"applied":True, "readmitted":True, **self.status()}
+
+
+def owned_dispatch(family):
+    """Guard eager dispatch and retain returned iterators through real cleanup."""
+    def decorate(operation):
+        @functools.wraps(operation)
+        def call(self, *args, **kwargs):
+            owner = getattr(self, "_router_admission", None)
+            if owner is None:
+                return operation(self, *args, **kwargs)
+            permit = owner.acquire(family)
+            try:
+                with permit.bind():
+                    result = operation(self, *args, **kwargs)
+                from collections.abc import Iterator
+                if not isinstance(result, Iterator):
+                    permit.release()
+                    return result
+            except BaseException:
+                permit.release()
+                raise
+            started = False
+            def generate():
+                nonlocal started
+                started = True
+                try:
+                    while True:
+                        try:
+                            with permit.bind():
+                                value = next(result)
+                        except StopIteration:
+                            return
+                        yield value
+                finally:
+                    try:
+                        with permit.bind():
+                            closer = getattr(result, "close", None)
+                            if callable(closer):
+                                closer()
+                    except BaseException:
+                        owner.unknown(family)
+                        raise
+                    else:
+                        permit.release()
+            def close_unstarted():
+                if not started:
+                    try:
+                        with permit.bind():
+                            closer = getattr(result, "close", None)
+                            if callable(closer):
+                                closer()
+                    except BaseException:
+                        owner.unknown(family)
+                        raise
+                    else:
+                        permit.release()
+            from .backends.relay import _ClosingIterator
+            return _ClosingIterator(generate(), close_unstarted)
+        return call
+    return decorate
+
+
+def managed_router_admission(server_config, revision):
+    """Production producer bound to one explicitly configured native owner.
+
+    Uses the existing protected owner directory and usage store, never creates
+    schemas or recovers foreign runs at startup. Proven inactive local runs are
+    reconciled under both native fences; successor admission stays closed until
+    the existing whole-owner readmit verifies its assembled roster.
+    Linux ownership is required;
+    incomparable platforms and multiple potential admitters fail closed.
+    """
+    owner_id = server_config.router_owner_id
+    managed = server_config.router_owner_backend == "managed-container"
+    if owner_id is None:
+        if managed:
+            raise ValueError("router_owner_roster_unsupported")
+        return RouterAdmission(revision), None, None
+    from .keys import KeyStore, _secure_directory, _private_created_descriptor, _secure_database, _bind_router_store
+    from .usage_store import UsageStore, RunOwner
+    import fcntl
+    import hashlib
+    if server_config.router_owner_roster != (owner_id,):
+        raise ValueError("router_owner_roster_unsupported")
+    path = Path(server_config.admission_state_path + ".router")
+    _secure_directory(path.parent, create=False)
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    if os.path.lexists(lock_path):
+        _secure_database(lock_path, exists=True)
+    descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    try:
+        _private_created_descriptor(descriptor)
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        actual_owner = RunOwner.observe(owner_id, managed=True) if managed else RunOwner.observe(owner_id)
+        restored = None
+        if os.path.lexists(path):
+            _secure_database(path, exists=True)
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            try:
+                _private_created_descriptor(fd)
+                raw = os.read(fd, 16385)
+            finally:
+                os.close(fd)
+            from ..observability.dashboard.contracts import strict_json
+            data = strict_json(raw)
+            if (len(raw) > 16384 or type(data) is not dict or set(data) != {"schema", "owner_id", "closure"}
+                    or data["schema"] != "router-admission/v1" or data["owner_id"] != owner_id):
+                raise ValueError("router_admission_state_invalid")
+            restored = data["closure"]
+            if restored is not None and (type(restored) is not dict or set(restored) != {
+                    "barrier_token", "configuration_revision", "roster_revision", "policy_revision", "generation", "consumed"}
+                    or type(restored["barrier_token"]) is not str or not re.fullmatch("[0-9a-f]{64}", restored["barrier_token"])
+                    or any(type(restored[k]) is not str or len(restored[k]) > 256 for k in ("configuration_revision", "roster_revision", "policy_revision"))
+                    or type(restored["generation"]) is not int or not 1 <= restored["generation"] < 2**53
+                    or type(restored["consumed"]) is not bool):
+                raise ValueError("router_admission_state_invalid")
+        # Roster identity binds the actual process owner, not the operator label.
+        from dataclasses import asdict
+        roster_revision = hashlib.sha256(json.dumps({"roster":server_config.router_owner_roster,
+            "owner":asdict(actual_owner)}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+        def persist(closure):
+            import tempfile
+            _secure_directory(path.parent, create=False)
+            if os.path.lexists(path):
+                _secure_database(path, exists=True)
+            fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".router-admission-")
+            try:
+                _private_created_descriptor(fd)
+                with os.fdopen(fd, "w", encoding="utf-8") as out:
+                    json.dump({"schema":"router-admission/v1", "owner_id":owner_id, "closure":closure},
+                              out, sort_keys=True, separators=(",", ":"), allow_nan=False)
+                    out.flush(); os.fsync(out.fileno())
+                os.replace(temporary, path)
+                directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+
+        usage = UsageStore(KeyStore(server_config.api_keys_path))
+        usage.owner_config = server_config
+        with usage.key_store._offline_custody(server_config, producer_descriptor=descriptor, allow_retained=True):
+            from .container_owner import ready_transfers, finish_transfers
+            transfers = ready_transfers(usage) if managed else []
+            retained = usage.inactive_native_runs(actual_owner, domain_id=server_config.usage_domain_id)
+            with usage.key_store._connect() as db:
+                previous = db.execute('SELECT configuration_revision FROM usage_domains WHERE domain_id=?',
+                                      (server_config.usage_domain_id,)).fetchone()
+            if retained:
+                recovery = usage.recover(retained, host_domain_id=owner_id)
+                if recovery['live_runs'] or recovery['unknown_runs']:
+                    raise ValueError('router_owner_recovery_unknown')
+            run_id = usage.register_run(actual_owner, domain_id=server_config.usage_domain_id,
+                                        configuration_revision=revision, enabled=server_config.usage_enabled,
+                                        previous_revision=previous[0] if previous else None)
+            def scope():
+                return usage.managed_owner_scope(run_id, actual_owner, domain_id=server_config.usage_domain_id,
+                                                  configuration_revision=revision)
+            if not managed:
+                scope()  # Native-process ownership stays unchanged.
+            successor = bool(managed or retained or restored is not None)
+            if successor:
+                # The predecessor closure remains durable through reconciliation
+                # and actual new-run verification. Transfer writes a new closed
+                # generation; it never reuses a consumed admission permission.
+                restored = {'barrier_token': secrets.token_hex(32), 'configuration_revision': revision,
+                            'roster_revision': roster_revision, 'policy_revision': revision,
+                            'generation': (restored['generation'] if restored else 0) + 1, 'consumed': False}
+            owner = RouterAdmission(revision, persist=persist, restored=restored, owner_scope=scope,
+                                    roster_revision=roster_revision)
+            usage.key_store._router_admission = owner
+            owner._assembling = True
+            owner._successor_pending = successor
+            owner._store_writer_readback = _bind_router_store(usage.key_store.path, path, owner_id)
+            owner._owner_descriptor = descriptor
+            owner._usage, owner._server_config = usage, server_config
+            owner.usage_scope = scope
+            owner.usage_run_id = run_id
+            persist(owner._state())
+            if managed:
+                finish_transfers(usage, transfers, run_id, actual_owner, revision, owner._state())
+        return owner, usage, run_id
+    except BaseException:
+        os.close(descriptor)
+        raise

@@ -24,7 +24,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .admission import AdmissionLease, TierAdmission, _member_id, _reason_code
+from .admission import AdmissionLease, TierAdmission, RouterAdmission, owned_dispatch, managed_router_admission, _member_id, _reason_code
 from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
@@ -84,6 +84,7 @@ from .model_metadata import (
     build_model_fingerprints,
     build_router_status,
 )
+from .identity import load_webui_bindings
 from .purpose import PurposeRouter
 from .memory import MemoryRouter
 from .request_control import (
@@ -203,7 +204,8 @@ class RouterWorkloadStream:
     iterator callers may use it directly; close() is the fallback disconnect.
     """
 
-    def __init__(self, factory, token: Optional[RouterWorkloadToken]) -> None:
+    def __init__(self, factory, token: Optional[RouterWorkloadToken], router_permit=None) -> None:
+        self._router_permit = router_permit
         self._factory = factory
         self._token = token
         self._inner = None
@@ -216,7 +218,11 @@ class RouterWorkloadStream:
         if not self._started and not self._closed:
             self._started = True
             try:
-                self._inner = self._factory()
+                if self._router_permit is None:
+                    self._inner = self._factory()
+                else:
+                    with self._router_permit.bind():
+                        self._inner = self._factory()
             except BaseException:
                 self.generation_failed = True
                 raise
@@ -244,24 +250,26 @@ class RouterWorkloadStream:
     def close_upstream(self) -> None:
         if self._closed:
             return
-        self._closed = True
-        self._factory = None
         closer = getattr(self._inner, "close", None)
         if callable(closer):
             closer()
+        self._closed = True
+        self._factory = None
 
     def finish_delivery(self, outcome: Optional[WorkloadOutcome] = None) -> None:
         if self._finished:
             return
+        self.close_upstream()  # A refused concurrent close is still owned work.
         self._finished = True
         try:
-            self.close_upstream()
-        finally:
             if self._token is not None:
                 try:
                     self._token.finish(outcome)
                 except Exception:
                     pass  # observation never owns response or admission success
+        finally:
+            if self._router_permit is not None:
+                self._router_permit.release()
 
     def close(self) -> None:
         self.finish_delivery(None if self.generation_failed else WorkloadOutcome.DISCONNECTED)
@@ -344,18 +352,23 @@ class ReplicaRuntime:
         """Invoke exactly one declared member and retain its side-channel owner."""
         self._thread_local.selected_backend = None
         backend = self.member_backend(member_id)
-        try:
-            iterator = iter(backend.generate(request))
-        except BaseException:
-            self._thread_local.selected_backend = None
-            raise
         self._thread_local.selected_backend = backend
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None and not getattr(backend, "usage_transport_boundary", False):
+            invocation.ambiguous_dispatch()
+        iterator = iter(backend.generate(request))
         return iterator
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         """Delegate to the member successfully invoked by this thread."""
         backend = getattr(self._thread_local, "selected_backend", None)
         fn = getattr(backend, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "selected_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -407,6 +420,11 @@ class _ConcurrencyLimitedBackend:
     def __init__(self, inner: Backend, max_concurrency: int) -> None:
         self._inner = inner
         self._sem = threading.BoundedSemaphore(max_concurrency)
+        self._usage_local = threading.local()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -425,6 +443,7 @@ class _ConcurrencyLimitedBackend:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         control = request_control(args[-1])
         if control is None:
             control = RequestControl()
@@ -435,6 +454,7 @@ class _ConcurrencyLimitedBackend:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
@@ -446,6 +466,11 @@ class _ConcurrencyLimitedBackend:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -462,6 +487,7 @@ class _AutoConcurrencyGate:
     def __init__(self, inner: Backend, tier_id: str) -> None:
         self._inner = inner
         self._tier_id = tier_id
+        self._usage_local = threading.local()
         self._cond = threading.Condition()
         self._in_flight = 0
         self._ceiling: Optional[int] = None
@@ -476,6 +502,10 @@ class _AutoConcurrencyGate:
                 return
             self._ceiling = value
             self._cond.notify_all()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -493,6 +523,7 @@ class _AutoConcurrencyGate:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         request = args[-1]
         control = request_control(request)
         if control is None:
@@ -507,6 +538,7 @@ class _AutoConcurrencyGate:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             with self._cond:
@@ -522,6 +554,11 @@ class _AutoConcurrencyGate:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -645,6 +682,7 @@ class RoutingBackend:
         admission: Optional[TierAdmission] = None,
         capacity_metrics: Optional[MetricsProvider] = None,
         decision_log: Optional[DecisionLog] = None,
+        start_background: bool = True,
     ) -> None:
         self._config = config
         self._backends: Dict[str, Backend] = {}
@@ -672,7 +710,7 @@ class RoutingBackend:
             if auto_gates
             else None
         )
-        if self._auto_refresher is not None:
+        if self._auto_refresher is not None and start_background:
             self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
         # A valid media-only gateway has no chat tiers to admit. Its chat
@@ -701,6 +739,7 @@ class RoutingBackend:
         self._thread_local: threading.local = threading.local()
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
         self._trace_exporter: Optional[TraceExporter] = None
+        self._router_admission = RouterAdmission(self._request_config_sha256)
 
     def close(self) -> None:
         """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
@@ -907,14 +946,18 @@ class RoutingBackend:
         return self._generate(request)
 
     def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
-        token = None
-        if self._workload_registry is not None:
+        permit = self._router_admission.acquire("chat")
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        token = invocation.token if invocation is not None else None
+        if token is None and self._workload_registry is not None:
             try:
                 token = self._workload_registry.begin(gateway_request_id)
             except Exception:
                 pass
-        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
+        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token, permit)
 
+    @owned_dispatch("chat")
     def _generate(
         self, request: InternalRequest, *, workload_token=None
     ) -> Iterator[BackendDelta]:
@@ -928,6 +971,7 @@ class RoutingBackend:
         control.note_activity("checking", estimated_input_tokens=self._prompt_tokens(request))
         control.check_admission()
         self._thread_local.last_result = None
+        self._thread_local.usage_backend = None
         self._thread_local.last_served_tier = None
         started = time.monotonic()
         readiness_check_ms: Optional[int] = None
@@ -1141,6 +1185,14 @@ class RoutingBackend:
             control.check_admission()
             control.note_activity("admitted", context_limit_tokens=tier.context_limit)
             advance(WorkloadState.ADMITTED)
+            from .internal import usage_invocation
+            from .usage_store import RouteAssociation
+            invocation = usage_invocation(request)
+            if invocation is not None:
+                invocation.route = RouteAssociation(route_id=tier.id, backend_id=tier.id, member_id=selected_member)
+            self._thread_local.usage_backend = backend
+            if invocation is not None and not isinstance(backend, ReplicaRuntime) and not getattr(backend, "usage_transport_boundary", False):
+                invocation.ambiguous_dispatch()
             upstream_call_started = time.monotonic()
             upstream = (
                 backend.generate_member(selected_member, relay_request)
@@ -1339,6 +1391,11 @@ class RoutingBackend:
         return _AdmissionIterator(
             relay, lease, on_complete, on_cancel=on_cancel, resources=(upstream,)
         )
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "usage_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
+        return fn() if callable(fn) else None
 
     def tier_health(self) -> dict:
         return build_tier_health(self._config, self._availability)
@@ -1903,6 +1960,16 @@ def build_server(
     ):
         admission = _durable_admission(server_config.admission_state_path, config)
     with ExitStack() as cleanup:
+        import hashlib
+        configuration_revision = (hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+                                  if server_config.router_owner_id else "unmanaged")
+        router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
+        def release_unassembled_owner():
+            descriptor = getattr(router_owner, '_owner_descriptor', None)
+            if descriptor is not None:
+                os.close(descriptor)
+                router_owner._owner_descriptor = None
+        cleanup.callback(release_unassembled_owner)
         decision_log: Optional[DecisionLog] = None
         trace_exporter: Optional[TraceExporter] = None
         if server_config.decision_log_path:
@@ -1928,9 +1995,18 @@ def build_server(
             admission=admission,
             capacity_metrics=capacity_metrics,
             decision_log=decision_log,
+            start_background=server_config.router_owner_backend != "managed-container",
         )
         cleanup.callback(routing.close)
         routing._trace_exporter = trace_exporter
+        routing._router_admission = router_owner
+        def admission_policy_revision():
+            snapshots = routing._admission.snapshots() if routing._admission is not None else ()
+            policy = [(s.tier_id,s.state,s.reason,[(m.member_id,m.state,m.reason) for m in s.members]) for s in snapshots]
+            return hashlib.sha256(json.dumps(policy,sort_keys=True,separators=(",", ":")).encode()).hexdigest()
+        router_owner._policy_revision = admission_policy_revision
+        for owned_backend in backends.values():
+            owned_backend._router_admission = router_owner
         effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
         if observe_workloads:
             routing._workload_registry = RouterWorkloadRegistry(
@@ -1998,6 +2074,7 @@ def build_server(
                     else None
                 ),
             )
+            operations._router_admission = router_owner
             media_backend = ComfyUIClient(backend_url)
             gateway = ProtocolGateway(
                 caller={
@@ -2022,7 +2099,73 @@ def build_server(
                     backend_endpoint=media_backend.base_url,
                 ),
                 maintenance=operations.artifacts.prune,
+                router_admission=router_owner,
             )
+        def metadata_drain_readback():
+            # Stop scheduling metadata work, then observe actual completion.
+            if router_owner._closed and not any(router_owner._counts.values()):
+                if routing._auto_refresher is not None:
+                    routing._auto_refresher._stop.set()
+                    routing._auto_refresher._wake.set()
+                routing._replica_pressure.close()
+                if trace_exporter is not None:
+                    with trace_exporter._lock:
+                        trace_exporter._closed = True
+            threads = list(routing._replica_pressure._workers)
+            if trace_exporter is not None:
+                threads.append(trace_exporter._worker)
+            if routing._auto_refresher is not None and routing._auto_refresher._thread is not None:
+                threads.append(routing._auto_refresher._thread)
+            return sum(thread.is_alive() for thread in threads), False
+
+        def resume_background():
+            pressure = routing._replica_pressure
+            with pressure._condition:
+                if any(thread.is_alive() for thread in pressure._workers):
+                    raise ValueError("router_metadata_not_drained")
+                pressure._closed = False
+                pressure._workers.clear()
+                for entry in pressure._entries.values():
+                    entry.queued = False
+            refresher = routing._auto_refresher
+            if refresher is not None:
+                if refresher._thread is not None and refresher._thread.is_alive():
+                    raise ValueError("router_metadata_not_drained")
+                refresher._thread = None
+                refresher._stop.clear()
+                refresher._wake.clear()
+                refresher.start()
+            if trace_exporter is not None:
+                with trace_exporter._lock:
+                    if trace_exporter._worker.is_alive():
+                        raise ValueError("router_metadata_not_drained")
+                    trace_exporter._closed = False
+                    trace_exporter._worker = threading.Thread(target=trace_exporter._run, name="anvil-router-traces", daemon=True)
+                    trace_exporter._worker.start()
+            if media_worker is not None:
+                media_worker.start()
+
+        router_owner.observe("maintenance", metadata_drain_readback)
+        router_owner._on_readmit.append(resume_background)
+        if memory is not None:
+            # Remote memory may retain inference beyond the outer HTTP result.
+            # No native owner readback is declared by this transport contract.
+            from .maintenance import REMOTE_MEMORY_TERMINAL_UNKNOWN
+            router_owner.observe("memory", lambda:(0, REMOTE_MEMORY_TERMINAL_UNKNOWN))
+        if media_worker is not None:
+            router_owner.observe("media", media_worker.drain_readback)
+        router_owner._assembling = False
+        if getattr(router_owner, '_successor_pending', False):
+            # Bind the new closed generation to the actual assembled policy.
+            # Existing readmit checks every observer; remote UNKNOWN stays HOLD.
+            router_owner._barrier_policy = admission_policy_revision()
+            router_owner._save()
+            router_owner._successor_pending = False
+        def usage_metrics():
+            from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
+            return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,
+                effective_workload_clock(), domain_id=server_config.usage_domain_id,
+                authority_scope=router_owner.usage_scope())).encode("utf-8")
         httpd = make_server(
             host, port, routing, timeout=timeout, model_routes=config.model_routes,
             exhaustion_status=config.exhaustion_status, auth_token=auth_token,
@@ -2032,7 +2175,11 @@ def build_server(
             workload_host=server_config.workload_host,
             workload_registry=routing._workload_registry,
             workload_clock=effective_workload_clock,
-            server_config=server_config,
+            server_config=server_config, router_admission=router_owner,
+            usage_store=owner_usage if server_config.usage_enabled else None, usage_run_id=owner_run,
+            usage_authority=getattr(router_owner, "usage_scope", None), usage_domain_id=server_config.usage_domain_id,
+            usage_metrics=usage_metrics if server_config.usage_metrics_enabled else None,
+            webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
         )
         cleanup.callback(httpd.server_close)
         httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
@@ -2052,6 +2199,10 @@ def build_server(
         def close_router_server() -> None:
             nonlocal closed
             with close_lock:
+                if getattr(router_owner, "_owner_descriptor", None) is not None:
+                    counts, unknown = router_owner._drain_counts()
+                    if not router_owner._closed or any(counts.values()) or unknown:
+                        raise ValueError("router_owned_work_not_drained")
                 if closed:
                     return
                 closed = True
@@ -2063,9 +2214,13 @@ def build_server(
                     routing.close()
                 finally:
                     original_server_close()
+                    descriptor = getattr(router_owner, "_owner_descriptor", None)
+                    if descriptor is not None:
+                        os.close(descriptor)
+                        router_owner._owner_descriptor = None
 
         httpd.server_close = close_router_server  # type: ignore[method-assign]
-        if media_worker is not None:
+        if media_worker is not None and server_config.router_owner_backend != "managed-container":
             try:
                 media_worker.start()
             except BaseException:

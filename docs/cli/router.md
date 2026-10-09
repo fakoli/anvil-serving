@@ -426,3 +426,357 @@ backing serves had been off for hours with no signal anywhere. See
 - [Configuration](../CONFIGURATION.md)
 - [Operator playbooks](../OPERATOR-PLAYBOOKS.md)
 - [Troubleshooting](../TROUBLESHOOTING.md)
+
+
+## Caller accounting
+
+Use the supported operator commands:
+
+```bash
+anvil-serving router usage active
+anvil-serving router usage recent
+anvil-serving router usage query --granularity cumulative
+anvil-serving router keys bind --key-id key_fixture --kind human --owner-id human_fixture --expected-revision 0 --dry-run
+anvil-serving router keys backup --out /protected/snapshots/router.sqlite3
+anvil-serving router keys restore --snapshot /protected/snapshots/router.sqlite3 --out /protected/restore/router.sqlite3
+```
+
+`router-diagnostics.toml` loads automatically from the operator configuration home.
+Save the non-secret router origin, timeout and a protected raw-token file reference:
+
+```toml
+router_url = "https://example.test"
+timeout = 5
+credential_file = "secrets/usage-admin.token"
+```
+
+Installation owns creating that owner-only token file and enrolling its existing
+`workloads:read` authority. The CLI rejects links, unsafe ancestors and shared
+home `.env`; it never reads the diagnostic dotenv file for accounting. A selected
+process credential (`--auth-env NAME`) may override the file; credentials are never
+command arguments. This scope must be restricted to administrators and the dedicated
+scraper before sensitive usage is enabled. Inference/device/profile authority is
+insufficient. No read command replays inference or changes configuration.
+
+Default output is exact protected API JSON. Native `--json` adds the standard CLI
+envelope and its existing secret-key redaction, including `credential_id`; use
+default output for complete exact identity readback. Exact integers are never
+converted to floats or capped by the generic diagnostic projector.
+
+`recent` is the last24 UTC hours of detail, not a completeness claim. Exact `query`
+accepts `--granularity detail|daily|cumulative`, `--from-utc`, `--to-utc`, JSON
+`--filters '[["actor_kind","service"]]'`, JSON `--group-by '["model"]'`, `--limit`,
+`--cursor` and `--require-complete`. Null, boolean and integer filter values keep
+their native JSON types. Detail/daily require both UTC Z bounds; daily boundaries
+must be midnight. Cumulative forbids windows. Active allows only filters and limit
+(default50/max200). Coverage, retained floors, unknown/partial/not-applicable tokens,
+truncation, omissions, cursor and fixed refusal codes retain their API meanings.
+Missing/invalid activity samples or clock rewind produce null age; polling/phase
+updates never reset activity. See [the retained contract](../ROUTER-USER-USAGE.md).
+
+Binding is an operator-local ordinary-key revision CAS. `--dry-run` performs the
+same validation without writes; omit it to apply and read back the new actor revision.
+It preserves grants and immutable history, refusing stale revisions, expired or
+Connect-owned keys. No binding or snapshot command migrates schema automatically.
+Backup/restore reuse consistent protected SQLite snapshots and require an absent
+destination. Existing/newer/substituted files are never overwritten. Container
+operations use `--container NAME` with paths inside verified durable writable mounts;
+backup and restore outputs stay inside that container. Restore does not install,
+activate, re-admit or claim that active requests have drained.
+
+## Managed client attribution
+
+```sh
+anvil-serving router clients preview
+anvil-serving router clients install --confirm
+anvil-serving router clients readback
+```
+
+These offline commands load `client-identity.json` beside the conventional operator-home
+router config. `--config PATH` selects an explicit managed declaration. Install without
+`--confirm`, or with `--dry-run`, previews only. Default JSON includes the exact desired
+and currently read owner bindings. The global `--json` envelope captures this complete
+JSON as its `data` string; the default output is the direct, structured binding document.
+
+For a managed container, installation also supplies a protected `client-namespace.json`
+beside that declaration. The same short commands then select its dedicated offline Compose
+worker; `--compose PATH` explicitly selects another accepted worker profile. The worker
+opens the existing mounted KeyStore inside its namespace and holds native producer and
+writer custody continuously through owner enrollment, WebUI approval publication and
+declared recipient staging. The host never opens the container's database or its volume.
+Running-router preview/readback uses the exact current container incarnation and performs
+fresh native owner, grant and expiry checks. Credentials travel on the private stdin pipe,
+never arguments or output. A prior successful readback is not later authority.
+
+The namespace schema `anvil.client-namespace/v1` has exactly `compose`, `container`,
+`expected_image_id` and `declaration_path` in addition to `schema`. Installation binds the
+full immutable image ID and fixed `/run/anvil-client-worker/client-identity.json` location.
+Its `anvil.client-worker/v1` job declares the canonical declaration digest, accepted helper
+digests, fixed recipient operations and individual material directories. The dedicated
+profile uses the existing named key volume, readonly declared inputs, and only explicit
+private feature directories writable at their same paths. Its inert `/bin/false` entrypoint
+prevents accidental service startup; only the bounded native enrollment command overrides
+it. It has no network, ports, GPU, shared environment or account mounts.
+
+Closed, live, competing or unknown retained ownership still refuses unsafe custody. The
+operator separately holds legacy producers stopped; this command does not prove upstream
+completion, drain work, activate WebUI, restart a router or authorize an interruption.
+Partial publication stays available for independent readback and is not blindly rolled
+back. Installation and current-grant validation remain distinct from live qualification.
+
+T015's owner adapter supplies a bounded, protected nonsecret declaration; credentials
+and signer material remain in protected referenced files. The closed declaration schema
+`anvil.managed-client-identity/v1` contains `router_config`, `installed_path`, `bindings`
+and `webui`. Each binding contains `client_id`, `key_id`, `kind` (`human` or `service`),
+`owner_id`, `expected_revision`, and `policy` (`direct`, `service`, `webui`, or explicit
+`detached_service_only`). Non-direct policies require service ownership. Installation
+uses ordinary-key owner revision CAS and preserves the entire existing grant. Connect
+account-owned keys are refused. Storage must already have the accepted accounting
+migration; this command does not initialize, migrate, issue or widen credentials.
+
+Each WebUI entry contains `client_id`, `instance`, `native`, `approved_recipients` and
+`request_paths`. The instance must join the actual router's native signed-forwarding
+profile: matching device key, required user, and dedicated protected signer-file reference.
+The direct enrollment command does not open signer material. The managed worker's fixed
+WebUI preparation validates and publishes its dedicated protected signer and approval
+inputs under the same custody. `native` is T015's nonsecret projection
+of `openai.api_base_urls`, `openai.api_configs` and explicit `other_recipients`. The config
+map must include every URL index, with exact boolean `enable` and `custom_header_names`
+fields. Header **names only** are projected, never values or API keys. Every enabled URL
+and every plugin/tool/other recipient must equal the approved destination set. Custom
+forwarded-user header overrides are refused because native custom headers apply last.
+`request_paths` must explicitly map all four `foreground`, `title`, `tag` and `background`
+paths to enabled native connection indices. Unknown fields, duplicate fields, nonfinite
+JSON, absent inventory entries and invented completeness flags are refused.
+
+This validates the declared native inventory, not discovery of live account state. The
+adapter must produce the complete actual recipient/task-model/custom-header projection
+before global WebUI forwarding can be enabled. Independently selected providers, models,
+routes, active grants and sessions are not rewritten or contacted. Native no-user omission
+and plaintext signer-error fallback must still be rejected by the router's require-user
+verifier; detached service-only clients use their separate explicit policy.
+
+Install writes only the protected feature binding document at an **absent** destination,
+then independently rereads it and current key ownership. Matching repeats are idempotent;
+a differing existing document is never overwritten. No client adapter or service is
+activated. If file installation fails after enrollment, some keys may already be bound:
+retry validates the exact original CAS and readback reports failure/incomplete state;
+there is no unsafe grant rollback. Corrected declarations need a separately chosen absent
+feature destination and appropriate new owner revision.
+
+Readback checks actual installed bytes and current unexpired, unrecalled key ownership,
+not an echo of the requested declaration. Unmigrated/unconfigured state is incomplete or
+a safe failure. `configuration_present_live_pending`, `declared_inventory_validated_live_pending`
+and `live_status: unqualified` distinguish source/configuration proof from live behavior.
+T015 native adapter provisioning and independent T020 foreground/title/tag/background,
+direct/service, recipient privacy and provider-continuity qualification remain required
+before rollout. The exact CLI accounting ledger remains separate from sampled dashboards.
+
+## Whole-router admission
+
+`anvil-serving router quiesce --scope router --confirm` closes the configured
+native owner's complete inference admission and prints its opaque barrier token.
+Use `anvil-serving router drain --scope router --barrier-token TOKEN --timeout 30`
+for bounded actual ownership readback. The timeout is an integer from 1 to 900;
+a timeout leaves work and admission closure intact. Readmission uses
+`anvil-serving router readmit --scope router --barrier-token TOKEN --confirm`.
+Tier/member commands retain their existing scopes; they do not prove router drain.
+
+The native single-owner producer requires explicit `server.router_owner_id`,
+`router_owner_roster = ["owner_fixture"]`, `usage_domain_id`, an absolute protected
+`admission_state_path`, the existing protected `api_keys_path`, and authentication.
+The roster must name exactly that owner. The existing explicitly migrated usage
+schema records enabled and disabled runs before traffic; `usage_enabled = false`
+is the default. Sensitive metrics require separate `usage_metrics_enabled = true`
+and scoped authorization. Installation owns these private settings. A second
+process cannot acquire the same persistent native owner lock. Foreign/unknown
+runs or unsupported shared authority refuse startup and authoritative coverage.
+
+After independently holding every producer and proving terminal predecessor
+work, a stopped first-upgrade router can migrate its existing protected store:
+
+```bash
+anvil-serving router keys migrate --compose docker-compose.yml --env-file router.env --backup-out /var/lib/anvil-serving/router-keys/pre-accounting.sqlite3 --offline --confirm
+anvil-serving router up --compose docker-compose.yml --env-file router.env --confirm
+```
+
+Migration uses only the selected router service in its candidate image, with no
+dependencies started. The mounted configuration selects storage and the declared
+single owner. The absent backup destination must be in the durable router-key
+directory. Native installations instead use `--config PATH` and a protected
+`--backup-out PATH`, without `--compose`. A live `--container` migration is refused.
+The producer and store-writer fences remain held through snapshot and migration;
+the existing bounded SQLite writer transaction preserves keys, grants and audit.
+Never restore that older snapshot over later committed authority or accounting.
+
+Cold `up` distinguishes an exact absent/created/exited managed target from live
+replacement. It verifies the complete Docker mount-consumer roster and executes
+an offline candidate custody check under the same lifecycle lock as launch.
+This is offline startup, not predecessor drain. Probe locks end before launch;
+the actual new process must acquire its own producer fence and reject competing
+or retained owners. External producer maintenance holds remain necessary.
+Migration remains a first-bootstrap operation and refuses retained native
+ownership. Cold startup can probe an existing owner only with matching protected
+store binding, actual producer/writer exclusion and physically proven inactive
+local runs. Actual startup rechecks that proof, reconciles local interrupted
+requests through the ledger's recovery operation, preserves committed rows and
+registers the real successor. The old closure stays durable through that
+verification; transfer persists a new closed generation with a new barrier.
+Live, foreign, incomparable or unknown old runs refuse before transfer.
+The default `server.router_owner_backend="native-process"` requires the same
+verified boot, PID/user namespaces and unrestricted procfs view. A replacement
+namespace remains UNKNOWN in that mode. The opt-in `managed-container` mode uses
+protected per-run custody recorded by the native managed Docker lifecycle. Every
+initial and successor process is durably quiesced before listening or starting
+background work. The native helper verifies its actual live PID/start and
+container namespace, while the host verifies the exact full container ID, image,
+incarnation, Docker daemon, selected Compose service and mounted-state consumers.
+The helper holds the actual storage fence while the host repeats that readback;
+only an exact staged-digest commit finalizes the anchor. Pending custody never
+allows readmission. Managed observation recognizes only Docker's exact read-only
+`/proc/sys` subtree on the same procfs superblock; other sensitive substitutions
+and restricted or incomparable views still refuse.
+
+Managed `down`, `restart` and `up --recreate` stop the drained old incarnation,
+verify it is actually stopped under the lifecycle/storage fences and preserve its
+immutable physical-death proof before starting a successor. Cold `up` can perform
+the same check for an anchored crashed incarnation without inventing consumption
+or upstream completion. Probe, recovery, changed-config registration and ongoing
+scope share that exact proof. Recovery preserves committed accounting and records
+unfinished local requests as interrupted with unknown upstream outcome. Transfer
+keeps the old closure through verification, then persists a new closed generation
+and binds the proof once to the actual registered successor. Prior barrier tokens
+cannot admit the new owner. Current accounting write authority begins with that
+new generation; queries of earlier configurations retain measured rows and report
+coverage outside the current authoritative window as incomplete.
+
+A missing live anchor cannot be fabricated after death. Legacy/unanchored runs,
+removed or changed incarnations, inaccessible native metadata and a partially
+registered unanchored successor remain HOLD. This includes a crash between ledger
+registration, closure persistence and custody transfer; conservative refusal is
+an explicit recovery limit. Releasing an old file lock alone is never proof.
+The managed profile must use the selected supported Compose configuration;
+`restart`/`reload` accept `--compose`, `--service` and `--env-file`. The direct
+`install-config` operation refuses this mode before replacement writes because it
+cannot preserve the predecessor config for custody; stage config changes while
+managed `down`, then use managed `up` with the declared profile.
+
+The successor remains quiesced. Use the existing management commands to obtain
+its new barrier and request readmission after the assembled owner roster is safe:
+
+```bash
+anvil-serving router quiesce --scope router --confirm
+anvil-serving router readmit --scope router --barrier-token NEW_BARRIER --confirm
+```
+
+Local inactive-run recovery does not prove remote execution completed. Configured
+memory currently has no terminal owner readback, so its observer remains UNKNOWN:
+local reconciliation can finish while successor readmission and managed close
+stay held. An external pause or bounded interruption does not supply a native
+remote terminal contract. Ordinary readmission for this topology remains held. A separately authorized
+one-time native acknowledgement is described below; it accepts uncertainty,
+not terminal remote completion. These commands do not
+disable memory, erase closure or turn UNKNOWN into zero.
+
+Router restart/reload/recreate/down/config install require the actual old
+container's supported all-path barrier, owned zero and consumed persistent closure.
+The running old version cannot acquire this capability from new source tests.
+Missing old support is a bootstrap HOLD. Successor identity or configuration
+changes retain closure and require reviewed owner transfer before readmission;
+a stale old-owner token never automatically opens a replacement process. Current
+remote memory transport supplies no native retained-inference drain readback and
+therefore holds router replacement while configured. Ambiguous media submission
+also remains HOLD even if ordinary recovery marks the local job failed.
+
+
+## Acknowledged router maintenance
+
+```bash
+anvil-serving router maintenance --config maintenance.json --preview-out preview.json
+anvil-serving router maintenance --config maintenance.json --confirm
+```
+
+Installation prepares the protected declaration and authorization from the
+explicit human decision, final artifact identities and the fresh native preview.
+The declaration names the exact Compose profile and its SHA-256, the protected
+authorization, and an absent protected receipt destination. Preview does not
+stop or reopen the router. Confirmation requires the exact preview digest and a
+short, unexpired one-time operation identity. Credentials never appear in argv
+or output.
+
+The first `legacy-stop` phase binds the actual admitted legacy profile, mounted
+non-secret config, container/image/daemon/start identity and consumer roster.
+Metadata rendering explicitly disables project dotenv and service env-file
+resolution. It acknowledges UNKNOWN old submissions and remote work; it does
+not claim submitters were paused or drained. A protected pending acknowledgement
+precedes the exact container stop. Independently verified stopped identity
+establishes the ingress barrier before offline storage operations. Existing
+non-secret legacy config permissions are preserved.
+
+The candidate can then import that stopped receipt with its newest exclusive
+rollback snapshot and schema migration:
+
+```bash
+anvil-serving router keys migrate --compose router-worker.json --backup-out /var/lib/anvil-serving/router-keys/pre-accounting.sqlite3 --maintenance-receipt legacy-receipt.json --offline --confirm
+```
+
+Import requires actual producer and writer exclusion, the same stopped
+incarnation, the same protected store, and no retained usage runs. Unanchored or
+unresolved retained rows remain HOLD. It never retrofits a legacy run, anchor,
+closure or terminal receipt. The supported cold-start probe verifies this
+import before a fresh managed owner registers CLOSED and finalizes its live
+container anchor.
+
+The separate `successor-readmit` authorization binds that new generation,
+owner/domain/store/gate, config/roster/policy revisions, live anchor and native
+observation. Every local request, delivery, worker and writer must be terminal;
+owner, storage, callback and untyped uncertainty all refuse. Only the native
+remote-memory terminal gap is eligible. The protected operator helper publishes
+permission over private stdin; the HTTP endpoint cannot mint it. The owner
+rechecks the preview under real producer/writer fences and durably consumes the
+operation before opening. Replayed, expired or changed inputs refuse. Failure
+leaves the gate closed and consumes any already-published acknowledgement.
+Crash/restart creates another CLOSED generation without inheriting permission.
+
+Bind accounting and protected metrics in the final configuration before this
+first CLOSED startup. Scoped admin/nonadmin/datasource isolation and metadata
+readback can be checked while inference stays closed; let those counted reads
+finish before the final maintenance preview. Status, health and retained query
+coverage keep acknowledged legacy and remote uncertainty visible. Committed
+rows and interruption metadata remain intact. Preserve the named store volume,
+including protected custody and acknowledgement sidecars, for rollback; never
+replace newer committed state with an older snapshot.
+
+## Fixed native SQLite storage
+
+The opt-in router runtime uses a verified fixed SQLite build and its native
+`SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE` API. All file openers verify the runtime before
+file SQL, guard retained sidecars, and retain FULL durability. Ordinary DELETE
+stores stay unchanged. Explicit offline conversion uses the same custody and
+newest rollback snapshot:
+
+```bash
+anvil-serving router keys migrate --compose router-worker.json --backup-out /var/lib/anvil-serving/router-keys/pre-wal.sqlite3 --journal-mode WAL --offline --confirm
+```
+
+WAL conversion binds a protected mode record to the actual database inode. A
+pending or unsupported policy refuses rather than being guessed or downgraded.
+Read leases exclude conversion; the native helper can read through only its
+own still-held exclusive gate. Default checkpoint behavior stays enabled.
+A held reader can defer checkpoint progress. The existing 64 MiB ceiling
+refuses new mutations while allowing a consistent newest backup and explicit
+offline checkpoint under custody. Backups are independent DELETE snapshots;
+close never substitutes for remote completion or drops FULL durability.
+The runtime and WAL mode alone do not prove the durable latency gate.
+
+Offline unique client credentials can be issued into the same stopped named
+store through the bounded selected worker:
+
+```bash
+anvil-serving router keys create --compose router-key-issuance.json --offline --confirm --name client --model llm.primary --path /v1/chat/completions --out /protected/clients/client-token
+```
+
+The output is exclusive, owner-only and never overwritten. Public output lists
+only the new key ID and grants. Enrollment and fresh native authorization use
+the existing namespace worker with the same KeyStore and current owner/grant
+CAS; host processes never open the Docker volume as a second store.

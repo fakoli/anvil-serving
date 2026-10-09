@@ -8,6 +8,8 @@ hermetic.
 
 from __future__ import annotations
 
+from ..admission import owned_dispatch
+
 import json
 import http.client
 import os
@@ -38,7 +40,7 @@ from ..dialects.translate import (
     openai_tool_choice_to_anthropic,
     openai_tools_to_anthropic,
 )
-from ..decision_log import request_correlation, safe_gateway_request_id
+from ..decision_log import TokenUsage, normalize_usage, request_correlation, safe_gateway_request_id
 from ..internal import (
     BackendClientError,
     BackendDelta,
@@ -108,11 +110,13 @@ class _ClosingIterator:
     def close(self) -> None:
         if self._closed:
             return
-        self._closed = True
         try:
             closer = getattr(self._inner, "close", None)
             if callable(closer):
                 closer()
+            # A concurrent generator.close refusal is not completion. Its
+            # owning worker must still be able to perform final cleanup.
+            self._closed = True
         finally:
             try:
                 self._close()
@@ -698,6 +702,14 @@ class RelayBackend:
         """
         return getattr(self._thread_local, "last_result", None)
 
+    def get_last_normalized_usage(self) -> Optional[TokenUsage]:
+        """Observed metadata on this generator's thread, including interruption.
+
+        The completion owner must copy this immutable snapshot before handing
+        finalization to another thread. It never reconstructs wire usage.
+        """
+        return getattr(self._thread_local, "last_normalized_usage", None)
+
     def _extract_structured(self, raw: bytes) -> StructuredResult:
         """Extract structured fields from the upstream response.
 
@@ -711,6 +723,7 @@ class RelayBackend:
             return StructuredResult()
         if not isinstance(data, Mapping):
             return StructuredResult()
+        normalized = normalize_usage(data.get("usage"), self._tier.dialect)
 
         # Real token accounting, normalized to Anthropic wire names. None when
         # the upstream reported none (the dialects then keep their estimates).
@@ -764,6 +777,7 @@ class RelayBackend:
                     tool_calls = tc_list
             return StructuredResult(
                 finish_reason=finish_reason, tool_calls=tool_calls, usage=usage,
+                normalized_usage=normalized,
             )
 
         # openai-compatible. vLLM (--enable-prompt-tokens-details) and other
@@ -802,7 +816,7 @@ class RelayBackend:
         )
         choices = data.get("choices") or []
         if not choices or not isinstance(choices[0], Mapping):
-            return StructuredResult(usage=usage)
+            return StructuredResult(usage=usage, normalized_usage=normalized)
         first = choices[0]
         finish_reason = first.get("finish_reason")
         message = first.get("message") or {}
@@ -827,11 +841,15 @@ class RelayBackend:
             tool_calls=tool_calls,
             usage=usage,
             reasoning=reasoning,
+            normalized_usage=normalized,
         )
 
     # ------------------------------------------------------------------ #
     # Backend protocol
     # ------------------------------------------------------------------ #
+    usage_transport_boundary = True
+
+    @owned_dispatch("internal")
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         """Dispatch: true streaming upstream for a streaming request, else buffered.
 
@@ -841,6 +859,9 @@ class RelayBackend:
         BUFFERED transport with no stream companion keeps the old buffered
         path so existing hermetic setups never touch the network.
         """
+        # Reset before validation/eager transport and before a lazy buffered
+        # generator is returned. A failed next request cannot reuse old usage.
+        self._thread_local.last_normalized_usage = normalize_usage(None, self._tier.dialect)
         self._validate_request(request)
         control = request_control(request)
         if control is not None:
@@ -860,6 +881,10 @@ class RelayBackend:
         if control is not None:
             control.start_upstream()
         timeout = _control_timeout(self._timeout, control)
+        from ..internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None:
+            invocation.dispatch()
         response = None
         try:
             # Pass max_bytes to the default _urlopen_transport (keyword-only).
@@ -917,6 +942,7 @@ class RelayBackend:
         # response_view_factory and dialect layer read this after the stream
         # is drained to build a live ResponseView (#42 / #52).
         self._thread_local.last_result = self._extract_structured(raw)
+        self._thread_local.last_normalized_usage = self._thread_local.last_result.normalized_usage
         _note_usage(control, self._thread_local.last_result)
         text = self._extract_text(raw)
         for delta in split_into_deltas(text):
@@ -963,6 +989,10 @@ class RelayBackend:
         self._thread_local.last_result = None
 
         transport = self._stream_transport or _urlopen_stream_transport
+        from ..internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None:
+            invocation.dispatch()
         try:
             timeout = _control_timeout(self._timeout, control)
             resp = (
@@ -1010,6 +1040,7 @@ class RelayBackend:
                     control.note_activity("streaming")
                 structured = self._extract_structured(raw)
                 self._thread_local.last_result = structured
+                self._thread_local.last_normalized_usage = structured.normalized_usage
                 _note_usage(control, structured)
                 if structured.reasoning:
                     yield ModelDelta(reasoning=structured.reasoning)
@@ -1029,22 +1060,27 @@ class RelayBackend:
                 if self._max_response_bytes is not None
                 else (_ControlledLineReader(resp, control, self._timeout) if control is not None else resp)
             )
-            for event, payload in iter_sse_events(raw_stream):
-                try:
-                    delta = assembler.feed(event, payload)
-                except UpstreamStreamError:
+            try:
+                for event, payload in iter_sse_events(raw_stream):
+                    try:
+                        delta = assembler.feed(event, payload)
+                    except UpstreamStreamError:
+                        raise RelayBackendError(
+                            "model upstream stream reported an error"
+                        ) from None
+                    self._thread_local.last_normalized_usage = assembler.get_normalized_usage()
+                    if delta:
+                        yield delta
+                if not assembler.done:
                     raise RelayBackendError(
-                        "model upstream stream reported an error"
-                    ) from None
-                if not delta:
-                    continue
-                yield delta
-            if not assembler.done:
-                raise RelayBackendError(
-                    "model upstream stream ended before completion"
-                )
-            self._thread_local.last_result = assembler.result()
-            _note_usage(control, self._thread_local.last_result)
+                        "model upstream stream ended before completion"
+                    )
+                self._thread_local.last_result = assembler.result()
+                _note_usage(control, self._thread_local.last_result)
+            finally:
+                # Generator close/error preserves already observed counts without
+                # publishing incomplete tool/reasoning data as a wire result.
+                self._thread_local.last_normalized_usage = assembler.get_normalized_usage()
 
         def close_response() -> None:
             if control is not None:

@@ -26,6 +26,7 @@ import json
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple
 
 from ..internal import BackendDelta, ModelDelta, StructuredResult
+from ..decision_log import TokenUsage, merge_usage_metadata, normalize_usage
 from ..reasoning import extract_reasoning_text
 
 #: OpenAI's stream terminator payload.
@@ -88,12 +89,15 @@ class OpenAIStreamAssembler:
         self.done = False
         self._finish_reason: Optional[str] = None
         self._usage: Optional[Dict[str, int]] = None
+        self._usage_metadata: dict = {}
+        self._normalized_usage = normalize_usage(None, "openai", partial=(False, True))
         self._tool_calls: Dict[int, Dict[str, str]] = {}
         self._reasoning_parts: List[str] = []
 
     def feed(self, event: Optional[str], data: str) -> Optional[BackendDelta]:
         if data == DONE_SENTINEL:
             self.done = True
+            self._normalized_usage = normalize_usage(self._usage_metadata, "openai")
             return None
         obj = _loads(data)
         if obj is None:
@@ -101,6 +105,9 @@ class OpenAIStreamAssembler:
         if "error" in obj:
             raise UpstreamStreamError("model upstream stream reported an error")
         usage = obj.get("usage")
+        merge_usage_metadata(self._usage_metadata, usage, "openai")
+        if usage is not None:
+            self._normalized_usage = normalize_usage(self._usage_metadata, "openai", partial=(False, not self.done))
         if isinstance(usage, Mapping):
             i, o = usage.get("prompt_tokens"), usage.get("completion_tokens")
             partial: Dict[str, int] = {}
@@ -189,7 +196,12 @@ class OpenAIStreamAssembler:
             tool_calls=tool_calls,
             usage=self._usage,
             reasoning="".join(self._reasoning_parts) or None,
+            normalized_usage=self.get_normalized_usage(),
         )
+
+    def get_normalized_usage(self) -> TokenUsage:
+        """Snapshot usage without joining response/tool/reasoning content."""
+        return self._normalized_usage
 
 
 class AnthropicStreamAssembler:
@@ -209,6 +221,8 @@ class AnthropicStreamAssembler:
         self._input_tokens: Optional[int] = None
         self._output_tokens: Optional[int] = None
         self._cache_read_tokens: Optional[int] = None
+        self._usage_metadata: dict = {}
+        self._normalized_usage = normalize_usage(None, "anthropic", partial=(False, True))
         self._tools: Dict[int, Dict[str, Any]] = {}  # index -> {id,name,parts}
 
     @staticmethod
@@ -227,6 +241,9 @@ class AnthropicStreamAssembler:
         if etype == "message_start":
             msg = obj.get("message")
             usage = msg.get("usage") if isinstance(msg, Mapping) else None
+            merge_usage_metadata(self._usage_metadata, usage, "anthropic")
+            if usage is not None:
+                self._normalized_usage = normalize_usage(self._usage_metadata, "anthropic", partial=(False, not self.done))
             if isinstance(usage, Mapping):
                 self._input_tokens = self._int(usage.get("input_tokens"))
                 self._cache_read_tokens = self._int(
@@ -262,6 +279,9 @@ class AnthropicStreamAssembler:
             if isinstance(delta, Mapping) and delta.get("stop_reason"):
                 self._finish_reason = str(delta["stop_reason"])
             usage = obj.get("usage")
+            merge_usage_metadata(self._usage_metadata, usage, "anthropic")
+            if usage is not None:
+                self._normalized_usage = normalize_usage(self._usage_metadata, "anthropic", partial=(False, not self.done))
             if isinstance(usage, Mapping):
                 out = self._int(usage.get("output_tokens"))
                 if out is not None:
@@ -272,6 +292,7 @@ class AnthropicStreamAssembler:
             return None
         if etype == "message_stop":
             self.done = True
+            self._normalized_usage = normalize_usage(self._usage_metadata, "anthropic")
         return None
 
     def result(self) -> StructuredResult:
@@ -309,4 +330,9 @@ class AnthropicStreamAssembler:
             finish_reason=self._finish_reason,
             tool_calls=tool_calls,
             usage=usage,
+            normalized_usage=self.get_normalized_usage(),
         )
+
+    def get_normalized_usage(self) -> TokenUsage:
+        """Keep native input components even when their total is unknown."""
+        return self._normalized_usage

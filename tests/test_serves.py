@@ -2185,10 +2185,14 @@ def test_load_promotions_rejects_missing_rollback_router_config(tmp_path):
 def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path):
     config = tmp_path / "router.toml"
     config.write_text("[router]\n", encoding="utf-8")
+    from tests.test_router_manage import _native_gate_output
     calls = []
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs.get("input")))
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
             return proc(0, "anvil-serving:test\n")
         if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:
@@ -2196,7 +2200,10 @@ def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path
         return proc()
 
     assert serves._install_router_config(str(config), _run=run) == 0
-    assert calls[0][0][:3] == ["docker", "exec", "-i"]
+    # Real gate consumes synthetic custody before the image validator/write.
+    cutover = next(i for i, (argv, _) in enumerate(calls) if "_local_router_cutover" in argv[-1])
+    validator = next(i for i, (argv, _) in enumerate(calls) if argv[:3] == ["docker", "exec", "-i"])
+    assert cutover < validator
     assert any(
         call[0][:3] == ["docker", "run", "--rm"]
         and "config.toml.new" in call[0][-1]
@@ -2215,10 +2222,14 @@ def test_install_router_config_validates_writes_atomically_and_restarts(tmp_path
 def test_install_router_config_writes_canonical_lf_bytes(tmp_path):
     config = tmp_path / "router.toml"
     config.write_bytes(b"[router]\r\nrelay_timeout = 30\rlegacy = true\n")
+    from tests.test_router_manage import _native_gate_output
     calls = []
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
             return proc(0, "anvil-serving:test\n")
         if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:

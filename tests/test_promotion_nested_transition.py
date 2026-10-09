@@ -3,6 +3,7 @@ import io
 import json
 import pytest
 from anvil_serving import serves, router_manage
+from tests.test_router_manage import _native_gate_output
 
 @pytest.mark.parametrize('action', ['quiesce', 'drain', 'readmit'])
 def test_nested_transition_retains_lock_and_auth(action, tmp_path, monkeypatch):
@@ -35,6 +36,9 @@ def test_bind_mount_install_uses_deployed_parent_and_preserves_mode(tmp_path):
     calls = []
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         output = ''
         if argv[:4] == ['docker','inspect','-f','{{.Config.Image}}']:
             output = 'test-image'
@@ -56,6 +60,9 @@ def test_canonical_volume_without_cmd_and_failed_restart_restores_metadata(tmp_p
     calls = []
     def run(argv, **kwargs):
         calls.append(argv)
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         output = ''; rc = 0
         if argv[:4] == ['docker','inspect','-f','{{.Config.Image}}']:
             output = 'test-image'
@@ -87,6 +94,9 @@ def test_install_shell_handles_absent_config_and_restores_state(tmp_path, existi
 
     def run(argv, **kwargs):
         nonlocal restarts
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         if argv[:3] == ['docker', 'run', '--rm']:
             script = argv[-1].replace('/cfg', str(mounted))
             return subprocess.run(['sh', '-c', script], **kwargs)

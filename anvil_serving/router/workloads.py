@@ -1,10 +1,11 @@
 """Bounded, metadata-only router workload lifecycle projection.
 
 This module owns active observation state only. ``DecisionLog`` remains the
-sole terminal store, and no observation failure is allowed to affect routing.
+sole workload decision store; the usage ledger owns accounting terminals.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import dataclasses
 import threading
 from dataclasses import dataclass
@@ -74,6 +75,11 @@ class _ActiveEntry:
     created_at: datetime
     updated_at: datetime
     diagnostic: tuple = ()
+    diagnostic_at: datetime | None = None
+    usage_start: object = None
+    usage_route: object = None
+    usage_tokens: object = None
+    usage_phase: str = "checking"
 
 
 class RouterWorkloadRegistry:
@@ -101,6 +107,8 @@ class RouterWorkloadRegistry:
         self._max_active = max_active
         self._lock = threading.Lock()
         self._active: dict[str, _ActiveEntry] = {}
+        self._usage_revision = 0
+        self._usage_mutations = 0
         self._unrepresented = {state: 0 for state in _ACTIVE_PHASES}
         self._finalizing = {state: 0 for state in _ACTIVE_PHASES}
 
@@ -143,10 +151,115 @@ class RouterWorkloadRegistry:
             value = measurements.get(key)
             if type(value) is int and 0 <= value <= MAX_COUNT:
                 values[key] = value
+        sampled_at = self._now()
         with self._lock:
             entry = self._active.get(request_id)
             if entry is not None:
-                self._active[request_id] = dataclasses.replace(entry, diagnostic=tuple(values.items()))
+                self._active[request_id] = dataclasses.replace(entry,
+                    diagnostic=tuple(values.items()), diagnostic_at=sampled_at)
+                self._usage_revision += 1
+
+    def attach_usage(self, request_id, start):
+        from .usage_store import RequestStart
+        if type(start) is not RequestStart:
+            raise ValueError("invalid admitted usage metadata")
+        with self._lock:
+            entry = self._active.get(request_id)
+            if entry is not None:
+                if entry.usage_start is not None and entry.usage_start != start:
+                    raise ValueError("usage metadata conflict")
+                self._active[request_id] = dataclasses.replace(entry, usage_start=start,
+                    usage_phase="admitted" if entry.usage_start is None else entry.usage_phase)
+                self._usage_revision += 1
+
+    @contextmanager
+    def usage_mutation(self):
+        # No registry lock is held while SQLite waits or writes.
+        with self._lock:
+            self._usage_mutations += 1
+            self._usage_revision += 1
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._usage_mutations -= 1
+                self._usage_revision += 1
+
+    def observe_usage(self, request_id, *, route=None, tokens=None, phase=None):
+        from .usage_store import RouteAssociation
+        from .decision_log import TokenUsage
+        if (route is not None and type(route) is not RouteAssociation or
+                tokens is not None and type(tokens) is not TokenUsage or
+                phase is not None and phase not in {"checking", "queued", "admitted", "dispatched", "streaming", "finalizing"}):
+            raise ValueError("invalid usage observation")
+        updated_at = normalize_workload_timestamp(self._clock())
+        with self._lock:
+            entry = self._active.get(request_id)
+            if entry is not None:
+                self._active[request_id] = dataclasses.replace(entry,
+                    usage_route=route if route is not None else entry.usage_route,
+                    usage_tokens=tokens if tokens is not None else entry.usage_tokens,
+                    usage_phase=phase or entry.usage_phase,
+                    updated_at=max(entry.updated_at, updated_at))
+                self._usage_revision += 1
+
+    def usage_snapshot(self):
+        """Trusted bounded collector seam, fenced across ledger writes.
+
+        Authorization precedes collection. Read twice around ledger collection;
+        refuse on busy or changed revision. Generic views never serialize this.
+        """
+        with self._lock:
+            if self._usage_mutations:
+                raise ValueError("usage observation busy")
+            return self._usage_revision, tuple(e for e in self._active.values() if e.usage_start is not None), sum(self._unrepresented.values())
+
+    @staticmethod
+    def active_usage_page(entries, omitted, now, *, limit=50, filters=()):
+        """Closed sensitive projection of the existing immutable snapshot."""
+        from .decision_log import TokenDirection, TokenUsage
+        from .usage_store import UsageStore, UsageQuery
+        UsageQuery(granularity="cumulative", filters=filters)
+        if type(limit) is not int or not 1 <= limit <= 200:
+            raise ValueError("invalid active limit")
+        now = normalize_workload_timestamp(now)
+        timestamp = format_workload_timestamp(now)
+        records = []
+        for entry in reversed(entries):
+            start = entry.usage_start
+            tokens = entry.usage_tokens or TokenUsage(
+                input=TokenDirection(applicability=start.input_applicability),
+                output=TokenDirection(applicability=start.output_applicability))
+            dimensions = UsageStore._dimensions(start, tokens, "active", None)
+            if any(dimensions[name] != value for name, value in filters):
+                continue
+            diagnostic = dict(entry.diagnostic)
+            diagnostic_phase = diagnostic.get("phase")
+            last_activity = diagnostic.get("last_activity_ms")
+            if last_activity is not None and entry.diagnostic_at is not None and entry.diagnostic_at <= now:
+                last_activity = min(MAX_COUNT, last_activity + int((now - entry.diagnostic_at).total_seconds() * 1000))
+            else:
+                last_activity = None
+            phase = entry.usage_phase
+            if (phase == "admitted" and diagnostic_phase in {"checking", "queued", "admitted"}
+                    or phase == "dispatched" and diagnostic_phase == "streaming"):
+                phase = diagnostic_phase
+            records.append({"gateway_request_id": entry.gateway_request_id,
+                "request_id": start.request_id, "caller": start.caller.to_dict(),
+                "kind": start.kind, "model": start.model, "accepted_at": start.accepted_at,
+                "created_at": format_workload_timestamp(entry.created_at),
+                "updated_at": format_workload_timestamp(entry.updated_at),
+                "elapsed_ms": max(0, int((now - entry.created_at).total_seconds() * 1000)),
+                "last_activity_ms": last_activity,
+                "phase": phase,
+                "route": entry.usage_route.to_dict() if entry.usage_route is not None else None,
+                "tokens": tokens.to_dict(), "accounting_status": "in_progress"})
+        return {"schema": "router-active-usage/v1", "collected_at": timestamp,
+                "source_timestamp": timestamp, "freshness": "fresh", "available": True,
+                "records": records[:limit],
+                "truncation": {"returned": min(len(records), limit),
+                               "omitted": None if omitted else max(0, len(records) - limit),
+                               "unrepresented": omitted, "truncated": bool(omitted or len(records) > limit)}}
 
     def active_requests(self, *, session_id=None, limit=50):
         if session_id is not None and safe_correlation(session_id) != session_id:
@@ -313,8 +426,10 @@ class RouterWorkloadRegistry:
             represented = len(self._active) < self._max_active
             if represented:
                 self._active[gateway_request_id] = entry
+                self._usage_revision += 1
             else:
                 self._unrepresented[WorkloadState.CHECKING] += 1
+                self._usage_revision += 1
             return represented, entry
 
     def _advance(
@@ -334,12 +449,19 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented and entry.gateway_request_id in self._active:
                 updated = dataclasses.replace(updated,
-                    diagnostic=self._active[entry.gateway_request_id].diagnostic)
+                    diagnostic=self._active[entry.gateway_request_id].diagnostic,
+                    diagnostic_at=self._active[entry.gateway_request_id].diagnostic_at,
+                    usage_start=self._active[entry.gateway_request_id].usage_start,
+                    usage_route=self._active[entry.gateway_request_id].usage_route,
+                    usage_tokens=self._active[entry.gateway_request_id].usage_tokens,
+                    usage_phase=self._active[entry.gateway_request_id].usage_phase)
                 self._active[entry.gateway_request_id] = updated
+                self._usage_revision += 1
             elif not represented:
                 if self._unrepresented[entry.state]:
                     self._unrepresented[entry.state] -= 1
                 self._unrepresented[state] += 1
+                self._usage_revision += 1
         return updated
 
     def _release(
@@ -351,8 +473,10 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented:
                 self._active.pop(gateway_request_id, None)
+                self._usage_revision += 1
             elif self._unrepresented[state]:
                 self._unrepresented[state] -= 1
+                self._usage_revision += 1
 
     def _begin_finalization(
         self,
@@ -364,8 +488,10 @@ class RouterWorkloadRegistry:
         with self._lock:
             if represented:
                 self._active.pop(gateway_request_id, None)
+                self._usage_revision += 1
             elif self._unrepresented[state]:
                 self._unrepresented[state] -= 1
+                self._usage_revision += 1
             self._finalizing[state] += 1
 
     def _end_finalization(self, state: WorkloadState) -> None:

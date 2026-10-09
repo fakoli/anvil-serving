@@ -7,6 +7,9 @@ caller-selected upstream settings never cross this boundary.
 
 from __future__ import annotations
 
+from .admission import owned_dispatch
+
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -98,7 +101,22 @@ class MemoryRouter:
                 token = None
             self._routes[(alias, route.principal)] = (route, token)
         self._limit = threading.BoundedSemaphore(_MAX_CONCURRENCY)
+        self._tracking = threading.local()
 
+    @contextmanager
+    def track(self, invocation):
+        """Bind one trusted handler invocation across REST/MCP dispatch only."""
+        from .internal import UsageInvocation
+        if type(invocation) is not UsageInvocation:
+            raise ValueError("invalid accounting invocation")
+        prior = getattr(self._tracking, "invocation", None)
+        self._tracking.invocation = invocation
+        try:
+            yield
+        finally:
+            self._tracking.invocation = prior
+
+    @owned_dispatch("memory")
     def dispatch(self, body: Mapping[str, Any], *, principal: str) -> dict:
         """Validate and dispatch one memory request for ``principal``."""
         if not isinstance(principal, str) or not principal.strip():
@@ -127,6 +145,11 @@ class MemoryRouter:
         if not self._limit.acquire(blocking=False):
             raise MemoryError(503, "memory_busy", "selected memory route is busy")
         try:
+            invocation = getattr(self._tracking, "invocation", None)
+            if invocation is not None:
+                from .usage_store import RouteAssociation
+                invocation.route = RouteAssociation(route_id=route.alias)
+                invocation.dispatch()
             raw = self._transport(
                 route.base_url.rstrip("/") + "/v1/default/banks/" + quote(route.bank, safe="") + _PATHS[operation],
                 data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),

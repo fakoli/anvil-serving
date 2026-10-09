@@ -45,11 +45,14 @@ import threading
 import time
 import urllib.parse
 import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
 
+from .admission import RouterAdmission, RouterAdmissionClosed
+from .backends.relay import _ClosingIterator
 from .audio import (
     AudioGateway,
     AudioGatewayError,
@@ -78,10 +81,15 @@ from .internal import (
     DialectError,
     ModelDelta,
     NoAvailableTierError,
+    UsageInvocation,
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
 from .keys import KeyStore, KeyStoreError
+from .identity import (IdentityError, configured_scope_caller, legacy_caller, load_webui_bindings,
+                       select_webui_binding, verify_webui, forwarded_caller)
+from .usage_store import UsageError, UsageQuery, AuthorityScope
+from ..observability.dashboard.contracts import strict_json
 from .memory import MemoryError, MemoryRouter
 from .memory_mcp import MemoryMCP
 from ..control_plane.authorization import (
@@ -160,7 +168,12 @@ class OperatorRoute:
     path: str
     scope: str
     callback: Callable[[str], bytes]
+    content_type: str = "application/json"
 
+
+USAGE_ENDPOINT = "/v1/admin/usage"
+USAGE_METRICS_ENDPOINT = USAGE_ENDPOINT + "/metrics"
+_USAGE_PATHS = {USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT}
 
 _MAX_OPERATOR_ROUTES = 8
 _MAX_OPERATOR_PATH_BYTES = 256
@@ -297,6 +310,8 @@ def _validated_operator_routes(
             or path.startswith(
                 (ARTIFACT_PREFIX, REQUEST_TRACE_PREFIX, "/.well-known/", "/v1/audio/")
             )
+            or type(route.content_type) is not str
+            or route.content_type not in {"application/json", "text/plain; version=0.0.4"}
             or not callable(callback)
         ):
             raise ValueError("operator route is invalid")
@@ -304,7 +319,7 @@ def _validated_operator_routes(
         if key in seen:
             raise ValueError("operator route is invalid")
         seen.add(key)
-        copied.append(OperatorRoute(method, path, scope, callback))
+        copied.append(OperatorRoute(method, path, scope, callback, route.content_type))
     try:
         stable_length = len(routes)
     except Exception:
@@ -468,7 +483,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_host: Optional[str] = None,
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
-                  server_config=None, api_keys=None, connect_keys=None, connect_verifier=None):
+                  server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
+                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None):
+    router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
+    from .keys import KeyStore as NativeKeyStore
+    for store in (api_keys, getattr(usage_store, "key_store", None)):
+        if isinstance(store, NativeKeyStore):
+            existing = getattr(store, "_router_admission", router_admission)
+            if existing is not router_admission:
+                raise ValueError("credential store ownership differs")
+            store._router_admission = router_admission
     client_admission = ClientAdmission(server_config.client_limits if server_config else {})
     key_store_slots = threading.BoundedSemaphore(4)
     connect_slots = threading.BoundedSemaphore(2)
@@ -482,7 +506,27 @@ def _make_handler(backend: Backend, timeout: Optional[float],
     operator_route_map[("GET", WORKLOADS_ENDPOINT)] = OperatorRoute(
         "GET", WORKLOADS_ENDPOINT, WORKLOADS_READ, lambda _query: b""
     )
+    # Built-ins use the exact scoped operator boundary, including when unconfigured.
+    if any(path in _USAGE_PATHS for _method, path in operator_route_map):
+        raise ValueError("usage routes cannot be replaced")
+    operator_route_map[("GET", USAGE_ENDPOINT)] = OperatorRoute(
+        "GET", USAGE_ENDPOINT, WORKLOADS_READ, lambda _query: b"")
+    operator_route_map[("GET", USAGE_METRICS_ENDPOINT)] = OperatorRoute(
+        "GET", USAGE_METRICS_ENDPOINT, WORKLOADS_READ, lambda _query: b"",
+        "text/plain; version=0.0.4")
     collection_clock = workload_clock or (lambda: datetime.now(timezone.utc))
+    def router_entry(operation):
+        # Public handler methods can also be invoked by an embedded owner. The
+        # stdlib HTTP entry retains ownership through its later final flush.
+        def dispatch(self, *args, **kwargs):
+            try:
+                return operation(self, *args, **kwargs)
+            finally:
+                if not getattr(self, "_anvil_handler_active", False):
+                    self._finish_key_store()
+                    self._finish_router()
+        return dispatch
+
     class FrontDoorHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         # Generic server token: no software name or version disclosed.
@@ -499,6 +543,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._reset_request_correlation()
             if not isinstance(self.wfile, _ResponseWriter):
                 self.wfile = _ResponseWriter(self.wfile)
+            self._anvil_handler_active = True
             try:
                 super().handle_one_request()
             except _ClientDisconnected as exc:
@@ -512,7 +557,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     flush=True,
                 )
             finally:
-                if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                try:
+                    self._record_key_audit()
+                finally:
+                    self._finish_key_store()
+                    self._finish_router()
+                    self._anvil_handler_active = False
+
+        def _record_key_audit(self):
+            if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
+                # Stateless control calls do not count themselves while draining.
+                # Their optional audit is a new writer and must refuse closure.
+                if not self._admit_key_store(quiet=True):
+                    print("[anvil] event=key_audit_unavailable", file=sys.stderr, flush=True)
+                    return
+                with self._anvil_key_permit.bind():
                     acquired = key_store_slots.acquire(blocking=False)
                     try:
                         if not acquired:
@@ -535,10 +594,41 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_http_status = code
             super().send_response(code, message)
 
+        def send_error(self, code, message=None, explain=None):
+            words = getattr(self, "raw_requestline", b"").split()
+            target = urllib.parse.unquote(words[1][:256].decode("latin1")) if len(words) > 1 else ""
+            if target.lstrip("/").startswith(USAGE_ENDPOINT.lstrip("/")):
+                self._operator_error(code, "invalid_request", "invalid operator request")
+            else:
+                super().send_error(code, message, explain)
+
         def parse_request(self):
             if not super().parse_request():
                 return False
-            return self._device_access()
+            if not self._device_access():
+                return False
+            path = self.path.partition("?")[0]
+            raw_path = self.requestline.split()[1].partition("?")[0]
+            if urllib.parse.unquote(path, errors="replace").startswith(USAGE_ENDPOINT):
+                if sum(len(k) + len(v) + 4 for k, v in self.headers.raw_items()) > 16384:
+                    self._operator_error(431, "invalid_request", "operator headers too large")
+                    return False
+                if path not in _USAGE_PATHS or raw_path != path:
+                    self._operator_error(404, "not_found", "operator route not found")
+                    return False
+                if self.command != "GET":
+                    self.close_connection = True
+                    self._json(405, {"error": {"type": "method_not_allowed", "message": "use GET"}},
+                               extra_headers={"Cache-Control": "no-store", "Allow": "GET"})
+                    self._flush_closing_response()
+                    return False
+            return True
+
+        def _tracked_request(self):
+            path = self.path.split("?", 1)[0].rstrip("/")
+            return (usage_store is not None or bool(webui_bindings)) and self.command == "POST" and (
+                path in _ROUTES or path in _PURPOSE_PATHS or path in _MEMORY_PATHS
+                or audio_purpose_for_path(path) is not None)
 
         def _device_access(self):
             """Apply device policy before every dispatch, including operator routes."""
@@ -555,6 +645,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(401, "authentication_error", "invalid or missing API key")
                 return False
             if hmac.compare_digest(supplied.encode(), auth_token.encode()):
+                if self.command != "GET" and path != TRANSITION_ENDPOINT and not self._admit_key_store():
+                    return False
                 self._anvil_client_id = "_legacy"
                 self._start_request_correlation()
                 return True
@@ -562,11 +654,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # operator credentials do not depend on availability of this store.
             if not supplied.startswith("ask_"):
                 return True
+            if not self._admit_key_store():
+                return False
             if not key_store_slots.acquire(blocking=False):
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
             try:
-                principal = api_keys.authenticate(supplied, check_owner=False)
+                with self._anvil_key_permit.bind():
+                    principal = api_keys.authenticate(supplied, check_owner=False, snapshot=self._tracked_request())
                 if principal is None:
                     self._device_error(401, "authentication_error", "invalid or missing API key")
                     return False
@@ -576,7 +671,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if not principal.allows_path(self.command, path):
                     self._device_error(403, "key_access_denied", "API key does not grant this endpoint")
                     return False
-                retry_after = api_keys.admit(principal.key_id)
+                if self._tracked_request():
+                    return True  # Body/model and forwarded identity precede tracked rate admission.
+                with self._anvil_key_permit.bind():
+                    retry_after = api_keys.admit(principal.key_id)
             except KeyStoreError:
                 self._device_error(503, "key_store_unavailable", "API key policy unavailable")
                 return False
@@ -635,6 +733,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             return any(name.lower() in forbidden for name in self.headers)
 
         def _handle_memory(self, path: str, body: dict) -> None:
+            invocation = self._anvil_usage
+            with memory.track(invocation) if invocation is not None else nullcontext():
+                self._dispatch_memory(path, body)
+
+        def _dispatch_memory(self, path: str, body: dict) -> None:
             if not self._memory_device_allowed():
                 return
             if self._memory_header_override():
@@ -649,6 +752,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.send_header("Content-Length", "0")
                     self.end_headers()
                 else:
+                    if self._anvil_usage is not None and ("error" in result or result.get("result", {}).get("isError")):
+                        self._anvil_usage.capture(None, "rejected" if self._anvil_usage.dispatched is False else "error")
                     self._json(200, result, extra_headers={"Cache-Control": "no-store"})
                 return
             alias = body.get("alias")
@@ -675,18 +780,151 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._anvil_http_status = None
             self._anvil_client_budget_held = False
             self._anvil_worker = None
+            self._anvil_caller = None
+            self._anvil_usage = None
+            self._anvil_router_permit = None
+            self._anvil_router_binding = None
+            self._anvil_key_permit = None
+
+        def _admit_key_store(self, *, quiet=False):
+            if getattr(self, "_anvil_key_permit", None) is not None:
+                return True
+            try:
+                self._anvil_key_permit = router_admission.acquire(
+                    "maintenance", parent=getattr(self, "_anvil_router_permit", None), storage_only=True)
+                return True
+            except RouterAdmissionClosed:
+                if not quiet:
+                    self._device_error(503, "router_quiesced", "router admission is closed")
+                return False
+
+        def _finish_key_store(self):
+            permit = getattr(self, "_anvil_key_permit", None)
+            self._anvil_key_permit = None
+            if permit is not None:
+                permit.release()
+
+        def _finish_router(self):
+            permit = getattr(self, "_anvil_router_permit", None)
+            binding = getattr(self, "_anvil_router_binding", None)
+            self._anvil_router_permit = self._anvil_router_binding = None
+            if binding is not None:
+                binding.__exit__(None, None, None)
+            if permit is not None:
+                worker = getattr(self, "_anvil_worker", None)
+                if worker is not None:
+                    worker.when_finished(permit.release)
+                else:
+                    permit.release()
+
+        def _admit_router(self, family, *, completion=False):
+            if self._anvil_router_permit is not None:
+                return True
+            try:
+                permit = router_admission.acquire(family, completion=completion)
+                binding = permit.bind()
+                binding.__enter__()
+                self._anvil_router_permit, self._anvil_router_binding = permit, binding
+                return True
+            except RouterAdmissionClosed:
+                self._device_error(503, "router_quiesced", "router admission is closed")
+                return False
+
+        def _admit_usage(self, kind, model, *, normalize=True):
+            family = "chat" if kind == "chat" else "audio" if kind in {"stt", "tts"} else "purpose" if kind in {"embedding", "rerank"} else kind
+            if not self._admit_router(family):
+                return False
+            if not self._tracked_request():
+                return True
+            try:
+                principal = self._anvil_device
+                caller = principal.caller_snapshot if principal is not None else self._anvil_caller or legacy_caller()
+                binding = select_webui_binding(webui_bindings, caller)
+                end_user = verify_webui(self.headers, binding, collection_clock()) if binding is not None else None
+                if end_user is not None:
+                    forwarded_caller(caller, end_user)  # Validate bounded projection before buckets.
+                if principal is not None:
+                    slots = owner_check_slots if principal.owner is not None else key_store_slots
+                    if not slots.acquire(blocking=False):
+                        raise KeyStoreError("admission is busy")
+                    try:
+                        def local_check(admitted, now):
+                            if binding is not None:
+                                verified = verify_webui(self.headers, binding, datetime.fromtimestamp(now, timezone.utc))
+                                forwarded_caller(admitted, verified)
+                        decision = api_keys.admit(principal, self.path.split("?",1)[0].rstrip("/"), model,
+                                                  normalize=normalize, local_check=local_check)
+                    finally:
+                        slots.release()
+                    if decision.retry_after:
+                        self._device_error(429, "key_rate_limited", "API key request rate exceeded", decision.retry_after)
+                        return False
+                    caller = decision.caller_snapshot
+                if end_user is not None:
+                    caller = forwarded_caller(caller, end_user)
+                self._anvil_caller = caller
+                if usage_store is not None:
+                    scope = usage_authority() if callable(usage_authority) else None
+                    self._anvil_usage = UsageInvocation(usage_store, usage_run_id, scope, caller, kind, model,
+                                                       registry=workload_registry, clock=collection_clock,
+                                                       gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                return True
+            except IdentityError:
+                self._device_error(401, "identity_invalid", "forwarded identity invalid")
+            except (KeyStoreError, ValueError, TypeError):
+                self._device_error(503, "accounting_unavailable", "request accounting unavailable")
+            return False
 
         def _generate_deltas(self, request):
-            """Retain delivery ownership before eager routing can fail."""
-            tracked = getattr(backend, "generate_tracked", None)
-            if not callable(tracked):
-                return backend.generate(request)
-            stream = tracked(
-                request,
-                gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"),
-            )
-            self._anvil_workload_stream = stream
-            return stream.start()
+            """Preserve eager rejection; close/capture on the generating thread."""
+            invocation = self._anvil_usage
+            if invocation is not None:
+                request.raw["_anvil_usage"] = invocation
+            def outcome_for(exc):
+                return ("cancelled" if isinstance(exc, GeneratorExit) else
+                        "timeout" if isinstance(exc, RequestDeadlineExceeded) else
+                        "cancelled" if isinstance(exc, RequestControlError) else
+                        "rejected" if isinstance(exc, (NoAvailableTierError, BackendClientError)) and
+                        (invocation is None or invocation.dispatched is False) else "error")
+            try:
+                tracked = getattr(backend, "generate_tracked", None)
+                if callable(tracked):
+                    stream = tracked(request, gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                    self._anvil_workload_stream = stream
+                    deltas = stream.start()
+                else:
+                    if invocation is not None and not getattr(backend, "usage_transport_boundary", False):
+                        invocation.ambiguous_dispatch()
+                    deltas = backend.generate(request)
+            except BaseException as exc:
+                if invocation is not None:
+                    invocation.capture(backend, outcome_for(exc))
+                raise
+            outcome = "cancelled"
+            closed = False
+            def finish():
+                nonlocal closed
+                if closed:
+                    return
+                closed = True
+                try:
+                    close = getattr(deltas, "close_upstream", None) or getattr(deltas, "close", None)
+                    if callable(close):
+                        close()
+                finally:
+                    if invocation is not None:
+                        invocation.capture(backend, outcome)
+            def generate():
+                nonlocal outcome
+                try:
+                    yield from deltas
+                    outcome = "success"
+                except BaseException as exc:
+                    outcome = outcome_for(exc)
+                    raise
+                finally:
+                    finish()
+            return _ClosingIterator(generate(), finish)
 
         def _workload_render_error(self) -> None:
             stream = self._anvil_workload_stream
@@ -750,7 +988,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 for _h_name, _h_val in extra_headers.items():
                     self.send_header(_h_name, _h_val)
             self.end_headers()
-            self.wfile.write(payload)
+            if getattr(self, "command", None) != "HEAD":
+                self.wfile.write(payload)
 
         def _text(
             self, status: int, payload: str, *, content_type: str,
@@ -790,6 +1029,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 supplied.encode("utf-8"), auth_token.encode("utf-8")
             ):
                 self._anvil_client_id = "_legacy"
+                self._anvil_caller = legacy_caller()
                 return True
             path = self.path.split("?", 1)[0].rstrip("/")
             required = None
@@ -803,6 +1043,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 decision = check_scope(authorization_policy, supplied, required)
                 if decision.allowed:
                     self._anvil_client_id = decision.client_id
+                    if self._tracked_request():
+                        self._anvil_caller = configured_scope_caller(decision)
                     return True
             return False
 
@@ -890,6 +1132,161 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             except Exception:
                 raise _WorkloadSourceUnavailable() from None
 
+        @staticmethod
+        def _usage_query(query):
+            """Decode closed wire syntax; native types own semantic validation."""
+            try:
+                if any(c == "%" and _PERCENT_ESCAPE_RE.match(query, i) is None
+                       for i, c in enumerate(query)):
+                    raise ValueError()
+                pairs = urllib.parse.parse_qsl(query, keep_blank_values=True, strict_parsing=True,
+                                               encoding="utf-8", errors="strict", max_num_fields=9)
+                data = {}
+                for key, value in pairs:
+                    if key in data or key not in {"view", "granularity", "from_utc", "to_utc", "filters",
+                                                  "group_by", "limit", "cursor", "require_complete"}:
+                        raise ValueError()
+                    if key in {"filters", "group_by"}:
+                        value = strict_json(value.encode("utf-8"))
+                        if type(value) is not list:
+                            raise ValueError()
+                        if key == "filters":
+                            if any(type(pair) is not list or len(pair) != 2 for pair in value):
+                                raise ValueError()
+                            value = tuple(tuple(pair) for pair in value)
+                        else:
+                            value = tuple(value)
+                    elif key == "limit":
+                        if re.fullmatch(r"[1-9][0-9]{0,2}", value) is None:
+                            raise ValueError()
+                        value = int(value)
+                    elif key == "require_complete":
+                        if value not in {"true", "false"}:
+                            raise ValueError()
+                        value = value == "true"
+                    data[key] = value
+                if "view" in data:
+                    if data.pop("view") != "active" or set(data) - {"limit", "filters"}:
+                        raise ValueError()
+                    limit = data.get("limit", 50)
+                    if limit > 200:
+                        raise ValueError()
+                    native = UsageQuery(granularity="cumulative", filters=data.get("filters", ()))
+                    return "active", limit, native
+                return "retained", None, UsageQuery.from_pairs(tuple(data.items()))
+            except UsageError:
+                raise
+            except Exception:
+                raise UsageError("accounting_invalid") from None
+
+        def _usage_payload(self, query):
+            view, limit, native = self._usage_query(query)
+            if usage_store is None:
+                raise UsageError("accounting_unavailable")
+            scope = usage_authority() if callable(usage_authority) else None
+            if scope is not None and type(scope) is not AuthorityScope:
+                raise UsageError("accounting_unavailable")
+            domain = usage_domain_id or (scope.domain_id if scope is not None else None)
+            if domain is None or scope is not None and scope.domain_id != domain:
+                raise UsageError("accounting_unavailable")
+            if view == "retained":
+                result = usage_store.query(native, domain_id=domain, authority_scope=scope)
+            else:
+                if workload_registry is None:
+                    raise UsageError("accounting_unavailable")
+                try:
+                    revision, entries, omitted = workload_registry.usage_snapshot()
+                    now = collection_clock()
+                    health = usage_store.health(domain)
+                    result = workload_registry.active_usage_page(entries, omitted, now,
+                                                                 limit=limit, filters=native.filters)
+                    if workload_registry.usage_snapshot()[0] != revision:
+                        raise ValueError()
+                except UsageError:
+                    raise
+                except Exception:
+                    raise UsageError("accounting_unavailable") from None
+                result["registry_revision"] = revision
+                result["accounting_health"] = health
+                result["available"] = health["available"]
+            return json.dumps(result, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
+
+        def _usage_metrics_payload(self, query):
+            if query or "?" in self.path:
+                raise UsageError("accounting_invalid")
+            if usage_metrics is not None:
+                return usage_metrics()
+            if usage_store is None or usage_domain_id is None:
+                raise UsageError("accounting_unavailable")
+            from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
+            scope = usage_authority() if callable(usage_authority) else None
+            return render_usage_prometheus(collect_usage_snapshot(
+                usage_store, workload_registry, collection_clock(), domain_id=usage_domain_id, authority_scope=scope))
+
+        def _usage_error(self, error):
+            # Native errors are allowlisted; arbitrary exception strings/results stay private.
+            status, code = {"accounting_invalid": (400, "invalid_usage_query"),
+                            "usage_cursor_invalid": (422, "usage_cursor_invalid"),
+                            "usage_cursor_stale": (422, "usage_cursor_stale"),
+                            "usage_query_limited": (422, "usage_query_limited"),
+                            "usage_coverage_unavailable": (422, "usage_coverage_unavailable"),
+                            "usage_granularity_unsupported": (422, "usage_granularity_unsupported")}.get(
+                                error.code, (503, "accounting_unavailable"))
+            body = {"error": {"type": code, "message": code.replace("_", " ")}}
+            if status == 422:
+                body["coverage"] = {"available": False, "limitations": [code],
+                    "available_granularities": ["detail", "daily", "cumulative"]}
+                # Only native fixed gap reasons; never arbitrary result fields or exception text.
+                result = error.result
+                reasons = {"coverage_projection_limit", "owner_roster_unknown", "configuration_mismatch",
+                           "owner_unknown", "accounting_disabled", "segment_missing", "accounting_unresolved",
+                           "accounting_failure_pending", "query_snapshot_unavailable"}
+                if (type(result) is dict and type(result.get("coverage_gaps")) is list
+                        and len(result["coverage_gaps"]) <= 16):
+                    body["coverage"]["gap_reasons"] = sorted({gap["reason"] for gap in result["coverage_gaps"]
+                        if type(gap) is dict and type(gap.get("reason")) is str and gap["reason"] in reasons})
+                if type(result) is dict:
+                    from .usage_store import _utc, _id, _uuid
+                    try:
+                        coverage = body["coverage"]
+                        for name in ("requested_range", "covered_range"):
+                            value = result.get(name)
+                            if type(value) is dict and set(value) == {"from_utc", "to_utc"}:
+                                coverage[name] = {key: _utc(at) if at is not None else None for key, at in value.items()}
+                        retained = result.get("retained_scope")
+                        if type(retained) is dict:
+                            coverage["retained_scope"] = {name: _utc(retained[name]) if retained.get(name) is not None else None
+                                for name in ("detail_floor_utc", "daily_floor_utc")}
+                            coverage["retained_scope"]["available_granularities"] = ["detail", "daily", "cumulative"]
+                        for name in ("snapshot_revision", "unresolved_requests", "accounting_failures"):
+                            if type(result.get(name)) is int and 0 <= result[name] < 2**63:
+                                coverage[name] = result[name]
+                        parts = result.get("coverage_segments")
+                        if type(parts) is list and len(parts) <= 4096:
+                            segments = []
+                            for part in parts:
+                                if type(part) is not dict or set(part) != {"segment_id", "domain_id", "run_id",
+                                        "configuration_revision", "enabled", "started_at", "ended_at", "closure_reason", "end_uncertain"}:
+                                    raise ValueError()
+                                for name in ("segment_id", "run_id"):
+                                    _uuid(part[name])
+                                for name in ("domain_id", "configuration_revision"):
+                                    _id(part[name])
+                                for name in ("started_at", "ended_at"):
+                                    _utc(part[name])
+                                if (type(part["enabled"]) is not bool or type(part["end_uncertain"]) is not bool
+                                        or part["closure_reason"] not in {None, "mode_change", "owner_dead", "owner_stop"}):
+                                    raise ValueError()
+                                segments.append(dict(part))
+                            coverage["coverage_segments"] = segments
+                    except (ValueError, KeyError, TypeError, UsageError, IdentityError):
+                        # A malformed trusted projection never exposes its raw values.
+                        body["coverage"] = {"available": False, "limitations": [code],
+                                            "available_granularities": ["detail", "daily", "cumulative"]}
+            self.close_connection = True
+            self._json(status, body, extra_headers={"Cache-Control": "no-store"})
+            self._flush_closing_response()
+
         def _handle_operator_route(self, route: OperatorRoute) -> None:
             """Run one already-identified scoped route without body handling."""
             presented = _extract_operator_token(self.headers)
@@ -913,6 +1310,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if len(query_bytes) > _MAX_OPERATOR_QUERY_BYTES:
                 self._operator_error(400, "invalid_request", "invalid query")
                 return
+            if route.path in {USAGE_ENDPOINT, USAGE_METRICS_ENDPOINT, WORKLOADS_ENDPOINT} and not self._admit_router("delivery", completion=True):
+                return
             if not _OPERATOR_READ_LIMIT.acquire(blocking=False):
                 self._operator_error(503, "server_busy", "operator route busy")
                 return
@@ -921,8 +1320,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     payload = (
                         self._workload_payload(query)
                         if route.path == WORKLOADS_ENDPOINT
+                        else self._usage_payload(query) if route.path == USAGE_ENDPOINT
+                        else self._usage_metrics_payload(query) if route.path == USAGE_METRICS_ENDPOINT
                         else route.callback(query)
                     )
+                except UsageError as exc:
+                    if route.path in _USAGE_PATHS:
+                        self._usage_error(exc)
+                    else:
+                        self._operator_error(500, "internal_error", "operator route failed")
+                    return
                 except _InvalidWorkloadQuery:
                     self._operator_error(
                         400, "invalid_workload_query", "invalid workload query"
@@ -937,11 +1344,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 except Exception:  # noqa: BLE001 - callback details stay private
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
-                if type(payload) is not bytes or len(payload) > _MAX_OPERATOR_RESPONSE_BYTES:
+                response_limit = 2 * 1024 * 1024 if route.path == USAGE_METRICS_ENDPOINT else _MAX_OPERATOR_RESPONSE_BYTES
+                if type(payload) is not bytes or len(payload) > response_limit:
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
                 self.send_response(200)
-                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Type", route.content_type)
                 self.send_header("Content-Length", str(len(payload)))
                 self.send_header("Cache-Control", "no-store")
                 self.end_headers()
@@ -1057,6 +1465,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             body = self._protocol_body()
             if body is None:
                 return
+            inference = (body.get("method") == "tools/call" and (body.get("params") if isinstance(body.get("params"), dict) else {}).get("name") in {"media_workflow_run", "workflow_run"}) if route == MCP_PATH else body.get("method") in {"SendMessage", "SendStreamingMessage"}
+            if inference and not self._admit_router("media"):
+                return
+            tool_name = (body.get("params") if isinstance(body.get("params"), dict) else {}).get("name")
+            completion = body.get("method") in {"SubscribeToTask", "CancelTask"} or (
+                route == MCP_PATH and body.get("method") == "tools/call"
+                and tool_name in {"media_job_cancel", "media_artifact_inspect", "media_job_status"})
+            if completion and not self._admit_router("delivery", completion=True):
+                return
             if route == MCP_PATH:
                 result = gateway.mcp_request(body)
                 if result is None:
@@ -1114,6 +1531,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             artifact_id = urllib.parse.unquote(encoded_id)
             if not artifact_id or "/" in artifact_id or "?" in artifact_id:
                 self._protocol_json_error(404, "artifact_not_found", "artifact was not found")
+                return
+            if not self._admit_router("delivery", completion=True):
                 return
             range_header = self.headers.get("Range")
             try:
@@ -1411,12 +1830,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     parse_embeddings_request(body)
                 else:
                     parse_rerank_request(body)
+                if not self._admit_usage(kind, body.get("model"), normalize=False):
+                    return
                 payload = purpose.dispatch(
                     kind,
                     body,
                     correlation=dict(
                         getattr(self, "_anvil_correlation", None) or {}
                     ),
+                    **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}),
                 )
             except DialectError as e:
                 self._error(e.status, e.etype, e.message,
@@ -1432,6 +1854,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(500, "internal_error", "internal error",
                             dialect=_OPENAI_DIALECT)
                 return
+            finally:
+                if self._anvil_usage is not None:
+                    self._anvil_usage.capture(purpose, "success" if "payload" in locals() else "rejected" if self._anvil_usage.dispatched is False else "error")
             self._json(200, payload)
 
         # --- normalized one-shot audio gateway ----------------------------
@@ -1446,9 +1871,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             correlation = dict(getattr(self, "_anvil_correlation", None) or {})
             try:
                 if kind == "stt":
-                    payload = audio.dispatch_transcription(body, correlation=correlation)
+                    payload = audio.dispatch_transcription(body, correlation=correlation,
+                        **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}))
                 else:
-                    payload = audio.dispatch_speech(body, correlation=correlation)
+                    payload = audio.dispatch_speech(body, correlation=correlation,
+                        **({"invocation": self._anvil_usage} if self._anvil_usage is not None else {}))
             except AudioGatewayError as e:
                 self._error(e.status, e.etype, e.message, dialect=_OPENAI_DIALECT)
                 return
@@ -1492,6 +1919,47 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def _handle_transition(self, body: dict) -> None:
             action = body.get("action")
             tier_id = body.get("tier_id")
+            if body.get("scope") == "router":
+                if set(body) - {"scope", "action", "reason", "barrier_token", "timeout", "confirm", "dry_run"}:
+                    self._error(400, "invalid_transition", "invalid router scope")
+                    return
+                if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
+                    self._error(503, "server_busy", "transition mutation busy")
+                    return
+                try:
+                    if action == "status":
+                        result = router_admission.status()
+                    elif action == "quiesce":
+                        result = router_admission.quiesce_router(body.get("reason", "operator"), dry_run=body.get("dry_run", True), confirm=body.get("confirm", False))
+                    elif action == "drain":
+                        result = router_admission.drain_router(body.get("barrier_token"), body.get("timeout", 30))
+                    elif action == "readmit":
+                        result = router_admission.readmit_router(body.get("barrier_token"), dry_run=body.get("dry_run", True), confirm=body.get("confirm", False))
+                    elif action == "consume":
+                        if body.get("confirm") is not True or body.get("dry_run", True) is not False:
+                            raise ValueError("confirmation_required")
+                        result = router_admission.consume(body.get("barrier_token"))
+                    elif action == "maintenance-preview":
+                        from .maintenance import preview
+                        result = preview(router_admission)
+                    elif action == "maintenance-readmit":
+                        if body.get('confirm') is not True or body.get('dry_run', True) is not False:
+                            raise ValueError('confirmation_required')
+                        from .maintenance import readmit
+                        result = readmit(router_admission)
+                    else:
+                        raise ValueError("unsupported_action")
+                    self._json(200, {"scope":"router", "action":action, "result":result})
+                except ValueError:
+                    self._error(400, "invalid_transition", "invalid router transition")
+                except Exception:
+                    self._error(503, "transition_failed", "router transition failed")
+                finally:
+                    _MANAGEMENT_MUTATION_LIMIT.release()
+                return
+            if "scope" in body and body["scope"] != "tier":
+                self._error(400, "invalid_transition", "invalid transition scope")
+                return
             try:
                 member_kwargs = self._transition_member_kwargs(body)
             except (KeyError, ValueError):
@@ -1544,6 +2012,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._json(200, {"applied": True, "action": action, "result": result})
 
         # --- routes ----------------------------------------------------------
+        @router_entry
         def do_GET(self) -> None:
             if api_keys is None:
                 self._reset_request_correlation()
@@ -1586,7 +2055,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         query = urllib.parse.parse_qs(
                             urllib.parse.urlparse(self.path).query, keep_blank_values=True,
                         )
-                        if "member_id" in query:
+                        if "scope" in query:
+                            if query != {"scope":["router"]}:
+                                self._error(400, "invalid_transition", "invalid router scope")
+                                return
+                            self._handle_transition({"scope":"router", "action":"status"})
+                        elif "member_id" in query:
                             if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
                                 self._error(400, "invalid_transition", "invalid transition request")
                                 return
@@ -1972,13 +2446,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
         def _connect_keys(self):
             self.close_connection = True
+            if not self._admit_key_store():
+                return
             if not connect_slots.acquire(blocking=False):
                 self._device_error(503, "server_busy", "key management busy")
                 return
             try:
                 from ..observability.dashboard.contracts import ObservatoryError
                 try:
-                    assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
+                    with self._anvil_key_permit.bind():
+                        assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
                 except ObservatoryError:
                     self._device_error(401, "authentication_error", "invalid Connect assertion")
                     return
@@ -1990,9 +2467,10 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 import sqlite3
                 try:
                     binding = assertion.binding
-                    result = connect_keys.dispatch({"principal": binding.subject,
-                        "generation": str(binding.policy_generation), "epoch": binding.epoch,
-                        "administrator": binding.role == "admin", "operation": body})
+                    with self._anvil_key_permit.bind():
+                        result = connect_keys.dispatch({"principal": binding.subject,
+                            "generation": str(binding.policy_generation), "epoch": binding.epoch,
+                            "administrator": binding.role == "admin", "operation": body})
                 except Denied:
                     self._device_error(403, "access_denied", "access changed or operation not allowed")
                     return
@@ -2006,6 +2484,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             finally:
                 connect_slots.release()
 
+        @router_entry
         def do_POST(self) -> None:
             if self.path == "/v1/connect/keys" and connect_keys is not None:
                 self._connect_keys()
@@ -2066,10 +2545,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 raise
             finally:
                 try:
+                    stream = self._anvil_workload_stream
+                    invocation = self._anvil_usage
+                    delivery = self._anvil_delivery_outcome
+                    status = self._anvil_http_status
                     def finish_delivery():
-                        stream = self._anvil_workload_stream
+                        if invocation is not None:
+                            if invocation.generation is None:
+                                invocation.capture(None, "success" if status is not None and status < 400 else "rejected" if invocation.dispatched is False else "error")
+                            invocation.finish(delivery.value if delivery is not None else "success" if status is not None and status < 400 else "error")
                         if stream is not None:
-                            stream.finish_delivery(self._anvil_delivery_outcome)
+                            stream.finish_delivery(delivery)
                     worker = self._anvil_worker
                     if worker is not None:
                         worker.when_finished(finish_delivery)
@@ -2089,6 +2575,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     else:
                         _CONCURRENCY_LIMIT.release()
 
+        @router_entry
         def do_DELETE(self) -> None:
             if api_keys is None:
                 self._reset_request_correlation()
@@ -2246,6 +2733,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                 dialect=dialect)
                     return
                 try:
+                    if not self._admit_usage(audio_kind, body.get("model")):
+                        return
                     self._handle_audio(audio_kind, body)
                 finally:
                     audio.release()
@@ -2281,6 +2770,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     return
                 if not isinstance(body, dict):
                     self._error(400, "invalid_request", "body must be a JSON object")
+                    return
+                if not self._admit_usage("memory", body.get("alias")):
                     return
                 self._handle_memory(path, body)
                 return
@@ -2371,6 +2862,11 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             if not self._device_model_allowed(request.model):
                 return
+
+            if not self._admit_usage("chat", request.model):
+                return
+            request.raw.pop("_anvil_usage", None)
+            request.raw.pop("_anvil_parent", None)
 
             # Always overwrite caller JSON at this reserved key. Only the trusted
             # front-door lineage may reach routing, audit, or the upstream relay.
@@ -2500,6 +2996,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                             close()
 
             worker = self._anvil_worker = DeliveryWorker(operation, control)
+            router_admission.track_thread(worker.thread)
             heartbeat_at = time.monotonic() + server_config.heartbeat_interval_s
             connection = getattr(self, "connection", None)
             previous_timeout = connection.gettimeout() if connection is not None else None
@@ -2634,6 +3131,8 @@ def make_server(host: str, port: int,
                 workload_clock: Optional[Callable[[], datetime]] = None,
                 server_config=None,
                 memory: Optional[MemoryRouter] = None,
+                usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
+                usage_domain_id=None, usage_metrics=None, router_admission=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -2695,6 +3194,21 @@ def make_server(host: str, port: int,
         if purpose is not None:
             owned_models += list(purpose.model_ids("embedding")) + list(purpose.model_ids("rerank"))
         connect_keys = ConnectKeys(api_keys, owned_models)
+    if webui_bindings is None:
+        webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())
+    router_admission = (router_admission or getattr(backend, "_router_admission", None)
+                        or getattr(getattr(usage_store, "key_store", None), "_router_admission", None)
+                        or getattr(api_keys, "_router_admission", None) or RouterAdmission())
+    for dispatcher in (backend, purpose, audio, memory):
+        if dispatcher is not None:
+            dispatcher._router_admission = router_admission
+    if gateway is not None:
+        operations = getattr(getattr(gateway, "tasks", None), "operations", None)
+        if operations is not None:
+            operations._router_admission = router_admission
+        elif router_admission._persist is not None:
+            # An opaque injected producer cannot establish complete native scope.
+            router_admission.unknown("media")
     validated_operator_routes = _validated_operator_routes(operator_routes)
     httpd = _RouterHTTPServer(
         (host, port),
@@ -2703,8 +3217,10 @@ def make_server(host: str, port: int,
             purpose, audio, gateway, memory, authorization_policy, validated_operator_routes,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
+            usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
         ),
     )
+    httpd.anvil_router_admission = router_admission
     httpd.daemon_threads = True  # don't let connection threads block shutdown
     return httpd
 

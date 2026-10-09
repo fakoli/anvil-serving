@@ -224,6 +224,8 @@ def tool_router_transition(args: dict) -> dict:
 
     action = _str_arg(args, "action", required=True)
     tier_id = _str_arg(args, "tier", "")
+    scope = _str_arg(args, "scope", "tier")
+    barrier_token = _str_arg(args, "barrier_token", "")
     member_scope = {}
     if "member" in args:
         member = args["member"]
@@ -235,11 +237,11 @@ def tool_router_transition(args: dict) -> dict:
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout = args.get("timeout")
     if timeout is not None:
-        timeout = _bounded_int_arg(args, "timeout", 60, min_value=1, max_value=3600)
+        timeout = _bounded_int_arg(args, "timeout", 30, min_value=1, max_value=900 if scope == "router" else 3600)
     try:
         result = router_manage.transition_request(
             action,
-            tier_id=tier_id or None,
+            tier_id=tier_id or None, scope=scope, barrier_token=barrier_token or None,
             **member_scope,
             timeout=timeout,
             router_url=router_url or None,
@@ -691,6 +693,8 @@ FAMILY = ToolFamily(
             "inputSchema": _schema(
                 {
                     "action": {"type": "string"},
+                    "scope": {"type":"string", "enum":["tier", "router"]},
+                    "barrier_token": {"type":"string", "pattern":"^[0-9a-f]{64}$"},
                     "tier": {"type": "string"},
                     "member": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"},
                     "router_url": {"type": "string"},

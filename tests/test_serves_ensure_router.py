@@ -150,24 +150,26 @@ def test_running_but_loopback_silent_is_healthy(capsys, no_topology):
     assert not run.ran_up()
 
 
-def test_router_absent_gets_started(capsys, no_topology):
-    # a non-existent container is "not healthy" -> bring it up.
+def test_router_absent_bootstrap_holds_without_native_proof(capsys, no_topology):
+    # Absence cannot establish the old owner all-path barrier.
     run = FakeRun(state="absent", up_rc=0)
     rc = serves.ensure_router_healthy(
         topology_path=no_topology, _run=run, _open=_open_down, env_file="")
     assert rc == 0
-    assert "router: started" in capsys.readouterr().out
-    assert run.ran_up()
+    output=capsys.readouterr()
+    assert "FAILED to start" in output.out and "HOLD" in output.err
+    assert not run.ran_up()
 
 
-def test_router_exited_gets_started(capsys, no_topology):
-    # a stopped (exited) container -> not running -> bring it up.
+def test_router_exited_bootstrap_holds_without_native_proof(capsys, no_topology):
+    # Process exit cannot replace complete owned-work drain proof.
     run = FakeRun(state="exited", up_rc=0)
     rc = serves.ensure_router_healthy(
         topology_path=no_topology, _run=run, _open=_open_down, env_file="")
     assert rc == 0
-    assert "router: started" in capsys.readouterr().out
-    assert run.ran_up()
+    output=capsys.readouterr()
+    assert "FAILED to start" in output.out and "HOLD" in output.err
+    assert not run.ran_up()
 
 
 def test_router_exited_with_foreign_owner_is_not_silently_replaced(
@@ -237,7 +239,7 @@ def test_failed_bring_up_without_topology_answer_is_non_gating(
     assert rc == 0
     assert "FAILED to start" in out
     assert "bringing serves up anyway" in out
-    assert run.ran_up()
+    assert not run.ran_up()  # Native bootstrap refusal precedes Compose mutation.
 
 
 def test_topology_router_elsewhere_skips_without_touching_docker(capsys, router_elsewhere):
@@ -264,7 +266,7 @@ def test_topology_router_here_failed_bring_up_gates(capsys, router_here):
     assert "FAILED to start" in out
     assert "not bringing serves up" in out
     assert "--no-router" in out
-    assert run.ran_up()
+    assert not run.ran_up()  # Topology ownership does not prove an old-runtime barrier.
 
 
 def test_topology_router_here_healthy_is_still_a_noop(capsys, router_here):
@@ -286,5 +288,25 @@ def test_invalid_topology_falls_back_to_the_co_located_default(
     rc = serves.ensure_router_healthy(
         topology_path=str(path), _run=run, _open=_open_down, env_file="")
     assert rc == 0
-    assert "router: started" in capsys.readouterr().out
-    assert run.ran_up()
+    output=capsys.readouterr()
+    assert "FAILED to start" in output.out and "HOLD" in output.err
+    assert not run.ran_up()
+
+
+def test_pre_authorized_lifecycle_delegation_reports_success(capsys,no_topology,monkeypatch):
+    # Delegation only: this fixture is not bootstrap or native drain evidence.
+    from anvil_serving import router_manage
+    delegated=[]
+    monkeypatch.setattr(router_manage,'cmd_up',lambda *args,**kwargs:delegated.append((args,kwargs)) or 0)
+    run=FakeRun(state='exited')
+    assert serves.ensure_router_healthy(topology_path=no_topology,_run=run,_open=_open_down,env_file='')==0
+    assert 'router: started' in capsys.readouterr().out and len(delegated)==1
+    assert not run.ran_up()
+
+
+def test_foreign_refusal_never_calls_admission_gate(capsys,no_topology,monkeypatch):
+    from anvil_serving import router_manage
+    monkeypatch.setattr(router_manage,'require_router_drain',lambda *a,**k:pytest.fail('unauthorized foreign quiesce'))
+    run=FakeRun(state='exited',compose_project='foreign-fixture')
+    assert serves.ensure_router_healthy(topology_path=no_topology,_run=run,_open=_open_down,env_file='')==0
+    assert not run.ran_up() and '--recreate' in capsys.readouterr().err

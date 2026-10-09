@@ -40,10 +40,38 @@ def _topology(tmp_path):
     return path
 
 
+def _native_gate_output(argv, project="anvil-serving"):
+    """Synthetic native custody/consumption through the real lifecycle gate."""
+    if argv[:3] == ["docker", "inspect", "--format"] and argv[3] == router_manage._CUSTODY_FORMAT:
+        return proc(0, json.dumps({"container_id":"a"*64,"image_id":"sha256:"+"b"*64,
+            "image_reference":"anvil-serving:synthetic","started_at":"2026-01-01T00:00:00Z",
+            "restart_count":0,"compose_project":project,"compose_service":"router","mounts":[]}))
+    if argv[:2] == ["docker", "compose"] and "ps" in argv:
+        return proc(0, "a"*64 if project == "anvil-serving" else "")
+    if argv[:3] == ["docker", "image", "inspect"]:
+        return proc(0, "sha256:"+"b"*64)
+    if argv[:2] == ["docker", "exec"] and "_local_router_cutover" in argv[-1]:
+        return proc(0,json.dumps({"schema":"router-native-cutover/v1","closed":True,"drained":True,
+            "configuration_revision":"c"*64,"roster_revision":"d"*64,"generation":1}))
+    return None
+
+
+def _barrier(action, revision, *, drained=True):
+    """Synthetic whole-owner transition; never operational roster evidence."""
+    return {"scope":"router","result":{"scope":"router","state":"quiesced","durable":True,
+        "barrier_token":"e"*64,"configuration_revision":revision,"roster_revision":"d"*64,
+        "generation":1,"drained":drained,"cutover_pending":action=="consume","unknown":[],
+        "counts":{family:0 if drained else 1 for family in
+            ("chat","purpose","audio","memory","media","internal","delivery","maintenance")}}}
+
+
 def _run(argv, **_kwargs):
+    native = _native_gate_output(argv)
+    if native is not None:
+        return native
     if argv[:2] == ["docker", "inspect"]:
         if "State.Status" in " ".join(argv):
-            return types.SimpleNamespace(returncode=1, stdout="", stderr="No such object")
+            return types.SimpleNamespace(returncode=0, stdout="running\n", stderr="")
         return types.SimpleNamespace(returncode=0, stdout="anvil-serving\n", stderr="")
     return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -132,7 +160,7 @@ def test_down_uses_stable_anvil_serving_compose_project():
         "router",
         _run=lambda argv, **kwargs: calls.append(argv) or _run(argv, **kwargs),
     ) == 0
-    assert calls == [[
+    assert [argv for argv in calls if argv[:2] == ["docker", "compose"] and "stop" in argv] == [[
         "docker", "compose", "--project-name", "anvil-serving",
         "-f", "compose.yml", "stop", "router",
     ]]
@@ -187,6 +215,9 @@ def test_up_refuses_foreign_compose_owner_without_recreate(capsys):
 
     def run(argv, **kwargs):
         calls.append(argv)
+        native = _native_gate_output(argv, "primary-node")
+        if native is not None:
+            return native
         if "State.Status" in " ".join(argv):
             return types.SimpleNamespace(returncode=0, stdout="running\n", stderr="")
         if argv[:2] == ["docker", "inspect"]:
@@ -203,6 +234,9 @@ def test_up_recreate_replaces_foreign_compose_owner():
 
     def run(argv, **kwargs):
         calls.append(argv)
+        native = _native_gate_output(argv, "primary-node")
+        if native is not None:
+            return native
         if "State.Status" in " ".join(argv):
             return types.SimpleNamespace(returncode=0, stdout="running\n", stderr="")
         if argv[:2] == ["docker", "inspect"]:
@@ -247,6 +281,8 @@ llm.voice = "omni-local"
 
     def transition(action, **kwargs):
         calls.append((action, kwargs.get("tier_id")))
+        if kwargs.get("scope") == "router":
+            return _barrier(action, hashlib.sha256(config.read_bytes()).hexdigest())
         if action == "status" and calls.count(("status", None)) == 1:
             return {"tiers": [{"tier_id": "fast-local", "ready": True}]}
         if action == "status" and calls.count(("status", None)) == 2:
@@ -273,8 +309,10 @@ llm.voice = "omni-local"
     assert result["tier_status"] == [{"tier_id": "omni-local", "ready": True}]
     assert calls == [
         ("status", None),
-        ("quiesce", "fast-local"),
-        ("drain", "fast-local"),
+        ("quiesce", None),
+        ("drain", None),
+        ("consume", None),
+        ("status", None),
         ("status", None),
         ("status", None),
     ]
@@ -326,6 +364,8 @@ llm.voice = "omni-local"
     ])
 
     def transition(action, **_kwargs):
+        if _kwargs.get("scope") == "router":
+            return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest())
         if action == "status":
             return next(statuses)
         if action == "drain":
@@ -348,7 +388,7 @@ llm.voice = "omni-local"
     assert result["tier_status"][1]["readiness_reason"] == "health_transport_URLError"
 
 
-def test_install_config_compensates_when_drain_fails(tmp_path):
+def test_install_config_retains_closure_when_whole_owner_drain_fails(tmp_path):
     config = tmp_path / "router.toml"
     config.write_text(
         """
@@ -371,13 +411,15 @@ llm.voice = "omni-local"
 
     def transition(action, **kwargs):
         calls.append((action, kwargs.get("tier_id")))
+        if kwargs.get("scope") == "router":
+            return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest(),drained=action!="drain")
         if action == "status":
             return {"tiers": [{"tier_id": "fast-local", "ready": True}]}
         if action == "drain":
             return {"result": {"drained": False}}
         return {"result": {"applied": True}}
 
-    with pytest.raises(ValueError, match="did not drain"):
+    with pytest.raises(ValueError, match="owned-work drain"):
         router_manage.install_config(
             str(config),
             topology_path=str(_topology(tmp_path)),
@@ -387,7 +429,8 @@ llm.voice = "omni-local"
             _install=lambda _path: pytest.fail("install ran after failed drain"),
         )
 
-    assert calls[-1] == ("readmit", "fast-local")
+    assert calls[-1] == ("drain", None)
+    assert not any(action=="readmit" for action,_ in calls)
 
 
 def test_install_config_captures_exact_replica_snapshot_before_transition(tmp_path):
@@ -405,6 +448,8 @@ def test_install_config_captures_exact_replica_snapshot_before_transition(tmp_pa
 
     def transition(action, **_kwargs):
         transitions.append(action)
+        if _kwargs.get("scope") == "router":
+            return _barrier(action,hashlib.sha256(raw).hexdigest())
         if action == "status":
             config.write_text("not the captured config", encoding="utf-8")
             return {"tiers": [{"tier_id": "primary", "ready": True}]}
@@ -420,7 +465,7 @@ def test_install_config_captures_exact_replica_snapshot_before_transition(tmp_pa
     )
 
     assert result["config_sha256"] == hashlib.sha256(raw).hexdigest()
-    assert transitions == ["status", "quiesce", "drain", "status", "readmit"]
+    assert transitions == ["status", "quiesce", "drain", "consume", "status", "status"]
     assert len(installed) == 1
     assert installed[0].config_bytes == raw
     assert installed[0].replica_tier_count == 1
@@ -454,6 +499,9 @@ def test_snapshot_installer_preserves_crlf_bytes_for_validation_and_write(tmp_pa
 
     def run(argv, **kwargs):
         calls.append((argv, kwargs))
+        native = _native_gate_output(argv)
+        if native is not None:
+            return native
         if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
             return proc(0, "anvil-serving:test\n")
         if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:
@@ -461,7 +509,7 @@ def test_snapshot_installer_preserves_crlf_bytes_for_validation_and_write(tmp_pa
         return proc()
 
     assert serves._install_router_config(snapshot, _run=run) == 0
-    assert calls[0][1]["input"] == raw
+    assert next(kwargs["input"] for argv,kwargs in calls if "input" in kwargs) == raw
     write = next(
         kwargs for argv, kwargs in calls
         if argv[:3] == ["docker", "run", "--rm"]
@@ -526,3 +574,24 @@ def test_installed_probe_hashes_exact_bytes_with_older_runtime_report(tmp_path, 
     else:
         with pytest.raises(ValueError, match="changed|exceeds"):
             exec(compile(router_manage._RUNTIME_INSTALLED_PROBE_CODE, "installed-probe", "exec"), {})
+
+
+@pytest.mark.parametrize('bad_rows',[
+    [],[{'tier_id':'wrong','ready':True}],
+    [{'tier_id':'direct','ready':True},{'tier_id':'direct','ready':True}],
+    [{'ready':True}],
+])
+def test_installer_keeps_exact_tier_set_and_bounded_retry_guard(tmp_path,monkeypatch,bad_rows):
+    config=tmp_path/'router.toml'
+    config.write_text('[router]\n[[router.tiers]]\nid="direct"\nbase_url="http://127.0.0.1:1/v1"\nmodel="direct"\ndialect="openai"\ncontext_limit=4096\nprivacy="local"\ntool_support=true\nauth_env="SYNTHETIC"\n[router.model_routes]\nllm.primary="direct"\n')
+    calls=[];statuses=iter([{'tiers':[{'tier_id':'direct','ready':True}]},{'tiers':bad_rows}])
+    def transition(action,**kwargs):
+        calls.append(action)
+        if kwargs.get('scope')=='router':return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest())
+        return next(statuses)
+    ticks=iter([0,61]);monkeypatch.setattr(router_manage,'time',types.SimpleNamespace(monotonic=lambda:next(ticks)))
+    installed=[]
+    with pytest.raises(ValueError,match='desired tier set'):
+        router_manage.install_config(str(config),topology_path=str(_topology(tmp_path)),confirm=True,dry_run=False,
+            _transition=transition,_install=lambda snapshot:installed.append(snapshot) or 0)
+    assert len(installed)==1 and 'readmit' not in calls

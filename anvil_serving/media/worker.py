@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import threading
+import time
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
@@ -276,12 +277,16 @@ class MediaReconciliationLoop:
         poll_seconds: float = 0.25,
         maintenance: Callable[[], Any] | None = None,
         maintenance_cycles: int = 240,
+        router_admission=None,
     ) -> None:
         if poll_seconds <= 0 or poll_seconds > 5:
             raise MediaError("invalid_worker_policy", "media reconciliation poll interval is invalid")
         if maintenance_cycles < 1:
             raise MediaError("invalid_worker_policy", "media maintenance interval is invalid")
         self.reconciler = reconciler
+        self.router_admission = router_admission
+        self._busy = False
+        self._unknown_jobs = set()
         self.poll_seconds = poll_seconds
         self.maintenance = maintenance
         self.maintenance_cycles = maintenance_cycles
@@ -312,13 +317,57 @@ class MediaReconciliationLoop:
         if thread is not None and thread is not threading.current_thread():
             thread.join(timeout=max(0.0, timeout))
 
+    def drain_readback(self):
+        store = self.reconciler.store
+        if not self._lock.acquire(blocking=False):
+            return 1, True
+        try:
+            ambiguous = False
+            if isinstance(store, MediaJobStore):
+                if not store._lock.acquire(blocking=False):
+                    return 1, True
+                try:
+                    with store._connect() as db:
+                        db.execute("PRAGMA busy_timeout=0")
+                        deadline = time.monotonic() + .05
+                        db.set_progress_handler(lambda:int(time.monotonic() >= deadline), 1000)
+                        count = db.execute("SELECT COUNT(*) FROM media_jobs WHERE state NOT IN ('completed','failed','canceled')").fetchone()[0]
+                        # Terminal facades and cancellation cannot attest remote death.
+                        ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE "
+                            "(j.state='canceled' AND j.backend_prompt_id IS NOT NULL) OR "
+                            "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
+                            "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
+                            "'backend_submission_recovery_unavailable','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
+                finally:
+                    store._lock.release()
+            else:
+                count = len(store.nonterminal())
+            return count + int(self.is_alive), bool(ambiguous or self._unknown_jobs or self._busy)
+        finally:
+            self._lock.release()
+
     def reconcile_once(self) -> list[MediaJob]:
-        return self.reconciler.reconcile_all()
+        with self._lock:
+            self._busy = True
+        try:
+            for job in self.reconciler.store.nonterminal():
+                if job.state == JobState.SUBMITTING and not job.backend_prompt_id:
+                    self._unknown_jobs.add(job.id)
+            result = self.reconciler.reconcile_all()
+            for job in result:
+                if job.backend_prompt_id and job.state in {JobState.COMPLETED, JobState.FAILED} and job.events[-1].reason not in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown", "backend_submission_recovery_unavailable"}:
+                    self._unknown_jobs.discard(job.id)
+            return result
+        finally:
+            with self._lock:
+                self._busy = False
 
     def _run(self) -> None:
         cycle = 0
         while not self._stop.is_set():
             try:
+                if self.router_admission is not None and self.router_admission.status()["state"] == "quiesced" and not self.reconciler.store.nonterminal():
+                    break
                 self.reconcile_once()
                 if self.maintenance is not None and cycle % self.maintenance_cycles == 0:
                     self.maintenance()

@@ -17,7 +17,7 @@ def _container_id(container: str, path: str) -> str:
     if not _NAME.fullmatch(container):
         raise KeyStoreError("invalid router container")
     result = subprocess.run(
-        ["docker", "inspect", "--format", "{{json .}}", container],
+        ["docker", "inspect", "--format", '{"Id":{{json .Id}},"State":{{json .State}},"Config":{"Labels":{{json .Config.Labels}}},"Mounts":{{json .Mounts}}}', container],
         capture_output=True, text=True, timeout=30,
     )
     if result.returncode or len(result.stdout) > _MAX_RESPONSE:
@@ -72,8 +72,14 @@ def dispatch_container(args) -> int:
                 raise KeyStoreError("credential output file already exists")
         container_id = _container_id(args.container, path)
         payload = {key: value for key, value in vars(args).items()
-                   if key not in {"container", "config", "out"}}
+                   if key not in {"container", "config"}}
         payload["store_path"] = path
+        if args.action == "create":
+            payload.pop("out", None)
+        if args.action in {"backup", "restore"}:
+            targets = (args.out, args.snapshot) if args.action == "restore" else (args.out,)
+            if any(_container_id(args.container, target) != container_id for target in targets):
+                raise KeyStoreError("router container ownership changed")
         response = _invoke(container_id, payload)
         if args.action == "create":
             try:
@@ -116,6 +122,17 @@ def main() -> int:
             data = store.list_keys()
         elif action == "usage":
             data = store.usage(payload["key_id"], payload["limit"])
+        elif action == "client-readback":
+            from ..client_identity import _native_readback
+            data = _native_readback(store, payload)
+        elif action == "bind":
+            actor = store.bind_owner(payload["key_id"], payload["kind"], payload["owner_id"],
+                                     payload["expected_revision"], dry_run=payload["dry_run"])
+            data = {"key_id": payload["key_id"], "actor": actor.to_dict(), "dry_run": payload["dry_run"]}
+        elif action in {"backup", "restore"}:
+            from .usage_store import UsageStore
+            data = (UsageStore(store).backup(payload["out"]) if action == "backup"
+                    else UsageStore.restore(payload["snapshot"], payload["out"]))
         elif action == "revoke":
             if not store.revoke(payload["key_id"]):
                 raise KeyStoreError("credential key was not found")
