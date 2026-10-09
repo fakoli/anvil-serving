@@ -182,13 +182,17 @@ def authorization(value, *, at=None):
     fields={'schema','operation_id','phase','authorization_sha256','expected_container_id',
             'expected_image_id','expected_configuration_revision','preview_sha256','expires_at',
             'legacy_receipt_sha256','acknowledge_uncertainty','ingress_barrier'}
-    require(type(value) is dict and set(value)==fields and value['schema']=='router-maintenance-authorization/v1'
-            and value['phase'] in {'legacy-stop','successor-readmit'}
+    current = type(value) is dict and value.get('phase') == 'current-instrumented-stop'
+    if current: fields |= {'successor'}
+    require(type(value) is dict and set(value)==fields
+            and value['schema']==('router-current-stop-authorization/v1' if current else 'router-maintenance-authorization/v1')
+            and value['phase'] in {'legacy-stop','successor-readmit','current-instrumented-stop'}
             and type(value['expires_at']) is int)
     now = int(time.time()) if at is None else at
     require(type(now) is int and now < value['expires_at'] <= now + 900)
     expected = ('legacy-local-and-remote', 'exact-container-stop') if value['phase']=='legacy-stop' else (
         'remote-memory-terminal-only', 'closed-generation')
+    if current: expected = ('remote-memory-terminal-only', 'closed-generation-exact-container-stop')
     require((value['acknowledge_uncertainty'], value['ingress_barrier']) == expected)
     for name in ('operation_id','authorization_sha256','expected_container_id','expected_configuration_revision'):
         require(type(value[name]) is str and re.fullmatch('[0-9a-f]{64}',value[name]) is not None)
@@ -196,7 +200,15 @@ def authorization(value, *, at=None):
         require(value[name] is None or type(value[name]) is str and re.fullmatch('[0-9a-f]{64}',value[name]) is not None)
     image=value['expected_image_id']
     require(type(image) is str and re.fullmatch('sha256:[0-9a-f]{64}',image) is not None)
-    if value['phase']=='successor-readmit':require(value['legacy_receipt_sha256'] is not None)
+    if value['phase']=='successor-readmit' or current:require(value['legacy_receipt_sha256'] is not None)
+    if current:
+        successor = value['successor']
+        require(type(successor) is dict and set(successor) == {'image_id', 'configuration_revision', 'compose', 'compose_sha256'})
+        require(type(successor['image_id']) is str and re.fullmatch('sha256:[a-f0-9]{64}', successor['image_id']) is not None)
+        for name in ('configuration_revision', 'compose_sha256'):
+            require(type(successor[name]) is str and re.fullmatch('[a-f0-9]{64}', successor[name]) is not None)
+        require(type(successor['compose']) is str and Path(successor['compose']).is_absolute()
+                and '..' not in Path(successor['compose']).parts)
     return value
 
 
@@ -303,8 +315,277 @@ def _legacy_config(path):
     return raw, _candidate_identity(before)
 
 
+# The running predecessor need not contain this newer phase. This fixed helper
+# uses only its existing, fenced maintenance observation and custody primitives.
+# It never accepts a URL, caller credential, Python fragment or permission path.
+_CURRENT_STOP_CODE = r'''
+import hashlib,json,os,select,sys
+from pathlib import Path
+from anvil_serving.router.config import load_server_config
+from anvil_serving.router.keys import KeyStore,_private_json
+from anvil_serving.router.container_owner import binding,closure,digest,location,require,validate,live_writer
+from anvil_serving.router.maintenance import _publish,_path
+from anvil_serving.router_manage import DEFAULT_INSTALLED_CONFIG,_transition_request
+from anvil_serving.observability.dashboard.contracts import strict_json
+
+def read():
+    require(bool(select.select([sys.stdin],[],[],90)[0]))
+    raw=sys.stdin.buffer.readline(32769);require(len(raw)<=32768)
+    return strict_json(raw)
+request=read()
+require(type(request)is dict and set(request)=={'configuration_revision'})
+settings=load_server_config(DEFAULT_INSTALLED_CONFIG)
+require(hashlib.sha256(Path(DEFAULT_INSTALLED_CONFIG).read_bytes()).hexdigest()==request['configuration_revision'])
+local={'ANVIL_ROUTER_TOKEN':os.environ.get(settings.auth_env or '', '')}
+observed=_transition_request('maintenance-preview',scope='router',router_url='http://127.0.0.1:8000',env=local)['result']
+store=KeyStore(settings.api_keys_path)
+with live_writer(store):
+    record=validate(_private_json(location(store,observed['run_id'])))
+    require(record['phase']=='live' and digest(record['anchor'])==observed['anchor_sha256']
+            and binding(store)==observed['store_binding'] and closure(store)['closure']==observed['closure'])
+    value={'observation':observed,'record':record}
+    print(json.dumps(value),flush=True)
+    command=read()
+    if command!={'release':True}:
+        require(type(command)is dict and set(command)=={'commit','marker'} and command['commit']==digest(value))
+        marker=command['marker'];auth=marker['authorization']
+        require(marker['schema']=='router-current-stop-permission/v1' and marker['native_sha256']==digest(value)
+                and auth['phase']=='current-instrumented-stop' and auth['expected_container_id']==record['anchor']['docker']['container_id']
+                and auth['expected_image_id']==record['anchor']['docker']['image_id']
+                and auth['expected_configuration_revision']==observed['closure']['configuration_revision'])
+        import re,time
+        require(type(auth['operation_id'])is str and re.fullmatch('[a-f0-9]{64}',auth['operation_id'])
+                and type(auth['expires_at'])is int and int(time.time())<min(auth['expires_at'],observed['expires_at']))
+        require(closure(store)['closure']==observed['closure'])
+        _publish(_path(store,'.maintenance-current-stops')/(auth['operation_id']+'.json'),marker)
+        print(json.dumps({'committed':digest(marker)}),flush=True)
+        require(read()=={'release':True})
+'''
+
+
+@contextmanager
+def _current_stop_session(incarnation, revision, *, _popen=None):
+    """Keep the old native writer fence through host CAS and physical stop."""
+    import select
+    import subprocess
+    from ..observability.dashboard.contracts import strict_json
+    require(os.name == 'posix')
+    process = (_popen or subprocess.Popen)(
+        ['docker', 'exec', '-i', incarnation['container_id'], 'python', '-c', _CURRENT_STOP_CODE],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    def send(value):
+        require(process.poll() is None)
+        process.stdin.write(json.dumps(value).encode() + b'\n'); process.stdin.flush()
+    def read():
+        require(bool(select.select([process.stdout], [], [], 35)[0]))
+        raw = process.stdout.readline(32769)
+        require(len(raw) <= 32768)
+        return strict_json(raw)
+    try:
+        send({'configuration_revision': revision})
+        native = read()
+        def commit(marker):
+            send({'commit': digest(native), 'marker': marker})
+            require(read() == {'committed': digest(marker)} and process.poll() is None)
+        yield native, commit, lambda: require(process.poll() is None)
+    finally:
+        try:
+            if process.poll() is None:
+                send({'release': True})
+                process.wait(timeout=5)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+        finally:
+            process.stdin.close(); process.stdout.close()
+            if process.poll() is None:
+                process.terminate()
+                try: process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill(); process.wait(timeout=5)
+
+
+def _current_observation(native, auth, incarnation, *, at=None):
+    """Closed native vocabulary; zero is local and never remote completion."""
+    require(type(native) is dict and set(native) == {'observation', 'record'})
+    record = validate(native['record']); observed = native['observation']; anchor = record['anchor']
+    require(record['phase'] == 'live' and anchor['docker'] == incarnation
+            and incarnation['container_id'] == auth['expected_container_id']
+            and incarnation['image_id'] == auth['expected_image_id'])
+    require(type(observed) is dict and set(observed) == {
+        'schema', 'legacy_receipt_sha256', 'run_id', 'owner_id', 'domain_id', 'store_binding',
+        'anchor_sha256', 'closure', 'counts', 'eligible_uncertainty', 'remote_frontier',
+        'nonce', 'expires_at', 'observation_revision'})
+    require(observed['schema'] == 'router-maintenance-preview/v1'
+            and observed['eligible_uncertainty'] == 'remote-memory-terminal-unknown'
+            and observed['remote_frontier'] == 'UNKNOWN; backend supplies no terminal operation readback'
+            and observed['legacy_receipt_sha256'] == auth['legacy_receipt_sha256'])
+    for name in ('nonce', 'observation_revision', 'anchor_sha256'):
+        require(type(observed[name]) is str and re.fullmatch('[a-f0-9]{64}', observed[name]) is not None)
+    now = int(time.time()) if at is None else at
+    require(type(observed['expires_at']) is int and now < observed['expires_at'] <= now + 60)
+    counts = observed['counts']; state = observed['closure']
+    require(type(counts) is dict and set(counts) == {
+        'chat', 'purpose', 'audio', 'memory', 'media', 'internal', 'delivery', 'maintenance'}
+        and all(type(v) is int and v == 0 for v in counts.values()))
+    require(type(state) is dict and set(state) == {'barrier_token', 'configuration_revision',
+        'roster_revision', 'policy_revision', 'generation', 'consumed'} and state['consumed'] is False
+        and type(state['generation']) is int and 1 <= state['generation'] < 2**53)
+    for name in ('barrier_token', 'configuration_revision', 'roster_revision', 'policy_revision'):
+        require(type(state[name]) is str and re.fullmatch('[a-f0-9]{64}', state[name]) is not None)
+    require(state['configuration_revision'] == auth['expected_configuration_revision']
+            and state['configuration_revision'] == anchor['configuration_revision']
+            and state['roster_revision'] == anchor['roster_revision']
+            and observed['anchor_sha256'] == digest(anchor)
+            and digest(observed['store_binding']) == anchor['store_binding_sha256']
+            and all(observed[k] == anchor[k] for k in ('run_id', 'owner_id', 'domain_id')))
+    return observed
+
+
+def _current_stop_proof(values, pending, *, _run):
+    """Finalize native death custody, then read its exact immutable proof."""
+    from ..router_manage import (_managed_container_custody, _offline_compose_run,
+                                 DEFAULT_CONTAINER, DEFAULT_SERVICE)
+    native = pending['preview']['native']; run_id = native['observation']['run_id']
+    result = _managed_container_custody('dead', values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run)
+    require(result == {'finalized': 'dead', 'run_id': run_id})
+    code = ("from pathlib import Path;from anvil_serving.router.config import load_server_config;"
+        "from anvil_serving.router.keys import KeyStore,_private_json;"
+        "from anvil_serving.router.container_owner import location,validate,digest,require;"
+        "from anvil_serving.router_manage import DEFAULT_INSTALLED_CONFIG;import json;"
+        "settings=load_server_config(DEFAULT_INSTALLED_CONFIG);store=KeyStore(settings.api_keys_path)\n"
+        "with store._offline_custody(settings,allow_retained=True):\n"
+        f" record=validate(_private_json(location(store,{run_id!r})))\n"
+        f" marker=_private_json(Path(str(store.path)+'.maintenance-current-stops')/({pending['authorization']['operation_id']!r}+'.json'))\n"
+        f" require(digest(marker)=={digest(pending['marker'])!r})\n"
+        " print(json.dumps(record))\n")
+    record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run))
+    require(record['phase'] == 'ready' and record['anchor'] == native['record']['anchor']
+            and record['death']['closure_generation'] == native['observation']['closure']['generation']
+            and record['death']['closure_consumed'] is False)
+    return record
+
+
+def _current_successor(successor, incarnation, *, _run):
+    """Bind declared successor bytes to the actual pinned image/config, without dotenv."""
+    from ..router_manage import _compose_argv, DEFAULT_SERVICE, DEFAULT_CONTAINER, DEFAULT_INSTALLED_CONFIG
+    from ..control_plane.mcp.auth_file import read_private_auth_file
+    from ..observability.dashboard.contracts import strict_json
+    result = _run([*_compose_argv(successor['compose'], env_file=os.devnull), 'config',
+                   '--no-env-resolution', '--no-interpolate', '--format', 'json'],
+                  capture_output=True, text=True, timeout=10)
+    require(result.returncode == 0 and len(result.stdout or '') <= 2*1024**2)
+    rendered = strict_json(result.stdout)
+    require(type(rendered) is dict and rendered.get('name') == incarnation['compose_project'])
+    service = rendered.get('services', {}).get(DEFAULT_SERVICE, {})
+    require(service.get('container_name') == DEFAULT_CONTAINER)
+    image = service.get('image')
+    require(type(image) is str and re.fullmatch('[A-Za-z0-9_./:@-]{1,512}', image) is not None and not image.startswith('-'))
+    result = _run(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], capture_output=True, text=True, timeout=5)
+    require(result.returncode == 0 and (result.stdout or '').strip() == successor['image_id'])
+    mounts = service.get('volumes')
+    require(type(mounts) is list and all(type(x) is dict for x in mounts))
+    config = [x for x in mounts if x.get('target') == DEFAULT_INSTALLED_CONFIG]
+    require(len(config) == 1 and config[0].get('type') == 'bind' and config[0].get('read_only') is True
+            and type(config[0].get('source')) is str and Path(config[0]['source']).is_absolute())
+    raw = read_private_auth_file(config[0]['source'], max_bytes=2*1024**2)
+    require(hashlib.sha256(raw).hexdigest() == successor['configuration_revision'])
+
+
+def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
+    from ..router_manage import (_container_incarnation, _restart_custody, _offline_compose_roster,
+                                 DEFAULT_CONTAINER, DEFAULT_SERVICE, DEFAULT_INSTALLED_CONFIG)
+    from .container_owner import docker_identity
+    from ..control_plane.mcp.auth_file import read_private_auth_file
+    from ..observability.dashboard.contracts import strict_json
+    receipt_path = Path(values['receipt_out']); pending_path = Path(str(receipt_path) + '.pending')
+    require(not os.path.lexists(receipt_path))
+    successor = auth['successor']
+    def unchanged():
+        require(strict_json(read_private_auth_file(config, max_bytes=16384)) == values
+                and strict_json(read_private_auth_file(values['authorization'], max_bytes=16384)) == auth
+                and hashlib.sha256(read_private_auth_file(values['compose'], max_bytes=2*1024**2)).hexdigest() == values['compose_sha256']
+                and hashlib.sha256(read_private_auth_file(successor['compose'], max_bytes=2*1024**2)).hexdigest() == successor['compose_sha256'])
+    unchanged()
+    if os.path.lexists(pending_path):
+        # Once pending exists, no path can issue another stop. Recovery is only
+        # evidence finalization for the exact already-stopped incarnation.
+        require(confirm)
+        pending = _private_json(pending_path)
+        require(type(pending) is dict and set(pending) == {'schema', 'authorization', 'preview', 'marker', 'acknowledged_at'}
+                and pending['schema'] == 'router-current-stop-pending/v1' and pending['authorization'] == auth)
+        before = pending['preview']['incarnation']
+        _current_successor(successor, before, _run=_run)
+        require(type(pending['acknowledged_at']) is int and 0 < pending['acknowledged_at'] < auth['expires_at'])
+        authorization(auth, at=pending['acknowledged_at'])
+        _current_observation(pending['preview']['native'], auth, before, at=pending['acknowledged_at'])
+        require(auth['preview_sha256'] == digest(pending['preview'])
+                and pending['preview']['compose_path'] == values['compose']
+                and pending['preview']['compose_sha256'] == values['compose_sha256']
+                and pending['marker'] == {'schema': 'router-current-stop-permission/v1',
+                    'authorization': auth, 'native_sha256': digest(pending['preview']['native'])})
+        dead = _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True)
+        require(all(dead[k] == v for k, v in before.items()))
+    else:
+        before = _container_incarnation(DEFAULT_CONTAINER, _run=_run)
+        docker_identity(before)
+        _current_successor(successor, before, _run=_run)
+        require(before['container_id'] == auth['expected_container_id'] and before['image_id'] == auth['expected_image_id'])
+        roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
+        mounted = [m for m in _restart_custody(DEFAULT_CONTAINER, _run)['mounts'] if m['destination'] == DEFAULT_INSTALLED_CONFIG]
+        require(len(mounted) == 1 and mounted[0]['type'] == 'bind' and mounted[0]['read_only'] is True)
+        raw = read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2)
+        require(hashlib.sha256(raw).hexdigest() == auth['expected_configuration_revision'])
+        # The admitted profile, not another same-project file, owns this stop.
+        label = _run(['docker', 'inspect', '--format', '{{json (index .Config.Labels "com.docker.compose.project.config_files")}}',
+                      before['container_id']], capture_output=True, text=True, timeout=5)
+        require(label.returncode == 0 and len(label.stdout or '') <= 4096 and strict_json(label.stdout) == values['compose'])
+        with _current_stop_session(before, auth['expected_configuration_revision']) as (native, commit, alive):
+            _current_observation(native, auth, before)
+            observed = {'schema': 'router-current-stop-preview/v1', 'incarnation': before, 'native': native,
+                        'compose_path': values['compose'], 'compose_sha256': values['compose_sha256'],
+                        'successor': successor, 'local_frontier': 'instrumented-quiesced',
+                        'remote_memory_terminal': 'UNKNOWN', 'drained': False}
+            def recheck():
+                unchanged(); authorization(auth)
+                _current_successor(successor, before, _run=_run)
+                require(int(time.time()) < native['observation']['expires_at']
+                        and before == _container_incarnation(DEFAULT_CONTAINER, _run=_run)
+                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
+                        and read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2) == raw)
+                alive()
+            recheck()
+            if not confirm:
+                if preview_out: _publish(Path(preview_out), observed)
+                return observed
+            require(auth['preview_sha256'] == digest(observed))
+            marker = {'schema': 'router-current-stop-permission/v1', 'authorization': auth, 'native_sha256': digest(native)}
+            pending = {'schema': 'router-current-stop-pending/v1', 'authorization': auth,
+                       'preview': observed, 'marker': marker, 'acknowledged_at': int(time.time())}
+            commit(marker)  # Canonical durable pending permission, before any host receipt or stop.
+            _publish(pending_path, pending)
+            recheck()
+            stopped = _run(['docker', 'stop', before['container_id']], capture_output=True, text=True, timeout=30)
+            require(stopped.returncode == 0)
+            dead = _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True)
+            require(all(dead[k] == v for k, v in before.items()))
+    docker_identity(dead, stopped=True)
+    unchanged(); authorization(auth)
+    proof = _current_stop_proof(values, pending, _run=_run)
+    require(proof['death']['stopped'] == dead
+            and dead == _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True))
+    unchanged()
+    receipt = {'schema': 'router-current-stop/v1', 'authorization': auth, 'preview': pending['preview'],
+               'acknowledged_at': pending['acknowledged_at'], 'stopped': dead, 'death_sha256': digest(proof['death']),
+               'local_frontier': 'instrumented-quiesced', 'remote_memory_terminal': 'UNKNOWN',
+               'legacy_receipt_sha256': auth['legacy_receipt_sha256'], 'drained': False}
+    _publish(receipt_path, receipt)
+    return {'applied': True, 'stopped': True, 'drained': False, 'unknown': ['memory'],
+            'local_frontier': 'instrumented-quiesced', 'remote_memory_terminal': 'UNKNOWN',
+            'receipt_sha256': digest(receipt), 'death_sha256': receipt['death_sha256']}
+
+
 def run(config, *, confirm=False, preview_out=None, _run=None):
-    """Two fixed managed operations selected by one private operator config."""
+    """Phase-specific managed operations selected by one private operator config."""
     import subprocess
     from ..router_manage import (_container_incarnation, _restart_custody, _offline_compose_roster,
         _serving_authority_mutation, DEFAULT_CONTAINER, DEFAULT_SERVICE, DEFAULT_INSTALLED_CONFIG)
@@ -322,6 +603,8 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
     native=_run or subprocess.run
     @_serving_authority_mutation
     def operation():
+        if auth['phase'] == 'current-instrumented-stop':
+            return _run_current_stop(values, auth, config, confirm=confirm, preview_out=preview_out, _run=native)
         compose_raw=read_private_auth_file(values['compose'],max_bytes=2*1024**2)
         require(hashlib.sha256(compose_raw).hexdigest()==values['compose_sha256'])
         pending=Path(values['receipt_out'] + '.pending')

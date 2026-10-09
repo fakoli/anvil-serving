@@ -44,7 +44,7 @@ def commands() -> CommandNode:
             _node("maintenance", "Preview or execute one protected acknowledged router maintenance operation.",
                 handler=_handler("anvil_serving.router.maintenance",attribute="dispatch",argv_prefix=(),forward_confirm_flag=True),
                 mutation_class="mutate",execution_policy="offline",
-                options=(_option("--config",summary="Protected exact two-phase maintenance declaration.",value_name="PATH"),
+                options=(_option("--config",summary="Protected exact maintenance phase declaration.",value_name="PATH"),
                          _option("--preview-out",summary="Absent protected native preview file.",value_name="PATH"),
                          _option("--confirm",summary="Apply only the previewed one-time acknowledgement.",requires_confirmation=True)),
                 docs_anchor="docs/cli/router.md#acknowledged-router-maintenance"),

@@ -8565,7 +8565,7 @@
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Protected exact two-phase maintenance declaration.",
+          "summary": "Protected exact maintenance phase declaration.",
           "value_name": "PATH"
         },
         {
