@@ -344,7 +344,9 @@ def _retained_observation(binding: Mapping[str, Any], row: Mapping[str, Any]) ->
         raise ServiceError("identity_mismatch", "retained Docker image changed")
     config = row.get("Config")
     labels = config.get("Labels") if isinstance(config, Mapping) else None
-    if not isinstance(labels, Mapping) or dict(labels) != _identity_labels(binding):
+    if not isinstance(labels, Mapping) or dict(labels) != _identity_labels(
+        binding, allow_empty_values=True
+    ):
         raise ServiceError("identity_mismatch", "retained Docker labels changed")
     if config.get("HealthcheckDeclared") is not True:
         raise ServiceError("identity_mismatch", "retained Docker healthcheck is not declared")
@@ -488,13 +490,20 @@ def _image_id(binding: Mapping[str, Any]) -> str:
     return value
 
 
-def _identity_labels(binding: Mapping[str, Any]) -> dict[str, str]:
+def _identity_labels(
+    binding: Mapping[str, Any], *, allow_empty_values: bool = False
+) -> dict[str, str]:
     values = binding.get("identity_labels")
     if not isinstance(values, Mapping) or not values:
         raise ServiceError("invalid_binding", "Docker binding requires identity labels")
     labels: dict[str, str] = {}
     for key, value in values.items():
-        if not isinstance(key, str) or not isinstance(value, str) or not key or not value:
+        if (
+            not isinstance(key, str)
+            or not key
+            or not isinstance(value, str)
+            or (not allow_empty_values and not value)
+        ):
             raise ServiceError("invalid_binding", "Docker identity labels must be non-empty strings")
         labels[key] = value
     return dict(sorted(labels.items()))

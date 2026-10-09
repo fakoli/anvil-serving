@@ -152,6 +152,50 @@ def test_retained_inspect_uses_closed_projection_and_exact_incarnation():
     assert observed["finished_at"] == "2026-10-10T04:01:00.123456789Z"
 
 
+def test_retained_inspect_accepts_empty_compose_label_value_with_exact_full_equality():
+    from anvil_serving.service_runtime.docker import Adapter
+
+    labels = {
+        "owner": "reviewed",
+        "com.docker.compose.depends_on": "",
+    }
+    runner = FakeRun([(
+        ["docker", "inspect", "--format"],
+        completed(json.dumps(retained_inspection(labels=labels))),
+    )])
+
+    observed = Adapter(run=runner).inspect(retained_binding(identity_labels=labels))
+
+    assert observed["registered"] is True
+    assert observed["identity"] == CONTAINER_ID
+
+
+def test_ordinary_binding_still_rejects_empty_identity_label_value():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    with pytest.raises(ServiceError, match="identity labels") as raised:
+        Adapter(run=FakeRun([])).describe(binding(identity_labels={OWNERSHIP_LABEL: ""}))
+
+    assert raised.value.code == "invalid_binding"
+
+
+def test_retained_binding_rejects_empty_identity_label_key():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    labels = {"": "reviewed"}
+    runner = FakeRun([(
+        ["docker", "inspect", "--format"],
+        completed(json.dumps(retained_inspection(labels=labels))),
+    )])
+
+    with pytest.raises(ServiceError, match="identity labels") as raised:
+        Adapter(run=runner).inspect(retained_binding(identity_labels=labels))
+
+    assert raised.value.code == "invalid_binding"
+
+
 def test_retained_inspect_rejects_malformed_lifecycle_timestamp():
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.docker import Adapter
