@@ -518,7 +518,7 @@ class _WriterConnection(sqlite3.Connection):
                 remaining = self.writer_deadline - time.monotonic()
                 if remaining <= 0:
                     raise
-                time.sleep(min(.01, remaining))
+                time.sleep(min(.001 if recovery_busy else .01, remaining))
                 if time.monotonic() >= self.writer_deadline:
                     raise
 

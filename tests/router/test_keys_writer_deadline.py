@@ -187,12 +187,20 @@ def test_extended_frontiers_and_auto_rollback_never_replay(tmp_path, monkeypatch
         assert db.execute('SELECT count(*) FROM items').fetchone() == (0,)
 
 
-def test_recovery_busy_setup_retries_then_full_begin_and_body_once(tmp_path):
+@pytest.mark.parametrize('code,pause', [(sqlite3.SQLITE_BUSY_RECOVERY, .001), (sqlite3.SQLITE_BUSY, .01)])
+def test_recovery_busy_setup_retries_then_full_begin_and_body_once(tmp_path, monkeypatch, code, pause):
     statement = 'PRAGMA synchronous=FULL'
-    with closing(fault_connection(tmp_path/'recovery.sqlite3', sqlite3.SQLITE_BUSY_RECOVERY, statement)) as db:
+    sleeps = []
+    original_sleep = time.sleep
+    def actual_sleep(seconds):
+        sleeps.append(seconds)
+        original_sleep(seconds)
+    monkeypatch.setattr(keys.time, 'sleep', actual_sleep)
+    with closing(fault_connection(tmp_path/'recovery.sqlite3', code, statement)) as db:
         db.execute('CREATE TABLE items(value INTEGER)')
         db.writer_deadline = time.monotonic()+1
         db.execute(statement)
+        assert sleeps == [pause]
         assert db.attempts == 2 and db.execute('PRAGMA synchronous').fetchone() == (2,)
         db.execute('BEGIN IMMEDIATE')
         db.execute('INSERT INTO items VALUES(1)')
