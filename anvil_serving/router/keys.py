@@ -503,11 +503,17 @@ class _WriterConnection(sqlite3.Connection):
         # Always try immediately: available commit/rollback may finish expired.
         sqlite3.Connection.execute(self, "PRAGMA busy_timeout=0")
         while True:
+            transaction_before = self.in_transaction
             try:
                 return super().execute(sql, parameters)
             except sqlite3.OperationalError as exc:
-                if (getattr(exc, "sqlite_errorcode", None) != sqlite3.SQLITE_BUSY
-                        or (self.in_transaction and sql != "COMMIT")):
+                code = getattr(exc, "sqlite_errorcode", None)
+                ordinary_busy = (code == sqlite3.SQLITE_BUSY
+                                 and (not transaction_before or sql == "COMMIT")
+                                 and (not self.in_transaction or sql == "COMMIT"))
+                recovery_busy = (code == sqlite3.SQLITE_BUSY_RECOVERY
+                                 and not transaction_before and not self.in_transaction)
+                if not (ordinary_busy or recovery_busy):
                     raise
                 remaining = self.writer_deadline - time.monotonic()
                 if remaining <= 0:
