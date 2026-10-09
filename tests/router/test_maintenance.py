@@ -82,3 +82,27 @@ def test_legacy_nonsecret_mode_preserved_but_links_replacements_and_changed_cas_
     with pytest.raises(ValueError):maintenance._legacy_config(link)
     hard=tmp_path/'hard.toml';os.link(target,hard)
     with pytest.raises(ValueError):maintenance._legacy_config(target)
+
+
+def test_registered_cli_maintenance_forwards_leaf_options_without_subcommand(monkeypatch, capsys):
+    from anvil_serving import cli
+
+    calls = []
+
+    def native_run(config, *, confirm=False, preview_out=None):
+        calls.append((config, confirm, preview_out))
+        return {'schema': 'synthetic-maintenance-result', 'confirmed': confirm}
+
+    monkeypatch.setattr(maintenance, 'run', native_run)
+    arguments = ['router', 'maintenance', '--config', 'maintenance.json',
+                 '--preview-out', 'preview.json']
+    assert cli.main(arguments) == 0
+    assert calls == [('maintenance.json', False, 'preview.json')]
+    assert cli.main([*arguments, '--confirm']) == 0
+    assert calls == [('maintenance.json', False, 'preview.json'),
+                     ('maintenance.json', True, 'preview.json')]
+    for malformed in (['router', 'maintenance'], [*arguments, '--unexpected'],
+                      ['router', 'maintenance', 'maintenance', '--config', 'maintenance.json']):
+        assert cli.main(malformed) == 2
+        assert len(calls) == 2
+    assert 'synthetic-maintenance-result' in capsys.readouterr().out
