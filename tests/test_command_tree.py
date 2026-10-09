@@ -411,6 +411,19 @@ def test_declared_tree_is_valid():
     validate_command_tree(COMMAND_TREE)
 
 
+def test_retained_approval_options_are_declared_only_for_up_and_down():
+    approval_flags = {"--expected-preview-sha256", "--operator-authorization-file"}
+    records = {record["path"]: record for record in manifest_data()["commands"]}
+
+    for action in ("install", "up", "down", "restart", "enable", "disable"):
+        flags = {
+            flag
+            for option in records[f"host services {action}"]["options"]
+            for flag in option["flags"]
+        }
+        assert approval_flags.issubset(flags) is (action in {"up", "down"})
+
+
 def test_remote_command_tools_exist_in_the_mcp_catalog():
     remote_tools = {
         record["remote_operation"]["tool"]

@@ -57,6 +57,7 @@ def test_retained_cli_same_incarnation_and_strict_storage_exclusion(docker_owner
         "pids_limit": 32, "read_only": True, "cap_drop": ["ALL"],
         "security_opt": ["no-new-privileges:true"], "restart": "no",
         "stop_grace_period": "2s", "healthcheck": healthcheck,
+        "labels": {"fixture.empty-value": ""},
         "volumes": [{"type": "bind", "source": str(f["private"]), "target": "/state"}],
     }}}))
     compose_argv = ["docker", "compose", "--env-file", os.devnull, "-f", str(compose)]
@@ -89,6 +90,7 @@ def test_retained_cli_same_incarnation_and_strict_storage_exclusion(docker_owner
             time.sleep(.1)
         assert observed["Config"]["Labels"]["com.docker.compose.project"] == name
         assert "io.anvil-serving.managed-by" not in observed["Config"]["Labels"]
+        assert observed["Config"]["Labels"]["fixture.empty-value"] == ""
         # Hash Docker's normalized object (nanoseconds and canonical field names),
         # not the Compose declaration. This exact CID is exclusively test-owned.
         native_healthcheck = json.loads(docker("inspect", "--format", "{{json .Config.Healthcheck}}", cid))

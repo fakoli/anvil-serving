@@ -180,11 +180,15 @@ def test_ordinary_binding_still_rejects_empty_identity_label_value():
     assert raised.value.code == "invalid_binding"
 
 
-def test_retained_binding_rejects_empty_identity_label_key():
+@pytest.mark.parametrize("labels", [
+    {"": "reviewed"},
+    {"k" * 129: "reviewed"},
+    {"owner": "v" * 257},
+])
+def test_retained_binding_rejects_invalid_identity_label_bounds(labels):
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.docker import Adapter
 
-    labels = {"": "reviewed"}
     runner = FakeRun([(
         ["docker", "inspect", "--format"],
         completed(json.dumps(retained_inspection(labels=labels))),

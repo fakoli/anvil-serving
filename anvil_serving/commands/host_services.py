@@ -146,7 +146,12 @@ def services() -> CommandNode:
                     "host_services_manage",
                     action=action,
                     mutation=True,
-                    options=CONFIRM_OPTIONS + _PREVIEW_APPLY_OPTION + _RESOLUTION_OPTIONS + _RETAINED_APPROVAL_OPTIONS,
+                    options=(
+                        CONFIRM_OPTIONS
+                        + _PREVIEW_APPLY_OPTION
+                        + _RESOLUTION_OPTIONS
+                        + (_RETAINED_APPROVAL_OPTIONS if action in {"up", "down"} else ())
+                    ),
                 )
                 for action, summary in (
                     ("install", "Render a declared service supervisor definition without starting it."),

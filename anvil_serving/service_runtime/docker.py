@@ -25,6 +25,8 @@ _TIMEOUT_SECONDS = 15
 _MAX_OUTPUT_BYTES = 1024 * 1024
 _MAX_LOG_TAIL = 5_000
 _MAX_DISCOVERED = 128
+_MAX_LABEL_KEY_LENGTH = 128
+_MAX_LABEL_VALUE_LENGTH = 256
 _CONTAINER_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{64}\Z")
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -501,7 +503,9 @@ def _identity_labels(
         if (
             not isinstance(key, str)
             or not key
+            or len(key) > _MAX_LABEL_KEY_LENGTH
             or not isinstance(value, str)
+            or len(value) > _MAX_LABEL_VALUE_LENGTH
             or (not allow_empty_values and not value)
         ):
             raise ServiceError("invalid_binding", "Docker identity labels must be non-empty strings")

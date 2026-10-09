@@ -36081,24 +36081,6 @@
           "requires_confirmation": false,
           "summary": "Bounded operation timeout.",
           "value_name": "SECONDS"
-        },
-        {
-          "flags": [
-            "--expected-preview-sha256"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Reviewed retained-container preview digest.",
-          "value_name": "SHA256"
-        },
-        {
-          "flags": [
-            "--operator-authorization-file"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Protected retained-container operator authorization.",
-          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -36831,24 +36813,6 @@
           "requires_confirmation": false,
           "summary": "Bounded operation timeout.",
           "value_name": "SECONDS"
-        },
-        {
-          "flags": [
-            "--expected-preview-sha256"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Reviewed retained-container preview digest.",
-          "value_name": "SHA256"
-        },
-        {
-          "flags": [
-            "--operator-authorization-file"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Protected retained-container operator authorization.",
-          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -37081,24 +37045,6 @@
           "requires_confirmation": false,
           "summary": "Bounded operation timeout.",
           "value_name": "SECONDS"
-        },
-        {
-          "flags": [
-            "--expected-preview-sha256"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Reviewed retained-container preview digest.",
-          "value_name": "SHA256"
-        },
-        {
-          "flags": [
-            "--operator-authorization-file"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Protected retained-container operator authorization.",
-          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -37331,24 +37277,6 @@
           "requires_confirmation": false,
           "summary": "Bounded operation timeout.",
           "value_name": "SECONDS"
-        },
-        {
-          "flags": [
-            "--expected-preview-sha256"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Reviewed retained-container preview digest.",
-          "value_name": "SHA256"
-        },
-        {
-          "flags": [
-            "--operator-authorization-file"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Protected retained-container operator authorization.",
-          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
