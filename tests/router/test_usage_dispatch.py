@@ -40,7 +40,25 @@ def server(backend, store_tuple, *, managed=True, accounting=True, **options):
                         server_config=config, usage_store=usage if accounting else None, usage_run_id=run,
                         usage_authority=authority, workload_clock=clock, **options)
     events = {}
+    handlers = []
     lock = threading.Lock()
+    original_handle = httpd.RequestHandlerClass.handle_one_request
+
+    def handle(handler):
+        done = threading.Event()
+        with lock:
+            handlers.append(done)
+        try:
+            return original_handle(handler)
+        finally:
+            done.set()  # Includes key audit and credential/router custody release.
+
+    def wait_handlers():
+        end = time.monotonic() + 5
+        with lock:
+            pending = tuple(handlers)
+        for event in pending:
+            assert event.wait(max(0, end-time.monotonic())), "request handler did not complete"
     original_init, original_finish = UsageInvocation.__init__, UsageInvocation.finish
 
     def initialize(invocation, *args, **kwargs):
@@ -66,6 +84,8 @@ def server(backend, store_tuple, *, managed=True, accounting=True, **options):
             assert event.wait(max(0, end-time.monotonic())), "request finalizer did not complete"
 
     with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(httpd.RequestHandlerClass, "handle_one_request", handle)
+        patch.setattr(usage, "_wait_dispatch_fixture_handlers", wait_handlers, raising=False)
         patch.setattr(UsageInvocation, "__init__", initialize)
         patch.setattr(UsageInvocation, "finish", finish)
         patch.setattr(usage, "_wait_dispatch_fixture_finalizers", wait_finalizers, raising=False)
@@ -77,6 +97,7 @@ def server(backend, store_tuple, *, managed=True, accounting=True, **options):
         finally:
             conn.close()
             httpd.shutdown(); httpd.server_close(); thread.join(5)
+            usage._wait_dispatch_fixture_handlers()
             wait_finalizers()
 
 
@@ -297,6 +318,56 @@ def test_device_admission_preserves_actual_grant_and_required_webui_before_bucke
     assert caller.actor.id=="service:fixture" and caller.end_user.subject=="user:fixture"
     assert caller.grant==keys.authenticate(secret,snapshot=True).caller_snapshot.grant
     assert len(calls)==1
+
+
+def test_readback_waits_for_actual_key_audit_and_handler_completion(store, monkeypatch):
+    usage, *_ = store
+    keys = usage.key_store
+    _, secret = keys.create("audit-fixture", ["llm.primary"], [CHAT])
+    entered, release, waiting, completed = (threading.Event() for _ in range(4))
+    record = keys.record
+
+    def held_audit(*args, **kwargs):
+        entered.set()
+        assert release.wait(5), "audit gate was not released"
+        try:
+            return record(*args, **kwargs)
+        finally:
+            completed.set()
+
+    monkeypatch.setattr(keys, "record", held_audit)
+    from anvil_serving.router import front_door
+    monkeypatch.setattr(front_door, "KeyStore", lambda path: keys)
+
+    def transport(*args, **kwargs):
+        return b'{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}'
+
+    backend = RelayBackend(make_tier("openai"), transport=transport)
+
+    def request_and_read():
+        with server(backend, store,
+                    accounting=False, server_config=ServerConfig(api_keys_path=str(keys.path))) as conn:
+            wait = usage._wait_dispatch_fixture_handlers
+
+            def observed_wait():
+                waiting.set()
+                return wait()
+
+            monkeypatch.setattr(usage, "_wait_dispatch_fixture_handlers", observed_wait)
+            # Accounting is off: there is no UsageInvocation finalizer to fence.
+            assert post(conn, headers={"Authorization": "Bearer " + secret})[0] == 200
+        assert completed.is_set(), "readback preceded key audit completion"
+        with keys._connect() as db:
+            return db.execute("SELECT COUNT(*) FROM audit").fetchone()[0]
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(request_and_read)
+        try:
+            assert entered.wait(5) and waiting.wait(5)
+            assert not completed.is_set() and not future.done()
+        finally:
+            release.set()
+        assert future.result(timeout=5) == 1
 
 
 @pytest.mark.parametrize("expires", ["key","assertion"])

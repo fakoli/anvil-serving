@@ -471,7 +471,9 @@ def test_creation_race_preserves_newer_database_bytes_authority_and_ledger(
     preserved = KeyStore(target)
     assert rows(preserved) == expected_rows
     assert preserved.authenticate(token) is None
-    assert target.stat().st_mode & 0o077 == 0
+    keys._secure_database(target, exists=True)  # Held native DACL or POSIX owner-only policy.
+    if os.name != "nt":
+        assert target.stat().st_mode & 0o077 == 0
     assert list(target.parent.iterdir()) == [target]
 
 
