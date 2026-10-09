@@ -1,6 +1,7 @@
 """Lifecycle effects require both exact ownership and an explicit apply gate."""
 import os
 import subprocess
+import sys
 
 import pytest
 
@@ -647,6 +648,13 @@ def retained_authorization(path, preview, row, action):
     path.chmod(0o600)
 
 
+retained_linux_custody = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="retained authorization custody requires native Linux POSIX ownership and modes",
+)
+
+
+@retained_linux_custody
 def test_retained_start_and_stop_require_reviewed_preview_and_scoped_authorization(tmp_path):
     from anvil_serving.service_runtime.operations import execute
 
@@ -672,6 +680,7 @@ def test_retained_start_and_stop_require_reviewed_preview_and_scoped_authorizati
     assert adapter.commands[-1] == ["docker", "stop", "--timeout", "1", row["container_id"]]
 
 
+@retained_linux_custody
 def test_retained_failed_start_reserves_full_declared_stop_grace_for_rollback(tmp_path, monkeypatch):
     from itertools import count
     from types import SimpleNamespace
@@ -715,6 +724,7 @@ def test_retained_apply_refuses_stale_preview_before_mutation(tmp_path):
     assert adapter.commands == []
 
 
+@retained_linux_custody
 def test_retained_authorization_marker_refuses_same_path_reuse_when_state_repeats(tmp_path):
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.operations import execute
@@ -734,6 +744,7 @@ def test_retained_authorization_marker_refuses_same_path_reuse_when_state_repeat
     assert adapter.commands == [["docker", "start", row["container_id"]]]
 
 
+@retained_linux_custody
 def test_copied_retained_authorization_cannot_replay_after_manual_state_cycle(tmp_path):
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.operations import execute
@@ -757,6 +768,7 @@ def test_copied_retained_authorization_cannot_replay_after_manual_state_cycle(tm
     assert adapter.commands == [["docker", "start", row["container_id"]]]
 
 
+@retained_linux_custody
 def test_retained_unknown_ingress_requires_explicit_interruption_authority(tmp_path):
     import json
     from anvil_serving.service_runtime.contracts import ServiceError
@@ -805,7 +817,8 @@ def test_status_without_service_handles_retained_binding_without_approval_or_env
     assert adapter.commands == []
 
 
-def test_retained_lifecycle_requires_native_linux_owner(tmp_path):
+@pytest.mark.parametrize("action", ["status", "up", "down"])
+def test_retained_lifecycle_requires_native_linux_owner(tmp_path, action):
     from dataclasses import replace
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.operations import execute
@@ -814,8 +827,9 @@ def test_retained_lifecycle_requires_native_linux_owner(tmp_path):
     linux = options["topology"]
     options["topology"] = replace(linux, hosts=(replace(linux.hosts[0], os="windows"),))
     options["_host_os"] = "windows"
-    with pytest.raises(ServiceError, match="native Linux"):
-        execute("status", row["id"], **options)
+    with pytest.raises(ServiceError, match="native Linux") as raised:
+        execute(action, row["id"], **options)
+    assert raised.value.code == "owner_mismatch"
     assert adapter.commands == []
 
 
