@@ -49,9 +49,50 @@ tensor_parallel_size = 2
 up = "python -m anvil_serving.cli models recipes load vendor/model --registry {dir}/recipes.toml --gpu-device ''' + ','.join(DEVICES) + '''"
 ''')
     topology = tmp_path / 'operator-topology.toml'
-    topology.write_text('# fixed synthetic topology\n')
-    monkeypatch.setattr('anvil_serving.topology.load_topology', lambda _: SimpleNamespace(
-        gpu_role=lambda role: SimpleNamespace(uuid=DEVICES[['compute-a', 'compute-b'].index(role)])))
+    topology.write_text('''schema_version = 1
+id = "synthetic-restoration"
+command_host = "host:primary"
+command_runtime = "runtime:primary-native"
+[[capacity_policies]]
+id = "model-capable"
+allow_model_workloads = true
+[[hosts]]
+id = "primary"
+roles = ["serve"]
+capacity_policy = "model-capable"
+[[hosts]]
+id = "remote"
+roles = ["operator"]
+[[runtimes]]
+id = "primary-native"
+host = "primary"
+role = "native"
+[[runtimes]]
+id = "primary-docker"
+host = "primary"
+role = "docker"
+[[runtimes]]
+id = "remote-native"
+host = "remote"
+role = "native"
+[[gpu_roles]]
+id = "compute-a"
+host = "primary"
+runtime = "primary-docker"
+uuid = "''' + DEVICES[0] + '''"
+[[gpu_roles]]
+id = "compute-b"
+host = "primary"
+runtime = "primary-docker"
+uuid = "''' + DEVICES[1] + '''"
+[[resources]]
+id = "model-operator"
+role = "model-serve"
+host = "primary"
+runtime = "primary-docker"
+gpu_role = "compute-a"
+workload = "llm"
+''')
     monkeypatch.setattr(serves, '_unmanaged_recipe_ownership', lambda *a, **k: {'owners': [], 'discovery_error': None})
     monkeypatch.setattr(serves, '_storage_write_check', lambda *a, **k: k['repair'] is False)
     monkeypatch.setattr(serves, '_await_healthy', lambda *a, **k: True)
@@ -203,12 +244,17 @@ def test_real_promotion_lock_and_pending_experiment_refuse(prepared, monkeypatch
 
 def test_real_cli_dispatch_preview_confirm_and_bad_options(prepared, monkeypatch):
     p = prepared
-    monkeypatch.setattr(cli, '_resolve_dispatch_plan', lambda *a, **k: None)
     calls = []
-    monkeypatch.setattr(serves, 'cmd_restore_retained', lambda *a, **k: calls.append((a, k)) or 0)
+    original = serves.cmd_restore_retained
+    def restore(*a, **k):
+        calls.append((a, k))
+        return original(*a, **k, _run=p.kwargs['_run'])
+    monkeypatch.setattr(serves, 'cmd_restore_retained', restore)
     base = ['serves', 'mode', 'restore-retained', 'exclusive', '--manifest', str(p.manifest),
             '--expected-container-id', CID, '--expected-image', IMAGE,
-            '--manifest-sha256', p.kwargs['manifest_sha256'], '--registry-sha256', p.kwargs['registry_sha256']]
+            '--manifest-sha256', p.kwargs['manifest_sha256'], '--registry-sha256', p.kwargs['registry_sha256'],
+            '--topology', str(p.topology), '--command-host', 'host:primary',
+            '--command-runtime', 'runtime:primary-native', '--target', 'host:primary', '--transport', 'local']
     assert cli.main(base) == 0
     assert calls[-1][1]['dry_run'] is True
     assert cli.main(base + ['--confirm']) == 0
@@ -217,8 +263,59 @@ def test_real_cli_dispatch_preview_confirm_and_bad_options(prepared, monkeypatch
     for extra in [['--restore-group', 'different'], ['--recreate'], ['--router-url', 'http://127.0.0.1:30000']]:
         assert cli.main(base + extra) == 2
     assert len(calls) == 2
+    assert actions(p) == [['docker', 'start', CID]]
+
+
+@pytest.mark.parametrize('entry', ['cli', 'direct'])
+@pytest.mark.parametrize('kind', ['docker-caller', 'remote-caller', 'controller', 'ssh', 'missing-identity', 'capacity', 'gpu', 'other-gpu-owner'])
+def test_retained_owner_resolution_refuses_before_docker(prepared, monkeypatch, entry, kind):
+    p = prepared
+    if kind in {'missing-identity', 'capacity', 'gpu', 'other-gpu-owner'}:
+        text = p.topology.read_text()
+        if kind == 'missing-identity':
+            text = text.replace('command_host = "host:primary"', '').replace('command_runtime = "runtime:primary-native"', '')
+        elif kind == 'capacity':
+            text = text.replace('allow_model_workloads = true', 'allow_model_workloads = false')
+        elif kind == 'gpu':
+            text = text.replace('gpu_role = "compute-a"', '')
+        else:
+            text = text.replace('id = "compute-b"\nhost = "primary"\nruntime = "primary-docker"',
+                                'id = "compute-b"\nhost = "remote"\nruntime = "remote-native"')
+        p.topology.write_text(text)
+    original = serves.cmd_restore_retained
+    monkeypatch.setattr(serves, 'cmd_restore_retained', lambda *a, **k: original(*a, **k, _run=p.kwargs['_run']))
+    args = ['mode', 'restore-retained', 'exclusive', '--manifest', str(p.manifest),
+            '--expected-container-id', CID, '--expected-image', IMAGE,
+            '--manifest-sha256', p.kwargs['manifest_sha256'], '--registry-sha256', p.kwargs['registry_sha256'],
+            '--topology', str(p.topology), '--confirm']
+    if kind == 'docker-caller': args += ['--command-runtime', 'runtime:primary-docker']
+    if kind == 'remote-caller': args += ['--command-host', 'host:remote', '--command-runtime', 'runtime:remote-native']
+    if kind in {'controller', 'ssh'}: args += ['--transport', kind]
+    assert (cli.main(['serves', *args]) if entry == 'cli' else serves.main(args)) != 0
+    assert p.calls == []
 
 
 def test_ordinary_exclusive_up_remains_denied(prepared):
     assert serves.cmd_up(prepared.scope, ['exclusive'], dry_run=True, _run=prepared.kwargs['_run']) == 1
     assert actions(prepared) == []
+
+
+@pytest.mark.parametrize('utility', ['utility', 'compute', 'duplicate', 'privileged', 'manual-device', 'capability-override', 'unavailable'])
+def test_gpu_utility_access_is_not_compute_ownership(prepared, utility):
+    p = prepared
+    original = p.kwargs['_run']
+    def run(argv, **kwargs):
+        if argv[:3] == ['docker', 'ps', '-a']:
+            return proc(0, json.dumps({'Names': 'observer', 'State': 'running'}))
+        if argv[:2] == ['docker', 'inspect'] and argv[-1] == 'observer':
+            if argv[3] == '{{json .HostConfig.DeviceRequests}}':
+                return proc(0, json.dumps([{'Driver': 'nvidia', 'Capabilities': [['gpu', 'compute']] if utility == 'capability-override' else [['gpu']]}]))
+            text = 'false null null\nNVIDIA_DRIVER_CAPABILITIES=utility\n'
+            if utility == 'compute': text = text.replace('=utility', '=compute,utility')
+            if utility == 'duplicate': text += 'NVIDIA_DRIVER_CAPABILITIES=compute\n'
+            if utility == 'privileged': text = text.replace('false', 'true')
+            if utility == 'manual-device': text = text.replace('false null null', 'false [{}] null')
+            return proc(1 if utility == 'unavailable' else 0, text)
+        return original(argv, **kwargs)
+    assert invoke(p, dry_run=False, confirm=True, _run=run) == (0 if utility == 'utility' else 1)
+    assert actions(p) == ([['docker', 'start', CID]] if utility == 'utility' else [])

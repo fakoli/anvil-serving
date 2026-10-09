@@ -381,6 +381,22 @@ def test_cmd_up_compose_no_services_brings_up_whole_file():
     assert calls == [["docker", "compose", "-f", "/x/experiment.yml", "up", "-d"]]
 
 
+def test_compose_no_deps_requires_and_updates_only_named_services():
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return proc(0)
+    assert serves.cmd_up_compose('/x/experiment.yml', [], no_deps=True, _run=run) == 2
+    assert calls == []
+    assert serves.cmd_up_compose('/x/experiment.yml', ['observer'], no_deps=True, _run=run) == 0
+    assert calls == [['docker', 'compose', '-f', '/x/experiment.yml', 'up', '-d', '--no-deps', 'observer']]
+
+
+def test_empty_compose_no_deps_refuses_before_router_ensure(monkeypatch):
+    monkeypatch.setattr(serves, 'ensure_router_healthy', lambda **kwargs: pytest.fail('router ensure before usage refusal'))
+    assert serves.main(['up', '--compose', '/x/experiment.yml', '--no-deps']) == 2
+
+
 def test_cmd_up_compose_reports_failure():
     def run(argv, **k):
         return proc(1, "", "compose blew up")

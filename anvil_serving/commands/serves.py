@@ -24,7 +24,7 @@ def commands() -> CommandNode:
                 "Start manifest-owned model serves.",
                 "anvil_serving.serves",
                 role="model-serve",
-                options=CONFIRM_OPTIONS,
+                options=CONFIRM_OPTIONS + (_option("--no-deps", summary="With --compose, update only named services."),),
                 mutation="mutate",
                 gpu=True,
                 remote_operation=_remote(
@@ -173,7 +173,6 @@ def commands() -> CommandNode:
                         role="model-serve",
                         mutation="mutate",
                         gpu=True,
-                        execution_runtime_roles=("native",),
                         options=(
                             _option("--dry-run", summary="Preview without changing the retained owner."),
                             _option("--confirm", summary="Restore only the exact retained owner.", requires_confirmation=True),

@@ -198,3 +198,31 @@ def test_actual_windows_main_database_unlink_is_never_sidecar_absence(tmp_path, 
     with pytest.raises(keys.KeyStoreError) as raised:
         with store._connect(): pass
     assert not isinstance(raised.value.__cause__, FileNotFoundError)
+
+
+def test_windows_per_open_handle_reuse_never_caches_private_checks(tmp_path, monkeypatch):
+    leaf = tmp_path / 'synthetic-database'
+    leaf.write_bytes(b'synthetic database header')
+    opened, checked = [], []
+    def open_file(path):
+        fd = os.open(path, os.O_RDONLY)
+        opened.append(fd)
+        return fd
+    monkeypatch.setattr(keys, '_windows_open_verification_file', open_file)
+    monkeypatch.setattr(keys.bootstrap_shim, '_windows_handle_details_from_descriptor',
+                        lambda _: (False, (1, 2, 3, 4, 5), 1))
+    def require_private(fd):
+        checked.append(fd)
+        if len(checked) == 3: raise keys.auth_file.AuthFileError('changed private permissions')
+    monkeypatch.setattr(keys.auth_file, '_require_windows_private_descriptor', require_private)
+    proof = {'objects': {}, 'ancestors': {}}
+    try:
+        for _ in range(2):
+            assert keys._windows_private_path(leaf, directory=False, header=True, _proof=proof) == leaf.read_bytes()
+        assert len(opened) == 1 and len(checked) == 2
+        with pytest.raises(keys.KeyStoreError):
+            keys._windows_private_path(leaf, directory=False, _proof=proof)
+    finally:
+        for fd in proof['objects'].values(): os.close(fd)
+    assert keys._windows_private_path(leaf, directory=False) is None
+    assert len(opened) == 2 and len(checked) == 4

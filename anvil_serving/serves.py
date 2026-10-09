@@ -5106,7 +5106,9 @@ def _retained_exclusive_identity(serve, recipe, expected_id, expected_image, dev
 def cmd_restore_retained(serves, target_name, *, manifest_path, manifest_sha256,
                          expected_id, expected_image, registry_sha256,
                          dry_run=True, confirm=False, _run=subprocess.run,
-                         _open=urllib.request.urlopen, _sleep=time.sleep, topology_path=None):
+                         _open=urllib.request.urlopen, _sleep=time.sleep, topology_path=None,
+                         command_host=None, command_runtime=None, owner_target=None,
+                         transport="local"):
     """Restore only an exact stopped exclusive owner; no router or fallback path."""
     try:
         if not re.fullmatch(r"[0-9a-f]{64}", expected_id or "") or not re.fullmatch(
@@ -5142,8 +5144,22 @@ def cmd_restore_retained(serves, target_name, *, manifest_path, manifest_sha256,
             topology_path = resolve_topology_path(topology_path)
             topology_hash = serve_recipes.registry_digest(topology_path)
             topology = load_topology(topology_path)
+            from .targets import resolve_execution_plan
+            from .topology_cli import _command_node, _spec
+            path, node = _command_node("serves mode restore-retained")
+            plan = resolve_execution_plan(
+                topology, _spec(path, node), target=owner_target, transport=transport,
+                command_host=command_host, command_runtime=command_runtime,
+            )
+            if (plan.command_runtime.role != "native" or plan.transport != "local"
+                    or plan.command_host.id != plan.execution_host.id):
+                raise ValueError("retained restoration requires the local native owner")
             roles = [r.gpu_role for r in reservations.reservations_of(target)]
-            devices = [topology.gpu_role(role).uuid for role in roles]
+            gpu_roles = [topology.gpu_role(role) for role in roles]
+            if any(role.host != plan.execution_host.id or role.runtime != plan.resource_runtime.id
+                   for role in gpu_roles):
+                raise ValueError("retained GPU roles must belong to the resolved resource owner")
+            devices = [role.uuid for role in gpu_roles]
             if len(devices) != 2 or len(set(devices)) != 2 or target.get("tensor_parallel_size") != 2:
                 raise ValueError("complete UUID-backed TP2 ownership required")
             if any(not isinstance(device, str) or not device.startswith("GPU-") for device in devices) or any(
@@ -5185,7 +5201,24 @@ def cmd_restore_retained(serves, target_name, *, manifest_path, manifest_sha256,
                         raise ValueError("container GPU ownership unavailable")
                     requests = json.loads(result.stdout)
                     if requests is not None and requests != []:
-                        raise ValueError("competing or unresolved container GPU ownership")
+                        # Query only the non-secret driver capability, never the environment.
+                        utility = _run([
+                            "docker", "inspect", "--format",
+                            '{{json .HostConfig.Privileged}} {{json .HostConfig.Devices}} '
+                            '{{json .HostConfig.DeviceCgroupRules}}\n'
+                            '{{range .Config.Env}}{{if ge (len .) 27}}'
+                            '{{if eq (slice . 0 27) "NVIDIA_DRIVER_CAPABILITIES="}}'
+                            '{{println .}}{{end}}{{end}}{{end}}', owner["Names"],
+                        ], capture_output=True, text=True, timeout=30)
+                        if (utility.returncode or utility.stdout.strip() !=
+                                "false null null\nNVIDIA_DRIVER_CAPABILITIES=utility"
+                                or not isinstance(requests, list) or not requests
+                                or any(not isinstance(request, dict)
+                                       or request.get("Driver") not in {"", "nvidia"}
+                                       or request.get("Capabilities") != [["gpu"]]
+                                       or request.get("Options") not in (None, {})
+                                       for request in requests)):
+                            raise ValueError("competing or unresolved container GPU ownership")
                 denial = reservations.deny_over_budget(scope, [target], lambda name: states.get(name, "unknown"))
                 if denial:
                     raise ValueError("retained reservation exceeds native budget")
@@ -6044,12 +6077,15 @@ def cmd_adopt(serves, names, dry_run=False, assume_yes=False, _run=subprocess.ru
     return cmd_up(serves, names, dry_run=dry_run, recreate=True, _run=_run)
 
 
-def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run):
+def cmd_up_compose(compose_file, services, dry_run=False, _run=subprocess.run, *, no_deps=False):
     """Bring up an ad-hoc/experiment serve from a compose file that is NOT in the manifest:
     `docker compose -f <file> up -d [service...]`. Fully independent of serves.toml — the
     file's services need not be declared there. argv list (no shell) for path/quoting safety.
     """
-    argv = ["docker", "compose", "-f", compose_file, "up", "-d", *services]
+    if no_deps and not services:
+        print("--no-deps requires an explicit Compose service", file=sys.stderr)
+        return 2
+    argv = ["docker", "compose", "-f", compose_file, "up", "-d", *(["--no-deps"] if no_deps else []), *services]
     print("  compose up: %s" % " ".join(argv))
     if dry_run:
         return 0
@@ -6547,6 +6583,8 @@ def _build_action_parser(action):
     if action == "up":
         p.add_argument("--compose", metavar="FILE",
                        help="bring up an ad-hoc/experiment serve from this compose file; names are compose service names.")
+        p.add_argument("--no-deps", action="store_true",
+                       help="with --compose, update only explicitly named services")
         p.add_argument("--recreate", action="store_true",
                        help="force `docker rm -f` + a fresh `up` for an existing container instead of `docker start`.")
         p.add_argument("--evict", action="store_true",
@@ -6856,6 +6894,9 @@ def main(argv=None):
     # still consult an operator manifest that declares exclusive mode, before
     # even the router ensure can issue a container command.
     if a.action == "up" and a.compose:
+        if a.no_deps and not a.names:
+            print("--no-deps requires an explicit Compose service", file=sys.stderr)
+            return 2
         mode_denial = deny_ad_hoc_compose_during_exclusive(
             resolve_manifest_path(a.manifest)
         )
@@ -6882,7 +6923,11 @@ def main(argv=None):
         router_rc = ensure_router_healthy(no_router=a.no_router, dry_run=a.dry_run)
         if router_rc:
             return router_rc
-        return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run)
+        return cmd_up_compose(a.compose, a.names, dry_run=a.dry_run,
+                              **({"no_deps": True} if a.no_deps else {}))
+    if a.action == "up" and a.no_deps:
+        print("--no-deps requires --compose and an explicit service", file=sys.stderr)
+        return 2
     if a.compose:
         print("--compose is only valid with `up`", file=sys.stderr)
         return 2
@@ -7073,6 +7118,8 @@ def main(argv=None):
                 expected_id=a.expected_container_id, expected_image=a.expected_image,
                 dry_run=a.dry_run or not a.confirm, confirm=a.confirm,
                 topology_path=a.topology,
+                command_host=a.command_host, command_runtime=a.command_runtime,
+                owner_target=a.owner_target, transport=a.transport,
             )
         if any((a.expected_container_id, a.expected_image, a.manifest_sha256, a.registry_sha256)):
             print("retained bindings are only valid with mode restore-retained", file=sys.stderr)

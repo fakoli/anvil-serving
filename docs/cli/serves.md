@@ -84,6 +84,10 @@ fields rather than treating the report itself as an execution failure.
 
 ## Start and stop serves
 
+`anvil-serving serves up --compose FILE SERVICE --no-deps --confirm` updates only
+the named Compose service, without starting its dependencies. `--no-deps`
+requires both `--compose` and an explicit service name.
+
 ```bash
 anvil-serving serves up --group ocr --dry-run
 anvil-serving serves up --group ocr --confirm
@@ -215,6 +219,12 @@ same identity-bound container; unresolved identity or cleanup stays HOLD. Storag
 checks do not repair ownership or restart the container. Preserve failed evidence
 and resolve custody before another attempt. Use explicit operator-home selection;
 this path does not read home dotenv files.
+
+Topology resolution must prove a local native caller and match both GPU roles
+to the resource owner. GPU monitoring containers with one exact
+`NVIDIA_DRIVER_CAPABILITIES=utility` setting may coexist when they have no
+privileged, manual-device or compute-capability overrides. Physical compute,
+VRAM, display and unmanaged recipe ownership checks still apply.
 
 ## Serving profiles
 

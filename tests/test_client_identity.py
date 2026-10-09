@@ -283,3 +283,32 @@ def test_real_concurrent_rebind_cannot_splice_owner_observations(tmp_path, monke
     assert result['configuration_status'] != 'installed' or status['current_actor'] == status['desired_actor']
     assert len(calls) == (2 if action == 'install' else 1)
     assert original(store, value['bindings'][0]).id == 'service:replacement'
+
+
+def test_native_readback_authenticates_inside_the_owned_writer(tmp_path, monkeypatch):
+    import hashlib
+    from contextlib import contextmanager
+    store, config, value = setup(tmp_path)
+    metadata, token = store.create('native readback', ['llm.primary'], ['/v1/chat/completions'])
+    old_id = value['bindings'][0]['key_id']
+    value['bindings'][0]['key_id'] = metadata['key_id']
+    router = Path(value['router_config'])
+    router.write_text(router.read_text().replace(old_id, metadata['key_id']))
+    save(config, value)
+    client.run('install', str(config), confirm=True, _store=store)
+    monkeypatch.setattr(client, 'WORKER_ROOT', config.parent)
+    original = store._connect
+    active = []
+    @contextmanager
+    def no_nesting():
+        assert not active, 'native readback opened a nested SQLite connection'
+        with original() as db:
+            active.append(db)
+            try: yield db
+            finally: active.pop()
+    monkeypatch.setattr(store, '_connect', no_nesting)
+    result = client._native_readback(store, {'action': 'client-readback', 'store_path': str(store.path),
+        'declaration_path': str(config), 'declaration_sha256': hashlib.sha256(client.canonical(value)).hexdigest(),
+        'router_config_sha256': hashlib.sha256(router.read_bytes()).hexdigest(),
+        'client_id': 'webui', 'credential': token})
+    assert result['credential_validated'] is True
