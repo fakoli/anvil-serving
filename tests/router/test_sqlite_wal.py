@@ -154,7 +154,9 @@ def test_transient_leaf_disappears_at_native_ancestor_guard_but_parent_error_ref
 
 @pytest.mark.skipif(os.name != 'posix', reason='held POSIX verifier descriptors')
 @pytest.mark.parametrize('changed', ['database', 'parent', 'ancestor', 'permissions', 'hardlink'])
-def test_per_open_held_proof_refuses_setup_substitution_and_closes_descriptors(tmp_path, monkeypatch, changed):
+@pytest.mark.parametrize('external', [False, True])
+def test_per_open_held_proof_refuses_setup_substitution_and_closes_descriptors(tmp_path, monkeypatch, changed, external):
+    from contextlib import nullcontext
     root = tmp_path / 'ancestor'; root.mkdir(mode=0o700)
     store, _ = configured(root)
     original = keys._WriterConnection.execute
@@ -179,8 +181,9 @@ def test_per_open_held_proof_refuses_setup_substitution_and_closes_descriptors(t
         return result
     monkeypatch.setattr(keys._WriterConnection, 'execute', replace)
     with pytest.raises(keys.KeyStoreError):
-        with store._connect():
-            pytest.fail('a changed path must refuse before a connection escapes')
+        with store._external_ownership() if external else nullcontext():
+            with store._connect():
+                pytest.fail('a changed path must refuse before a connection escapes')
     assert captured and captured[0]['objects']
     for descriptor in captured[0]['objects'].values():
         with pytest.raises(OSError): os.fstat(descriptor)
@@ -313,3 +316,164 @@ def test_runtime_policy_and_capacity_refusal_preserve_latest_backup(tmp_path, mo
     def no_sql(*args, **kwargs): raise AssertionError('unsafe runtime must refuse before file SQL')
     monkeypatch.setattr(sqlite3, 'connect', no_sql)
     with pytest.raises(keys.KeyStoreError): keys.KeyStore(store.path)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='actual POSIX shared gate custody')
+def test_external_writer_borrows_one_gate_and_keeps_exclusion_through_sql_close(tmp_path, monkeypatch):
+    import fcntl
+    store, _ = configured(tmp_path)
+    gate = Path(str(store.path) + '.router-writers.lock')
+    original_open, original_flock = os.open, fcntl.flock
+    original_close = keys._WriterConnection.close
+    acquisition = []
+    shared = []
+    outer = []
+    def opened(path, flags, *args, **kwargs):
+        fd = original_open(path, flags, *args, **kwargs)
+        if path == gate and flags & os.O_RDWR:
+            acquisition.append(fd)
+        return fd
+    def locked(fd, operation):
+        if operation == fcntl.LOCK_SH | fcntl.LOCK_NB:
+            shared.append(fd)
+        return original_flock(fd, operation)
+    contender = original_open(gate, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    def excluded():
+        with pytest.raises(BlockingIOError):
+            original_flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    def closing(connection):
+        excluded()
+        assert store._writer_context.external_reader_custody[0] == outer[0]
+        result = original_close(connection)
+        excluded()
+        os.fstat(outer[0])  # SQLite cleanup cannot close the borrowed gate.
+        return result
+    monkeypatch.setattr(os, 'open', opened)
+    monkeypatch.setattr(fcntl, 'flock', locked)
+    monkeypatch.setattr(keys._WriterConnection, 'close', closing)
+    try:
+        with store._write() as db:
+            outer.append(store._writer_context.external_reader_custody[0])
+            excluded()
+            db.execute('BEGIN IMMEDIATE')
+            assert db.execute('SELECT count(*) FROM keys').fetchone() == (0,)
+            db.execute('COMMIT')
+        assert acquisition == outer and shared == outer
+        assert not hasattr(store._writer_context, 'external_reader_custody')
+        with pytest.raises(OSError): os.fstat(outer[0])
+        original_flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    finally:
+        os.close(contender)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='actual postqueue POSIX custody tampering')
+@pytest.mark.parametrize('changed', ['gate', 'missing', 'link', 'permissions', 'parent', 'ancestor', 'marker', 'store'])
+def test_borrowed_postqueue_tamper_refuses_before_sqlite_open(tmp_path, monkeypatch, changed):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    root = tmp_path / 'ancestor'; root.mkdir(mode=0o700)
+    store, _ = configured(root)
+    state = root / 'admission.json'
+    state.write_text(json.dumps({'schema':'router-admission/v1', 'owner_id':'synthetic-owner', 'closure':None}))
+    state.chmod(0o600)
+    keys._bind_router_store(store.path, str(state), 'synthetic-owner')
+    gate = Path(str(store.path) + '.router-writers.lock')
+    marker = Path(str(store.path) + '.router-owner')
+    queued = Event()
+    wait = store._writer_condition.wait
+    def waiting(*args, **kwargs):
+        queued.set()
+        return wait(*args, **kwargs)
+    monkeypatch.setattr(store._writer_condition, 'wait', waiting)
+    def no_sql(*args, **kwargs):
+        pytest.fail('postqueue borrowed custody must refuse before SQLite connect')
+    monkeypatch.setattr(sqlite3, 'connect', no_sql)
+    ticket = object()
+    with store._writer_condition: store._writer_queue.append(ticket)
+    def writing():
+        try:
+            with pytest.raises(keys.KeyStoreError):
+                with store._write(): pytest.fail('tampered writer must refuse')
+        finally:
+            assert not hasattr(store._writer_context, 'external_reader_custody')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(writing)
+        try:
+            assert queued.wait(2)
+            if changed == 'permissions': gate.chmod(0o644)
+            elif changed in ('parent', 'ancestor'):
+                target = store.path.parent if changed == 'parent' else root
+                displaced = tmp_path / 'displaced'
+                target.rename(displaced); target.mkdir(mode=0o700)
+                if changed == 'parent':
+                    for leaf in displaced.iterdir(): leaf.rename(target / leaf.name)
+                else:
+                    for leaf in displaced.iterdir(): leaf.rename(root / leaf.name)
+            elif changed == 'marker':
+                binding = json.loads(marker.read_text()); binding['owner_id'] = 'changed-owner'
+                binding['gate_identity'] = [0, 0]
+                marker.write_text(json.dumps(binding))
+            elif changed == 'store':
+                before = store.path.read_bytes(); store.path.rename(root / 'original.sqlite3')
+                store.path.write_bytes(before); store.path.chmod(0o600)
+            else:
+                gate.unlink()
+                if changed == 'gate': gate.write_bytes(b''); gate.chmod(0o600)
+                elif changed == 'link': gate.symlink_to(state)
+        finally:
+            with store._writer_condition:
+                store._writer_queue.remove(ticket); store._writer_condition.notify_all()
+        future.result(timeout=3)
+    assert not store._writer_queue
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='actual thread-local POSIX gate lifetime')
+def test_borrowed_gate_cancellation_and_inconsistent_nesting_never_escape_scope(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    store, _ = configured(tmp_path)
+    gate = Path(str(store.path) + '.router-writers.lock')
+    with pytest.raises(KeyboardInterrupt):
+        with store._write() as db:
+            db.execute('BEGIN IMMEDIATE')
+            raise KeyboardInterrupt
+    assert not hasattr(store._writer_context, 'external_reader_custody') and not store._writer_queue
+    with store._external_ownership():
+        custody = store._writer_context.external_reader_custody
+        with store._external_ownership():
+            nested = store._writer_context.external_reader_custody
+            assert nested is not custody and nested[0] != custody[0]
+            os.fstat(custody[0]); os.fstat(nested[0])
+        assert store._writer_context.external_reader_custody is custody
+        os.fstat(custody[0])
+        with pytest.raises(OSError): os.fstat(nested[0])
+        def independent():
+            assert not hasattr(store._writer_context, 'external_reader_custody')
+            with store._reader_custody(): pass
+        with ThreadPoolExecutor(max_workers=1) as pool: pool.submit(independent).result(timeout=3)
+        other = keys.KeyStore(store.path)
+        assert not hasattr(other._writer_context, 'external_reader_custody')
+        with other._reader_custody(): pass
+    assert not hasattr(store._writer_context, 'external_reader_custody')
+    for name, value in [('native_reader_custody', object()), ('offline_custody', True)]:
+        setattr(store._writer_context, name, value)
+        try:
+            with pytest.raises(keys.KeyStoreError):
+                with store._external_ownership(): pass
+            assert getattr(store._writer_context, name) is value
+        finally:
+            delattr(store._writer_context, name)
+    metadata, token = store.create('after cancellation', ['llm.primary'], ['/v1/chat/completions'])
+    assert store.authenticate(token).key_id == metadata['key_id'] and gate.exists()
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='borrowed POSIX exit identity')
+def test_borrowed_gate_exit_replacement_refuses_and_outer_cleans_up(tmp_path):
+    store, _ = configured(tmp_path)
+    gate = Path(str(store.path) + '.router-writers.lock')
+    with pytest.raises(keys.KeyStoreError):
+        with store._write() as db:
+            held = store._writer_context.external_reader_custody[0]
+            db.execute('BEGIN IMMEDIATE'); db.execute('COMMIT')
+            gate.unlink(); gate.write_bytes(b''); gate.chmod(0o600)
+    assert not hasattr(store._writer_context, 'external_reader_custody') and not store._writer_queue
+    with pytest.raises(OSError): os.fstat(held)

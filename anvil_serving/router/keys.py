@@ -740,7 +740,18 @@ class KeyStore:
             yield
             return
         import fcntl
+        if (getattr(self._writer_context, 'native_reader_custody', None) is not None
+                or getattr(self._writer_context, 'offline_custody', False)):
+            raise KeyStoreError('credential writer custody is inconsistent')
         gate = Path(str(self.path) + ".router-writers.lock")
+        previous = getattr(self._writer_context, 'external_reader_custody', None)
+        if previous is not None:
+            fd, gate_identity, store_identity, ancestors = previous
+            if not os.path.samestat(os.fstat(fd), gate_identity):
+                raise KeyStoreError('credential writer custody changed')
+            _safe_ancestors(self.path, _proof=ancestors)
+            _secure_database(gate, exists=True, identity=gate_identity)
+            _secure_database(self.path, exists=True, identity=store_identity)
         if os.path.lexists(gate):
             _secure_database(gate, exists=True)
         descriptor = os.open(gate, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
@@ -752,20 +763,33 @@ class KeyStore:
             if not os.path.lexists(marker):
                 if os.read(descriptor, 64):
                     raise KeyStoreError("credential writer ownership is unavailable")
-                yield
-                return
-            binding = _private_json(marker)
-            _validate_store_binding(binding, self.path)
-            if (identity.st_dev, identity.st_ino) != tuple(binding["gate_identity"]):
-                raise KeyStoreError("credential writer ownership changed")
-            state = _private_json(Path(binding["state_path"]))
-            if (type(state) is not dict or set(state) != {"schema", "owner_id", "closure"}
-                    or state["schema"] != "router-admission/v1" or state["owner_id"] != binding["owner_id"]
-                    or state["closure"] is not None):
-                raise KeyStoreError("credential store is quiesced")
+            else:
+                binding = _private_json(marker)
+                _validate_store_binding(binding, self.path)
+                if (identity.st_dev, identity.st_ino) != tuple(binding["gate_identity"]):
+                    raise KeyStoreError("credential writer ownership changed")
+                state = _private_json(Path(binding["state_path"]))
+                if (type(state) is not dict or set(state) != {"schema", "owner_id", "closure"}
+                        or state["schema"] != "router-admission/v1" or state["owner_id"] != binding["owner_id"]
+                        or state["closure"] is not None):
+                    raise KeyStoreError("credential store is quiesced")
+            store_identity = self.path.stat()
+            _secure_database(self.path, exists=True, identity=store_identity)
+            ancestors = {'ancestors': {}}
+            _safe_ancestors(self.path, _proof=ancestors)
+            custody = (descriptor, identity, store_identity, ancestors)
+            self._writer_context.external_reader_custody = custody
             # The shared lock stays held through the actual SQLite writer wait,
             # commit and cleanup. Closure persists before the owner probes zero.
-            yield
+            try:
+                yield
+            finally:
+                if getattr(self._writer_context, 'external_reader_custody', None) is not custody:
+                    raise KeyStoreError('credential writer custody changed')
+                if previous is None:
+                    del self._writer_context.external_reader_custody
+                else:
+                    self._writer_context.external_reader_custody = previous
         finally:
             os.close(descriptor)
 
@@ -802,6 +826,10 @@ class KeyStore:
     @contextmanager
     def _reader_custody(self, *, _proof=None):
         """Read leases exclude mode conversion without granting admission."""
+        borrowed = getattr(self._writer_context, 'external_reader_custody', None)
+        if borrowed is not None and (getattr(self._writer_context, 'offline_custody', False)
+                                    or getattr(self._writer_context, 'native_reader_custody', None) is not None):
+            raise KeyStoreError('credential reader custody is inconsistent')
         if os.name != 'posix' or getattr(self._writer_context, 'offline_custody', False):
             yield
             return
@@ -817,7 +845,8 @@ class KeyStore:
             return
         import fcntl
         if not os.path.lexists(gate):
-            if os.path.lexists(Path(str(self.path) + '.sqlite-policy')) or os.path.lexists(Path(str(self.path) + '.router-owner')):
+            if (borrowed is not None or os.path.lexists(Path(str(self.path) + '.sqlite-policy'))
+                    or os.path.lexists(Path(str(self.path) + '.router-owner'))):
                 raise KeyStoreError('credential reader custody unavailable')
             # Standalone DELETE snapshots stay immutable. Legacy unbound
             # consumers require the separate physical maintenance hold before
@@ -825,15 +854,24 @@ class KeyStore:
             yield
             return
         _secure_database(gate, exists=True, _proof=_proof)
-        descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+        if borrowed is None:
+            descriptor = os.open(gate, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+        else:
+            descriptor, identity, store_identity, ancestors = borrowed
+            if not os.path.samestat(os.fstat(descriptor), identity):
+                raise KeyStoreError('credential reader custody changed')
+            _safe_ancestors(self.path, _proof=ancestors)
+            _secure_database(self.path, exists=True, identity=store_identity, _proof=_proof)
         try:
             _private_created_descriptor(descriptor)
-            identity = os.fstat(descriptor)
+            if borrowed is None:
+                identity = os.fstat(descriptor)
             _secure_database(gate, exists=True, identity=identity, _proof=_proof)
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            except BlockingIOError:
-                raise KeyStoreError('credential storage custody is busy') from None
+            if borrowed is None:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise KeyStoreError('credential storage custody is busy') from None
             marker = Path(str(self.path) + '.router-owner')
             if os.path.lexists(marker):
                 binding = _private_json(marker, _proof=_proof)
@@ -842,10 +880,17 @@ class KeyStore:
                     raise KeyStoreError('credential reader custody changed')
             elif os.read(descriptor, 64):
                 raise KeyStoreError('credential reader custody unavailable')
-            yield
-            _secure_database(gate, exists=True, identity=identity, _proof=_proof)
+            try:
+                yield
+            finally:
+                if borrowed is not None:
+                    _safe_ancestors(self.path, _proof=ancestors)
+                    _secure_database(gate, exists=True, identity=identity, _proof=_proof)
+            if borrowed is None:
+                _secure_database(gate, exists=True, identity=identity, _proof=_proof)
         finally:
-            os.close(descriptor)
+            if borrowed is None:
+                os.close(descriptor)
 
     @contextmanager
     def _connect(self):
