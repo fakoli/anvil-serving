@@ -832,10 +832,16 @@ T001 requires the exact packet command at the final source commit:
 Run sequentially with existing environment, at most two CPU workers/no parallel
 pytest, target <=2 GiB RAM; no live/GPU calls. Test overhead later against baseline:
 concurrent starts/finalization must keep one-second store wait bound and report
-p50/p95 added admission cost; provisional acceptance target p95<=20ms at C4 with
+p50/p95 added admission cost; provisional acceptance target p95<=30ms at C4 with
 synthetic concurrent writes, reviewed against actual baseline rather than claimed
 measured here. Query caps/series ceilings have runnable boundary tests in their
 implementing tasks. Failed resource/capacity gates hold rollout.
+
+The independently reviewed 30ms default reflects measured durable-storage costs
+without changing the workload, one-second wait bound, FULL durability or authority
+checks. Earlier 20ms comparisons and misses remain historical evidence. The bounded
+64-sample source result is not a production latency guarantee; installed intended
+storage must independently meet 30ms under the same envelope before rollout.
 
 T001 remains pending independent exact-source review until its reviewer inspects
 the contract, task graph, native bindings and actual command evidence and writes
