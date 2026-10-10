@@ -48,6 +48,18 @@ def isolated_manifest() -> dict:
     return value
 
 
+def test_user_memory_settings_preserve_service_generation_and_files():
+    value = isolated_manifest()
+    before = render(value)
+    original = connect_config.canonical_manifest(value)
+    value["memory"] = {"base_url": "http://127.0.0.1:8888", "auth_file": "/protected/memory-key",
+        "access_file": "/protected/memory/access.json", "reader_gid": 1000,
+        "default_banks": {}, "shared_banks": {}}
+    assert render(value) == before
+    # Administrative transaction binding still detects changed bank settings.
+    assert connect_config.canonical_manifest(value) != original
+
+
 def scaled_manifest(*, connector_count: int, client_count: int) -> dict:
     """Build a schema-valid isolated deployment at the ownership boundary."""
     assert 1 <= connector_count <= 64
