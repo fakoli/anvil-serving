@@ -576,12 +576,12 @@ def _operator_usernames(data: dict, manifest: str, users: dict, runner) -> set[s
     if not enabled_clients:
         return set()
     if not isinstance(administration, dict):
-        raise _invalid("OIDC groups scope requires declared Connect browser administration.")
+        return set()
     resource = administration["browser_resource"]
     result: set[str] = set()
     for principal in administration["operators"]:
-        response = _human_admin_read(data, manifest, {"operation": "human-inspect", "principal": principal}, runner)
-        if response.get("operation") != "human-inspect" or type(response.get("found")) is not bool:
+        response = _human_admin_read(data, manifest, {"operation": "operator-inspect", "principal": principal}, runner)
+        if response.get("operation") != "operator-inspect" or type(response.get("found")) is not bool:
             raise _invalid("Native Connect operator inspection is invalid.")
         if response["found"] is False:
             continue
@@ -704,9 +704,14 @@ def sync_operators(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, run
                         raise manage.ManageError("Authelia did not become active", may_have_executed=True)
                 except BaseException as exc:
                     try:
+                        manage._action(runner, (manage._SYSTEMCTL, "stop", _UNIT), 30, "Authelia recovery stop failed")
+                        if manage._unit_state(runner, _UNIT)[0]:
+                            raise manage.ManageError("Authelia recovery did not stop")
                         if replaced:
                             _replace_users(path, raw, info)
                         manage._action(runner, (manage._SYSTEMCTL, "start", _UNIT), 30, "Authelia recovery start failed")
+                        if not manage._unit_state(runner, _UNIT)[0]:
+                            raise manage.ManageError("Authelia recovery did not become active")
                     except BaseException as recovery_error:
                         raise _partial("Operator group recovery failed; inspect the retained backup.", result) from recovery_error
                     raise _partial("Operator group reconciliation rolled back after Authelia restart failed.", result) from exc

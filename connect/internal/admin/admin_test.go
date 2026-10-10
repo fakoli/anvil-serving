@@ -133,7 +133,7 @@ func TestCallIssuesAndRevokesKey(t *testing.T) {
 }
 
 func TestAdministrativeOperationVocabularyIsClosed(t *testing.T) {
-	if !ValidOperation("operators-ensure-resource") || !ValidOperation("human-suspend") || !ValidOperation("human-revoke-sessions") || ValidOperation("human-delete") {
+	if !ValidOperation("operators-ensure-resource") || !ValidOperation("human-suspend") || !ValidOperation("human-revoke-sessions") || !ValidOperation("operator-inspect") || ValidOperation("human-delete") {
 		t.Fatal("administrative operation vocabulary changed")
 	}
 }
@@ -377,6 +377,23 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if unchanged, err := sessions.InspectHuman(created.ID); err != nil || unchanged.Disabled || unchanged.Generation != created.Generation {
 		t.Fatalf("rejected deletion changed authority: %#v, %v", unchanged, err)
 	}
+	if err := sessions.ConfigureAdministration(config.BrowserAdministration{BrowserResource: "dashboard", Operators: []string{created.ID, missingID}}); err != nil {
+		t.Fatal(err)
+	}
+	operator, err := Call(context.Background(), pinned.Path(), Request{Operation: "operator-inspect", Principal: created.ID})
+	if err != nil || operator.Found == nil || !*operator.Found || operator.Human == nil || operator.Human.ID != created.ID {
+		t.Fatalf("configured operator inspect response = %#v, %v", operator, err)
+	}
+	if _, err := Call(context.Background(), pinned.Path(), Request{Operation: "operator-inspect", Principal: human.ID}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("unconfigured principal passed operator inspection: %v", err)
+	}
+	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: created.ID}); !errors.Is(err, ErrAdmin) {
+		t.Fatalf("deletion inspection exposed a configured operator: %v", err)
+	}
+	absentOperator, err := Call(context.Background(), pinned.Path(), Request{Operation: "operator-inspect", Principal: missingID})
+	if err != nil || absentOperator.Found == nil || *absentOperator.Found || absentOperator.Human != nil {
+		t.Fatalf("absent configured operator inspect response = %#v, %v", absentOperator, err)
+	}
 	empty, err := handler.apply(Request{Operation: "human-deletions"})
 	if err != nil {
 		t.Fatal(err)
@@ -416,9 +433,6 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	}
 	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: created.ID}); !errors.Is(err, ErrAdmin) {
 		t.Fatalf("malformed stored human reported as found: %v", err)
-	}
-	if err := sessions.ConfigureAdministration(config.BrowserAdministration{BrowserResource: "dashboard", Operators: []string{missingID}}); err != nil {
-		t.Fatal(err)
 	}
 	if _, err := handler.apply(Request{Operation: "human-inspect", Principal: missingID}); !errors.Is(err, ErrAdmin) {
 		t.Fatalf("absent configured operator was reported as deletable: %v", err)

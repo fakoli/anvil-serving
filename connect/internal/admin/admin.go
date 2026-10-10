@@ -177,7 +177,8 @@ type Response struct {
 	ApplicationRoles map[string]string `json:"application_roles,omitempty"`
 	Generation       uint64            `json:"generation"`
 	Fingerprint      string            `json:"fingerprint"`
-	// Found is set only for human-inspect. It is an explicit boolean there, so
+	// Found is set only for human-inspect and operator-inspect. It is an explicit
+	// boolean there, so
 	// the root lifecycle can distinguish a proven absent principal from a
 	// malformed or unavailable native authority response without changing other
 	// administrative operation contracts.
@@ -323,16 +324,22 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	var err error
-	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" {
+	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" || input.Operation == "operator-inspect" {
 		if h.sessions == nil || input.Issuer != "" || input.Subject != "" || (input.Operation != "human-delete-prepare-absent" && (input.Username != "" || input.usernamePresent)) || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
 			return Response{}, ErrAdmin
 		}
 		switch input.Operation {
-		case "human-inspect":
+		case "human-inspect", "operator-inspect":
 			if input.RequestID != "" || input.ExpectedGeneration != 0 {
 				return Response{}, ErrAdmin
 			}
-			human, e := h.sessions.InspectHuman(input.Principal)
+			var human session.Human
+			var e error
+			if input.Operation == "operator-inspect" {
+				human, e = h.sessions.InspectOperator(input.Principal)
+			} else {
+				human, e = h.sessions.InspectHuman(input.Principal)
+			}
 			found := false
 			response.Found = &found
 			if errors.Is(e, store.ErrMissing) {
@@ -522,7 +529,7 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 // ValidOperation is the closed native administrative operation vocabulary.
 func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "operator-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
 		return true
 	default:
 		return false

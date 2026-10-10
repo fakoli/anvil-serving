@@ -94,6 +94,8 @@ def environment(tmp_path, monkeypatch):
     def run(operation, username="dev", **kwargs):
         return users.operate(str(tmp_path / "deployment.json"), operation, username,
                              runner=runner, unit_root=unit_root, **kwargs)
+    state["runner"] = runner
+    state["unit_root"] = unit_root
     return run, db, state, private
 
 
@@ -552,7 +554,7 @@ def test_operator_group_projection_requires_current_native_authority_and_removes
                    "deletion_request": "pending", "resources": ["dashboard"], "application_roles": {"dashboard": "admin"}},
     }
     monkeypatch.setattr(users, "_human_admin_read", lambda _data, _manifest, payload, _runner: {
-        "operation": "human-inspect", "found": True, "human": records[payload["principal"]],
+        "operation": "operator-inspect", "found": True, "human": records[payload["principal"]],
     })
     desired = users._operator_usernames(data, "manifest", accounts, None)
     assert desired == {"active"}
@@ -560,6 +562,36 @@ def test_operator_group_projection_requires_current_native_authority_and_removes
     assert (additions, removals) == (1, 4)
     assert users._OPERATOR_GROUP in updated["active"]["groups"]
     assert all(users._OPERATOR_GROUP not in updated[name]["groups"] for name in accounts if name != "active")
+    without_administration = {"authelia": data["authelia"], "gateway": {"gateway": {}}}
+    assert users._operator_usernames(without_administration, "manifest", accounts, None) == set()
+    cleared, additions, removals = users._operator_group_changes(updated, set())
+    assert (additions, removals) == (0, 1)
+    assert all(users._OPERATOR_GROUP not in account["groups"] for account in cleared.values())
+
+
+def test_operator_projection_recovery_stops_before_restore_and_verifies_restart(environment, monkeypatch):
+    from anvil_serving.connect import user_backup
+    _, db, state, _ = environment
+    data = users.read_manifest("unused")
+    principal = "human:" + "a" * 64
+    data["authelia"]["additional_oidc_clients"] = [{"groups_scope": True}]
+    data["gateway"] = {"gateway": {"browser_administration": {
+        "browser_resource": "dashboard", "operators": [principal],
+    }}}
+    monkeypatch.setattr(users, "_human_admin_read", lambda *_args: {
+        "operation": "operator-inspect", "found": True,
+        "human": {"id": principal, "username": "owner", "generation": 1,
+                  "disabled": False, "resources": ["dashboard"], "application_roles": {}},
+    })
+    monkeypatch.setattr(user_backup, "snapshot", lambda *_args, **_kwargs: {"file": "protected", "sha256": "a" * 64})
+    before = db.read_bytes()
+    state["fail_start"] = True
+    with pytest.raises(manage.ManageError, match="rolled back"):
+        users.sync_operators("/deployment.json", apply=True, runner=state["runner"], unit_root=state["unit_root"])
+    assert db.read_bytes() == before
+    assert state["active"]
+    lifecycle = [call[1] for call in state["calls"] if call[:1] == (manage._SYSTEMCTL,) and call[1] in {"stop", "start"}]
+    assert lifecycle == ["stop", "start", "stop", "start"]
 
 
 def test_operator_projection_is_a_noop_without_an_opted_in_oidc_client(monkeypatch):
