@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 import pytest
 
 from anvil_serving import memory_access
-from anvil_serving.connect import manage, memory_backend, user_memory, users
+from anvil_serving.connect import manage, memory_backend, user_delete, user_memory, users
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 
@@ -57,6 +57,14 @@ def test_creation_retries_protection_and_shared_default(tmp_path, monkeypatch):
     result = user_memory.provision(data,"administrator","admin-subject",admin=True)
     assert result["shared"] and result["default_bank"] == "fleet-imported"
     assert all("fleet-imported" not in target for target, method in calls[before:] if method != "GET")
+    old_bank = result["bank"]
+    declaration = tmp_path / "deployment.json"
+    data = user_delete._withdraw_memory_defaults(data, str(declaration), "administrator")
+    result = user_memory.provision(data,"administrator","new-subject",admin=False)
+    assert not result["shared"] and result["default_bank"] == result["bank"] != old_bank
+    replacement = users._principal(data["gateway"]["oidc"]["issuer"], "new-subject")
+    assert set(memory_access.read(data["memory"]["access_file"])["users"][replacement]["banks"]) == {result["bank"]}
+    assert old_bank in banks and "fleet-imported" in banks
     # An existing managed-name bank without the protected receipt is a conflict.
     subject = "collision"
     monkeypatch.setattr(user_memory.secrets, "token_hex", lambda _: "d" * 48)
@@ -64,6 +72,39 @@ def test_creation_retries_protection_and_shared_default(tmp_path, monkeypatch):
     banks[bank] = {"bank_id": bank, "name": "somebody else's bank"}
     with pytest.raises(manage.ManageError, match="bank access remains closed"):
         user_memory.provision(data,"collision",subject,admin=False)
+
+
+@pytest.mark.parametrize("local", [False, True])
+def test_permanent_deletion_withdraws_username_grants_before_idp_work(tmp_path, monkeypatch, local):
+    from tests.connect.test_user_delete import _phase, _local_phase, _request, _intent
+    root = tmp_path / "phases"; root.mkdir(mode=0o700)
+    request = _request()
+    phase = _local_phase(request, {}) if local else _phase(request)
+    path = user_delete._write_phase(root, phase)
+    declaration = tmp_path / "deployment.json"
+    data = {"memory": {
+        "default_banks": {"owner": "fleet-imported", "other": "shared"},
+        "shared_banks": {"owner": {"fleet-imported": ["recall"]}, "other": {"shared": ["recall"]}}}}
+    declaration.write_text(json.dumps(data)); declaration.chmod(0o600)
+    receipt = tmp_path / ".creation.json"; receipt.write_text("preserve")
+    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
+    def held(current, *_):
+        assert current == json.loads(declaration.read_text())
+        assert current["memory"]["default_banks"] == {"other": "shared"}
+        assert current["memory"]["shared_banks"] == {"other": {"shared": ["recall"]}}
+        raise manage.ManageError("IdP unavailable")
+    monkeypatch.setattr(user_delete, "_preflight", held)
+    def advance(current):
+        if local:
+            return user_delete._run_local_phase(current, str(declaration), path, phase, None, tmp_path)
+        return user_delete._run_phase(current, str(declaration), path, phase, None, tmp_path, intent=_intent(request))
+    with pytest.raises(manage.ManageError, match="IdP unavailable"):
+        advance(data)
+    assert path.exists() and receipt.read_text() == "preserve"
+    assert declaration.stat().st_mode & 0o777 == 0o600
+    monkeypatch.setattr(manage, "_write_atomic", lambda *_: pytest.fail("retry must not rewrite revoked defaults"))
+    with pytest.raises(manage.ManageError, match="IdP unavailable"):
+        advance(json.loads(declaration.read_text()))
 
 
 def test_private_installation_resolves_email_and_cli_previews(tmp_path, monkeypatch):

@@ -153,7 +153,9 @@ Provisioning verifies the bank ownership marker and sensitive-data defense befor
 publishing access. Interrupted creation retries from its protected receipt.
 Provisioning failures leave access closed and preserve created banks. Suspension
 and deletion remove the policy entry before native account revocation, retaining
-bank contents and receipts. Resume through `users access`; retry incomplete memory
+bank contents and receipts. Permanent deletion also withdraws shared/default grants
+from the private declaration before removing identity records, so a reused username
+receives a fresh personal bank. Resume through `users access`; retry incomplete memory
 setup with `users memory`. Package installation and managed router/browser
 activation are separate steps and require their own authenticated readback.
 
