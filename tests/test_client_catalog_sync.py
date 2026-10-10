@@ -409,6 +409,7 @@ def _catalog(
     primary_context=1_048_576,
     include_vision=True,
     secondary_efforts=None,
+    images_per_request=None,
 ):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
@@ -430,6 +431,9 @@ def _catalog(
         compat = {"supportsUsageInStreaming": True}
         if tier == "secondary" and secondary_efforts is not None:
             compat["supportedReasoningEfforts"] = secondary_efforts
+        limits = {"max_output_tokens": None if missing_output else 8192}
+        if images_per_request is not None:
+            limits["images_per_request"] = images_per_request
         rows.append({
             "object": "model_capabilities",
             "id": tier,
@@ -438,7 +442,7 @@ def _catalog(
             "modalities": modalities,
             "thinking": {"supported": reasoning},
             "compat": compat,
-            "limits": {"max_output_tokens": None if missing_output else 8192},
+            "limits": limits,
         })
     return (
         {
@@ -1395,6 +1399,100 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     by_id = {row["id"]: row for row in provider["models"]}
     assert by_id["llm.primary"]["contextWindow"] == 262_144
     assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
+def test_openclaw_rows_do_not_receive_pi_input_limits(tmp_path):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    openclaw = json.loads(openclaw_path.read_text())
+    for row in openclaw["models"]["providers"]["anvil"]["models"]:
+        assert "inputLimits" not in row
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_rows = pi_models["providers"]["anvil"]["models"]
+    assert all(row["inputLimits"] == {"images": {"maxPerRequest": 8}} for row in pi_rows)
+
+
+def test_pi_sync_writes_declared_image_limit_into_input_limits(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert by_id["llm.primary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+    assert by_id["llm.secondary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+
+    # A second sync without the declaration removes the managed value.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert "inputLimits" not in by_id["llm.primary"]
+    assert "inputLimits" not in by_id["llm.secondary"]
+
+
+def test_pi_sync_preserves_user_input_limits_around_managed_image_limit(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    for row in pi_models["providers"]["anvil"]["models"]:
+        if row["id"] == "llm.primary":
+            row["inputLimits"] = {
+                "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+                "maxRequestBytes": 3_000_000,
+            }
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=4)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {
+            "resize": {"maxWidth": 1568, "maxHeight": 1568},
+            "maxPerRequest": 4,
+        },
+        "maxRequestBytes": 3_000_000,
+    }
+
+    # Removing the declaration drops only the managed key, preserving the rest.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+        "maxRequestBytes": 3_000_000,
+    }
 
 
 def test_reasoning_effort_metadata_renders_openclaw_and_pi_maps(tmp_path):

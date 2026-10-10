@@ -220,3 +220,55 @@ def test_direct_and_iterable_discovery_shapes_remain_unchanged():
             "created": 1_700_000_000,
         }],
     }
+
+
+def _media_tier(params):
+    return Tier(
+        id="media", base_url="http://127.0.0.1:34501/v1", dialect="openai",
+        context_limit=64, privacy="local", tool_support=True, model="media-model",
+        auth_env="MEDIA_TEST_KEY", params=params,
+    )
+
+
+def test_discovery_advertises_declared_media_limits():
+    tier = _media_tier({"capabilities": {
+        "modalities": ["text", "image", "video"],
+        "images_per_request": 8,
+        "video_per_request": 1,
+    }})
+    config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
+    entry = models_payload(config)["data"][0]
+    assert entry["images_per_request"] == 8
+    assert entry["video_per_request"] == 1
+
+
+def test_discovery_advertises_zero_image_limit():
+    tier = _media_tier({"capabilities": {"images_per_request": 0}})
+    config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
+    entry = models_payload(config)["data"][0]
+    assert entry["images_per_request"] == 0
+    assert "video_per_request" not in entry
+
+
+def test_discovery_omits_undeclared_or_invalid_media_limits():
+    cases = [
+        (None, {}, {}),
+        ({}, {}, {}),
+        ({"capabilities": {}}, {}, {}),
+        ({"capabilities": {"images_per_request": "eight"}}, {}, {}),
+        ({"capabilities": {"images_per_request": -1}}, {}, {}),
+        ({"capabilities": {"images_per_request": True, "video_per_request": "1"}}, {}, {}),
+        ({"capabilities": {"images_per_request": 4, "video_per_request": None}}, {"images_per_request": 4}, {}),
+    ]
+    for params, expected_images, expected_videos in cases:
+        tier = _media_tier(params)
+        config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
+        entry = models_payload(config)["data"][0]
+        if expected_images:
+            assert entry.get("images_per_request") == expected_images["images_per_request"]
+        else:
+            assert "images_per_request" not in entry
+        if expected_videos:
+            assert entry.get("video_per_request") == expected_videos["video_per_request"]
+        else:
+            assert "video_per_request" not in entry

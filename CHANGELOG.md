@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Public `/v1/models` discovery entries now advertise declared per-request
+  media limits (`images_per_request`, `video_per_request`) so OpenAI-compatible
+  clients can budget image payloads without authenticated capability calls or
+  backend probing.
+- Pi client catalog sync now carries the router-declared `images_per_request`
+  limit into `~/.pi/agent/models.json` as `inputLimits.images.maxPerRequest`,
+  preserving user-set `inputLimits` fields and removing the managed value when
+  the router stops declaring it.
+
 - Principal-bound supplemental Hindsight memory through bounded REST and MCP
   routes, with device-key grants, fixed bank bindings and no backend fallback.
 - Preview-first curated Markdown memory import with source provenance, preserving
