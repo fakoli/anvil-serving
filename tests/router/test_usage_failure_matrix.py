@@ -4,7 +4,8 @@ from dataclasses import replace
 from datetime import datetime
 import json
 from statistics import median
-from threading import Barrier, Event, get_ident
+import sys
+from threading import Barrier, Event, Lock, get_ident
 from time import perf_counter, sleep
 
 import pytest
@@ -22,6 +23,77 @@ from tests.router.test_usage_admin import policy as policy, server, request, ADM
 
 NOW = datetime.fromisoformat(END.replace('Z', '+00:00'))
 DOMAIN = 'domain_fixture'
+
+_C4_PHASES = frozenset({'barrier', 'authenticate', 'start', 'finalize', 'complete', 'failed'})
+
+
+class _C4FirstFailure:
+    """Retain one bounded source-benchmark snapshot without frame values."""
+
+    def __init__(self, workers):
+        self._lock = Lock()
+        self._workers = {worker: None for worker in range(workers)}
+        self._captured = False
+
+    def register(self, worker):
+        now = perf_counter()
+        with self._lock:
+            assert worker in self._workers and self._workers[worker] is None
+            self._workers[worker] = {
+                'thread_id': get_ident(), 'phase': 'barrier', 'started': now,
+                'phase_started': now, 'admission_max_ms': None, 'finalize_max_ms': None,
+            }
+
+    def phase(self, worker, phase):
+        assert phase in _C4_PHASES
+        with self._lock:
+            state = self._workers[worker]
+            assert state is not None
+            state['phase'] = phase
+            state['phase_started'] = perf_counter()
+
+    def observe(self, worker, admission_ms, finalize_ms):
+        with self._lock:
+            state = self._workers[worker]
+            assert state is not None
+            for key, value in (('admission_max_ms', admission_ms), ('finalize_max_ms', finalize_ms)):
+                previous = state[key]
+                state[key] = value if previous is None else max(previous, value)
+
+    def first_failure(self, worker):
+        now = perf_counter()
+        frames = sys._current_frames()
+        with self._lock:
+            if self._captured:
+                self._workers[worker]['phase'] = 'failed'
+                self._workers[worker]['phase_started'] = now
+                return None
+            self._captured = True
+            rows = []
+            for worker_id, state in self._workers.items():
+                if state is None:
+                    continue
+                stack = []
+                frame = frames.get(state['thread_id'])
+                while frame is not None and len(stack) < 12:
+                    stack.append({'function': frame.f_code.co_name, 'line': frame.f_lineno})
+                    frame = frame.f_back
+                rows.append({
+                    'worker': worker_id,
+                    'phase': state['phase'],
+                    'elapsed_ms': round((now - state['started']) * 1000, 6),
+                    'phase_elapsed_ms': round((now - state['phase_started']) * 1000, 6),
+                    'admission_max_ms': state['admission_max_ms'],
+                    'finalize_max_ms': state['finalize_max_ms'],
+                    'stack': stack,
+                })
+            self._workers[worker]['phase'] = 'failed'
+            self._workers[worker]['phase_started'] = now
+            return {
+                'schema': 'source-c4-first-failure/v1',
+                'failed_worker': worker,
+                'workers': rows,
+            }
 
 
 def cumulative(db):
@@ -120,49 +192,42 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     db, _, run, scope = store
     _, credential = db.key_store.create('synthetic benchmark', ['llm.primary'], ['/v1/chat/completions'], rpm=100000)
     barrier = Barrier(4)
-    def worker(tracked):
+    def worker(worker_id, tracked, diagnostic):
         observations = []
+        diagnostic.register(worker_id)
         barrier.wait(timeout=10)
         for _ in range(16):
             start = start_at(run)
             before = perf_counter()
             phase = 'authenticate'
             try:
+                diagnostic.phase(worker_id, phase)
                 principal = db.key_store.authenticate(credential, snapshot=tracked)
                 assert principal is not None
                 if tracked:
                     phase = 'start'
+                    diagnostic.phase(worker_id, phase)
                     db.start(start, authority_scope=scope)
                 admission_ms = (perf_counter() - before) * 1000
                 before = perf_counter()
                 if tracked:
                     phase = 'finalize'
+                    diagnostic.phase(worker_id, phase)
                     db.finalize(terminal(start))
-                observations.append((admission_ms, (perf_counter() - before) * 1000))
-            except Exception as error:
-                # Native failures retain their exception context even when the
-                # public typed refusal intentionally hides its diagnostic text.
-                # Emit bounded numeric/type metadata only; no SQL or key data.
-                import sqlite3
-                chain, seen, current = [], set(), error
-                while current is not None and id(current) not in seen and len(chain) < 4:
-                    seen.add(id(current))
-                    frames, trace = [], current.__traceback__
-                    while trace is not None and len(frames) < 16:
-                        frames.append({'function': trace.tb_frame.f_code.co_name, 'line': trace.tb_lineno})
-                        trace = trace.tb_next
-                    chain.append({'exception': type(current).__name__, 'frames': frames,
-                                  **{name: getattr(current, name, None) for name in
-                                     ('sqlite_errorcode', 'errno', 'winerror')}})
-                    current = current.__cause__ or current.__context__
-                print('SOURCE_C4_FAILURE ' + json.dumps({'phase': phase, 'tracked': tracked,
-                      'elapsed_ms': (perf_counter() - before) * 1000,
-                      'sqlite_version': sqlite3.sqlite_version, 'chain': chain}, sort_keys=True))
+                finalize_ms = (perf_counter() - before) * 1000
+                diagnostic.observe(worker_id, admission_ms, finalize_ms)
+                observations.append((admission_ms, finalize_ms))
+            except Exception:
+                snapshot = diagnostic.first_failure(worker_id)
+                if snapshot is not None:
+                    print('SOURCE_C4_FAILURE ' + json.dumps(snapshot, sort_keys=True))
                 raise
+        diagnostic.phase(worker_id, 'complete')
         return observations
     def sample(tracked):
+        diagnostic = _C4FirstFailure(4)
         with ThreadPoolExecutor(max_workers=4) as pool:
-            batches = list(pool.map(worker, [tracked] * 4))
+            batches = list(pool.map(lambda worker_id: worker(worker_id, tracked, diagnostic), range(4)))
         return [value for batch in batches for value in batch]
     sample(False)  # Warm the existing interpreter/store without ledger contributions.
     baseline = sample(False)
@@ -188,6 +253,82 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     result = cumulative(db)
     assert result['requests'] == 64 and result['measured_input'] == 448 and result['measured_output'] == 320
     assert len(rows(db, 'usage_details')) == 64
+
+
+def test_c4_first_failure_attributes_held_head_without_exposing_values_and_queue_recovers(store):
+    db, _, run, scope = store
+    starts = [start_at(run) for _ in range(3)]
+    for start in starts:
+        db.start(start, authority_scope=scope)
+    entered, release = Event(), Event()
+    diagnostic = _C4FirstFailure(4)
+
+    def held_head():
+        diagnostic.register(0)
+        diagnostic.observe(0, 2.5, 3.5)
+        diagnostic.phase(0, 'finalize')
+        with db.key_store._write():
+            entered.set()
+            assert release.wait(5)
+        diagnostic.phase(0, 'complete')
+
+    def waiting_finalizer(worker, start):
+        diagnostic.register(worker)
+        diagnostic.phase(worker, 'finalize')
+        began = perf_counter()
+        try:
+            db.finalize(terminal(start))
+        except UsageError as error:
+            return error.code, perf_counter() - began, diagnostic.first_failure(worker)
+        raise AssertionError('queued finalizer unexpectedly succeeded')
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        head = pool.submit(held_head)
+        assert entered.wait(2)
+        waiters = [pool.submit(waiting_finalizer, index + 1, start)
+                   for index, start in enumerate(starts)]
+        queue_deadline = perf_counter() + 2
+        while perf_counter() < queue_deadline:
+            with db.key_store._writer_condition:
+                if len(db.key_store._writer_queue) == 4:
+                    break
+            sleep(.005)
+        else:
+            raise AssertionError('all synthetic writers did not enter the FIFO')
+        try:
+            refused = [future.result(timeout=2) for future in waiters]
+        finally:
+            release.set()
+        head.result(timeout=2)
+
+    assert all(code == 'accounting_unavailable' and .85 <= elapsed < 1.35
+               for code, elapsed, _ in refused)
+    [snapshot] = [snapshot for _, _, snapshot in refused if snapshot is not None]
+    assert set(snapshot) == {'schema', 'failed_worker', 'workers'}
+    assert snapshot['schema'] == 'source-c4-first-failure/v1'
+    assert snapshot['failed_worker'] in {1, 2, 3}
+    assert len(snapshot['workers']) == 4
+    assert {row['worker'] for row in snapshot['workers']} == {0, 1, 2, 3}
+    assert all(set(row) == {'worker', 'phase', 'elapsed_ms', 'phase_elapsed_ms',
+                           'admission_max_ms', 'finalize_max_ms', 'stack'}
+               and row['phase'] in _C4_PHASES and row['elapsed_ms'] >= 0
+               and row['phase_elapsed_ms'] >= 0 and 0 < len(row['stack']) <= 12
+               for row in snapshot['workers'])
+    assert all(set(frame) == {'function', 'line'} and isinstance(frame['function'], str)
+               and type(frame['line']) is int for row in snapshot['workers'] for frame in row['stack'])
+    held = next(row for row in snapshot['workers'] if row['worker'] == 0)
+    assert held['phase'] == 'finalize'
+    assert held['admission_max_ms'] == 2.5 and held['finalize_max_ms'] == 3.5
+    assert any(frame['function'] == 'held_head' for frame in held['stack'])
+    encoded = json.dumps(snapshot, sort_keys=True)
+    assert all(value not in encoded for value in (
+        str(db.key_store.path), 'SELECT ', 'INSERT ', 'synthetic benchmark', 'parameters', 'locals',
+    ))
+    with db.key_store._writer_condition:
+        assert not db.key_store._writer_queue
+    assert rows(db, 'usage_cumulative') == []
+    assert db.finalize(terminal(starts[0])) == 'committed'
+    assert rows(db, 'usage_cumulative')[0]['requests'] == 1
 
 
 def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store, monkeypatch):
