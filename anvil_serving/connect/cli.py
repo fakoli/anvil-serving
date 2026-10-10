@@ -49,12 +49,14 @@ def _users_parser(actions) -> None:
         leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
         leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
                           output=None, input=None, sha256=None, destination=None, include_gateway=False)
-        if operation not in {"list", "backup", "sync-operators", "schedule", "deletion-schedule", "process-deletions", "restore"}:
+        if operation not in {"list", "backup", "sync-operators", "schedule", "deletion-schedule", "process-deletions", "restore", "configure-memory"}:
             leaf.add_argument("username", help="Exact local username.")
         if operation != "restore":
             leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
         for name in names:
             kwargs = {"action": _Once, **options[name]}
+            if name == "input" and operation == "configure-memory":
+                kwargs["help"] = "Protected memory installation JSON outside Git."
             if name == "grant" and operation == "access":
                 kwargs["required"] = True
             leaf.add_argument("--" + name, **kwargs)
@@ -257,6 +259,9 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
             if args.operation in {"list", "show"}:
                 from .inventory import accounts
                 result = accounts(args.manifest or DEFAULT_MANIFEST, args.username)
+            elif args.operation == "configure-memory":
+                from .user_memory import configure
+                result = configure(args.manifest or DEFAULT_MANIFEST, args.input, apply=apply)
             elif args.operation in {"schedule", "deletion-schedule", "process-deletions"}:
                 if args.include_gateway or any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")

@@ -76,8 +76,24 @@ Creation defaults to role `member` (Authelia group `members`). Use `--role admin
 explicitly for group `admins`. These groups record the intended role; Connect
 operator privileges still require separate authorization. `--grant` assigns
 exact service entitlements and an application role; repeat it for each declared
-browser service. Omitting grants creates only the Authelia account.
+browser service. With memory configured, creation also provisions a personal
+Hindsight bank even when browser grants are omitted.
 Resets preserve existing groups and do not enable disabled accounts.
+
+Install protected per-user bank settings, then provision an existing account:
+
+```sh
+sudo anvil-connect-ctl users configure-memory --input /protected/user-memory.json --confirm
+sudo anvil-connect-ctl users memory developer --confirm
+```
+
+Omit `--confirm` to preview. Installation input must be root-owned, mode `0600`,
+and outside Git. Its `memory` settings and optional email-based `user_defaults`
+are documented in [Per-user banks](../HINDSIGHT.md#per-user-banks). The memory
+command preserves the person's current browser grants, creates and protects
+their personal bank, and invalidates existing Connect browser and terminal
+credentials without restarting Authelia. Shared defaults require explicit grants.
+Suspending or deleting an account closes bank access and retains its memories.
 
 Replace an existing person's complete service grant list:
 

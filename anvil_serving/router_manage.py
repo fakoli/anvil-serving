@@ -1520,7 +1520,87 @@ def _offline_router_start(*, _legacy_incarnation=None):
     return result
 
 
-def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None, _metadata_only=False):
+def _storage_lineage(source):
+    """Compare physical ancestry too: bind aliases need not share a path prefix."""
+    from pathlib import Path
+    import stat
+    try:
+        original = Path(source)
+        if not original.is_absolute() or '..' in original.parts:
+            raise ValueError('router_offline_storage_unknown')
+        path = original.resolve(strict=True)
+        paths = (path, *path.parents)
+        if len(paths) > 256:
+            raise ValueError('router_offline_storage_unknown')
+        def snapshot():
+            return tuple((s.st_dev, s.st_ino, stat.S_IFMT(s.st_mode)) for s in (p.stat() for p in paths))
+        identities = snapshot()
+        if (any(mode != stat.S_IFDIR for _, _, mode in identities[1:])
+                or identities != snapshot() or original.resolve(strict=True) != path):
+            raise ValueError('router_owner_storage_changed')
+        return str(path), identities
+    except (OSError, RuntimeError):
+        raise ValueError('router_offline_storage_unknown') from None
+
+
+def _owner_storage_scope(rendered, mounts, config, incumbent, read):
+    """Derive accounting directories from the mounted config, never caller exemptions."""
+    from pathlib import Path, PurePosixPath
+    import tomllib
+    from .operator_config import _read_bounded
+    from .router.config import _parse_server_config
+    from .router.container_owner import require
+    from .router_recovery_status import _covering_mount
+
+    def path(value):
+        require(type(value) is str and value and not any(ord(c) < 32 for c in value))
+        result = PurePosixPath(value)
+        require(result.is_absolute() and '..' not in result.parts)
+        return result
+
+    source = Path(config['source'])
+    require(source.is_absolute() and source.resolve() != Path.home() / '.env')
+    raw = _read_bounded(source, max_bytes=MAX_ROUTER_CONFIG_BYTES)
+    settings = _parse_server_config(tomllib.loads(raw.decode()), str(source), container_paths=True)
+    # The parent includes WAL/SHM, locks, custody sidecars and admission receipts.
+    targets = [path(settings.api_keys_path), path(settings.admission_state_path + '.router')]
+    declared = [{**m, 'destination': str(path(m['target'])), 'read_only': m.get('read_only', False),
+                 'name': rendered.get('volumes', {}).get(m['source'], {}).get('name', '')}
+                for m in mounts]
+    actual = incumbent['mounts'] if incumbent.get('available') is True else None
+    if actual is not None:
+        installed = _covering_mount(actual, PurePosixPath(DEFAULT_INSTALLED_CONFIG))
+        require(installed['destination'] == DEFAULT_INSTALLED_CONFIG and installed['type'] == 'bind'
+                and installed['read_only'] and installed['source'] == str(source))
+    sources, directories = set(), set()
+    for target in targets:
+        mount = _covering_mount(declared, target.parent)
+        require(mount == _covering_mount(declared, target) and not mount['read_only'])
+        identity = (mount['type'], mount['name'] if mount['type'] == 'volume' else mount['source'])
+        require(identity[0] in {'bind', 'volume'} and identity[1])
+        if actual is not None:
+            observed = _covering_mount(actual, target.parent)
+            require(observed == _covering_mount(actual, target)
+                    and observed['destination'] == mount['destination'] and not observed['read_only']
+                    and (observed['type'], observed['name'] if observed['type'] == 'volume'
+                         else observed['source']) == identity)
+            physical = path(observed['source'])
+        elif mount['type'] == 'volume':
+            physical = path(read(['docker', 'volume', 'inspect', '--format', '{{.Mountpoint}}', identity[1]]).strip())
+        else:
+            physical = path(mount['source'])
+        sources.add(identity)
+        directory = physical / target.parent.relative_to(mount['destination'])
+        directories.add(str(Path(str(directory)).resolve()))
+    import stat
+    lineages = [_storage_lineage(directory) for directory in sorted(directories)]
+    require(all(identity[0][2] == stat.S_IFDIR for _, identity in lineages))
+    require(_read_bounded(source, max_bytes=MAX_ROUTER_CONFIG_BYTES) == raw)
+    return {'configuration_revision': hashlib.sha256(raw).hexdigest(),
+            'sources': sorted(sources), 'directories': sorted(directories), 'lineages': lineages}
+
+
+def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None, _metadata_only=False, _reboot_helper=None, _owner_state_only=False):
     """Verify the selected service and every active durable-mount consumer."""
     def read(argv):
         result = _run(argv, capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
@@ -1528,6 +1608,8 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             raise ValueError('router_offline_roster_unknown')
         return result.stdout or ''
     from .observability.dashboard.contracts import strict_json
+    if _reboot_helper is not None and (not _metadata_only or helper_container is not None):
+        raise ValueError('router_reboot_roster_unknown')
     # Acknowledged legacy STOP reads only declared metadata, never resolves a
     # service/shared dotenv. The actual mount/consumer roster is Docker-native.
     metadata_flags = ['--no-env-resolution','--no-interpolate'] if _metadata_only else []
@@ -1566,10 +1648,16 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             sources.add((row['type'], source))
     if not sources:
         raise ValueError('router_offline_storage_unknown')
+    owner_scope = None
+    if _owner_state_only:
+        owner_scope = _owner_storage_scope(rendered, mounts, config_mounts[0],
+                                            _restart_custody(container, _run), read)
+        sources = set(owner_scope['sources'])
     ids = read(['docker', 'ps', '--all', '--quiet', '--no-trunc']).split()
     if len(ids) > 1024 or len(set(ids)) != len(ids) or any(not re.fullmatch('[a-f0-9]{64}', value) for value in ids):
         raise ValueError('router_offline_roster_unknown')
     rows, helper_id = [], None
+    consumer_storage = {}
     if ids:
         projection = ('{"id":{{json .Id}},"status":{{json .State.Status}},'
                       '"mounts":{{json .Mounts}}}')
@@ -1586,6 +1674,14 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
                     raise ValueError('router_offline_helper_unknown')
                 helper_id = helper['container_id']
                 rows = [r for r in rows if r['id'] != helper_id]
+        if _reboot_helper is not None:
+            helper_name, expected_id, expected_image = _reboot_helper
+            helper = _restart_custody(helper_name, _run)
+            if (helper.get('available') is not True or helper['container_id'] != expected_id
+                    or expected_id not in ids or helper['image_id'] != expected_image):
+                raise ValueError('router_reboot_helper_unknown')
+            helper_id = expected_id
+            rows = [r for r in rows if r['id'] != helper_id]
         selected_id = (_restart_custody(container, _run).get('container_id') if live_target else None)
         for row in rows:
             status = row.get('status')
@@ -1597,10 +1693,23 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
                 if type(mount) is not dict or type(mount.get('RW')) is not bool:
                     raise ValueError('router_offline_storage_unknown')
                 identity = (mount.get('Type'), mount.get('Name') if mount.get('Type') == 'volume' else mount.get('Source'))
-                if status not in {'created', 'exited', 'dead'} and mount['RW'] and identity in sources and row['id'] != selected_id:
+                overlaps = identity in sources
+                if (owner_scope is not None and mount['RW'] and mount.get('Type') != 'tmpfs'
+                        and status not in {'created', 'exited', 'dead'} and row['id'] != selected_id):
+                    from pathlib import Path
+                    physical = mount.get('Source')
+                    if type(physical) is not str or not Path(physical).is_absolute() or '..' in Path(physical).parts:
+                        raise ValueError('router_offline_storage_unknown')
+                    observed = _storage_lineage(physical)
+                    consumer_storage[physical] = observed
+                    candidate, lineage = observed
+                    overlaps |= any(Path(candidate).is_relative_to(directory) or Path(directory).is_relative_to(candidate)
+                                    or lineage[0] in protected or protected[0] in lineage
+                                    for directory, protected in owner_scope['lineages'])
+                if status not in {'created', 'exited', 'dead'} and mount['RW'] and overlaps and row['id'] != selected_id:
                     raise ValueError('router_offline_storage_busy')
     state, project = _container_compose_project(container, _run=_run)
-    allowed = {'running'} if live_target else {'absent', 'exited', 'created'}
+    allowed = ({'running', 'restarting', 'exited'} if _reboot_helper else {'running'}) if live_target else {'absent', 'exited', 'created'}
     if state not in allowed or (state != 'absent' and project != DEFAULT_COMPOSE_PROJECT):
         raise ValueError('router_offline_target_active_or_unknown')
     custody = None if state == 'absent' else _restart_custody(container, _run)
@@ -1624,7 +1733,14 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             selected_ids.remove(helper_id)
         if selected_ids:
             raise ValueError('router_offline_target_mismatch')
-    return {'rendered': rendered, 'roster': rows, 'target': custody}
+    result = {'rendered': rendered, 'roster': rows, 'target': custody}
+    if owner_scope is not None:
+        if owner_scope != _owner_storage_scope(rendered, mounts, config_mounts[0], custody or {}, read):
+            raise ValueError('router_owner_storage_changed')
+        if any(_storage_lineage(source) != observed for source, observed in consumer_storage.items()):
+            raise ValueError('router_owner_storage_changed')
+        result['owner_storage'] = {**owner_scope, 'consumers': sorted(consumer_storage.items())}
+    return result
 
 
 def _compose_owner_backend(compose, service, *, _run, env_file=None, execution_env=None):
@@ -1781,7 +1897,8 @@ def _managed_container_custody(kind, compose, service, container, *, _run=subpro
     helper = 'router-custody-' + uuid.uuid4().hex if kind == 'dead' else None
     def observation():
         roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
-                                         execution_env=execution_env, live_target=kind == 'live', helper_container=helper)
+                                         execution_env=execution_env, live_target=kind == 'live', helper_container=helper,
+                                         _owner_state_only=True)
         return {'roster': roster, 'incarnation': _container_incarnation(container, _run=_run, stopped=kind == 'dead')}
     before = observation()
     if kind == 'live':
@@ -1811,9 +1928,11 @@ def _managed_container_custody(kind, compose, service, container, *, _run=subpro
     return _native_owner_commit(argv, unchanged, _popen=_popen, execution_env=execution_env)
 
 
-def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None):
+def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None, _owner_state_only=False):
+    # Owner scope is only for fixed reviewed accounting programs below and in
+    # maintenance. Generic migration/key/client workers retain every RW mount.
     before = _offline_compose_roster(compose, service, container, _run=_run,
-                                    env_file=env_file, execution_env=execution_env)
+                                    env_file=env_file, execution_env=execution_env, _owner_state_only=_owner_state_only)
     result = _run([*_compose_argv(compose, env_file=env_file), 'run', '--rm', '--no-deps',
                    '--entrypoint', 'python', service, '-c', code], capture_output=True,
                   text=True, encoding='utf-8', timeout=30, env=execution_env)
@@ -1822,7 +1941,7 @@ def _offline_compose_run(compose, service, container, code, *, _run, env_file=No
     from .observability.dashboard.contracts import strict_json
     receipt = strict_json((result.stdout or '').encode())
     after = _offline_compose_roster(compose, service, container, _run=_run,
-                                   env_file=env_file, execution_env=execution_env)
+                                   env_file=env_file, execution_env=execution_env, _owner_state_only=_owner_state_only)
     if before != after:
         raise ValueError('router_offline_roster_changed')
     return receipt
@@ -1839,7 +1958,7 @@ def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _ru
         code = ('import json; from anvil_serving.router_manage import _offline_router_start; '
                 f'print(json.dumps(_offline_router_start(_legacy_incarnation={_legacy_incarnation!r}),sort_keys=True))')
         receipt = _offline_compose_run(compose, service, container, code, _run=_run,
-                                      env_file=env_file, execution_env=execution_env)
+                                      env_file=env_file, execution_env=execution_env, _owner_state_only=True)
         expected = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
         if _legacy_incarnation is not None:
             legacy = receipt.get('legacy_receipt_sha256') if type(receipt) is dict else None

@@ -198,6 +198,15 @@ def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: 
         'import sys,json;sys.path.insert(0,sys.argv[1]);from anvil_serving.connect.config import validate_manifest;validate_manifest(json.load(open(sys.argv[2])))',
         str(output), str(manifest)], cwd=tmp_path, capture_output=True, text=True)
     assert checked.returncode == 0, checked.stderr
+    value = json.loads(manifest.read_text())
+    value["memory"] = {"base_url": "http://127.0.0.1:8888", "auth_file": "/protected/backend-key",
+        "access_file": "/protected/policy/access.json", "reader_gid": 1000,
+        "default_banks": {}, "shared_banks": {}}
+    manifest.write_text(json.dumps(value))
+    checked = subprocess.run([sys.executable, '-I', '-c',
+        'import sys,json;sys.path.insert(0,sys.argv[1]);from anvil_serving.connect.config import validate_manifest;from anvil_serving.connect import user_memory;validate_manifest(json.load(open(sys.argv[2])))',
+        str(output), str(manifest)], cwd=tmp_path, capture_output=True, text=True)
+    assert checked.returncode == 0, checked.stderr
 
 
 @requires_posix

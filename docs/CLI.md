@@ -177,6 +177,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router recovery-status` | Inspect protected custody sidecars without authorizing recovery. | `read` / `bounded` | `--container`<br>`--ledger` |
 | `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
 | `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
 | `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
@@ -412,6 +413,8 @@ required operands, choices, and defaults.
 | `connect users show` | Show one local sign-in account (not Connect grants). | `read` / `bounded` | `--manifest` |
 | `connect users create` | Create an account and request a password-setup email or private handoff. | `mutate` / `bounded` | `--manifest`<br>`--email`<br>`--role`<br>`--grant`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users access` | Replace ALL browser grants, enable the account and revoke its Connect sessions. | `mutate` / `bounded` | `--manifest`<br>`--grant`<br>`--dry-run`<br>`--confirm` |
+| `connect users memory` | Provision user memory banks, preserve browser grants and revoke Connect sessions. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users configure-memory` | Install protected user-bank settings; does not restart services. | `mutate` / `bounded` | `--manifest`<br>`--input`<br>`--dry-run`<br>`--confirm` |
 | `connect users suspend` | Disable sign-in and revoke Connect browser and terminal sessions. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users delete` | Remove the account and factors; retain backups and disabled authority history. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users reset-password` | Request password setup; preserve groups, grants and registered factors. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |

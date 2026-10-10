@@ -358,7 +358,9 @@ def _isolated_unit(description: str, command: list[str], identity: tuple[int, in
 
 
 def _render(data: dict[str, Any]) -> dict[str, Any]:
-    generation = hashlib.sha256(canonical_manifest(data)).hexdigest()
+    # Account-bank settings are consumed by the user manager, not service files.
+    # Preserve the running authority generation when installing those settings.
+    generation = hashlib.sha256(canonical_manifest({key: value for key, value in data.items() if key != "memory"})).hexdigest()
     gateway = data["gateway"]
     if "service_identities" not in data:
         files: dict[str, str] = {

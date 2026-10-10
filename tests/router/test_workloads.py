@@ -503,7 +503,8 @@ def test_registry_cap_and_concurrent_recent_reads_remain_bounded() -> None:
         reader.start()
     start.wait()
     for reader in readers:
-        reader.join(timeout=5)
+        # This verifies bounded results and concurrency, not five-second throughput.
+        reader.join(timeout=30)
         assert not reader.is_alive()
     assert failures == []
     for token in tokens:

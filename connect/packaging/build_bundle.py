@@ -23,6 +23,13 @@ def manager_archive(output: Path) -> None:
         files[str(source.relative_to(ROOT))] = source.read_bytes()
     for name in ('anvil_serving/operator_output.py', 'anvil_serving/connect/components.lock.json'):
         files[name] = (ROOT / name).read_bytes()
+    # Protected bank policy/credential readers are stdlib-only shared helpers.
+    for name in ('anvil_serving/memory_access.py', 'anvil_serving/fleet_bootstrap.py',
+                 'anvil_serving/control_plane/bootstrap_shim.py',
+                 'anvil_serving/control_plane/mcp/auth_file.py'):
+        files[name] = (ROOT / name).read_bytes()
+    files['anvil_serving/control_plane/__init__.py'] = b''
+    files['anvil_serving/control_plane/mcp/__init__.py'] = b''
     with output.open('wb') as stream:
         stream.write(b'#!/usr/bin/env python3\n')
         with zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_DEFLATED) as archive:

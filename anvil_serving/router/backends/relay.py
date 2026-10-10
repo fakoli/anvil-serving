@@ -183,8 +183,8 @@ def _close_controlled_response(response: Any) -> None:
 
 
 def _controlled_stream_open(
-    url: str, *, data: bytes, headers: Mapping[str, str], timeout: float,
-    control: RequestControl,
+    url: str, *, data: bytes | None, headers: Mapping[str, str], timeout: float,
+    control: RequestControl, method: str = "POST",
 ) -> Any:
     """Open a direct HTTP response with a hard deadline during header parsing.
 
@@ -233,7 +233,7 @@ def _controlled_stream_open(
     response = None
     try:
         control.check_upstream()
-        connection.request("POST", target, body=data, headers=dict(headers))
+        connection.request(method, target, body=data, headers=dict(headers))
         if interrupted.is_set():
             control.check_upstream()
             if deadline_interrupted.is_set():

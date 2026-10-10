@@ -13,6 +13,7 @@ _OPERATIONS = {
     "memory_retain": "retain",
     "memory_recall": "recall",
     "memory_reflect": "reflect",
+    "memory_banks": "banks",
 }
 
 
@@ -23,7 +24,7 @@ class MemoryMCP:
         self.memory = memory
         self.principal = principal
         self.aliases = tuple(aliases)
-        self.tools = _tools(self.aliases)
+        self.tools = _tools(self.aliases, user_banks=getattr(principal, "owner", None) is not None)
 
     def handle(self, request: Mapping[str, Any], headers) -> dict | None:
         if not isinstance(request, dict):
@@ -109,20 +110,21 @@ class MemoryMCP:
             return {"ok": False, "code": "memory_forbidden", "message": "memory alias is not available to this principal"}
         try:
             result = self.memory.dispatch({"alias": alias, "operation": operation,
-                                           "arguments": {key: value for key, value in arguments.items() if key != "alias"}},
+                                           **({"bank": arguments["bank"]} if "bank" in arguments else {}),
+                                           "arguments": {key: value for key, value in arguments.items() if key not in {"alias", "bank"}}},
                                           principal=self.principal)
             return {"ok": True, **result}
         except MemoryError as exc:
             return {"ok": False, "code": exc.code, "message": exc.message}
 
 
-def _tools(aliases: Sequence[str]) -> dict[str, dict]:
+def _tools(aliases: Sequence[str], *, user_banks=False) -> dict[str, dict]:
     return {
         tool["function"]["name"]: {
             "name": tool["function"]["name"],
             "description": "Supplemental memory; existing harness memory remains authoritative.",
             "inputSchema": tool["function"]["parameters"],
-            "annotations": {"readOnlyHint": tool["function"]["name"] in {"memory_recall", "memory_reflect"}},
+            "annotations": {"readOnlyHint": tool["function"]["name"] in {"memory_recall", "memory_reflect", "memory_banks"}},
         }
-        for tool in tool_schemas(aliases)
+        for tool in tool_schemas(aliases, user_banks=user_banks)
     }

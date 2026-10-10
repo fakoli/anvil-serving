@@ -140,7 +140,22 @@ server.serve_forever()
     with pytest.raises(subprocess.CalledProcessError):f['transition']('readmit',barrier_token=token)
     protected(authorization,auth('successor-readmit',successor,revision,operation_id='f'*64,
                                 legacy_receipt_sha256=result['receipt_sha256']))
-    preview=maintenance.run(config,_run=f['run'])
+    # Readmission observes the mounted owner without resolving Compose secrets.
+    poison.mkdir()
+    composed['services']['router']['env_file']=['/synthetic-env-must-not-be-read/absent.env']
+    composed['services']['router']['environment']['SYNTHETIC_REQUIRED']='${SYNTHETIC_UNSET:?must-not-resolve}'
+    protected(f['compose'],composed)
+    values['compose_sha256']=hashlib.sha256(f['compose'].read_bytes()).hexdigest()
+    protected(config,values)
+    try:
+        preview=maintenance.run(config,_run=f['run'])
+    finally:
+        poison.rmdir()
+        del composed['services']['router']['env_file']
+        del composed['services']['router']['environment']['SYNTHETIC_REQUIRED']
+        protected(f['compose'],composed)
+        values['compose_sha256']=hashlib.sha256(f['compose'].read_bytes()).hexdigest()
+        protected(config,values)
     assert not any(preview['counts'].values()) and preview['eligible_uncertainty']=='remote-memory-terminal-unknown'
     # The external real writer gate remains authoritative during preview.
     gate=os.open(root/'keys.sqlite3.router-writers.lock',os.O_RDWR)

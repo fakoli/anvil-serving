@@ -384,11 +384,27 @@ def _purge_as_idp(database: Path, username: str, subject: str | None, *, validat
     return result
 
 
+def _withdraw_memory_defaults(data: dict, manifest: str, username: str) -> dict:
+    """Under the deployment lock, prevent shared grants following username reuse."""
+    memory = data.get("memory")
+    if not memory or not any(username in memory[key] for key in ("default_banks", "shared_banks")):
+        return data
+    updated = {**data, "memory": {**memory, **{
+        key: {user: value for user, value in memory[key].items() if user != username}
+        for key in ("default_banks", "shared_banks")
+    }}}
+    manage._safe_root_ancestors(Path(manifest))
+    manage._write_atomic(Path(manifest), (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(), 0o600)
+    return updated
+
+
 def _finalize_phase(data: dict, manifest: str, path: Path, phase: dict, phase_info: os.stat_result, runner) -> dict:
     _human_response(data, manifest, {
         "operation": "human-delete-finalize", "principal": phase["principal"],
         "expected_generation": phase["generation"], "request_id": phase["request_id"],
     }, runner, "human-delete-finalize")
+    # Also withdraw defaults for a retained receipt from an older manager.
+    _withdraw_memory_defaults(data, manifest, phase["username"])
     try:
         current = path.lstat()
         if (current.st_dev, current.st_ino) != (phase_info.st_dev, phase_info.st_ino):
@@ -420,6 +436,7 @@ def _run_local_phase(data: dict, manifest: str, path: Path, phase: dict, runner,
     if (not stat.S_ISREG(phase_info.st_mode) or stat.S_ISLNK(phase_info.st_mode) or phase_info.st_nlink != 1
             or phase_info.st_uid != os.geteuid() or stat.S_IMODE(phase_info.st_mode) != 0o600):
         raise _invalid("Permanent deletion recovery state is unsafe.")
+    data = _withdraw_memory_defaults(data, manifest, phase["username"])
     _config, active = _preflight(data, manifest, runner)
     source = manage._read_unit(Path(data["config_root"]) / "systemd" / users._UNIT)
     if source is None or manage._unit_exec_path(source) != Path(data["components"]["authelia"]):
@@ -481,6 +498,7 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         _phase_matches_intent(phase, intent)
     elif phase["idp_delete"]:
         raise _invalid("Permanent deletion phase is held until its native intent is available.")
+    data = _withdraw_memory_defaults(data, manifest, phase["username"])
     # A legacy Connect-only identity has no supported IdP mapping. It remains
     # disabled at native prepare and can be finalized without touching IdP data.
     if not phase["idp_delete"]:
@@ -561,6 +579,8 @@ def delete(manifest: str, username: str, *, apply: bool = False, runner=None, un
     # policy between the disabled intent and its irreversible IdP purge.
     with manage._deployment_lock(Path(data["config_root"])):
         manage._require_no_authelia_upgrade(Path(data["config_root"]))
+        if read_manifest(manifest) != data:
+            raise _invalid("Connect declaration changed during permanent deletion; retry.")
         root = _phase_root(manifest)
         retained = [(path, phase) for path, phase in _phases(root).values() if phase["username"] == username]
         if len(retained) > 1:
@@ -621,6 +641,8 @@ def process_pending(manifest: str, *, apply: bool = False, runner=None, unit_roo
     # fence, not merely a local retry record.
     with manage._deployment_lock(Path(data["config_root"])):
         manage._require_no_authelia_upgrade(Path(data["config_root"]))
+        if read_manifest(manifest) != data:
+            raise _invalid("Connect declaration changed during permanent deletion; retry.")
         root = _phase_root(manifest)
         intents = _intents(data, manifest, runner)
         phases = _phases(root)

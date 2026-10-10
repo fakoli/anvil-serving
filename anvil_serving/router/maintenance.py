@@ -183,16 +183,20 @@ def authorization(value, *, at=None):
             'expected_image_id','expected_configuration_revision','preview_sha256','expires_at',
             'legacy_receipt_sha256','acknowledge_uncertainty','ingress_barrier'}
     current = type(value) is dict and value.get('phase') == 'current-instrumented-stop'
-    if current: fields |= {'successor'}
+    reboot = type(value) is dict and value.get('phase') == 'reboot-stop'
+    if current or reboot: fields |= {'successor'}
+    if reboot: fields |= {'boot_id', 'sidecar_snapshot_sha256'}
     require(type(value) is dict and set(value)==fields
-            and value['schema']==('router-current-stop-authorization/v1' if current else 'router-maintenance-authorization/v1')
-            and value['phase'] in {'legacy-stop','successor-readmit','current-instrumented-stop'}
+            and value['schema']==('router-reboot-authorization/v1' if reboot else
+                'router-current-stop-authorization/v1' if current else 'router-maintenance-authorization/v1')
+            and value['phase'] in {'legacy-stop','successor-readmit','current-instrumented-stop','reboot-stop'}
             and type(value['expires_at']) is int)
     now = int(time.time()) if at is None else at
     require(type(now) is int and now < value['expires_at'] <= now + 900)
     expected = ('legacy-local-and-remote', 'exact-container-stop') if value['phase']=='legacy-stop' else (
         'remote-memory-terminal-only', 'closed-generation')
     if current: expected = ('remote-memory-terminal-only', 'closed-generation-exact-container-stop')
+    if reboot: expected = ('remote-memory-terminal-only', 'previous-boot-exact-container-stop')
     require((value['acknowledge_uncertainty'], value['ingress_barrier']) == expected)
     for name in ('operation_id','authorization_sha256','expected_container_id','expected_configuration_revision'):
         require(type(value[name]) is str and re.fullmatch('[0-9a-f]{64}',value[name]) is not None)
@@ -201,7 +205,12 @@ def authorization(value, *, at=None):
     image=value['expected_image_id']
     require(type(image) is str and re.fullmatch('sha256:[0-9a-f]{64}',image) is not None)
     if value['phase']=='successor-readmit' or current:require(value['legacy_receipt_sha256'] is not None)
-    if current:
+    if reboot:
+        from .usage_store import _uuid
+        from .container_owner import hex_id
+        _uuid(value['boot_id']); hex_id(value['sidecar_snapshot_sha256'])
+        require(value['preview_sha256'] is None or value['legacy_receipt_sha256'] is not None)
+    if current or reboot:
         successor = value['successor']
         require(type(successor) is dict and set(successor) == {'image_id', 'configuration_revision', 'compose', 'compose_sha256'})
         require(type(successor['image_id']) is str and re.fullmatch('sha256:[a-f0-9]{64}', successor['image_id']) is not None)
@@ -209,6 +218,8 @@ def authorization(value, *, at=None):
             require(type(successor[name]) is str and re.fullmatch('[a-f0-9]{64}', successor[name]) is not None)
         require(type(successor['compose']) is str and Path(successor['compose']).is_absolute()
                 and '..' not in Path(successor['compose']).parts)
+        if reboot:
+            require(successor['configuration_revision'] == value['expected_configuration_revision'])
     return value
 
 
@@ -458,17 +469,17 @@ def _current_stop_proof(values, pending, *, _run):
         f" marker=_private_json(Path(str(store.path)+'.maintenance-current-stops')/({pending['authorization']['operation_id']!r}+'.json'))\n"
         f" require(digest(marker)=={digest(pending['marker'])!r})\n"
         " print(json.dumps(record))\n")
-    record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run))
+    record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
+                                          _owner_state_only=True))
     require(record['phase'] == 'ready' and record['anchor'] == native['record']['anchor']
             and record['death']['closure_generation'] == native['observation']['closure']['generation']
             and record['death']['closure_consumed'] is False)
     return record
 
 
-def _current_successor(successor, incarnation, *, _run):
+def _current_successor(successor, incarnation, *, _run, _read_config=None):
     """Bind declared successor bytes to the actual pinned image/config, without dotenv."""
     from ..router_manage import _compose_argv, DEFAULT_SERVICE, DEFAULT_CONTAINER, DEFAULT_INSTALLED_CONFIG
-    from ..control_plane.mcp.auth_file import read_private_auth_file
     from ..observability.dashboard.contracts import strict_json
     result = _run([*_compose_argv(successor['compose'], env_file=os.devnull), 'config',
                    '--no-env-resolution', '--no-interpolate', '--format', 'json'],
@@ -487,7 +498,24 @@ def _current_successor(successor, incarnation, *, _run):
     config = [x for x in mounts if x.get('target') == DEFAULT_INSTALLED_CONFIG]
     require(len(config) == 1 and config[0].get('type') == 'bind' and config[0].get('read_only') is True
             and type(config[0].get('source')) is str and Path(config[0]['source']).is_absolute())
-    raw = read_private_auth_file(config[0]['source'], max_bytes=2*1024**2)
+    if _read_config is not None:
+        # Reboot recovery supplies its separately verified service-owner reader.
+        raw = _read_config(config[0]['source'], max_bytes=2*1024**2)
+    else:
+        # A successor has no legacy permission exemption. Its nonsecret config
+        # can be group-readable, but remains operator-owned and immutable to peers.
+        from ..operator_config import _read_bounded, _candidate_identity
+        source = Path(config[0]['source']); before = source.lstat()
+        user = service.get('user')
+        require(type(user) is str and re.fullmatch(r'[0-9]+:[0-9]+', user) is not None)
+        uid, gid = map(int, user.split(':'))
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.geteuid() and before.st_nlink == 1
+                and not before.st_mode & 0o022
+                and (uid == 0 or before.st_mode & (0o400 if uid == before.st_uid else 0o040 if gid == before.st_gid else 0o004)))
+        raw = _read_bounded(source, max_bytes=2*1024**2, expected_identity=_candidate_identity(before))
+        after = source.lstat()
+        require(all(getattr(before, name) == getattr(after, name) for name in
+                    ('st_dev', 'st_ino', 'st_mode', 'st_uid', 'st_gid', 'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
     require(hashlib.sha256(raw).hexdigest() == successor['configuration_revision'])
 
 
@@ -530,11 +558,10 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
         docker_identity(before)
         _current_successor(successor, before, _run=_run)
         require(before['container_id'] == auth['expected_container_id'] and before['image_id'] == auth['expected_image_id'])
-        roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
+        roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True)
         mounted = [m for m in _restart_custody(DEFAULT_CONTAINER, _run)['mounts'] if m['destination'] == DEFAULT_INSTALLED_CONFIG]
         require(len(mounted) == 1 and mounted[0]['type'] == 'bind' and mounted[0]['read_only'] is True)
-        raw = read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2)
-        require(hashlib.sha256(raw).hexdigest() == auth['expected_configuration_revision'])
+        require(roster['owner_storage']['configuration_revision'] == auth['expected_configuration_revision'])
         # The admitted profile, not another same-project file, owns this stop.
         label = _run(['docker', 'inspect', '--format', '{{json (index .Config.Labels "com.docker.compose.project.config_files")}}',
                       before['container_id']], capture_output=True, text=True, timeout=5)
@@ -550,8 +577,7 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
                 _current_successor(successor, before, _run=_run)
                 require(int(time.time()) < native['observation']['expires_at']
                         and before == _container_incarnation(DEFAULT_CONTAINER, _run=_run)
-                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
-                        and read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2) == raw)
+                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True))
                 alive()
             recheck()
             if not confirm:
@@ -599,10 +625,18 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
     for name in ('compose','authorization','receipt_out'):
         require(type(values[name]) is str and Path(values[name]).is_absolute() and '..' not in Path(values[name]).parts)
     auth_raw=read_private_auth_file(values['authorization'],max_bytes=16384)
-    auth=authorization(strict_json(auth_raw))
+    auth_value = strict_json(auth_raw)
+    pending = None
+    if type(auth_value) is dict and auth_value.get('phase') == 'reboot-stop':
+        from .reboot import retained_intent
+        pending = retained_intent(values, auth_value)
+    auth=authorization(auth_value, at=pending['acknowledged_at'] if pending else None)
     native=_run or subprocess.run
     @_serving_authority_mutation
     def operation():
+        if auth['phase'] == 'reboot-stop':
+            from .reboot import run
+            return run(values, auth, config, confirm=confirm, preview_out=preview_out, _run=native)
         if auth['phase'] == 'current-instrumented-stop':
             return _run_current_stop(values, auth, config, confirm=confirm, preview_out=preview_out, _run=native)
         compose_raw=read_private_auth_file(values['compose'],max_bytes=2*1024**2)
@@ -621,14 +655,16 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         state,_=_container_compose_project(DEFAULT_CONTAINER,_run=native)
         live=state=='running'
         require(live or pending_value is not None and state in {'exited','dead'})
-        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=auth['phase']=='legacy-stop')
+        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=True,_owner_state_only=auth['phase']!='legacy-stop')
         mounted=[m for m in _restart_custody(DEFAULT_CONTAINER,native)['mounts'] if m['destination']==DEFAULT_INSTALLED_CONFIG]
         require(len(mounted)==1 and mounted[0]['type']=='bind' and mounted[0]['read_only'] is True)
         if auth['phase']=='legacy-stop':
             raw, config_identity = _legacy_config(mounted[0]['source'])
+            require(hashlib.sha256(raw).hexdigest()==auth['expected_configuration_revision'])
         else:
-            raw=read_private_auth_file(mounted[0]['source'],max_bytes=2*1024**2)
-        require(hashlib.sha256(raw).hexdigest()==auth['expected_configuration_revision'])
+            # The native roster reads the actual mounted nonsecret config and
+            # binds its storage. Its service owner need not be the root operator.
+            require(roster['owner_storage']['configuration_revision']==auth['expected_configuration_revision'])
         if auth['phase']=='legacy-stop':
             # Legacy risk acknowledgement binds the actually admitted profile,
             # never a future candidate file merely sharing project labels.
@@ -678,10 +714,9 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         require(result.returncode==0 and len(result.stdout or '')<=16384
                 and before==_container_incarnation(DEFAULT_CONTAINER,_run=native)
                 and roster==_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,
-                    _run=native,live_target=True))
+                    _run=native,live_target=True,_metadata_only=True,_owner_state_only=True))
         require(read_private_auth_file(values['authorization'],max_bytes=16384)==auth_raw
-                and read_private_auth_file(values['compose'],max_bytes=2*1024**2)==compose_raw
-                and read_private_auth_file(mounted[0]['source'],max_bytes=2*1024**2)==raw)
+                and read_private_auth_file(values['compose'],max_bytes=2*1024**2)==compose_raw)
         response=strict_json(result.stdout)
         if not confirm and preview_out:_publish(Path(preview_out),response)
         return response
