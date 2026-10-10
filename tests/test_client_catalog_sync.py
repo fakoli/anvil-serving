@@ -2311,15 +2311,60 @@ def test_invalid_media_limits_are_rejected_before_write(tmp_path):
                 confirm=True,
                 dry_run=False,
             )
-    # A zero limit is valid (text-only declaration) and must NOT raise.
-    result = _run(
-        tmp_path,
-        opener=_Opener(*_catalog(images_per_request=0)),
-        confirm=True,
-        dry_run=False,
+    assert before == [path.read_bytes() for path in paths]
+
+
+@pytest.mark.parametrize("restored_limit", [None, 8])
+@pytest.mark.parametrize("preserve_siblings", [False, True])
+def test_pi_zero_image_limit_is_text_only_and_recovers(
+    tmp_path, restored_limit, preserve_siblings,
+):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    openclaw_before = openclaw_path.read_bytes()
+    # Seed all managed aliases before adding user-owned sibling fields.
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True, dry_run=False,
     )
-    assert result["changed"]
-    assert before != [path.read_bytes() for path in paths]
+    payload = json.loads(pi_models_path.read_text())
+    siblings = {"images": {"maxPerMessage": 2}, "maxRequestBytes": 3_000_000}
+    for row in payload["providers"]["anvil"]["models"]:
+        row["inputLimits"] = json.loads(json.dumps(siblings)) if preserve_siblings else {}
+        row["inputLimits"].setdefault("images", {})["maxPerRequest"] = 4
+    pi_models_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    for _ in range(2):
+        _run(
+            tmp_path, clients="pi",
+            opener=_Opener(*_catalog(images_per_request=0)),
+            confirm=True, dry_run=False,
+        )
+        payload = json.loads(pi_models_path.read_text())
+        for row in payload["providers"]["anvil"]["models"]:
+            assert row["input"] == ["text"]
+            # Pi's schema requires maxPerRequest >= 1; never serialize zero.
+            if preserve_siblings:
+                assert row["inputLimits"] == siblings
+            else:
+                assert "inputLimits" not in row
+    assert openclaw_path.read_bytes() == openclaw_before
+
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=restored_limit)),
+        confirm=True, dry_run=False,
+    )
+    payload = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in payload["providers"]["anvil"]["models"]}
+    # The fixture's primary is text-only; only secondary advertises images.
+    assert by_id["llm.primary"]["input"] == ["text"]
+    assert "image" in by_id["llm.secondary"]["input"]
+    images = by_id["llm.secondary"].get("inputLimits", {}).get("images", {})
+    if restored_limit is None:
+        assert "maxPerRequest" not in images
+    else:
+        assert images["maxPerRequest"] == restored_limit
 
 
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):

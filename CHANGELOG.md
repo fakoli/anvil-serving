@@ -15,7 +15,9 @@ All notable changes to this project are documented here. The format is based on
 - Pi client catalog sync now carries the router-declared `images_per_request`
   limit into `~/.pi/agent/models.json` as `inputLimits.images.maxPerRequest`,
   preserving user-set `inputLimits` fields and removing the managed value when
-  the router stops declaring it. Note: `maxPerRequest` is a *managed* key —
+  the router stops declaring it. An explicit zero disables Pi's image input
+  modality and removes the numeric cap (Pi requires positive numeric caps).
+  Note: `maxPerRequest` is a *managed* key —
   hand-editing it in models.json is overwritten by the next sync; other
   `inputLimits` fields (image resize bounds, etc.) are preserved.
 

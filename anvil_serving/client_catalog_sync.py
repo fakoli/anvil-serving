@@ -373,10 +373,10 @@ def _sync_pi_image_limit(result: dict, model: Mapping) -> None:
     """Keep ``inputLimits.images.maxPerRequest`` managed from the router limit.
 
     The router declares ``images_per_request`` per tier; Pi's model config
-    accepts it as ``inputLimits.images.maxPerRequest``.  Declared limits are
-    written (merging into any user-set ``inputLimits`` such as image resize
-    bounds); when the router stops declaring one, the managed value is
-    removed so a stale cap never outlives the declaration.
+    accepts positive values as ``inputLimits.images.maxPerRequest``. Zero
+    removes the image input modality because Pi requires numeric caps >= 1.
+    Positive limits merge into user-set ``inputLimits``; zero or an absent
+    declaration removes only the managed cap, preserving sibling fields.
     """
     limit = model.get("images_per_request")
     declared = (
@@ -385,7 +385,9 @@ def _sync_pi_image_limit(result: dict, model: Mapping) -> None:
     input_limits = result.get("inputLimits")
     if not isinstance(input_limits, Mapping):
         input_limits = {}
-    if declared:
+    if declared and limit == 0:
+        result["input"] = [value for value in result["input"] if value != "image"]
+    if declared and limit > 0:
         images = input_limits.get("images")
         if not isinstance(images, Mapping):
             images = {}
@@ -395,7 +397,7 @@ def _sync_pi_image_limit(result: dict, model: Mapping) -> None:
         input_limits["images"] = images
         result["inputLimits"] = input_limits
         return
-    # Undeclared: drop the managed value, preserve the rest of the structure.
+    # Zero or undeclared: drop the managed cap, preserve all sibling fields.
     images = input_limits.get("images")
     if isinstance(images, Mapping) and "maxPerRequest" in images:
         images = {key: value for key, value in images.items() if key != "maxPerRequest"}
