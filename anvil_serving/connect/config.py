@@ -1111,7 +1111,11 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         client_ids = {gateway["oidc"]["client_id"]}
         for index, raw_client in enumerate(raw_clients):
             path = f"$.authelia.additional_oidc_clients[{index}]"
-            client = _mapping(raw_client, path, {"client_id", "client_name", "client_secret_file", "redirect_uris"})
+            client_fields = {"client_id", "client_name", "client_secret_file", "redirect_uris"}
+            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope"}:
+                raise _error(path, "has unknown keys")
+            groups_scope = raw_client.get("groups_scope", False)
+            client = _mapping({key: value for key, value in raw_client.items() if key != "groups_scope"}, path, client_fields)
             client_id = _client_id(client["client_id"], path + ".client_id")
             if client_id in client_ids:
                 raise _error(path + ".client_id", "must be unique including the Connect client")
@@ -1119,11 +1123,14 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             redirects = [_redirect_uri(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
             if len(redirects) != len(set(redirects)):
                 raise _error(path + ".redirect_uris", "contains duplicate redirect URIs")
+            if type(groups_scope) is not bool:
+                raise _error(path + ".groups_scope", "must be a boolean")
             additional_clients.append({
                 "client_id": client_id,
                 "client_name": _device_label(client["client_name"], path + ".client_name"),
                 "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
                 "redirect_uris": sorted(redirects),
+                "groups_scope": groups_scope,
             })
         authelia["additional_oidc_clients"] = sorted(additional_clients, key=lambda client: client["client_id"])
     secret_files = _authelia_secret_files(authelia)

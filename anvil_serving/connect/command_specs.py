@@ -12,8 +12,9 @@ USER_OPERATIONS = {
     "reset-mfa": ("Remove passkeys and TOTP; suspend first for a lost or compromised device.", ()),
     "code": ("Export a fresh enrollment code or setup link when using filesystem delivery.", ("output",)),
     "backup": ("Back up all authentication accounts and factors.", ("include-gateway",)),
+    "sync-operators": ("Reconcile the derived Connect-operator identity-provider group.", ()),
     "schedule": ("Install the daily authentication and gateway backup timer.", ()),
-    "deletion-schedule": ("Install the account-deletion processing timer.", ()),
-    "process-deletions": ("Process one authorized permanent account deletion.", ()),
+    "deletion-schedule": ("Install the periodic account-reconciliation worker.", ()),
+    "process-deletions": ("Reconcile operator access and process one authorized deletion.", ()),
     "restore": ("Restore authentication backup into a fresh directory without activating it.", ("input", "sha256", "destination")),
 }

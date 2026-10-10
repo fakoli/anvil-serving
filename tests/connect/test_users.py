@@ -94,6 +94,8 @@ def environment(tmp_path, monkeypatch):
     def run(operation, username="dev", **kwargs):
         return users.operate(str(tmp_path / "deployment.json"), operation, username,
                              runner=runner, unit_root=unit_root, **kwargs)
+    state["runner"] = runner
+    state["unit_root"] = unit_root
     return run, db, state, private
 
 
@@ -521,6 +523,102 @@ def test_schedule_cli_is_explicit_and_rejects_account_operands(monkeypatch):
     assert [kwargs["apply"] for _, kwargs in calls] == [False, True]
     assert dispatch(["users", "schedule", "dev", "--confirm"]).error is not None
     assert len(calls) == 2
+
+
+def test_operator_group_projection_requires_current_native_authority_and_removes_stale_members(monkeypatch):
+    active = "human:" + "a" * 64
+    no_grant = "human:" + "b" * 64
+    disabled = "human:" + "c" * 64
+    deleting = "human:" + "d" * 64
+    data = {
+        "authelia": {"additional_oidc_clients": [{"groups_scope": True}]},
+        "gateway": {"gateway": {"browser_administration": {
+            "browser_resource": "dashboard", "operators": [active, no_grant, disabled, deleting],
+        }}},
+    }
+    accounts = {
+        "active": {"disabled": False},
+        "no-grant": {"disabled": False, "groups": [users._OPERATOR_GROUP]},
+        "disabled": {"disabled": True, "groups": [users._OPERATOR_GROUP]},
+        "deleting": {"disabled": False, "groups": [users._OPERATOR_GROUP]},
+        "nonoperator": {"disabled": False, "groups": ["members", users._OPERATOR_GROUP]},
+    }
+    records = {
+        active: {"id": active, "username": "active", "generation": 2, "disabled": False,
+                 "resources": ["dashboard"], "application_roles": {"dashboard": "member"}},
+        no_grant: {"id": no_grant, "username": "no-grant", "generation": 2, "disabled": False,
+                   "resources": [], "application_roles": {}},
+        disabled: {"id": disabled, "username": "disabled", "generation": 2, "disabled": True,
+                   "resources": ["dashboard"], "application_roles": {"dashboard": "admin"}},
+        deleting: {"id": deleting, "username": "deleting", "generation": 2, "disabled": False,
+                   "deletion_request": "pending", "resources": ["dashboard"], "application_roles": {"dashboard": "admin"}},
+    }
+    monkeypatch.setattr(users, "_human_admin_read", lambda _data, _manifest, payload, _runner: {
+        "operation": "operator-inspect", "found": True, "human": records[payload["principal"]],
+    })
+    desired = users._operator_usernames(data, "manifest", accounts, None)
+    assert desired == {"active"}
+    updated, additions, removals = users._operator_group_changes(accounts, desired)
+    assert (additions, removals) == (1, 4)
+    assert users._OPERATOR_GROUP in updated["active"]["groups"]
+    assert all(users._OPERATOR_GROUP not in updated[name]["groups"] for name in accounts if name != "active")
+    without_administration = {"authelia": data["authelia"], "gateway": {"gateway": {}}}
+    assert users._operator_usernames(without_administration, "manifest", accounts, None) == set()
+    cleared, additions, removals = users._operator_group_changes(updated, set())
+    assert (additions, removals) == (0, 1)
+    assert all(users._OPERATOR_GROUP not in account["groups"] for account in cleared.values())
+
+
+def test_operator_projection_recovery_stops_before_restore_and_verifies_restart(environment, monkeypatch):
+    from anvil_serving.connect import user_backup
+    _, db, state, _ = environment
+    data = users.read_manifest("unused")
+    principal = "human:" + "a" * 64
+    data["authelia"]["additional_oidc_clients"] = [{"groups_scope": True}]
+    data["gateway"] = {"gateway": {"browser_administration": {
+        "browser_resource": "dashboard", "operators": [principal],
+    }}}
+    monkeypatch.setattr(users, "_human_admin_read", lambda *_args: {
+        "operation": "operator-inspect", "found": True,
+        "human": {"id": principal, "username": "owner", "generation": 1,
+                  "disabled": False, "resources": ["dashboard"], "application_roles": {}},
+    })
+    monkeypatch.setattr(user_backup, "snapshot", lambda *_args, **_kwargs: {"file": "protected", "sha256": "a" * 64})
+    before = db.read_bytes()
+    state["fail_start"] = True
+    with pytest.raises(manage.ManageError, match="rolled back"):
+        users.sync_operators("/deployment.json", apply=True, runner=state["runner"], unit_root=state["unit_root"])
+    assert db.read_bytes() == before
+    assert state["active"]
+    lifecycle = [call[1] for call in state["calls"] if call[:1] == (manage._SYSTEMCTL,) and call[1] in {"stop", "start"}]
+    assert lifecycle == ["stop", "start", "stop", "start"]
+
+
+def test_operator_projection_is_a_noop_without_an_opted_in_oidc_client(monkeypatch):
+    monkeypatch.setattr(users, "_require_root", lambda: None)
+    monkeypatch.setattr(users, "_path", lambda _path: None)
+    monkeypatch.setattr(users, "read_manifest", lambda _path: {"authelia": {"additional_oidc_clients": []}})
+    monkeypatch.setattr(users, "_read_users", lambda _data: pytest.fail("must not read account state"))
+    assert users.sync_operators("manifest", apply=True) == {
+        "schema": "anvil-connect.operator-group/v1", "group": users._OPERATOR_GROUP,
+        "enabled": False, "applied": False, "changed": False,
+        "eligible_operators": 0, "additions": 0, "removals": 0,
+    }
+
+
+def test_account_worker_attempts_projection_and_deletion_independently(monkeypatch):
+    from anvil_serving.connect import user_delete
+    from anvil_serving.connect.cli import dispatch
+    calls = []
+    def failed_projection(*_args, **_kwargs):
+        calls.append("projection")
+        raise ValueError("redacted projection failure")
+    monkeypatch.setattr(users, "sync_operators", failed_projection)
+    monkeypatch.setattr(user_delete, "process_pending", lambda *_args, **_kwargs: calls.append("deletion") or {"processed": False})
+    result = dispatch(["users", "process-deletions", "--confirm"])
+    assert calls == ["projection", "deletion"]
+    assert result.error is not None
+    assert result.data == {"operator_group": "failed", "deletion": "completed"}
 
 
 def test_backup_retention_and_verified_restore_without_activation(environment, monkeypatch):

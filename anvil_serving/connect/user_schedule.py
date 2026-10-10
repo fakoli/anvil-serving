@@ -107,7 +107,7 @@ def _service(manager: Path, writable: tuple[Path, ...], *, deletions: bool = Fal
     operation = ("process-deletions", "--confirm") if deletions else ("backup", "--include-gateway", "--confirm")
     command = " ".join(_unit_argument(value) for value in (str(manager), "users", *operation))
     return ("\n".join((
-        "[Unit]", "Description=Anvil Connect account deletion worker" if deletions else "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
+        "[Unit]", "Description=Anvil Connect account reconciliation worker" if deletions else "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=oneshot", "User=root", "Group=root", "UMask=0077", "NoNewPrivileges=true",
         "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "ReadWritePaths=" + paths,
         "ExecStart=" + command, "TimeoutStartSec=120", "",
@@ -126,6 +126,10 @@ def _timer(*, deletions: bool = False) -> bytes:
 
 def _prior_service(current: bytes, desired: bytes) -> bool:
     """Accept only the prior generated service with a verified release manager."""
+    legacy = b"Description=Anvil Connect account deletion worker\n"
+    replacement = b"Description=Anvil Connect account reconciliation worker\n"
+    if replacement in desired and current.count(legacy) == 1:
+        current = current.replace(legacy, replacement, 1)
     start = desired.find(b"ExecStart=")
     if start < 0:
         raise AssertionError("generated service is missing ExecStart")
@@ -196,7 +200,7 @@ def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=No
         "impact": "Daily backup briefly restarts Authelia, then stops and restores the native gateway while Caddy remains running.",
     }
     if deletions:
-        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Processes one authorized permanent account deletion per run.")
+        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Reconciles the opt-in Connect-operator identity-provider group and independently processes one authorized permanent account deletion per run.")
         result.pop("retention_days")
         result.pop("retention_recent_copies")
     if not apply:

@@ -2,6 +2,7 @@
 from contextlib import nullcontext
 import hashlib
 import json
+from pathlib import Path
 import sys
 
 import pytest
@@ -54,6 +55,18 @@ def test_schedule_uses_only_the_verified_immutable_manager(tmp_path, monkeypatch
         assert getattr(exc, "code", None) == "connect_users_invalid"
     else:
         raise AssertionError("untrusted manager link was accepted")
+
+
+def test_account_worker_accepts_only_the_exact_prior_owned_description(tmp_path, monkeypatch):
+    manager = _installed_manager(tmp_path, monkeypatch)
+    desired = user_schedule._service(manager, (Path("/private"),), deletions=True)
+    prior = desired.replace(
+        b"Description=Anvil Connect account reconciliation worker\n",
+        b"Description=Anvil Connect account deletion worker\n",
+        1,
+    )
+    assert user_schedule._prior_service(prior, desired)
+    assert not user_schedule._prior_service(prior.replace(b"After=network-online.target", b"After=foreign.target"), desired)
 
 
 @pytest.mark.parametrize("deletions", [False, True])

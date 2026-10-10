@@ -49,7 +49,7 @@ def _users_parser(actions) -> None:
         leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
         leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
                           output=None, input=None, sha256=None, destination=None, include_gateway=False)
-        if operation not in {"list", "backup", "schedule", "deletion-schedule", "process-deletions", "restore"}:
+        if operation not in {"list", "backup", "sync-operators", "schedule", "deletion-schedule", "process-deletions", "restore"}:
             leaf.add_argument("username", help="Exact local username.")
         if operation != "restore":
             leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -262,7 +262,28 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
                 if args.operation == "process-deletions":
                     from .user_delete import process_pending
-                    result = process_pending(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                    from .users import sync_operators
+                    projection = deletion = None
+                    projection_error = deletion_error = None
+                    try:
+                        projection = sync_operators(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                    except Exception as exc:
+                        projection_error = exc
+                    try:
+                        deletion = process_pending(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                    except Exception as exc:
+                        deletion_error = exc
+                    if projection_error is not None or deletion_error is not None:
+                        failure = projection_error or deletion_error
+                        if apply:
+                            error = manage.ManageError("Account reconciliation worker did not complete every independent operation.", may_have_executed=True)
+                            error.recovery = {
+                                "operator_group": "failed" if projection_error is not None else "completed",
+                                "deletion": "failed" if deletion_error is not None else "completed",
+                            }
+                            raise error from failure
+                        raise failure
+                    result = {"operator_group": projection, "deletion": deletion}
                 else:
                     from .user_schedule import schedule
                     options = {"deletions": True} if args.operation == "deletion-schedule" else {}
@@ -272,6 +293,9 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                     raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")
                 from .user_backup import restore
                 result = restore(args.input, args.destination, sha256=args.sha256, apply=apply)
+            elif args.operation == "sync-operators":
+                from .users import sync_operators
+                result = sync_operators(args.manifest or DEFAULT_MANIFEST, apply=apply)
             else:
                 if args.input or args.destination or args.sha256:
                     raise UsageError("--input, --sha256 and --destination are only accepted for restore.", code="connect_users_invalid")

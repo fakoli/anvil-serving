@@ -45,6 +45,7 @@ _RESET_TOKEN = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\Z")
 _NOTIFICATION_MAX = 32768
 _SETUP_TIMEOUT = 5
 _SETUP_RETRY_DELAY = 0.1
+_OPERATOR_GROUP = "anvil-connect-operators"
 
 
 def _invalid(message: str) -> UsageError:
@@ -565,6 +566,156 @@ def _human_admin_read(data: dict, manifest: str, payload: dict, runner) -> dict:
             directory.rmdir()
         except FileNotFoundError:
             pass
+
+
+def _operator_usernames(data: dict, manifest: str, users: dict, runner) -> set[str]:
+    """Resolve the exact enabled browser administrators without exposing identities."""
+    administration = data["gateway"]["gateway"].get("browser_administration")
+    enabled_clients = [client for client in data["authelia"].get("additional_oidc_clients", [])
+                       if client.get("groups_scope") is True]
+    if not enabled_clients:
+        return set()
+    if not isinstance(administration, dict):
+        return set()
+    resource = administration["browser_resource"]
+    result: set[str] = set()
+    for principal in administration["operators"]:
+        response = _human_admin_read(data, manifest, {"operation": "operator-inspect", "principal": principal}, runner)
+        if response.get("operation") != "operator-inspect" or type(response.get("found")) is not bool:
+            raise _invalid("Native Connect operator inspection is invalid.")
+        if response["found"] is False:
+            continue
+        human = response.get("human")
+        if not isinstance(human, dict) or human.get("id") != principal or type(human.get("generation")) is not int or human["generation"] <= 0:
+            raise _invalid("Native Connect operator inspection is invalid.")
+        username = human.get("username")
+        resources = human.get("resources")
+        if (human.get("disabled") is not False or human.get("deletion_request") not in (None, "")
+                or not isinstance(username, str) or _USER.fullmatch(username) is None
+                or not isinstance(resources, list) or any(not isinstance(item, str) for item in resources)
+                or resource not in resources):
+            continue
+        account = users.get(username)
+        if account is None or account.get("disabled", False) is True:
+            continue
+        if username in result:
+            raise _invalid("Configured Connect operators do not resolve to unique accounts.")
+        result.add(username)
+    return result
+
+
+def _operator_group_changes(users: dict, desired: set[str]) -> tuple[dict, int, int]:
+    updated = json.loads(json.dumps({"users": users}))["users"]
+    additions = removals = 0
+    for username, account in updated.items():
+        groups = account.setdefault("groups", [])
+        if len(groups) != len(set(groups)):
+            raise _invalid("Account groups must be unique before operator reconciliation.")
+        present = _OPERATOR_GROUP in groups
+        wanted = username in desired
+        if present == wanted:
+            continue
+        if wanted:
+            groups.append(_OPERATOR_GROUP)
+            additions += 1
+        else:
+            account["groups"] = [group for group in groups if group != _OPERATOR_GROUP]
+            removals += 1
+    return updated, additions, removals
+
+
+def sync_operators(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=None,
+                   unit_root: Path = Path("/etc/systemd/system")) -> dict:
+    """Project current Connect browser administrators into one Authelia group."""
+    _require_root()
+    _path(manifest)
+    data = read_manifest(manifest)
+    opt_in = any(client.get("groups_scope") is True for client in data["authelia"].get("additional_oidc_clients", []))
+    result = {"schema": "anvil-connect.operator-group/v1", "group": _OPERATOR_GROUP,
+              "enabled": opt_in, "applied": False, "changed": False,
+              "eligible_operators": 0, "additions": 0, "removals": 0}
+    if not opt_in:
+        return result
+    manage._safe_authelia_users_file(data, writable=True)
+    raw, info = _read_users(data)
+    database = _database(raw)
+    desired = _operator_usernames(data, manifest, database["users"], runner)
+    updated, additions, removals = _operator_group_changes(database["users"], desired)
+    result.update(eligible_operators=len(desired), additions=additions, removals=removals,
+                  changed=bool(additions or removals))
+    if not apply or not result["changed"]:
+        return result
+    root = Path(data["config_root"])
+    path = Path(data["authelia"]["users_file"])
+    binary = data["components"]["authelia"]
+    with manage._deployment_lock(root):
+        manage._require_no_authelia_upgrade(root)
+        manage._verify_owned_tree(root)
+        config = root / "authelia/configuration.yml"
+        if manage._read_regular(config, _MAX_FILE) != _authelia(data).encode():
+            raise _invalid("Authelia configuration differs from this declaration; reconcile it before operator reconciliation.")
+        if manage._digest(Path(binary)) != manage._component_lock()["authelia"]:
+            raise _invalid("Authelia executable does not match the pinned component.")
+        source = manage._read_unit(root / "systemd" / _UNIT)
+        if source is None or manage._unit_exec_path(source) != Path(binary):
+            raise _invalid("Authelia unit does not match its declared executable.")
+        manage._verify_unit(unit_root, _UNIT, source)
+        manage._unit_metadata(runner, unit_root, (_UNIT,), present=True)
+        latest, latest_info = _read_users(data)
+        if latest != raw:
+            raise _invalid("Users file changed during operator reconciliation; retry the command.")
+        # Re-read native authority immediately before mutation. The periodic
+        # worker converges a later authority change without inventing a hook
+        # across the gateway and identity-provider ownership boundary.
+        latest_database = _database(latest)
+        latest_desired = _operator_usernames(data, manifest, latest_database["users"], runner)
+        if latest_desired != desired:
+            raise _invalid("Connect operator authority changed during reconciliation; retry the command.")
+        latest_updated, latest_additions, latest_removals = _operator_group_changes(latest_database["users"], desired)
+        if (latest_additions, latest_removals) != (additions, removals):
+            raise _invalid("Operator group membership changed during reconciliation; retry the command.")
+        active, _ = manage._unit_state(runner, _UNIT)
+        stopped = False
+        replaced = False
+        try:
+            if active:
+                stopped = True
+                manage._action(runner, (manage._SYSTEMCTL, "stop", _UNIT), 30, "Authelia stop failed")
+            if manage._unit_state(runner, _UNIT)[0]:
+                raise manage.ManageError("Authelia is still active")
+            final_raw, latest_info = _read_users(data)
+            if final_raw != raw:
+                raise _invalid("Users file changed during operator reconciliation; retry the command.")
+            from .user_backup import snapshot
+            result["backup"] = snapshot(data, manifest, users_raw=raw)
+            payload = json.dumps({"users": latest_updated}, indent=2, ensure_ascii=True).encode() + b"\n"
+            _replace_users(path, payload, latest_info)
+            replaced = True
+            result["applied"] = True
+        except BaseException as exc:
+            if stopped or replaced:
+                raise _partial("Operator group reconciliation may have partially completed; inspect the retained backup.", result) from exc
+            raise
+        finally:
+            if stopped:
+                try:
+                    manage._action(runner, (manage._SYSTEMCTL, "start", _UNIT), 30, "Authelia restart failed")
+                    if not manage._unit_state(runner, _UNIT)[0]:
+                        raise manage.ManageError("Authelia did not become active", may_have_executed=True)
+                except BaseException as exc:
+                    try:
+                        manage._action(runner, (manage._SYSTEMCTL, "stop", _UNIT), 30, "Authelia recovery stop failed")
+                        if manage._unit_state(runner, _UNIT)[0]:
+                            raise manage.ManageError("Authelia recovery did not stop")
+                        if replaced:
+                            _replace_users(path, raw, info)
+                        manage._action(runner, (manage._SYSTEMCTL, "start", _UNIT), 30, "Authelia recovery start failed")
+                        if not manage._unit_state(runner, _UNIT)[0]:
+                            raise manage.ManageError("Authelia recovery did not become active")
+                    except BaseException as recovery_error:
+                        raise _partial("Operator group recovery failed; inspect the retained backup.", result) from recovery_error
+                    raise _partial("Operator group reconciliation rolled back after Authelia restart failed.", result) from exc
+    return result
 
 
 def operate(manifest: str, operation: str, username: str | None, *, email: str | None = None, role: str | None = None,
