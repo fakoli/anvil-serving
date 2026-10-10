@@ -301,7 +301,7 @@ def run(values, auth, config, *, confirm, preview_out, _run):
         def roster(stopped=False):
             return router_manage._offline_compose_roster(values['compose'], router_manage.DEFAULT_SERVICE,
                 container, _run=_run, live_target=not stopped, _metadata_only=True,
-                _reboot_helper=(helper_name, helper, successor['image_id']))
+                _reboot_helper=(helper_name, helper, successor['image_id']), _owner_state_only=True)
         baseline = roster()
         def recheck(stopped=None):
             unchanged()
@@ -314,7 +314,7 @@ def run(values, auth, config, *, confirm, preview_out, _run):
             current_roster = roster(stopped=stopped is not None)
             # Only the selected target's running/restarting/stopped observation changes.
             def others(value):
-                return {'rendered': value['rendered'], 'roster': [r for r in value['roster']
+                return {'rendered': value['rendered'], 'owner_storage': value['owner_storage'], 'roster': [r for r in value['roster']
                     if r['id'] != before['container_id']]}
             require(others(current_roster) == others(baseline))
             if stopped is not None:

@@ -861,6 +861,15 @@ no incomplete successor, the original store binding and closure, and unchanged
 Docker daemon/container/image/Compose identity. This version requires the key
 store and admission state in the same named volume. Other layouts refuse.
 
+Owner lifecycle checks derive their storage scope from the bounded read-only
+router configuration and the actual deepest mounts covering key and admission
+directories. Other writers to that named volume or overlapping host directories
+refuse; a controller using only a separate shared artifact directory can remain
+active. Configuration hashes and the complete container roster are rechecked.
+Legacy stop and general migration, key and client workers retain the broader
+check of every writable mount. Owner-only scope is internal to fixed accounting
+programs; it is not an operator-supplied exemption.
+
 The protected pending intent records the acknowledgment before stopping. Retries
 reuse that exact intent and acknowledgment time, including after expiry, while
 rechecking the same boot and all ownership evidence under fresh fences. Once a

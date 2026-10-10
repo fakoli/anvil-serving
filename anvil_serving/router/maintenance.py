@@ -469,7 +469,8 @@ def _current_stop_proof(values, pending, *, _run):
         f" marker=_private_json(Path(str(store.path)+'.maintenance-current-stops')/({pending['authorization']['operation_id']!r}+'.json'))\n"
         f" require(digest(marker)=={digest(pending['marker'])!r})\n"
         " print(json.dumps(record))\n")
-    record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run))
+    record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
+                                          _owner_state_only=True))
     require(record['phase'] == 'ready' and record['anchor'] == native['record']['anchor']
             and record['death']['closure_generation'] == native['observation']['closure']['generation']
             and record['death']['closure_consumed'] is False)
@@ -541,7 +542,7 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
         docker_identity(before)
         _current_successor(successor, before, _run=_run)
         require(before['container_id'] == auth['expected_container_id'] and before['image_id'] == auth['expected_image_id'])
-        roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
+        roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True)
         mounted = [m for m in _restart_custody(DEFAULT_CONTAINER, _run)['mounts'] if m['destination'] == DEFAULT_INSTALLED_CONFIG]
         require(len(mounted) == 1 and mounted[0]['type'] == 'bind' and mounted[0]['read_only'] is True)
         raw = read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2)
@@ -561,7 +562,7 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
                 _current_successor(successor, before, _run=_run)
                 require(int(time.time()) < native['observation']['expires_at']
                         and before == _container_incarnation(DEFAULT_CONTAINER, _run=_run)
-                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True)
+                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True)
                         and read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2) == raw)
                 alive()
             recheck()
@@ -640,7 +641,7 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         state,_=_container_compose_project(DEFAULT_CONTAINER,_run=native)
         live=state=='running'
         require(live or pending_value is not None and state in {'exited','dead'})
-        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=auth['phase']=='legacy-stop')
+        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=auth['phase']=='legacy-stop',_owner_state_only=auth['phase']!='legacy-stop')
         mounted=[m for m in _restart_custody(DEFAULT_CONTAINER,native)['mounts'] if m['destination']==DEFAULT_INSTALLED_CONFIG]
         require(len(mounted)==1 and mounted[0]['type']=='bind' and mounted[0]['read_only'] is True)
         if auth['phase']=='legacy-stop':
@@ -697,7 +698,7 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         require(result.returncode==0 and len(result.stdout or '')<=16384
                 and before==_container_incarnation(DEFAULT_CONTAINER,_run=native)
                 and roster==_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,
-                    _run=native,live_target=True))
+                    _run=native,live_target=True,_owner_state_only=True))
         require(read_private_auth_file(values['authorization'],max_bytes=16384)==auth_raw
                 and read_private_auth_file(values['compose'],max_bytes=2*1024**2)==compose_raw
                 and read_private_auth_file(mounted[0]['source'],max_bytes=2*1024**2)==raw)

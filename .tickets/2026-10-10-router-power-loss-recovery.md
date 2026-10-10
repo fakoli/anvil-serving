@@ -39,3 +39,19 @@ actual restart identity, locks, proof commit and CLOSED successor transfer are
 native. This is not a host reboot qualification. The selected live model and
 router state have not been changed. Exact-source packaging, CI, installation,
 operator authorization, live recovery and readmission remain separate gates.
+
+The first live preview correctly refused at the consumer guard, but that guard
+included a shared artifact directory used by an independent media controller.
+Owner lifecycle now derives its narrower accounting-directory scope from the
+mounted configuration, verifies actual mount identity, and still refuses named
+volume writers and overlapping bind paths. The same fix covers reboot, ordinary
+owner custody, cold startup, and current-stop/readmission; generic writers and
+legacy stop keep broad exclusion. Qualification adds an active shared-artifact
+consumer that survives the owned reboot recovery and a real competing ledger
+volume consumer that must block before stop. No live recovery is yet applied.
+
+The bounded host inode ancestry check also rejects bind aliases and changed or
+unreadable metadata. It requires normal operator access to Docker mountpoints.
+Synthetic tests cover alias conflicts and metadata failures; the opt-in Docker
+fixture explicitly skips when that host metadata is protected. A privileged
+operator preview is still required before live recovery.

@@ -245,7 +245,7 @@ def reboot_host(retained, monkeypatch):
         return deepcopy(f.stopped)
     def roster(*a, live_target=False, **kw):
         custody.require(live_target or f.stopped_now)
-        return {'rendered': compose, 'roster': []}
+        return {'rendered': compose, 'roster': [], 'owner_storage': {'synthetic': True}}
     monkeypatch.setattr(router_manage, '_restart_custody', inspect)
     monkeypatch.setattr(router_manage, '_container_incarnation', incarnation)
     monkeypatch.setattr(router_manage, '_offline_compose_roster', roster)
@@ -351,6 +351,7 @@ def test_owned_docker_previous_boot_crash_loop_stops_and_starts_closed(docker_ow
         return subprocess.Popen(argv, **kw)
     monkeypatch.setattr(reboot, '_session', lambda identity, request: original_session(identity, request, _popen=diagnostic_popen))
     f = docker_owner; volume = 'ruu-reboot-' + uuid.uuid4().hex
+    consumers = []
     original_roster = router_manage._offline_compose_roster
     def owned_roster(*a, **kw):
         result = original_roster(*a, **kw)
@@ -361,6 +362,8 @@ def test_owned_docker_previous_boot_crash_loop_stops_and_starts_closed(docker_ow
     monkeypatch.setattr(router_manage, '_offline_compose_roster', owned_roster)
     compose = json.loads(f['compose'].read_text()); service = compose['services']['router']; image = service['image']
     service['volumes'][0] = {'type': 'volume', 'source': 'store', 'target': '/fixture/private'}
+    media = f['private'].parent/'media'; media.mkdir()
+    service['volumes'].append({'type': 'bind', 'source': str(media), 'target': '/fixture/media'})
     compose['volumes'] = {'store': {'name': volume, 'external': True}}
     protected(f['compose'], compose)
     subprocess.run(['docker', 'volume', 'create', volume], check=True, capture_output=True)
@@ -373,7 +376,21 @@ def test_owned_docker_previous_boot_crash_loop_stops_and_starts_closed(docker_ow
         finally:
             subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=15)
             assert subprocess.run(['docker', 'inspect', name], capture_output=True, timeout=5).returncode != 0
+    def consumer(mount):
+        name = 'ruu-reboot-consumer-' + uuid.uuid4().hex
+        consumers.append(name)
+        subprocess.run(['docker', 'run', '--detach', '--name', name, '--network=none', '--memory=128m',
+            '--cpus=1', '--pids-limit=32', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges:true',
+            '--user=1000:1000', '--mount', mount, '--entrypoint=python', image,
+            '-c', 'import time;time.sleep(600)'], check=True, capture_output=True, timeout=15)
+        return name
     try:
+        mountpoint = subprocess.check_output(['docker', 'volume', 'inspect', '--format', '{{.Mountpoint}}', volume],
+                                             text=True, timeout=5).strip()
+        try:
+            Path(mountpoint).stat()
+        except PermissionError:
+            pytest.skip('operator privileges required for host Docker volume inode inspection')
         owned("import os;os.chown('/fixture/private',1000,1000);os.chmod('/fixture/private',0o700)", user='0:0')
         f['start'](); f['custody']('live')
         incarnation = router_manage._container_incarnation(f['name'], _run=f['run'])
@@ -436,6 +453,11 @@ print(json.dumps({'snapshot':c.digest({p.name:c.digest(v)}),'legacy':c.digest(r)
             'compose_sha256': hashlib.sha256(f['compose'].read_bytes()).hexdigest(),
             'authorization': str(permission), 'receipt_out': str(f['private']/'reboot-receipt.json')}
         declaration = protected(f['private']/'reboot-config.json', values)
+        media_consumer = consumer('type=bind,src='+str(media)+',dst=/media')
+        writer = consumer('type=volume,src='+volume+',dst=/store')
+        with pytest.raises(ValueError, match='router_offline_storage_busy'):
+            maintenance.run(declaration, _run=f['run'])
+        subprocess.run(['docker', 'rm', '-f', writer], check=True, capture_output=True, timeout=15)
         preview = maintenance.run(declaration, _run=f['run'])
         assert preview['local_frontier'] == 'previous-boot-owner'
         authorization['preview_sha256'] = custody.digest(preview); protected(permission, authorization)
@@ -450,6 +472,10 @@ print(json.dumps({'snapshot':c.digest({p.name:c.digest(v)}),'legacy':c.digest(r)
         previous = next(r for r in records if r['phase'] == 'transferred')
         assert previous['schema'] == 'router-managed-incarnation/v2'
         assert previous['anchor']['run_owner']['boot_id'] == oldboot
+        assert subprocess.check_output(['docker', 'inspect', '--format', '{{.State.Running}}', media_consumer],
+                                       text=True, timeout=5).strip() == 'true'
     finally:
+        for name in consumers:
+            subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=15)
         subprocess.run(['docker', 'rm', '-f', f['name']], capture_output=True, timeout=15)
         subprocess.run(['docker', 'volume', 'rm', volume], check=True, capture_output=True, timeout=15)
