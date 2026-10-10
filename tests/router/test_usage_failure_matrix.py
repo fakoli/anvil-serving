@@ -217,10 +217,30 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
                 finalize_ms = (perf_counter() - before) * 1000
                 diagnostic.observe(worker_id, admission_ms, finalize_ms)
                 observations.append((admission_ms, finalize_ms))
-            except Exception:
+            except Exception as error:
                 snapshot = diagnostic.first_failure(worker_id)
                 if snapshot is not None:
-                    print('SOURCE_C4_FAILURE ' + json.dumps(snapshot, sort_keys=True))
+                    # Preserve the raising frames and bounded numeric/type
+                    # metadata while adding the four-worker causal snapshot.
+                    # Exception text, frame values, SQL and paths stay absent.
+                    import sqlite3
+                    chain, seen, current = [], set(), error
+                    while current is not None and id(current) not in seen and len(chain) < 4:
+                        seen.add(id(current))
+                        frames, trace = [], current.__traceback__
+                        while trace is not None and len(frames) < 16:
+                            frames.append({'function': trace.tb_frame.f_code.co_name, 'line': trace.tb_lineno})
+                            trace = trace.tb_next
+                        chain.append({'exception': type(current).__name__, 'frames': frames,
+                                      **{name: getattr(current, name, None) for name in
+                                         ('sqlite_errorcode', 'errno', 'winerror')}})
+                        current = current.__cause__ or current.__context__
+                    print('SOURCE_C4_FAILURE ' + json.dumps({
+                        'phase': phase, 'tracked': tracked,
+                        'elapsed_ms': (perf_counter() - before) * 1000,
+                        'sqlite_version': sqlite3.sqlite_version, 'chain': chain,
+                        'worker_snapshot': snapshot,
+                    }, sort_keys=True))
                 raise
         diagnostic.phase(worker_id, 'complete')
         return observations
