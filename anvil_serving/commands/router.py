@@ -14,7 +14,8 @@ def commands() -> CommandNode:
             _node("recovery-status", "Inspect protected custody sidecars without authorizing recovery.",
                 handler=_handler("anvil_serving.router_recovery_status", attribute="dispatch", argv_prefix=()),
                 mutation_class="read", execution_policy="offline",
-                options=(_option("--container", summary="Exact deployed router container.", value_name="NAME"),),
+                options=(_option("--container", summary="Exact deployed router container.", value_name="NAME"),
+                         _option("--ledger", summary="Correlate usage metadata with an isolated native reader.")),
                 docs_anchor="docs/cli/router.md#recovery-diagnostics"),
             _resource_node(
                 "export-config",

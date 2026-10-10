@@ -7823,6 +7823,15 @@
           "requires_confirmation": false,
           "summary": "Exact deployed router container.",
           "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--ledger"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Correlate usage metadata with an isolated native reader.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",

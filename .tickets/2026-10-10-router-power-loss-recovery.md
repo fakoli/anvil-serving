@@ -21,3 +21,11 @@ without opening SQLite or claiming ledger correlation. Native ledger/coverage
 correlation and exclusion of a partial successor are still required before any
 new recovery path is designed or authorized. A host reboot or operator flag alone
 does not supply that proof. Remote outcome uncertainty must remain visible.
+
+The optional `--ledger` diagnostic now correlates a bounded native metadata
+snapshot against the same protected sidecar set. It reports incomplete or
+unanchored rows, domain/configuration differences and transfer inconsistencies.
+Its isolated incumbent-image helper uses existing reader custody, query-only
+SQL and fixed aggregate output. It does not write application state or grant
+recovery; normal SQLite WAL/SHM housekeeping is possible. Physical-death proof
+for a changed incarnation and a fresh fenced recovery transaction remain open.
