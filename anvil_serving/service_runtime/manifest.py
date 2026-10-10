@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import tempfile
 import tomllib
 from urllib.parse import urlsplit
@@ -17,14 +18,32 @@ FIELDS = frozenset({"id", "resource", "manager", "engine", "support", "dependenc
     "container", "image_id", "identity_labels", "startup_policy", "api_key_env",
     "health_path", "models_path", "serve", "serve_manifest", "feature", "memory_mib",
     "external_compose", "compose_project", "compose_service", "compose_config_source",
-    "compose_config_target", "expected_image_id"})
+    "compose_config_target", "expected_image_id", "retained_container", "container_id",
+    "restart_count", "restart_policy", "restart_maximum_retry_count",
+    "writable_mounts_sha256", "security_projection_sha256", "shutdown_grace_seconds",
+    "healthcheck_required", "healthcheck_sha256"})
+
+_RECIPE_OWNER_LABEL = "io.anvil-serving.managed-by"
+_RECIPE_OWNER_VALUE = "models-recipes"
+_SHA256 = re.compile(r"[a-f0-9]{64}")
 
 
 def _read(path: Path) -> bytes:
-    if path.is_symlink() or not path.is_file():
+    # Windows has no O_NOFOLLOW; preserve the explicit sibling-mode refusal.
+    # POSIX keeps this precheck plus the descriptor-level no-follow guarantee.
+    if path.is_symlink():
         raise ServiceError("bad_config", "service manifest must be a regular, non-symlink file")
-    with path.open("rb") as stream:
-        raw = stream.read(MAX_BYTES + 1)
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        raise ServiceError("bad_config", "service manifest must be a regular, non-symlink file") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ServiceError("bad_config", "service manifest must be a regular, non-symlink file")
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            raw = stream.read(MAX_BYTES + 1)
+    finally:
+        os.close(fd)
     if len(raw) > MAX_BYTES:
         raise ServiceError("bad_config", "service manifest exceeds size limit")
     return raw
@@ -55,8 +74,11 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
             raise ServiceError("bad_config", "manager must be launchd or docker")
         if item["manager"] != "docker" and any(key in item for key in (
                 "external_compose", "compose_project", "compose_service", "compose_config_source",
-                "compose_config_target", "expected_image_id")):
-            raise ServiceError("bad_config", "Compose identity fields require the Docker manager")
+                "compose_config_target", "expected_image_id", "retained_container", "container_id",
+                "restart_count", "restart_policy", "restart_maximum_retry_count",
+                "writable_mounts_sha256", "security_projection_sha256", "shutdown_grace_seconds",
+                "healthcheck_required", "healthcheck_sha256")):
+            raise ServiceError("bad_config", "Docker custody fields require the Docker manager")
         if item["engine"] not in ENGINES:
             raise ServiceError("bad_config", "unknown engine adapter")
         if item.get("support", "supported") not in {"supported", "legacy"}:
@@ -88,8 +110,13 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
             ):
                 raise ServiceError("bad_config", "Docker identity_labels must be pinned")
             external = item.get("external_compose", False)
+            retained = item.get("retained_container", False)
             if type(external) is not bool:
                 raise ServiceError("bad_config", "external_compose must be a boolean")
+            if type(retained) is not bool:
+                raise ServiceError("bad_config", "retained_container must be a boolean")
+            if external and retained:
+                raise ServiceError("bad_config", "retained_container and external_compose are mutually exclusive")
             compose_fields = ("compose_project", "compose_service", "compose_config_source", "compose_config_target")
             if external:
                 if not re.fullmatch(r"sha256:[a-f0-9]{64}", str(item.get("expected_image_id", ""))):
@@ -105,6 +132,41 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
                         raise ServiceError("bad_config", f"invalid {key}")
             elif any(key in item for key in compose_fields + ("expected_image_id",)):
                 raise ServiceError("bad_config", "Compose identity fields require external_compose")
+            retained_fields = ("container_id", "restart_count", "restart_policy",
+                               "restart_maximum_retry_count", "writable_mounts_sha256",
+                               "security_projection_sha256", "shutdown_grace_seconds",
+                               "healthcheck_required", "healthcheck_sha256")
+            if retained:
+                if item["engine"] != "none" or deps or any(
+                    key in item for key in (
+                        "serve", "serve_manifest", "model", "external_compose", "endpoint",
+                        "api_key_env", "health_path", "models_path",
+                    )
+                ):
+                    raise ServiceError("bad_config", "retained containers are isolated non-model host services")
+                if not re.fullmatch(r"[a-f0-9]{64}", str(item.get("container_id", ""))):
+                    raise ServiceError("bad_config", "retained container_id must pin one immutable Docker incarnation")
+                if isinstance(item.get("restart_count"), bool) or not isinstance(item.get("restart_count"), int) or item["restart_count"] < 0:
+                    raise ServiceError("bad_config", "retained restart_count must be a nonnegative integer")
+                if item.get("restart_policy") not in {"no", "always", "unless-stopped", "on-failure"}:
+                    raise ServiceError("bad_config", "retained restart_policy is invalid")
+                retry = item.get("restart_maximum_retry_count")
+                if isinstance(retry, bool) or not isinstance(retry, int) or retry < 0:
+                    raise ServiceError("bad_config", "retained restart_maximum_retry_count must be nonnegative")
+                grace = item.get("shutdown_grace_seconds")
+                if isinstance(grace, bool) or not isinstance(grace, int) or not 1 <= grace <= 300:
+                    raise ServiceError("bad_config", "retained shutdown_grace_seconds must be from 1 through 300")
+                for key in ("writable_mounts_sha256", "security_projection_sha256", "definition_sha256"):
+                    if not _SHA256.fullmatch(str(item.get(key, ""))):
+                        raise ServiceError("bad_config", f"retained {key} must be a SHA-256 digest")
+                if not isinstance(item.get("definition"), str) or not item["definition"]:
+                    raise ServiceError("bad_config", "retained container requires reviewed nonsecret definition provenance")
+                if item.get("healthcheck_required") is not True or not _SHA256.fullmatch(str(item.get("healthcheck_sha256", ""))):
+                    raise ServiceError("bad_config", "retained container requires a reviewed Docker healthcheck")
+            elif any(key in item for key in retained_fields):
+                raise ServiceError("bad_config", "retained custody fields require retained_container")
+            elif not external and labels.get(_RECIPE_OWNER_LABEL) != _RECIPE_OWNER_VALUE:
+                raise ServiceError("bad_config", "ordinary Docker bindings require first-party recipe ownership")
             identity = ("docker", item["container"])
         if identity in identities:
             raise ServiceError("bad_config", "duplicate supervisor identity")
@@ -132,10 +194,14 @@ def validate(data: dict, parent: Path) -> dict[str, dict]:
         for key in ("health_path", "models_path"):
             if key in item and (not item[key].startswith("/") or "?" in item[key] or "#" in item[key]):
                 raise ServiceError("bad_config", f"invalid {key}")
-        if item.get("startup_policy", "unless-stopped") not in {"always", "unless-stopped"}:
-            raise ServiceError("bad_config", "unsupported startup_policy")
-        if item["manager"] == "docker":
-            item.setdefault("startup_policy", "unless-stopped")
+        if item.get("retained_container") is True:
+            if "startup_policy" in item:
+                raise ServiceError("bad_config", "retained containers pin restart_policy instead of startup_policy")
+        else:
+            if item.get("startup_policy", "unless-stopped") not in {"always", "unless-stopped"}:
+                raise ServiceError("bad_config", "unsupported startup_policy")
+            if item["manager"] == "docker":
+                item.setdefault("startup_policy", "unless-stopped")
         if "memory_mib" in item and (isinstance(item["memory_mib"], bool) or not isinstance(item["memory_mib"], int) or item["memory_mib"] <= 0):
             raise ServiceError("bad_config", "memory_mib must be a positive integer")
         result[name] = item

@@ -10,6 +10,11 @@ _RESOLUTION_OPTIONS = (
     _option("--timeout-seconds", summary="Bounded operation timeout.", value_name="SECONDS"),
 )
 
+_RETAINED_APPROVAL_OPTIONS = (
+    _option("--expected-preview-sha256", summary="Reviewed retained-container preview digest.", value_name="SHA256"),
+    _option("--operator-authorization-file", summary="Protected retained-container operator authorization.", value_name="PATH"),
+)
+
 # Service mutations preview by default in their local handler.  The generic
 # confirmation policy treats this conditional option as the apply gate.
 _PREVIEW_APPLY_OPTION = (
@@ -141,7 +146,12 @@ def services() -> CommandNode:
                     "host_services_manage",
                     action=action,
                     mutation=True,
-                    options=CONFIRM_OPTIONS + _PREVIEW_APPLY_OPTION + _RESOLUTION_OPTIONS,
+                    options=(
+                        CONFIRM_OPTIONS
+                        + _PREVIEW_APPLY_OPTION
+                        + _RESOLUTION_OPTIONS
+                        + (_RETAINED_APPROVAL_OPTIONS if action in {"up", "down"} else ())
+                    ),
                 )
                 for action, summary in (
                     ("install", "Render a declared service supervisor definition without starting it."),

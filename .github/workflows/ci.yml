@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         # Boundary versions of the support envelope only; a middle version
         # adds a full-suite run without adding coverage for stdlib-only code.
         python-version: ["3.11", "3.13"]
@@ -60,13 +60,13 @@ jobs:
         run: node --version
 
       - name: Run native checkpoint acquisition contracts before the full suite
-        # Exercise Windows handle sharing and executable fixtures before a
-        # complete suite run, as well as the POSIX replacement guard.
+        # Exercise native checkpoint acquisition and executable fixtures
+        # before the complete Linux suite, including the POSIX replacement guard.
         run: python -m pytest tests/test_model_pull_native.py tests/test_model_pull_native_review.py -q
 
       - name: Run Connect contracts before the full suite
         # Catch portable schema/renderer and platform-boundary regressions
-        # before spending a complete Linux or Windows suite run.
+        # before spending a complete Linux suite run.
         run: python -m pytest tests/connect/ -q
 
       - name: Run TTS benchmark contracts before the full suite
@@ -75,6 +75,35 @@ jobs:
 
       - name: Run tests
         run: python -m pytest tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+
+  windows-cli:
+    name: Windows CLI smoke (py3.13)
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install CLI and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Verify installed version
+        run: anvil-serving --version
+      - name: Verify installed help
+        run: anvil-serving --help > $null
+      - name: Verify installed command manifest
+        run: |
+          anvil-serving --command-manifest > "$env:RUNNER_TEMP/command-manifest.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m json.tool "$env:RUNNER_TEMP/command-manifest.json" > $null
+          exit $LASTEXITCODE
+      - name: Verify synthetic topology and typed remote dispatch
+        run: >-
+          python -m pytest -q
+          tests/test_cli.py::test_topology_resolve_json_is_structured_and_contextual
+          tests/test_cli.py::test_cli_remote_config_export_maps_path_and_allows_bounded_large_response
+          tests/test_cli.py::test_cli_remote_router_restart_dispatches_typed_operation
+          tests/test_cli.py::test_cli_remote_router_dry_run_never_generates_mutation_idempotency
 
   connect-linux:
     name: Connect native contracts (Linux)
@@ -185,7 +214,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 

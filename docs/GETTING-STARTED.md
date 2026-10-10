@@ -10,8 +10,13 @@ Use `127.0.0.1` in local URLs.
 
 ## Prerequisites
 
-- **Python >= 3.11** — the runtime is standard-library only; there are no required dependencies
-  to install beyond the package itself.
+- **Python >= 3.11** — the CLI is standard-library only; there are no required
+  dependencies to install beyond the package itself. Native PowerShell supports
+  command discovery, offline configuration and topology work, and declared
+  typed remote operations. On Windows, run service, router, controller, and
+  accounting runtimes in Linux containers with Docker Desktop's Linux engine
+  or inside Linux in WSL. Native Windows deployment of those runtimes is
+  unsupported.
 - **At least one OpenAI-compatible model serve** for the routed request. SGLang
   and vLLM are common options.
 - **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
@@ -31,6 +36,10 @@ For the current `main` documentation and MCP/controller command surface, install
 ```bash
 pip install -e .
 ```
+
+Run the CLI commands in Linux, macOS, or native Windows PowerShell. On Windows,
+local service runtimes belong in a Linux container or Linux in WSL; only verbs
+with a declared remote execution plan operate a remote owner.
 
 For released features only, you can install the latest published package:
 
@@ -214,7 +223,7 @@ to need on a first run:
 - The router answers `503` → the alias is configured but its local tier cannot serve right now.
   That is the gateway refusing cleanly rather than substituting another model; see the
   troubleshooting entry before changing anything.
-- Requests hang ~20s on Windows → a `localhost` URL sneaked in; use `127.0.0.1`.
+- Requests from a Windows client hang ~20s → a `localhost` URL sneaked in; use `127.0.0.1`.
 
 ## Next Steps
 

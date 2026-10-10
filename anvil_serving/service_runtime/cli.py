@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 from .contracts import READ_ACTIONS, MUTATING_ACTIONS, ServiceError
@@ -29,6 +30,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--confirm", action="store_true")
     parser.add_argument("--tail", type=int, default=100)
     parser.add_argument("--timeout-seconds", type=int, default=30)
+    parser.add_argument("--expected-preview-sha256")
+    parser.add_argument("--operator-authorization-file")
     parser.add_argument("--manager", choices=("launchd", "docker"))
     parser.add_argument("--service-label")
     parser.add_argument("--resource")
@@ -129,7 +132,14 @@ def run(argv: list[str] | None = None) -> CommandResult:
         return CommandResult(error=UsageError("--tail must be between 1 and 1000", code="bad_argument"))
     if not 1 <= args.timeout_seconds <= 7200:
         return CommandResult(error=UsageError("--timeout-seconds must be between 1 and 7200", code="bad_argument"))
+    if args.expected_preview_sha256 is not None and re.fullmatch(r"[a-f0-9]{64}", args.expected_preview_sha256) is None:
+        return CommandResult(error=UsageError("--expected-preview-sha256 must be a SHA-256 digest", code="bad_argument"))
     try:
+        retained_approval = {}
+        if args.expected_preview_sha256 is not None:
+            retained_approval["expected_preview_sha256"] = args.expected_preview_sha256
+        if args.operator_authorization_file is not None:
+            retained_approval["operator_authorization_file"] = args.operator_authorization_file
         result = execute(
             args.action,
             args.service,
@@ -146,6 +156,7 @@ def run(argv: list[str] | None = None) -> CommandResult:
             timeout_seconds=args.timeout_seconds,
             binding=_binding(args),
             remote=False,
+            **retained_approval,
         )
     except ServiceError as exc:
         return CommandResult(error=classify_error(exc))
