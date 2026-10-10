@@ -641,14 +641,16 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         state,_=_container_compose_project(DEFAULT_CONTAINER,_run=native)
         live=state=='running'
         require(live or pending_value is not None and state in {'exited','dead'})
-        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=auth['phase']=='legacy-stop',_owner_state_only=auth['phase']!='legacy-stop')
+        roster=_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,_run=native,live_target=live,_metadata_only=True,_owner_state_only=auth['phase']!='legacy-stop')
         mounted=[m for m in _restart_custody(DEFAULT_CONTAINER,native)['mounts'] if m['destination']==DEFAULT_INSTALLED_CONFIG]
         require(len(mounted)==1 and mounted[0]['type']=='bind' and mounted[0]['read_only'] is True)
         if auth['phase']=='legacy-stop':
             raw, config_identity = _legacy_config(mounted[0]['source'])
+            require(hashlib.sha256(raw).hexdigest()==auth['expected_configuration_revision'])
         else:
-            raw=read_private_auth_file(mounted[0]['source'],max_bytes=2*1024**2)
-        require(hashlib.sha256(raw).hexdigest()==auth['expected_configuration_revision'])
+            # The native roster reads the actual mounted nonsecret config and
+            # binds its storage. Its service owner need not be the root operator.
+            require(roster['owner_storage']['configuration_revision']==auth['expected_configuration_revision'])
         if auth['phase']=='legacy-stop':
             # Legacy risk acknowledgement binds the actually admitted profile,
             # never a future candidate file merely sharing project labels.
@@ -698,10 +700,9 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
         require(result.returncode==0 and len(result.stdout or '')<=16384
                 and before==_container_incarnation(DEFAULT_CONTAINER,_run=native)
                 and roster==_offline_compose_roster(values['compose'],DEFAULT_SERVICE,DEFAULT_CONTAINER,
-                    _run=native,live_target=True,_owner_state_only=True))
+                    _run=native,live_target=True,_metadata_only=True,_owner_state_only=True))
         require(read_private_auth_file(values['authorization'],max_bytes=16384)==auth_raw
-                and read_private_auth_file(values['compose'],max_bytes=2*1024**2)==compose_raw
-                and read_private_auth_file(mounted[0]['source'],max_bytes=2*1024**2)==raw)
+                and read_private_auth_file(values['compose'],max_bytes=2*1024**2)==compose_raw)
         response=strict_json(result.stdout)
         if not confirm and preview_out:_publish(Path(preview_out),response)
         return response

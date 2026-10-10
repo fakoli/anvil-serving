@@ -356,3 +356,48 @@ def test_ordinary_drain_and_consume_stay_strict_after_typed_remote_gap():
     assert result['drained'] is False and result['unknown']==['memory']
     with pytest.raises(ValueError):owner.consume(closure['barrier_token'])
     assert persisted and persisted[-1]['consumed'] is False
+
+
+@pytest.mark.parametrize('change', ['none', 'config_before', 'config_during', 'mount_during', 'private_declaration'])
+def test_successor_readmit_uses_mounted_roster_not_credential_reader(current_stop, monkeypatch, change):
+    import hashlib
+    import json
+    from types import SimpleNamespace
+    from anvil_serving import router_manage
+    from anvil_serving.control_plane.mcp import auth_file
+
+    f = current_stop
+    auth = {**f['auth'], 'schema': 'router-maintenance-authorization/v1',
+            'phase': 'successor-readmit', 'ingress_barrier': 'closed-generation'}
+    del auth['successor']
+    f['protected'](Path(f['values']['authorization']), auth)
+    monkeypatch.setattr(router_manage, '_container_compose_project', lambda *a, **kw: ('running', 'fixture'))
+    private = auth_file.read_private_auth_file
+    def credentials(path, **kw):
+        # Model root's credential policy refusing the service-owned config.
+        if Path(path) == f['router_config']:
+            raise auth_file.AuthFileError('different service owner')
+        return private(path, **kw)
+    monkeypatch.setattr(auth_file, 'read_private_auth_file', credentials)
+    calls = []
+    def roster(*a, **kw):
+        assert kw['_metadata_only'] is True and kw['_owner_state_only'] is True
+        calls.append('roster')
+        return {'owner_storage': {'configuration_revision': hashlib.sha256(f['router_config'].read_bytes()).hexdigest()},
+                'target': {'config_source': f.get('source', str(f['router_config']))}}
+    monkeypatch.setattr(router_manage, '_offline_compose_roster', roster)
+    def native(argv, **kw):
+        assert argv[:3] == ['docker', 'exec', '-i']
+        assert json.loads(kw['input']) == {'authorization': auth, 'confirm': False}
+        calls.append('native')
+        if change == 'config_during': f['router_config'].write_text('changed')
+        if change == 'mount_during': f['source'] = '/synthetic/other.toml'
+        return SimpleNamespace(returncode=0, stdout='{"preview":true}')
+    if change == 'config_before': f['router_config'].write_text('changed')
+    if change == 'private_declaration': f['config'].chmod(0o644)
+    if change == 'none':
+        assert maintenance.run(f['config'], _run=native) == {'preview': True}
+        assert calls == ['roster', 'native', 'roster']
+    else:
+        with pytest.raises(ValueError): maintenance.run(f['config'], _run=native)
+        assert ('native' in calls) == change.endswith('_during')
