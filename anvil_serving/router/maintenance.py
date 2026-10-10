@@ -480,7 +480,6 @@ def _current_stop_proof(values, pending, *, _run):
 def _current_successor(successor, incarnation, *, _run, _read_config=None):
     """Bind declared successor bytes to the actual pinned image/config, without dotenv."""
     from ..router_manage import _compose_argv, DEFAULT_SERVICE, DEFAULT_CONTAINER, DEFAULT_INSTALLED_CONFIG
-    from ..control_plane.mcp.auth_file import read_private_auth_file
     from ..observability.dashboard.contracts import strict_json
     result = _run([*_compose_argv(successor['compose'], env_file=os.devnull), 'config',
                    '--no-env-resolution', '--no-interpolate', '--format', 'json'],
@@ -499,7 +498,24 @@ def _current_successor(successor, incarnation, *, _run, _read_config=None):
     config = [x for x in mounts if x.get('target') == DEFAULT_INSTALLED_CONFIG]
     require(len(config) == 1 and config[0].get('type') == 'bind' and config[0].get('read_only') is True
             and type(config[0].get('source')) is str and Path(config[0]['source']).is_absolute())
-    raw = (_read_config or read_private_auth_file)(config[0]['source'], max_bytes=2*1024**2)
+    if _read_config is not None:
+        # Reboot recovery supplies its separately verified service-owner reader.
+        raw = _read_config(config[0]['source'], max_bytes=2*1024**2)
+    else:
+        # A successor has no legacy permission exemption. Its nonsecret config
+        # can be group-readable, but remains operator-owned and immutable to peers.
+        from ..operator_config import _read_bounded, _candidate_identity
+        source = Path(config[0]['source']); before = source.lstat()
+        user = service.get('user')
+        require(type(user) is str and re.fullmatch(r'[0-9]+:[0-9]+', user) is not None)
+        uid, gid = map(int, user.split(':'))
+        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.geteuid() and before.st_nlink == 1
+                and not before.st_mode & 0o022
+                and (uid == 0 or before.st_mode & (0o400 if uid == before.st_uid else 0o040 if gid == before.st_gid else 0o004)))
+        raw = _read_bounded(source, max_bytes=2*1024**2, expected_identity=_candidate_identity(before))
+        after = source.lstat()
+        require(all(getattr(before, name) == getattr(after, name) for name in
+                    ('st_dev', 'st_ino', 'st_mode', 'st_uid', 'st_gid', 'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
     require(hashlib.sha256(raw).hexdigest() == successor['configuration_revision'])
 
 
@@ -545,8 +561,7 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
         roster = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True)
         mounted = [m for m in _restart_custody(DEFAULT_CONTAINER, _run)['mounts'] if m['destination'] == DEFAULT_INSTALLED_CONFIG]
         require(len(mounted) == 1 and mounted[0]['type'] == 'bind' and mounted[0]['read_only'] is True)
-        raw = read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2)
-        require(hashlib.sha256(raw).hexdigest() == auth['expected_configuration_revision'])
+        require(roster['owner_storage']['configuration_revision'] == auth['expected_configuration_revision'])
         # The admitted profile, not another same-project file, owns this stop.
         label = _run(['docker', 'inspect', '--format', '{{json (index .Config.Labels "com.docker.compose.project.config_files")}}',
                       before['container_id']], capture_output=True, text=True, timeout=5)
@@ -562,8 +577,7 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
                 _current_successor(successor, before, _run=_run)
                 require(int(time.time()) < native['observation']['expires_at']
                         and before == _container_incarnation(DEFAULT_CONTAINER, _run=_run)
-                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True)
-                        and read_private_auth_file(mounted[0]['source'], max_bytes=2*1024**2) == raw)
+                        and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True))
                 alive()
             recheck()
             if not confirm:

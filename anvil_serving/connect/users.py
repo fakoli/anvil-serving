@@ -875,14 +875,18 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             subject = _oidc_subject(data, config, username, runner)
             if operation == "memory":
                 principal = _principal(data["gateway"]["oidc"]["issuer"], subject)
-                native = _human_admin_read(data, manifest, {"operation": "human-inspect", "principal": principal}, runner)
+                operators = data["gateway"]["gateway"].get("browser_administration", {}).get("operators", [])
+                inspection = "operator-inspect" if principal in operators else "human-inspect"
+                native = _human_admin_read(data, manifest, {"operation": inspection, "principal": principal}, runner)
                 human = native.get("human", {})
-                if (native.get("found") is not True or human.get("id") != principal
-                        or human.get("username") != username or human.get("disabled") is not False
+                if (native.get("operation") != inspection or native.get("found") is not True or human.get("id") != principal
+                        or human.get("username") != username or type(human.get("disabled")) is not bool
                         or type(human.get("resources")) is not list
                         or type(human.get("application_roles")) is not dict
                         or set(human["resources"]) != set(human["application_roles"])):
                     raise _invalid("Current Connect account grants could not be verified; use users access with the intended grants.")
+                if human["disabled"]:
+                    raise _invalid("Account is disabled; this command does not enable accounts or grant access.")
                 grant_map = _grant_map([resource + ":" + role for resource, role in human["application_roles"].items()], data)
             _set_user_access(data, manifest, username, subject, users[username], grant_map, runner, result)
         return {**result, "applied": True, "grants_changed": operation == "access", "existing_connect_sessions_revoked": True,

@@ -309,6 +309,37 @@ def test_memory_is_automatic_on_creation_and_published_after_native_access(envir
     assert result["memory"]["ready"] and events == ["closed", "prepared", "native", "published"]
 
 
+@pytest.mark.parametrize('operator', [False, True])
+@pytest.mark.parametrize('disabled', [False, True])
+def test_memory_backfill_uses_declared_operator_inspection_and_preserves_suspension(environment, monkeypatch, operator, disabled):
+    run, database, _, _ = environment
+    data = users.read_manifest('unused')
+    issuer, subject = 'https://auth.example.test', 'synthetic-owner'
+    principal = users._principal(issuer, subject)
+    data['memory'] = {}
+    data['gateway'] = {'oidc': {'issuer': issuer}, 'gateway': {
+        'resources': [{'rule': {'id': 'workbench', 'access': 'browser'}}],
+        'browser_administration': {'operators': [principal] if operator else []}}}
+    monkeypatch.setattr(users, '_oidc_subject', lambda *a: subject)
+    expected = 'operator-inspect' if operator else 'human-inspect'
+    def inspect(data, manifest, request, runner):
+        assert request == {'operation': expected, 'principal': principal}
+        return {'operation': expected, 'found': True, 'human': {'id': principal, 'username': 'owner',
+            'disabled': disabled, 'resources': ['workbench'], 'application_roles': {'workbench': 'admin'}}}
+    monkeypatch.setattr(users, '_human_admin_read', inspect)
+    writes = []
+    monkeypatch.setattr(users, '_set_user_access', lambda *a: writes.append(a[5]))
+    before = database.read_bytes()
+    if disabled:
+        with pytest.raises(UsageError, match='Account is disabled'):
+            run('memory', 'owner', apply=True)
+        assert writes == []
+    else:
+        assert run('memory', 'owner', apply=True)['applied'] is True
+        assert writes == [{'workbench': 'admin'}]
+    assert database.read_bytes() == before
+
+
 def test_suspended_resume_memory_failure_happens_before_authelia_stop(environment, monkeypatch):
     run, database, state, _ = environment
     record = json.loads(database.read_text()); record["users"]["owner"]["disabled"] = True
