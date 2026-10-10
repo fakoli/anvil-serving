@@ -460,6 +460,8 @@ def test_root_help_examples_execute_on_canonical_paths(capsys):
     (
         (),
         ("models",),
+        ("connect",),
+        ("eval", "benchmark"),
         ("eval", "benchmark", "external", "notebook"),
     ),
 )

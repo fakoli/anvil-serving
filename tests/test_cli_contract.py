@@ -74,12 +74,15 @@ def test_every_unbounded_manifest_case_refuses_json_before_resolution(
     assert classification in payload["error"]["message"]
 
 
-# Parent groups share one dispatcher branch; cover each nesting depth.
+# Cover nesting depth and the protected families' operand-free JSON errors.
 @pytest.mark.parametrize("path", [
     ("models",),
     ("models", "recipes"),
     ("eval", "benchmark", "evidence"),
     ("eval", "benchmark", "external", "notebook"),
+    ("router",),
+    ("edge",),
+    ("connect",),
 ])
 def test_action_groups_reject_options_without_an_action(capsys, path):
     assert cli.main([*path, "--definitely-invalid"]) == 2
@@ -93,6 +96,9 @@ def test_action_groups_reject_options_without_an_action(capsys, path):
     payload = json.loads(machine.out)
     assert payload["error"]["code"] == "missing_action"
     assert payload["error"]["details"]["actions"]
+    if path[0] in {"router", "edge", "connect"}:
+        assert "--definitely-invalid" not in machine.out
+        assert payload["data"] is None
 
 
 def test_mutating_commands_declare_confirmation_or_retain_handler_owned_policy():
