@@ -61,9 +61,9 @@ class _C4FirstFailure:
                 state[key] = value if previous is None else max(previous, value)
 
     def first_failure(self, worker):
-        now = perf_counter()
         frames = sys._current_frames()
         with self._lock:
+            now = perf_counter()
             if self._captured:
                 self._workers[worker]['phase'] = 'failed'
                 self._workers[worker]['phase_started'] = now
