@@ -60,7 +60,11 @@ jobs:
         run: node --version
 
       - name: Run tests
-        run: python -m pytest tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+        run: python -m ${{ matrix.python-version == '3.13' && 'coverage run -m pytest' || 'pytest' }} tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+
+      - name: Enforce 70% coverage
+        if: matrix.python-version == '3.13'
+        run: python -m coverage report
 
   windows-cli:
     name: Windows CLI smoke (py3.13)

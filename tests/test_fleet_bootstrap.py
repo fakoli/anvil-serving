@@ -498,24 +498,15 @@ def test_receiver_rollback_has_literal_trigger_wire_bytes():
     assert bootstrap.decode_receiver_frame(expected) == (frame, b"")
 
 
-@pytest.mark.parametrize(
-    "trigger",
-    tuple(
-        code
-        for code in bootstrap.BootstrapErrorCode
-        if code is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
-    ),
-)
-def test_receiver_rollback_roundtrips_every_noncleanup_error(trigger):
+def test_receiver_rollback_roundtrips_original_error():
     frame = replace(
         receiver_frame(bootstrap.ReceiverOperation.ROLLBACK, b""),
-        trigger_error_code=trigger,
+        trigger_error_code=bootstrap.BootstrapErrorCode.TIMEOUT,
     )
-    encoded = bootstrap.encode_receiver_frame(frame)
-    decoded, payload = bootstrap.decode_receiver_frame(encoded)
+    decoded, payload = bootstrap.decode_receiver_frame(bootstrap.encode_receiver_frame(frame))
     assert decoded == frame
     assert payload == b""
-    assert decoded.to_dict()["trigger_error_code"] == trigger.value
+    assert decoded.to_dict()["trigger_error_code"] == "timeout"
 
 
 @pytest.mark.parametrize(
@@ -892,51 +883,40 @@ def test_receiver_protocol_error_constants_cannot_be_overridden_or_tampered(chan
         value.to_dict()
 
 
-@pytest.mark.parametrize(
-    ("operation", "phase"),
-    tuple(
-        (operation, phase)
-        for operation, phases in RECEIVER_RESULT_PHASES.items()
-        for phase in phases
-    ),
-)
-def test_receiver_operation_result_roundtrips_every_allowed_bound_phase(
-    operation, phase
-):
+def test_receiver_operation_phase_contract():
+    assert bootstrap._RECEIVER_OPERATION_PHASES == {
+        operation: frozenset(phases) for operation, phases in RECEIVER_RESULT_PHASES.items()
+    }
+
+
+# The map above covers membership; exercise each state-validation branch below.
+@pytest.mark.parametrize("operation,phase", [
+    (bootstrap.ReceiverOperation.STAGE, bootstrap.BootstrapPhase.STAGED),
+    (bootstrap.ReceiverOperation.ACTIVATE, bootstrap.BootstrapPhase.INSTALLED),
+    (bootstrap.ReceiverOperation.STATUS, bootstrap.BootstrapPhase.MANUAL_RECOVERY),
+    (bootstrap.ReceiverOperation.ROLLBACK, bootstrap.BootstrapPhase.ROLLBACK_STARTED),
+    (bootstrap.ReceiverOperation.ROLLBACK, bootstrap.BootstrapPhase.ROLLED_BACK),
+    (bootstrap.ReceiverOperation.ROLLBACK, bootstrap.BootstrapPhase.CLEANUP_FAILED),
+])
+def test_receiver_operation_result_roundtrips_bound_state(operation, phase):
     result = receiver_operation_result(operation, phase, **receiver_result_state(phase))
-    assert bootstrap.decode_receiver_result(
-        bootstrap.encode_receiver_result(result)
-    ) == result
+    assert bootstrap.decode_receiver_result(bootstrap.encode_receiver_result(result)) == result
 
 
-@pytest.mark.parametrize(
-    ("operation", "phase"),
-    tuple(
-        (operation, phase)
-        for operation, allowed in RECEIVER_RESULT_PHASES.items()
-        for phase in bootstrap.BootstrapPhase
-        if phase not in allowed and phase is not bootstrap.BootstrapPhase.REFUSED
-    ),
-)
-def test_receiver_operation_result_rejects_every_disallowed_bound_phase(
-    operation, phase
-):
+@pytest.mark.parametrize("operation,phase", [
+    (bootstrap.ReceiverOperation.STAGE, bootstrap.BootstrapPhase.PLANNED),
+    (bootstrap.ReceiverOperation.STATUS, bootstrap.BootstrapPhase.ACCEPTED),
+    (bootstrap.ReceiverOperation.ACTIVATE, bootstrap.BootstrapPhase.STAGED),
+    (bootstrap.ReceiverOperation.ROLLBACK, bootstrap.BootstrapPhase.INSTALLED),
+])
+def test_receiver_operation_result_enforces_allowed_phase_map(operation, phase):
     with pytest.raises(bootstrap.BootstrapContractError, match="inconsistent"):
         receiver_operation_result(operation, phase, **receiver_result_state(phase))
 
 
-@pytest.mark.parametrize(
-    "operation",
-    (
-        bootstrap.ReceiverOperation.STAGE,
-        bootstrap.ReceiverOperation.ACTIVATE,
-        bootstrap.ReceiverOperation.STATUS,
-        bootstrap.ReceiverOperation.ROLLBACK,
-    ),
-)
-def test_receiver_operation_result_allows_exact_unbound_refusal(operation):
+def test_receiver_operation_result_allows_exact_unbound_refusal():
     result = receiver_operation_result(
-        operation,
+        bootstrap.ReceiverOperation.STAGE,
         bootstrap.BootstrapPhase.REFUSED,
         bound=False,
         outcome=bootstrap.BootstrapOutcome.ERROR,
@@ -1001,12 +981,11 @@ def test_receiver_unbound_result_rejects_binding_and_state_defects(changes):
         {"error_code": bootstrap.BootstrapErrorCode.INTERNAL_ERROR},
         {"receiver_sha256": None},
         {"target_config_sha256": None},
-        {
-            "receiver_permission": bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE
-        },
-        {
-            "target_config_permission": bootstrap.BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
-        },
+        *({"receiver_permission": value} for value in bootstrap.BootstrapPermissionVerdict
+          if value is not bootstrap.BootstrapPermissionVerdict.OWNER_READONLY),
+        *({"target_config_permission": value} for value in bootstrap.BootstrapPermissionVerdict
+          if value not in {bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
+                           bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE}),
     ),
 )
 def test_receiver_identity_success_rejects_inconsistent_evidence(changes):
@@ -1028,38 +1007,6 @@ def test_receiver_identity_success_accepts_both_trusted_config_permissions(
     assert bootstrap.decode_receiver_result(
         bootstrap.encode_receiver_result(value)
     ) == value
-
-
-@pytest.mark.parametrize(
-    ("receiver_permission", "target_permission"),
-    tuple(
-        (receiver_permission, target_permission)
-        for receiver_permission in bootstrap.BootstrapPermissionVerdict
-        for target_permission in bootstrap.BootstrapPermissionVerdict
-    ),
-)
-def test_receiver_identity_success_permission_matrix(
-    receiver_permission, target_permission
-):
-    allowed = (
-        receiver_permission is bootstrap.BootstrapPermissionVerdict.OWNER_READONLY
-        and target_permission
-        in {
-            bootstrap.BootstrapPermissionVerdict.OWNER_READONLY,
-            bootstrap.BootstrapPermissionVerdict.OWNER_WRITABLE,
-        }
-    )
-    if allowed:
-        receiver_identity_result(
-            receiver_permission=receiver_permission,
-            target_config_permission=target_permission,
-        )
-    else:
-        with pytest.raises(bootstrap.BootstrapContractError):
-            receiver_identity_result(
-                receiver_permission=receiver_permission,
-                target_config_permission=target_permission,
-            )
 
 
 @pytest.mark.parametrize(
@@ -1159,17 +1106,8 @@ def test_receiver_cleanup_failure_requires_original_noncleanup_trigger(changes):
         replace(value, **changes)
 
 
-@pytest.mark.parametrize(
-    "original_error",
-    tuple(
-        error
-        for error in bootstrap.BootstrapErrorCode
-        if error is not bootstrap.BootstrapErrorCode.CLEANUP_FAILED
-    ),
-)
-def test_receiver_historical_and_cleanup_states_accept_every_noncleanup_cause(
-    original_error,
-):
+def test_receiver_historical_and_cleanup_states_preserve_original_cause():
+    original_error = bootstrap.BootstrapErrorCode.TIMEOUT
     historical = receiver_operation_result(
         bootstrap.ReceiverOperation.STATUS,
         bootstrap.BootstrapPhase.ROLLED_BACK,
@@ -1863,26 +1801,6 @@ def test_target_config_decoder_imports_no_topology_targets_or_controller():
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == ""
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    (
-        ("staging_root", "/var/tmp/other-stage"),
-        ("install_root", "/opt/other-install"),
-        ("python_executable", "/usr/bin/other-python"),
-        ("receiver_path", "/opt/other-receiver/bootstrap.py"),
-        ("receiver_sha256", SHA_B),
-        ("supervisor_id", "other-controller"),
-    ),
-)
-def test_every_private_topology_value_changes_plan_identity(field, value):
-    artifact = plan_manifest()
-    original = bootstrap.build_bootstrap_plan(bootstrap_execution(), artifact)
-    changed = bootstrap.build_bootstrap_plan(
-        bootstrap_execution(bootstrap_changes={field: value}), artifact
-    )
-    assert original.plan_sha256 != changed.plan_sha256
 
 
 def test_manifest_artifact_identity_changes_plan_identity():

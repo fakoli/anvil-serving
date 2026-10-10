@@ -105,6 +105,8 @@ source = ["anvil_serving"]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 70
+precision = 2
 
 [tool.ruff]
 target-version = "py311"

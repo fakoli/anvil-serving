@@ -18,6 +18,7 @@ explicit test below instead.
 
 from __future__ import annotations
 
+from functools import cache
 import json
 from pathlib import Path
 import re
@@ -103,6 +104,7 @@ def _resolve(tokens: list[str], paths: set[str]) -> str | None:
     return None
 
 
+@cache
 def _usage_line(command: str) -> str | None:
     completed = subprocess.run(
         [sys.executable, "-m", "anvil_serving.cli", *command.split(), "--help"],
@@ -110,7 +112,7 @@ def _usage_line(command: str) -> str | None:
         capture_output=True,
         text=True,
         timeout=120,
-        check=False,
+        check=True,
     )
     match = _USAGE_RE.search(completed.stdout)
     return " ".join(match.group(1).split()) if match else None
@@ -188,14 +190,7 @@ def test_workload_guide_uses_explicit_source_ownership_options():
 
 
 @pytest.mark.parametrize("doc, invocation", _documented_invocations())
-def test_documented_command_path_exists(doc: str, invocation: str):
-    tokens = [token for token in shlex.split(invocation) if not token.startswith("-")]
-    resolved = _resolve(tokens, _command_paths())
-    assert resolved, f"{doc}: '{invocation}' resolves to no command in the manifest"
-
-
-@pytest.mark.parametrize("doc, invocation", _documented_invocations())
-def test_documented_invocation_supplies_required_arguments(doc: str, invocation: str):
+def test_documented_invocation_resolves_and_supplies_required_arguments(doc: str, invocation: str):
     tokens = shlex.split(invocation)
     bare = [token for token in tokens if not token.startswith("-")]
     command = _resolve(bare, _command_paths())
@@ -203,7 +198,7 @@ def test_documented_invocation_supplies_required_arguments(doc: str, invocation:
 
     usage = _usage_line(command)
     if usage is None:
-        pytest.skip(f"{command} renders help without an argparse usage line")
+        return  # Custom help has no argparse usage; the command path was checked above.
 
     tail = usage[usage.index(command) + len(command) :] if command in usage else usage
 

@@ -11,7 +11,7 @@ failure was invisible. These tests pin:
 * same-dialect passthrough (raw messages forwarded verbatim, image intact);
 * cross-dialect requests keep the pre-T011 flattened behaviour (image
   translation is deliberately out of scope);
-* regression safety: an image-free request builds the exact same body as before.
+The plain-text regression is covered by test_wire_fidelity.py.
 """
 from __future__ import annotations
 
@@ -118,30 +118,3 @@ def test_cross_dialect_image_request_keeps_flattened_behaviour():
     body = _backend("openai")._build_body(request)
     # Pre-T011 shape: flattened text only (the image block is dropped).
     assert body["messages"] == [{"role": "user", "content": "OCR:"}]
-
-
-# --------------------------------------------------------------------------- #
-# regression pin: image-free bodies are byte-identical to before
-# --------------------------------------------------------------------------- #
-def test_image_free_request_body_is_unchanged():
-    body_in = {
-        "model": "chat",
-        "messages": [
-            {"role": "system", "content": "be brief"},
-            {"role": "user", "content": "hello there"},
-        ],
-        "temperature": 0.5,
-        "max_tokens": 64,
-    }
-    request = OpenAIDialect().parse_request(body_in)
-    body = _backend("openai")._build_body(request)
-    assert body == {
-        "model": "concrete-model",
-        "messages": [
-            {"role": "system", "content": "be brief"},
-            {"role": "user", "content": "hello there"},
-        ],
-        "stream": False,
-        "max_tokens": 64,
-        "temperature": 0.5,
-    }

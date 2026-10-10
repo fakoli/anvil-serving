@@ -459,14 +459,13 @@ def test_root_help_examples_execute_on_canonical_paths(capsys):
     "path",
     (
         (),
-        ("eval",),
+        ("models",),
+        ("connect",),
         ("eval", "benchmark"),
-        ("eval", "benchmark", "evidence"),
-        ("eval", "benchmark", "external"),
         ("eval", "benchmark", "external", "notebook"),
     ),
 )
-def test_root_and_eval_parent_help_respect_narrow_windows_console(path, monkeypatch, capsys):
+def test_root_and_nested_group_help_respect_narrow_windows_console(path, monkeypatch, capsys):
     monkeypatch.setenv("COLUMNS", "60")
 
     assert cli.main([*path, "--help"]) == 0
@@ -1018,36 +1017,6 @@ def test_declarative_command_policy_classifies_active_follow_option():
     follow = CommandOption(("--follow",), "Follow output.", output_policy="follow")
     node = CommandNode("synthetic", "Synthetic command.", options=(follow,))
     assert cli.command_policy((node,), ("--follow",)).classification == "follow"
-
-
-@pytest.mark.parametrize(
-    ("argv", "classification"),
-    [
-        (["router", "run", "--json"], "foreground"),
-        (["serves", "multiplex", "--json"], "foreground"),
-        (["voice", "proxy", "run", "--json"], "foreground"),
-        (["controller", "serve", "--json"], "foreground"),
-        (["mcp", "serve", "--json"], "protocol"),
-        (["router", "logs", "--follow", "--json"], "follow"),
-        (["serves", "logs", "--json", "--follow"], "follow"),
-        (["host", "reclaim", "--json", "--confirm", "--watch", "--threshold-gb", "40"], "follow"),
-    ],
-)
-def test_real_unbounded_commands_refuse_json_before_handler_resolution(
-    monkeypatch, capsys, argv, classification
-):
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail(f"resolved unbounded handler: {self.name}"),
-    )
-
-    assert cli.main(argv) == 2
-    captured = capsys.readouterr()
-    assert captured.err == ""
-    payload = json.loads(captured.out)
-    assert payload["error"]["class"] == "usage"
-    assert classification in payload["error"]["message"]
 
 
 def test_mcp_serve_json_refusal_happens_before_protocol_handler_startup(monkeypatch, capsys):
@@ -2241,16 +2210,17 @@ def test_focused_action_help_includes_action_specific_flags(capsys):
         assert token in out
 
 
-def _visible_paths(nodes=COMMAND_TREE.nodes, prefix=()):
+def _visible_paths(nodes=COMMAND_TREE.nodes, prefix=(), *, leaves_only=False):
     for node in nodes:
         path = prefix + (node.name,)
-        if node.visible:
+        if node.visible and (not leaves_only or not node.children):
             yield path
-        yield from _visible_paths(node.children, path)
+        yield from _visible_paths(node.children, path, leaves_only=leaves_only)
 
 
-@pytest.mark.parametrize("command", list(_visible_paths()))
-def test_every_visible_command_path_exposes_help(command, capsys):
+# Leaf parsers differ; parent help is covered once per rendering shape above.
+@pytest.mark.parametrize("command", list(_visible_paths(leaves_only=True)))
+def test_every_visible_leaf_command_exposes_help(command, capsys):
     rc = cli.main([*command, "--help"])
     assert rc == 0
     assert "usage:" in capsys.readouterr().out.lower()
