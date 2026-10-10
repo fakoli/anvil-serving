@@ -159,6 +159,11 @@ Apple Silicon macOS. A single-host installation can stay
 entirely on loopback; the reference multi-device deployment also installs
 Tailscale and follows [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
 
+Windows operators connecting to an existing deployment can follow the
+[PowerShell client setup](docs/GETTING-STARTED.md#windows-client) without
+installing model engines or starting local services. The bring-up sequence
+below runs in the owning Linux environment, or on a supported macOS owner.
+
 ```bash
 pip install -e .
 anvil-serving product families
