@@ -5,6 +5,13 @@ service that is owned by the resolved topology host. It is the lifecycle surface
 for portable, supervisor-managed host services. It does not replace
 `anvil-serving serves` or a model recipe as the authority for model deployment.
 
+The native Windows PowerShell CLI can inspect offline configuration and
+topology and dispatch declared typed operations to a remote owner. On a Windows
+host, run the owning service runtime in Linux containers with Docker Desktop's
+Linux engine or inside Linux in WSL. Native Windows service hosting is
+unsupported, and only verbs with a declared remote execution plan operate a
+remote owner.
+
 Use [Host & setup](cli/host.md) for the wider host command family and
 [Configuration](CONFIGURATION.md) for the operator-home model.
 
@@ -60,7 +67,7 @@ model, or chooses a replacement model.
 | Host family | Supported manager | Native engine | Docker engine | Provider lifecycle |
 | --- | --- | --- | --- | --- |
 | macOS | `launchd`, `docker` | `mlx-lm`, `mlx-vlm`, `mlx-audio` | Docker-supported declared adapters; MLX is not a Docker engine | TBD |
-| Windows | `docker` | None | Docker-supported declared adapters | TBD |
+| Windows host (Linux containers or WSL) | `docker` | None | Docker-supported declared adapters | TBD |
 | Linux | `docker` | None | Docker-supported declared adapters | TBD |
 | NeoCloud: Vast.ai, Runpod | No provider adapter yet | N/A | N/A | TBD |
 | Cloud: AWS, Azure | No provider adapter yet | N/A | N/A | TBD |
@@ -68,7 +75,8 @@ model, or chooses a replacement model.
 This is the implemented platform contract. An isolated live macOS LaunchAgent
 smoke covers install, start, status, logs, restart, enable, disable, and stop.
 Docker adapters have simulated supervisor tests; live Docker lifecycle
-qualification on Windows, macOS, and Linux remains pending.
+qualification on Linux, macOS, and Windows hosts using a Linux runtime remains
+pending.
 
 An existing macOS LaunchAgent for Parakeet or Kokoro may be adopted only as
 `support = "legacy"`. That records its supervised identity and bounded state;
