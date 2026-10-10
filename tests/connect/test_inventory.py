@@ -114,12 +114,14 @@ def test_deletion_lifecycle_commands_remain_available(monkeypatch):
 
     calls = []
     monkeypatch.setattr(user_schedule, "schedule", lambda *args, **kwargs: calls.append(("schedule", args, kwargs)) or {})
+    monkeypatch.setattr(users, "sync_operators", lambda *args, **kwargs: calls.append(("projection", args, kwargs)) or {})
     monkeypatch.setattr(user_delete, "process_pending", lambda *args, **kwargs: calls.append(("process", args, kwargs)) or {})
 
     assert dispatch(["users", "deletion-schedule", "--confirm"]).error is None
     assert dispatch(["users", "process-deletions", "--confirm"]).error is None
     assert calls == [
         ("schedule", (users.DEFAULT_MANIFEST,), {"apply": True, "deletions": True}),
+        ("projection", (users.DEFAULT_MANIFEST,), {"apply": True}),
         ("process", (users.DEFAULT_MANIFEST,), {"apply": True}),
     ]
 
