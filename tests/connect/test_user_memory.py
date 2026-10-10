@@ -6,6 +6,8 @@ import http.server
 import threading
 import time
 from contextlib import nullcontext
+from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import urlsplit
 
 import pytest
@@ -105,6 +107,18 @@ def test_permanent_deletion_withdraws_username_grants_before_idp_work(tmp_path, 
     monkeypatch.setattr(manage, "_write_atomic", lambda *_: pytest.fail("retry must not rewrite revoked defaults"))
     with pytest.raises(manage.ManageError, match="IdP unavailable"):
         advance(json.loads(declaration.read_text()))
+
+
+def test_deletion_refuses_a_writable_manifest_parent(monkeypatch):
+    import stat
+    destination = Path("/private/unsafe/deployment.json")
+    data = {"memory": {"default_banks": {"owner": "shared"}, "shared_banks": {}}}
+    monkeypatch.setattr(Path, "lstat", lambda path: SimpleNamespace(
+        st_uid=0, st_mode=stat.S_IFDIR | (0o777 if path == destination.parent else 0o755)))
+    monkeypatch.setattr(manage, "_write_atomic", lambda *_: pytest.fail("must not publish through an unsafe directory"))
+    with pytest.raises(manage.ManageError, match="directory is unsafe"):
+        user_delete._withdraw_memory_defaults(data, str(destination), "owner")
+    assert data["memory"]["default_banks"] == {"owner": "shared"}
 
 
 def test_private_installation_resolves_email_and_cli_previews(tmp_path, monkeypatch):

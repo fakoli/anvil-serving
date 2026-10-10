@@ -200,6 +200,7 @@ def configure(manifest: str, input_file: str, *, apply: bool = False) -> dict:
         return result
     with manage._deployment_lock(Path(data["config_root"])):
         manage._require_no_authelia_upgrade(Path(data["config_root"]))
+        manage._safe_root_ancestors(Path(manifest))
         if read_manifest(manifest) != data or _read_users(data)[0] != raw:
             raise ValueError("Connect declaration or accounts changed during preparation")
         manage._safe_root_ancestors(path.parent)

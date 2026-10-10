@@ -393,7 +393,7 @@ def _withdraw_memory_defaults(data: dict, manifest: str, username: str) -> dict:
         key: {user: value for user, value in memory[key].items() if user != username}
         for key in ("default_banks", "shared_banks")
     }}}
-    manage._safe_root_ancestors(Path(manifest).parent)
+    manage._safe_root_ancestors(Path(manifest))
     manage._write_atomic(Path(manifest), (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(), 0o600)
     return updated
 
