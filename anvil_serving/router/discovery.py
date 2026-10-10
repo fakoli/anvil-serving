@@ -1,15 +1,36 @@
 """OpenAI ``/v1/models`` discovery for configured direct capabilities."""
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .availability import resolve_runtime_tier, safe_check
 from .config import RouterConfig, Tier, normalize_model_alias
-from .model_capacity import replica_metadata
+from .model_capacity import _nonnegative_int, replica_metadata
 
 OWNED_BY = "anvil-serving"
 # Fixed epoch keeps discovery byte-stable for tests and clients' HTTP caches.
 CREATED = 1_700_000_000
+
+
+def _declared_media_limits(tier: Tier) -> dict:
+    """Declared per-request media limits from tier params, when present.
+
+    Mirrors the authenticated capability surface (``limits`` in
+    ``/v1/models/capabilities``) so OpenAI-compatible clients can budget
+    image payloads from plain discovery without a second request.
+    Undeclared limits stay out of the payload to keep discovery byte-stable.
+    """
+    if not isinstance(tier.params, Mapping):
+        return {}
+    capabilities = tier.params.get("capabilities")
+    if not isinstance(capabilities, Mapping):
+        return {}
+    result: dict[str, int] = {}
+    for key in ("images_per_request", "video_per_request"):
+        value = _nonnegative_int(capabilities.get(key))
+        if value is not None:
+            result[key] = value
+    return result
 
 
 def model_route_entry(
@@ -30,6 +51,9 @@ def model_route_entry(
         # remains authoritative for modalities, readiness, and fingerprints.
         entry["context_window"] = tier.context_limit if tier.context_limit > 0 else None
         entry["max_output_tokens"] = tier.max_output_tokens
+        # Declared per-request media limits, when the operator set them, so
+        # clients can cap image payloads without probing the backend.
+        entry.update(_declared_media_limits(tier))
     if replica is not None and tier is not None:
         entry["logical_tier"] = tier.id
         for key in (

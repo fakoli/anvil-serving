@@ -281,6 +281,15 @@ def fetch_client_catalog(
         context = row.get("context_limit_tokens")
         limits = row.get("limits")
         output = limits.get("max_output_tokens") if isinstance(limits, dict) else None
+        # ``video_per_request`` is validated now but not yet consumed by any
+        # client renderer (Pi has no video input-limit field); carried so a
+        # future client can adopt it without a second router change.
+        images_per_request = (
+            limits.get("images_per_request") if isinstance(limits, dict) else None
+        )
+        video_per_request = (
+            limits.get("video_per_request") if isinstance(limits, dict) else None
+        )
         if (
             not isinstance(context, int)
             or isinstance(context, bool)
@@ -293,6 +302,16 @@ def fetch_client_catalog(
             raise ClientCatalogError(
                 "every routed tier must declare valid context_limit_tokens and max_output_tokens"
             )
+        if (
+            images_per_request is not None
+            and (isinstance(images_per_request, bool) or not isinstance(images_per_request, int) or images_per_request < 0)
+        ):
+            raise ClientCatalogError("router capability row has an invalid images_per_request limit")
+        if (
+            video_per_request is not None
+            and (isinstance(video_per_request, bool) or not isinstance(video_per_request, int) or video_per_request < 0)
+        ):
+            raise ClientCatalogError("router capability row has an invalid video_per_request limit")
         modalities = row.get("modalities")
         if not isinstance(modalities, list) or any(not isinstance(item, str) for item in modalities):
             raise ClientCatalogError("router capability row has invalid modalities")
@@ -314,6 +333,8 @@ def fetch_client_catalog(
                 "input": inputs,
                 "reasoning": reasoning,
                 "compat": compat,
+                "images_per_request": images_per_request,
+                "video_per_request": video_per_request,
             }
     if set(models) != set(aliases):
         raise ClientCatalogError(
@@ -326,7 +347,7 @@ def fetch_client_catalog(
     }
 
 
-def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str) -> dict:
+def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str, pi: bool = False) -> dict:
     result = dict(existing) if isinstance(existing, Mapping) else {}
     result.update({
         "id": model["id"],
@@ -341,7 +362,54 @@ def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str
         compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
         compat["supportedReasoningEfforts"] = list(efforts)
         result["compat"] = compat
+    if pi:
+        # ``inputLimits`` is a Pi model-config concept; OpenClaw rows keep
+        # their own schema and never receive it.
+        _sync_pi_image_limit(result, model)
     return result
+
+
+def _sync_pi_image_limit(result: dict, model: Mapping) -> None:
+    """Keep ``inputLimits.images.maxPerRequest`` managed from the router limit.
+
+    The router declares ``images_per_request`` per tier; Pi's model config
+    accepts positive values as ``inputLimits.images.maxPerRequest``. Zero
+    removes the image input modality because Pi requires numeric caps >= 1.
+    Positive limits merge into user-set ``inputLimits``; zero or an absent
+    declaration removes only the managed cap, preserving sibling fields.
+    """
+    limit = model.get("images_per_request")
+    declared = (
+        isinstance(limit, int) and not isinstance(limit, bool) and limit >= 0
+    )
+    input_limits = result.get("inputLimits")
+    if not isinstance(input_limits, Mapping):
+        input_limits = {}
+    if declared and limit == 0:
+        result["input"] = [value for value in result["input"] if value != "image"]
+    if declared and limit > 0:
+        images = input_limits.get("images")
+        if not isinstance(images, Mapping):
+            images = {}
+        images = dict(images)
+        images["maxPerRequest"] = limit
+        input_limits = dict(input_limits)
+        input_limits["images"] = images
+        result["inputLimits"] = input_limits
+        return
+    # Zero or undeclared: drop the managed cap, preserve all sibling fields.
+    images = input_limits.get("images")
+    if isinstance(images, Mapping) and "maxPerRequest" in images:
+        images = {key: value for key, value in images.items() if key != "maxPerRequest"}
+        input_limits = dict(input_limits)
+        if images:
+            input_limits["images"] = images
+        else:
+            input_limits.pop("images", None)
+        if input_limits:
+            result["inputLimits"] = input_limits
+        else:
+            result.pop("inputLimits", None)
 
 
 def _models_by_id(value) -> dict[str, Mapping]:  # noqa: ANN001
@@ -590,7 +658,7 @@ def _render_pi_documents(
     old_pi_models = _models_by_id(pi_provider.get("models"))
     rendered_rows = []
     for alias in pi_aliases:
-        row = _managed_model(old_pi_models.get(alias), models[alias], name_prefix="Anvil")
+        row = _managed_model(old_pi_models.get(alias), models[alias], name_prefix="Anvil", pi=True)
         efforts = _supported_reasoning_efforts(models[alias])
         if efforts:
             row["thinkingLevelMap"] = _pi_thinking_level_map(models[alias])

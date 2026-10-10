@@ -32,6 +32,7 @@ from anvil_serving.client_catalog_sync import (
 
 
 CONFIG_SHA = "a" * 64
+_UNSET = object()  # sentinel: "parameter not supplied" for _catalog media-limit injection
 
 
 def _trusted_test_clock() -> datetime:
@@ -409,6 +410,9 @@ def _catalog(
     primary_context=1_048_576,
     include_vision=True,
     secondary_efforts=None,
+    images_per_request=None,
+    raw_images_per_request=_UNSET,
+    raw_video_per_request=_UNSET,
 ):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
@@ -430,6 +434,13 @@ def _catalog(
         compat = {"supportsUsageInStreaming": True}
         if tier == "secondary" and secondary_efforts is not None:
             compat["supportedReasoningEfforts"] = secondary_efforts
+        limits = {"max_output_tokens": None if missing_output else 8192}
+        if images_per_request is not None:
+            limits["images_per_request"] = images_per_request
+        if raw_images_per_request is not _UNSET:
+            limits["images_per_request"] = raw_images_per_request
+        if raw_video_per_request is not _UNSET:
+            limits["video_per_request"] = raw_video_per_request
         rows.append({
             "object": "model_capabilities",
             "id": tier,
@@ -438,7 +449,7 @@ def _catalog(
             "modalities": modalities,
             "thinking": {"supported": reasoning},
             "compat": compat,
-            "limits": {"max_output_tokens": None if missing_output else 8192},
+            "limits": limits,
         })
     return (
         {
@@ -1397,6 +1408,100 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     assert by_id["llm.primary"]["maxTokens"] == 8192
 
 
+def test_openclaw_rows_do_not_receive_pi_input_limits(tmp_path):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    openclaw = json.loads(openclaw_path.read_text())
+    for row in openclaw["models"]["providers"]["anvil"]["models"]:
+        assert "inputLimits" not in row
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_rows = pi_models["providers"]["anvil"]["models"]
+    assert all(row["inputLimits"] == {"images": {"maxPerRequest": 8}} for row in pi_rows)
+
+
+def test_pi_sync_writes_declared_image_limit_into_input_limits(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert by_id["llm.primary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+    assert by_id["llm.secondary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+
+    # A second sync without the declaration removes the managed value.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert "inputLimits" not in by_id["llm.primary"]
+    assert "inputLimits" not in by_id["llm.secondary"]
+
+
+def test_pi_sync_preserves_user_input_limits_around_managed_image_limit(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    for row in pi_models["providers"]["anvil"]["models"]:
+        if row["id"] == "llm.primary":
+            row["inputLimits"] = {
+                "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+                "maxRequestBytes": 3_000_000,
+            }
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=4)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {
+            "resize": {"maxWidth": 1568, "maxHeight": 1568},
+            "maxPerRequest": 4,
+        },
+        "maxRequestBytes": 3_000_000,
+    }
+
+    # Removing the declaration drops only the managed key, preserving the rest.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+        "maxRequestBytes": 3_000_000,
+    }
+
+
 def test_reasoning_effort_metadata_renders_openclaw_and_pi_maps(tmp_path):
     openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
     efforts = ["low", "medium", "xhigh"]
@@ -2183,6 +2288,83 @@ def test_pi_still_requires_explicit_compaction_reserve(tmp_path):
 
     with pytest.raises(ClientCatalogError, match="Pi compaction reserveTokens"):
         _run(tmp_path, clients="pi", opener=_Opener(*_catalog()))
+
+
+def test_invalid_media_limits_are_rejected_before_write(tmp_path):
+    """Fail-closed: bool/float/negative/string media limits must never reach clients."""
+    paths = _write_inputs(tmp_path)
+    before = [path.read_bytes() for path in paths]
+    bad_values = [True, 8.0, -1, "eight"]
+    for value in bad_values:
+        with pytest.raises(ClientCatalogError, match="images_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_images_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    for value in (True, 2.5, -3, "1"):
+        with pytest.raises(ClientCatalogError, match="video_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_video_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    assert before == [path.read_bytes() for path in paths]
+
+
+@pytest.mark.parametrize("restored_limit", [None, 8])
+@pytest.mark.parametrize("preserve_siblings", [False, True])
+def test_pi_zero_image_limit_is_text_only_and_recovers(
+    tmp_path, restored_limit, preserve_siblings,
+):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    openclaw_before = openclaw_path.read_bytes()
+    # Seed all managed aliases before adding user-owned sibling fields.
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True, dry_run=False,
+    )
+    payload = json.loads(pi_models_path.read_text())
+    siblings = {"images": {"maxPerMessage": 2}, "maxRequestBytes": 3_000_000}
+    for row in payload["providers"]["anvil"]["models"]:
+        row["inputLimits"] = json.loads(json.dumps(siblings)) if preserve_siblings else {}
+        row["inputLimits"].setdefault("images", {})["maxPerRequest"] = 4
+    pi_models_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    for _ in range(2):
+        _run(
+            tmp_path, clients="pi",
+            opener=_Opener(*_catalog(images_per_request=0)),
+            confirm=True, dry_run=False,
+        )
+        payload = json.loads(pi_models_path.read_text())
+        for row in payload["providers"]["anvil"]["models"]:
+            assert row["input"] == ["text"]
+            # Pi's schema requires maxPerRequest >= 1; never serialize zero.
+            if preserve_siblings:
+                assert row["inputLimits"] == siblings
+            else:
+                assert "inputLimits" not in row
+    assert openclaw_path.read_bytes() == openclaw_before
+
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=restored_limit)),
+        confirm=True, dry_run=False,
+    )
+    payload = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in payload["providers"]["anvil"]["models"]}
+    # The fixture's primary is text-only; only secondary advertises images.
+    assert by_id["llm.primary"]["input"] == ["text"]
+    assert "image" in by_id["llm.secondary"]["input"]
+    images = by_id["llm.secondary"].get("inputLimits", {}).get("images", {})
+    if restored_limit is None:
+        assert "maxPerRequest" not in images
+    else:
+        assert images["maxPerRequest"] == restored_limit
 
 
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):
