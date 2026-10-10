@@ -637,7 +637,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     _reject_literal_credentials(value)
     root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
     if isinstance(value, dict):
-        root_fields.update({"service_user", "service_identities", "service_limits"}.intersection(value))
+        root_fields.update({"service_user", "service_identities", "service_limits", "memory"}.intersection(value))
     raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
@@ -1158,6 +1158,41 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             raise _error("$.authelia.additional_oidc_clients", "client secret files must be outside rendered output and Authelia state")
 
     result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
+    if "memory" in raw:
+        memory = _mapping(raw["memory"], "$.memory", {"base_url", "auth_file", "access_file", "default_banks", "shared_banks", "reader_gid"})
+        from .memory_backend import origin
+        try:
+            base_url = origin(memory["base_url"])
+        except ValueError:
+            raise _error("$.memory.base_url", "must name a credential-free private HTTP origin") from None
+        access_file = _abs_path(memory["access_file"], "$.memory.access_file")
+        auth_file = _abs_path(memory["auth_file"], "$.memory.auth_file")
+        overrides = memory["default_banks"]
+        if (type(overrides) is not dict or len(overrides) > 4096
+                or any(type(user) is not str or not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,63}", user)
+                       or type(bank) is not str or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
+                       for user, bank in overrides.items())):
+            raise _error("$.memory.default_banks", "must map usernames to existing shared bank identifiers")
+        if auth_file == access_file or access_file.startswith(config_root + "/"):
+            raise _error("$.memory", "policy must be outside rendered output and separate from credentials")
+        shared = memory["shared_banks"]
+        if type(shared) is not dict or len(shared) > 4096:
+            raise _error("$.memory.shared_banks", "must map usernames to explicit shared operation grants")
+        for user, banks in shared.items():
+            if (type(user) is not str or not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,63}", user) or type(banks) is not dict
+                    or len(banks) > 127 or any(type(bank) is not str
+                        or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
+                        or type(ops) is not list or not ops or any(type(op) is not str
+                            or op not in {"retain", "recall", "reflect"} for op in ops)
+                        or len(ops) != len(set(ops)) for bank, ops in banks.items())):
+                raise _error("$.memory.shared_banks", "invalid shared bank operation grant")
+        if any(bank not in shared.get(user, {}) for user, bank in overrides.items()):
+            raise _error("$.memory.default_banks", "default bank requires an explicit shared operation grant")
+        if type(memory["reader_gid"]) is not int or not 0 <= memory["reader_gid"] <= _MAX_LINUX_ID:
+            raise _error("$.memory.reader_gid", "must be a numeric Linux reader group")
+        result["memory"] = {"base_url": base_url, "access_file": access_file,
+                            "auth_file": auth_file, "default_banks": dict(overrides),
+                            "shared_banks": copy.deepcopy(shared), "reader_gid": memory["reader_gid"]}
     _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user

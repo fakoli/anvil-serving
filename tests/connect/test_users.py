@@ -288,6 +288,43 @@ def test_create_and_access_send_the_authoritative_username_with_human_set(enviro
     assert human_sets[1]["subject"] == subject
 
 
+def test_memory_is_automatic_on_creation_and_published_after_native_access(environment, monkeypatch):
+    from anvil_serving.connect import user_memory
+    run, _, _, _ = environment
+    data = users.read_manifest("unused")
+    data["memory"] = {}
+    data["gateway"] = {"oidc": {"issuer": "https://auth.example.test"},
+                       "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]}}
+    events = []
+    monkeypatch.setattr(users, "_oidc_subject", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(user_memory, "quarantine", lambda *_args: events.append("closed"))
+    monkeypatch.setattr(user_memory, "provision", lambda *_args, **kwargs: events.append("prepared") or {"ready": True})
+    monkeypatch.setattr(user_memory, "publish_grant", lambda *_args: events.append("published") or {"ready": True})
+    monkeypatch.setattr(users, "_human_set", lambda *_args: events.append("native"))
+    monkeypatch.setattr(users, "_service_home", lambda *_args: None)
+    result = run("create", "developer", email="developer@example.test", apply=True)
+    assert result["memory"]["ready"] and events == ["closed", "prepared", "published"]
+    events.clear()
+    result = run("create", "another", email="another@example.test", grants=["workbench:member"], apply=True)
+    assert result["memory"]["ready"] and events == ["closed", "prepared", "native", "published"]
+
+
+def test_suspended_resume_memory_failure_happens_before_authelia_stop(environment, monkeypatch):
+    run, database, state, _ = environment
+    record = json.loads(database.read_text()); record["users"]["owner"]["disabled"] = True
+    database.write_text(json.dumps(record))
+    data = users.read_manifest("unused"); data["memory"] = {}
+    data["gateway"] = {"oidc": {"issuer": "https://auth.example.test"},
+                       "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]}}
+    monkeypatch.setattr(users, "_oidc_subject", lambda *_args, **_kwargs: "subject")
+    def timeout(*_args):
+        assert state["active"]
+        raise manage.ManageError("memory unavailable")
+    monkeypatch.setattr(users, "_prepare_user_memory", timeout)
+    with pytest.raises(manage.ManageError, match="memory unavailable"): run("access", "owner", grants=["workbench:member"], apply=True)
+    assert state["active"] and not any(call[:2] == (manage._SYSTEMCTL, "stop") for call in state["calls"])
+
+
 def test_factor_reset_is_explicit_native_and_partial_failures_restart(environment):
     run, db, state, _ = environment
     before = db.read_bytes()
