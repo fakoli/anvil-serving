@@ -188,6 +188,10 @@ def test_exact_fixed_projection_omission_never_changes_authoritative_history(sto
     assert sum(group['requests'] for group in rows(db, 'usage_cumulative')) == 3
 
 
+@pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason="Source capacity fixture requires supported Linux accounting ownership; installed FULL/WAL capacity is qualified separately",
+)
 def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(store):
     db, _, run, scope = store
     _, credential = db.key_store.create('synthetic benchmark', ['llm.primary'], ['/v1/chat/completions'], rpm=100000)
