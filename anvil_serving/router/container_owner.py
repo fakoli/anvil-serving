@@ -102,7 +102,8 @@ def roster(owner):
 def validate(record):
     from .usage_store import RunOwner, _id, _uuid
     require(type(record) is dict and set(record) == {'schema', 'phase', 'anchor', 'sequence', 'death', 'transfer'}
-            and record['schema'] == 'router-managed-incarnation/v1')
+            and record['schema'] in {'router-managed-incarnation/v1', 'router-managed-incarnation/v2'})
+    reboot = record['schema'] == 'router-managed-incarnation/v2'
     a = record['anchor']
     require(type(a) is dict and set(a) == {'owner_backend', 'owner_id', 'domain_id', 'run_id', 'run_owner',
                                          'store_binding_sha256', 'configuration_revision', 'roster_revision',
@@ -122,13 +123,14 @@ def validate(record):
             and all(type(view[k]) is type(v) and view[k] == v for k, v in expected.items())
             and type(view['container_init_start_ticks']) is int and view['container_init_start_ticks'] > 0)
     phase, seq, dead, transfer = (record[k] for k in ('phase', 'sequence', 'death', 'transfer'))
+    require(not reboot or phase in {'dead-pending', 'ready', 'transferred'})
     require(type(seq) is int and ((phase in {'live-pending', 'live'} and seq == 0 and dead is None and transfer is None)
             or (phase == 'dead-pending' and seq == 0 and dead is not None and transfer is None)
             or (phase == 'ready' and seq == 1 and dead is not None and transfer is None)
             or (phase == 'transferred' and seq == 2 and dead is not None and transfer is not None)))
     if dead is not None:
         require(type(dead) is dict and set(dead) == {'anchor_sha256', 'closure_sha256', 'closure_generation',
-                                                   'closure_consumed', 'stopped', 'implementation_sha256'})
+                'closure_consumed', 'stopped', 'implementation_sha256'} | ({'reboot'} if reboot else set()))
         require(dead['anchor_sha256'] == digest(a))
         for k in ('closure_sha256', 'implementation_sha256'):
             hex_id(dead[k])
@@ -136,7 +138,25 @@ def validate(record):
         require((generation is None and consumed is None) or
                 (type(generation) is int and 1 <= generation < 2**53 and type(consumed) is bool))
         docker_identity(dead['stopped'], stopped=True)
-        require(all(dead['stopped'][k] == v for k, v in a['docker'].items()))
+        if reboot:
+            proof = dead['reboot']
+            require(type(proof) is dict and set(proof) == {'boot_id', 'prior_record_sha256',
+                                                          'sidecar_snapshot_sha256', 'ledger_snapshot_sha256',
+                                                          'intent_sha256', 'acknowledged_at'})
+            _uuid(proof['boot_id'])
+            require(proof['boot_id'] != a['run_owner']['boot_id']
+                    and type(proof['acknowledged_at']) is int and proof['acknowledged_at'] > 0)
+            for k in ('prior_record_sha256', 'sidecar_snapshot_sha256', 'ledger_snapshot_sha256', 'intent_sha256'):
+                hex_id(proof[k])
+            prior = {**record, 'schema': 'router-managed-incarnation/v1', 'phase': 'live',
+                     'sequence': 0, 'death': None, 'transfer': None}
+            require(proof['prior_record_sha256'] == digest(prior)
+                    and dead['stopped']['started_at'] != a['docker']['started_at']
+                    and dead['stopped']['restart_count'] > a['docker']['restart_count']
+                    and all(dead['stopped'][k] == v for k, v in a['docker'].items()
+                            if k not in {'started_at', 'restart_count'}))
+        else:
+            require(all(dead['stopped'][k] == v for k, v in a['docker'].items()))
     if transfer is not None:
         require(type(transfer) is dict and set(transfer) == {'successor_run_id', 'successor_roster_revision',
                                                            'successor_configuration_revision', 'successor_generation'})
@@ -308,7 +328,12 @@ def stopped_record(usage, stopped):
                               (row['domain_id'],)).fetchone()[0]
     record = read(usage.key_store, row, revision)
     require(record['phase'] in {'live', 'dead-pending', 'ready'})
-    require(all(stopped[k] == v for k, v in record['anchor']['docker'].items()))
+    recovered = record['schema'] == 'router-managed-incarnation/v2'
+    if recovered:
+        # Only the separately fenced recovery transaction may mint this proof.
+        require(record['phase'] == 'ready' and stopped == record['death']['stopped'])
+    else:
+        require(all(stopped[k] == v for k, v in record['anchor']['docker'].items()))
     from .usage_store import observe_run
     require(observe_run(usage._run_owner(row), managed=True) != 'live')
     state = closure(usage.key_store); c = state['closure']
@@ -316,6 +341,8 @@ def stopped_record(usage, stopped):
     dead = {'anchor_sha256': digest(record['anchor']), 'closure_sha256': digest(state),
             'closure_generation': c['generation'] if c else None, 'closure_consumed': c['consumed'] if c else None,
             'stopped': stopped, 'implementation_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    if recovered:
+        dead['reboot'] = record['death']['reboot']
     if record['phase'] == 'ready':
         # The implementation hash belongs to the original proof. Revalidate
         # its exact death and current closure without replacing that history.

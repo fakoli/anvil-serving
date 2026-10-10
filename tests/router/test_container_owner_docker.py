@@ -88,7 +88,11 @@ def docker_owner(tmp_path, monkeypatch):
     (build / 'Dockerfile').write_text('FROM '+base+'\n'
         'COPY --chown=1000:1000 anvil_serving /fixture-source/anvil_serving\n'
         'COPY --chown=1000:1000 fixture_helpers.py /fixture-source/fixture_helpers.py\n'
-        'ENV PYTHONPATH=/fixture-source\nUSER 1000:1000\n')
+        'ENV PYTHONPATH=/fixture-source\nUSER root\n'
+        # Isolated native helpers ignore PYTHONPATH; install the same source there.
+        'RUN python -I -B -c "import anvil_serving,pathlib,shutil; '
+        'p=pathlib.Path(anvil_serving.__file__).parent;shutil.rmtree(p);'
+        'shutil.copytree(\'/fixture-source/anvil_serving\',p)"\nUSER 1000:1000\n')
     subprocess.run(['docker', 'build', '--pull=false', '--network=none', '-t', tag, str(build)], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=90)
     private = tmp_path / 'private'; private.mkdir(mode=0o700)

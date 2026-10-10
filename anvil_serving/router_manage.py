@@ -1520,7 +1520,7 @@ def _offline_router_start(*, _legacy_incarnation=None):
     return result
 
 
-def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None, _metadata_only=False):
+def _offline_compose_roster(compose, service, container, *, _run, env_file=None, execution_env=None, live_target=False, helper_container=None, _metadata_only=False, _reboot_helper=None):
     """Verify the selected service and every active durable-mount consumer."""
     def read(argv):
         result = _run(argv, capture_output=True, text=True, encoding='utf-8', timeout=10, env=execution_env)
@@ -1528,6 +1528,8 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
             raise ValueError('router_offline_roster_unknown')
         return result.stdout or ''
     from .observability.dashboard.contracts import strict_json
+    if _reboot_helper is not None and (not _metadata_only or helper_container is not None):
+        raise ValueError('router_reboot_roster_unknown')
     # Acknowledged legacy STOP reads only declared metadata, never resolves a
     # service/shared dotenv. The actual mount/consumer roster is Docker-native.
     metadata_flags = ['--no-env-resolution','--no-interpolate'] if _metadata_only else []
@@ -1586,6 +1588,14 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
                     raise ValueError('router_offline_helper_unknown')
                 helper_id = helper['container_id']
                 rows = [r for r in rows if r['id'] != helper_id]
+        if _reboot_helper is not None:
+            helper_name, expected_id, expected_image = _reboot_helper
+            helper = _restart_custody(helper_name, _run)
+            if (helper.get('available') is not True or helper['container_id'] != expected_id
+                    or expected_id not in ids or helper['image_id'] != expected_image):
+                raise ValueError('router_reboot_helper_unknown')
+            helper_id = expected_id
+            rows = [r for r in rows if r['id'] != helper_id]
         selected_id = (_restart_custody(container, _run).get('container_id') if live_target else None)
         for row in rows:
             status = row.get('status')
@@ -1600,7 +1610,7 @@ def _offline_compose_roster(compose, service, container, *, _run, env_file=None,
                 if status not in {'created', 'exited', 'dead'} and mount['RW'] and identity in sources and row['id'] != selected_id:
                     raise ValueError('router_offline_storage_busy')
     state, project = _container_compose_project(container, _run=_run)
-    allowed = {'running'} if live_target else {'absent', 'exited', 'created'}
+    allowed = ({'running', 'restarting', 'exited'} if _reboot_helper else {'running'}) if live_target else {'absent', 'exited', 'created'}
     if state not in allowed or (state != 'absent' and project != DEFAULT_COMPOSE_PROJECT):
         raise ValueError('router_offline_target_active_or_unknown')
     custody = None if state == 'absent' else _restart_custody(container, _run)

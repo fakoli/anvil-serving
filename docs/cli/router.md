@@ -843,6 +843,38 @@ is operator evidence; existing runtime history continues to show its retained
 legacy and remote UNKNOWN frontier. The phase neither rewrites that history nor
 claims that an older runtime exposes the new stop receipt in its history API.
 
+### Recovery after a host reboot
+
+The `reboot-stop` maintenance phase handles one anchored live run from a previous
+boot when the same container is restarting without custody. A ledger diagnostic
+alone does not authorize this operation. Installation must provide the pinned
+successor image, unchanged mounted configuration, exact sidecar snapshot, current
+boot ID, and a protected `router-reboot-authorization/v1` grant. Its uncertainty
+is `remote-memory-terminal-only` and its ingress barrier is
+`previous-boot-exact-container-stop`. Preview and confirmation use the existing
+`router maintenance` commands above and the exact preview digest.
+
+The successor's isolated native helper holds both producer and writer exclusion
+through correlation, the exact container stop, and proof commit. It requires one
+previous-boot live row, complete matching sidecars and first-coverage metadata,
+no incomplete successor, the original store binding and closure, and unchanged
+Docker daemon/container/image/Compose identity. This version requires the key
+store and admission state in the same named volume. Other layouts refuse.
+
+The protected pending intent records the acknowledgment before stopping. Retries
+reuse that exact intent and acknowledgment time, including after expiry, while
+rechecking the same boot and all ownership evidence under fresh fences. Once a
+stopped proof exists, a restarted incarnation refuses. A staged proof remains
+non-authoritative until the host commits its digest.
+
+The resulting `router-managed-incarnation/v2` record preserves the original live
+anchor and binds its digest, reboot evidence, actual changed stopped incarnation,
+and acknowledged intent. Old runtimes reject this schema; recovery and subsequent
+startup both require the qualified successor. Guarded `router up` consumes the
+ready proof and starts CLOSED. Committed accounting remains intact; unfinished
+local requests retain interrupted/unknown outcomes. Remote work remains UNKNOWN
+and `drained` remains false. Readmission still needs its separate fresh approval.
+
 ## Fixed native SQLite storage
 
 The opt-in router runtime uses a verified fixed SQLite build and its native

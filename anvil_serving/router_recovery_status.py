@@ -1,5 +1,6 @@
 """Bounded native custody diagnostics; never a recovery authorization."""
 import argparse
+from contextlib import contextmanager
 import hashlib
 import inspect
 from itertools import islice
@@ -151,8 +152,9 @@ def _ledger_status(request, config_path='/etc/anvil/config.toml'):
     return result
 
 
-def _native_ledger(before, user, mounts, request, *, _run):
-    """A bounded native reader; never inherit the router's network or environment."""
+@contextmanager
+def _native_container(image_id, user, mounts, program, *, _run):
+    """Shared bounded native helper lifecycle, without service environment or network."""
     name = 'router-recovery-reader-' + uuid.uuid4().hex
     label = 'anvil.recovery-reader=' + name
     argv = ['docker', 'create', '--name', name, '--label', label, '--pull=never',
@@ -167,16 +169,7 @@ def _native_ledger(before, user, mounts, request, *, _run):
         argv += ['--mount', f"type={mount['type']},source={source},target={mount['destination']}"
                  + (',readonly' if readonly else '')]
         expected.append((mount['type'], source, mount['destination'], readonly))
-    program = inspect.getsource(_ledger_status) + '''
-import json, signal, sys
-signal.alarm(25)
-request = json.loads(sys.stdin.buffer.read(16385))
-result = _ledger_status(request)
-output = json.dumps(result, sort_keys=True, allow_nan=False)
-assert len(output) <= 16384
-print(output)
-'''
-    argv += [before['image_id'], '-I', '-c', program]
+    argv += [image_id, '-I', '-c', program]
     identity = None
     def owned():
         result = _run(['docker', 'inspect', '--format',
@@ -191,7 +184,7 @@ print(output)
         require(owned() == identity)
         observed = router_manage._restart_custody(name, _run)
         require(observed.get('available') is True and observed['container_id'] == identity
-                and observed['image_id'] == before['image_id']
+                and observed['image_id'] == image_id
                 and sorted((m['type'], m['name'] if m['type'] == 'volume' else m['source'],
                             m['destination'], m['read_only']) for m in observed['mounts']) == sorted(expected))
         fields = {'user': '.Config.User', 'network': '.HostConfig.NetworkMode',
@@ -216,6 +209,33 @@ print(output)
         require(created.returncode == 0 and re.fullmatch('[a-f0-9]{64}', created.stdout.strip()))
         identity = created.stdout.strip()
         observe('created')
+        yield identity, name, observe
+    finally:
+        # Even a lost create response is recoverable only through this unique label.
+        actual = owned()
+        if identity is None:
+            observed = router_manage._restart_custody(name, _run)
+            require(observed.get('available') is True and observed['container_id'] == actual
+                    and observed['image_id'] == image_id)
+        removed = _run(['docker', 'rm', '--force', actual], capture_output=True, text=True, timeout=15)
+        require(removed.returncode == 0)
+        for selector in ('id=' + actual, 'name=^/' + name + '$'):
+            absent = _run(['docker', 'container', 'ls', '--all', '--no-trunc', '--filter', selector,
+                           '--format', '{{.ID}}'], capture_output=True, text=True, timeout=5)
+            require(absent.returncode == 0 and not absent.stdout.strip())
+
+
+def _native_ledger(before, user, mounts, request, *, _run):
+    program = inspect.getsource(_ledger_status) + '''
+import json, signal, sys
+signal.alarm(25)
+request = json.loads(sys.stdin.buffer.read(16385))
+result = _ledger_status(request)
+output = json.dumps(result, sort_keys=True, allow_nan=False)
+assert len(output) <= 16384
+print(output)
+'''
+    with _native_container(before['image_id'], user, mounts, program, _run=_run) as (identity, _, observe):
         result = _run(['docker', 'start', '--attach', '--interactive', identity],
                       input=json.dumps(request), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                       text=True, timeout=35)
@@ -229,19 +249,6 @@ print(output)
                 and all(type(value[k]) is int and 0 <= value[k] <= 1024 for k in counts)
                 and all(type(value[k]) is bool for k in flags))
         return value
-    finally:
-        # Even a lost create response is recoverable only through this unique label.
-        actual = owned()
-        if identity is None:
-            observed = router_manage._restart_custody(name, _run)
-            require(observed.get('available') is True and observed['container_id'] == actual
-                    and observed['image_id'] == before['image_id'])
-        removed = _run(['docker', 'rm', '--force', actual], capture_output=True, text=True, timeout=15)
-        require(removed.returncode == 0)
-        for selector in ('id=' + actual, 'name=^/' + name + '$'):
-            absent = _run(['docker', 'container', 'ls', '--all', '--no-trunc', '--filter', selector,
-                           '--format', '{{.ID}}'], capture_output=True, text=True, timeout=5)
-            require(absent.returncode == 0 and not absent.stdout.strip())
 
 
 def recovery_status(container=router_manage.DEFAULT_CONTAINER, *, ledger=False, _run=subprocess.run):
