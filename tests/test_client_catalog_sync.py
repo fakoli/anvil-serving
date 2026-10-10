@@ -32,6 +32,7 @@ from anvil_serving.client_catalog_sync import (
 
 
 CONFIG_SHA = "a" * 64
+_UNSET = object()  # sentinel: "parameter not supplied" for _catalog media-limit injection
 
 
 def _trusted_test_clock() -> datetime:
@@ -410,6 +411,8 @@ def _catalog(
     include_vision=True,
     secondary_efforts=None,
     images_per_request=None,
+    raw_images_per_request=_UNSET,
+    raw_video_per_request=_UNSET,
 ):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
@@ -434,6 +437,10 @@ def _catalog(
         limits = {"max_output_tokens": None if missing_output else 8192}
         if images_per_request is not None:
             limits["images_per_request"] = images_per_request
+        if raw_images_per_request is not _UNSET:
+            limits["images_per_request"] = raw_images_per_request
+        if raw_video_per_request is not _UNSET:
+            limits["video_per_request"] = raw_video_per_request
         rows.append({
             "object": "model_capabilities",
             "id": tier,
@@ -2281,6 +2288,38 @@ def test_pi_still_requires_explicit_compaction_reserve(tmp_path):
 
     with pytest.raises(ClientCatalogError, match="Pi compaction reserveTokens"):
         _run(tmp_path, clients="pi", opener=_Opener(*_catalog()))
+
+
+def test_invalid_media_limits_are_rejected_before_write(tmp_path):
+    """Fail-closed: bool/float/negative/string media limits must never reach clients."""
+    paths = _write_inputs(tmp_path)
+    before = [path.read_bytes() for path in paths]
+    bad_values = [True, 8.0, -1, "eight"]
+    for value in bad_values:
+        with pytest.raises(ClientCatalogError, match="images_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_images_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    for value in (True, 2.5, -3, "1"):
+        with pytest.raises(ClientCatalogError, match="video_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_video_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    # A zero limit is valid (text-only declaration) and must NOT raise.
+    result = _run(
+        tmp_path,
+        opener=_Opener(*_catalog(images_per_request=0)),
+        confirm=True,
+        dry_run=False,
+    )
+    assert result["changed"]
+    assert before != [path.read_bytes() for path in paths]
 
 
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):

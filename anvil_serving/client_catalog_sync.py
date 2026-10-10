@@ -281,6 +281,9 @@ def fetch_client_catalog(
         context = row.get("context_limit_tokens")
         limits = row.get("limits")
         output = limits.get("max_output_tokens") if isinstance(limits, dict) else None
+        # ``video_per_request`` is validated now but not yet consumed by any
+        # client renderer (Pi has no video input-limit field); carried so a
+        # future client can adopt it without a second router change.
         images_per_request = (
             limits.get("images_per_request") if isinstance(limits, dict) else None
         )
