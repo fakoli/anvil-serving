@@ -3193,6 +3193,8 @@ def make_server(host: str, port: int,
         owned_models = list(model_routes)
         if purpose is not None:
             owned_models += list(purpose.model_ids("embedding")) + list(purpose.model_ids("rerank"))
+        if memory is not None:
+            owned_models += list(memory.connect_aliases())
         connect_keys = ConnectKeys(api_keys, owned_models)
     if webui_bindings is None:
         webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())

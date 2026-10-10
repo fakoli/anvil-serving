@@ -226,6 +226,10 @@ class MemoryRouter:
             self._limit.release()
         return {"alias": route.alias, "backend": "hindsight", "operation": operation, "result": result}
 
+    def connect_aliases(self) -> tuple[str, ...]:
+        """Catalog only routes whose bank grants come from a Connect account."""
+        return tuple(sorted({alias for (alias, _), (route, _) in self._routes.items() if route.access_file}))
+
     def aliases(self, principal: str | Principal) -> tuple[str, ...]:
         """Return the configured aliases available to one authenticated principal."""
         key_id = principal.key_id if isinstance(principal, Principal) else principal

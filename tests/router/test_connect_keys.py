@@ -126,13 +126,13 @@ def assertion(secret, *, owner=OWNER, role="member", target=connect_keys.BROKER_
 
 
 @contextmanager
-def running(portal,monkeypatch):
+def running(portal,monkeypatch, **options):
     p, _ = portal
     secret, check_secret, master = (secrets.token_urlsafe(32) for _ in range(3))
     monkeypatch.setenv("CONNECT_SIGNING_TEST",secret);monkeypatch.setenv("CONNECT_CHECK_TEST",check_secret)
     monkeypatch.setattr(connect_keys,"principal_checker",lambda *args: p.store.owner_check)
     config = ServerConfig(api_keys_path=str(p.store.path),connect_keys_env="CONNECT_SIGNING_TEST",connect_check_env="CONNECT_CHECK_TEST",connect_home_url="https://home.example.test")
-    server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config)
+    server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config,**options)
     # Join handlers, including post-response audit writes, before deleting SQLite.
     server.daemon_threads = False
     thread = threading.Thread(target=server.serve_forever,daemon=True);thread.start()
@@ -167,6 +167,52 @@ def test_broker_signatures_replay_closed_body_and_live_request(portal,monkeypatc
         result=issue(p)
         status,_,_=send_http(address,CHAT,json.dumps({"model":"llm.primary","messages":[{"role":"user","content":"hi"}]}),{"Authorization":"Bearer "+result["secret"]})
         assert status==200
+
+
+def test_home_issues_memory_keys_with_rest_mcp_and_live_bank_isolation(portal, monkeypatch, tmp_path):
+    from dataclasses import replace
+    from anvil_serving.memory_access import SCHEMA
+    from anvil_serving.router.memory import MemoryRouter
+    from tests.router.test_memory import ROUTE, CaptureTransport
+
+    policy = tmp_path / "access.json"
+    grant = {"default_bank": "personal-a", "admin": False, "banks": {"personal-a": ["recall"]}}
+    policy.write_text(json.dumps({"schema": SCHEMA, "users": {OWNER: grant}})); policy.chmod(0o600)
+    transport = CaptureTransport(b'{"results":[]}')
+    memory = MemoryRouter([ROUTE, replace(ROUTE, alias="memory.user", principal="connect", bank="connect", access_file=str(policy))],
+                          env={"HINDSIGHT_TOKEN": "fixture-token"}, transport=transport)
+    paths = ["/v1/memory", "/v1/memory/mcp"]
+    with running(portal, monkeypatch, memory=memory) as (address, secret, *_):
+        def broker(operation, admin=False):
+            status, _, raw = send_http(address, connect_keys.BROKER_PATH, json.dumps(operation),
+                {"X-Anvil-Connect-Identity": assertion(secret, owner=ADMIN if admin else OWNER, role="admin" if admin else "member")})
+            assert status == 200, raw
+            return json.loads(raw)
+        catalog = broker({"action": "view"}, admin=True)
+        assert "memory.user" in catalog["models"] and ROUTE.alias not in catalog["models"]
+        broker({"action": "request"})
+        revision = broker({"action": "view"})["account"]["revision"]
+        broker({"action": "approve", "owner": OWNER, "revision": revision, "status": "approved",
+                "models": ["memory.user"], "paths": paths, "rpm": 60, "expires_days": 1}, admin=True)
+        revision = broker({"action": "view"})["account"]["revision"]
+        issued = broker({"action": "create", "name": "memory test", "revision": revision,
+                         "models": ["memory.user"], "paths": paths, "rpm": 60, "expires_days": 1})
+        headers = {"Authorization": "Bearer " + issued["secret"]}
+        for bank in (None, "personal-b"):
+            before = len(transport.calls)
+            body = {"alias": "memory.user", "operation": "recall", "arguments": {"query": "test"}}
+            if bank: body["bank"] = bank
+            status, _, _ = send_http(address, paths[0], json.dumps(body), headers)
+            assert status == (403 if bank else 200)
+            args = {"alias": "memory.user", "query": "test", **({"bank": bank} if bank else {})}
+            status, _, raw = send_http(address, paths[1], json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                "params": {"name": "memory_recall", "arguments": args}}), headers)
+            assert status == 200 and bool(json.loads(raw)["result"].get("isError")) == bool(bank)
+            assert len(transport.calls) == before + (0 if bank else 2)
+            if not bank: assert "/personal-a/" in transport.calls[-1]["url"]
+        policy.write_text("{}")
+        assert send_http(address, paths[0], json.dumps({"alias": "memory.user", "operation": "recall", "arguments": {"query": "test"}}), headers)[0] == 503
+        assert len(transport.calls) == 2
 
 
 def test_slow_owner_checks_do_not_occupy_ordinary_key_slots(portal,monkeypatch):

@@ -105,6 +105,9 @@ membership grants access to the router memory endpoint.
 
 A dynamic route resolves the authenticated Connect owner through a protected
 bank policy. API keys must still grant the alias and both endpoint paths.
+Connect Home lists these dynamic aliases for operator approval. Approve
+`memory.user`, `/v1/memory`, and `/v1/memory/mcp` before the user creates a key.
+Fixed device-bound memory routes are excluded from that approval catalog.
 Unowned device keys cannot use this route; attribution headers and caller-supplied
 user IDs do not grant access. Existing fixed principal routes keep their bindings.
 
