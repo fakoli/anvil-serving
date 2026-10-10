@@ -119,6 +119,19 @@ have no automatic username association and require separate revocation. An old
 backup can contain a deleted account: review revocations before recovery. Use
 suspension when access may be needed again.
 
+Applications that opt into `authelia.additional_oidc_clients[].groups_scope`
+receive the `groups` claim. The installed account-reconciliation worker runs the
+equivalent of this command before independently processing a pending deletion:
+
+```sh
+sudo anvil-connect-ctl users sync-operators --confirm
+```
+
+It derives `anvil-connect-operators` from configured operators that are enabled,
+have no pending deletion, retain the declared browser-administration resource,
+and resolve to an enabled local sign-in account. It removes stale members and
+does not restart Authelia when the file is already converged.
+
 With filesystem delivery, the result names an exclusive, root-only handoff file beneath
 `/etc/anvil-connect/handoffs`; credentials never appear in command output.
 Deliver its contents directly to the intended developer, then remove the file.

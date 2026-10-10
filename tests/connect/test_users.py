@@ -523,6 +523,72 @@ def test_schedule_cli_is_explicit_and_rejects_account_operands(monkeypatch):
     assert len(calls) == 2
 
 
+def test_operator_group_projection_requires_current_native_authority_and_removes_stale_members(monkeypatch):
+    active = "human:" + "a" * 64
+    no_grant = "human:" + "b" * 64
+    disabled = "human:" + "c" * 64
+    deleting = "human:" + "d" * 64
+    data = {
+        "authelia": {"additional_oidc_clients": [{"groups_scope": True}]},
+        "gateway": {"gateway": {"browser_administration": {
+            "browser_resource": "dashboard", "operators": [active, no_grant, disabled, deleting],
+        }}},
+    }
+    accounts = {
+        "active": {"disabled": False},
+        "no-grant": {"disabled": False, "groups": [users._OPERATOR_GROUP]},
+        "disabled": {"disabled": True, "groups": [users._OPERATOR_GROUP]},
+        "deleting": {"disabled": False, "groups": [users._OPERATOR_GROUP]},
+        "nonoperator": {"disabled": False, "groups": ["members", users._OPERATOR_GROUP]},
+    }
+    records = {
+        active: {"id": active, "username": "active", "generation": 2, "disabled": False,
+                 "resources": ["dashboard"], "application_roles": {"dashboard": "member"}},
+        no_grant: {"id": no_grant, "username": "no-grant", "generation": 2, "disabled": False,
+                   "resources": [], "application_roles": {}},
+        disabled: {"id": disabled, "username": "disabled", "generation": 2, "disabled": True,
+                   "resources": ["dashboard"], "application_roles": {"dashboard": "admin"}},
+        deleting: {"id": deleting, "username": "deleting", "generation": 2, "disabled": False,
+                   "deletion_request": "pending", "resources": ["dashboard"], "application_roles": {"dashboard": "admin"}},
+    }
+    monkeypatch.setattr(users, "_human_admin_read", lambda _data, _manifest, payload, _runner: {
+        "operation": "human-inspect", "found": True, "human": records[payload["principal"]],
+    })
+    desired = users._operator_usernames(data, "manifest", accounts, None)
+    assert desired == {"active"}
+    updated, additions, removals = users._operator_group_changes(accounts, desired)
+    assert (additions, removals) == (1, 4)
+    assert users._OPERATOR_GROUP in updated["active"]["groups"]
+    assert all(users._OPERATOR_GROUP not in updated[name]["groups"] for name in accounts if name != "active")
+
+
+def test_operator_projection_is_a_noop_without_an_opted_in_oidc_client(monkeypatch):
+    monkeypatch.setattr(users, "_require_root", lambda: None)
+    monkeypatch.setattr(users, "_path", lambda _path: None)
+    monkeypatch.setattr(users, "read_manifest", lambda _path: {"authelia": {"additional_oidc_clients": []}})
+    monkeypatch.setattr(users, "_read_users", lambda _data: pytest.fail("must not read account state"))
+    assert users.sync_operators("manifest", apply=True) == {
+        "schema": "anvil-connect.operator-group/v1", "group": users._OPERATOR_GROUP,
+        "enabled": False, "applied": False, "changed": False,
+        "eligible_operators": 0, "additions": 0, "removals": 0,
+    }
+
+
+def test_account_worker_attempts_projection_and_deletion_independently(monkeypatch):
+    from anvil_serving.connect import user_delete
+    from anvil_serving.connect.cli import dispatch
+    calls = []
+    def failed_projection(*_args, **_kwargs):
+        calls.append("projection")
+        raise ValueError("redacted projection failure")
+    monkeypatch.setattr(users, "sync_operators", failed_projection)
+    monkeypatch.setattr(user_delete, "process_pending", lambda *_args, **_kwargs: calls.append("deletion") or {"processed": False})
+    result = dispatch(["users", "process-deletions", "--confirm"])
+    assert calls == ["projection", "deletion"]
+    assert result.error is not None
+    assert result.data == {"operator_group": "failed", "deletion": "completed"}
+
+
 def test_backup_retention_and_verified_restore_without_activation(environment, monkeypatch):
     from anvil_serving.connect import user_backup
     run, db, state, private = environment

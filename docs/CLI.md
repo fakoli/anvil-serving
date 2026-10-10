@@ -418,9 +418,10 @@ required operands, choices, and defaults.
 | `connect users reset-mfa` | Remove passkeys and TOTP; suspend first for a lost or compromised device. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users code` | Export a fresh enrollment code or setup link when using filesystem delivery. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--dry-run`<br>`--confirm` |
+| `connect users sync-operators` | Reconcile the derived Connect-operator identity-provider group. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users schedule` | Install the daily authentication and gateway backup timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect users deletion-schedule` | Install the account-deletion processing timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect users process-deletions` | Process one authorized permanent account deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users deletion-schedule` | Install the periodic account-reconciliation worker. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users process-deletions` | Reconcile operator access and process one authorized deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users restore` | Restore authentication backup into a fresh directory without activating it. | `mutate` / `bounded` | `--input`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |

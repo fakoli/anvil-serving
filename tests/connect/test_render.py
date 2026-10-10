@@ -596,6 +596,7 @@ def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_
         "client_id": "existing-integration", "client_name": "Existing Integration",
         "client_secret_file": "/etc/anvil-connect/secrets/existing-integration-oidc-client-secret",
         "redirect_uris": ["https://app.example.test/oidc/callback"],
+        "groups_scope": True,
     }]
     text = render(value)["files"]["authelia/configuration.yml"]
     assert "client_id: 'existing-integration'" in text
@@ -604,7 +605,7 @@ def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_
     assert "consent_mode: implicit" in text
     assert "token_endpoint_auth_method: client_secret_basic" in text
     assert "token_endpoint_auth_method: client_secret_post" in text
-    assert "          - openid\n          - email\n          - profile" in text
+    assert "          - openid\n          - email\n          - profile\n          - groups" in text
     assert "https://app.example.test/oidc/callback" in text
 
     for redirect in ("http://app.example.test/callback", "https://app.example.test:443/callback",
@@ -624,6 +625,10 @@ def test_authelia_additional_oidc_client_is_fixed_profile_with_protected_secret_
     invalid = copy.deepcopy(value)
     invalid["authelia"]["additional_oidc_clients"][0]["client_secret_file"] = invalid["authelia"]["state_directory"] + "/client-secret"
     with pytest.raises(ManifestError, match="outside rendered output and Authelia state"):
+        validate_manifest(invalid)
+    invalid = copy.deepcopy(value)
+    invalid["authelia"]["additional_oidc_clients"][0]["groups_scope"] = "true"
+    with pytest.raises(ManifestError, match="must be a boolean"):
         validate_manifest(invalid)
 
 

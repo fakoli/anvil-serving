@@ -309,6 +309,8 @@ def _authelia(manifest: dict[str, Any]) -> str:
             "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
             "        token_endpoint_auth_method: client_secret_post", "        redirect_uris:",
         ])
+        if client["groups_scope"]:
+            lines.insert(len(lines) - 3, "          - groups")
         lines.extend(f"          - {_quote(redirect)}" for redirect in client["redirect_uris"])
     if "webauthn" in auth:
         webauthn = auth["webauthn"]
