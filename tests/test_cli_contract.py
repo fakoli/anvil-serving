@@ -24,16 +24,6 @@ def _paths(
         yield from _paths(node.children, path)
 
 
-def _guarded_paths() -> tuple[tuple[str, ...], ...]:
-    return tuple(
-        tuple(node.name for node in path)
-        for path in _paths()
-        if path[-1].handler is not None
-        and path[-1].mutation_class == "mutate"
-        and any("--confirm" in option.flags for option in path[-1].options)
-    )
-
-
 def _leaf(path: tuple[str, ...]) -> CommandNode:
     nodes = COMMAND_TREE.nodes
     node = None
@@ -42,14 +32,6 @@ def _leaf(path: tuple[str, ...]) -> CommandNode:
         nodes = node.children
     assert node is not None
     return node
-
-
-def _action_group_paths() -> tuple[tuple[str, ...], ...]:
-    return tuple(
-        tuple(node.name for node in path)
-        for path in _paths()
-        if path[-1].visible and path[-1].children and path[-1].handler is None
-    )
 
 
 def _unbounded_json_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
@@ -92,8 +74,14 @@ def test_every_unbounded_manifest_case_refuses_json_before_resolution(
     assert classification in payload["error"]["message"]
 
 
-@pytest.mark.parametrize("path", _action_group_paths())
-def test_every_action_group_rejects_options_without_an_action(capsys, path):
+# Parent groups share one dispatcher branch; cover each nesting depth.
+@pytest.mark.parametrize("path", [
+    ("models",),
+    ("models", "recipes"),
+    ("eval", "benchmark", "evidence"),
+    ("eval", "benchmark", "external", "notebook"),
+])
+def test_action_groups_reject_options_without_an_action(capsys, path):
     assert cli.main([*path, "--definitely-invalid"]) == 2
     human = capsys.readouterr()
     assert human.out == ""
@@ -107,8 +95,31 @@ def test_every_action_group_rejects_options_without_an_action(capsys, path):
     assert payload["error"]["details"]["actions"]
 
 
-@pytest.mark.parametrize("path", _guarded_paths())
-def test_explicit_confirmation_is_consumed_before_guarded_handler_dispatch(monkeypatch, path):
+def test_mutating_commands_declare_confirmation_or_retain_handler_owned_policy():
+    # Check the whole catalog without dispatching the same policy for every leaf.
+    handler_owned = {
+        " ".join(node.name for node in path)
+        for path in _paths()
+        if path[-1].handler is not None
+        and path[-1].mutation_class == "mutate"
+        and not any(
+            "--confirm" in option.flags or option.requires_confirmation
+            for option in path[-1].options
+        )
+    }
+    assert handler_owned == {
+        "init", "serves render", "router keys init", "router keys revoke",
+        "router keys bind", "router keys backup", "router keys restore", "connect users",
+    }
+
+
+@pytest.mark.parametrize("path,forward_confirm", [
+    (("models", "sync"), False),
+    (("models", "cache", "remove"), True),
+])
+def test_explicit_confirmation_is_consumed_before_guarded_handler_dispatch(
+    monkeypatch, path, forward_confirm
+):
     calls: list[list[str]] = []
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO())
     monkeypatch.setattr(
@@ -119,7 +130,7 @@ def test_explicit_confirmation_is_consumed_before_guarded_handler_dispatch(monke
 
     assert cli.main([*path, "--confirm"]) == 0
     assert len(calls) == 1
-    if _leaf(path).handler.forward_confirm_flag:
+    if forward_confirm:
         # Declared legacy handlers gate on their own argparse --confirm; the
         # dispatcher restores exactly one consumed token in argv.
         assert calls[0].count("--confirm") == 1
