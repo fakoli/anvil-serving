@@ -689,6 +689,26 @@ therefore holds router replacement while configured. Ambiguous media submission
 also remains HOLD even if ordinary recovery marks the local job failed.
 
 
+## Recovery diagnostics
+
+```bash
+anvil-serving router recovery-status --json
+```
+
+When a router cannot stay running after an interruption, this native read-only
+command inspects its protected custody sidecars through the actual Docker mount.
+It may need administrator filesystem access. It prints bounded phase counts and
+boot, container, image and configuration match counts, never keys, account data,
+run identifiers or raw records. It does not open the credential database, change
+custody, stop a container or authorize recovery. Unavailable permissions, changing
+metadata and malformed records refuse with a fixed error.
+
+Sidecar matches cannot exclude a partially registered successor. The report
+therefore leaves ledger correlation and successor presence UNKNOWN and recovery
+eligibility false. Any recovery operation still needs native ledger correlation,
+storage exclusion and physical-death proof. Do not remove custody records or
+restore an older database to bypass a startup refusal.
+
 ## Acknowledged router maintenance
 
 ```bash

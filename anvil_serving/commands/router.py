@@ -11,6 +11,11 @@ def commands() -> CommandNode:
         "router",
         "Manage the deployed router and its lifecycle.",
         children=(
+            _node("recovery-status", "Inspect protected custody sidecars without authorizing recovery.",
+                handler=_handler("anvil_serving.router_recovery_status", attribute="dispatch", argv_prefix=()),
+                mutation_class="read", execution_policy="offline",
+                options=(_option("--container", summary="Exact deployed router container.", value_name="NAME"),),
+                docs_anchor="docs/cli/router.md#recovery-diagnostics"),
             _resource_node(
                 "export-config",
                 "Export the verified, secret-free configuration mounted by the running router.",

@@ -177,6 +177,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router recovery-status` | Inspect protected custody sidecars without authorizing recovery. | `read` / `bounded` | `--container` |
 | `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
 | `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
 | `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
