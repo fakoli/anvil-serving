@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 from statistics import median
 import sys
-from threading import Barrier, Event, Lock, get_ident
+from threading import Barrier, Event, Lock, Thread, get_ident
 from time import perf_counter, sleep
 
 import pytest
@@ -61,8 +61,8 @@ class _C4FirstFailure:
                 state[key] = value if previous is None else max(previous, value)
 
     def first_failure(self, worker):
-        frames = sys._current_frames()
         with self._lock:
+            frames = sys._current_frames()
             now = perf_counter()
             if self._captured:
                 self._workers[worker]['phase'] = 'failed'
@@ -349,6 +349,31 @@ def test_c4_first_failure_attributes_held_head_without_exposing_values_and_queue
     assert rows(db, 'usage_cumulative') == []
     assert db.finalize(terminal(starts[0])) == 'committed'
     assert rows(db, 'usage_cumulative')[0]['requests'] == 1
+
+
+def test_c4_snapshot_holds_one_lock_across_frames_clock_and_phase_copy(monkeypatch):
+    diagnostic = _C4FirstFailure(1)
+    diagnostic.register(0)
+    phase_attempted, phase_completed = Event(), Event()
+    threads = []
+
+    def advance_phase():
+        phase_attempted.set()
+        diagnostic.phase(0, 'finalize')
+        phase_completed.set()
+
+    def current_frames():
+        thread = Thread(target=advance_phase)
+        threads.append(thread)
+        thread.start()
+        assert phase_attempted.wait(1)
+        return {}
+
+    monkeypatch.setattr(sys, '_current_frames', current_frames)
+    snapshot = diagnostic.first_failure(0)
+    threads[0].join(timeout=1)
+    assert not threads[0].is_alive() and phase_completed.is_set()
+    assert snapshot['workers'][0]['phase'] == 'barrier'
 
 
 def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store, monkeypatch):
