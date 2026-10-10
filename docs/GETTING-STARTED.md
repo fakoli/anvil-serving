@@ -77,6 +77,54 @@ anvil-serving product journey control-plane-fleet
 The six-family boundary and cross-family handoffs are documented in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
 
+## Windows client
+
+For an existing deployment, keep the operator CLI in native PowerShell. It
+needs Python 3.11+ and the package, with no development extras, model engines,
+Docker, or WSL required just to contact a remote controller. From this clone:
+
+```powershell
+py -m pip install -e .
+anvil-serving --version
+anvil-serving --help
+```
+
+Use your provisioned private client configuration, which declares the Linux
+resource owner, its authenticated controller endpoint, and credential references.
+Select that directory once in the PowerShell session:
+
+```powershell
+$env:ANVIL_SERVING_HOME = Join-Path $HOME "anvil-operator"
+anvil-serving topology validate
+anvil-serving topology resolve --command "router status" --transport controller
+```
+
+Replace `anvil-operator` with your existing private client configuration
+location. The two topology commands are offline: they validate the declaration
+and explain the owner and transport without starting or contacting services.
+If the topology has multiple router owners, select the intended resource with
+`--target` as described in [Control plane](cli/control-plane.md#topology).
+Load the referenced controller credential through your existing protected
+credential setup, then read the owner's router status:
+
+```powershell
+anvil-serving router status --transport controller
+```
+
+Keep `--transport controller` explicit: a bare command does not automatically
+become remote merely because `ANVIL_SERVING_HOME` is set. Only commands with a
+declared typed remote operation can dispatch this way. Use focused `--help`
+and the resolved plan before an operation; keep its normal preview and
+confirmation requirements.
+
+For services hosted on the Windows machine itself, use Docker Desktop's Linux
+engine or Linux in WSL and follow the owning runtime's managed deployment path.
+Windows, WSL, and containers have separate paths, process ownership, and
+loopback addresses; a Windows path or `127.0.0.1` is not an implicit reference
+to the Linux owner. Run owner-local commands in that Linux environment. Do not
+run the local `init` / `serves up` / `router run` sequence below in PowerShell
+as client setup. See [Host-supervised services](HOST-SERVICES.md).
+
 ## Choose the network shape
 
 A single-host installation keeps every URL on `127.0.0.1`; no private overlay
