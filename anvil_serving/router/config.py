@@ -161,7 +161,7 @@ _ROUTER_KEYS = frozenset({
     "memory_routes",
 })
 _MEMORY_ROUTE_KEYS = frozenset({
-    "alias", "principal", "backend", "bank", "base_url", "auth_env", "timeout",
+    "alias", "principal", "backend", "bank", "base_url", "auth_env", "timeout", "access_file",
 })
 _MEMORY_ALIAS_RE = re.compile(r"^[a-z][a-z0-9._-]{0,127}$")
 
@@ -378,6 +378,7 @@ class MemoryRoute:
     base_url: str
     auth_env: str
     timeout: float = 120.0
+    access_file: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -1601,7 +1602,13 @@ def _parse_memory_route(raw: object) -> MemoryRoute:
             "ASCII letters, digits, dots, hyphens, or underscores (up to 128 characters)"
         )
 
-    principal = raw.get("principal")
+    access_file = raw.get("access_file")
+    if access_file is not None:
+        if (not isinstance(access_file, str) or not os.path.isabs(access_file)
+                or any(c in access_file for c in "\x00\r\n")
+                or "principal" in raw or "bank" in raw):
+            raise ConfigError("memory access_file requires an absolute path and replaces principal and bank")
+    principal = "connect" if access_file is not None else raw.get("principal")
     if (
         not isinstance(principal, str)
         or principal == "_legacy"
@@ -1613,52 +1620,15 @@ def _parse_memory_route(raw: object) -> MemoryRoute:
     if not isinstance(backend, str) or backend not in {"hindsight", "hermes"}:
         raise ConfigError("memory route backend must be 'hindsight' or 'hermes'")
 
-    bank = raw.get("bank")
+    bank = "connect" if access_file is not None else raw.get("bank")
     if not isinstance(bank, str) or _REPLICA_ID_RE.fullmatch(bank) is None:
         raise ConfigError("memory route bank must be an identifier")
 
-    base_url = raw.get("base_url")
-    if not isinstance(base_url, str) or not base_url.lower().startswith(("http://", "https://")) or any(ord(c) < 33 or ord(c) > 126 for c in base_url):
-        raise ConfigError("memory route base_url must be an http:// or https:// URL")
-    parsed_url = urllib.parse.urlparse(base_url)
+    from ..connect.memory_backend import origin
     try:
-        port = parsed_url.port
+        base_url = origin(raw.get("base_url"))
     except ValueError as exc:
-        raise ConfigError("memory route base_url has an invalid port") from exc
-    hostname = (parsed_url.hostname or "").lower()
-    if (
-        not hostname
-        or parsed_url.username is not None
-        or parsed_url.password is not None
-        or parsed_url.query
-        or parsed_url.fragment
-        or parsed_url.path not in {"", "/"}
-        or parsed_url.params
-    ):
-        raise ConfigError(
-            "memory route base_url must name a credential-free origin without query strings or fragments"
-        )
-    if port is not None and not (1 <= port <= 65535):
-        raise ConfigError("memory route base_url port must be from 1 through 65535")
-    if hostname == "localhost":
-        raise ConfigError("memory route base_url must use 127.0.0.1 or host.docker.internal, never localhost")
-    if hostname != "host.docker.internal":
-        try:
-            address = ipaddress.ip_address(hostname)
-        except ValueError:
-            raise ConfigError(
-                "memory route base_url host must be host.docker.internal or a literal private/tailnet IP address"
-            ) from None
-        allowed_networks = (
-            ipaddress.ip_network("10.0.0.0/8"),
-            ipaddress.ip_network("172.16.0.0/12"),
-            ipaddress.ip_network("192.168.0.0/16"),
-            ipaddress.ip_network("100.64.0.0/10"),
-        )
-        if str(address) != "127.0.0.1" and not any(address in network for network in allowed_networks):
-            raise ConfigError(
-                "memory route base_url host must be 127.0.0.1, RFC1918, or tailnet"
-            )
+        raise ConfigError("memory route base_url: " + str(exc)) from exc
 
     auth_env = raw.get("auth_env")
     _validate_auth_env(auth_env, f"memory route {alias!r}: auth_env", detailed=False)
@@ -1678,6 +1648,7 @@ def _parse_memory_route(raw: object) -> MemoryRoute:
         base_url=base_url,
         auth_env=auth_env,
         timeout=float(timeout),
+        access_file=access_file,
     )
 
 

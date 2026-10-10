@@ -724,7 +724,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if self._anvil_device is None or memory is None:
                 return ()
             return tuple(
-                alias for alias in memory.aliases(self._anvil_device.key_id)
+                alias for alias in memory.aliases(self._anvil_device)
                 if self._anvil_device.allows_model(alias)
             )
 
@@ -744,7 +744,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(400, "invalid_request", "memory route overrides are not allowed")
                 return
             if path == MEMORY_MCP_PATH:
-                result = MemoryMCP(memory, self._anvil_device.key_id, self._memory_aliases()).handle(
+                result = MemoryMCP(memory, self._anvil_device, self._memory_aliases()).handle(
                     body, self.headers
                 )
                 if result is None:
@@ -759,12 +759,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             alias = body.get("alias")
             if isinstance(alias, str):
                 alias = normalize_model_alias(alias)
-            configured = memory.aliases(self._anvil_device.key_id)
+            configured = memory.aliases(self._anvil_device)
             if isinstance(alias, str) and alias in configured and not self._anvil_device.allows_model(alias):
                 self._error(403, "key_access_denied", "API key does not grant this model")
                 return
             try:
-                self._json(200, memory.dispatch(body, principal=self._anvil_device.key_id),
+                self._json(200, memory.dispatch(body, principal=self._anvil_device),
                            extra_headers={"Cache-Control": "no-store"})
             except MemoryError as exc:
                 self._error(exc.status, exc.code, exc.message)

@@ -523,7 +523,27 @@ def _human_set(data: dict, manifest: str, username: str, subject: str, grants: d
                                        "resources": list(grants), "application_roles": grants}, runner)
 
 
+def _prepare_user_memory(data, username, subject, account, grants):
+    from . import user_memory
+    # Deny first while native authority rotates the account generation.
+    user_memory.quarantine(data, subject)
+    return user_memory.provision(data, username, subject, publish=False,
+        admin=("admins" in account["groups"] or (grants or {}).get("hindsight-ui") == "admin"))
+
+
+def _set_user_access(data, manifest, username, subject, account, grants, runner, result):
+    prepared = _prepare_user_memory(data, username, subject, account, grants) if "memory" in data else None
+    if grants is not None:
+        _human_set(data, manifest, username, subject, grants, runner)
+    if prepared is not None:
+        from . import user_memory
+        result["memory"] = user_memory.publish_grant(data, prepared)
+
+
 def _human_admin(data: dict, manifest: str, payload: dict, runner) -> dict:
+    if "memory" in data and payload.get("operation") == "human-suspend":
+        from .user_memory import quarantine
+        quarantine(data, payload["subject"])
     state = Path(data["gateway"]["state_directory"])
     uid, gid = role_identity(data, "gateway")
     manage._safe_private_runtime_directory(state, uid, gid)
@@ -537,6 +557,9 @@ def _human_admin(data: dict, manifest: str, payload: dict, runner) -> dict:
 
 def _human_admin_read(data: dict, manifest: str, payload: dict, runner) -> dict:
     """Read one closed native human response through a gateway-owned output file."""
+    if "memory" in data and payload.get("operation") in {"human-delete-prepare", "human-delete-prepare-absent"}:
+        from .user_memory import quarantine_principal
+        quarantine_principal(data, payload["principal"])
     state = Path(data["gateway"]["state_directory"])
     uid, gid = role_identity(data, "gateway")
     manage._safe_private_runtime_directory(state, uid, gid)
@@ -722,7 +745,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             output: str | None = None, grants: list[str] | None = None, apply: bool = False, runner=None,
             unit_root: Path = Path("/etc/systemd/system"), include_gateway: bool = False) -> dict:
     _require_root()
-    if operation not in {"create", "access", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup"}:
+    if operation not in {"create", "access", "memory", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup"}:
         raise _invalid("Unsupported account operation.")
     if operation == "backup" and username is not None:
         raise _invalid("Authentication backup includes all accounts; omit the username.")
@@ -751,6 +774,8 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         return delete(manifest, username, apply=apply, runner=runner, unit_root=unit_root)
     _path(manifest)
     data = read_manifest(manifest)
+    if operation == "memory" and "memory" not in data:
+        raise _invalid("User memory is not declared in this Connect deployment.")
     auth = data["authelia"]
     delivery = _password_setup_delivery(auth)
     passkey_login = auth.get("webauthn", {}).get("enable_passkey_login") is True
@@ -779,7 +804,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     destination = (_path(output) if output else _next_handoff(Path(manifest).parent / "handoffs", username or "all", operation)) if uses_handoff else None
     result = {"operation": operation, "username": username, "applied": False,
               "grants_changed": False, "existing_connect_sessions_revoked": False,
-              "authelia_restart_if_active": operation not in {"code", "access"}, "classification": "restricted-authentication"}
+              "authelia_restart_if_active": operation not in {"code", "access", "memory"}, "classification": "restricted-authentication"}
     if grant_map is not None:
         result["resources"] = list(grant_map)
         result["application_roles"] = grant_map
@@ -793,7 +818,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
     if operation == "access":
         result["impact"] = "Replaces the complete browser grant list and enables the account; invalidates existing Connect browser and terminal credentials. Resuming a suspended account briefly restarts Authelia."
         result["authelia_restart_if_active"] = users[username].get("disabled", False)
-    if operation not in {"code", "access"}:
+    if operation not in {"code", "access", "memory"}:
         result["impact"] = "If active, briefly stops Authelia and clears its in-memory sessions; existing Connect sessions and API keys are not revoked."
         result["backup_directory"] = str(Path(manifest).parent / "backups")
     if operation in {"create", "reset-password"}:
@@ -815,6 +840,10 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
         result["account_deleted"] = False
         if operation == "delete":
             result["impact"] += " Removes the account and registered factors; retained OIDC identifiers reserve the username. Backups and disabled authority history remain."
+    if operation == "memory":
+        if users[username].get("disabled", False):
+            raise _invalid("Memory provisioning does not enable suspended accounts.")
+        result["impact"] = "Creates and protects the personal memory bank, verifies shared grants, preserves browser access, and invalidates existing Connect browser and terminal credentials. No Authelia restart."
     if include_gateway:
         result["include_gateway"] = True
         result["impact"] += " Then briefly stops only the native gateway for a sequential authority backup and restores its prior running state."
@@ -830,7 +859,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             "Preview only. No changes were made. Run again with --confirm to apply."
         )
         return result
-    if operation == "access" and not users[username].get("disabled", False):
+    if operation in {"access", "memory"} and not users[username].get("disabled", False):
         with manage._deployment_lock(root):
             manage._require_no_authelia_upgrade(root)
             # Do not re-enable a human after a concurrent suspension/deletion.
@@ -844,8 +873,19 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             if manage._digest(Path(data["components"]["authelia"])) != manage._component_lock()["authelia"]:
                 raise _invalid("Authelia executable does not match the pinned component.")
             subject = _oidc_subject(data, config, username, runner)
-            _human_set(data, manifest, username, subject, grant_map, runner)
-        return {**result, "applied": True, "grants_changed": True, "existing_connect_sessions_revoked": True,
+            if operation == "memory":
+                principal = _principal(data["gateway"]["oidc"]["issuer"], subject)
+                native = _human_admin_read(data, manifest, {"operation": "human-inspect", "principal": principal}, runner)
+                human = native.get("human", {})
+                if (native.get("found") is not True or human.get("id") != principal
+                        or human.get("username") != username or human.get("disabled") is not False
+                        or type(human.get("resources")) is not list
+                        or type(human.get("application_roles")) is not dict
+                        or set(human["resources"]) != set(human["application_roles"])):
+                    raise _invalid("Current Connect account grants could not be verified; use users access with the intended grants.")
+                grant_map = _grant_map([resource + ":" + role for resource, role in human["application_roles"].items()], data)
+            _set_user_access(data, manifest, username, subject, users[username], grant_map, runner, result)
+        return {**result, "applied": True, "grants_changed": operation == "access", "existing_connect_sessions_revoked": True,
                 "principal": _principal(data["gateway"]["oidc"]["issuer"], subject)}
     with manage._deployment_lock(root):
         manage._require_no_authelia_upgrade(root)
@@ -883,6 +923,12 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 kind = "password-setup"
             _exclusive(destination, handoff)
             return {**result, "applied": True, "handoff_kind": kind}
+        resume_memory = None
+        resume_subject = None
+        if operation == "access" and "memory" in data:
+            # Bank I/O must finish before the global identity-provider stop.
+            resume_subject = _oidc_subject(data, config, username, runner)
+            resume_memory = _prepare_user_memory(data, username, resume_subject, users[username], grant_map)
         source = manage._read_unit(root / "systemd" / _UNIT)
         if source is None or manage._unit_exec_path(source) != Path(binary):
             raise _invalid("Authelia unit does not match its declared executable.")
@@ -920,6 +966,8 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 if subject is not None:
                     changed = True
                     if operation == "access":
+                        if resume_subject is not None and subject != resume_subject:
+                            raise _invalid("Account identity changed during bank preparation; retry.")
                         _human_set(data, manifest, username, subject, grant_map, runner)
                     else:
                         _human_admin(data, manifest, {"operation": "human-suspend", "subject": subject}, runner)
@@ -960,7 +1008,7 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                         _human_admin(data, manifest, {"operation": "human-revoke-sessions", "subject": subject}, runner)
                         result["existing_connect_sessions_revoked"] = True
                         result["principal"] = _principal(data["gateway"]["oidc"]["issuer"], subject)
-                if operation == "create" and grant_map is not None:
+                if operation == "create" and (grant_map is not None or "memory" in data):
                     oidc_subject = str(uuid.uuid4())
                     identity_attempted = True
                     manage._action(runner, (binary, "storage", "user", "identifiers", "add", username,
@@ -1004,6 +1052,12 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                     if identity_attempted:
                         raise _partial("Authelia activation failed after account and OpenID Connect identity provisioning; restart completed. Inspect the retained backup before retrying.", result) from exc
                     raise _partial("Authelia activation failed; password replacement was rolled back and restart completed. Inspect the retained backup before retrying.", result) from exc
+        if resume_memory is not None:
+            try:
+                from . import user_memory
+                result["memory"] = user_memory.publish_grant(data, resume_memory)
+            except BaseException as exc:
+                raise _partial("Account access changed, but memory remains closed; use users memory to finish provisioning.", result) from exc
         if operation in {"create", "reset-password"}:
             try:
                 if delivery == "email":
@@ -1024,12 +1078,12 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
                 result["backup"].update(prune(Path(result["backup"]["file"]).parent))
             except BaseException as exc:
                 raise _partial("Account operation completed, but backup retention did not finish.", result) from exc
-        if operation == "create" and grant_map is not None:
+        if operation == "create" and (grant_map is not None or "memory" in data):
             try:
-                _human_set(data, manifest, username, oidc_subject, grant_map, runner)
+                _set_user_access(data, manifest, username, oidc_subject, users[username], grant_map, runner, result)
             except BaseException as exc:
                 raise _partial("Account and OpenID Connect identity were created, but access provisioning may not have completed; inspect the account, then use users access with the intended grants to retry access provisioning.", result) from exc
-            result.update({"grants_changed": True, "principal": _principal(data["gateway"]["oidc"]["issuer"], oidc_subject)})
+            result.update({"grants_changed": grant_map is not None, "principal": _principal(data["gateway"]["oidc"]["issuer"], oidc_subject)})
         completed = result
     if include_gateway:
         try:

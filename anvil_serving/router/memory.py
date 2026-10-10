@@ -24,6 +24,8 @@ from .backends.relay import (
 from .config import MemoryRoute, normalize_model_alias
 from .internal import BackendClientError
 from .request_control import RequestControl, RequestControlError
+from .keys import Principal
+from .. import memory_access
 
 
 _MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -37,11 +39,12 @@ _PATHS = {
 }
 
 
-def _memory_transport(url, *, data, headers, timeout, max_bytes):
+def _memory_transport(url, *, data, headers, timeout, max_bytes, method=None):
     """Reuse relay's cancellable connection and bound the entire body read."""
     control = RequestControl(total_timeout_s=timeout, startup_timeout_s=timeout)
     control.start_upstream()
-    response = _controlled_stream_open(url, data=data, headers=headers, timeout=timeout, control=control)
+    response = _controlled_stream_open(url, data=data, headers=headers, timeout=timeout, control=control,
+                                       method=method or ("GET" if data is None else "POST"))
     def close():
         _interrupt_response(response)
     control.set_upstream_close(close)
@@ -117,27 +120,56 @@ class MemoryRouter:
             self._tracking.invocation = prior
 
     @owned_dispatch("memory")
-    def dispatch(self, body: Mapping[str, Any], *, principal: str) -> dict:
+    def dispatch(self, body: Mapping[str, Any], *, principal: str | Principal) -> dict:
         """Validate and dispatch one memory request for ``principal``."""
-        if not isinstance(principal, str) or not principal.strip():
+        key_id = principal.key_id if isinstance(principal, Principal) else principal
+        if not isinstance(key_id, str) or not key_id.strip():
             raise MemoryError(401, "authentication_required", "memory authentication is required")
-        if not isinstance(body, Mapping) or set(body) != {"alias", "operation", "arguments"}:
+        if (not isinstance(body, Mapping) or not {"alias", "operation", "arguments"} <= set(body)
+                or set(body) - {"alias", "operation", "arguments", "bank"}):
             raise MemoryError(422, "invalid_request", "memory request must contain alias, operation, and arguments")
         alias_value = body["alias"]
         if not isinstance(alias_value, str) or not alias_value.strip():
             raise MemoryError(422, "invalid_request", "memory alias must be a non-empty string")
         alias = normalize_model_alias(alias_value)
-        route_binding = self._routes.get((alias, principal))
+        route_binding = self._routes.get((alias, key_id))
+        if route_binding is None and isinstance(principal, Principal) and principal.owner is not None:
+            route_binding = self._routes.get((alias, "connect"))
         if route_binding is None:
             if alias in self._aliases:
                 raise MemoryError(403, "memory_forbidden", "memory alias is not available to this principal")
             raise MemoryError(404, "memory_not_found", "unknown memory alias")
         route, token = route_binding
+        if "bank" in body and (type(body["bank"]) is not str or not memory_access.BANK.fullmatch(body["bank"])):
+            raise MemoryError(422, "invalid_request", "invalid memory bank")
         operation = body["operation"]
-        if not isinstance(operation, str) or operation not in _PATHS:
+        if not isinstance(operation, str) or operation not in {*_PATHS, "banks"}:
             raise MemoryError(422, "invalid_request", "unsupported memory operation")
         arguments = body["arguments"]
-        payload = _payload(operation, arguments)
+        if operation == "banks":
+            if (not isinstance(arguments, Mapping) or set(arguments) - {"limit", "offset"}
+                    or "bank" in body or not route.access_file):
+                raise MemoryError(422, "invalid_request", "bank discovery requires a user memory route")
+            page_limit, offset = arguments.get("limit", 100), arguments.get("offset", 0)
+            if type(page_limit) is not int or not 1 <= page_limit <= 100 or type(offset) is not int or not 0 <= offset <= 1000000:
+                raise MemoryError(422, "invalid_request", "invalid bank pagination")
+            payload = None
+        else:
+            payload = _payload(operation, arguments)
+        bank = route.bank
+        grant = None
+        if route.access_file:
+            try:
+                if not isinstance(principal, Principal) or principal.owner is None:
+                    raise PermissionError()
+                bank, grant = memory_access.resolve(route.access_file, principal.owner[0],
+                    operation, body.get("bank"))
+            except PermissionError:
+                raise MemoryError(403, "memory_forbidden", "memory bank is not available to this user") from None
+            except Exception:
+                raise MemoryError(503, "memory_unavailable", "memory access policy is unavailable") from None
+        elif "bank" in body:
+            raise MemoryError(422, "invalid_request", "fixed memory routes do not accept bank selection")
         if route.backend == "hermes":
             raise MemoryError(501, "unsupported_backend", "selected memory backend is not available")
         if route.backend != "hindsight" or token is None:
@@ -145,14 +177,28 @@ class MemoryRouter:
         if not self._limit.acquire(blocking=False):
             raise MemoryError(503, "memory_busy", "selected memory route is busy")
         try:
+            # Re-read the protected grants at the dispatch boundary, including MCP.
+            if route.access_file:
+                try:
+                    bank, grant = memory_access.resolve(route.access_file, principal.owner[0],
+                        operation, body.get("bank"))
+                except PermissionError:
+                    raise MemoryError(403, "memory_forbidden", "memory bank is not available to this user") from None
+            if operation == "banks" and not grant["admin"]:
+                return {"alias": route.alias, "backend": "hindsight", "operation": operation,
+                        "result": {"default_bank": bank, "total": len(grant["banks"]), "banks": [
+                            {"bank_id": name, "operations": grant["banks"][name]}
+                            for name in sorted(grant["banks"])[offset:offset + page_limit]]}}
             invocation = getattr(self._tracking, "invocation", None)
             if invocation is not None:
                 from .usage_store import RouteAssociation
                 invocation.route = RouteAssociation(route_id=route.alias)
                 invocation.dispatch()
             raw = self._transport(
-                route.base_url.rstrip("/") + "/v1/default/banks/" + quote(route.bank, safe="") + _PATHS[operation],
-                data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+                route.base_url.rstrip("/") + "/v1/default/banks" + (
+                    "?limit=" + str(page_limit) + "&offset=" + str(offset) if operation == "banks"
+                    else "/" + quote(bank, safe="") + _PATHS[operation]),
+                data=None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8"),
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
                 timeout=route.timeout,
                 max_bytes=_MAX_RESPONSE_BYTES,
@@ -162,6 +208,12 @@ class MemoryRouter:
                 raise ValueError("response is not an object")
             if operation == "recall":
                 result = _recall_result(result)
+            elif operation == "banks":
+                if not isinstance(result.get("banks"), list):
+                    raise ValueError("invalid bank inventory")
+                result["default_bank"] = bank
+        except MemoryError:
+            raise
         except (RequestControlError, RelayTimeoutError, TimeoutError):
             raise MemoryError(504, "memory_timeout", "selected memory route timed out") from None
         except BackendClientError as exc:
@@ -174,14 +226,24 @@ class MemoryRouter:
             self._limit.release()
         return {"alias": route.alias, "backend": "hindsight", "operation": operation, "result": result}
 
-    def aliases(self, principal: str) -> tuple[str, ...]:
+    def aliases(self, principal: str | Principal) -> tuple[str, ...]:
         """Return the configured aliases available to one authenticated principal."""
-        if not isinstance(principal, str) or not principal.strip():
+        key_id = principal.key_id if isinstance(principal, Principal) else principal
+        if not isinstance(key_id, str) or not key_id.strip():
             return ()
-        return tuple(sorted(alias for alias, route_principal in self._routes if route_principal == principal))
+        aliases = {alias for alias, route_principal in self._routes if route_principal == key_id}
+        if isinstance(principal, Principal) and principal.owner is not None:
+            for (alias, _), (route, _) in self._routes.items():
+                if route.access_file:
+                    try:
+                        if principal.owner[0] in memory_access.read(route.access_file)["users"]:
+                            aliases.add(alias)
+                    except Exception:
+                        pass  # Invalid or missing policy grants nothing.
+        return tuple(sorted(aliases))
 
 
-def tool_schemas(aliases: Sequence[str]) -> tuple[dict, ...]:
+def tool_schemas(aliases: Sequence[str], *, user_banks: bool = False) -> tuple[dict, ...]:
     """Return compact function schemas for the three caller-safe operations."""
     alias = {"type": "string", "enum": list(aliases)}
     tags = {
@@ -192,6 +254,9 @@ def tool_schemas(aliases: Sequence[str]) -> tuple[dict, ...]:
         "type": "object", "additionalProperties": False,
         "properties": {"alias": alias, "tags": tags},
     }
+    if user_banks:
+        common["properties"]["bank"] = {"type": "string", "pattern": r"^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+                                         "description": "Granted bank; omit to use your default bank."}
     retain = dict(common, required=["alias", "content"], properties={
         **common["properties"],
         "content": {"type": "string", "minLength": 1, "maxLength": 32768},
@@ -204,11 +269,17 @@ def tool_schemas(aliases: Sequence[str]) -> tuple[dict, ...]:
             "budget": {"type": "string", "enum": ["low", "mid", "high"], "default": default_budget},
             "max_tokens": {"type": "integer", "minimum": 1, "maximum": max_tokens, "default": default_tokens},
         })
-    return (
+    tools = (
         {"type": "function", "function": {"name": "memory_retain", "parameters": retain}},
         {"type": "function", "function": {"name": "memory_recall", "parameters": query_schema(8192, "mid", 1024)}},
         {"type": "function", "function": {"name": "memory_reflect", "parameters": query_schema(4096, "low", 4096)}},
     )
+    if user_banks:
+        tools += ({"type": "function", "function": {"name": "memory_banks", "parameters": {
+            "type": "object", "required": ["alias"], "additionalProperties": False,
+            "properties": {"alias": alias, "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+                           "offset": {"type": "integer", "minimum": 0, "maximum": 1000000}}}}},)
+    return tools
 
 
 def _payload(operation: str, arguments: Any) -> dict:

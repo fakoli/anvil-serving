@@ -6,6 +6,8 @@ USER_OPERATIONS = {
     "show": ("Show one local sign-in account (not Connect grants).", ()),
     "create": ("Create an account and request a password-setup email or private handoff.", ("email", "role", "grant", "output")),
     "access": ("Replace ALL browser grants, enable the account and revoke its Connect sessions.", ("grant",)),
+    "memory": ("Provision user memory banks, preserve browser grants and revoke Connect sessions.", ()),
+    "configure-memory": ("Install protected user-bank settings; does not restart services.", ("input",)),
     "suspend": ("Disable sign-in and revoke Connect browser and terminal sessions.", ()),
     "delete": ("Remove the account and factors; retain backups and disabled authority history.", ()),
     "reset-password": ("Request password setup; preserve groups, grants and registered factors.", ("output",)),

@@ -689,6 +689,45 @@ therefore holds router replacement while configured. Ambiguous media submission
 also remains HOLD even if ordinary recovery marks the local job failed.
 
 
+## Recovery diagnostics
+
+```bash
+anvil-serving router recovery-status --json
+```
+
+When a router cannot stay running after an interruption, this native read-only
+command inspects its protected custody sidecars through the actual Docker mount.
+It may need administrator filesystem access. It prints bounded phase counts and
+boot, container, image and configuration match counts, never keys, account data,
+run identifiers or raw records. It does not open the credential database, change
+custody, stop a container or authorize recovery. Unavailable permissions, changing
+metadata and malformed records refuse with a fixed error.
+
+Sidecar matches cannot exclude a partially registered successor. The report
+therefore leaves ledger correlation and successor presence UNKNOWN and recovery
+eligibility false. Any recovery operation still needs native ledger correlation,
+storage exclusion and physical-death proof. Do not remove custody records or
+restore an older database to bypass a startup refusal.
+
+```bash
+anvil-serving router recovery-status --ledger --json
+```
+
+The optional ledger check uses the exact incumbent image and numeric user in a
+temporary, networkless, resource-limited reader. It mounts only the installed
+configuration, bound admission record and existing named key volume. The native
+reader holds the existing shared custody lease and reads one query-only SQLite
+snapshot of run, domain and first-coverage metadata. It returns fixed counts and
+consistency flags, including missing anchors and incomplete transfers; it never
+reads account records, keys or request payloads. The helper is removed on exit.
+The key volume must be writable for native reader locking and SQLite WAL/SHM
+housekeeping. No application ledger or custody writes are performed; this is not
+a guarantee of bitwise storage immutability. Container start time and restart
+count may advance during this diagnostic, but other incumbent identities,
+mounts, configuration and sidecars must remain unchanged. Recovery eligibility
+remains false even when correlation matches. This check neither stops the
+incumbent nor supplies physical-death proof or readmission authority.
+
 ## Acknowledged router maintenance
 
 ```bash
