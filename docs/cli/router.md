@@ -884,6 +884,40 @@ ready proof and starts CLOSED. Committed accounting remains intact; unfinished
 local requests retain interrupted/unknown outcomes. Remote work remains UNKNOWN
 and `drained` remains false. Readmission still needs its separate fresh approval.
 
+## Failed startup recovery
+
+```bash
+sudo anvil-serving router startup-abort --config /protected/startup-abort.json --preview-out /protected/startup-preview.json
+sudo anvil-serving router startup-abort --config /protected/startup-abort.json --confirm
+```
+
+This narrow recovery applies only to a registered managed successor that failed
+before its container anchor existed and never admitted any requests. The
+protected `router-startup-abort-config/v1` object pins the current Compose file
+and SHA-256, container and image IDs, qualified helper image ID, run ID,
+configuration revision, preview digest, acknowledgment and receipt output.
+Preview performs no service mutation. Bind its canonical digest as
+`preview_sha256` before confirmation.
+
+Confirmation holds both native storage fences, rechecks the unconsumed closure
+and predecessor transfers, proves the original PID namespace extinct from the
+unrestricted root host view, and stops the exact failed container. It retains
+the run and coverage rows with a distinct `router-managed-startup-abort/v1`
+receipt; it never invents a container anchor or rewrites request accounting.
+The command neither starts a successor nor opens admission. Start the corrected
+qualified image with `router up --startup-abort-config /protected/startup-abort.json`
+and the selected successor Compose file, then perform separate successor
+readmission. This handoff verifies the exact completed receipt and stopped Docker
+incarnation before the usual offline and new-container custody checks. It refuses
+a restarted target or changed configuration.
+The protected receipt handoff is local-only; remote transports reject this flag.
+
+Retries reuse the protected pending intent and stopped incarnation. If execution
+stops before the native pending receipt exists, confirmation must finish within
+the original 15-minute authorization window; otherwise recovery remains held.
+Once the native receipt exists, retries can complete it after expiry under fresh
+fences and repeated physical proof.
+
 ## Fixed native SQLite storage
 
 The opt-in router runtime uses a verified fixed SQLite build and its native

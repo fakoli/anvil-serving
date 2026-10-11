@@ -128,22 +128,26 @@ def _ledger_status(request, config_path='/etc/anvil/config.toml'):
             records[row['run_id']] = record
             phase = record['phase']
             result['partial_records'] += phase in {'live-pending', 'dead-pending', 'ready'}
-            result['phase_mismatches'] += (row['state'], phase) not in {('live', 'live'), ('dead', 'transferred')}
-            anchor = record['anchor']
-            candidate = (row['state'] == 'live' and phase == 'live'
+            aborted = record['schema'] == 'router-managed-startup-abort/v1'
+            result['phase_mismatches'] += (row['state'], phase) not in {
+                ('live', 'live'), ('dead', 'transferred'), ('dead', 'aborted')}
+            identity = custody.successor_identity(record)
+            anchor = None if aborted else record['anchor']
+            candidate = (not aborted and row['state'] == 'live' and phase == 'live'
                          and anchor['run_owner']['boot_id'] != request['boot_id']
                          and anchor['configuration_revision'] == revision
                          and all(anchor['docker'][k] == v for k, v in request['incumbent'].items()))
             result['previous_boot_live_candidates'] += candidate
             if row['state'] == 'live' and state['closure'] is not None:
-                result['closure_matches'] &= all(state['closure'][k] == anchor[k]
+                result['closure_matches'] &= all(state['closure'][k] == identity[k]
                     for k in ('configuration_revision', 'roster_revision'))
         for record in records.values():
-            transfer = record['transfer']
+            transfer = record.get('transfer')
             if transfer is not None:
                 successor = records.get(transfer['successor_run_id'])
-                result['transfer_mismatches'] += successor is None or any(
-                    transfer['successor_' + k] != successor['anchor'][k]
+                identity = custody.successor_identity(successor) if successor is not None else None
+                result['transfer_mismatches'] += identity is None or any(
+                    transfer['successor_' + k] != identity[k]
                     for k in ('configuration_revision', 'roster_revision'))
         snapshot = custody.digest({run + '.json': custody.digest(record) for run, record in records.items()})
         result['snapshot_matches'] = snapshot == request['sidecar_snapshot_sha256']
@@ -307,14 +311,29 @@ def recovery_status(container=router_manage.DEFAULT_CONTAINER, *, ledger=False, 
     phases = {}
     snapshots = {}
     for name in names:
-        record = validate(_private(folder / name, uid))
-        anchor = record['anchor']
-        require(name == anchor['run_id'] + '.json' and anchor['store_binding_sha256'] == digest(binding)
-                and anchor['owner_id'] == binding['owner_id'])
+        raw_record = _private(folder / name, uid)
+        if raw_record.get('schema') == 'router-managed-startup-abort/v1':
+            from .router.startup_abort import validate as validate_abort
+            record = validate_abort(raw_record)
+            registration = record['registration']
+            require(name == registration['run_id'] + '.json'
+                    and registration['store_binding_sha256'] == digest(binding)
+                    and registration['owner_id'] == binding['owner_id'])
+            anchor = None
+        else:
+            record = validate(raw_record)
+            anchor = record['anchor']
+            require(name == anchor['run_id'] + '.json' and anchor['store_binding_sha256'] == digest(binding)
+                    and anchor['owner_id'] == binding['owner_id'])
         counts = phases.setdefault(record['phase'], dict(records=0, same_boot=0, same_container=0,
             same_image=0, same_configuration=0, same_daemon=0, same_compose=0,
             same_started_at=0, same_restart_count=0, same_incarnation=0))
         counts['records'] += 1
+        if anchor is None:
+            counts['same_boot'] += registration['run_owner']['boot_id'] == boot
+            counts['same_configuration'] += registration['configuration_revision'] == revision
+            snapshots[name] = digest(record)
+            continue
         counts['same_boot'] += anchor['run_owner']['boot_id'] == boot
         counts['same_container'] += anchor['docker']['container_id'] == before['container_id']
         counts['same_image'] += anchor['docker']['image_id'] == before['image_id']

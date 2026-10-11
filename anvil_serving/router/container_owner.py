@@ -168,7 +168,20 @@ def validate(record):
 
 
 def read(store, row, configuration_revision):
-    record = validate(_private_json(location(store, row['run_id'])))
+    record = _private_json(location(store, row['run_id']))
+    if type(record) is dict and record.get('schema') == 'router-managed-startup-abort/v1':
+        from .startup_abort import validate as validate_abort
+        record = validate_abort(record)
+        registration = record['registration']
+        from .usage_store import RunOwner
+        owner = RunOwner(**{f.name: row[f.name] for f in fields(RunOwner)})
+        require(registration['run_id'] == row['run_id']
+                and registration['domain_id'] == row['domain_id']
+                and registration['run_owner'] == asdict(owner)
+                and registration['configuration_revision'] == configuration_revision
+                and registration['store_binding_sha256'] == digest(binding(store)))
+        return record
+    record = validate(record)
     a = record['anchor']
     from .usage_store import RunOwner
     owner = RunOwner(**{f.name: row[f.name] for f in fields(RunOwner)})
@@ -177,6 +190,15 @@ def read(store, row, configuration_revision):
             and a['run_owner'] == asdict(owner) and a['configuration_revision'] == configuration_revision
             and a['owner_id'] == b['owner_id'] and a['store_binding_sha256'] == digest(b))
     return record
+
+
+def successor_identity(record):
+    """Logical transfer target; an aborted registration is never an anchor."""
+    if record.get('schema') == 'router-managed-startup-abort/v1':
+        registration = record['registration']
+        return {'configuration_revision': registration['configuration_revision'],
+                'roster_revision': registration['roster_revision']}
+    return record['anchor']
 
 
 def write(store, record, expected):
@@ -221,6 +243,9 @@ def ready_transfers(usage):
             revision = db.execute('SELECT configuration_revision FROM usage_coverage_segments WHERE run_id=? '
                                   'ORDER BY started_at,segment_id LIMIT 1', (row['run_id'],)).fetchone()[0]
             record = read(usage.key_store, row, revision)
+            if record['schema'] == 'router-managed-startup-abort/v1':
+                require(record['phase'] == 'aborted' and row['state'] == 'dead')
+                continue
             require(record['phase'] in {'ready', 'transferred'})
             if record['phase'] == 'ready':
                 state = closure(usage.key_store)

@@ -177,6 +177,7 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
+| `router startup-abort` | Abort one never-admitted failed startup while preserving retained accounting. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
 | `router recovery-status` | Inspect protected custody sidecars without authorizing recovery. | `read` / `bounded` | `--container`<br>`--ledger` |
 | `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
 | `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
@@ -201,7 +202,7 @@ required operands, choices, and defaults.
 | `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Inspect active requests or retained request/session evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--session-id`<br>`--active`<br>`--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
-| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
+| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate`<br>`--startup-abort-config` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |

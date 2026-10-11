@@ -50,6 +50,49 @@ def test_storage_completion_never_grants_inference_ownership(gate):
     assert gate.consume(token)['drained']
 
 
+def test_closed_startup_binds_connect_migration_to_storage_completion(gate, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    import secrets
+    from anvil_serving.router.keys import KeyStore
+
+    store = KeyStore.initialize(tmp_path / 'connect-startup' / 'keys.sqlite3')
+    config = ServerConfig(
+        api_keys_path=str(store.path),
+        connect_keys_env='SYNTHETIC_CONNECT_SIGNING',
+        connect_check_env='SYNTHETIC_CONNECT_CHECK',
+        connect_home_url='https://home.example.test',
+    )
+    monkeypatch.setenv('SYNTHETIC_CONNECT_SIGNING', secrets.token_urlsafe(32))
+    monkeypatch.setenv('SYNTHETIC_CONNECT_CHECK', secrets.token_urlsafe(32))
+
+    @contextmanager
+    def external(_store):
+        pytest.fail('managed startup used unbound external store custody')
+        yield
+
+    monkeypatch.setattr(KeyStore, '_external_ownership', external)
+    close(gate)
+    permit = gate.acquire('maintenance', completion=True, storage_only=True)
+    class Backend:
+        pass
+    try:
+        with permit.bind():
+            server = make_server(
+                '127.0.0.1', 0, Backend(), auth_token='master_fixture',
+                model_routes=['llm.primary'], server_config=config,
+                router_admission=gate,
+            )
+    finally:
+        permit.release()
+    try:
+        with store._connect() as db:
+            assert db.execute('PRAGMA user_version').fetchone() == (2,)
+        assert server.anvil_router_admission is gate
+        assert not any(gate.status()['counts'].values())
+    finally:
+        server.server_close()
+
+
 def test_final_audit_retains_request_and_storage_ownership(gate, monkeypatch):
     import io
     from http.server import BaseHTTPRequestHandler
