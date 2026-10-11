@@ -12096,7 +12096,6 @@
           "service",
           "env_file",
           "recreate",
-          "startup_abort_config",
           "dry_run"
         ],
         "argument_aliases": {},

@@ -910,6 +910,7 @@ and the selected successor Compose file, then perform separate successor
 readmission. This handoff verifies the exact completed receipt and stopped Docker
 incarnation before the usual offline and new-container custody checks. It refuses
 a restarted target or changed configuration.
+The protected receipt handoff is local-only; remote transports reject this flag.
 
 Retries reuse the protected pending intent and stopped incarnation. If execution
 stops before the native pending receipt exists, confirmation must finish within

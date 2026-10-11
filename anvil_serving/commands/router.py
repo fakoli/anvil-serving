@@ -217,7 +217,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_manage",
                     fixed=(("action", "up"),),
-                    allowed=("compose", "service", "env_file", "recreate", "startup_abort_config", "dry_run"),
+                    allowed=("compose", "service", "env_file", "recreate", "dry_run"),
                 ),
             ),
             _resource_node(
