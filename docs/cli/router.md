@@ -904,8 +904,12 @@ and predecessor transfers, proves the original PID namespace extinct from the
 unrestricted root host view, and stops the exact failed container. It retains
 the run and coverage rows with a distinct `router-managed-startup-abort/v1`
 receipt; it never invents a container anchor or rewrites request accounting.
-The command neither starts a successor nor opens admission. Use the corrected
-qualified image with guarded `router up`, then separate successor readmission.
+The command neither starts a successor nor opens admission. Start the corrected
+qualified image with `router up --startup-abort-config /protected/startup-abort.json`
+and the selected successor Compose file, then perform separate successor
+readmission. This handoff verifies the exact completed receipt and stopped Docker
+incarnation before the usual offline and new-container custody checks. It refuses
+a restarted target or changed configuration.
 
 Retries reuse the protected pending intent and stopped incarnation. If execution
 stops before the native pending receipt exists, confirmation must finish within

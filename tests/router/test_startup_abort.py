@@ -1,5 +1,7 @@
 """Never-admitted managed successor recovery preserves typed custody history."""
 from copy import deepcopy
+import hashlib
+import json
 import os
 from pathlib import Path
 import time
@@ -9,6 +11,7 @@ import pytest
 
 from anvil_serving.router import container_owner as custody, reboot, startup_abort, usage_store as ledger
 from anvil_serving.router.admission import managed_router_admission
+from anvil_serving import router_manage, router_startup_abort
 from tests.router.test_container_owner import record as record
 from tests.router.test_owner_recovery import config as config
 from tests.router.test_reboot import acknowledgment, retained as retained
@@ -104,6 +107,68 @@ def test_aborted_startup_retry_finishes_pending_exact_record(retained, monkeypat
     finally:
         os.close(owner._owner_descriptor)
         owner._owner_descriptor = None
+
+
+def test_router_up_consumes_exact_completed_abort_without_repeating_death(retained, monkeypatch):
+    f = retained
+    owner, usage, run_id = failed_successor(f)
+    try:
+        with usage.key_store._offline_custody(
+                f.settings, producer_descriptor=owner._owner_descriptor, allow_retained=True):
+            native = startup_abort.preview_startup_abort(usage, run_id)
+            authorization = auth(native)
+            result = startup_abort.abort_startup(usage, authorization, namespace_scan=scan)
+    finally:
+        os.close(owner._owner_descriptor)
+        owner._owner_descriptor = None
+
+    folder = f.config.parent / 'startup-abort-up'
+    folder.mkdir(mode=0o700)
+    compose = folder / 'compose.json'
+    compose.write_text('{}'); compose.chmod(0o600)
+    declaration = folder / 'abort.json'
+    receipt = folder / 'receipt.json'
+    stopped = dict(daemon_id='fixture-daemon', container_id='b' * 64,
+        image_id='sha256:' + 'c' * 64, started_at='2026-10-10T00:00:00Z', restart_count=7,
+        compose_project=router_manage.DEFAULT_COMPOSE_PROJECT,
+        compose_service=router_manage.DEFAULT_SERVICE, finished_at='2026-10-10T00:01:00Z',
+        status='exited', running=False, paused=False, restarting=False, pid=0)
+    preview = dict(schema='router-startup-abort-preview/v1', native=native,
+        container_id=stopped['container_id'], image_id=stopped['image_id'],
+        daemon_id=stopped['daemon_id'], helper_image_id='sha256:' + 'd' * 64,
+        compose_sha256=hashlib.sha256(compose.read_bytes()).hexdigest())
+    values = dict(schema='router-startup-abort-config/v1', compose=str(compose),
+        compose_sha256=preview['compose_sha256'], expected_container_id=stopped['container_id'],
+        expected_image_id=stopped['image_id'], helper_image_id=preview['helper_image_id'],
+        run_id=run_id, configuration_revision=f.revision, preview_sha256=custody.digest(preview),
+        acknowledgement=router_startup_abort.ACK, receipt_out=str(receipt))
+    declaration.write_text(json.dumps(values, sort_keys=True)); declaration.chmod(0o600)
+    pending = dict(config_sha256=hashlib.sha256(declaration.read_bytes()).hexdigest(),
+        preview=preview, authorization=authorization, stopped=stopped)
+    receipt.write_text(json.dumps(dict(pending=pending, stopped=stopped, result=result), sort_keys=True))
+    receipt.chmod(0o600)
+    assert router_startup_abort.completed_receipt(
+        declaration, expected_stopped=stopped) == (values, json.loads(receipt.read_text()))
+
+    calls = []
+    monkeypatch.setattr(router_manage, '_container_compose_project',
+                        lambda *_args, **_kwargs: ('exited', router_manage.DEFAULT_COMPOSE_PROJECT))
+    monkeypatch.setattr(router_manage, '_compose_owner_backend',
+                        lambda *_args, **_kwargs: 'managed-container')
+    monkeypatch.setattr(router_manage, '_container_incarnation',
+                        lambda *_args, **_kwargs: stopped)
+    monkeypatch.setattr(router_manage, '_offline_compose_roster', lambda *_args, **_kwargs: {
+        'rendered': {'services': {'router': {}}},
+        'owner_storage': {'configuration_revision': f.revision}, 'roster': []})
+    monkeypatch.setattr(router_manage, 'require_router_offline',
+                        lambda *_args, **_kwargs: calls.append('offline'))
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+                        lambda kind, *_args, **_kwargs: calls.append(kind))
+    monkeypatch.setattr(router_manage, '_run_argv',
+                        lambda *_args, **_kwargs: calls.append('compose-up') or 0)
+    assert router_manage.cmd_up.__wrapped__(str(compose), 'router',
+        startup_abort_config=str(declaration), _run=lambda *_a, **_k: None) == 0
+    assert calls == ['offline', 'compose-up', 'live']
 
 
 def test_preview_refuses_sidecar_filename_identity_drift(retained):

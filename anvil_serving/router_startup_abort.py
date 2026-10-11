@@ -28,6 +28,68 @@ from .router_recovery_status import _covering_mount, _native_container
 ACK = 'Abort only this never-admitted startup after physical namespace extinction; preserve all keys, requests and accounting. Do not start or readmit a successor.'
 
 
+def _configuration(config):
+    config = Path(config).absolute()
+    raw = read_private_auth_file(config, max_bytes=16384)
+    value = strict_json(raw)
+    require(type(value) is dict and set(value) == {'schema', 'compose', 'compose_sha256',
+        'expected_container_id', 'expected_image_id', 'helper_image_id', 'run_id',
+        'configuration_revision', 'preview_sha256', 'acknowledgement', 'receipt_out'}
+        and value['schema'] == 'router-startup-abort-config/v1' and value['acknowledgement'] == ACK)
+    for key in ('compose', 'receipt_out'):
+        require(type(value[key]) is str and Path(value[key]).is_absolute() and '..' not in Path(value[key]).parts)
+    for key in ('compose_sha256', 'expected_container_id', 'configuration_revision'):
+        require(type(value[key]) is str and re.fullmatch('[0-9a-f]{64}', value[key]))
+    for key in ('expected_image_id', 'helper_image_id'):
+        require(type(value[key]) is str and re.fullmatch('sha256:[0-9a-f]{64}', value[key]))
+    require(value['preview_sha256'] is None or
+            type(value['preview_sha256']) is str and re.fullmatch('[0-9a-f]{64}', value['preview_sha256']))
+    compose = read_private_auth_file(value['compose'], max_bytes=2*1024**2)
+    require(hashlib.sha256(compose).hexdigest() == value['compose_sha256'])
+    return config, raw, value, compose
+
+
+def completed_receipt(config, *, expected_stopped):
+    """Validate the host receipt that binds one finalized abort to Docker."""
+    from .router.container_owner import docker_identity
+    from .router.startup_abort import validate
+    _config, raw, value, _compose = _configuration(config)
+    require(type(value['preview_sha256']) is str)
+    saved = strict_json(read_private_auth_file(value['receipt_out'], max_bytes=32768))
+    require(type(saved) is dict and set(saved) == {'pending', 'stopped', 'result'})
+    pending, stopped, result = saved['pending'], saved['stopped'], validate(saved['result'])
+    require(type(pending) is dict and set(pending) == {
+        'config_sha256', 'preview', 'authorization', 'stopped'})
+    docker_identity(stopped, stopped=True)
+    require(stopped == pending['stopped'] == expected_stopped
+            and pending['config_sha256'] == hashlib.sha256(raw).hexdigest()
+            and result['phase'] == 'aborted'
+            and result['authorization'] == pending['authorization'])
+    preview = pending['preview']
+    require(type(preview) is dict and set(preview) == {'schema', 'native', 'container_id',
+        'image_id', 'daemon_id', 'helper_image_id', 'compose_sha256'}
+        and preview['schema'] == 'router-startup-abort-preview/v1'
+        and digest(preview) == value['preview_sha256']
+        and preview['container_id'] == stopped['container_id'] == value['expected_container_id']
+        and preview['image_id'] == stopped['image_id'] == value['expected_image_id']
+        and preview['daemon_id'] == stopped['daemon_id']
+        and preview['helper_image_id'] == value['helper_image_id']
+        and preview['compose_sha256'] == value['compose_sha256'])
+    native, registration, authorization = preview['native'], result['registration'], result['authorization']
+    require(type(native) is dict and set(native) == {'schema', 'run_id', 'configuration_revision',
+        'roster_revision', 'generation', 'closure_sha256', 'sidecar_snapshot_sha256',
+        'run_owner', 'registration_sha256', 'predecessor_transfers_sha256'}
+        and native['schema'] == 'router-startup-abort-preview/v1'
+        and all(native[name] == authorization[name] for name in ('run_id', 'configuration_revision',
+            'roster_revision', 'generation', 'closure_sha256', 'sidecar_snapshot_sha256'))
+        and native['run_owner'] == registration['run_owner']
+        and native['registration_sha256'] == digest(registration)
+        and native['predecessor_transfers_sha256'] == result['predecessor_transfers_sha256']
+        and native['run_id'] == value['run_id']
+        and native['configuration_revision'] == value['configuration_revision'])
+    return value, saved
+
+
 def namespace_scan(owner):
     """An unrestricted root host observation, not a container-local missing PID."""
     require(os.geteuid() == 0 and owner.pid == 1)
@@ -109,21 +171,7 @@ def native_session():
 @router_manage._serving_authority_mutation
 def run(config, *, confirm=False, preview_out=None, _run=subprocess.run):
     require(os.geteuid() == 0)
-    config = Path(config).absolute()
-    raw = read_private_auth_file(config, max_bytes=16384)
-    value = strict_json(raw)
-    require(type(value) is dict and set(value) == {'schema', 'compose', 'compose_sha256',
-        'expected_container_id', 'expected_image_id', 'helper_image_id', 'run_id',
-        'configuration_revision', 'preview_sha256', 'acknowledgement', 'receipt_out'}
-        and value['schema'] == 'router-startup-abort-config/v1' and value['acknowledgement'] == ACK)
-    for key in ('compose', 'receipt_out'):
-        require(type(value[key]) is str and Path(value[key]).is_absolute() and '..' not in Path(value[key]).parts)
-    for key in ('compose_sha256', 'expected_container_id', 'configuration_revision'):
-        require(type(value[key]) is str and re.fullmatch('[0-9a-f]{64}', value[key]))
-    for key in ('expected_image_id', 'helper_image_id'):
-        require(type(value[key]) is str and re.fullmatch('sha256:[0-9a-f]{64}', value[key]))
-    compose = read_private_auth_file(value['compose'], max_bytes=2*1024**2)
-    require(hashlib.sha256(compose).hexdigest() == value['compose_sha256'])
+    config, raw, value, compose = _configuration(config)
     receipt = Path(value['receipt_out'])
     pending_path = Path(str(receipt) + '.pending')
     if receipt.exists():

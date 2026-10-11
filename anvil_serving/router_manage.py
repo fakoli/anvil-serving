@@ -341,6 +341,7 @@ def cmd_up(
     recreate=False,
     container=DEFAULT_CONTAINER,
     environ=None,
+    startup_abort_config=None,
 ):
     try:
         execution_env = _compose_execution_env(
@@ -365,6 +366,9 @@ def cmd_up(
                 file=sys.stderr,
             )
             return 1
+    if startup_abort_config is not None and state != 'exited':
+        print('router lifecycle HOLD: startup-abort proof requires its exact exited container', file=sys.stderr)
+        return 1
     if not dry_run:
         try:
             if state in {'absent', 'exited', 'created'}:
@@ -374,14 +378,21 @@ def cmd_up(
                     raise ValueError('router_managed_target_mismatch')
                 if managed and state == 'exited':
                     before = _container_incarnation(container, _run=_run, stopped=True)
-                    try:
-                        require_router_offline(compose,service,container=container,_run=_run,
-                            env_file=env_file,execution_env=execution_env,_legacy_incarnation=before)
-                        if before != _container_incarnation(container,_run=_run,stopped=True):
-                            raise ValueError('router_legacy_incarnation_changed')
-                    except ValueError:
-                        _managed_container_custody('dead', compose, service, container, _run=_run,
-                                                   env_file=env_file, execution_env=execution_env)
+                    if startup_abort_config is not None:
+                        _startup_abort_custody(startup_abort_config, compose, service, container, before,
+                                               _run=_run, env_file=env_file,
+                                               execution_env=execution_env)
+                    else:
+                        try:
+                            require_router_offline(compose,service,container=container,_run=_run,
+                                env_file=env_file,execution_env=execution_env,_legacy_incarnation=before)
+                            if before != _container_incarnation(container,_run=_run,stopped=True):
+                                raise ValueError('router_legacy_incarnation_changed')
+                        except ValueError:
+                            _managed_container_custody('dead', compose, service, container, _run=_run,
+                                                       env_file=env_file, execution_env=execution_env)
+                elif startup_abort_config is not None:
+                    raise ValueError('router_startup_abort_target_mismatch')
                 require_router_offline(compose, service, container=container, _run=_run,
                                        env_file=env_file, execution_env=execution_env)
             else:
@@ -760,6 +771,7 @@ def _build_parser():
         if name == "up":
             item.add_argument("--env-file")
             item.add_argument("--recreate", action="store_true")
+            item.add_argument("--startup-abort-config")
     fleet = actions.add_parser("fleet-status")
     fleet_source = fleet.add_mutually_exclusive_group()
     fleet_source.add_argument(
@@ -850,6 +862,7 @@ def main(argv=None):
                 plan["env_file"],
                 recreate=plan["recreate"],
                 container=plan["container"],
+                startup_abort_config=args.startup_abort_config,
             )
         elif args.action == "down":
             rc = cmd_down(plan["compose"], plan["service"])
@@ -1926,6 +1939,20 @@ def _managed_container_custody(kind, compose, service, container, *, _run=subpro
             raise ValueError('router_container_custody_changed')
         return current
     return _native_owner_commit(argv, unchanged, _popen=_popen, execution_env=execution_env)
+
+
+def _startup_abort_custody(config, compose, service, container, stopped, *, _run,
+                           env_file=None, execution_env=None):
+    """Consume only an exact completed failed-startup proof for this stopped owner."""
+    from .router.container_owner import require
+    from .router_startup_abort import completed_receipt
+    declaration, saved = completed_receipt(config, expected_stopped=stopped)
+    roster = _offline_compose_roster(compose, service, container, _run=_run,
+        env_file=env_file, execution_env=execution_env, _owner_state_only=True)
+    require(roster['owner_storage']['configuration_revision'] == declaration['configuration_revision'])
+    require(_container_incarnation(container, _run=_run, stopped=True) == stopped
+             and completed_receipt(config, expected_stopped=stopped) == (declaration, saved))
+    return saved
 
 
 def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None, _owner_state_only=False):

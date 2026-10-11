@@ -211,12 +211,13 @@ def commands() -> CommandNode:
                         "--env-file", summary="Router Compose environment file.", value_name="PATH"
                     ),
                     _option("--recreate", summary="Force-recreate only the router service."),
+                    _option("--startup-abort-config", summary="Exact completed failed-startup recovery declaration.", value_name="PATH"),
                 ),
                 mutation="mutate",
                 remote_operation=_remote(
                     "router_manage",
                     fixed=(("action", "up"),),
-                    allowed=("compose", "service", "env_file", "recreate", "dry_run"),
+                    allowed=("compose", "service", "env_file", "recreate", "startup_abort_config", "dry_run"),
                 ),
             ),
             _resource_node(
