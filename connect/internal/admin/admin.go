@@ -324,11 +324,17 @@ func (h *Handler) apply(input Request) (Response, error) {
 		return Response{}, ErrAdmin
 	}
 	var err error
-	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" || input.Operation == "operator-inspect" {
+	if strings.HasPrefix(input.Operation, "human-delete-") || input.Operation == "human-deletions" || input.Operation == "human-inspect" || input.Operation == "operator-inspect" || input.Operation == "human-router-identity" {
 		if h.sessions == nil || input.Issuer != "" || input.Subject != "" || (input.Operation != "human-delete-prepare-absent" && (input.Username != "" || input.usernamePresent)) || len(input.Grants) != 0 || input.Disabled || input.KeyID != "" || input.Installation != "" || input.Role != "" || len(input.Resources) != 0 || input.ApplicationRoles != nil || input.LifetimeSeconds != 0 || input.Fingerprint != "" {
 			return Response{}, ErrAdmin
 		}
 		switch input.Operation {
+		case "human-router-identity":
+			if input.RequestID != "" || input.ExpectedGeneration == 0 {
+				return Response{}, ErrAdmin
+			}
+			response.Epoch, err = h.sessions.ProvisionRouterIdentity(input.Principal, input.ExpectedGeneration)
+			response.Principal, response.Generation = input.Principal, input.ExpectedGeneration
 		case "human-inspect", "operator-inspect":
 			if input.RequestID != "" || input.ExpectedGeneration != 0 {
 				return Response{}, ErrAdmin
@@ -529,7 +535,7 @@ func (h *Handler) installationStatus(id string) (InstallationStatus, error) {
 // ValidOperation is the closed native administrative operation vocabulary.
 func ValidOperation(operation string) bool {
 	switch operation {
-	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "operator-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
+	case "status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-router-identity", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "operator-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset":
 		return true
 	default:
 		return false

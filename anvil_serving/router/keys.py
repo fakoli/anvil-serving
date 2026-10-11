@@ -1167,7 +1167,7 @@ class KeyStore:
         return granted_models, tuple(dict.fromkeys((_MODELS_PATH, *granted)))
 
     def create(self, name: str, models: list[str], paths: list[str], rpm: int = 60,
-               expires_days: int | None = None, *, owner=None) -> tuple[dict[str, Any], str]:
+               expires_days: int | None = None, *, owner=None, _secret=None) -> tuple[dict[str, Any], str]:
         if (not isinstance(name, str) or not name.strip() or len(name) > 128
                 or any(unicodedata.category(char).startswith("C") for char in name)):
             raise KeyStoreError("invalid key name")
@@ -1178,7 +1178,11 @@ class KeyStore:
             raise KeyStoreError("expires_days must be an integer from 1 to 3650")
         now = int(time.time())
         expires_at = now + expires_days * 86400 if expires_days is not None else None
-        secret = "ask_" + secrets.token_urlsafe(32)
+        # Native onboarding durably saves its random token before this write,
+        # so a lost pipe response can be recovered by normal authentication.
+        if _secret is not None and (not isinstance(_secret, str) or re.fullmatch(r"ask_[A-Za-z0-9_-]{43}", _secret) is None):
+            raise KeyStoreError("invalid protected onboarding credential")
+        secret = _secret if _secret is not None else "ask_" + secrets.token_urlsafe(32)
         digest = hashlib.sha256(secret.encode("ascii")).digest()
         for _ in range(4):
             key_id = "key_" + secrets.token_hex(8)

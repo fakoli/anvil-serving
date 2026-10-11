@@ -113,3 +113,32 @@ def test_failed_delivery_and_revoke_reports_recoverable_public_id(container, tmp
     assert recovery["cleanup_required"] is True
     assert recovery["key_id"] == keys.KeyStore(tmp_path / "store" / "keys.sqlite3").list_keys()[0]["key_id"]
     assert "ask_" not in output.out + output.err
+
+
+def test_memory_key_requires_the_complete_bank_grant(tmp_path, monkeypatch, capsys):
+    import io
+    from anvil_serving import memory_access
+    from anvil_serving.router import config, connect_keys
+    path = tmp_path / 'store' / 'keys.sqlite3'
+    store = keys.KeyStore.initialize(path)
+    connect_keys.migrate(store)
+    grant = {'default_bank': 'personal', 'admin': False, 'banks': {'personal': ['recall', 'retain']}}
+    monkeypatch.setattr(config, 'load_server_config', lambda *a, **kw: SimpleNamespace(
+        api_keys_path=str(path), connect_check_env='SYNTHETIC_CHECK', connect_home_url='https://home.example.test'))
+    monkeypatch.setattr(config, 'load', lambda *_: SimpleNamespace(memory_routes=[SimpleNamespace(alias='memory.user', access_file='/policy')]))
+    monkeypatch.setattr(memory_access, 'resolve', lambda *_: ('personal', grant))
+    monkeypatch.setenv('SYNTHETIC_CHECK', 'synthetic-check-only')
+    monkeypatch.setattr(connect_keys, 'principal_checker', lambda *_: lambda *a: True)
+    payload = {'action': 'memory-key', 'store_path': str(path), 'principal': 'human:'+'a'*64,
+        'generation': '1', 'epoch': 'f'*64, 'grant': {**grant, 'admin': True},
+        'secret': 'ask_'+'a'*43, 'expected_key_id': None, 'apply': True}
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(payload)))
+    assert key_container.main() == 2
+    assert not store.list_keys()
+    assert payload['secret'] not in capsys.readouterr().err
+    payload['grant'] = grant
+    monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(payload)))
+    assert key_container.main() == 0
+    captured = capsys.readouterr()
+    assert payload['secret'] not in captured.out + captured.err
+    assert len(store.list_keys()) == 1

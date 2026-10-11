@@ -7,6 +7,7 @@ USER_OPERATIONS = {
     "create": ("Create an account and request a password-setup email or private handoff.", ("email", "role", "grant", "output")),
     "access": ("Replace ALL browser grants, enable the account and revoke its Connect sessions.", ("grant",)),
     "memory": ("Provision user memory banks, preserve browser grants and revoke Connect sessions.", ()),
+    "memory-key": ("Create or verify the personal API key for the configured user memory bank.", ()),
     "configure-memory": ("Install protected user-bank settings; does not restart services.", ("input",)),
     "suspend": ("Disable sign-in and revoke Connect browser and terminal sessions.", ()),
     "delete": ("Remove the account and factors; retain backups and disabled authority history.", ()),

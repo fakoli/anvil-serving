@@ -271,3 +271,35 @@ def test_bounded_retired_key_list_and_full_usage_totals(portal):
     assert view["keys_truncated"] and len(view["keys"])==100
     assert view["keys"][0]["key_id"]==live["key"]["key_id"]
     assert view["usage_totals"]["requests"]==105
+
+
+def test_native_memory_key_retry_preserves_policy_and_refuses_other_owners(portal):
+    p, allowed = portal
+    secret = "ask_" + secrets.token_urlsafe(32)
+    actor = (OWNER, "1", FENCE)
+    provision = connect_keys.provision_memory_key
+    assert provision(p.store, actor, secret=secret)["would_create"]
+    assert call(p, "view")["account"] is None
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret=secret, expected_key_id="key_" + "a"*16, apply=True)
+    assert not p.store.list_keys()
+    first = provision(p.store, actor, secret=secret, apply=True)
+    assert first["created"]
+    assert p.store.authenticate(secret).owner == actor
+    again = provision(p.store, actor, secret=secret, apply=True)
+    assert not again["created"] and first["key_id"] == again["key_id"]
+    policy = call(p, "view")["account"]
+    second = provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)
+    assert second["created"] and call(p, "view")["account"] == policy
+    assert p.store.authenticate(secret).owner == actor
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, (OTHER, "1", FENCE), secret=secret, apply=True)
+    call(p, "request", OTHER)
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, (OTHER, "1", FENCE), secret="ask_" + secrets.token_urlsafe(32), apply=True)
+    p.store.revoke(first["key_id"])
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret=secret, apply=True)
+    allowed.remove(actor)
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)

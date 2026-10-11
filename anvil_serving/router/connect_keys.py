@@ -194,6 +194,61 @@ def admit_owner(db, key_id, now):
     return retry
 
 
+def provision_memory_key(store, actor, *, secret, expected_key_id=None, apply=False):
+    """Native administrator onboarding; never exposed by the browser broker.
+
+    Bank authorization remains in the user policy, keyed by the same principal.
+    Existing approvals are preserved; denial or incompatible limits require an
+    explicit policy decision instead of silently revoking the user's keys.
+    """
+    actor = identity(*actor)
+    if store.owner_check is None or not store.owner_check(*actor):
+        raise Denied("Connect account is unavailable")
+    models, paths = store._grants(["memory.user"], ["/v1/memory", "/v1/memory/mcp"])
+    with store._ownership():
+        import hashlib
+        if type(secret) is not str or not re.fullmatch(r"ask_[A-Za-z0-9_-]{43}", secret):
+            raise Denied("invalid protected onboarding credential")
+        principal = store.authenticate(secret)
+        if principal is not None:
+            if (principal.owner != actor or principal.models != models or principal.paths != paths
+                    or expected_key_id not in (None, principal.key_id)):
+                raise Denied("saved memory key has different ownership or grants")
+            metadata = next(key for key in store.list_keys() if key["key_id"] == principal.key_id)
+            return {**metadata, "created": False}
+        if expected_key_id is not None:
+            raise Denied("completed memory key is absent; restore the matching store or explicitly recover its receipt")
+        with store._connect() as db:
+            if db.execute("SELECT 1 FROM keys WHERE token_hash=?", (hashlib.sha256(secret.encode()).digest(),)).fetchone():
+                raise Denied("saved memory key is no longer valid")
+            old = _account(db, actor[0])
+        if old is not None and old["status"] == "denied":
+            raise Denied("router access was denied; explicit approval is required")
+        current = old if old and (old["generation"], old["epoch"]) == actor[1:] else None
+        if current and current["status"] != "approved":
+            raise Denied("existing router request requires explicit approval")
+        if current and current["status"] == "approved":
+            if not set(models).issubset(current["models"]) or not set(paths).issubset(current["paths"]):
+                raise Denied("existing router approval does not include user memory")
+        if not apply:
+            return {"created": False, "would_create": True}
+        if current is None:
+            with store._write() as db:
+                db.execute("BEGIN IMMEDIATE")
+                if _account(db, actor[0]) != old:
+                    raise Denied("router approval changed during onboarding")
+                if old is None and db.execute("SELECT COUNT(*) FROM connect_accounts").fetchone()[0] >= 256:
+                    raise Denied("access request capacity reached")
+                revision = _next_revision(db)
+                db.execute("INSERT INTO connect_accounts VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET generation=excluded.generation,epoch=excluded.epoch,revision=excluded.revision,status=excluded.status,models=excluded.models,paths=excluded.paths,rpm=excluded.rpm,expires_days=excluded.expires_days,updated_at=excluded.updated_at,actor=excluded.actor",
+                    (*actor, revision, "approved", json.dumps(models), json.dumps(paths), 60, 90, int(time.time()), "native-admin"))
+                db.execute("COMMIT")
+            current = {"revision": revision, "rpm": 60, "expires_days": 90}
+        metadata, _ = store.create("User memory", list(models), list(paths), min(60, current["rpm"]),
+            min(90, current["expires_days"]), owner=(*actor, current["revision"]), _secret=secret)
+        return {**metadata, "created": True}
+
+
 class ConnectKeys:
     def __init__(self, store, models):
         self.store, self.models = store, sorted(set(models))
