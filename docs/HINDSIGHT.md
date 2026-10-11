@@ -134,6 +134,12 @@ REST accepts optional top-level `bank`; omission selects the user's default.
 `limit` (1–100) and `offset` (0–1,000,000) for administrator inventory. MCP exposes
 `memory_banks` alongside the existing tools and accepts optional `bank` on memory
 operations. These options are exclusive to Connect-owned dynamic routes.
+For administrator-managed key enrollment, REST `banks` also accepts an optional
+`arguments.expected_principal` with the target Connect `human:` hash. A key owned
+by another account is rejected even when both accounts can access the same banks.
+This assertion can only restrict the authenticated key; it never selects a user
+or grants access. Resolve the target from the trusted identity provider binding,
+never from model input or a display name.
 
 Declare optional `memory` settings in the private Connect deployment:
 `base_url`, protected root-only `auth_file`, absolute `access_file`, numeric
