@@ -3173,6 +3173,18 @@ def make_server(host: str, port: int,
         if auth_token is None:
             raise ValueError("device API keys require a resolved front-door auth token")
         api_keys = KeyStore(server_config.api_keys_path)
+    router_admission = (router_admission or getattr(backend, "_router_admission", None)
+                        or getattr(getattr(usage_store, "key_store", None), "_router_admission", None)
+                        or getattr(api_keys, "_router_admission", None) or RouterAdmission())
+    if api_keys is not None:
+        existing = getattr(api_keys, "_router_admission", router_admission)
+        if existing is not router_admission:
+            raise ValueError("credential store ownership differs")
+        # ConnectKeys performs its additive schema migration during construction.
+        # Bind the fresh handle before that write so a managed startup inherits
+        # the caller's storage-only assembly permit instead of consulting the
+        # external-owner marker as an unowned administrator.
+        api_keys._router_admission = router_admission
     connect_keys, connect_verifier = None, None
     if server_config is not None and server_config.connect_keys_env is not None:
         from .connect_keys import ConnectKeys, principal_checker
@@ -3198,9 +3210,6 @@ def make_server(host: str, port: int,
         connect_keys = ConnectKeys(api_keys, owned_models)
     if webui_bindings is None:
         webui_bindings = load_webui_bindings(server_config.webui_identity if server_config else ())
-    router_admission = (router_admission or getattr(backend, "_router_admission", None)
-                        or getattr(getattr(usage_store, "key_store", None), "_router_admission", None)
-                        or getattr(api_keys, "_router_admission", None) or RouterAdmission())
     for dispatcher in (backend, purpose, audio, memory):
         if dispatcher is not None:
             dispatcher._router_admission = router_admission

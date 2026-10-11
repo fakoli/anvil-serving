@@ -11,6 +11,13 @@ def commands() -> CommandNode:
         "router",
         "Manage the deployed router and its lifecycle.",
         children=(
+            _node("startup-abort", "Abort one never-admitted failed startup while preserving retained accounting.",
+                handler=_handler("anvil_serving.router_startup_abort", attribute="dispatch", argv_prefix=(), forward_confirm_flag=True),
+                mutation_class="mutate", execution_policy="offline",
+                options=(_option("--config", summary="Protected exact failed-startup declaration.", value_name="PATH"),
+                         _option("--preview-out", summary="Protected native preview output.", value_name="PATH"),
+                         _option("--confirm", summary="Apply the previewed startup abort.", requires_confirmation=True)),
+                docs_anchor="docs/cli/router.md#failed-startup-recovery"),
             _node("recovery-status", "Inspect protected custody sidecars without authorizing recovery.",
                 handler=_handler("anvil_serving.router_recovery_status", attribute="dispatch", argv_prefix=()),
                 mutation_class="read", execution_policy="offline",

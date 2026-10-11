@@ -771,12 +771,13 @@ class UsageStore:
             if revision is None:
                 return 'unknown'
             record = read(self.key_store, row, revision[0])
+            aborted = record.get('schema') == 'router-managed-startup-abort/v1'
             if current:
-                return 'live' if (physical == 'live' and record['phase'] == 'live'
+                return 'live' if (not aborted and physical == 'live' and record['phase'] == 'live'
                                   and record['anchor']['owner_id'] == self.owner_config.router_owner_id) else 'unknown'
             if physical == 'live':
                 return 'live'
-            return 'dead' if record['phase'] in {'ready', 'transferred'} else 'unknown'
+            return 'dead' if record['phase'] in {'ready', 'transferred', 'aborted'} else 'unknown'
         except (KeyStoreError, sqlite3.Error, OSError, ValueError, TypeError, KeyError):
             return 'unknown'
 

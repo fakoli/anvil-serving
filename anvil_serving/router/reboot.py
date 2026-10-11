@@ -61,6 +61,7 @@ def fenced_candidate(usage, auth, incumbent):
             records[row['run_id']] = record
             coverage.append(dict(first))
             if row['state'] == 'live':
+                custody.require(record['schema'] != 'router-managed-startup-abort/v1')
                 custody.require(record['phase'] == 'live' and record['schema'] == 'router-managed-incarnation/v1'
                     or record['schema'] == 'router-managed-incarnation/v2' and record['phase'] in {'dead-pending', 'ready'})
                 prior = {**record, 'schema': 'router-managed-incarnation/v1', 'phase': 'live',
@@ -73,13 +74,14 @@ def fenced_candidate(usage, auth, incumbent):
                 live.append((record, prior))
                 snapshots[row['run_id'] + '.json'] = custody.digest(prior)
             else:
-                custody.require(row['state'] == 'dead' and record['phase'] == 'transferred')
+                custody.require(row['state'] == 'dead' and record['phase'] in {'transferred', 'aborted'})
                 snapshots[row['run_id'] + '.json'] = custody.digest(record)
         for record in records.values():
-            transfer = record['transfer']
+            transfer = record.get('transfer')
             if transfer is not None:
                 successor = records.get(transfer['successor_run_id'])
-                custody.require(successor is not None and all(transfer['successor_' + k] == successor['anchor'][k]
+                target = custody.successor_identity(successor) if successor is not None else None
+                custody.require(target is not None and all(transfer['successor_' + k] == target[k]
                     for k in ('configuration_revision', 'roster_revision')))
         custody.require(len(live) == 1 and custody.digest(snapshots) == auth['sidecar_snapshot_sha256'])
         record, prior = live[0]

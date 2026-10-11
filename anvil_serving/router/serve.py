@@ -16,7 +16,7 @@ import sys
 import tempfile
 import threading
 import time
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 from dataclasses import replace
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
@@ -2166,21 +2166,33 @@ def build_server(
             return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,
                 effective_workload_clock(), domain_id=server_config.usage_domain_id,
                 authority_scope=router_owner.usage_scope()))
-        httpd = make_server(
-            host, port, routing, timeout=timeout, model_routes=config.model_routes,
-            exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-            purpose=purpose, audio=audio, gateway=gateway, memory=memory,
-            authorization_policy=scoped_policy,
-            operator_routes=operator_routes,
-            workload_host=server_config.workload_host,
-            workload_registry=routing._workload_registry,
-            workload_clock=effective_workload_clock,
-            server_config=server_config, router_admission=router_owner,
-            usage_store=owner_usage if server_config.usage_enabled else None, usage_run_id=owner_run,
-            usage_authority=getattr(router_owner, "usage_scope", None), usage_domain_id=server_config.usage_domain_id,
-            usage_metrics=usage_metrics if server_config.usage_metrics_enabled else None,
-            webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
-        )
+        # A managed successor is deliberately CLOSED while it assembles.  The
+        # Connect broker's additive migration is startup completion work: give
+        # it the existing completion-scoped storage permit, which cannot be
+        # inherited as request/inference admission.  The fresh KeyStore is
+        # bound to this owner by make_server before ConnectKeys is constructed.
+        broker_permit = (router_owner.acquire("maintenance", completion=True, storage_only=True)
+                         if server_config.connect_keys_env is not None else None)
+        try:
+            with broker_permit.bind() if broker_permit is not None else nullcontext():
+                httpd = make_server(
+                    host, port, routing, timeout=timeout, model_routes=config.model_routes,
+                    exhaustion_status=config.exhaustion_status, auth_token=auth_token,
+                    purpose=purpose, audio=audio, gateway=gateway, memory=memory,
+                    authorization_policy=scoped_policy,
+                    operator_routes=operator_routes,
+                    workload_host=server_config.workload_host,
+                    workload_registry=routing._workload_registry,
+                    workload_clock=effective_workload_clock,
+                    server_config=server_config, router_admission=router_owner,
+                    usage_store=owner_usage if server_config.usage_enabled else None, usage_run_id=owner_run,
+                    usage_authority=getattr(router_owner, "usage_scope", None), usage_domain_id=server_config.usage_domain_id,
+                    usage_metrics=usage_metrics if server_config.usage_metrics_enabled else None,
+                    webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
+                )
+        finally:
+            if broker_permit is not None:
+                broker_permit.release()
         cleanup.callback(httpd.server_close)
         httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
         httpd.anvil_routing = routing  # type: ignore[attr-defined]
