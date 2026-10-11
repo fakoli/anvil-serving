@@ -46,6 +46,14 @@ def test_users_shared_grants_defaults_admin_discovery_and_live_policy(tmp_path):
             memory.dispatch(body, principal=principal)
         assert len(transport.calls) == before
     discovery = memory.dispatch({**request, "operation": "banks", "arguments": {}}, principal=person(USER))["result"]
+    checked = memory.dispatch({**request, "operation": "banks", "arguments": {"expected_principal": USER}}, principal=person(USER))
+    assert checked["result"] == discovery
+    # Even an administrator with overlapping banks cannot enroll another owner.
+    for expected, actor, status in ((USER, ADMIN, 403), (OTHER, USER, 403), (None, USER, 422), (USER+"\\n", USER, 422)):
+        before = len(transport.calls)
+        with pytest.raises(MemoryError) as error:
+            memory.dispatch({**request, "operation": "banks", "arguments": {"expected_principal": expected}}, principal=person(actor))
+        assert error.value.status == status and len(transport.calls) == before
     assert discovery["default_bank"] == "personal-a"
     assert {bank["bank_id"] for bank in discovery["banks"]} == {"personal-a", "shared"}
     memory.dispatch({**request, "bank": "personal-b"}, principal=person(ADMIN))

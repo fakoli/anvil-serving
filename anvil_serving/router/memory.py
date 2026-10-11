@@ -147,9 +147,15 @@ class MemoryRouter:
             raise MemoryError(422, "invalid_request", "unsupported memory operation")
         arguments = body["arguments"]
         if operation == "banks":
-            if (not isinstance(arguments, Mapping) or set(arguments) - {"limit", "offset"}
+            if (not isinstance(arguments, Mapping) or set(arguments) - {"limit", "offset", "expected_principal"}
                     or "bank" in body or not route.access_file):
                 raise MemoryError(422, "invalid_request", "bank discovery requires a user memory route")
+            if "expected_principal" in arguments:
+                expected = arguments["expected_principal"]
+                if type(expected) is not str or not memory_access.HUMAN.fullmatch(expected):
+                    raise MemoryError(422, "invalid_request", "invalid expected memory principal")
+                if not isinstance(principal, Principal) or principal.owner is None or principal.owner[0] != expected:
+                    raise MemoryError(403, "memory_forbidden", "memory key does not belong to the expected user")
             page_limit, offset = arguments.get("limit", 100), arguments.get("offset", 0)
             if type(page_limit) is not int or not 1 <= page_limit <= 100 or type(offset) is not int or not 0 <= offset <= 1000000:
                 raise MemoryError(422, "invalid_request", "invalid bank pagination")
