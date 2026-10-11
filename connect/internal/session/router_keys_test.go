@@ -90,3 +90,34 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 		t.Fatal("recovery retained old fence")
 	}
 }
+
+func TestNativeRouterIdentityWithoutBrowserSession(t *testing.T) {
+	m, idp := portalSessionFixture(t)
+	defer m.Close()
+	username := "native-person"
+	human, err := m.SetHumanWithUsername(idp.issuer(), "native-person", &username, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fence, err := m.ProvisionRouterIdentity(human.ID, human.Generation)
+	if err != nil || m.CheckRouterPrincipal(human.ID, human.Generation, fence) != nil {
+		t.Fatal("native identity unavailable", err)
+	}
+	again, err := m.ProvisionRouterIdentity(human.ID, human.Generation)
+	if err != nil || again != fence {
+		t.Fatal("native retry changed fence", err)
+	}
+	if _, err := m.ProvisionRouterIdentity(human.ID, human.Generation+1); err == nil {
+		t.Fatal("stale generation accepted")
+	}
+	_, err = m.SetHumanWithUsername(idp.issuer(), "native-person", &username, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ProvisionRouterIdentity(human.ID, human.Generation); err == nil {
+		t.Fatal("suspended account accepted")
+	}
+	if m.CheckRouterPrincipal(human.ID, human.Generation, fence) == nil {
+		t.Fatal("old key remained enabled")
+	}
+}

@@ -301,6 +301,18 @@ func TestHumanSuspendUsesOnlyIssuerAndSubject(t *testing.T) {
 	if err != nil || inspected.Found == nil || !*inspected.Found || inspected.Human == nil || inspected.Human.ID != created.ID || inspected.Human.Generation != created.Generation {
 		t.Fatalf("existing human inspect response = %#v, %v", inspected, err)
 	}
+	nameForKey := "native-user"
+	nativeUser, nativeErr := sessions.SetHumanWithUsername(issuer.URL, "native-user", &nameForKey, []string{"dashboard"}, false)
+	if nativeErr != nil {
+		t.Fatal(nativeErr)
+	}
+	identity, nativeErr := Call(context.Background(), pinned.Path(), Request{Operation: "human-router-identity", Principal: nativeUser.ID, ExpectedGeneration: nativeUser.Generation})
+	if nativeErr != nil || identity.Principal != nativeUser.ID || identity.Generation != nativeUser.Generation || len(identity.Epoch) != 64 || identity.Secret != "" {
+		t.Fatal("native router identity wire contract failed", nativeErr)
+	}
+	if _, nativeErr = handler.apply(Request{Operation: "human-router-identity", Principal: nativeUser.ID, ExpectedGeneration: nativeUser.Generation, Role: "admin"}); !errors.Is(nativeErr, ErrAdmin) {
+		t.Fatal("router identity accepted extra authority fields")
+	}
 	missingID := "human:0000000000000000000000000000000000000000000000000000000000000000"
 	missingInspect, err := handler.apply(Request{Operation: "human-inspect", Principal: missingID})
 	if err != nil || missingInspect.Found == nil || *missingInspect.Found || missingInspect.Human != nil {

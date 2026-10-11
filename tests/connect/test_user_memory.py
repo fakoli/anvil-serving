@@ -213,3 +213,86 @@ def test_bank_transport_deadline_covers_dripping_body():
         assert time.monotonic() - started < 1
     finally:
         server.shutdown(); server.server_close(); thread.join(timeout=1)
+
+
+def test_personal_key_receipt_recovers_lost_response_and_renews(tmp_path, monkeypatch):
+    from anvil_serving.connect import user_memory_key as keys
+    from anvil_serving.router.keys import KeyStore
+    from anvil_serving.router.connect_keys import provision_memory_key
+    monkeypatch.setattr(manage, '_safe_root_ancestors', lambda *_: None)
+    subject = 'native-subject'
+    issuer = 'https://id.example.test'
+    principal = users._principal(issuer, subject)
+    generation = [1]
+    human = {'id': principal, 'username': 'developer', 'disabled': False, 'generation': 1}
+    def native(data, manifest, payload, runner):
+        if payload['operation'] == 'human-inspect':
+            return {'operation': 'human-inspect', 'found': True, 'human': {**human, 'generation': generation[0]}}
+        assert payload['expected_generation'] == generation[0]
+        return {'operation': 'human-router-identity', 'principal': principal, 'generation': generation[0], 'epoch': 'f'*64}
+    monkeypatch.setattr(users, '_human_admin_read', native)
+    monkeypatch.setattr(memory_access, 'resolve', lambda *_: ('personal-bank', ['recall', 'retain']))
+    store = KeyStore.initialize(tmp_path / 'router' / 'keys.sqlite3')
+    from anvil_serving.router.connect_keys import migrate
+    migrate(store)
+    store.owner_check = lambda *actor: actor == (principal, str(generation[0]), 'f'*64)
+    lost = [True]
+    lost_retirement = []
+    token_ids = {}
+    monkeypatch.setattr(keys.key_container, '_container_id', lambda *_: 'c'*64)
+    def invoke(container, payload):
+        if payload['action'] == 'memory-key-retire':
+            retired = store.revoke(token_ids[payload['secret']])
+            if lost_retirement.pop() if lost_retirement else False:
+                raise TimeoutError('lost retirement response')
+            return {'data': {'key_id': payload['key_id'], 'revoked': retired}}
+        actor = (payload['principal'], payload['generation'], payload['epoch'])
+        data = provision_memory_key(store, actor, secret=payload['secret'], expected_key_id=payload['expected_key_id'], apply=payload['apply'])
+        token_ids[payload['secret']] = data['key_id']
+        if lost.pop() if lost else False:
+            raise TimeoutError('lost successful pipe response')
+        return {'data': data}
+    monkeypatch.setattr(keys.key_container, '_invoke', invoke)
+    data = {'gateway': {'oidc': {'issuer': issuer}, 'gateway': {}}, 'memory': {'access_file': '/unused',
+        'router': {'container': 'router', 'store_path': '/private/keys.sqlite3', 'key_directory': str(tmp_path/'personal')}}}
+    preview = keys.provision(data, '/unused', 'developer', subject, apply=False)
+    assert preview['would_create'] and not (tmp_path/'personal').exists()
+    with pytest.raises(TimeoutError): keys.provision(data, '/unused', 'developer', subject, apply=True)
+    path = Path(preview['key_file'])
+    pending = json.loads(path.read_text())
+    assert pending['key_id'] is None and store.authenticate(pending['secret']).owner[0] == principal
+    again = keys.provision(data, '/unused', 'developer', subject, apply=True)
+    assert not again['created'] and len(store.list_keys()) == 1
+    saved = path.read_bytes()
+    assert not keys.provision(data, '/unused', 'developer', subject, apply=True)['created']
+    assert path.read_bytes() == saved
+    # The account owner invalidates old keys on access-generation changes.
+    generation[0] = 2
+    renewed = keys.provision(data, '/unused', 'developer', subject, apply=True)
+    assert renewed['created'] and renewed['key_id'] != again['key_id']
+    receipt = json.loads(path.read_text())
+    assert receipt['previous']['retired'] and receipt['previous']['secret'] == pending['secret']
+    assert store.authenticate(receipt['secret']).owner[1] == '2'
+    assert next(k for k in store.list_keys() if k['key_id'] == again['key_id'])['revoked_at'] is not None
+    assert path.stat().st_mode & 0o777 == 0o600
+
+    # A second generation change while creation is pending must still retire
+    # that exact token, including a lost successful retirement response.
+    generation[0] = 3
+    lost.append(True)
+    with pytest.raises(TimeoutError): keys.provision(data, '/unused', 'developer', subject, apply=True)
+    pending = json.loads(path.read_text())
+    assert pending['key_id'] is None
+    generation[0] = 4
+    # First settle generation two, then lose the pending generation-three retire.
+    lost_retirement.extend([True, False])
+    with pytest.raises(TimeoutError): keys.provision(data, '/unused', 'developer', subject, apply=True)
+    completed = json.loads(path.read_text())
+    assert completed['key_id'] and not completed['previous']['retired']
+    assert completed['previous']['key_id'] is None
+    keys.provision(data, '/unused', 'developer', subject, apply=True)
+    assert len(store.list_keys()) == 4
+    receipt = json.loads(path.read_text())
+    assert receipt['previous']['retired']
+    assert store.authenticate(receipt['secret']).owner[1] == '4'
+    assert all(k['revoked_at'] is not None for k in store.list_keys() if k['key_id'] != receipt['key_id'])

@@ -533,11 +533,17 @@ def _prepare_user_memory(data, username, subject, account, grants):
 
 def _set_user_access(data, manifest, username, subject, account, grants, runner, result):
     prepared = _prepare_user_memory(data, username, subject, account, grants) if "memory" in data else None
-    if grants is not None:
-        _human_set(data, manifest, username, subject, grants, runner)
+    if grants is not None or "router" in data.get("memory", {}):
+        _human_set(data, manifest, username, subject, grants or {}, runner)
     if prepared is not None:
         from . import user_memory
         result["memory"] = user_memory.publish_grant(data, prepared)
+        if "router" in data["memory"]:
+            from .user_memory_key import provision
+            try:
+                result["memory"]["api_key"] = provision(data, manifest, username, subject, apply=True, runner=runner)
+            except Exception as exc:
+                raise _partial("Bank access is ready, but key setup is incomplete; retry users memory-key for this account without rerunning users memory.", result) from exc
 
 
 def _human_admin(data: dict, manifest: str, payload: dict, runner) -> dict:
@@ -745,6 +751,9 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             output: str | None = None, grants: list[str] | None = None, apply: bool = False, runner=None,
             unit_root: Path = Path("/etc/systemd/system"), include_gateway: bool = False) -> dict:
     _require_root()
+    if operation == "memory-key":
+        from .user_memory_key import operate as memory_key
+        return memory_key(manifest, username, apply=apply, runner=runner)
     if operation not in {"create", "access", "memory", "suspend", "delete", "reset-password", "reset-mfa", "code", "backup"}:
         raise _invalid("Unsupported account operation.")
     if operation == "backup" and username is not None:
@@ -1060,6 +1069,9 @@ def operate(manifest: str, operation: str, username: str | None, *, email: str |
             try:
                 from . import user_memory
                 result["memory"] = user_memory.publish_grant(data, resume_memory)
+                if "router" in data["memory"]:
+                    from .user_memory_key import provision
+                    result["memory"]["api_key"] = provision(data, manifest, username, resume_subject, apply=True, runner=runner)
             except BaseException as exc:
                 raise _partial("Account access changed, but memory remains closed; use users memory to finish provisioning.", result) from exc
         if operation in {"create", "reset-password"}:

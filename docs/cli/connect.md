@@ -95,6 +95,29 @@ their personal bank, and invalidates existing Connect browser and terminal
 credentials without restarting Authelia. Shared defaults require explicit grants.
 Suspending or deleting an account closes bank access and retains its memories.
 
+When `memory.router` is installed, `users create`, `access`, and `memory` also
+provision a personal API key for `memory.user`. It resolves through the same
+principal and bank policy for REST, MCP, and application clients. Resume only the
+key phase with this idempotent command (it does not rotate the account generation):
+
+```sh
+sudo anvil-connect-ctl users memory-key developer --confirm
+```
+
+The key stays in the configured root-only directory; output contains its protected
+file path and metadata, never the token. Lost pipe responses recover the saved
+token. Compatible router approvals and manual keys are preserved; existing
+pending, denied, or incompatible approvals require an explicit policy decision.
+The command renews its managed key within one hour of expiry or after an account
+generation change, then revokes only the prior receipt-owned key. Schedule this
+command with the application's native enrollment owner to maintain credentials.
+Preview reports known creation/rotation needs; live router validation is deferred
+to confirmation. Bank access remains ready if key setup fails: retry `memory-key`,
+not the account-generation-changing `memory` command. Renewal needs one free slot
+within the existing ten-key account limit. If all slots are occupied, revoke an
+unused personal key in Connect Home and retry; onboarding never revokes manual
+keys to make space.
+
 Replace an existing person's complete service grant list:
 
 ```sh

@@ -1159,7 +1159,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
 
     result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
     if "memory" in raw:
-        memory = _mapping(raw["memory"], "$.memory", {"base_url", "auth_file", "access_file", "default_banks", "shared_banks", "reader_gid"})
+        memory = _mapping(raw["memory"], "$.memory", {"base_url", "auth_file", "access_file", "default_banks", "shared_banks", "reader_gid"} | ({"router"} if isinstance(raw["memory"], dict) and "router" in raw["memory"] else set()))
         from .memory_backend import origin
         try:
             base_url = origin(memory["base_url"])
@@ -1193,6 +1193,9 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         result["memory"] = {"base_url": base_url, "access_file": access_file,
                             "auth_file": auth_file, "default_banks": dict(overrides),
                             "shared_banks": copy.deepcopy(shared), "reader_gid": memory["reader_gid"]}
+        if "router" in memory:
+            from .user_memory_key import validate
+            result["memory"]["router"] = validate(memory["router"])
     _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user

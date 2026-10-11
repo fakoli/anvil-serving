@@ -2,58 +2,26 @@
 from __future__ import annotations
 
 import json
-from pathlib import PurePosixPath
 import re
 import subprocess
 import sys
 
 from .keys import KeyStore, KeyStoreError, _write_secret
 
-_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
-_MAX_RESPONSE = 1024 * 1024
-
-
 def _container_id(container: str, path: str) -> str:
-    if not _NAME.fullmatch(container):
-        raise KeyStoreError("invalid router container")
-    result = subprocess.run(
-        ["docker", "inspect", "--format", '{"Id":{{json .Id}},"State":{{json .State}},"Config":{"Labels":{{json .Config.Labels}}},"Mounts":{{json .Mounts}}}', container],
-        capture_output=True, text=True, timeout=30,
-    )
-    if result.returncode or len(result.stdout) > _MAX_RESPONSE:
-        raise KeyStoreError("router container is unavailable")
-    row = json.loads(result.stdout)
-    labels = row.get("Config", {}).get("Labels") or {}
-    target = PurePosixPath(path)
-    if (not target.is_absolute() or ".." in target.parts
-            or row.get("State", {}).get("Running") is not True
-            or labels.get("com.docker.compose.project") != "anvil-serving"
-            or labels.get("com.docker.compose.service") != "router"
-            or not re.fullmatch(r"[0-9a-f]{64}", row.get("Id", ""))):
-        raise KeyStoreError("router container ownership is unverified")
-    # The most specific covering mount owns the database directory. A file
-    # mount cannot preserve SQLite's journal alongside the database.
-    mounts = [mount for mount in row.get("Mounts", [])
-              if target.is_relative_to(PurePosixPath(mount["Destination"]))]
-    mount = max(mounts, key=lambda item: len(item["Destination"]), default={})
-    if (sum(item["Destination"] == mount.get("Destination") for item in mounts) != 1
-            or mount.get("Type") not in {"bind", "volume"} or mount.get("RW") is not True
-            or target == PurePosixPath(mount.get("Destination", "/"))):
-        raise KeyStoreError("router credential directory requires durable writable storage")
-    return row["Id"]
+    from ..connect.key_transport import _container_id as invoke
+    try:
+        return invoke(container, path)
+    except ValueError as exc:
+        raise KeyStoreError(str(exc)) from None
 
 
 def _invoke(container_id: str, payload: dict) -> dict:
-    result = subprocess.run(
-        ["docker", "exec", "-i", container_id, "python", "-m", __name__],
-        input=json.dumps(payload), capture_output=True, text=True, timeout=30,
-    )
-    if result.returncode or len(result.stdout) > _MAX_RESPONSE:
-        raise KeyStoreError("router credential operation failed")
-    response = json.loads(result.stdout)
-    if not isinstance(response, dict) or set(response) - {"data", "secret"} or "data" not in response:
-        raise KeyStoreError("router credential response is invalid")
-    return response
+    from ..connect.key_transport import _invoke as invoke
+    try:
+        return invoke(container_id, payload)
+    except ValueError as exc:
+        raise KeyStoreError(str(exc)) from None
 
 
 def dispatch_container(args) -> int:
@@ -118,6 +86,36 @@ def main() -> int:
             data, response["secret"] = store.create(
                 payload["name"], payload["model"], payload["path"], payload["rpm"], payload["expires_days"],
             )
+        elif action == "memory-key":
+            import os
+            from .config import load, load_server_config
+            from .connect_keys import identity, principal_checker, provision_memory_key
+            from ..memory_access import resolve
+            if set(payload) != {"action", "store_path", "principal", "generation", "epoch", "grant", "secret", "expected_key_id", "apply"} or type(payload["apply"]) is not bool:
+                raise KeyStoreError("invalid memory onboarding request")
+            config = "/etc/anvil/config.toml"
+            server = load_server_config(config, container_paths=True)
+            check_secret = os.environ.get(server.connect_check_env or "")
+            routes = [route for route in load(config).memory_routes if route.alias == "memory.user"]
+            if server.api_keys_path != path or not check_secret or len(routes) != 1 or not routes[0].access_file:
+                raise KeyStoreError("user memory router configuration is unavailable")
+            actor = identity(payload["principal"], payload["generation"], payload["epoch"])
+            _, grant = resolve(routes[0].access_file, actor[0], "banks")
+            if grant != payload["grant"]:
+                raise KeyStoreError("user memory bank configuration differs")
+            store.owner_check = principal_checker(server.connect_home_url, check_secret)
+            data = provision_memory_key(store, actor, secret=payload["secret"], expected_key_id=payload["expected_key_id"], apply=payload["apply"])
+        elif action == "memory-key-retire":
+            import hashlib
+            if (set(payload) != {"action", "store_path", "principal", "key_id", "secret"}
+                    or not isinstance(payload["secret"], str)
+                    or not re.fullmatch(r"ask_[A-Za-z0-9_-]{43}", payload["secret"])):
+                raise KeyStoreError("invalid managed memory key receipt")
+            with store._connect() as db:
+                row = db.execute("SELECT k.key_id,o.owner,k.name FROM keys k JOIN connect_key_owners o USING(key_id) WHERE k.token_hash=?", (hashlib.sha256(payload["secret"].encode()).digest(),)).fetchone()
+            if row is not None and (row[1:] != (payload["principal"], "User memory") or payload["key_id"] not in (None, row[0])):
+                raise KeyStoreError("managed memory key receipt differs")
+            data = {"key_id": payload["key_id"], "revoked": row is None or store.revoke(row[0])}
         elif action == "list":
             data = store.list_keys()
         elif action == "usage":

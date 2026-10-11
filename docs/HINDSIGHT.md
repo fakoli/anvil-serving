@@ -242,3 +242,21 @@ several serialized extraction calls; lookups and completion updates allow
 30 seconds. This does not extend the gateway's 300-second interactive limit.
 Consumers receive only principal-bound router access to the imported bank.
 Back up and verify recovery after migration before treating it as complete.
+
+#### Personal API keys during onboarding
+
+The optional `memory.router` object connects bank provisioning to a locally
+managed router and protected credential directory:
+
+```json
+{"container": "anvil-router", "store_path": "/var/lib/anvil-serving/router-keys/keys.sqlite3", "key_directory": "/etc/anvil-connect/memory/user-keys"}
+```
+
+Install it with the other `memory` fields through `users configure-memory`.
+The directory must be dedicated, root-owned, mode `0700`, and outside Git;
+provisioning creates it when absent. Credentials use only `memory.user` and the
+REST/MCP memory paths. They contain no fixed bank ID: the principal's current
+bank policy owns the default, shared grants, and administrator all-bank view.
+The router and native Connect package must both support `users memory-key`.
+Open WebUI enrollment belongs to the infrastructure provisioner, using its
+native encrypted personal settings after the person's first sign-in.
