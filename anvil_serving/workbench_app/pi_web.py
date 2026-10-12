@@ -358,6 +358,8 @@ def unit_content(
         f'Environment="PATH={_unit_value(node_bin_dir)}:/usr/local/bin:/usr/bin:/bin"',
         "Environment=PI_WEB_NO_OPEN=1",
         "Environment=PI_WEB_SKIP_VERSION_CHECK=1",
+        # Runtime Jiti transforms must not mutate the pinned npm artifact tree.
+        "Environment=JITI_FS_CACHE=false",
     ]
     if config.allowed_hosts:
         lines.append(f"Environment=PI_WEB_ALLOWED_HOSTS={','.join(config.allowed_hosts)}")

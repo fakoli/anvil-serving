@@ -1029,13 +1029,224 @@ index 566fcb0..fa3a248 100644
      // up to 100 MB per request, so raise the buffer above that or large uploads
      // are truncated and fail with "Failed to parse body as FormData."
      proxyClientMaxBodySize: "128mb",
-diff --git a/proxy.ts b/b/proxy.ts
-index 1977e56..d808baf 100644
+diff --git a/app/api/mobile-pi/[...path]/route.ts b/app/api/mobile-pi/[...path]/route.ts
+new file mode 100644
+index 0000000..67f0a97
+--- /dev/null
++++ b/app/api/mobile-pi/[...path]/route.ts
+@@ -0,0 +1,57 @@
++import { GET as sessions } from "@/app/api/sessions/route";
++import { GET as detail } from "@/app/api/sessions/[id]/route";
++import { GET as context } from "@/app/api/sessions/[id]/context/route";
++import { GET as state } from "@/app/api/sessions/[id]/state/route";
++import { POST as command } from "@/app/api/agent/[id]/route";
++import { createAgentEventStream } from "@/lib/agent-event-stream";
++import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
++import { resolveSessionPath } from "@/lib/session-reader";
++import { createMobilePiHandler } from "@/lib/mobile-pi-api";
++
++export const dynamic = "force-dynamic";
++export const runtime = "nodejs";
++
++const handle = createMobilePiHandler({
++  async read(kind, req, id) {
++    if (kind === "sessions") return sessions(req);
++    const params = { params: Promise.resolve({ id: id! }) };
++    if (kind === "detail") return detail(req, params);
++    if (kind === "context") return context(req, params);
++    if (kind === "state") return state(req, params);
++    if (req.signal.aborted) return new Response(null, { status: 204 });
++    let session = getRpcSession(id!);
++    if (!session?.isAlive()) {
++      const filePath = await resolveSessionPath(id!);
++      if (!filePath) return Response.json({ error: "not found" }, { status: 404 });
++      // Await startup here so native SSE cannot publish a raw startup exception.
++      session = (await startRpcSession(id!, filePath, undefined)).session;
++    }
++    const ownerSession = session;
++    const stream = createAgentEventStream(req, id!, Promise.resolve({
++      get isStreaming() { return ownerSession.isStreaming; },
++      get streamingMessage() { return ownerSession.streamingMessage; },
++      isAlive: () => ownerSession.isAlive(),
++      onEvent(listener) {
++        try {
++          return ownerSession.onEvent(event => listener(event.type === "prompt_error"
++            ? { type: "prompt_error", errorMessage: "Agent request failed" }
++            : event.type === "extension_error"
++              ? { type: "extension_error", error: "Extension request failed" }
++              : event));
++        } catch { throw new Error("Agent event stream unavailable"); }
++      },
++    }));
++    return new Response(stream, { headers: {
++      "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform",
++      Connection: "keep-alive", "X-Accel-Buffering": "no",
++    } });
++  },
++  async command(id, body) {
++    return command(new Request("http://127.0.0.1/api/agent/" + encodeURIComponent(id), {
++      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
++    }), { params: Promise.resolve({ id }) });
++  },
++});
++
++export async function GET(req: Request) { return handle(req); }
++export async function POST(req: Request) { return handle(req); }
+diff --git a/lib/mobile-pi-api.ts b/lib/mobile-pi-api.ts
+new file mode 100644
+index 0000000..1a15860
+--- /dev/null
++++ b/lib/mobile-pi-api.ts
+@@ -0,0 +1,138 @@
++import { createHash, timingSafeEqual } from "node:crypto";
++
++const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/;
++const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++const MAX_BODY_BYTES = 64 * 1024;
++const MAX_TEXT_BYTES = 32 * 1024;
++const MAX_RECEIPTS = 2048;
++const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
++
++export function mobilePiAuthorized(value: string | null, token = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN): boolean {
++  if (!token || !value?.startsWith("Bearer ")) return false;
++  const actual = Buffer.from(value.slice(7));
++  const expected = Buffer.from(token);
++  return actual.length === expected.length && timingSafeEqual(actual, expected);
++}
++
++export type MobileCommand = { type: "prompt"; message: string } | { type: "abort" };
++export interface MobilePiOwner {
++  read(kind: "sessions" | "detail" | "context" | "state" | "events", req: Request, id?: string): Promise<Response>;
++  command(id: string, command: MobileCommand): Promise<Response>;
++}
++type Receipt = { digest: string; settledAt: number | null; response: Promise<Response> };
++
++function error(status: number, prompt = false): Response {
++  return Response.json({ error: status === 404 ? "not found" : status >= 500 ? "unavailable" : "invalid request",
++    ...(prompt ? { code: "prompt_rejected", accepted: false } : {}) },
++  { status, headers: { "Cache-Control": "no-store" } });
++}
++
++function safeId(value: string): boolean { return SAFE_ID.test(value) && value.toLowerCase() !== "new"; }
++
++async function commandBody(req: Request): Promise<Record<string, unknown> | null> {
++  const length = req.headers.get("content-length");
++  if (length && (!/^\d+$/.test(length) || Number(length) > MAX_BODY_BYTES)) return null;
++  if (!req.headers.get("content-type")?.split(";", 1)[0].trim().match(/^application\/json$/i)) return null;
++  if (!req.body) return null;
++  const reader = req.body.getReader();
++  const chunks: Uint8Array[] = [];
++  let size = 0;
++  try {
++    while (true) {
++      const { done, value } = await reader.read();
++      if (done) break;
++      size += value.byteLength;
++      if (size > MAX_BODY_BYTES) { await reader.cancel(); return null; }
++      chunks.push(value);
++    }
++    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
++    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
++  } catch { return null; }
++  finally { reader.releaseLock(); }
++}
++
++/** A process-local, bounded receipt prevents duplicate admission, including in-flight requests.
++ * Only digests and owner acknowledgements are retained: no prompts or credentials.
++ * Receipts expire after 24 hours or process restart; clients must never auto-retry commands.
++ */
++export function createMobilePiHandler(owner: MobilePiOwner, token: () => string | undefined = () => process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN) {
++  const receipts = new Map<string, Receipt>();
++
++  const dispatch = async (id: string, command: MobileCommand): Promise<Response> => {
++    try {
++      const result = await owner.command(id, command);
++      if (!result.ok) return error(result.status, command.type === "prompt");
++      // Command acknowledgements are small. Never retain an unbounded owner result.
++      const text = await result.text();
++      if (Buffer.byteLength(text) > MAX_BODY_BYTES) return error(502);
++      return new Response(text, { status: result.status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
++    } catch { return error(503); }
++  };
++
++  return async (req: Request): Promise<Response> => {
++    if (!mobilePiAuthorized(req.headers.get("authorization"), token())) return error(404);
++    const url = new URL(req.url);
++    const route = /^\/api\/mobile-pi\/sessions(?:\/([^/]+)(?:\/(context|state|events|command))?)?$/.exec(url.pathname);
++    if (!route) return error(404);
++    let id: string | undefined;
++    try { id = route[1] ? decodeURIComponent(route[1]) : undefined; } catch { return error(400); }
++    if (id !== undefined && !safeId(id)) return error(400);
++    const kind = !id ? "sessions" : route[2] ?? "detail";
++    if (req.method === "POST" && kind === "command" && id) {
++      if (url.search) return error(400);
++      const body = await commandBody(req);
++      if (!body || !Object.keys(body).every(key => ["type", "message", "requestId"].includes(key))) return error(400);
++      if (body.requestId !== undefined && (typeof body.requestId !== "string" || !UUID.test(body.requestId))) return error(400);
++      let command: MobileCommand;
++      if (body.type === "prompt" && typeof body.message === "string" && body.message.trim()
++          && Buffer.byteLength(body.message) <= MAX_TEXT_BYTES) command = { type: "prompt", message: body.message };
++      else if (body.type === "abort" && !Object.hasOwn(body, "message")) command = { type: "abort" };
++      else return error(400);
++      if (body.requestId === undefined) return dispatch(id, command);
++      const key = body.requestId.toLowerCase();
++      const digest = createHash("sha256").update(JSON.stringify([id, command])).digest("hex");
++      for (const [receiptId, receipt] of receipts) {
++        if (receipt.settledAt !== null && Date.now() - receipt.settledAt >= RECEIPT_TTL_MS) receipts.delete(receiptId);
++      }
++      const prior = receipts.get(key);
++      if (prior) return prior.digest === digest ? (await prior.response).clone() : error(409);
++      // Never evict an in-flight receipt or silently admit without a receipt.
++      if (receipts.size >= MAX_RECEIPTS) return error(503);
++      const receipt: Receipt = { digest, settledAt: null, response: Promise.resolve(error(503)) };
++      receipts.set(key, receipt);
++      receipt.response = dispatch(id, command).then(response => { receipt.settledAt = Date.now(); return response; });
++      return (await receipt.response).clone();
++    }
++    if (req.method !== "GET" || kind === "command") return error(404);
++    const allowed: Record<string, Record<string, string | null>> = {
++      sessions: { summary: "1" },
++      detail: { force: "1", tail: "50", tree: "summary", deferThinking: "1", deferMedia: "1" },
++      context: { before: null, tail: "50" }, state: {}, events: {},
++    };
++    const query = allowed[kind];
++    for (const [name, value] of url.searchParams) {
++      if (!Object.hasOwn(query, name) || url.searchParams.getAll(name).length !== 1
++          || (query[name] === null ? !SAFE_ID.test(value) : value !== query[name])) return error(400);
++    }
++    const target = new URL(req.url);
++    target.search = "";
++    if (kind === "sessions") target.searchParams.set("summary", "1");
++    if (kind === "detail") {
++      for (const [key, value] of Object.entries(allowed.detail)) target.searchParams.set(key, value!);
++    }
++    if (kind === "context") {
++      const before = url.searchParams.get("before");
++      if (before) target.searchParams.set("before", before);
++      target.searchParams.set("tail", "50");
++      target.searchParams.set("deferThinking", "1");
++      target.searchParams.set("deferMedia", "1");
++    }
++    // Same owner handlers and globals as the native UI; no new runtime or session authority.
++    try {
++      const response = await owner.read(kind as "sessions" | "detail" | "context" | "state" | "events", new Request(target, req), id);
++      if (response.status >= 400) return error(response.status);
++      response.headers.set("Cache-Control", kind === "events" ? "no-cache, no-transform" : "no-store");
++      return response;
++    } catch { return error(503); }
++  };
++}
+diff --git a/proxy.ts b/proxy.ts
+index 1977e56..071a2f5 100644
 --- a/proxy.ts
 +++ b/proxy.ts
-@@ -6,10 +6,14 @@ import {
- } from "@/lib/auth-throttle";
+@@ -1,4 +1,5 @@
+ import { NextResponse, type NextRequest } from "next/server";
++import { mobilePiAuthorized } from "@/lib/mobile-pi-api";
  import {
+   getAuthRetryAfterMs,
+   recordAuthFailure,
+@@ -8,6 +9,10 @@ import {
    isApiRequestAllowed,
    isApiRequestHostAllowed,
  } from "@/lib/request-security";
@@ -1046,11 +1257,7 @@ index 1977e56..d808baf 100644
  import {
    isValidWebSessionToken,
    isValidBasicAuthorization,
-   isWebPasswordEnabled,
-   PI_WEB_SESSION_COOKIE,
-@@ -36,10 +40,33 @@ export function proxy(request: NextRequest) {
-     if (!isApiRequest) {
-       return new NextResponse("Untrusted request", { status: 403 });
+@@ -38,6 +43,34 @@ export function proxy(request: NextRequest) {
      }
      return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
    }
@@ -1077,8 +1284,11 @@ index 1977e56..d808baf 100644
 +    });
 +  }
 +
++
++  if (request.nextUrl.pathname === "/api/mobile-pi" || request.nextUrl.pathname.startsWith("/api/mobile-pi/")) {
++    if (mobilePiAuthorized(request.headers.get("authorization"))) return NextResponse.next();
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
  
    const password = process.env.PI_WEB_PASSWORD;
    if (!isWebPasswordEnabled(password)) {
-     if (request.nextUrl.pathname === "/login") {
-       return NextResponse.redirect(new URL("/", request.url));
