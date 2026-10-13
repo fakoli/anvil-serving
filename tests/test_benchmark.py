@@ -320,17 +320,29 @@ def test_final_answer_regex_rejects_conflicting_later_marker():
     ]
 
 
-def test_timeout_triage_accepts_streaming_as_a_practical_latency_fix():
+def test_timeout_triage_accepts_retained_answer_and_requires_latency_fix():
     prompt = next(
         item for item in benchmark_runner.INTELLIGENCE_PROMPTS
         if item["id"] == "parallel_timeout_triage"
     )
-    result = benchmark_specs.evaluate_text_checks(
+    retained_answer = benchmark_specs.evaluate_text_checks(
+        "The turn times out because total latency is ~3000 ms (>2500 ms), mainly "
+        "from the 1800 ms LLM; fix it by reducing LLM latency with a faster/cached "
+        "model or by streaming LLM output into TTS to overlap delays.",
+        prompt["checks"],
+    )
+    streaming_answer = benchmark_specs.evaluate_text_checks(
         "The 3000 ms total exceeds the timeout; stream TTS while the LLM finishes.",
         prompt["checks"],
     )
+    irrelevant_latency_answer = benchmark_specs.evaluate_text_checks(
+        "The turn times out because total latency is ~3000 ms.",
+        prompt["checks"],
+    )
 
-    assert all(item["passed"] for item in result)
+    assert all(item["passed"] for item in retained_answer)
+    assert all(item["passed"] for item in streaming_answer)
+    assert not all(item["passed"] for item in irrelevant_latency_answer)
 
 
 def test_failure_class_distinguishes_visible_answer_budget_exhaustion():
