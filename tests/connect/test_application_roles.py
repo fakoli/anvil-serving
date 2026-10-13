@@ -94,8 +94,24 @@ def test_roster_uses_exact_subject_role_not_groups_and_downgrades_disabled(monke
         assert roles.roster(data, '/declaration.json', 'dashboard', None)[0]['role'] == 'none'
 
 
+def test_roster_accepts_native_omitted_username_with_exact_subject_authority(monkeypatch):
+    data, accounts, human, identifiers, principal = authority_fixture(monkeypatch)
+    # Legacy/browser-created native humans omit the optional username field.
+    human.pop('username')
+    assert roles.roster(data, '/declaration.json', 'dashboard', None) == [
+        {'subject': identifiers[0]['identifier'], 'principal': principal,
+         'generation': '4', 'role': 'member'}]
+    accounts['tester']['disabled'] = True
+    assert roles.roster(data, '/declaration.json', 'dashboard', None)[0]['role'] == 'none'
+    human['id'] = 'human:' + 'a' * 64
+    with pytest.raises(manage.ManageError):
+        roles.roster(data, '/declaration.json', 'dashboard', None)
+
+
 @pytest.mark.parametrize('mutation', [
     lambda a,h,i: h.update(username='other'),
+    lambda a,h,i: h.update(username=None),
+    lambda a,h,i: h.update(username=''),
     lambda a,h,i: h.update(id='human:' + 'a' * 64),
     lambda a,h,i: h.update(generation=True),
     lambda a,h,i: i.append(copy.deepcopy(i[0])),

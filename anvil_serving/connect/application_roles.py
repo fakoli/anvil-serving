@@ -104,7 +104,10 @@ def roster(data, manifest, resource, runner):
         entry = {'subject': subject, 'principal': principal, 'generation': None, 'role': 'none'}
         if response['found']:
             human = response.get('human')
-            if (type(human) is not dict or human.get('id') != principal or human.get('username') != username
+            # Native legacy/browser-created records can omit username. The
+            # principal remains bound to the exact exported OIDC issuer/subject.
+            if (type(human) is not dict or human.get('id') != principal
+                    or 'username' in human and human['username'] != username
                     or type(human.get('generation')) is not int or not 1 <= human['generation'] < 2**64
                     or type(human.get('disabled')) is not bool or type(human.get('resources')) is not list):
                 raise _error()
