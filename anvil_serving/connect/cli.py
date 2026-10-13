@@ -84,6 +84,16 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     _users_parser(actions)
+    native_agents = actions.add_parser("native-agents", allow_abbrev=False,
+        help="Run the native Agents broker behind a managed TLS edge.")
+    native_agents.add_argument("--config", required=True, action=_Once)
+    native_authority = actions.add_parser("native-authority", allow_abbrev=False,
+        help="Project current Pi resource grants into short-lived native authority.")
+    for name in ("manifest", "resource", "output"):
+        native_authority.add_argument("--" + name, required=True, action=_Once)
+    native_authority.add_argument("--reader-gid", required=True, type=int, action=_Once)
+    native_authority.add_argument("--dry-run", action="store_true")
+    native_authority.add_argument("--confirm", action="store_true")
     resources = actions.add_parser("resources", allow_abbrev=False,
                                    help="List declared browser services and copyable grant values.")
     resources.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -250,7 +260,15 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
-        if action == "resources":
+        if action == "native-agents":
+            from ..native_agents.server import serve
+            serve(args.config)
+            result = {"stopped": True}
+        elif action == "native-authority":
+            from ..native_agents.authority import project
+            result = project(args.manifest, resource=args.resource, output=args.output,
+                             reader_gid=args.reader_gid, apply=apply)
+        elif action == "resources":
             from .inventory import resources
             from .users import DEFAULT_MANIFEST
             result = resources(args.manifest or DEFAULT_MANIFEST)

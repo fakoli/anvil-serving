@@ -983,7 +983,7 @@ def _native_pull_main(args, *, result_sink=None):
             hf_executable=args.hf_executable, include=args.include, exclude=args.exclude,
             token=token, no_token=args.no_token,
             headroom_bytes=round(args.headroom_gib * 1024**3),
-            evidence_out=args.evidence_out, dry_run=args.dry_run, _environ=environ,
+            evidence_out=args.evidence_out, dry_run=args.dry_run, xet=args.xet, _environ=environ,
         )
     except (model_pull_native.NativePullError, OSError) as exc:
         message = str(exc) if isinstance(exc, model_pull_native.NativePullError) else "native model pull filesystem operation failed"
@@ -1055,6 +1055,8 @@ def pull_main(argv, *, _result_sink=None):
         default=DEFAULT_PULL_HEADROOM_BYTES / 1024**3,
         help="free space retained after the estimated download (default: %(default)s GiB)",
     )
+    ap.add_argument("--xet", action="store_true",
+                    help="native only: opt into Xet with owned scratch on --cache-dir's filesystem")
     ap.add_argument("--dry-run", action="store_true",
                     help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
@@ -1066,8 +1068,8 @@ def pull_main(argv, *, _result_sink=None):
         return 2
     if a.cache_dir is not None:
         return _native_pull_main(a, result_sink=_result_sink)
-    if a.hf_executable is not None or a.evidence_out is not None:
-        print("--hf-executable and --evidence-out require native --cache-dir", file=sys.stderr)
+    if a.hf_executable is not None or a.evidence_out is not None or a.xet:
+        print("--hf-executable, --evidence-out, and --xet require native --cache-dir", file=sys.stderr)
         return 2
     a.volume = a.volume or DEFAULT_PULL_VOLUME
     a.image = a.image or DEFAULT_PULL_IMAGE
@@ -1568,7 +1570,8 @@ def _native_service_options(parser):
                         help="native service operation deadline in seconds")
 
 
-def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
+def _recipe_container_identity(recipe, container, *, _run=subprocess.run, timeout=10,
+                               require_recipe_digest=False):
     """Return a fail-closed identity for one container created by recipe load."""
     if not _RECIPE_CONTAINER_RE.fullmatch(container):
         raise serve_recipes.RecipeError(
@@ -1581,7 +1584,10 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
             text=True,
             encoding="utf-8",
             errors="replace",
+            timeout=timeout,
         )
+    except subprocess.TimeoutExpired:
+        raise serve_recipes.RecipeError("recipe container identity inspection timed out") from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot inspect recipe container %r: %s" % (container, exc)
@@ -1614,11 +1620,14 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         mismatches.append("model label")
     if expected_revision and observed_revision != expected_revision:
         mismatches.append("revision label")
+    if require_recipe_digest and labels.get(serve_recipes.RECIPE_DIGEST_LABEL) != serve_recipes.recipe_digest(recipe):
+        mismatches.append("recipe digest label")
     if mismatches:
         raise serve_recipes.RecipeError(
             "container %r is not owned by the selected recipe (%s mismatch)"
             % (container, ", ".join(mismatches))
         )
+    host_memory = serve_recipes.recipe_memory.observation(row, _run=_run)
     return {
         "schema": "recipe-container-status/v1",
         "container": container,
@@ -1630,7 +1639,8 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         "state": state.get("Status"),
         "running": bool(state.get("Running")),
         "health": ((state.get("Health") or {}).get("Status")),
-        "host_memory": serve_recipes.recipe_memory.observation(row, _run=_run),
+        "host_memory": host_memory,
+        "containment_error": serve_recipes.recipe_memory.containment_error(host_memory, recipe.get("serve")),
     }
 
 
@@ -1641,7 +1651,7 @@ def _await_recipe_container_healthy(
     timeout,
     poll_interval,
     *,
-    _identity=_recipe_container_identity,
+    _identity=None,
     _health=None,
     _sleep=time.sleep,
     _monotonic=time.monotonic,
@@ -1653,8 +1663,24 @@ def _await_recipe_container_healthy(
     deadline = _monotonic() + timeout
     last_state = None
     while True:
-        identity = _identity(recipe, container)
+        try:
+            if _identity is None:
+                remaining = deadline - _monotonic()
+                if remaining <= 0:
+                    return False, last_state
+                identity = _recipe_container_identity(
+                    recipe, container, timeout=min(10, remaining), require_recipe_digest=True)
+                if _monotonic() >= deadline:
+                    return False, "recipe container identity deadline expired"
+            else:
+                identity = _identity(recipe, container)
+        except serve_recipes.RecipeError:
+            return False, "recipe container identity unavailable"
         last_state = identity.get("state")
+        containment_error = serve_recipes.recipe_memory.containment_error(
+            identity.get("host_memory") or {}, recipe.get("serve"))
+        if containment_error:
+            return False, containment_error
         if last_state not in {"created", "restarting", "running"}:
             return False, last_state
         if _health(serve["port"], serve.get("health", "/health")) == 200:
@@ -2306,7 +2332,7 @@ def _recipe_main(argv):
                 if a.recipe_action == "status":
                     identity = _recipe_container_identity(recipe, a.container)
                     print(json.dumps(identity, indent=2, sort_keys=True))
-                    return 0
+                    return int(bool(identity.get("containment_error")))
                 if a.recipe_action == "logs":
                     return _recipe_container_logs(
                         recipe,
@@ -2333,7 +2359,7 @@ def _recipe_main(argv):
             )
             if a.recipe_action == "status":
                 print(json.dumps(identity, indent=2, sort_keys=True))
-                return 0
+                return int(bool(identity.get("containment_error")))
             if a.recipe_action == "logs":
                 return _discovered_recipe_container_logs(
                     identity,

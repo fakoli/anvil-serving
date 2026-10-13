@@ -126,6 +126,7 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
             "running": True,
             "health": "healthy",
             "native_kv_offload": False,
+            "containment_error": None,
             "host_memory": {"limit_bytes": None, "ram_plus_swap_limit_bytes": None,
                             "oom_killed": None, "exit_code": None, "current_bytes": None,
                             "peak_bytes": None, "events": None, "effective_limit_bytes": None,
@@ -261,6 +262,19 @@ def test_recipe_status_survives_missing_origin_registry(
     ]) == 0
 
     assert json.loads(capsys.readouterr().out) == identity
+
+
+def test_discovered_status_fails_closed_on_unknown_containment(tmp_path, monkeypatch, capsys):
+    row = _row("candidate")
+    row["HostConfig"].update(Memory=64 * 1024**2, MemorySwap=64 * 1024**2 + 1)
+    inventory = serve_recipes.discover_recipe_containers(_run=_DiscoveryRun([row]))
+    monkeypatch.setattr(serve_recipes, "discover_recipe_containers", lambda: inventory)
+    assert models._recipe_main([
+        "status", "org/model", "--registry", str(tmp_path / "missing.toml"),
+    ]) == 1
+    result = json.loads(capsys.readouterr().out)
+    assert "containment failed" in result["containment_error"]
+    assert result["health"] == "healthy"  # Docker health is separate evidence.
 
 
 def test_discovered_recipe_unload_removes_revalidated_immutable_id(

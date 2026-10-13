@@ -818,15 +818,33 @@ complete mounted-state consumer roster. Confirmation requires the exact fresh
 preview digest and a new explicit human acknowledgement of remote uncertainty.
 Neither a legacy-stop grant nor an earlier readmission grant can authorize it.
 
+When the admitted Compose file requires credential interpolation, this phase's
+maintenance declaration can include an optional closed `environment` object:
+`{"file":"/protected/router.env","sha256":"<exact-file-sha256>"}`. The
+reference is bound into the preview digest; preview never reads or resolves the
+secret file. Confirmation requires a bounded, private, singly linked file with
+the declared digest. It uses a private temporary snapshot and a clean execution
+environment for both offline custody helpers, with file-backed credentials
+authoritative over parent variables. Required Compose variables are resolved
+before physical stop, and the original file is rechecked at the operation's
+custody boundaries. Secret values never enter previews or receipts. This field
+is exclusive to `current-instrumented-stop`; existing declarations remain valid.
+Do not add or change the reference after approval or while finalizing a pending
+stop: it requires a matching preview and authorization. No implicit environment
+file discovery is performed for this explicit contract.
+
 A fixed native helper uses the predecessor's existing maintenance-preview and
 writer-exclusion primitives. It keeps the actual writer fence through the final
 host checks and physical stop; unsupported old images refuse before stopping.
 Confirmation durably publishes a canonical one-time operation record in the
 protected store before any stop, then a host pending receipt. A changed output
 path cannot replay that operation. An existing host pending receipt can only
-finish evidence for the same already-stopped incarnation while the original
-approval remains valid; it cannot issue another stop of a live, restarted or
-successor process. Failure leaves admission closed and never starts a service.
+finish evidence for the same already-stopped incarnation. Its exact protected
+authorization, preview, configuration references and native marker must match;
+recovery checks approval validity at the original durable acknowledgment time,
+so receipt finalization can complete after expiry. Without that pending record,
+expired approval refuses. Recovery cannot issue another stop of a live, restarted
+or successor process. Failure leaves admission closed and never starts a service.
 
 After the exact incarnation stops, the existing offline producer/writer fences
 and staged native custody commit establish its immutable death proof. Committed

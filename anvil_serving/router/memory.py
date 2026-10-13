@@ -18,7 +18,7 @@ from typing import Any, Mapping, Optional, Sequence
 from urllib.parse import quote
 
 from .backends.relay import (
-    RelayTimeoutError, Transport, _close_controlled_response, _controlled_stream_open,
+    RelayBackendError, RelayTimeoutError, Transport, _close_controlled_response, _controlled_stream_open,
     _interrupt_response,
 )
 from .config import MemoryRoute, normalize_model_alias
@@ -26,6 +26,7 @@ from .internal import BackendClientError
 from .request_control import RequestControl, RequestControlError
 from .keys import Principal
 from .. import memory_access
+from . import memory_browser
 
 
 _MAX_RESPONSE_BYTES = 2 * 1024 * 1024
@@ -43,8 +44,17 @@ def _memory_transport(url, *, data, headers, timeout, max_bytes, method=None):
     """Reuse relay's cancellable connection and bound the entire body read."""
     control = RequestControl(total_timeout_s=timeout, startup_timeout_s=timeout)
     control.start_upstream()
-    response = _controlled_stream_open(url, data=data, headers=headers, timeout=timeout, control=control,
-                                       method=method or ("GET" if data is None else "POST"))
+    try:
+        response = _controlled_stream_open(url, data=data, headers=headers, timeout=timeout, control=control,
+                                           method=method or ("GET" if data is None else "POST"))
+    except RelayBackendError as error:
+        # Relay intentionally treats a model-server 404 as generic unavailability.
+        # Hindsight's record endpoints give 404 a narrower, caller-safe meaning;
+        # preserve it only inside this Memory transport.  The message is emitted
+        # by our controlled opener and never contains provider response content.
+        if error.args == ("model upstream returned HTTP 404",):
+            raise BackendClientError(404, "not_found", "memory upstream did not find the record") from None
+        raise
     def close():
         _interrupt_response(response)
     control.set_upstream_close(close)
@@ -143,13 +153,18 @@ class MemoryRouter:
         if "bank" in body and (type(body["bank"]) is not str or not memory_access.BANK.fullmatch(body["bank"])):
             raise MemoryError(422, "invalid_request", "invalid memory bank")
         operation = body["operation"]
-        if not isinstance(operation, str) or operation not in {*_PATHS, "banks"}:
+        if not isinstance(operation, str) or operation not in {*_PATHS, "banks", *memory_browser.OPERATIONS}:
             raise MemoryError(422, "invalid_request", "unsupported memory operation")
         arguments = body["arguments"]
+        native_path = native_method = None
+        native_inventory = False
         if operation == "banks":
-            if (not isinstance(arguments, Mapping) or set(arguments) - {"limit", "offset", "expected_principal"}
+            if (not isinstance(arguments, Mapping) or set(arguments) - {"limit", "offset", "expected_principal", "native"}
                     or "bank" in body or not route.access_file):
                 raise MemoryError(422, "invalid_request", "bank discovery requires a user memory route")
+            if "native" in arguments and type(arguments["native"]) is not bool:
+                raise MemoryError(422, "invalid_request", "invalid native inventory selector")
+            native_inventory = arguments.get("native", False)
             if "expected_principal" in arguments:
                 expected = arguments["expected_principal"]
                 if type(expected) is not str or not memory_access.HUMAN.fullmatch(expected):
@@ -160,6 +175,13 @@ class MemoryRouter:
             if type(page_limit) is not int or not 1 <= page_limit <= 100 or type(offset) is not int or not 0 <= offset <= 1000000:
                 raise MemoryError(422, "invalid_request", "invalid bank pagination")
             payload = None
+        elif operation in memory_browser.OPERATIONS:
+            if not route.access_file:
+                raise MemoryError(403, "memory_forbidden", "native memory requires explicit bank grants")
+            try:
+                native_path, native_method, payload = memory_browser.request(operation, arguments)
+            except (ValueError, TypeError, KeyError):
+                raise MemoryError(422, "invalid_request", "invalid native memory arguments") from None
         else:
             payload = _payload(operation, arguments)
         bank = route.bank
@@ -190,6 +212,13 @@ class MemoryRouter:
                         operation, body.get("bank"))
                 except PermissionError:
                     raise MemoryError(403, "memory_forbidden", "memory bank is not available to this user") from None
+            if native_inventory:
+                names = sorted(name for name, ops in grant["banks"].items() if {"list", "detail"} <= set(ops))
+                return {"alias": route.alias, "backend": "hindsight", "operation": "banks", "result": {
+                    "schema": "anvil-native-memory/v1", "principal": principal.owner[0],
+                    "default_bank": bank if bank in names else (names[0] if names else None),
+                    "total": len(names), "limit": page_limit, "offset": offset,
+                    "banks": [{"bank_id": name, "operations": grant["banks"][name]} for name in names[offset:offset + page_limit]]}}
             if operation == "banks" and not grant["admin"]:
                 return {"alias": route.alias, "backend": "hindsight", "operation": operation,
                         "result": {"default_bank": bank, "total": len(grant["banks"]), "banks": [
@@ -200,19 +229,35 @@ class MemoryRouter:
                 from .usage_store import RouteAssociation
                 invocation.route = RouteAssociation(route_id=route.alias)
                 invocation.dispatch()
+            if operation in {"invalidate", "restore"}:
+                # Independently granted detail is required for safe preflight and reconciliation.
+                memory_access.resolve(route.access_file, principal.owner[0], "detail", bank)
+                before = self._transport(route.base_url.rstrip("/") + "/v1/default/banks/" + quote(bank, safe="") + native_path,
+                    data=None, headers={"Authorization": f"Bearer {token}"}, timeout=route.timeout, max_bytes=_MAX_RESPONSE_BYTES)
+                current = memory_browser.project_record(json.loads(before), expected_id=arguments["id"])
+                if current["type"] == "observation":
+                    raise MemoryError(422, "memory_rejected", "derived observations must be curated through their source facts")
+                # Recheck permission after preflight; no stale authority can authorize PATCH.
+                memory_access.resolve(route.access_file, principal.owner[0], operation, bank)
+                memory_access.resolve(route.access_file, principal.owner[0], "detail", bank)
             raw = self._transport(
                 route.base_url.rstrip("/") + "/v1/default/banks" + (
                     "?limit=" + str(page_limit) + "&offset=" + str(offset) if operation == "banks"
-                    else "/" + quote(bank, safe="") + _PATHS[operation]),
+                    else "/" + quote(bank, safe="") + (native_path or _PATHS[operation])),
                 data=None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8"),
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
                 timeout=route.timeout,
                 max_bytes=_MAX_RESPONSE_BYTES,
+                **({"method": native_method} if native_method else {}),
             )
             result = json.loads(raw.decode("utf-8"))
             if not isinstance(result, dict):
                 raise ValueError("response is not an object")
-            if operation == "recall":
+            if operation == "list":
+                result = memory_browser.project_list(result, arguments)
+            elif operation in {"detail", "invalidate", "restore"}:
+                result = memory_browser.project_record(result, expected_id=arguments["id"])
+            elif operation == "recall":
                 result = _recall_result(result)
             elif operation == "banks":
                 if not isinstance(result.get("banks"), list):
@@ -222,7 +267,11 @@ class MemoryRouter:
             raise
         except (RequestControlError, RelayTimeoutError, TimeoutError):
             raise MemoryError(504, "memory_timeout", "selected memory route timed out") from None
+        except PermissionError:
+            raise MemoryError(403, "memory_forbidden", "memory bank is not available to this user") from None
         except BackendClientError as exc:
+            if native_path and exc.status == 404:
+                raise MemoryError(404, "memory_not_found", "memory record is not available in this bank") from None
             if exc.status in {400, 413, 422}:
                 raise MemoryError(exc.status, "memory_rejected", "selected memory route rejected the request") from None
             raise MemoryError(503, "memory_unavailable", "selected memory route is unavailable") from None

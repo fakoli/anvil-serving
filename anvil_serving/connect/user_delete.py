@@ -1,6 +1,7 @@
 """Forward-only permanent-account deletion through native Connect authority."""
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -163,13 +164,22 @@ def _human_response(data: dict, manifest: str, payload: dict, runner, operation:
 
 
 def _human(value: object) -> dict:
-    if type(value) is not dict or set(value) - {"id", "username", "deletion_request", "generation", "disabled", "resources", "application_roles", "browser_transaction_floor"}:
+    if type(value) is not dict or set(value) - {"id", "username", "deletion_request", "generation", "disabled", "resources", "application_roles", "browser_transaction_floor", "router_incarnation"}:
         raise _invalid("Native permanent deletion response is invalid.")
     if (not isinstance(value.get("id"), str) or not re.fullmatch(r"human:[0-9a-f]{64}", value["id"])
             or not isinstance(value.get("username", ""), str) or (value.get("username") and not users._USER.fullmatch(value["username"]))
             or type(value.get("generation")) is not int or isinstance(value["generation"], bool) or value["generation"] < 1
             or type(value.get("disabled")) is not bool):
         raise _invalid("Native permanent deletion response is invalid.")
+    if "router_incarnation" in value:
+        # Native session.validBinding: canonical raw base64url for 32 bytes.
+        # The Go producer omits an empty value; a present field must be valid.
+        incarnation = value["router_incarnation"]
+        if type(incarnation) is not str or re.fullmatch(r"[A-Za-z0-9_-]{43}", incarnation) is None:
+            raise _invalid("Native permanent deletion response is invalid.")
+        decoded = base64.urlsafe_b64decode(incarnation + "=")
+        if len(decoded) != 32 or base64.urlsafe_b64encode(decoded).decode("ascii").rstrip("=") != incarnation:
+            raise _invalid("Native permanent deletion response is invalid.")
     return {**value, "username": value.get("username", "")}
 
 

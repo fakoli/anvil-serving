@@ -1210,7 +1210,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                     or len(banks) > 127 or any(type(bank) is not str
                         or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
                         or type(ops) is not list or not ops or any(type(op) is not str
-                            or op not in {"retain", "recall", "reflect"} for op in ops)
+                            or op not in {"retain", "recall", "reflect", "list", "detail", "invalidate", "restore"} for op in ops)
                         or len(ops) != len(set(ops)) for bank, ops in banks.items())):
                 raise _error("$.memory.shared_banks", "invalid shared bank operation grant")
         if any(bank not in shared.get(user, {}) for user, bank in overrides.items()):

@@ -43,7 +43,7 @@ an empty list.
 ## Native OIDC clients
 
 Add a native application to `authelia.additional_oidc_clients` with this entry
-([complete entry](../../connect/examples/native-oidc-client.json)):
+([complete entry in the repository](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/native-oidc-client.json)):
 
 ```json
 {
@@ -848,6 +848,31 @@ Save its private output, redeem it with `connect init --service
 connector:dashboard --bundle ...`, then inspect `connect identity`. The final
 approval request uses `operation: approve`, `installation: dashboard`, and the
 independently checked `fingerprint` returned by identity inspection.
+
+## Native authority
+
+`connect native-authority --manifest /absolute/deployment.json --resource pi-web
+--output /absolute/private/native-authority.json --reader-gid GID` previews a
+short-lived projection of the exact Connect human grants for one declared browser
+resource. `--confirm` publishes it atomically as root, readable by the broker's
+dedicated group. A managed publisher must refresh it before its 30-second expiry;
+stale projections deny access. The broker must pin the same issuer and source
+resource. This projection neither creates accounts nor grants new authority.
+This first broker supports at most 64 granted principals per source resource.
+Exceeding that capacity stops publication; existing authority expires after 30
+seconds and access fails closed. Check roster capacity before extending grants.
+
+## Native agents
+
+`connect native-agents --config /absolute/private/native-agents.json` runs the
+native Agents broker in the foreground. A managed service owns process lifecycle.
+The protected configuration declares fixed OIDC introspection/userinfo endpoints,
+the allowed native client, the fresh authority projection, owned workspaces and
+their separate private Pi owner endpoints. Provider and owner secrets remain on
+the host. Every operation and stream is scoped to the verified issuer/subject and
+current Connect grant; a browser cookie, email address or WebUI token is not an
+admission credential. Deploy with the managed infrastructure role and retain its
+artifact digests and rollback record before exposing the HTTPS endpoint.
 
 ## Keygen
 

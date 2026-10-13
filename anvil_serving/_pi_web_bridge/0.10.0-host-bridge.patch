@@ -1029,13 +1029,224 @@ index 566fcb0..fa3a248 100644
      // up to 100 MB per request, so raise the buffer above that or large uploads
      // are truncated and fail with "Failed to parse body as FormData."
      proxyClientMaxBodySize: "128mb",
-diff --git a/proxy.ts b/b/proxy.ts
-index 1977e56..d808baf 100644
+diff --git a/app/api/mobile-pi/[...path]/route.ts b/app/api/mobile-pi/[...path]/route.ts
+new file mode 100644
+index 0000000..67f0a97
+--- /dev/null
++++ b/app/api/mobile-pi/[...path]/route.ts
+@@ -0,0 +1,57 @@
++import { GET as sessions } from "@/app/api/sessions/route";
++import { GET as detail } from "@/app/api/sessions/[id]/route";
++import { GET as context } from "@/app/api/sessions/[id]/context/route";
++import { GET as state } from "@/app/api/sessions/[id]/state/route";
++import { POST as command } from "@/app/api/agent/[id]/route";
++import { createAgentEventStream } from "@/lib/agent-event-stream";
++import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
++import { resolveSessionPath } from "@/lib/session-reader";
++import { createMobilePiHandler } from "@/lib/mobile-pi-api";
++
++export const dynamic = "force-dynamic";
++export const runtime = "nodejs";
++
++const handle = createMobilePiHandler({
++  async read(kind, req, id) {
++    if (kind === "sessions") return sessions(req);
++    const params = { params: Promise.resolve({ id: id! }) };
++    if (kind === "detail") return detail(req, params);
++    if (kind === "context") return context(req, params);
++    if (kind === "state") return state(req, params);
++    if (req.signal.aborted) return new Response(null, { status: 204 });
++    let session = getRpcSession(id!);
++    if (!session?.isAlive()) {
++      const filePath = await resolveSessionPath(id!);
++      if (!filePath) return Response.json({ error: "not found" }, { status: 404 });
++      // Await startup here so native SSE cannot publish a raw startup exception.
++      session = (await startRpcSession(id!, filePath, undefined)).session;
++    }
++    const ownerSession = session;
++    const stream = createAgentEventStream(req, id!, Promise.resolve({
++      get isStreaming() { return ownerSession.isStreaming; },
++      get streamingMessage() { return ownerSession.streamingMessage; },
++      isAlive: () => ownerSession.isAlive(),
++      onEvent(listener) {
++        try {
++          return ownerSession.onEvent(event => listener(event.type === "prompt_error"
++            ? { type: "prompt_error", errorMessage: "Agent request failed" }
++            : event.type === "extension_error"
++              ? { type: "extension_error", error: "Extension request failed" }
++              : event));
++        } catch { throw new Error("Agent event stream unavailable"); }
++      },
++    }));
++    return new Response(stream, { headers: {
++      "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform",
++      Connection: "keep-alive", "X-Accel-Buffering": "no",
++    } });
++  },
++  async command(id, body) {
++    return command(new Request("http://127.0.0.1/api/agent/" + encodeURIComponent(id), {
++      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
++    }), { params: Promise.resolve({ id }) });
++  },
++});
++
++export async function GET(req: Request) { return handle(req); }
++export async function POST(req: Request) { return handle(req); }
+diff --git a/lib/mobile-pi-api.ts b/lib/mobile-pi-api.ts
+new file mode 100644
+index 0000000..1a15860
+--- /dev/null
++++ b/lib/mobile-pi-api.ts
+@@ -0,0 +1,138 @@
++import { createHash, timingSafeEqual } from "node:crypto";
++
++const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/;
++const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++const MAX_BODY_BYTES = 64 * 1024;
++const MAX_TEXT_BYTES = 32 * 1024;
++const MAX_RECEIPTS = 2048;
++const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
++
++export function mobilePiAuthorized(value: string | null, token = process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN): boolean {
++  if (!token || !value?.startsWith("Bearer ")) return false;
++  const actual = Buffer.from(value.slice(7));
++  const expected = Buffer.from(token);
++  return actual.length === expected.length && timingSafeEqual(actual, expected);
++}
++
++export type MobileCommand = { type: "prompt"; message: string } | { type: "abort" };
++export interface MobilePiOwner {
++  read(kind: "sessions" | "detail" | "context" | "state" | "events", req: Request, id?: string): Promise<Response>;
++  command(id: string, command: MobileCommand): Promise<Response>;
++}
++type Receipt = { digest: string; settledAt: number | null; response: Promise<Response> };
++
++function error(status: number, prompt = false): Response {
++  return Response.json({ error: status === 404 ? "not found" : status >= 500 ? "unavailable" : "invalid request",
++    ...(prompt ? { code: "prompt_rejected", accepted: false } : {}) },
++  { status, headers: { "Cache-Control": "no-store" } });
++}
++
++function safeId(value: string): boolean { return SAFE_ID.test(value) && value.toLowerCase() !== "new"; }
++
++async function commandBody(req: Request): Promise<Record<string, unknown> | null> {
++  const length = req.headers.get("content-length");
++  if (length && (!/^\d+$/.test(length) || Number(length) > MAX_BODY_BYTES)) return null;
++  if (!req.headers.get("content-type")?.split(";", 1)[0].trim().match(/^application\/json$/i)) return null;
++  if (!req.body) return null;
++  const reader = req.body.getReader();
++  const chunks: Uint8Array[] = [];
++  let size = 0;
++  try {
++    while (true) {
++      const { done, value } = await reader.read();
++      if (done) break;
++      size += value.byteLength;
++      if (size > MAX_BODY_BYTES) { await reader.cancel(); return null; }
++      chunks.push(value);
++    }
++    const value: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
++    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
++  } catch { return null; }
++  finally { reader.releaseLock(); }
++}
++
++/** A process-local, bounded receipt prevents duplicate admission, including in-flight requests.
++ * Only digests and owner acknowledgements are retained: no prompts or credentials.
++ * Receipts expire after 24 hours or process restart; clients must never auto-retry commands.
++ */
++export function createMobilePiHandler(owner: MobilePiOwner, token: () => string | undefined = () => process.env.PI_WEB_WORKBENCH_BRIDGE_TOKEN) {
++  const receipts = new Map<string, Receipt>();
++
++  const dispatch = async (id: string, command: MobileCommand): Promise<Response> => {
++    try {
++      const result = await owner.command(id, command);
++      if (!result.ok) return error(result.status, command.type === "prompt");
++      // Command acknowledgements are small. Never retain an unbounded owner result.
++      const text = await result.text();
++      if (Buffer.byteLength(text) > MAX_BODY_BYTES) return error(502);
++      return new Response(text, { status: result.status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
++    } catch { return error(503); }
++  };
++
++  return async (req: Request): Promise<Response> => {
++    if (!mobilePiAuthorized(req.headers.get("authorization"), token())) return error(404);
++    const url = new URL(req.url);
++    const route = /^\/api\/mobile-pi\/sessions(?:\/([^/]+)(?:\/(context|state|events|command))?)?$/.exec(url.pathname);
++    if (!route) return error(404);
++    let id: string | undefined;
++    try { id = route[1] ? decodeURIComponent(route[1]) : undefined; } catch { return error(400); }
++    if (id !== undefined && !safeId(id)) return error(400);
++    const kind = !id ? "sessions" : route[2] ?? "detail";
++    if (req.method === "POST" && kind === "command" && id) {
++      if (url.search) return error(400);
++      const body = await commandBody(req);
++      if (!body || !Object.keys(body).every(key => ["type", "message", "requestId"].includes(key))) return error(400);
++      if (body.requestId !== undefined && (typeof body.requestId !== "string" || !UUID.test(body.requestId))) return error(400);
++      let command: MobileCommand;
++      if (body.type === "prompt" && typeof body.message === "string" && body.message.trim()
++          && Buffer.byteLength(body.message) <= MAX_TEXT_BYTES) command = { type: "prompt", message: body.message };
++      else if (body.type === "abort" && !Object.hasOwn(body, "message")) command = { type: "abort" };
++      else return error(400);
++      if (body.requestId === undefined) return dispatch(id, command);
++      const key = body.requestId.toLowerCase();
++      const digest = createHash("sha256").update(JSON.stringify([id, command])).digest("hex");
++      for (const [receiptId, receipt] of receipts) {
++        if (receipt.settledAt !== null && Date.now() - receipt.settledAt >= RECEIPT_TTL_MS) receipts.delete(receiptId);
++      }
++      const prior = receipts.get(key);
++      if (prior) return prior.digest === digest ? (await prior.response).clone() : error(409);
++      // Never evict an in-flight receipt or silently admit without a receipt.
++      if (receipts.size >= MAX_RECEIPTS) return error(503);
++      const receipt: Receipt = { digest, settledAt: null, response: Promise.resolve(error(503)) };
++      receipts.set(key, receipt);
++      receipt.response = dispatch(id, command).then(response => { receipt.settledAt = Date.now(); return response; });
++      return (await receipt.response).clone();
++    }
++    if (req.method !== "GET" || kind === "command") return error(404);
++    const allowed: Record<string, Record<string, string | null>> = {
++      sessions: { summary: "1" },
++      detail: { force: "1", tail: "50", tree: "summary", deferThinking: "1", deferMedia: "1" },
++      context: { before: null, tail: "50" }, state: {}, events: {},
++    };
++    const query = allowed[kind];
++    for (const [name, value] of url.searchParams) {
++      if (!Object.hasOwn(query, name) || url.searchParams.getAll(name).length !== 1
++          || (query[name] === null ? !SAFE_ID.test(value) : value !== query[name])) return error(400);
++    }
++    const target = new URL(req.url);
++    target.search = "";
++    if (kind === "sessions") target.searchParams.set("summary", "1");
++    if (kind === "detail") {
++      for (const [key, value] of Object.entries(allowed.detail)) target.searchParams.set(key, value!);
++    }
++    if (kind === "context") {
++      const before = url.searchParams.get("before");
++      if (before) target.searchParams.set("before", before);
++      target.searchParams.set("tail", "50");
++      target.searchParams.set("deferThinking", "1");
++      target.searchParams.set("deferMedia", "1");
++    }
++    // Same owner handlers and globals as the native UI; no new runtime or session authority.
++    try {
++      const response = await owner.read(kind as "sessions" | "detail" | "context" | "state" | "events", new Request(target, req), id);
++      if (response.status >= 400) return error(response.status);
++      response.headers.set("Cache-Control", kind === "events" ? "no-cache, no-transform" : "no-store");
++      return response;
++    } catch { return error(503); }
++  };
++}
+diff --git a/proxy.ts b/proxy.ts
 --- a/proxy.ts
 +++ b/proxy.ts
-@@ -6,10 +6,14 @@ import {
- } from "@/lib/auth-throttle";
+@@ -1,4 +1,6 @@
+ import { NextResponse, type NextRequest } from "next/server";
++import { nativeAgentsOwnerAuthorized } from "@/lib/native-agents-owner-auth";
++import { mobilePiAuthorized } from "@/lib/mobile-pi-api";
  import {
+   getAuthRetryAfterMs,
+   recordAuthFailure,
+@@ -8,6 +10,10 @@
    isApiRequestAllowed,
    isApiRequestHostAllowed,
  } from "@/lib/request-security";
@@ -1046,14 +1257,11 @@ index 1977e56..d808baf 100644
  import {
    isValidWebSessionToken,
    isValidBasicAuthorization,
-   isWebPasswordEnabled,
-   PI_WEB_SESSION_COOKIE,
-@@ -36,10 +40,33 @@ export function proxy(request: NextRequest) {
-     if (!isApiRequest) {
+@@ -37,6 +43,39 @@
        return new NextResponse("Untrusted request", { status: 403 });
      }
      return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
-   }
++  }
 +  const isPropagationObserverRequest = request.method === "GET"
 +    && request.nextUrl.pathname === "/api/propagation/session-state";
 +  if (isPropagationObserverRequest) {
@@ -1077,8 +1285,241 @@ index 1977e56..d808baf 100644
 +    });
 +  }
 +
++
++  if (request.nextUrl.pathname === "/api/mobile-pi" || request.nextUrl.pathname.startsWith("/api/mobile-pi/")) {
++    if (mobilePiAuthorized(request.headers.get("authorization"))) return NextResponse.next();
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
++  }
++
++  if (request.nextUrl.pathname === "/api/native-agents-owner") {
++    if (request.method === "POST" && nativeAgentsOwnerAuthorized(request.headers.get("authorization"))) return NextResponse.next();
++    return NextResponse.json({ error: "not found" }, { status: 404, headers: { "Cache-Control": "no-store" } });
+   }
  
    const password = process.env.PI_WEB_PASSWORD;
-   if (!isWebPasswordEnabled(password)) {
-     if (request.nextUrl.pathname === "/login") {
-       return NextResponse.redirect(new URL("/", request.url));
+diff --git a/lib/native-agents-owner.ts b/lib/native-agents-owner.ts
+new file mode 100644
+--- /dev/null
++++ b/lib/native-agents-owner.ts
+@@ -0,0 +1,200 @@
++import { createHash, randomUUID } from "node:crypto";
++import { lstatSync, realpathSync, statSync } from "node:fs";
++import { isAbsolute } from "node:path";
++import { nativeAgentsOwnerAuthorized } from "./native-agents-owner-auth";
++import { SessionManager } from "@earendil-works/pi-coding-agent";
++import { getRpcSession, getRpcSessionInfos, startRpcSession } from "./rpc-manager";
++import { listAllSessions, mergeSessionLists, resolveSessionPath } from "./session-reader";
++import { GET as historyGET } from "../app/api/sessions/[id]/route";
++import { GET as contextGET } from "../app/api/sessions/[id]/context/route";
++import { GET as eventsGET } from "../app/api/agent/[id]/events/route";
++
++const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,159}$/;
++const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
++const instance = randomUUID();
++const cancelled = new Map<string,string>();
++type Operation = {requestID:string;sessionID:string;state:"dispatched"|"accepted"|"rejected";digest:string};
++const operations = new Map<string,Operation>();
++function enqueue(sessionID:string, requestID:string, input:unknown, execute:()=>Promise<unknown>): Response {
++  const digest = createHash("sha256").update(JSON.stringify([sessionID,input])).digest("hex");
++  const old = operations.get(requestID);
++  if(old) return old.digest === digest ? json({requestID,sessionID,state:old.state}) : fail(409);
++  if(operations.size >= 2048) {
++    for(const [id,row] of operations) { if(row.state !== "dispatched") { operations.delete(id); break; } }
++  }
++  if(operations.size >= 2048) return fail(503);
++  const operation:Operation = {requestID,sessionID,digest,state:"dispatched"}; operations.set(requestID,operation);
++  void Promise.resolve().then(()=>{ if(cancelled.get(requestID) === sessionID) throw new Error("cancelled"); return execute(); })
++    .then(()=>{operation.state="accepted";},()=>{operation.state="rejected";});
++  return json({requestID,sessionID,state:"dispatched"},202);
++}
++const json = (body: unknown, status = 200) => Response.json(body, {status, headers:{"Cache-Control":"no-store"}});
++const fail = (status = 400) => json({error:"invalid request"}, status);
++function exact(body: Record<string, unknown>, keys: string[]) {
++  return Object.keys(body).length === keys.length && keys.every(k => Object.hasOwn(body, k));
++}
++function text(value: unknown, max: number) { return typeof value === "string" && Buffer.byteLength(value) <= max && !value.includes("\0"); }
++async function body(req: Request): Promise<Record<string, unknown> | null> {
++  if (req.headers.get("content-type")?.split(";",1)[0].trim() !== "application/json" || !req.body) return null;
++  const reader = req.body.getReader(); let size = 0; const parts: Uint8Array[] = [];
++  try { while(true) { const next = await reader.read(); if(next.done) break; size += next.value.byteLength;
++    if(size > 65536) { await reader.cancel(); return null; } parts.push(next.value); }
++    const value: unknown = JSON.parse(Buffer.concat(parts).toString("utf8"));
++    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
++  } catch { return null; } finally { reader.releaseLock(); }
++}
++function allowedDirectory(cwd: unknown): cwd is string {
++  if (!text(cwd,4096) || !isAbsolute(cwd as string)) return false;
++  try {
++    const roots: unknown = JSON.parse(process.env.PI_WEB_NATIVE_AGENTS_DIRECTORIES ?? "[]");
++    return Array.isArray(roots) && roots.includes(cwd) && realpathSync(cwd as string) === cwd && statSync(cwd as string).isDirectory();
++  } catch { return false; }
++}
++async function persistedSessionPath(id: string): Promise<string | null> {
++  const path = await resolveSessionPath(id);
++  if(!path) return null;
++  // Pi caches the future session filename before its first persisted turn.
++  // Once its idle wrapper closes, that cache entry is not a saved session.
++  // Never let SessionManager.open(missing) silently choose process.cwd().
++  try {
++    if(!lstatSync(path).isFile()) throw new Error("session file is not regular");
++    return path;
++  } catch(error) {
++    if((error as NodeJS.ErrnoException).code === "ENOENT") return null;
++    throw error;
++  }
++}
++async function session(id: string) {
++  const existing = getRpcSession(id);
++  if(existing?.isAlive()) return existing;
++  const path = await persistedSessionPath(id);
++  if(!path) return undefined;
++  return (await startRpcSession(id,path,undefined)).session;
++}
++function interactions(owner: NonNullable<ReturnType<typeof getRpcSession>>) {
++  const items: Record<string, unknown>[] = [];
++  const unsubscribe = owner.onEvent(event => {
++    if(event.type !== "extension_ui_request" || typeof event.id !== "string" || !ID.test(event.id)) return;
++    const method = event.method;
++    if(!["select","confirm","input","editor","custom"].includes(method as string) || event.closed === true) return;
++    const item: Record<string, unknown> = {id:event.id,method,title:typeof event.title === "string" ? event.title.slice(0,1024) : "Pi interaction",supported:method !== "custom"};
++    for(const key of ["message","placeholder","prefill"]) if(typeof event[key] === "string") item[key] = (event[key] as string).slice(0,32768);
++    if(Array.isArray(event.options) && event.options.length <= 128 && event.options.every(o => text(o,2048))) item.options = event.options;
++    else if(method === "select") item.supported = false;
++    if(typeof event.expiresAt === "number") item.expiresAt = event.expiresAt / 1000;
++    if(item.expiresAt === undefined || (item.expiresAt as number) > Date.now()/1000) items.push(item);
++  }); unsubscribe();
++  return items.slice(0,128);
++}
++function validAnswer(item: Record<string,unknown>, answer: Record<string,unknown>) {
++  if(exact(answer,["cancelled"]) && answer.cancelled === true) return item.method !== "custom";
++  if(item.supported !== true) return false;
++  if(item.method === "confirm") return exact(answer,["confirmed"]) && typeof answer.confirmed === "boolean";
++  if(!exact(answer,["value"]) || !text(answer.value,32768)) return false;
++  return item.method !== "select" || (Array.isArray(item.options) && item.options.includes(answer.value));
++}
++async function catalog(owner: NonNullable<ReturnType<typeof getRpcSession>>) {
++  const result = await owner.send({type:"get_commands"}) as {commands: Record<string,unknown>[]};
++  if(!Array.isArray(result.commands) || result.commands.length > 512) throw new Error("catalog unavailable");
++  const seen = new Set<string>();
++  const commands = result.commands.filter(c => typeof c.name === "string" && !seen.has(c.name) && Boolean(seen.add(c.name))).filter(c => typeof c.name === "string" && /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$/.test(c.name) && ["extension","prompt","skill"].includes(c.source as string)).map(c => ({
++    id:createHash("sha256").update(JSON.stringify([c.source,c.name])).digest("hex"),name:c.name,
++    description:typeof c.description === "string" ? c.description.slice(0,2048):"",source:c.source,supported:true
++  }));
++  const revision = createHash("sha256").update(JSON.stringify(commands)).digest("hex");
++  return {ownerInstance:instance,revision,commands};
++}
++function heartbeat(response: Response, req: Request): Response {
++  const reader = response.body?.getReader(); if(!reader) return fail(503);
++  const encoder = new TextEncoder(); let timer: ReturnType<typeof setInterval>;
++  const stream = new ReadableStream<Uint8Array>({
++    start(controller) {
++      timer = setInterval(() => { try { controller.enqueue(encoder.encode(": heartbeat\n\n")); } catch {} },1000);
++      const cancel = () => { clearInterval(timer); void reader.cancel(); };
++      req.signal.addEventListener("abort",cancel,{once:true});
++      void (async () => { try { while(true) { const next = await reader.read(); if(next.done) break; controller.enqueue(next.value); } controller.close(); }
++        catch(error) { controller.error(error); } finally { clearInterval(timer); req.signal.removeEventListener("abort",cancel); reader.releaseLock(); } })();
++    }, cancel() { clearInterval(timer); void reader.cancel(); }
++  });
++  return new Response(stream,{headers:{"Content-Type":"text/event-stream","Cache-Control":"no-store","X-Accel-Buffering":"no"}});
++}
++export async function nativeAgentsOwner(req: Request): Promise<Response> {
++  if (!nativeAgentsOwnerAuthorized(req.headers.get("authorization"))) return fail(404);
++  const url = new URL(req.url); if(url.search || req.method !== "POST") return fail(404);
++  const data = await body(req); if(!data || typeof data.action !== "string") return fail();
++  try {
++    if(data.action === "sessions" && exact(data,["action"])) {
++      const rows = mergeSessionLists(await listAllSessions(),getRpcSessionInfos({includeTransient:true}));
++      if(rows.length > 512) return fail(503);
++      return json({sessions:rows.map(s=>({id:s.id,title:s.name || "Untitled session",messageCount:0,isRunning:Boolean(getRpcSession(s.id)?.isRunning())}))});
++    }
++    if(typeof data.sessionID !== "string" || !ID.test(data.sessionID)) return fail();
++    const id = data.sessionID;
++    if(data.action === "ensure" && exact(data,["action","sessionID","cwd"])) {
++      if(!allowedDirectory(data.cwd) || !/^native-[a-f0-9]{64}$/.test(id)) return fail();
++      const existing = getRpcSession(id);
++      if(existing?.isAlive()) {
++        if(existing.cwd !== data.cwd) return fail(409);
++      } else {
++        const path = await persistedSessionPath(id);
++        if(path && SessionManager.open(path).getCwd() !== data.cwd) return fail(409);
++        await startRpcSession(id,path ?? "",data.cwd,{sessionId:id});
++      }
++      return json({sessionID:id});
++    }
++    const owner = await session(id); if(!owner) return fail(404);
++    const minimal = ["action","sessionID"];
++    if(data.action === "operation" && exact(data,[...minimal,"requestID"])) {
++      if(typeof data.requestID !== "string") return fail();
++      const op = operations.get(data.requestID);
++      if(!op || op.sessionID !== id) return fail(404);
++      return json({requestID:op.requestID,sessionID:op.sessionID,state:op.state});
++    }
++    if(data.action === "state" && exact(data,minimal)) {
++      const state = await owner.send({type:"get_state"}) as Record<string,unknown>;
++      return json({running:true,state:{isStreaming:state.isStreaming,isPromptRunning:state.isPromptRunning,isBashRunning:state.isBashRunning,isCompacting:state.isCompacting}});
++    }
++    if(data.action === "catalog" && exact(data,minimal)) return json(await catalog(owner));
++    if(data.action === "interactions" && exact(data,minimal)) return json({ownerInstance:instance,interactions:interactions(owner)});
++    if(data.action === "invoke" && exact(data,[...minimal,"requestID","ownerInstance","message"])) {
++      if(typeof data.requestID !== "string" || !UUID.test(data.requestID) || data.ownerInstance !== instance || !text(data.message,32768) || !(data.message as string).trim()) return fail(409);
++      if(cancelled.get(data.requestID) === id) return fail(409);
++      return enqueue(id,data.requestID,data,()=>owner.send({type:"prompt",message:data.message}));
++    }
++    if(data.action === "invoke_command" && exact(data,[...minimal,"requestID","ownerInstance","commandID","catalogRevision","arguments"])) {
++      if(typeof data.requestID !== "string" || !UUID.test(data.requestID) || data.ownerInstance !== instance || !text(data.arguments,32768)) return fail(409);
++      const current = await catalog(owner);
++      const command = current.commands.find(c=>c.id === data.commandID);
++      if(current.revision !== data.catalogRevision || !command || cancelled.get(data.requestID) === id) return fail(409);
++      const message = "/"+command.name+(data.arguments ? " "+data.arguments : "");
++      if(!text(message,32768)) return fail();
++      return enqueue(id,data.requestID,data,()=>owner.send({type:"prompt",message}));
++    }
++    if(data.action === "abort" && exact(data,[...minimal,"pendingRequests"])) {
++      if(!Array.isArray(data.pendingRequests) || data.pendingRequests.length > 128 || data.pendingRequests.some(x=>typeof x !== "string" || !UUID.test(x))) return fail();
++      if(cancelled.size + data.pendingRequests.length > 100000) return fail(503);
++      for(const id of data.pendingRequests) cancelled.set(id,data.sessionID as string);
++      await owner.send({type:"abort"}); return json({accepted:true});
++    }
++    if(data.action === "respond" && exact(data,[...minimal,"interactionID","ownerInstance","answer"])) {
++      if(data.ownerInstance !== instance || typeof data.interactionID !== "string" || !data.answer || typeof data.answer !== "object" || Array.isArray(data.answer)) return fail(409);
++      const item = interactions(owner).find(i=>i.id === data.interactionID);
++      if(!item || !validAnswer(item,data.answer as Record<string,unknown>)) return fail(409);
++      await owner.send({type:"extension_ui_response",id:data.interactionID,...data.answer}); return json({accepted:true});
++    }
++    if(data.action === "history" && exact(data,[...minimal,"before"])) {
++      if(data.before !== null && (typeof data.before !== "string" || !ID.test(data.before))) return fail();
++      const path = await persistedSessionPath(id);
++      if(!path) {
++        return json({context:{messages:[],hasMore:false,entryIds:[]}});
++      }
++      const target = new URL(req.url); target.search = "tail=50&deferThinking=1&deferMedia=1";
++      if(data.before) target.searchParams.set("before",data.before as string);
++      else { target.searchParams.set("force","1"); target.searchParams.set("tree","summary"); }
++      const read = new Request(target,{method:"GET",headers:{Accept:"application/json"},signal:req.signal});
++      return data.before ? contextGET(read,{params:Promise.resolve({id})}) : historyGET(read,{params:Promise.resolve({id})});
++    }
++    if(data.action === "events" && exact(data,minimal)) return heartbeat(await eventsGET(req,{params:Promise.resolve({id})}),req);
++    return fail();
++  } catch { return fail(503); }
++}
+diff --git a/lib/native-agents-owner-auth.ts b/lib/native-agents-owner-auth.ts
+new file mode 100644
+--- /dev/null
++++ b/lib/native-agents-owner-auth.ts
+@@ -0,0 +1,7 @@
++import { timingSafeEqual } from "node:crypto";
++export function nativeAgentsOwnerAuthorized(authorization: string | null): boolean {
++  const secret = process.env.PI_WEB_NATIVE_AGENTS_TOKEN;
++  if (!secret || !authorization?.startsWith("Bearer ")) return false;
++  const actual = Buffer.from(authorization.slice(7)); const expected = Buffer.from(secret);
++  return actual.length === expected.length && timingSafeEqual(actual, expected);
++}
+diff --git a/app/api/native-agents-owner/route.ts b/app/api/native-agents-owner/route.ts
+new file mode 100644
+--- /dev/null
++++ b/app/api/native-agents-owner/route.ts
+@@ -0,0 +1,4 @@
++import { nativeAgentsOwner } from "@/lib/native-agents-owner";
++export const runtime = "nodejs";
++export const dynamic = "force-dynamic";
++export const POST = nativeAgentsOwner;

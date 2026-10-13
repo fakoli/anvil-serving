@@ -306,7 +306,8 @@ def test_pending_native_deletion_allows_omitted_timestamp_but_not_nonzero_value(
         user_delete._deletion(value)
 
 
-def test_delete_allows_previously_disabled_native_human(tmp_path, monkeypatch):
+@pytest.mark.parametrize("incarnation", (None, "_" * 42 + "8"))
+def test_delete_allows_previously_disabled_native_human(tmp_path, monkeypatch, incarnation):
     monkeypatch.setattr(users, "_require_root", lambda: None)
     monkeypatch.setattr(user_delete, "_path", lambda _: None)
     root = tmp_path / "current"
@@ -323,6 +324,7 @@ def test_delete_allows_previously_disabled_native_human(tmp_path, monkeypatch):
     monkeypatch.setattr(users, "_oidc_subject", lambda *_args, **_kwargs: _SUBJECT)
     monkeypatch.setattr(user_delete, "_human_response", lambda *_args: _native_inspection(found=True, human={
         "id": _principal(), "username": "owner", "generation": 7, "disabled": True, "resources": [], "browser_transaction_floor": 0,
+        **({"router_incarnation": incarnation} if incarnation is not None else {}),
     }))
     intent = _intent(_request(), generation=8)
     monkeypatch.setattr(user_delete, "_intent", lambda *_args: intent)
@@ -342,6 +344,33 @@ def test_delete_allows_previously_disabled_native_human(tmp_path, monkeypatch):
 def test_native_inspection_found_union_is_closed(response):
     with pytest.raises(UsageError):
         user_delete._inspection(response)
+
+
+@pytest.mark.parametrize("incarnation", ("A" * 43, "_" * 42 + "8", "-" * 42 + "8"))
+def test_native_human_inspection_preserves_canonical_router_incarnation(incarnation):
+    human = {"id": _principal(), "username": "owner", "generation": 7, "disabled": True,
+             "resources": [], "application_roles": {}, "browser_transaction_floor": 0,
+             "router_incarnation": incarnation}
+    assert user_delete._inspection(_native_inspection(found=True, human=human)) == human
+
+
+@pytest.mark.parametrize("incarnation", (
+    None, True, 3, [], {}, "", "A" * 42, "A" * 44, "A" * 43 + "=",
+    "A" * 42 + "B", "+" * 43, "/" * 43, "é" * 43, "A" * 42 + "\n",
+))
+def test_native_human_inspection_rejects_malformed_router_incarnation(incarnation):
+    human = {"id": _principal(), "username": "owner", "generation": 7, "disabled": True,
+             "router_incarnation": incarnation}
+    with pytest.raises(UsageError, match="Native permanent deletion response is invalid"):
+        user_delete._inspection(_native_inspection(found=True, human=human))
+
+
+@pytest.mark.parametrize("change", ({"unexpected": True}, {"id": "invalid"}, {"generation": True}))
+def test_router_incarnation_does_not_weaken_native_human_validation(change):
+    human = {"id": _principal(), "username": "owner", "generation": 7, "disabled": True,
+             "router_incarnation": "A" * 43, **change}
+    with pytest.raises(UsageError, match="Native permanent deletion response is invalid"):
+        user_delete._inspection(_native_inspection(found=True, human=human))
 
 
 def test_idp_only_account_uses_atomic_native_absent_prepare(tmp_path, monkeypatch):

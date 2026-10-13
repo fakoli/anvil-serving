@@ -147,6 +147,18 @@ Declare optional `memory` settings in the private Connect deployment:
 to existing shared defaults and explicit shared operation grants. Every shared
 default needs a matching grant. No shared bank is created, modified or adopted.
 
+Personal banks keep the legacy `retain`, `recall` and `reflect` grant. To opt an
+existing personal bank into native browsing or mutation, include its exact bank
+ID under that user's `shared_banks` entry with the desired additional operations:
+`list`, `detail`, `invalidate` and/or `restore`. Despite the historical field
+name, an entry matching the user's protected creation receipt is a personal
+operation opt-in, not a shared bank. Provisioning requires that receipt and a
+matching live ownership marker; it will not create or adopt a bank for this
+opt-in. Other entries retain their exact shared grants. Removing the personal
+entry and running `users memory USER --confirm` restores only the legacy grant.
+This uses the existing declaration format, so older account-deletion managers
+can still withdraw every mapping for the deleted username.
+
 Use `users configure-memory` with protected outside-Git installation JSON containing
 `memory` and `user_defaults`. Optional defaults use
 `{"email":"owner@example.test","bank":"shared-bank","operations":["recall"]}`;

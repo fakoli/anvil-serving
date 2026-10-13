@@ -22,7 +22,10 @@ def test_renderer_applies_both_limits_and_legacy_remains_reproducible():
     recipe = {'model': 'example/model', 'serve': serve()}
     argv = sr.docker_run_argv(recipe)
     assert argv[argv.index('--memory') + 1] == str(64 * rm.MIB)
-    assert argv[argv.index('--memory-swap') + 1] == str(64 * rm.MIB)
+    assert argv[argv.index('--memory-swap') + 1] == str(64 * rm.MIB + 1)
+    recipe['serve']['memory_swap_limit_mib'] = 65
+    positive = sr.docker_run_argv(recipe)
+    assert positive[positive.index('--memory-swap') + 1] == str(65 * rm.MIB)
     assert '--memory' not in sr.docker_run_argv({'model': 'example/model', 'serve': {'image': 'example/runtime'}})
     del recipe['serve']['memory_swap_limit_mib']
     with pytest.raises(sr.RecipeError):
@@ -315,3 +318,172 @@ def test_recipe_identity_and_discovery_forward_their_runner(monkeypatch):
     assert models._recipe_container_identity({'model': 'example/model'}, 'candidate', _run=run)['host_memory']['peak_bytes'] == 2048
     assert sr.discover_recipe_containers(_run=run)['containers'][0]['host_memory']['peak_bytes'] == 2048
     assert len(seen) == 2
+
+
+@pytest.mark.parametrize('total,actual_ram,actual_swap,valid', [
+    (64, 64 * rm.MIB, 0, True),
+    (65, 64 * rm.MIB, rm.MIB, True),
+    (64, 64 * rm.MIB, None, False),
+    (64, 64 * rm.MIB, 1, False),
+    (64, None, 0, False),
+    (64, 63 * rm.MIB, 0, False),
+    (65, 64 * rm.MIB, 0, False),
+    (64, 64 * rm.MIB, False, False),
+])
+def test_effective_limits_are_authoritative(total, actual_ram, actual_swap, valid):
+    configured = dict(serve(), memory_swap_limit_mib=total)
+    memory, wire_total = rm.docker_limits(configured)
+    observed = dict(limit_bytes=memory, ram_plus_swap_limit_bytes=wire_total,
+                    effective_limit_bytes=actual_ram, effective_swap_limit_bytes=actual_swap)
+    assert (rm.containment_error(observed, configured) is None) == valid
+    assert (rm.containment_error(observed) is None) == valid
+    assert rm.containment_error({}, configured) is not None
+    assert rm.containment_error({}) is None
+
+
+@pytest.mark.parametrize('fault', [None, 'unlimited', 'missing', 'ram', 'identity', 'inspect', 'stop'])
+def test_bounded_load_verifies_and_stops_only_its_created_id(monkeypatch, fault):
+    import subprocess
+
+    recipe = {'model': 'example/model', 'serve': serve()}
+    cid = 'd' * 64
+    row = _live_row()
+    row.update(Id=cid, Config={'Labels': {
+        sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+        sr.RECIPE_DIGEST_LABEL: sr.recipe_digest(recipe)}})
+    if fault == 'identity':
+        row['Id'] = 'e' * 64
+    observed = dict(limit_bytes=64 * rm.MIB, ram_plus_swap_limit_bytes=64 * rm.MIB + 1,
+                    effective_limit_bytes=64 * rm.MIB, effective_swap_limit_bytes=0)
+    if fault in {'unlimited', 'stop'}:
+        observed['effective_swap_limit_bytes'] = None
+    if fault == 'ram':
+        observed['effective_limit_bytes'] -= 1
+    if fault == 'missing':
+        observed = {}
+    monkeypatch.setattr(rm, 'check_host', lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(rm, 'observation', lambda *_args, **_kwargs: observed)
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ['docker', 'run']:
+            assert kwargs['stdout'] == subprocess.PIPE and kwargs['text'] is True
+            return SimpleNamespace(returncode=0, stdout=cid + '\n')
+        if argv == ['docker', 'inspect', cid]:
+            if fault == 'inspect':
+                raise subprocess.CalledProcessError(1, argv, output='private-inspect-payload')
+            return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+        assert argv == ['docker', 'stop', '--time', '10', cid]
+        return SimpleNamespace(returncode=int(fault == 'stop'))
+
+    if fault:
+        with pytest.raises(sr.RecipeError, match='containment refused') as caught:
+            sr.load_recipe(recipe, 'candidate', _run=run)
+        message = str(caught.value)
+        assert 'private-inspect-payload' not in message
+        assert 'host_memory=' in message and cid in message
+        evidence = json.loads(message.split(rm.FAILURE_PREFIX)[1])
+        assert evidence['container_id'] == cid
+        assert evidence['cleanup'] == ('stop_failed' if fault == 'stop' else 'stopped_logs_retained')
+        assert ('stop failed' if fault == 'stop' else 'stopped; container and logs retained') in message
+        assert calls[-1] == ['docker', 'stop', '--time', '10', cid]
+    else:
+        assert sr.load_recipe(recipe, 'candidate', _run=run)[1] == 0
+        assert len(calls) == 2
+
+
+@pytest.mark.parametrize('returncode,stdout', [(1, 'e' * 64), (0, '')])
+def test_failed_or_unknown_creation_never_stops_existing_name(monkeypatch, returncode, stdout):
+    monkeypatch.setattr(rm, 'check_host', lambda *_args, **_kwargs: None)
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=returncode, stdout=stdout)
+    recipe = {'model': 'example/model', 'serve': serve()}
+    if returncode:
+        assert sr.load_recipe(recipe, 'existing-name', _run=run)[1] == returncode
+    else:
+        with pytest.raises(sr.RecipeError, match='ownership unknown'):
+            sr.load_recipe(recipe, 'existing-name', _run=run)
+    assert len(calls) == 1 and calls[0][:2] == ['docker', 'run']
+
+
+def test_readiness_rechecks_containment_before_every_http_probe():
+    from anvil_serving import models
+
+    observations = iter([{'effective_limit_bytes': 64 * rm.MIB, 'effective_swap_limit_bytes': 0},
+                         {'effective_limit_bytes': 64 * rm.MIB, 'effective_swap_limit_bytes': None}])
+    probes = []
+    ready, reason = models._await_recipe_container_healthy(
+        {'model': 'example/model', 'serve': serve()}, 'candidate', {'port': 30123}, 30, 1,
+        _identity=lambda *_: {'state': 'running', 'host_memory': next(observations)},
+        _health=lambda *_: probes.append('HTTP') or 503,
+        _sleep=lambda _: None, _monotonic=lambda: 0)
+    assert ready is False and 'containment failed' in reason
+    assert probes == ['HTTP']
+
+
+def test_status_reports_drift_without_blocking_owned_unload(monkeypatch, tmp_path, capsys):
+    from anvil_serving import models
+
+    recipe = {'model': 'example/model', 'serve': serve()}
+    row = _live_row()
+    row.update(Name='/candidate', Config={'Labels': {
+        sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+        sr.RECIPE_MODEL_LABEL: recipe['model']}})
+    monkeypatch.setattr(rm, 'observation', lambda *_args, **_kwargs: {
+        'limit_bytes': 64 * rm.MIB, 'ram_plus_swap_limit_bytes': 64 * rm.MIB,
+        'effective_limit_bytes': 64 * rm.MIB, 'effective_swap_limit_bytes': None})
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=0, stdout=json.dumps([row]), stderr='')
+    identity = models._recipe_container_identity(recipe, 'candidate', _run=run)
+    assert 'containment failed' in identity['containment_error']
+    monkeypatch.setattr(models, '_recipe_registry', lambda *_args, **_kwargs: {'recipe': [recipe]})
+    monkeypatch.setattr(models, '_recipe_container_identity', lambda *_args, **_kwargs: identity)
+    assert models._recipe_main(['status', recipe['model'], '--container', 'candidate',
+                                '--registry', str(tmp_path / 'recipes.toml')]) == 1
+    assert json.loads(capsys.readouterr().out)['host_memory']['effective_swap_limit_bytes'] is None
+    assert calls == [['docker', 'inspect', 'candidate']]
+    assert models._recipe_container_unload(recipe, 'candidate', confirm=True, _run=run) == 0
+    assert calls[-1] == ['docker', 'rm', '-f', 'b' * 64]
+
+
+def test_recipe_inspection_deadline_fails_before_health(monkeypatch):
+    import subprocess
+    from anvil_serving import models
+
+    real_identity = models._recipe_container_identity
+    seen = []
+    def run(argv, **kwargs):
+        seen.append(kwargs['timeout'])
+        raise subprocess.TimeoutExpired(argv, kwargs['timeout'], output='must-not-leak')
+    def identity(recipe, container, **kwargs):
+        assert kwargs['require_recipe_digest'] is True
+        return real_identity(recipe, container, _run=run, **kwargs)
+    monkeypatch.setattr(models, '_recipe_container_identity', identity)
+    clock = iter([0, 0.25])
+    ready, reason = models._await_recipe_container_healthy(
+        {'model': 'example/model', 'serve': serve()}, 'candidate', {'port': 30123}, 1, 1,
+        _health=lambda *_: pytest.fail('no HTTP after inspection timeout'),
+        _monotonic=lambda: next(clock))
+    assert not ready and 'identity unavailable' in reason
+    assert seen == [0.75]
+
+
+def test_readiness_identity_requires_recipe_digest_but_legacy_unload_identity_does_not():
+    from anvil_serving import models
+
+    recipe = {'model': 'example/model', 'serve': serve()}
+    row = _live_row()
+    row['Config'] = {'Labels': {sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+                               sr.RECIPE_MODEL_LABEL: recipe['model'],
+                               sr.RECIPE_DIGEST_LABEL: 'f' * 64}}
+    def run(argv, **kwargs):
+        assert kwargs['timeout'] == 10
+        return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+    with pytest.raises(sr.RecipeError, match='recipe digest label'):
+        models._recipe_container_identity(recipe, 'candidate', _run=run, require_recipe_digest=True)
+    assert models._recipe_container_identity(recipe, 'candidate', _run=run)['container_id'] == row['Id']

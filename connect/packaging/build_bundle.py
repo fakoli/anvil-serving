@@ -21,6 +21,10 @@ def manager_archive(output: Path) -> None:
     files = {'anvil_serving/__init__.py': b'', '__main__.py': b'from anvil_serving.connect.standalone import main\nmain()\n'}
     for source in sorted((ROOT / 'anvil_serving/connect').glob('*.py')):
         files[str(source.relative_to(ROOT))] = source.read_bytes()
+    # Native authority publication shares the exact broker admission schema.
+    # Keep the standalone managed CLI's complete stdlib-only module closure.
+    for source in sorted((ROOT / 'anvil_serving/native_agents').glob('*.py')):
+        files[str(source.relative_to(ROOT))] = source.read_bytes()
     for name in ('anvil_serving/operator_output.py', 'anvil_serving/connect/components.lock.json'):
         files[name] = (ROOT / name).read_bytes()
     # Protected bank policy/credential readers are stdlib-only shared helpers.

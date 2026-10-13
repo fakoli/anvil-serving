@@ -169,6 +169,9 @@ PUBLIC_METADATA_FILES = frozenset({
 PUBLIC_PI_HOME_FILES = frozenset({
     "anvil_serving/workbench_app/pi_runner.py", "tests/workbench/test_pi_runner.py",
 })
+PUBLIC_NATIVE_AGENT_HOME_FILES = frozenset({
+    "anvil_serving/native_agents/sandbox.py", "tests/native_agents/fixtures/rootfs_probe.py",
+})
 
 
 def run_git(root: Path, *args: str) -> bytes:
@@ -349,7 +352,10 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
         ):
             for match in pattern.finditer(line):
                 if (match.group("name").lower() not in SAFE_HOME_NAMES
-                        and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")):
+                        and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")
+                        and not (normalized_path in PUBLIC_NATIVE_AGENT_HOME_FILES
+                                 and pattern is UNIX_HOME_PATTERN
+                                 and match.group(0) == "/".join(("", "home", "agent")))):
                     findings.append(
                         {
                             "kind": "operator-home-path",
@@ -536,8 +542,17 @@ def self_test() -> int:
         and len(scan_text(public_home + " " + slash_home, public_home_path, "self-test")) == 1
         and len(scan_text(PUBLIC_METADATA_ADDRESS + " " + public_home, "docs/other.md", "self-test")) == 2
     )
+    native_home = "/".join(("", "home", "agent"))
+    native_constants_safe = all(
+        not scan_text(native_home, path, "self-test")
+        and len(scan_text(native_home + " " + slash_home, path, "self-test")) == 1
+        and len(scan_text("/".join(("", "Users", "agent")), path, "self-test")) == 1
+        and len(scan_text(separator.join(("C:", "Users", "agent")), path, "self-test")) == 1
+        for path in PUBLIC_NATIVE_AGENT_HOME_FILES
+    ) and len(scan_text(native_home, "docs/other.md", "self-test")) == 1
     passed = (
         scoped_constants_safe
+        and native_constants_safe
         and
         Counter(finding["kind"] for finding in findings) == expected_semantic_kinds
         and file_kinds
