@@ -308,6 +308,17 @@ sufficient available RAM and free swap at admission. The host reserve is an
 admission check, not a reservation against unrelated workloads. Existing recipes
 without these fields retain their previous behavior.
 
+For zero swap, the Docker adapter sends RAM plus one byte as its wire total.
+This keeps systemd's `MemorySwapMax` property explicit; Linux cgroup v2 rounds
+the byte down to zero pages. This encoding is not a one-byte usable allowance.
+Bounded loads verify the exact created container's effective RAM and swap limits
+before returning success, including loads without an HTTP port. Missing,
+unlimited, or mismatched limits fail closed and stop only that newly created ID;
+the stopped container and its logs remain available for managed logs/unload.
+HTTP readiness polling rechecks containment. Status reports `containment_error`
+and exits nonzero on drift without changing the container; logs and unload remain
+available. Existing positive swap allowances keep their exact wire values.
+
 `models recipes status` and `running --json` include `host_memory`: Docker limits,
 effective cgroup RAM/swap limits, current/peak usage, OOM events and exit state.
 Confirm effective limits before trusting a new loader. Windows uses read-only
@@ -326,8 +337,9 @@ restoration separate.
 When machine-level cache reclaim is enabled, the preview also declares that `load`
 will wait up to 600 seconds for the recipe's HTTP health after the container starts.
 Only then does it evaluate the cache threshold, fixed 1 GiB growth gate, and settled-I/O
-gate. A readiness timeout skips reclaim and leaves the container running; it does not
-change the successful load's exit code. Configure the default-off policy in
+gate. A readiness failure skips reclaim and returns a nonzero load exit code.
+The container remains available for owned `models recipes logs` and `unload` recovery.
+Configure the default-off policy in
 [`host.toml`](../CONFIGURATION.md#machine-policy-hosttoml).
 
 ### Operate a loaded recipe
