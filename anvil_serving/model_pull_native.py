@@ -6,7 +6,7 @@ downloader's exit code or cache filenames. No cache artifacts are removed.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import fnmatch
 import hashlib
 import json
@@ -411,7 +411,7 @@ def _diagnostic(value: str, secrets: list[str]) -> str:
 
 def pull(repo_id, revision, cache_dir, *, hf_executable=None, include=None, exclude=None,
          token=None, no_token=False, headroom_bytes=5 * 1024**3, evidence_out=None,
-         dry_run=False, _environ=None, _open=None, _run=None, _disk_usage=None):
+         dry_run=False, xet=False, _environ=None, _open=None, _run=None, _disk_usage=None):
     """Return a machine-readable preview or retained, independently verified pull.
 
     Apply callers must supply the CLI's authorization gate. The native module
@@ -423,6 +423,8 @@ def pull(repo_id, revision, cache_dir, *, hf_executable=None, include=None, excl
         raise NativePullError("native revision must be exactly 40 lowercase hexadecimal characters")
     if isinstance(headroom_bytes, bool) or not isinstance(headroom_bytes, int) or headroom_bytes < 0:
         raise NativePullError("native headroom must be a nonnegative integer byte count")
+    if type(xet) is not bool:
+        raise NativePullError("native Xet selection must be a boolean")
     for value in (include, exclude):
         if value is not None and (not isinstance(value, str) or not value or value.startswith("-")
                                   or any(character in value for character in "\x00\r\n")):
@@ -446,6 +448,7 @@ def pull(repo_id, revision, cache_dir, *, hf_executable=None, include=None, excl
     result = {"schema_version": "native-model-pull/v1", "backend": "native",
               "status": "preview", "exit_code": 0, "repo_id": repo_id, "revision": revision,
               "cache_dir": str(cache), "snapshot_path": str(snapshot), "hf_argv": argv,
+              "transport": "xet" if xet else "http",
               "downloader_identity": _executable_identity(executable),
               "inventory": inventory, "preflight": preflight,
               "token_mode": "disabled" if no_token else "declared_secret_reference",
@@ -466,9 +469,7 @@ def pull(repo_id, revision, cache_dir, *, hf_executable=None, include=None, excl
             environ["HF_TOKEN"] = token
         environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1" if no_token or not token else "0"
         environ["HF_ENDPOINT"] = "https://huggingface.co"
-        # Native admission covers only the declared cache disk. Disable Xet's
-        # separate chunk cache so the downloader uses resumable HTTP blobs.
-        environ["HF_HUB_DISABLE_XET"] = "1"
+        environ["HF_HUB_DISABLE_XET"] = "0" if xet else "1"
         environ["HF_HUB_DISABLE_UPDATE_CHECK"] = "1"
         result["downloader_version"] = _downloader_version(executable, environ)
         if result["downloader_identity"] != _executable_identity(executable):
@@ -476,7 +477,20 @@ def pull(repo_id, revision, cache_dir, *, hf_executable=None, include=None, excl
         with os.fdopen(_reserve_receipt(receipt), "r+b") as receipt_handle:
             receipt_descriptor = receipt_handle.fileno()
             _write_receipt(receipt, result, receipt_descriptor)
-            with tempfile.TemporaryFile() as errors:
+            # Xet scratch shares the admitted cache filesystem and is owned
+            # only for this locked child invocation. The shard limit is a soft
+            # upload cache limit, not a download-space admission bound.
+            scratch_dir = (tempfile.TemporaryDirectory(dir=cache, prefix=".anvil-serving-xet-")
+                           if xet else nullcontext(None))
+            with scratch_dir as scratch, tempfile.TemporaryFile() as errors:
+                if xet:
+                    environ.update({
+                        "HF_XET_CACHE": scratch,
+                        "HF_HUB_DISABLE_SHARED_BLOBS": "1",
+                        "HF_XET_HIGH_PERFORMANCE": "0",
+                        "HF_XET_CHUNK_CACHE_SIZE_BYTES": "0",
+                        "HF_XET_SHARD_CACHE_SIZE_LIMIT": "0",
+                    })
                 kwargs = {"env": environ, "stdout": subprocess.PIPE, "stderr": errors,
                           "text": True, "encoding": "utf-8", "errors": "replace", "check": False}
                 if os.name != "nt":

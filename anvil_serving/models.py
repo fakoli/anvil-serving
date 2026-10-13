@@ -983,7 +983,7 @@ def _native_pull_main(args, *, result_sink=None):
             hf_executable=args.hf_executable, include=args.include, exclude=args.exclude,
             token=token, no_token=args.no_token,
             headroom_bytes=round(args.headroom_gib * 1024**3),
-            evidence_out=args.evidence_out, dry_run=args.dry_run, _environ=environ,
+            evidence_out=args.evidence_out, dry_run=args.dry_run, xet=args.xet, _environ=environ,
         )
     except (model_pull_native.NativePullError, OSError) as exc:
         message = str(exc) if isinstance(exc, model_pull_native.NativePullError) else "native model pull filesystem operation failed"
@@ -1055,6 +1055,8 @@ def pull_main(argv, *, _result_sink=None):
         default=DEFAULT_PULL_HEADROOM_BYTES / 1024**3,
         help="free space retained after the estimated download (default: %(default)s GiB)",
     )
+    ap.add_argument("--xet", action="store_true",
+                    help="native only: opt into Xet with owned scratch on --cache-dir's filesystem")
     ap.add_argument("--dry-run", action="store_true",
                     help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
@@ -1066,8 +1068,8 @@ def pull_main(argv, *, _result_sink=None):
         return 2
     if a.cache_dir is not None:
         return _native_pull_main(a, result_sink=_result_sink)
-    if a.hf_executable is not None or a.evidence_out is not None:
-        print("--hf-executable and --evidence-out require native --cache-dir", file=sys.stderr)
+    if a.hf_executable is not None or a.evidence_out is not None or a.xet:
+        print("--hf-executable, --evidence-out, and --xet require native --cache-dir", file=sys.stderr)
         return 2
     a.volume = a.volume or DEFAULT_PULL_VOLUME
     a.image = a.image or DEFAULT_PULL_IMAGE
