@@ -481,6 +481,20 @@ def _redirect_uri(value: Any, path: str) -> str:
     return text
 
 
+def _native_redirect_uri(value: Any, path: str) -> str:
+    """Accept an exact reverse-DNS private-use scheme and single-slash path."""
+    text = _string(value, path)
+    match = re.fullmatch(r"([a-z][a-z0-9.-]*):(/.*)", text)
+    if match is None or re.fullmatch(r"/[A-Za-z0-9._~!$&'()+,;=:@/-]+", match.group(2)) is None:
+        raise _error(path, "must be a canonical native redirect URI")
+    try:
+        _host(match.group(1), path)
+        _canonical_nonroot_path(match.group(2), path)
+    except ManifestError as exc:
+        raise _error(path, "must be a canonical native redirect URI") from exc
+    return text
+
+
 def _external_redirect(value: Any, path: str) -> tuple[str, str]:
     """Accept one fixed external browser redirect endpoint and its host."""
     text = _string(value, path)
@@ -629,6 +643,7 @@ def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
     """Return every protected Authelia input, including optional OIDC clients."""
     return [value for key, value in auth.items() if key.endswith("_file")] + [
         client["client_secret_file"] for client in auth.get("additional_oidc_clients", [])
+        if not client.get("public", False)
     ] + ([auth["smtp"]["password_file"]] if "smtp" in auth else [])
 
 
@@ -637,7 +652,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     _reject_literal_credentials(value)
     root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
     if isinstance(value, dict):
-        root_fields.update({"service_user", "service_identities", "service_limits", "memory"}.intersection(value))
+        root_fields.update({"service_user", "service_identities", "service_limits", "memory", "application_role_bindings"}.intersection(value))
     raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
@@ -1112,15 +1127,23 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         for index, raw_client in enumerate(raw_clients):
             path = f"$.authelia.additional_oidc_clients[{index}]"
             client_fields = {"client_id", "client_name", "client_secret_file", "redirect_uris"}
-            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope"}:
+            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope", "public"}:
                 raise _error(path, "has unknown keys")
+            public = raw_client.get("public", False)
+            if type(public) is not bool:
+                raise _error(path + ".public", "must be a boolean")
+            if public:
+                if "client_secret_file" in raw_client:
+                    raise _error(path, "public clients must omit client_secret_file")
+                client_fields.remove("client_secret_file")
             groups_scope = raw_client.get("groups_scope", False)
-            client = _mapping({key: value for key, value in raw_client.items() if key != "groups_scope"}, path, client_fields)
+            client = _mapping({key: value for key, value in raw_client.items() if key not in {"groups_scope", "public"}}, path, client_fields)
             client_id = _client_id(client["client_id"], path + ".client_id")
             if client_id in client_ids:
                 raise _error(path + ".client_id", "must be unique including the Connect client")
             client_ids.add(client_id)
-            redirects = [_redirect_uri(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
+            redirect_validator = _native_redirect_uri if public else _redirect_uri
+            redirects = [redirect_validator(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
             if len(redirects) != len(set(redirects)):
                 raise _error(path + ".redirect_uris", "contains duplicate redirect URIs")
             if type(groups_scope) is not bool:
@@ -1128,7 +1151,9 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             additional_clients.append({
                 "client_id": client_id,
                 "client_name": _device_label(client["client_name"], path + ".client_name"),
-                "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
+                **({"public": True} if public else {
+                    "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
+                }),
                 "redirect_uris": sorted(redirects),
                 "groups_scope": groups_scope,
             })
@@ -1152,6 +1177,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if issuer_host != authelia["host"]:
         raise _error("$.gateway.oidc.issuer", "must equal the managed Authelia HTTPS host")
     for client in authelia.get("additional_oidc_clients", []):
+        if client.get("public", False):
+            continue
         secret_file = client["client_secret_file"]
         if (secret_file == config_root or secret_file.startswith(config_root + "/")
                 or secret_file == authelia["state_directory"] or secret_file.startswith(authelia["state_directory"] + "/")):
@@ -1183,7 +1210,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                     or len(banks) > 127 or any(type(bank) is not str
                         or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
                         or type(ops) is not list or not ops or any(type(op) is not str
-                            or op not in {"retain", "recall", "reflect"} for op in ops)
+                            or op not in {"retain", "recall", "reflect", "list", "detail", "invalidate", "restore"} for op in ops)
                         or len(ops) != len(set(ops)) for bank, ops in banks.items())):
                 raise _error("$.memory.shared_banks", "invalid shared bank operation grant")
         if any(bank not in shared.get(user, {}) for user, bank in overrides.items()):
@@ -1196,6 +1223,32 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         if "router" in memory:
             from .user_memory_key import validate
             result["memory"]["router"] = validate(memory["router"])
+    if "application_role_bindings" in raw:
+        bindings = _list(raw["application_role_bindings"], "$.application_role_bindings", 16)
+        declared = {item["rule"]["id"]: item["rule"] for item in resources}
+        normalized_bindings = []
+        seen_bindings = set()
+        for index, value in enumerate(bindings):
+            path = f"$.application_role_bindings[{index}]"
+            item = _mapping(value, path, {"resource", "adapter_path", "adapter_sha256", "configuration_path", "configuration_sha256"})
+            resource = _ident(item["resource"], path + ".resource")
+            rule = declared.get(resource, {})
+            if resource in seen_bindings or rule.get("access") != "browser" or rule.get("native_auth") != "passthrough":
+                raise _error(path + ".resource", "must name a unique browser passthrough resource")
+            seen_bindings.add(resource)
+            entry = {"resource": resource}
+            for stem in ("adapter", "configuration"):
+                filename = _abs_path(item[stem + "_path"], path + "." + stem + "_path")
+                digest = item[stem + "_sha256"]
+                if type(digest) is not str or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                    raise _error(path, "requires exact lowercase SHA256 digests")
+                if filename == config_root or filename.startswith(config_root + "/"):
+                    raise _error(path, "adapter inputs must be outside rendered output")
+                entry.update({stem + "_path": filename, stem + "_sha256": digest})
+            if not entry["adapter_path"].endswith(".py") or entry["adapter_path"] == entry["configuration_path"]:
+                raise _error(path, "requires a Python adapter and distinct configuration file")
+            normalized_bindings.append(entry)
+        result["application_role_bindings"] = sorted(normalized_bindings, key=lambda entry: entry["resource"])
     _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user

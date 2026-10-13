@@ -452,12 +452,13 @@ def _current_observation(native, auth, incarnation, *, at=None):
     return observed
 
 
-def _current_stop_proof(values, pending, *, _run):
+def _current_stop_proof(values, pending, *, _run, env_file=None, execution_env=None):
     """Finalize native death custody, then read its exact immutable proof."""
     from ..router_manage import (_managed_container_custody, _offline_compose_run,
                                  DEFAULT_CONTAINER, DEFAULT_SERVICE)
     native = pending['preview']['native']; run_id = native['observation']['run_id']
-    result = _managed_container_custody('dead', values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run)
+    result = _managed_container_custody('dead', values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER,
+        _run=_run, env_file=env_file, execution_env=execution_env)
     require(result == {'finalized': 'dead', 'run_id': run_id})
     code = ("from pathlib import Path;from anvil_serving.router.config import load_server_config;"
         "from anvil_serving.router.keys import KeyStore,_private_json;"
@@ -470,7 +471,7 @@ def _current_stop_proof(values, pending, *, _run):
         f" require(digest(marker)=={digest(pending['marker'])!r})\n"
         " print(json.dumps(record))\n")
     record = validate(_offline_compose_run(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
-                                          _owner_state_only=True))
+        env_file=env_file, execution_env=execution_env, _owner_state_only=True))
     require(record['phase'] == 'ready' and record['anchor'] == native['record']['anchor']
             and record['death']['closure_generation'] == native['observation']['closure']['generation']
             and record['death']['closure_consumed'] is False)
@@ -503,13 +504,14 @@ def _current_successor(successor, incarnation, *, _run, _read_config=None):
         raw = _read_config(config[0]['source'], max_bytes=2*1024**2)
     else:
         # A successor has no legacy permission exemption. Its nonsecret config
-        # can be group-readable, but remains operator-owned and immutable to peers.
+        # can be root-owned or owned by this exact service UID. It remains
+        # readable by the declared service and immutable to other identities.
         from ..operator_config import _read_bounded, _candidate_identity
         source = Path(config[0]['source']); before = source.lstat()
         user = service.get('user')
         require(type(user) is str and re.fullmatch(r'[0-9]+:[0-9]+', user) is not None)
         uid, gid = map(int, user.split(':'))
-        require(stat.S_ISREG(before.st_mode) and before.st_uid == os.geteuid() and before.st_nlink == 1
+        require(stat.S_ISREG(before.st_mode) and before.st_uid in (0, uid) and before.st_nlink == 1
                 and not before.st_mode & 0o022
                 and (uid == 0 or before.st_mode & (0o400 if uid == before.st_uid else 0o040 if gid == before.st_gid else 0o004)))
         raw = _read_bounded(source, max_bytes=2*1024**2, expected_identity=_candidate_identity(before))
@@ -519,7 +521,58 @@ def _current_successor(successor, incarnation, *, _run, _read_config=None):
     require(hashlib.sha256(raw).hexdigest() == successor['configuration_revision'])
 
 
-def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
+@contextmanager
+def _current_environment(values, *, confirm):
+    """Snapshot explicitly pinned private bytes; previews never read secrets."""
+    declaration = values.get('environment')
+    if declaration is None or not confirm:
+        yield None, None
+        return
+    from ..control_plane.mcp.auth_file import read_private_auth_file
+    from ..router_manage import _compose_execution_env
+    raw = read_private_auth_file(declaration['file'], max_bytes=65536)
+    require(hashlib.sha256(raw).hexdigest() == declaration['sha256'])
+    # Compose reads dotenv itself as well as receiving credential overrides.
+    # Give both consumers the same private snapshot, never a mutable source.
+    with tempfile.TemporaryDirectory(prefix='anvil-maintenance-environment-') as root:
+        path = Path(root) / 'environment'
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, 'wb') as output:
+            output.write(raw)
+        environment = _compose_execution_env(values['compose'], str(path), environ={'PATH': os.defpath})
+        yield str(path), environment
+
+
+def _current_retained_stop(values, auth):
+    """Validate exact protected intent before trusting its original approval time."""
+    path = Path(values['receipt_out'] + '.pending')
+    if not os.path.lexists(path):
+        return None
+    pending = _private_json(path)
+    require(type(auth) is dict and type(pending) is dict
+            and set(pending) == {'schema', 'authorization', 'preview', 'marker', 'acknowledged_at'}
+            and pending['schema'] == 'router-current-stop-pending/v1' and pending['authorization'] == auth)
+    observed = pending['preview']
+    fields = {'schema', 'incarnation', 'native', 'compose_path', 'compose_sha256', 'successor',
+              'local_frontier', 'remote_memory_terminal', 'drained'}
+    require(type(observed) is dict and set(observed) == fields | ({'environment'} if 'environment' in values else set())
+            and observed['schema'] == 'router-current-stop-preview/v1'
+            and auth.get('preview_sha256') == digest(observed)
+            and observed['compose_path'] == values['compose']
+            and observed['compose_sha256'] == values['compose_sha256']
+            and observed['successor'] == auth.get('successor')
+            and observed.get('environment') == values.get('environment')
+            and observed['local_frontier'] == 'instrumented-quiesced'
+            and observed['remote_memory_terminal'] == 'UNKNOWN' and observed['drained'] is False
+            and pending['marker'] == {'schema': 'router-current-stop-permission/v1',
+                'authorization': auth, 'native_sha256': digest(observed['native'])}
+            and type(pending['acknowledged_at']) is int and 0 < pending['acknowledged_at'] <= int(time.time()))
+    authorization(auth, at=pending['acknowledged_at'])
+    _current_observation(observed['native'], auth, observed['incarnation'], at=pending['acknowledged_at'])
+    return pending
+
+
+def _run_current_stop(values, auth, config, *, confirm, preview_out, _run, env_file=None, execution_env=None):
     from ..router_manage import (_container_incarnation, _restart_custody, _offline_compose_roster,
                                  DEFAULT_CONTAINER, DEFAULT_SERVICE, DEFAULT_INSTALLED_CONFIG)
     from .container_owner import docker_identity
@@ -533,24 +586,18 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
                 and strict_json(read_private_auth_file(values['authorization'], max_bytes=16384)) == auth
                 and hashlib.sha256(read_private_auth_file(values['compose'], max_bytes=2*1024**2)).hexdigest() == values['compose_sha256']
                 and hashlib.sha256(read_private_auth_file(successor['compose'], max_bytes=2*1024**2)).hexdigest() == successor['compose_sha256'])
+        if confirm and 'environment' in values:
+            declaration = values['environment']
+            require(hashlib.sha256(read_private_auth_file(declaration['file'], max_bytes=65536)).hexdigest() == declaration['sha256'])
     unchanged()
     if os.path.lexists(pending_path):
         # Once pending exists, no path can issue another stop. Recovery is only
         # evidence finalization for the exact already-stopped incarnation.
         require(confirm)
-        pending = _private_json(pending_path)
-        require(type(pending) is dict and set(pending) == {'schema', 'authorization', 'preview', 'marker', 'acknowledged_at'}
-                and pending['schema'] == 'router-current-stop-pending/v1' and pending['authorization'] == auth)
+        pending = _current_retained_stop(values, auth)
+        require(pending is not None)
         before = pending['preview']['incarnation']
         _current_successor(successor, before, _run=_run)
-        require(type(pending['acknowledged_at']) is int and 0 < pending['acknowledged_at'] < auth['expires_at'])
-        authorization(auth, at=pending['acknowledged_at'])
-        _current_observation(pending['preview']['native'], auth, before, at=pending['acknowledged_at'])
-        require(auth['preview_sha256'] == digest(pending['preview'])
-                and pending['preview']['compose_path'] == values['compose']
-                and pending['preview']['compose_sha256'] == values['compose_sha256']
-                and pending['marker'] == {'schema': 'router-current-stop-permission/v1',
-                    'authorization': auth, 'native_sha256': digest(pending['preview']['native'])})
         dead = _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True)
         require(all(dead[k] == v for k, v in before.items()))
     else:
@@ -572,12 +619,21 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
                         'compose_path': values['compose'], 'compose_sha256': values['compose_sha256'],
                         'successor': successor, 'local_frontier': 'instrumented-quiesced',
                         'remote_memory_terminal': 'UNKNOWN', 'drained': False}
+            if 'environment' in values:
+                observed['environment'] = values['environment']
             def recheck():
                 unchanged(); authorization(auth)
                 _current_successor(successor, before, _run=_run)
                 require(int(time.time()) < native['observation']['expires_at']
                         and before == _container_incarnation(DEFAULT_CONTAINER, _run=_run)
                         and roster == _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER, _run=_run, live_target=True, _metadata_only=True, _owner_state_only=True))
+                if env_file is not None:
+                    # Resolve required variables before physical stop, while
+                    # the metadata-only preview remains secret-independent.
+                    resolved = _offline_compose_roster(values['compose'], DEFAULT_SERVICE, DEFAULT_CONTAINER,
+                        _run=_run, live_target=True, _owner_state_only=True,
+                        env_file=env_file, execution_env=execution_env)
+                    require(resolved['owner_storage'] == roster['owner_storage'])
                 alive()
             recheck()
             if not confirm:
@@ -595,8 +651,8 @@ def _run_current_stop(values, auth, config, *, confirm, preview_out, _run):
             dead = _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True)
             require(all(dead[k] == v for k, v in before.items()))
     docker_identity(dead, stopped=True)
-    unchanged(); authorization(auth)
-    proof = _current_stop_proof(values, pending, _run=_run)
+    unchanged(); authorization(auth, at=pending['acknowledged_at'])
+    proof = _current_stop_proof(values, pending, _run=_run, env_file=env_file, execution_env=execution_env)
     require(proof['death']['stopped'] == dead
             and dead == _container_incarnation(DEFAULT_CONTAINER, _run=_run, stopped=True))
     unchanged()
@@ -619,8 +675,15 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
     from ..observability.dashboard.contracts import strict_json
     config=Path(config).expanduser().absolute()
     values=strict_json(read_private_auth_file(config,max_bytes=16384))
-    require(type(values) is dict and set(values)=={'schema','compose','compose_sha256','authorization','receipt_out'}
+    fields = {'schema','compose','compose_sha256','authorization','receipt_out'}
+    require(type(values) is dict and set(values) in (fields, fields | {'environment'})
             and values['schema']=='router-maintenance-config/v1')
+    if 'environment' in values:
+        declaration = values['environment']
+        require(type(declaration) is dict and set(declaration) == {'file', 'sha256'}
+                and type(declaration['file']) is str and Path(declaration['file']).is_absolute()
+                and '..' not in Path(declaration['file']).parts
+                and type(declaration['sha256']) is str and re.fullmatch('[0-9a-f]{64}', declaration['sha256']) is not None)
     require(type(values['compose_sha256']) is str and re.fullmatch('[0-9a-f]{64}',values['compose_sha256']) is not None)
     for name in ('compose','authorization','receipt_out'):
         require(type(values[name]) is str and Path(values[name]).is_absolute() and '..' not in Path(values[name]).parts)
@@ -630,7 +693,10 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
     if type(auth_value) is dict and auth_value.get('phase') == 'reboot-stop':
         from .reboot import retained_intent
         pending = retained_intent(values, auth_value)
+    elif type(auth_value) is dict and auth_value.get('phase') == 'current-instrumented-stop':
+        pending = _current_retained_stop(values, auth_value)
     auth=authorization(auth_value, at=pending['acknowledged_at'] if pending else None)
+    require('environment' not in values or auth['phase'] == 'current-instrumented-stop')
     native=_run or subprocess.run
     @_serving_authority_mutation
     def operation():
@@ -638,7 +704,9 @@ def run(config, *, confirm=False, preview_out=None, _run=None):
             from .reboot import run
             return run(values, auth, config, confirm=confirm, preview_out=preview_out, _run=native)
         if auth['phase'] == 'current-instrumented-stop':
-            return _run_current_stop(values, auth, config, confirm=confirm, preview_out=preview_out, _run=native)
+            with _current_environment(values, confirm=confirm) as (env_file, execution_env):
+                return _run_current_stop(values, auth, config, confirm=confirm, preview_out=preview_out,
+                    _run=native, env_file=env_file, execution_env=execution_env)
         compose_raw=read_private_auth_file(values['compose'],max_bytes=2*1024**2)
         require(hashlib.sha256(compose_raw).hexdigest()==values['compose_sha256'])
         pending=Path(values['receipt_out'] + '.pending')

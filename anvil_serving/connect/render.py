@@ -1,6 +1,7 @@
 """Deterministic, secret-free render planning for managed Anvil Connect services."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -301,13 +302,20 @@ def _authelia(manifest: dict[str, Any]) -> str:
         lines.insert(lines.index("authentication_backend:"), f"  asset_path: {_quote(auth['asset_path'])}")
     lines.extend(f"          - {_quote(callback)}" for callback in callbacks)
     for client in auth.get("additional_oidc_clients", []):
+        public = client.get("public", False)
         lines.extend([
             f"      - client_id: {_quote(client['client_id'])}", f"        client_name: {_quote(client['client_name'])}",
-            "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
-            "        consent_mode: implicit", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256",
+            *([] if public else [
+                "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
+            ]),
+            "        consent_mode: explicit" if public else "        consent_mode: implicit",
+            "        public: true" if public else "        public: false",
+            *(["        authorization_policy: two_factor"] if public else []),
+            "        require_pkce: true", "        pkce_challenge_method: S256",
             "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:",
             "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
-            "        token_endpoint_auth_method: client_secret_post", "        redirect_uris:",
+            "        token_endpoint_auth_method: none" if public else "        token_endpoint_auth_method: client_secret_post",
+            "        redirect_uris:",
         ])
         if client["groups_scope"]:
             lines.insert(len(lines) - 3, "          - groups")
@@ -361,7 +369,11 @@ def _render(data: dict[str, Any]) -> dict[str, Any]:
     # Account-bank settings are consumed by the user manager, not service files.
     # Preserve the running authority generation when installing those settings.
     generation = hashlib.sha256(canonical_manifest({key: value for key, value in data.items() if key != "memory"})).hexdigest()
-    gateway = data["gateway"]
+    gateway = copy.deepcopy(data["gateway"])
+    externally_managed = {binding["resource"] for binding in data.get("application_role_bindings", [])}
+    for resource in gateway["gateway"]["resources"]:
+        if resource["rule"]["id"] in externally_managed:
+            resource["role_management"] = "external"
     if "service_identities" not in data:
         files: dict[str, str] = {
             "gateway.json": _json(gateway),

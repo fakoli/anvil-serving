@@ -40,6 +40,50 @@ declaration; it does not contact services, read referenced secrets or establish
 live readiness or current access. A deployment without browser resources returns
 an empty list.
 
+## Native OIDC clients
+
+Add a native application to `authelia.additional_oidc_clients` with this entry
+([complete entry in the repository](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/native-oidc-client.json)):
+
+```json
+{
+  "client_id": "native-example",
+  "client_name": "Native Example",
+  "public": true,
+  "redirect_uris": ["app.example.connect.ios:/oauth/callback"],
+  "groups_scope": true
+}
+```
+
+`public` is a boolean and defaults to `false`. A public client must omit
+`client_secret_file`; the native application holds no client secret. Omitting
+`public`, or setting it to `false`, preserves the existing confidential profile,
+which requires a protected secret file and exact HTTPS callbacks.
+
+Public callbacks use an exact lower-case reverse-DNS scheme, one slash after the
+colon, and a canonical non-root path. Register the identical URI in the
+application. This profile rejects web and loopback callbacks, authorities,
+wildcards, escapes, query strings, fragments, and ambiguous paths. The private-use
+scheme follows [RFC 8252 section 7.1](https://www.rfc-editor.org/rfc/rfc8252#section-7.1).
+Client IDs remain unique across additional clients and the Connect gateway.
+
+Rendering fixes the public client to authorization code, PKCE `S256`,
+`token_endpoint_auth_method: none`, explicit consent, two-factor authorization,
+and RS256 ID tokens. Allowed scopes are `openid`, `email`, and `profile`, with
+`groups` only when `groups_scope` is `true`. Refresh and implicit grants are not
+part of this profile. Authelia's existing public subject identifiers are retained.
+
+Preview the managed gateway configuration after editing the deployment:
+
+```sh
+anvil-serving connect up --manifest /etc/anvil-connect/deployment.json --service gateway --dry-run
+```
+
+Use the existing confirmed gateway update after reviewing that preview. Client
+registration supplies sign-in identity; service grants and a receiving
+application's explicitly trusted token exchange remain separate policies.
+Server introspection credentials stay in that server's protected configuration.
+
 ## Users
 
 Follow [Invite a developer](../ANVIL-CONNECT-ONBOARDING.md) for password setup,
@@ -347,10 +391,67 @@ matching receiver mapping is denied. When `roles` is configured, assertions
 without a role are also denied, even if a legacy subject mapping exists. Assign
 roles to existing users before enabling this receiver mode. Receivers that omit
 `roles` retain the existing subject-based behavior. A role downgrade changes the signed request identity and
-invalidates previous sessions. Passthrough applications, including a separate
-Pi deployment without a Connect identity adapter, still manage their own roles;
+invalidates previous sessions. Passthrough applications without an explicit application-role binding, including
+a separate Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
+
+### Application roles owned by Connect
+
+An application owner can install a reviewed adapter and opt one existing browser
+passthrough resource into native member/admin management. The top-level deployment
+setting is explicit; it does not change routing or replace application credentials:
+
+```json
+{
+  "application_role_bindings": [{
+    "resource": "chat",
+    "adapter_path": "/opt/anvil-connect-adapters/webui/adapter.py",
+    "adapter_sha256": "REPLACE_WITH_EXACT_SHA256",
+    "configuration_path": "/etc/anvil-connect/adapters/webui.json",
+    "configuration_sha256": "REPLACE_WITH_EXACT_SHA256"
+  }]
+}
+```
+
+Use real lowercase SHA256 digests from the reviewed installation. Both files and
+all ancestors must be root-owned, outside Git, and not writable by other users.
+The configuration file is mode 0600 and contains protected deployment metadata.
+The application owner verifies native account linkage, applies roles through its
+supported APIs, and revokes native sessions on reductions. No shared administrator
+credential is distributed to clients. See the [adapter contract](../specs/connect-application-roles/spec.md).
+
+Home offers Member/Admin choices for a bound resource. `users create --grant`
+and `users access --grant` use the same authority. Inspect current reconciliation:
+
+```sh
+sudo anvil-connect-ctl users sync-roles
+sudo anvil-connect-ctl users sync-roles --confirm
+```
+
+Omission of `--confirm` is a read-only adapter preview. Output contains per-resource
+counts; awaiting first login is reported separately from failure. Connect resolves
+exact issuer/subject identities, never email or global administrator groups.
+Configured applications must preserve their recovery administrator during adoption.
+For Open WebUI, a first browser sign-in establishes the linked account; the native
+exchange does not create that account. The application remains pending until the
+worker applies the explicit grant. Account data is retained when access is removed.
+
+Install or refresh the existing account worker after installing a new Connect
+manager release:
+
+```sh
+sudo anvil-connect-ctl users deletion-schedule --confirm
+```
+
+That worker reconciles native roles before deletion and still reconciles operator
+groups independently. Failed role updates, revocations, or authority drift block
+destructive deletion and remain retryable. Pending first-login linkage alone does
+not block deletion. The timer runs 10 seconds after the preceding run finishes;
+role changes are eventually consistent, not instantaneous. A missing adapter,
+configuration drift, or failed native API leaves reconciliation incomplete. The
+worker keeps the retained native mappings for recovery and never reports a failed
+revocation as complete. Deployments without bindings keep their previous behavior.
 
 Authelia 4.39.28's file backend has no forced-first-login-change or annual-expiry
 flag. Connect requires initial password setup by withholding the discarded
@@ -747,6 +848,31 @@ Save its private output, redeem it with `connect init --service
 connector:dashboard --bundle ...`, then inspect `connect identity`. The final
 approval request uses `operation: approve`, `installation: dashboard`, and the
 independently checked `fingerprint` returned by identity inspection.
+
+## Native authority
+
+`connect native-authority --manifest /absolute/deployment.json --resource pi-web
+--output /absolute/private/native-authority.json --reader-gid GID` previews a
+short-lived projection of the exact Connect human grants for one declared browser
+resource. `--confirm` publishes it atomically as root, readable by the broker's
+dedicated group. A managed publisher must refresh it before its 30-second expiry;
+stale projections deny access. The broker must pin the same issuer and source
+resource. This projection neither creates accounts nor grants new authority.
+This first broker supports at most 64 granted principals per source resource.
+Exceeding that capacity stops publication; existing authority expires after 30
+seconds and access fails closed. Check roster capacity before extending grants.
+
+## Native agents
+
+`connect native-agents --config /absolute/private/native-agents.json` runs the
+native Agents broker in the foreground. A managed service owns process lifecycle.
+The protected configuration declares fixed OIDC introspection/userinfo endpoints,
+the allowed native client, the fresh authority projection, owned workspaces and
+their separate private Pi owner endpoints. Provider and owner secrets remain on
+the host. Every operation and stream is scoped to the verified issuer/subject and
+current Connect grant; a browser cookie, email address or WebUI token is not an
+admission credential. Deploy with the managed infrastructure role and retain its
+artifact digests and rollback record before exposing the HTTPS endpoint.
 
 ## Keygen
 

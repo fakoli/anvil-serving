@@ -682,11 +682,13 @@ def test_account_worker_attempts_projection_and_deletion_independently(monkeypat
         calls.append("projection")
         raise ValueError("redacted projection failure")
     monkeypatch.setattr(users, "sync_operators", failed_projection)
+    from anvil_serving.connect import application_roles
+    monkeypatch.setattr(application_roles, "sync_roles", lambda *_a, **_kw: {"complete": True})
     monkeypatch.setattr(user_delete, "process_pending", lambda *_args, **_kwargs: calls.append("deletion") or {"processed": False})
     result = dispatch(["users", "process-deletions", "--confirm"])
     assert calls == ["projection", "deletion"]
     assert result.error is not None
-    assert result.data == {"operator_group": "failed", "deletion": "completed"}
+    assert result.data == {"application_roles": "completed", "operator_group": "failed", "deletion": "completed"}
 
 
 def test_backup_retention_and_verified_restore_without_activation(environment, monkeypatch):

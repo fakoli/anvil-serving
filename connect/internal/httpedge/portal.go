@@ -98,7 +98,7 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		}
 		for _, candidate := range b.resources {
 			rule := candidate.declaration.Rule
-			item := portalService{ID: rule.ID, URL: "https://" + rule.Host + rule.PathPrefix, Role: human.ApplicationRoles[rule.ID], ManagedRole: rule.NativeAuth == "signed-identity"}
+			item := portalService{ID: rule.ID, URL: "https://" + rule.Host + rule.PathPrefix, Role: human.ApplicationRoles[rule.ID], ManagedRole: candidate.declaration.ManagesApplicationRole()}
 			if candidate.declaration.DisplayName != nil {
 				item.Name = *candidate.declaration.DisplayName
 			}

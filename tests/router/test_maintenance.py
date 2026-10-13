@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import sys
+import json
 import time
 
 import pytest
@@ -217,6 +218,8 @@ def current_stop(tmp_path, monkeypatch):
                  'closure_generation':2, 'closure_consumed':False,
                  'stopped':incarnation_read(stopped=True), 'implementation_sha256':'7'*64}
         return {**record, 'phase':'ready', 'sequence':1, 'death':death}
+    f['native_proof'] = maintenance._current_stop_proof
+    f['proof'] = proof
     monkeypatch.setattr(maintenance, '_current_stop_proof', proof)
     f['run'] = lambda **kw: maintenance.run(declaration, _run=stop, **kw)
     def approve():
@@ -224,6 +227,139 @@ def current_stop(tmp_path, monkeypatch):
         protected(auth_path,f['auth']);return preview
     f['approve']=approve
     return f
+
+
+def _declare_environment(f, path):
+    import hashlib
+    import json
+    # Model the production service's required credential interpolation.
+    f['old'].write_text(json.dumps({'services': {'router': {'image': 'fixture:old',
+        'environment': {'ANVIL_MEDIA_CONTROLLER_TOKEN': '${ANVIL_MEDIA_CONTROLLER_TOKEN:?required}'}}}}))
+    f['values']['compose_sha256'] = hashlib.sha256(f['old'].read_bytes()).hexdigest()
+    f['values']['environment'] = {'file': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    f['protected'](f['config'], f['values'])
+
+
+def test_current_stop_environment_is_private_pinned_and_forwarded_to_both_helpers(current_stop, tmp_path, monkeypatch):
+    import json
+    from anvil_serving import router_manage
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN="synthetic-secret"\nUNRELATED_TOKEN=omitted\n'); path.chmod(0o600)
+    _declare_environment(f, path)
+    monkeypatch.setenv('ANVIL_MEDIA_CONTROLLER_TOKEN', 'wrong-parent-secret')
+    monkeypatch.setenv('DOCKER_HOST', 'untrusted-parent-daemon')
+    monkeypatch.setenv('PYTHONPATH', '/untrusted-parent')
+    preview = f['approve']()
+    assert preview['environment'] == f['values']['environment']
+    assert 'synthetic-secret' not in json.dumps(preview)
+    calls = []
+    def check(kwargs):
+        snapshot = Path(kwargs['env_file'])
+        assert snapshot != path and snapshot.read_bytes() == path.read_bytes()
+        assert snapshot.stat().st_mode & 0o777 == 0o600
+        assert snapshot.parent.stat().st_mode & 0o777 == 0o700
+        assert kwargs['execution_env'] == {'PATH': os.defpath, 'ANVIL_MEDIA_CONTROLLER_TOKEN': 'synthetic-secret'}
+        calls.append(snapshot)
+    def custody(kind, *args, **kwargs):
+        check(kwargs)
+        assert kind == 'dead'
+        return {'finalized': 'dead', 'run_id': f['native']['record']['anchor']['run_id']}
+    def offline(*args, **kwargs):
+        check(kwargs)
+        assert kwargs['_owner_state_only'] is True
+        return f['proof']()
+    monkeypatch.setattr(router_manage, '_managed_container_custody', custody)
+    monkeypatch.setattr(router_manage, '_offline_compose_run', offline)
+    monkeypatch.setattr(maintenance, '_current_stop_proof', f['native_proof'])
+    assert f['run'](confirm=True)['applied']
+    assert len(calls) == 2 and calls[0] == calls[1]
+    assert not calls[0].exists() and not calls[0].parent.exists()
+    assert path.exists() and f['stops'] == 1
+    assert 'synthetic-secret' not in Path(f['values']['receipt_out']).read_text()
+
+
+@pytest.mark.parametrize('damage', ['missing', 'digest', 'symlink', 'hardlink', 'mode'])
+def test_environment_preview_never_reads_secret_and_confirmation_refuses_unsafe_input(current_stop, tmp_path, damage):
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=synthetic\n'); path.chmod(0o600)
+    _declare_environment(f, path)
+    if damage == 'missing': path.unlink()
+    elif damage == 'digest': path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=changed\n')
+    elif damage == 'symlink': path.rename(tmp_path/'original'); path.symlink_to(tmp_path/'original')
+    elif damage == 'hardlink': os.link(path, tmp_path/'extra')
+    else: path.chmod(0o640)
+    assert f['approve']()['environment'] == f['values']['environment']
+    with pytest.raises((ValueError, OSError)): f['run'](confirm=True)
+    assert f['stops'] == f['proofs'] == 0 and not f['marker'].exists()
+
+
+def test_confirm_resolves_compose_environment_before_physical_stop(current_stop, tmp_path, monkeypatch):
+    from anvil_serving import router_manage
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('OTHER_TOKEN=synthetic\n'); path.chmod(0o600)
+    _declare_environment(f, path)
+    original = router_manage._offline_compose_roster
+    calls = []
+    def roster(*args, **kwargs):
+        if kwargs.get('env_file'):
+            calls.append(kwargs['env_file'])
+            assert not kwargs.get('_metadata_only') and f['stops'] == 0
+            raise ValueError('required credential is absent')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(router_manage, '_offline_compose_roster', roster)
+    f['approve']()
+    assert calls == []
+    with pytest.raises(ValueError): f['run'](confirm=True)
+    assert len(calls) == 1 and not Path(calls[0]).exists()
+    assert f['stops'] == f['proofs'] == 0 and not f['marker'].exists()
+
+
+def test_environment_change_after_permission_cannot_cross_physical_stop(current_stop, tmp_path, monkeypatch):
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=synthetic\n'); path.chmod(0o600)
+    _declare_environment(f, path); f['approve']()
+    publish = maintenance._publish
+    def changed(target, *args, **kwargs):
+        result = publish(target, *args, **kwargs)
+        if target == f['marker']: path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=changed\n')
+        return result
+    monkeypatch.setattr(maintenance, '_publish', changed)
+    with pytest.raises(ValueError): f['run'](confirm=True)
+    assert f['stops'] == f['proofs'] == 0
+
+
+def test_pending_stop_binds_environment_reference_and_recovery_never_stops_again(current_stop, tmp_path):
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=synthetic\n'); path.chmod(0o600)
+    _declare_environment(f, path); f['approve']()
+    f['stage'] = 'after_stop'
+    with pytest.raises(OSError): f['run'](confirm=True)
+    assert f['stops'] == 1 and f['proofs'] == 0
+    other = tmp_path/'other.env'; other.write_bytes(path.read_bytes()); other.chmod(0o600)
+    f['values']['environment']['file'] = str(other)
+    f['protected'](f['config'], f['values'])
+    f['stage'] = None
+    with pytest.raises(ValueError): f['run'](confirm=True)
+    assert f['stops'] == 1 and f['proofs'] == 0
+    f['values']['environment']['file'] = str(path)
+    f['protected'](f['config'], f['values'])
+    assert f['run'](confirm=True)['applied']
+    assert f['stops'] == 1 and f['proofs'] == 1
+
+
+@pytest.mark.parametrize('change', ['extra', 'relative', 'digest', 'wrong_phase'])
+def test_environment_declaration_is_closed_and_current_stop_only(current_stop, tmp_path, change):
+    f = current_stop
+    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=synthetic\n'); path.chmod(0o600)
+    _declare_environment(f, path)
+    if change == 'extra': f['values']['environment']['values'] = {}
+    elif change == 'relative': f['values']['environment']['file'] = 'credentials.env'
+    elif change == 'digest': f['values']['environment']['sha256'] = 'partial'
+    else:
+        auth = authorization(); f['protected'](Path(f['values']['authorization']), auth)
+    f['protected'](f['config'], f['values'])
+    with pytest.raises(ValueError): f['run']()
+    assert f['stops'] == f['proofs'] == f['checks'] == 0
 
 
 @pytest.mark.parametrize('mode', [0o640, 0o660, 0o666])
@@ -297,6 +433,44 @@ def test_current_stop_crash_recovery_never_retries_a_live_stop(current_stop,stag
         else:
             with pytest.raises(ValueError):f['run'](confirm=True)
             assert f['stops']==stops
+
+
+def test_current_stop_pending_finalizes_after_original_authorization_expires(current_stop, monkeypatch):
+    f=current_stop; f['approve'](); f['stage']='after_stop'
+    with pytest.raises(OSError): f['run'](confirm=True)
+    f['stage']=None
+    monkeypatch.setattr(maintenance.time, 'time', lambda: f['auth']['expires_at']+3600)
+    result=f['run'](confirm=True)
+    assert result['stopped'] and f['stops']==1 and f['proofs']==1
+    receipt=json.loads(Path(f['values']['receipt_out']).read_text())
+    assert receipt['acknowledged_at'] < f['auth']['expires_at']
+    assert receipt['authorization']==f['auth']
+
+
+def test_current_stop_expired_without_pending_cannot_start(current_stop, monkeypatch):
+    f=current_stop; f['approve']()
+    monkeypatch.setattr(maintenance.time, 'time', lambda: f['auth']['expires_at']+1)
+    with pytest.raises(ValueError): f['run'](confirm=True)
+    assert f['stops']==0 and f['proofs']==0 and not f['marker'].exists()
+
+
+@pytest.mark.parametrize('damage', ['authorization','preview','compose','marker','timestamp','environment'])
+def test_current_stop_expired_recovery_rejects_unbound_pending(current_stop, monkeypatch, damage):
+    f=current_stop; f['approve'](); f['stage']='after_stop'
+    with pytest.raises(OSError): f['run'](confirm=True)
+    f['stage']=None
+    path=Path(f['values']['receipt_out']+'.pending'); pending=json.loads(path.read_text())
+    if damage=='authorization': pending['authorization']['operation_id']='0'*64
+    elif damage=='preview': pending['preview']['drained']=True
+    elif damage=='compose':
+        f['values']['compose_sha256']='0'*64; f['protected'](f['config'],f['values'])
+    elif damage=='marker': pending['marker']['native_sha256']='0'*64
+    elif damage=='timestamp': pending['acknowledged_at']=f['auth']['expires_at']
+    else: pending['preview']['environment']={'file':'/protected/other.env','sha256':'0'*64}
+    f['protected'](path,pending)
+    monkeypatch.setattr(maintenance.time, 'time', lambda: f['auth']['expires_at']+1)
+    with pytest.raises(ValueError): f['run'](confirm=True)
+    assert f['stops']==1 and f['proofs']==0
 
 
 def test_current_stop_pending_cannot_stop_restarted_incarnation_or_refresh_expiry(current_stop):
@@ -424,3 +598,56 @@ def test_successor_readmit_uses_mounted_roster_not_credential_reader(current_sto
     else:
         with pytest.raises(ValueError): maintenance.run(f['config'], _run=native)
         assert ('native' in calls) == change.endswith('_during')
+
+
+@pytest.mark.parametrize('kind',['service-0600','root-group-readable','foreign-owner','service-unreadable','group-writable','world-writable','symlink','hardlink','owner-race','oversized'])
+def test_current_successor_binds_exact_service_config_owner_and_custody(tmp_path,monkeypatch,kind):
+    """Root operator + production UID1000 service; real bounded no-follow read.
+
+    Ownership metadata is injected so the same regression runs without chown or
+    root privileges. File identity/read/mode/link and race checks remain real.
+    """
+    import hashlib
+    import json
+    from types import SimpleNamespace
+    from anvil_serving import router_manage,operator_config
+    config=tmp_path/'service.toml';config.write_bytes(b'synthetic = true\n');config.chmod(0o600)
+    owner=[1000];group=1000
+    if kind in ('root-group-readable','service-unreadable'):owner[0]=0
+    if kind=='root-group-readable':config.chmod(0o640)
+    if kind=='foreign-owner':owner[0]=2000;config.chmod(0o644)
+    if kind=='group-writable':config.chmod(0o660)
+    if kind=='world-writable':config.chmod(0o606)
+    if kind=='hardlink':os.link(config,tmp_path/'hardlink')
+    if kind=='oversized':config.write_bytes(b'x'*(2*1024**2+1))
+    raw=config.read_bytes()
+    if kind=='symlink':config.rename(tmp_path/'target');config.symlink_to(tmp_path/'target')
+    original_lstat=Path.lstat
+    class Metadata:
+        def __init__(self,actual):self.actual=actual;self.st_uid=owner[0];self.st_gid=group
+        def __getattr__(self,name):return getattr(self.actual,name)
+    def metadata(path,*args,**kwargs):
+        actual=original_lstat(path,*args,**kwargs)
+        return Metadata(actual) if path==config else actual
+    monkeypatch.setattr(Path,'lstat',metadata)
+    monkeypatch.setattr(os,'geteuid',lambda:0)
+    original_read=operator_config._read_bounded;reads=[]
+    def bounded(path,**kwargs):
+        reads.append(kwargs);value=original_read(path,**kwargs)
+        if kind=='owner-race':owner[0]=2000
+        return value
+    monkeypatch.setattr(operator_config,'_read_bounded',bounded)
+    def run(argv,**kwargs):
+        if 'config' in argv:
+            assert '--no-env-resolution' in argv and '--no-interpolate' in argv
+            return SimpleNamespace(returncode=0,stdout=json.dumps({'name':'fixture','services':{'router':{
+                'container_name':router_manage.DEFAULT_CONTAINER,'image':'fixture:current','user':'1000:1000',
+                'volumes':[{'target':router_manage.DEFAULT_INSTALLED_CONFIG,'source':str(config),'type':'bind','read_only':True}]}}}))
+        assert argv[:3]==['docker','image','inspect']
+        return SimpleNamespace(returncode=0,stdout='sha256:'+'f'*64)
+    successor={'compose':str(tmp_path/'compose.json'),'image_id':'sha256:'+'f'*64,'configuration_revision':hashlib.sha256(raw).hexdigest()}
+    if kind in ('service-0600','root-group-readable'):
+        maintenance._current_successor(successor,{'compose_project':'fixture'},_run=run)
+        assert len(reads)==1 and reads[0]['max_bytes']==2*1024**2 and reads[0]['expected_identity']
+    else:
+        with pytest.raises(ValueError):maintenance._current_successor(successor,{'compose_project':'fixture'},_run=run)

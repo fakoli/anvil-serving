@@ -408,6 +408,7 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
+| `connect native-agents` | Run the native Agents broker behind a managed TLS edge. | `process` / `bounded` | `--config` |
 | `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
 | `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
 | `connect users list` | List local sign-in accounts (not Connect grants). | `read` / `bounded` | `--manifest` |
@@ -423,13 +424,15 @@ required operands, choices, and defaults.
 | `connect users reset-mfa` | Remove passkeys and TOTP; suspend first for a lost or compromised device. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users code` | Export a fresh enrollment code or setup link when using filesystem delivery. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--dry-run`<br>`--confirm` |
+| `connect users sync-roles` | Reconcile explicitly bound native application roles and session revocation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users sync-operators` | Reconcile the derived Connect-operator identity-provider group. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users schedule` | Install the daily authentication and gateway backup timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users deletion-schedule` | Install the periodic account-reconciliation worker. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect users process-deletions` | Reconcile operator access and process one authorized deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users process-deletions` | Reconcile native roles and operator access, then process one authorized deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users restore` | Restore authentication backup into a fresh directory without activating it. | `mutate` / `bounded` | `--input`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect native-authority` | Project fresh Connect grants for native Agents admission. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--output`<br>`--reader-gid`<br>`--dry-run`<br>`--confirm` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--services`<br>`--upgrade`<br>`--dry-run`<br>`--confirm` |
 | `connect down` | Preview or stop only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |

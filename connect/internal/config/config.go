@@ -63,8 +63,16 @@ type Resource struct {
 	Connector      string  `json:"connector"`
 	TunnelAddress  string  `json:"tunnel_address"`
 	DisplayName    *string `json:"display_name,omitempty"`
+	RoleManagement *string `json:"role_management,omitempty"`
 	IdentityKeyEnv string  `json:"identity_key_env,omitempty"`
 	IdentityKeyID  string  `json:"identity_key_id,omitempty"`
+}
+
+// ManagesApplicationRole describes the role choices exposed by Home. External
+// metadata is rendered from an installed adapter binding; it does not change
+// the resource's routing or authentication contract.
+func (r Resource) ManagesApplicationRole() bool {
+	return r.Rule.NativeAuth == "signed-identity" || r.RoleManagement != nil && *r.RoleManagement == "external"
 }
 
 type Gateway struct {
@@ -288,6 +296,9 @@ func (g Gateway) Validate() error {
 		}
 		if resource.DisplayName != nil && (resource.Rule.Access != "browser" || !validDisplayName(*resource.DisplayName)) {
 			return errors.New("invalid gateway resource display name")
+		}
+		if resource.RoleManagement != nil && (*resource.RoleManagement != "external" || resource.Rule.Access != "browser" || resource.Rule.NativeAuth != "passthrough") {
+			return errors.New("external role management requires a browser passthrough resource")
 		}
 		if resource.Rule.NativeAuth == "signed-identity" {
 			if !ValidEnv(resource.IdentityKeyEnv) || !ValidID(resource.IdentityKeyID) || identityEnvs[resource.IdentityKeyEnv] || identityIDs[resource.IdentityKeyID] {

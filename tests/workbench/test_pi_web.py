@@ -202,6 +202,7 @@ def test_unit_content_renders_the_reviewed_service(tmp_path: Path) -> None:
     assert "ExecStart=/usr/bin/node-fake" in content and "--hostname 127.0.0.1 --no-open" in content
     assert "Environment=PI_WEB_ALLOWED_HOSTS=pi.example.test" in content
     assert "Environment=PI_WEB_IDLE_TIMEOUT_MS=600000" in content
+    assert "Environment=JITI_FS_CACHE=false" in content
     assert "EnvironmentFile=/etc/anvil-pi-web/env" in content
     assert "NoNewPrivileges=yes" in content and "ProtectSystem=full" in content
     assert "WantedBy=multi-user.target" in content
@@ -545,6 +546,22 @@ def test_status_drifted_when_tree_differs_from_recorded_pin(tmp_path: Path) -> N
     (version_dir / "bin" / "pi-web.js").write_text("// hand-edited\n", encoding="utf-8")
     report = _status_report(tmp_path)
     assert report["drift"] == "drifted"
+
+
+def test_jiti_cache_is_still_detected_as_artifact_drift(tmp_path: Path) -> None:
+    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
+    version_dir = root / "0.9.0"
+    (version_dir / "bin").mkdir(parents=True)
+    (version_dir / "bin/pi-web.js").write_text("// entry\n")
+    recorded = pi_web._artifact_tree_sha256(version_dir)
+    (root / "install-manifest.json").write_text(json.dumps({
+        "version": "0.9.0",
+        "bridge_install": {"artifact_sha256": recorded},
+    }))
+    cache = version_dir / "node_modules/.cache/jiti/image-budget-index.synthetic.cjs"
+    cache.parent.mkdir(parents=True)
+    cache.write_text("// runtime cache\n")
+    assert _status_report(tmp_path)["drift"] == "drifted"
 
 
 def test_status_drift_unknown_without_a_recorded_pin(tmp_path: Path) -> None:

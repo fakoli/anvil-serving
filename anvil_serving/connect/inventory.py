@@ -9,6 +9,7 @@ def resources(manifest: str) -> dict:
     users._path(manifest)
     data = users.read_manifest(manifest)
     rows = []
+    managed = {binding['resource'] for binding in data.get('application_role_bindings', [])}
     for resource in data.get("gateway", {}).get("gateway", {}).get("resources", []):
         rule = resource["rule"]
         if rule["access"] != "browser":
@@ -19,9 +20,14 @@ def resources(manifest: str) -> dict:
             "native_auth": rule["native_auth"],
             "grants": [rule["id"] + ":member", rule["id"] + ":admin"],
         })
+    for row in rows:
+        if row["id"] in managed:
+            row["role_management"] = "external"
     return {"resources": sorted(rows, key=lambda row: row["id"]),
             "source": "deployment-declaration", "read_only": True,
-            "note": "Declared browser resources only; not health or current user grants. Passthrough applications manage their own internal roles."}
+            "note": "Declared browser resources only; not health or current user grants. " +
+            ("Bound external roles converge through users sync-roles; other passthrough apps manage their own roles." if managed else
+             "Passthrough applications manage their own internal roles.")}
 
 
 def accounts(manifest: str, username: str | None = None) -> dict:

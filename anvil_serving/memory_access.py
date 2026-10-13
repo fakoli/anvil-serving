@@ -9,7 +9,9 @@ from .control_plane.bootstrap_shim import open_trusted_file
 from .connect.config import _json_load
 
 SCHEMA = "anvil-memory-access/v1"
-OPERATIONS = {"retain", "recall", "reflect"}
+LEGACY_OPERATIONS = {"retain", "recall", "reflect"}
+NATIVE_OPERATIONS = {"list", "detail", "invalidate", "restore"}
+OPERATIONS = LEGACY_OPERATIONS | NATIVE_OPERATIONS
 BANK = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,63}$")
 HUMAN = re.compile(r"human:[0-9a-f]{64}$")
 MAX_BYTES = 1024 * 1024
@@ -53,6 +55,7 @@ def resolve(path: str, principal: str, operation: str, bank: str | None = None) 
     selected = grant["default_bank"] if bank is None else bank
     if type(selected) is not str or not BANK.fullmatch(selected):
         raise ValueError("invalid memory bank")
-    if operation != "banks" and not grant["admin"] and operation not in grant["banks"].get(selected, []):
+    if (operation != "banks" and (not grant["admin"] or operation in NATIVE_OPERATIONS)
+            and operation not in grant["banks"].get(selected, [])):
         raise PermissionError("memory bank is not granted")
     return selected, grant

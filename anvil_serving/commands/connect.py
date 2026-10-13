@@ -46,6 +46,10 @@ def commands() -> CommandNode:
     return _node(
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
+            _node("native-agents", "Run the native Agents broker behind a managed TLS edge.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("native-agents",)),
+                options=(_option("--config", summary="Protected native broker configuration.", value_name="PATH"),),
+                mutation_class="process", execution_policy="offline", docs_anchor="docs/cli/connect.md#native-agents"),
             _node(
                 "resources", "List declared browser services and copyable grant values.",
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("resources",)),
@@ -83,6 +87,11 @@ def commands() -> CommandNode:
                 docs_anchor="docs/cli/connect.md#qualify",
             ),
             _command("validate", "Validate declarations and selected native components."),
+            _command("native-authority", "Project fresh Connect grants for native Agents admission.", service=False, mutation=True, extra=(
+                _option("--resource", summary="Exact authorized Pi browser resource.", value_name="ID"),
+                _option("--output", summary="Protected expiring authority file outside Git and rendered state.", value_name="PATH"),
+                _option("--reader-gid", summary="Dedicated native broker reader group.", value_name="GID"),
+            )),
             _command("render", "Preview or stage an owned configuration generation.", service=False, mutation=True),
             _command("up", "Preview or activate only the selected owned services.", mutation=True, extra=(
                 _option("--services", summary="Comma-separated exact roles for one coordinated activation; exclusive with --service.", value_name="SERVICES"),

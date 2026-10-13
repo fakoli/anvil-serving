@@ -29,7 +29,9 @@ def _provision(data: dict, username: str, subject: str, *, admin: bool, publish:
 
     A durable intent and bank name marker distinguish a retry from adoption of
     someone else's bank. Uncreated random bank IDs stay in private receipts.
-    Shared overrides are verified, never created or taken into ownership.
+    Shared overrides are verified, never created or taken into ownership. The
+    existing per-bank map can also explicitly add native operations to an
+    already receipt-owned personal bank; legacy personal grants stay intact.
     """
     from .users import _principal
     config = data["memory"]
@@ -56,6 +58,9 @@ def _provision(data: dict, username: str, subject: str, *, admin: bool, publish:
         bank = "user-" + secrets.token_hex(24)
     default = config["default_banks"].get(username, bank)
     shared_banks = dict(config["shared_banks"].get(username, {}))
+    personal_operations = shared_banks.pop(bank, None)
+    if personal_operations is not None and raw_receipt is None:
+        raise ValueError("personal operation opt-in requires an existing creation receipt")
     if default != bank and default not in shared_banks:
         raise ValueError("default shared bank requires explicit operation grants")
     token = read_private_auth_file(config["auth_file"], max_bytes=8192).decode().strip()
@@ -89,8 +94,8 @@ def _provision(data: dict, username: str, subject: str, *, admin: bool, publish:
     target = "/v1/default/banks/" + quote(bank, safe="")
     if set(shared_banks) - inventory_banks:
         raise ValueError("configured shared memory bank does not exist")
-    if bank in shared_banks:
-        raise ValueError("personal bank cannot be configured as shared")
+    if personal_operations is not None and (found is None or found.get("name") != marker):
+        raise ValueError("personal operation opt-in requires a verified existing owned bank")
     expected = {"schema": "anvil-memory-creation/v1", "principal": principal, "bank": bank, "name": marker}
     if raw_receipt is not None:
         if manage._strict_json(raw_receipt, "invalid memory creation receipt") != expected:
@@ -110,8 +115,12 @@ def _provision(data: dict, username: str, subject: str, *, admin: bool, publish:
     check = request("/v1/default/banks?q=" + quote(bank, safe="") + "&limit=256&offset=0")
     if not any(entry.get("bank_id") == bank and entry.get("name") == marker for entry in check.get("banks", [])):
         raise ValueError("user memory bank creation did not persist")
+    # Keep the historical manifest shape so older account-deletion managers
+    # still withdraw all username mappings. Only this exact receipt bank is a
+    # personal opt-in; every other entry retains explicit shared semantics.
+    personal_grant = sorted(memory_access.LEGACY_OPERATIONS | set(personal_operations or []))
     prepared = {"principal": principal, "grant": {"default_bank": default, "admin": admin,
-                "banks": {bank: sorted(memory_access.OPERATIONS), **shared_banks}},
+                "banks": {bank: personal_grant, **shared_banks}},
                 "bank": bank, "default_bank": default, "shared": default != bank, "ready": True}
     if publish:
         publish_grant(data, prepared)
