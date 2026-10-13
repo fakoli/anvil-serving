@@ -1118,7 +1118,7 @@ def _remove_owned_tree(root: Path) -> None:
 
 
 @contextmanager
-def _deployment_lock(root: Path) -> Iterator[None]:
+def _deployment_lock(root: Path, *, deadline: float | None = None) -> Iterator[None]:
     _safe_dir(root.parent)
     lock = root.parent / ("." + root.name + ".anvil-connect.lock")
     descriptor: int | None = None
@@ -1127,7 +1127,17 @@ def _deployment_lock(root: Path) -> Iterator[None]:
         info = os.fstat(descriptor)
         if not stat.S_ISREG(info.st_mode) or info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o077:
             raise ManageError("lifecycle lock is unsafe")
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        if deadline is None:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+        else:
+            while True:
+                if time.monotonic() >= deadline:
+                    raise ManageError("lifecycle lock deadline expired")
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    time.sleep(min(0.05, max(0, deadline - time.monotonic())))
         yield
     except OSError as exc:
         raise ManageError("lifecycle lock is unavailable") from exc

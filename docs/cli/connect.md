@@ -391,10 +391,67 @@ matching receiver mapping is denied. When `roles` is configured, assertions
 without a role are also denied, even if a legacy subject mapping exists. Assign
 roles to existing users before enabling this receiver mode. Receivers that omit
 `roles` retain the existing subject-based behavior. A role downgrade changes the signed request identity and
-invalidates previous sessions. Passthrough applications, including a separate
-Pi deployment without a Connect identity adapter, still manage their own roles;
+invalidates previous sessions. Passthrough applications without an explicit application-role binding, including
+a separate Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
+
+### Application roles owned by Connect
+
+An application owner can install a reviewed adapter and opt one existing browser
+passthrough resource into native member/admin management. The top-level deployment
+setting is explicit; it does not change routing or replace application credentials:
+
+```json
+{
+  "application_role_bindings": [{
+    "resource": "chat",
+    "adapter_path": "/opt/anvil-connect-adapters/webui/adapter.py",
+    "adapter_sha256": "REPLACE_WITH_EXACT_SHA256",
+    "configuration_path": "/etc/anvil-connect/adapters/webui.json",
+    "configuration_sha256": "REPLACE_WITH_EXACT_SHA256"
+  }]
+}
+```
+
+Use real lowercase SHA256 digests from the reviewed installation. Both files and
+all ancestors must be root-owned, outside Git, and not writable by other users.
+The configuration file is mode 0600 and contains protected deployment metadata.
+The application owner verifies native account linkage, applies roles through its
+supported APIs, and revokes native sessions on reductions. No shared administrator
+credential is distributed to clients. See the [adapter contract](../specs/connect-application-roles/spec.md).
+
+Home offers Member/Admin choices for a bound resource. `users create --grant`
+and `users access --grant` use the same authority. Inspect current reconciliation:
+
+```sh
+sudo anvil-connect-ctl users sync-roles
+sudo anvil-connect-ctl users sync-roles --confirm
+```
+
+Omission of `--confirm` is a read-only adapter preview. Output contains per-resource
+counts; awaiting first login is reported separately from failure. Connect resolves
+exact issuer/subject identities, never email or global administrator groups.
+Configured applications must preserve their recovery administrator during adoption.
+For Open WebUI, a first browser sign-in establishes the linked account; the native
+exchange does not create that account. The application remains pending until the
+worker applies the explicit grant. Account data is retained when access is removed.
+
+Install or refresh the existing account worker after installing a new Connect
+manager release:
+
+```sh
+sudo anvil-connect-ctl users deletion-schedule --confirm
+```
+
+That worker reconciles native roles before deletion and still reconciles operator
+groups independently. Failed role updates, revocations, or authority drift block
+destructive deletion and remain retryable. Pending first-login linkage alone does
+not block deletion. The timer runs 10 seconds after the preceding run finishes;
+role changes are eventually consistent, not instantaneous. A missing adapter,
+configuration drift, or failed native API leaves reconciliation incomplete. The
+worker keeps the retained native mappings for recovery and never reports a failed
+revocation as complete. Deployments without bindings keep their previous behavior.
 
 Authelia 4.39.28's file backend has no forced-first-login-change or annual-expiry
 flag. Connect requires initial password setup by withholding the discarded

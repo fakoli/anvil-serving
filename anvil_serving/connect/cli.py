@@ -49,7 +49,7 @@ def _users_parser(actions) -> None:
         leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
         leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
                           output=None, input=None, sha256=None, destination=None, include_gateway=False)
-        if operation not in {"list", "backup", "sync-operators", "schedule", "deletion-schedule", "process-deletions", "restore", "configure-memory"}:
+        if operation not in {"list", "backup", "sync-operators", "sync-roles", "schedule", "deletion-schedule", "process-deletions", "restore", "configure-memory"}:
             leaf.add_argument("username", help="Exact local username.")
         if operation != "restore":
             leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -268,27 +268,23 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                 if args.operation == "process-deletions":
                     from .user_delete import process_pending
                     from .users import sync_operators
-                    projection = deletion = None
-                    projection_error = deletion_error = None
-                    try:
-                        projection = sync_operators(args.manifest or DEFAULT_MANIFEST, apply=apply)
-                    except Exception as exc:
-                        projection_error = exc
-                    try:
-                        deletion = process_pending(args.manifest or DEFAULT_MANIFEST, apply=apply)
-                    except Exception as exc:
-                        deletion_error = exc
-                    if projection_error is not None or deletion_error is not None:
-                        failure = projection_error or deletion_error
-                        if apply:
-                            error = manage.ManageError("Account reconciliation worker did not complete every independent operation.", may_have_executed=True)
-                            error.recovery = {
-                                "operator_group": "failed" if projection_error is not None else "completed",
-                                "deletion": "failed" if deletion_error is not None else "completed",
-                            }
-                            raise error from failure
-                        raise failure
-                    result = {"operator_group": projection, "deletion": deletion}
+                    from .application_roles import sync_roles
+                    phases, failures, blocked = {}, {}, set()
+                    for name, operation in (("application_roles", sync_roles), ("operator_group", sync_operators), ("deletion", process_pending)):
+                        if name == "deletion" and apply and "application_roles" in failures:
+                            blocked.add(name)
+                            continue
+                        try:
+                            phases[name] = operation(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                        except Exception as exc:
+                            failures[name] = exc
+                    if failures:
+                        error = manage.ManageError("Account reconciliation worker did not complete every independent operation.", may_have_executed=apply)
+                        error.recovery = {name: "blocked" if name in blocked else "failed" if name in failures else
+                            "pending" if isinstance(phases.get(name), dict) and phases[name].get("complete") is False else "completed"
+                            for name in ("application_roles", "operator_group", "deletion")}
+                        raise error from next(iter(failures.values()))
+                    result = phases
                 else:
                     from .user_schedule import schedule
                     options = {"deletions": True} if args.operation == "deletion-schedule" else {}
@@ -298,6 +294,9 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                     raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")
                 from .user_backup import restore
                 result = restore(args.input, args.destination, sha256=args.sha256, apply=apply)
+            elif args.operation == "sync-roles":
+                from .application_roles import sync_roles
+                result = sync_roles(args.manifest or DEFAULT_MANIFEST, apply=apply)
             elif args.operation == "sync-operators":
                 from .users import sync_operators
                 result = sync_operators(args.manifest or DEFAULT_MANIFEST, apply=apply)

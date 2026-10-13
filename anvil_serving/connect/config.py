@@ -652,7 +652,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     _reject_literal_credentials(value)
     root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
     if isinstance(value, dict):
-        root_fields.update({"service_user", "service_identities", "service_limits", "memory"}.intersection(value))
+        root_fields.update({"service_user", "service_identities", "service_limits", "memory", "application_role_bindings"}.intersection(value))
     raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
@@ -1223,6 +1223,32 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         if "router" in memory:
             from .user_memory_key import validate
             result["memory"]["router"] = validate(memory["router"])
+    if "application_role_bindings" in raw:
+        bindings = _list(raw["application_role_bindings"], "$.application_role_bindings", 16)
+        declared = {item["rule"]["id"]: item["rule"] for item in resources}
+        normalized_bindings = []
+        seen_bindings = set()
+        for index, value in enumerate(bindings):
+            path = f"$.application_role_bindings[{index}]"
+            item = _mapping(value, path, {"resource", "adapter_path", "adapter_sha256", "configuration_path", "configuration_sha256"})
+            resource = _ident(item["resource"], path + ".resource")
+            rule = declared.get(resource, {})
+            if resource in seen_bindings or rule.get("access") != "browser" or rule.get("native_auth") != "passthrough":
+                raise _error(path + ".resource", "must name a unique browser passthrough resource")
+            seen_bindings.add(resource)
+            entry = {"resource": resource}
+            for stem in ("adapter", "configuration"):
+                filename = _abs_path(item[stem + "_path"], path + "." + stem + "_path")
+                digest = item[stem + "_sha256"]
+                if type(digest) is not str or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                    raise _error(path, "requires exact lowercase SHA256 digests")
+                if filename == config_root or filename.startswith(config_root + "/"):
+                    raise _error(path, "adapter inputs must be outside rendered output")
+                entry.update({stem + "_path": filename, stem + "_sha256": digest})
+            if not entry["adapter_path"].endswith(".py") or entry["adapter_path"] == entry["configuration_path"]:
+                raise _error(path, "requires a Python adapter and distinct configuration file")
+            normalized_bindings.append(entry)
+        result["application_role_bindings"] = sorted(normalized_bindings, key=lambda entry: entry["resource"])
     _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user

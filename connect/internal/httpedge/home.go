@@ -205,7 +205,7 @@ func (h *Home) data(w http.ResponseWriter, r *http.Request, cookies browserCooki
 		if !granted[item.Rule.ID] {
 			continue
 		}
-		service := portalService{ID: item.Rule.ID, URL: "https://" + item.Rule.Host + item.Rule.PathPrefix, Role: human.ApplicationRoles[item.Rule.ID], ManagedRole: item.Rule.NativeAuth == "signed-identity"}
+		service := portalService{ID: item.Rule.ID, URL: "https://" + item.Rule.Host + item.Rule.PathPrefix, Role: human.ApplicationRoles[item.Rule.ID], ManagedRole: item.ManagesApplicationRole()}
 		if item.DisplayName != nil {
 			service.Name = *item.DisplayName
 		}

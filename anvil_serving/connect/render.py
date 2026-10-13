@@ -1,6 +1,7 @@
 """Deterministic, secret-free render planning for managed Anvil Connect services."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -368,7 +369,11 @@ def _render(data: dict[str, Any]) -> dict[str, Any]:
     # Account-bank settings are consumed by the user manager, not service files.
     # Preserve the running authority generation when installing those settings.
     generation = hashlib.sha256(canonical_manifest({key: value for key, value in data.items() if key != "memory"})).hexdigest()
-    gateway = data["gateway"]
+    gateway = copy.deepcopy(data["gateway"])
+    externally_managed = {binding["resource"] for binding in data.get("application_role_bindings", [])}
+    for resource in gateway["gateway"]["resources"]:
+        if resource["rule"]["id"] in externally_managed:
+            resource["role_management"] = "external"
     if "service_identities" not in data:
         files: dict[str, str] = {
             "gateway.json": _json(gateway),

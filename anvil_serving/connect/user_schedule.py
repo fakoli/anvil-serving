@@ -200,7 +200,7 @@ def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=No
         "impact": "Daily backup briefly restarts Authelia, then stops and restores the native gateway while Caddy remains running.",
     }
     if deletions:
-        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Reconciles the opt-in Connect-operator identity-provider group and independently processes one authorized permanent account deletion per run.")
+        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Reconciles opted-in native application roles and the Connect-operator group before independently processing one authorized permanent account deletion per run.")
         result.pop("retention_days")
         result.pop("retention_recent_copies")
     if not apply:
