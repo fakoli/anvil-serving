@@ -733,10 +733,10 @@ def docker_run_argv(
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
-    bounds = recipe_memory.limits(serve)
+    bounds = recipe_memory.docker_limits(serve)
     if bounds is not None:
-        memory, total, _reserve = bounds
-        argv += ["--memory", str(memory * recipe_memory.MIB), "--memory-swap", str(total * recipe_memory.MIB)]
+        memory, total = bounds
+        argv += ["--memory", str(memory), "--memory-swap", str(total)]
     if container:
         argv += ["--name", container]
     gpu_uuid = gpu_device or hw.get("gpu_uuid")
@@ -1059,6 +1059,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     if not isinstance(image_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest):
         image_digest = None
     ports = _recipe_bound_ports(row)
+    host_memory = recipe_memory.observation(row, _run=_run)
     return {
         "container": name,
         "container_id": container_id,
@@ -1074,7 +1075,8 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         "state": state_name,
         "running": bool(state.get("Running")),
         "health": health,
-        "host_memory": recipe_memory.observation(row, _run=_run),
+        "host_memory": host_memory,
+        "containment_error": recipe_memory.containment_error(host_memory),
         "native_kv_offload": (
             None if native_raw is None else native_raw == "true"
         ),
@@ -1760,11 +1762,53 @@ def load_recipe(
         recipe_memory.check_host(recipe["serve"], _run=_run)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         raise RecipeError("host memory containment refused: %s" % exc) from exc
+    bounded = recipe_memory.limits(recipe["serve"]) is not None
     try:
-        completed = _run(argv, check=False)
+        completed = _run(argv, check=False, **({"stdout": subprocess.PIPE, "text": True} if bounded else {}))
     except OSError:
         return argv, 127
-    return argv, int(getattr(completed, "returncode", completed))
+    rc = int(getattr(completed, "returncode", completed))
+    if rc or not bounded:
+        return argv, rc
+    # Only the immutable ID returned by this successful run may be stopped.
+    # Never recover ownership from the reusable requested name after a failure.
+    created_id = (completed.stdout or "").strip()
+    if not _HEX_DIGEST_RE.fullmatch(created_id):
+        raise RecipeError("memory containment refused: Docker did not return a full created ID; cleanup ownership unknown")
+    observed = {}
+    try:
+        inspected = _run(["docker", "inspect", created_id], check=True,
+                         capture_output=True, text=True, timeout=10)
+        rows = json.loads(inspected.stdout)
+        if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+            raise ValueError("malformed created container inspection")
+        row = rows[0]
+        labels = (row.get("Config") or {}).get("Labels") or {}
+        if (row.get("Id") != created_id
+                or labels.get(RECIPE_MANAGED_LABEL) != RECIPE_MANAGED_VALUE
+                or labels.get(RECIPE_DIGEST_LABEL) != recipe_digest(recipe)):
+            raise ValueError("created container identity mismatch")
+        observed = recipe_memory.observation(row, _run=_run)
+        error = recipe_memory.containment_error(observed, recipe["serve"])
+        if error:
+            raise ValueError(error)
+    except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError) as exc:
+        cleanup = "stop failed; use managed logs/unload recovery"
+        try:
+            stopped = _run(["docker", "stop", "--time", "10", created_id],
+                           capture_output=True, text=True, timeout=20)
+            if stopped.returncode == 0:
+                cleanup = "stopped; container and logs retained for managed logs/unload"
+        except (OSError, subprocess.SubprocessError):
+            pass
+        # Do not expose subprocess output (inspect may contain credentials).
+        reason = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+        evidence = recipe_memory.failure_evidence(
+            created_id, "stopped_logs_retained" if cleanup.startswith("stopped;") else "stop_failed", observed)
+        raise RecipeError("memory containment refused: %s; created_id=%s; %s; host_memory=%s\n%s%s"
+                          % (reason, created_id, cleanup, json.dumps(observed, sort_keys=True),
+                             recipe_memory.FAILURE_PREFIX, json.dumps(evidence, sort_keys=True))) from None
+    return argv, 0
 
 
 # --------------------------------------------------------------------------- #
