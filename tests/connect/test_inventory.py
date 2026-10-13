@@ -110,10 +110,11 @@ def test_invalid_arguments_do_not_execute_or_echo_operands(monkeypatch):
 
 
 def test_deletion_lifecycle_commands_remain_available(monkeypatch):
-    from anvil_serving.connect import user_delete, user_schedule
+    from anvil_serving.connect import application_roles, user_delete, user_schedule
 
     calls = []
     monkeypatch.setattr(user_schedule, "schedule", lambda *args, **kwargs: calls.append(("schedule", args, kwargs)) or {})
+    monkeypatch.setattr(application_roles, "sync_roles", lambda *args, **kwargs: calls.append(("roles", args, kwargs)) or {})
     monkeypatch.setattr(users, "sync_operators", lambda *args, **kwargs: calls.append(("projection", args, kwargs)) or {})
     monkeypatch.setattr(user_delete, "process_pending", lambda *args, **kwargs: calls.append(("process", args, kwargs)) or {})
 
@@ -121,6 +122,7 @@ def test_deletion_lifecycle_commands_remain_available(monkeypatch):
     assert dispatch(["users", "process-deletions", "--confirm"]).error is None
     assert calls == [
         ("schedule", (users.DEFAULT_MANIFEST,), {"apply": True, "deletions": True}),
+        ("roles", (users.DEFAULT_MANIFEST,), {"apply": True}),
         ("projection", (users.DEFAULT_MANIFEST,), {"apply": True}),
         ("process", (users.DEFAULT_MANIFEST,), {"apply": True}),
     ]
