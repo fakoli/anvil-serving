@@ -40,6 +40,50 @@ declaration; it does not contact services, read referenced secrets or establish
 live readiness or current access. A deployment without browser resources returns
 an empty list.
 
+## Native OIDC clients
+
+Add a native application to `authelia.additional_oidc_clients` with this entry
+([complete entry](../../connect/examples/native-oidc-client.json)):
+
+```json
+{
+  "client_id": "native-example",
+  "client_name": "Native Example",
+  "public": true,
+  "redirect_uris": ["app.example.connect.ios:/oauth/callback"],
+  "groups_scope": true
+}
+```
+
+`public` is a boolean and defaults to `false`. A public client must omit
+`client_secret_file`; the native application holds no client secret. Omitting
+`public`, or setting it to `false`, preserves the existing confidential profile,
+which requires a protected secret file and exact HTTPS callbacks.
+
+Public callbacks use an exact lower-case reverse-DNS scheme, one slash after the
+colon, and a canonical non-root path. Register the identical URI in the
+application. This profile rejects web and loopback callbacks, authorities,
+wildcards, escapes, query strings, fragments, and ambiguous paths. The private-use
+scheme follows [RFC 8252 section 7.1](https://www.rfc-editor.org/rfc/rfc8252#section-7.1).
+Client IDs remain unique across additional clients and the Connect gateway.
+
+Rendering fixes the public client to authorization code, PKCE `S256`,
+`token_endpoint_auth_method: none`, explicit consent, two-factor authorization,
+and RS256 ID tokens. Allowed scopes are `openid`, `email`, and `profile`, with
+`groups` only when `groups_scope` is `true`. Refresh and implicit grants are not
+part of this profile. Authelia's existing public subject identifiers are retained.
+
+Preview the managed gateway configuration after editing the deployment:
+
+```sh
+anvil-serving connect up --manifest /etc/anvil-connect/deployment.json --service gateway --dry-run
+```
+
+Use the existing confirmed gateway update after reviewing that preview. Client
+registration supplies sign-in identity; service grants and a receiving
+application's explicitly trusted token exchange remain separate policies.
+Server introspection credentials stay in that server's protected configuration.
+
 ## Users
 
 Follow [Invite a developer](../ANVIL-CONNECT-ONBOARDING.md) for password setup,

@@ -671,7 +671,8 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
     if "smtp" in data["authelia"]:
         _safe_consumed_file(Path(data["authelia"]["smtp"]["password_file"]), idp_uid, idp_gid)
     for client in data["authelia"].get("additional_oidc_clients", []):
-        _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
+        if not client.get("public", False):
+            _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
     _validate_local_files(data, Target("gateway"))
 
 
