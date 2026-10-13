@@ -1035,6 +1035,15 @@
         },
         {
           "flags": [
+            "--xet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Native-only Xet transport with owned cache-local scratch.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--volume"
           ],
           "output_policy": null,

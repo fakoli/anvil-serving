@@ -38,6 +38,7 @@ def commands() -> CommandNode:
                     _option("--token-file", summary="Dotenv fallback for the named token.", value_name="PATH"),
                     _option("--no-token", summary="Disable inherited and saved HF tokens."),
                     _option("--headroom-gib", summary="Keep this much free storage after acquisition.", value_name="GIB"),
+                    _option("--xet", summary="Native-only Xet transport with owned cache-local scratch."),
                     _option("--volume", summary="Docker cache volume; incompatible with native cache.", value_name="VOLUME"),
                     _option("--image", summary="Docker image containing hf; incompatible with native cache.", value_name="IMAGE"),
                     _option("--expected-bytes", summary="Docker storage estimate override; native uses verified inventory.", value_name="BYTES"),

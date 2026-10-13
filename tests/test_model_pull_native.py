@@ -91,6 +91,13 @@ def test_native_requires_exact_lowercase_immutable_revision(tmp_path, revision):
                       dry_run=True, _open=lambda *_a, **_k: pytest.fail("queried mutable revision"))
 
 
+@pytest.mark.parametrize("xet", [1, "true", None])
+def test_native_xet_requires_a_boolean(tmp_path, xet):
+    with pytest.raises(native().NativePullError, match="boolean"):
+        native().pull("org/model", REVISION, str(tmp_path), hf_executable=sys.executable,
+                      dry_run=True, xet=xet)
+
+
 @pytest.mark.parametrize("change", ["wrong_revision", "missing_size", "missing_hash", "traversal", "duplicate"])
 def test_native_refuses_untrusted_or_incomplete_remote_inventory(tmp_path, change):
     data = metadata()
@@ -142,6 +149,7 @@ def test_native_download_verifies_hashes_retains_receipt_and_strips_tokens(tmp_p
         _open=remote(requests=requests), _run=download,
     )
     assert result["status"] == "verified" and result["exit_code"] == 0
+    assert result["transport"] == "http"
     assert result["verification"]["verified_file_count"] == 2
     assert {item["hash_algorithm"] for item in result["verification"]["files"]} == {"git-sha1", "sha256"}
     assert Path(result["retained_result"]).is_file()
@@ -150,6 +158,53 @@ def test_native_download_verifies_hashes_retains_receipt_and_strips_tokens(tmp_p
     assert env["HF_TOKEN"] == "secret-a"
     assert "secret-" not in json.dumps(result)
     assert models.model_cache_native.inventory(cache)["layout"] == "standard"
+
+
+@pytest.mark.parametrize("returncode", [0, 17])
+def test_native_xet_uses_owned_cache_local_scratch_and_retains_verified_or_partial_bytes(tmp_path, returncode):
+    cache = tmp_path / "hub"
+    inherited = tmp_path / "external-xet-cache"
+    env = {"PATH": os.environ.get("PATH", ""), "HF_XET_CACHE": str(inherited),
+           "HF_XET_CHUNK_CACHE_SIZE_BYTES": "123", "HF_XET_SHARD_CACHE_SIZE_LIMIT": "456"}
+
+    def download(_argv, **kwargs):
+        child = kwargs["env"]
+        scratch = Path(child["HF_XET_CACHE"])
+        assert child["HF_HUB_DISABLE_XET"] == "0"
+        assert child["HF_HUB_DISABLE_SHARED_BLOBS"] == "1"
+        assert child["HF_XET_HIGH_PERFORMANCE"] == "0"
+        assert child["HF_XET_CHUNK_CACHE_SIZE_BYTES"] == "0"
+        assert child["HF_XET_SHARD_CACHE_SIZE_LIMIT"] == "0"
+        assert scratch.parent == cache and scratch.is_dir() and scratch != inherited
+        if returncode:
+            partial = cache / "models--org--model" / "blobs" / (WEIGHT_HASH + ".incomplete")
+            partial.parent.mkdir(parents=True, exist_ok=True)
+            partial.write_bytes(WEIGHTS[:3])
+        else:
+            snapshot(cache)
+        return types.SimpleNamespace(returncode=returncode, stdout="", stderr="")
+
+    result = invoke(cache, xet=True, _environ=env, _run=download)
+    assert result["transport"] == "xet"
+    if returncode:
+        assert result["status"] == "download_failed"
+        assert (cache / "models--org--model" / "blobs" / (WEIGHT_HASH + ".incomplete")).read_bytes() == WEIGHTS[:3]
+    else:
+        assert result["status"] == "verified"
+    assert not list(cache.glob(".anvil-serving-xet-*"))
+    assert not inherited.exists()
+
+
+def test_native_xet_requires_native_cache_and_forwards_through_local_structured_handler(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(native().urllib.request, "urlopen", remote())
+    args = ["org/model", "--revision", REVISION, "--cache-dir", str(tmp_path / "hub"),
+            "--hf-executable", sys.executable, "--exclude", "unused.bin", "--no-token", "--xet", "--dry-run"]
+    assert models.pull_main(args) == 0
+    assert json.loads(capsys.readouterr().out)["transport"] == "xet"
+    mcp = models.pull_result(args)
+    assert mcp.data["transport"] == "xet" and mcp.error is None
+    assert models.pull_main(["org/model", "--xet", "--dry-run"]) == 2
+    assert "require native --cache-dir" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("failure", ["missing", "hash", "incomplete", "external_link"])

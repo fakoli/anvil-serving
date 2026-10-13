@@ -126,6 +126,11 @@ anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT \
   --cache-dir /operator/model-cache/hub --no-token --confirm --json
 ```
 
+For a public repository whose files require Xet, add `--xet`. This explicit
+native-only opt-in keeps Xet scratch under the declared cache filesystem for
+the one writer-held download and removes that owned scratch afterward. HTTP is
+the default transport.
+
 Native pulls discover an already installed `hf` executable on `PATH`; use
 `--hf-executable /operator/engine/bin/hf` to select one explicitly. Anvil installs
 no downloader dependency. Pass either the direct hub-cache path or an existing
@@ -146,9 +151,10 @@ confirmed apply, so previews require publicly accessible metadata.
 Apply holds one nonblocking writer lock per repository and resolved cache,
 rechecks storage, and invokes the selected executable directly without a shell.
 On POSIX the downloader inherits the lock so an abruptly exiting parent cannot
-release it while its downloader remains alive. The download uses HTTP blobs
-with Xet's separate chunk cache disabled so disk admission covers the declared
-cache. `--no-token` strips inherited Hugging Face token variables and disables
+release it while its downloader remains alive. HTTP pulls disable Xet. An
+explicit `--xet` pull uses private cache-local scratch and disables shared blobs;
+its receipt records the selected transport. The configured Xet shard cache limit
+is a soft upload-cache setting, not a download-space bound. `--no-token` strips inherited Hugging Face token variables and disables
 implicit use of a saved login. Other pulls resolve only the declared secret
 reference; native output never prints its variable name, dotenv path, or value.
 
