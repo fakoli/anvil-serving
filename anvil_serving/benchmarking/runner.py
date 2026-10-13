@@ -364,7 +364,7 @@ INTELLIGENCE_PROMPTS = [
         "checks": [
             {
                 "name": "identifies_budget_overrun",
-                "contains_any": ["timeout", "budget", "overrun", "too slow", "exceeds"],
+                "contains_any": ["timeout", "times out", "budget", "overrun", "too slow", "exceeds"],
             },
             {
                 "name": "offers_latency_fix",
