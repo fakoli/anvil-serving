@@ -94,6 +94,15 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     native_authority.add_argument("--reader-gid", required=True, type=int, action=_Once)
     native_authority.add_argument("--dry-run", action="store_true")
     native_authority.add_argument("--confirm", action="store_true")
+    native_memory_service = actions.add_parser("native-memory-service", allow_abbrev=False,
+        help="Manage one OIDC-authenticated native Memory sidecar.")
+    native_memory_actions = native_memory_service.add_subparsers(dest="native_memory_action", required=True)
+    for operation in ("install", "status", "remove"):
+        leaf = native_memory_actions.add_parser(operation, allow_abbrev=False)
+        leaf.add_argument("--declaration", required=True, action=_Once)
+        if operation != "status":
+            leaf.add_argument("--dry-run", action="store_true")
+            leaf.add_argument("--confirm", action="store_true")
     resources = actions.add_parser("resources", allow_abbrev=False,
                                    help="List declared browser services and copyable grant values.")
     resources.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -268,6 +277,9 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
             from ..native_agents.authority import project
             result = project(args.manifest, resource=args.resource, output=args.output,
                              reader_gid=args.reader_gid, apply=apply)
+        elif action == "native-memory-service":
+            from ..native_memory_gateway.lifecycle import operate
+            result = operate(args.native_memory_action, args.declaration, apply=apply)
         elif action == "resources":
             from .inventory import resources
             from .users import DEFAULT_MANIFEST

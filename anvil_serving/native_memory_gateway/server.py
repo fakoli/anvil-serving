@@ -100,7 +100,8 @@ def load_config(path: str | Path) -> dict:
 
 def credential_path(name: str, deployment_id: str, environ: dict | os._Environ = os.environ) -> Path:
     directory = environ.get("CREDENTIALS_DIRECTORY", "")
-    if (name != "memory-key" or type(deployment_id) is not str or not _DEPLOYMENT.fullmatch(deployment_id)
+    if (name not in {"memory-key", "introspection-secret"}
+            or type(deployment_id) is not str or not _DEPLOYMENT.fullmatch(deployment_id)
             or not directory or "\x00" in directory):
         raise ValueError("systemd credential is unavailable")
     root = Path(directory)
@@ -115,7 +116,8 @@ def read_systemd_credential(filename: str | Path, maximum: int) -> bytes:
     path = Path(filename)
     try:
         expected_root = Path("/run/credentials")
-        if not path.is_absolute() or path.name != "memory-key" or path.parent.parent != expected_root:
+        if (not path.is_absolute() or path.name not in {"memory-key", "introspection-secret"}
+                or path.parent.parent != expected_root):
             raise AdmissionDenied()
         uid, gid = os.geteuid(), os.getegid()
         for parent in reversed(path.parents):
@@ -157,6 +159,17 @@ def read_systemd_credential(filename: str | Path, maximum: int) -> bytes:
             os.close(fd)
     except (OSError, ValueError):
         raise AdmissionDenied() from None
+
+
+def authentication_reader(config: dict, introspection: Path, *, credential_read=read_systemd_credential,
+                          authority_read=protected_read):
+    """Use the service credential mount only for the one declared secret."""
+    expected = config["auth"]["secret_file"]
+    def read(filename, maximum):
+        if type(filename) is str and filename == expected and Path(filename) == introspection:
+            return credential_read(introspection, min(maximum, 4096))
+        return authority_read(filename, maximum)
+    return read
 
 
 def _memory_credential(raw: bytes, expected_sha256: str, now: float) -> dict:
@@ -485,8 +498,9 @@ class BoundedServer(ThreadingHTTPServer):
 
 def serve(config_path: str | Path) -> None:
     config = load_config(config_path)
-    auth = NativeAuthenticator(config["auth"])
     receipt = credential_path(config["credential_name"], config["deployment_id"])
+    introspection = credential_path("introspection-secret", config["deployment_id"])
+    auth = NativeAuthenticator(config["auth"], read=authentication_reader(config, introspection))
     # Fail before binding if the protected credential is unavailable or differs.
     _memory_credential(read_systemd_credential(receipt, 4096), config["credential_sha256"], time.time())
     gateway = NativeMemoryGateway(config, auth, receipt)

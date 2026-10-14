@@ -92,6 +92,28 @@ def commands() -> CommandNode:
                 _option("--output", summary="Protected expiring authority file outside Git and rendered state.", value_name="PATH"),
                 _option("--reader-gid", summary="Dedicated native broker reader group.", value_name="GID"),
             )),
+            _node(
+                "native-memory-service", "Manage one OIDC-authenticated native Memory sidecar.",
+                children=tuple(
+                    _node(
+                        operation, summary,
+                        handler=_handler("anvil_serving.connect.cli", attribute="dispatch",
+                                         argv_prefix=("native-memory-service", operation),
+                                         forward_confirm_flag=operation != "status"),
+                        options=(_option("--declaration", summary="Protected native Memory service declaration.", value_name="PATH"),)
+                        + ((_CONFIRM) if operation != "status" else ()),
+                        mutation_class="read" if operation == "status" else "mutate",
+                        execution_policy="offline", docs_anchor="docs/cli/connect.md#native-memory-service",
+                    )
+                    for operation, summary in (
+                        ("install", "Preview or install and start the exact declared sidecar."),
+                        ("status", "Verify the exact declared sidecar and authority schedule."),
+                        ("remove", "Preview or remove only the exact receipt-owned sidecar."),
+                    )
+                ),
+                mutation_class="mutate", execution_policy="offline",
+                docs_anchor="docs/cli/connect.md#native-memory-service",
+            ),
             _command("render", "Preview or stage an owned configuration generation.", service=False, mutation=True),
             _command("up", "Preview or activate only the selected owned services.", mutation=True, extra=(
                 _option("--services", summary="Comma-separated exact roles for one coordinated activation; exclusive with --service.", value_name="SERVICES"),

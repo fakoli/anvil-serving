@@ -21,6 +21,7 @@ from anvil_serving.native_memory_gateway.server import (
     GatewayError,
     NativeMemoryGateway,
     _memory_credential,
+    authentication_reader,
     credential_path,
     handler,
     router_request,
@@ -180,6 +181,25 @@ def test_systemd_credential_reader_requires_read_only_exact_custody(tmp_path, mo
     monkeypatch.setattr("os.statvfs", lambda _path: SimpleNamespace(f_flag=0))
     with pytest.raises(AdmissionDenied):
         read_systemd_credential(target, 4096)
+
+
+def test_authentication_reader_uses_service_credential_only_for_exact_introspection_leaf():
+    cfg = config()
+    target = Path(cfg["auth"]["secret_file"])
+    calls = []
+    read = authentication_reader(
+        cfg, target,
+        credential_read=lambda path, maximum: calls.append(("credential", path, maximum)) or b"secret",
+        authority_read=lambda path, maximum: calls.append(("authority", path, maximum)) or b"authority",
+    )
+    assert read(str(target), 8192) == b"secret"
+    assert read(cfg["auth"]["authority_file"], 65536) == b"authority"
+    assert read(Path(target), 4096) == b"authority"
+    assert calls == [
+        ("credential", target, 4096),
+        ("authority", cfg["auth"]["authority_file"], 65536),
+        ("authority", target, 4096),
+    ]
 
 
 def test_receipt_requires_current_complete_key_and_retired_previous():

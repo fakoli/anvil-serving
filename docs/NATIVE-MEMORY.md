@@ -137,6 +137,27 @@ managed deployment must verify effective unit properties, exact configuration
 and receipt digests, the private loopback target, and the HTTPS edge route before
 publication.
 
+Manage the Linux service only through `anvil-serving connect
+native-memory-service`. Its root-protected declaration uses the closed
+`anvil-native-memory-service/v1` schema and contains provenance paths and
+SHA-256 digests rather than credential values. It pins the deterministic gateway
+zipapp and Python interpreter, gateway config, both systemd credential sources,
+installed Connect manager, current Connect manifest/resource, fixed UID/GID,
+and resource bounds. The command owns exactly the gateway service, root
+authority-projector service, and ten-second authority timer. It never owns the
+Connect gateway, router, model services, source credentials, or HTTPS edge.
+At install time it copies the two digest-matched credential sources into
+root-only deployment snapshots and gives systemd those snapshots through
+`LoadCredential`; credential values never enter the declaration or receipt.
+
+Use `native-memory-service install` and `remove` without `--confirm` to inspect
+their plans; add `--confirm` to apply. `status` verifies the declaration-bound
+receipt, exact unit files, systemd fragment paths, absence of drop-ins, and live
+unit state. Removal proves all owned file digests and directory membership before
+stopping anything. Installation failure rolls back resources created by that
+attempt, while an interrupted operation remains fenced by its durable receipt
+and requires managed removal before retrying installation.
+
 Missing or rejected OIDC admission returns `401`; native clients keep downloaded
 Memory data as dated offline content and offer sign-in again. A valid OIDC
 identity that differs from the pinned principal/generation, or a router bank

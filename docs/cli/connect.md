@@ -84,6 +84,48 @@ registration supplies sign-in identity; service grants and a receiving
 application's explicitly trusted token exchange remain separate policies.
 Server introspection credentials stay in that server's protected configuration.
 
+## Native Memory service
+
+`connect native-memory-service` owns one personal OIDC Memory gateway as an
+exact three-unit systemd deployment: the gateway, a root authority projector,
+and its ten-second refresh timer. It is deliberately separate from the Connect
+gateway lifecycle, Capability Gateway, model services, and Tailscale edge
+publication.
+
+Preview and apply a protected declaration:
+
+```sh
+sudo anvil-serving connect native-memory-service install --declaration /protected/native-memory-service.json
+sudo anvil-serving connect native-memory-service install --declaration /protected/native-memory-service.json --confirm
+sudo anvil-serving connect native-memory-service status --declaration /protected/native-memory-service.json
+```
+
+The declaration is root-owned, non-writable, outside Git, and contains paths and
+SHA-256 digests rather than credential values. It pins a single zipapp, Python
+interpreter, gateway configuration, Memory receipt, introspection secret,
+installed Connect manager, fixed UID/GID, Memory/task bounds, current Connect
+manifest, and one browser resource. Installation copies the artifact and config
+into deployment-specific directories, freezes both declared credential sources
+as root-only deployment snapshots for `LoadCredential`, creates only the
+declared system account, installs the three exact units, publishes initial
+authority, and starts the timer and gateway. Source credentials remain
+untouched. A failed apply rolls back resources created by that attempt; an
+interrupted operation retains a declaration-bound receipt for managed removal.
+
+Removal also previews by default:
+
+```sh
+sudo anvil-serving connect native-memory-service remove --declaration /protected/native-memory-service.json --confirm
+```
+
+It first proves the receipt, every owned unit, file, and directory membership,
+then stops only those units, requires the service UID to own no processes,
+removes exact digest-matching copies and the generated authority file, and
+finally removes the dedicated account. It never removes the Connect manifest,
+source credential files, installed manager, router, model service, or unrelated
+unit. Manage the single HTTPS mapping separately with the maintained `edge`
+lifecycle.
+
 ## Users
 
 Follow [Invite a developer](../ANVIL-CONNECT-ONBOARDING.md) for password setup,
