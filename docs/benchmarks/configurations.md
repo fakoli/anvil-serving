@@ -54,7 +54,7 @@ An independent runner can preserve the same contract with this mapping:
 | Recipe field | Container-runtime meaning |
 |---|---|
 | `recipe.download.repo` + `revision` | Fetch this exact model snapshot. A branch name or latest revision is not equivalent. |
-| `recipe.download.volume` | Named model-cache volume, mounted at `/root/.cache/huggingface` by Anvil Serving. Populate the exact snapshot before an offline load when `require_complete_cache = true`. |
+| `recipe.download.volume` + `cache_mount` | Named model-cache volume mounted at `recipe.download.cache_mount`, which defaults to `/root/.cache/huggingface`. Set a normalized absolute POSIX `cache_mount` for images whose runtime user cannot traverse `/root`; when set, any `model_path` must be inside it. Populate the exact snapshot before an offline load when `require_complete_cache = true`. |
 | `recipe.download.require_complete_cache` | When `true`, Anvil Serving also injects `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. An independent invocation must add both values even when they are absent from `recipe.serve.env`. |
 | `recipe.hardware` | Hardware prerequisite and topology assumption, not a portable device selector. Select local devices that satisfy the GPU count, architecture, VRAM, and TP/DCP shape; never copy a host UUID from someone else's machine. |
 | `recipe.serve.image` | Exact container image. Preserve `@sha256:` when present. A local image name requires the recorded build assets and a digest check before it is equivalent. |
@@ -76,7 +76,7 @@ artifacts. Work from a local copy of one full snippet below:
    custom image cannot be recreated from the linked assets.
 2. Create `recipe.download.volume`, populate the exact
    `recipe.download.repo@revision` snapshot, and mount it at
-   `/root/.cache/huggingface`. When `require_complete_cache = true`, also add
+   `recipe.download.cache_mount` (default `/root/.cache/huggingface`). When `require_complete_cache = true`, also add
    `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. Create every
    `named_volumes` source separately.
 3. Select local GPUs matching `recipe.hardware` and the declared TP/DCP shape.
@@ -98,7 +98,7 @@ docker run --name <LOCAL_CONTAINER_NAME>
   -e <EACH recipe.serve.env ENTRY>
   [-e <recipe.serve.model_env>=<recipe.model> WHEN model_env is present]
   [-e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 WHEN require_complete_cache=true]
-  -v <recipe.download.volume>:/root/.cache/huggingface
+  -v <recipe.download.volume>:<recipe.download.cache_mount, default /root/.cache/huggingface>
   --mount type=volume,source=<NAMED_VOLUME>,target=<ABSOLUTE_TARGET>[,readonly]
   -p 127.0.0.1:<recipe.serve.port>:<recipe.serve.port>
   --ipc <recipe.serve.ipc>
