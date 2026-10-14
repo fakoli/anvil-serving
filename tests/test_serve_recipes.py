@@ -421,6 +421,44 @@ def test_reconstruct_docker_run_supports_immutable_container_model_path():
     assert "openai/gpt-oss-120b" not in argv[image_i + 1:]
 
 
+def test_reconstruct_docker_run_preserves_legacy_image_local_model_path():
+    recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "model_path": "/opt/model"},
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    assert argv[argv.index("vllm/vllm-openai:nightly") + 1] == "/opt/model"
+
+
+def test_reconstruct_docker_run_preserves_legacy_nested_cache_volume():
+    recipe = {
+        **_RECIPE,
+        "serve": {**_RECIPE["serve"], "named_volumes": ["aux:/root/.cache"]},
+    }
+
+    assert "type=volume,source=aux,target=/root/.cache" in sr.docker_run_argv(recipe)
+
+
+def test_reconstruct_docker_run_supports_nonroot_model_cache_mount():
+    snapshot = "/models/hub/models--vendor--model/snapshots/revision"
+    recipe = {
+        **_RECIPE,
+        "download": {"volume": "hostcache", "cache_mount": "/models"},
+        "serve": {
+            **_RECIPE["serve"],
+            "model_path": snapshot,
+            "named_volumes": ["jit:/cache"],
+        },
+    }
+
+    argv = sr.docker_run_argv(recipe)
+    image_i = argv.index("vllm/vllm-openai:nightly")
+    assert argv.count("hostcache:/models") == 1
+    assert argv[image_i + 1] == snapshot
+    assert "type=volume,source=jit,target=/cache" in argv
+
+
 @pytest.mark.parametrize("model_path", ["relative/model", "/bad/../model", "C:\\bad"])
 def test_docker_run_argv_rejects_unsafe_container_model_path(model_path):
     recipe = {
@@ -441,6 +479,19 @@ def test_docker_run_argv_rejects_model_path_with_model_env():
         },
     }
     with pytest.raises(sr.RecipeError, match="incompatible"):
+        sr.docker_run_argv(recipe)
+
+
+def test_docker_run_argv_rejects_model_path_outside_selected_cache_mount():
+    recipe = {
+        **_RECIPE,
+        "download": {"volume": "hostcache", "cache_mount": "/models"},
+        "serve": {
+            **_RECIPE["serve"],
+            "model_path": "/root/.cache/huggingface/hub/models--vendor--model",
+        },
+    }
+    with pytest.raises(sr.RecipeError, match="inside recipe.download.cache_mount"):
         sr.docker_run_argv(recipe)
 
 
@@ -578,6 +629,48 @@ def test_recipe_named_volumes_reject_unsafe_or_ambiguous_mounts(
         "serve": {"image": "img", "named_volumes": named_volumes},
     }
     with pytest.raises(sr.RecipeError, match=match):
+        sr.validate_recipe(recipe, require_loadable=True)
+
+
+@pytest.mark.parametrize(
+    "cache_mount",
+    [
+        None,
+        "models",
+        "/models/../cache",
+        "/model cache",
+        "/models:cache",
+        "/models\x1b",
+        r"\\models",
+    ],
+)
+def test_registry_validation_rejects_unsafe_cache_mount(cache_mount):
+    recipe = {
+        "model": "m/x",
+        "download": {"cache_mount": cache_mount},
+    }
+    with pytest.raises(sr.RecipeError, match="recipe.download.cache_mount"):
+        sr.validate_recipe(recipe)
+
+
+@pytest.mark.parametrize(
+    ("cache_mount", "target"),
+    [
+        ("/models", "/models"),
+        ("/models/hub", "/models"),
+        ("/models", "/models/hub"),
+        ("/models", "/root/.cache/huggingface"),
+    ],
+)
+def test_recipe_named_volumes_cannot_shadow_selected_or_legacy_cache_mount(
+    cache_mount, target
+):
+    recipe = {
+        "model": "m/x",
+        "download": {"cache_mount": cache_mount},
+        "serve": {"image": "img", "named_volumes": ["cache:%s" % target]},
+    }
+    with pytest.raises(sr.RecipeError, match="cannot shadow"):
         sr.validate_recipe(recipe, require_loadable=True)
 
 
