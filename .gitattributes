@@ -24,6 +24,8 @@ mcp_bridge/**/*.mjs text eol=lf
 anvil_serving/_hermes_skills/** text eol=lf
 examples/hermes/skills/** text eol=lf
 docs/findings/*-evidence/** -text
+# The retained SSE wire capture ends with the required blank event delimiter.
+docs/findings/2026-10-13-full-qualification-evidence/native/public-native-draft-r6/qwen-schema-r1-numeric-string-stream-wire.txt whitespace=-blank-at-eof
 # This media artifact set also binds exact retained bytes in its manifest.
 docs/findings/2026-09-15-media-bringup/** -text
 # Kernel tune artifacts are byte-bound by their manifests. Disable checkout

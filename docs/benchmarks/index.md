@@ -1,5 +1,9 @@
 # Benchmarks
 
+**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../findings/2026-10-13-full-qualification.md).
+
+**2026-10-13 full qualification:** [campaign closure](../findings/2026-10-13-full-qualification.md) retains separate GLM, Qwen, DeepSeek, MiMo, and Ignis evidence. The GLM baseline completed 2/5; terminal Ignis was incomplete at 2/5 resolved with three empty cases. No challenger cleared the complete 4/5 plus Django/Pylint requirement, so no challenger was promoted.
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
@@ -10,9 +14,9 @@
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-10-05 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-10-13 campaign closeout.**
 
-## Current bounded APC reference — September 19
+## Historical bounded APC reference — September 19
 
 <div class="bench-recipe" markdown="1">
 

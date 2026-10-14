@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "agent_settled": true,
+  "agent_end": true,
+  "provider": "anvil",
+  "alias": "llm.primary",
+  "persistent_changes": false,
+  "read_tool_completed": true,
+  "answer_exact": true,
+  "elapsed_seconds": 2.134546041022986,
+  "event_count": 83,
+  "events_sha256": "001bec74a78abf57ab59a12fcd60b21005fafd354a997a38e076ea7f81ca5267"
+}

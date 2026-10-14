@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "response_format: structured output is not served, this server returns plain text only; send {\"type\": \"text\"} or omit it (GitHub #287)",
+    "type": "invalid_request_error",
+    "code": "unsupported_value",
+    "param": "response_format"
+  }
+}

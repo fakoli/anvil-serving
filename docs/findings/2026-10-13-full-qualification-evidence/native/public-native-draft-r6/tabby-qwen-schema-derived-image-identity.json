@@ -1,0 +1,27 @@
+{
+  "command": "host docker-image inspect sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7 --transport local",
+  "context": {
+    "command": "host-docker-image-inspect",
+    "command_host": "[redacted-host]",
+    "command_runtime": "[redacted-runtime]",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "[redacted-host]",
+    "execution_runtime": "[redacted-runtime]",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "[redacted-resource]",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "[redacted-host]",
+    "resource_runtime": "[redacted-runtime]",
+    "target": null,
+    "topology": "[redacted-host]-reference",
+    "transport": "local"
+  },
+  "data": "{\n  \"architecture\": \"amd64\",\n  \"image_id\": \"sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7\",\n  \"labels\": {\n    \"org.opencontainers.image.revision\": \"a3fed43efae3b18ec6181618d6a4a66153a9d14e\",\n    \"org.opencontainers.image.source\": \"https://github.com/theroyallab/tabbyAPI\",\n    \"org.opencontainers.image.version\": \"cu13\"\n  },\n  \"os\": \"linux\",\n  \"repo_digests\": [\n    \"anvil-tabby-qwen-schema@sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7\"\n  ],\n  \"requested_identity\": \"sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7\",\n  \"schema\": \"docker-image-identity/v1\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

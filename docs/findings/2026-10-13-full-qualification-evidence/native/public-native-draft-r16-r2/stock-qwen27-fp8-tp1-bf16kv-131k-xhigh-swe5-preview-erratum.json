@@ -1,0 +1,6 @@
+{
+  "schema": "anvil-serving.evidence-erratum/v1",
+  "cause": "Focused help advertises submit --dry-run but frozen parser rejects it; first preview exitedusage2 before submission or anymodelcase.",
+  "correction": "Reviewed frozen spec and managedpreflight are concretepreview; use authorized --confirm directly. Original25count/preview/observer evidence immutable; secondobserver newprefix.",
+  "model_score": null
+}

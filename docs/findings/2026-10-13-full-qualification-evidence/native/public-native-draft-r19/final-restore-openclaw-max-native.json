@@ -1,0 +1,18 @@
+{
+  "passed": false,
+  "marker_exact": false,
+  "thinking": "max",
+  "provider": "anvil",
+  "alias": "llm.primary",
+  "persistent_provider_changes": false,
+  "native": {
+    "ok": false,
+    "runId": "public-runId-002",
+    "origin": "gateway",
+    "error": {
+      "type": "cli_error",
+      "message": "Thinking level \"max\" is not supported for anvil/llm.primary. Use one of: off, minimal, low, medium, high."
+    }
+  },
+  "returncode": 1
+}

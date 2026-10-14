@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
+
 **2026-10-06 uncensored GLM scout:** the separate `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6a` candidate is distinct from the base and CSF/QAD lanes. Its TP2/EP2/DCP1 no-spec recipe passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. It is `not-qualified`/`no-promotion`; no capacity, context, multimodal, or speed result is claimed. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete. See the [dated scout](../../findings/2026-10-06-mimo-qualification.md).
 
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
@@ -65,21 +67,21 @@ it cannot turn these acceptance gates into capacity or speed evidence.
 !!! info "Decision snapshot"
 
     - **Product role:** current bounded text, tools, image, and OCR reference.
-    - **Selected or best-qualified configuration:** GLM Flash EXL3 r11 DCP1,
+    - **Selected or best-qualified configuration:** non-abliterated official-base GLM TR3 EXL3 4-bpw r11 DCP1,
       batch 2,048/C4/0.97, FP8 DS-MLA KV, 327,680 configured tokens, APC,
       and no speculation.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** [r11 DCP1 qualification](../../findings/2026-09-23-glm-dcp1-qualification.md):
+    - **Evidence:** fresh October 13 fixed-five baseline 2/5; R19 accepted exact restoration with the thinking-off gap. Historical [r11 DCP1 qualification](../../findings/2026-09-23-glm-dcp1-qualification.md):
       direct/routed preflight 28/28, 13 native-client paths, quality 12/12,
       agentic 18/18, and absolute SWE 4/5. Its 825,268 KV pool is 41.73%
       below DCP2, so four full 327K windows are unsupported.
-    - **Decision:** publication-verified r11 DCP1 is selected and deployed;
+    - **Decision:** retain the official-base R11 with accepted October 13 restoration; no new challenger promotion;
       exact r10 APC is the documented rollback. Active route and startup assignments are private.
     - **Important limitation:** r11 is a bounded DCP1 mitigation, not a root-cause,
       crash-rate, speed, C8, full-window, video, soak, or fresh-reboot claim.
     - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
       DCP2. Selected DCP1 is a mitigation; selection does not mean the cause is fixed.
-    - **Review dates:** uncensored scout and exact r11 restoration 2026-10-06;
+    - **Review dates:** full campaign and R19 restoration 2026-10-13; uncensored scout 2026-10-06;
       r11 qualification and runtime investigation 2026-09-23 UTC;
       APC qualification 2026-09-19 is historical performance lineage.
 
@@ -511,6 +513,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- **2026-10-13 — Full qualification closure:** The official-base GLM continuity baseline completed fixed-five at 2/5. C1/C4 controlled-output cells retained actual prompt means 25,280.5, 25,281.125, 106,520, and 216,194.67. Mixed TP2 no-spec/thinking-off diagnostics were incomplete at 1/5. The last-good non-abliterated official-base lineage is the restoration choice; `no-promotion`. [Finding](../../findings/2026-10-13-full-qualification.md)
 
 | Date | Event | Result |
 |---|---|---|

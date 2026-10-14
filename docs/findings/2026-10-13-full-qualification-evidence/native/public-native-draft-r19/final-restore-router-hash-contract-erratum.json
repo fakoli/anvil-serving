@@ -1,0 +1,6 @@
+{
+  "file_sha256": "36d899b59437657adf3ccf21bb5fcfeb9ce71677e0927a24058536fc315f909a",
+  "canonical_public_config_sha256": "5b60f412504fbfe67cf380d0b10392a2704c625637f356540af6786465d4019f",
+  "cause": "Earlier expected router metadata fingerprint incorrectly used raw file SHA. Exact current file unchanged; canonical metadata projection independently computed from current mounted configuration.",
+  "no_config_mutation": true
+}

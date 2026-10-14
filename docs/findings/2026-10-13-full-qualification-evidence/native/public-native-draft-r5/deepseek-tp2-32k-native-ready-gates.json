@@ -1,0 +1,45 @@
+{
+  "container_id": "[redacted-container-id]",
+  "gpu_rows": [
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": 97887,
+      "used_mib": 37014,
+      "utilization_pct": 0
+    },
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": 97887,
+      "used_mib": 36603,
+      "utilization_pct": 0
+    }
+  ],
+  "host_memavailable_kb": 85889988,
+  "host_memory": {
+    "current_bytes": 52867981312,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 1305,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 55834574848,
+    "ram_plus_swap_limit_bytes": 55834574849
+  },
+  "memory_note": "Coldstartup reached52GiBhardceiling with1305maxevents; readycomposition7.02GBanon45.75GBfile0.10GBkernel. NoOOMkill orswap; withinceiling/reserve. Cachepressureisretained, notminimumRAMorunpressuredstartupclaim.",
+  "native_backend_requested": "native",
+  "native_context_configured": 32768,
+  "native_tp_evidence": "pinnednativebackendconfig; runtime reports tensorparallelmodel load; bothselectedGPUallocations; noPPconfig",
+  "observed_at": "2026-10-13T19:46:23.182766+00:00",
+  "provenance_limit": "Tabby3forwardingSHAsnative match; ExLpackageversionpinned/coreGitrevisionunexposed; metadata n_ctxnull, training1Mnotcapacity",
+  "request_scope": "at most13shortfunctionalcompatibility; nativeeffortlow/defaultstreamlow; noSWE/perfrank/promotion",
+  "schema_version": "native-ready-gates/v1",
+  "tensor_parallel_size": 2
+}

@@ -201,14 +201,20 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Remove one Docker revision or preview native-cache removal.",
+                        "Remove one exact Docker or guarded native-cache revision.",
                         "anvil_serving.models",
                         role="model-catalog",
-                        options=CONFIRM_OPTIONS,
+                        options=CONFIRM_OPTIONS + (
+                            _option(
+                                "--non-model-root-view",
+                                summary=("Declare an exact non-model read-only root-view container; "
+                                         "repeat for each declaration; native apply validates mount and GPU fields."),
+                                value_name="CONTAINER_ID",
+                            ),
+                        ),
                         mutation="mutate",
-                        # The legacy leaf distinguishes a native --confirm
-                        # refusal from a dry-run plan, so restore the token
-                        # consumed by the shared confirmation dispatcher.
+                        # The legacy leaf owns its Docker/native confirmation
+                        # guards, so restore the shared dispatcher token.
                         forward_confirm_flag=True,
                         docs_anchor="docs/cli/models.md#cache-remove",
                     ),

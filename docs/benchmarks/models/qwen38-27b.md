@@ -898,6 +898,8 @@ capability RTX 5090 incumbent.
 
 ## Dated run history
 
+- [2026-10-13 full qualification closure](../../findings/2026-10-13-full-qualification.md): Coder390 medium TP1 completed 3/5 and its INT8 control 2/5; another Coder390 run remained incomplete at 3 graded submissions. These are fixed-denominator diagnostics, not a primary selection or cross-model ranking. TP2 compatibility remains separate.
+
 - [2026-09-13–14 partial FP8 quality scout and rollback declaration](../../findings/2026-09-13-intelligence-context-scout.md)
 - [2026-09-12 efficient fine-tune comparison](qwen38-efficient-variants.md)
 - [2026-09-08 MLX voice compatibility](voice-llm-mlx.md)

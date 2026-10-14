@@ -1,0 +1,51 @@
+{
+  "control_mechanism": "reasoning_effort",
+  "files": [
+    {
+      "path": "deepseek-tp1-131k-native-ready-gates.json",
+      "sha256": "7dbadea8612265076856157f6eba61df3e39481468793a74b7f85879da547c8f"
+    },
+    {
+      "path": "deepseek-tp1-preflight-131k-native.json",
+      "sha256": "9c2d21a099b785457ea053253836131ba83e69d833d9622e1c71fbc4b53a4084"
+    },
+    {
+      "path": "deepseek-tp1-32k-native-pre-request-gates.json",
+      "sha256": "d28ca10740fad2b056d04d129afae5a84cbfa19f454b38e41a3cf36c930d728f"
+    },
+    {
+      "path": "deepseek-tabby-provenance-preload-review-r2.json",
+      "sha256": "36e8381bee573b4c66759d86ccf84b267f05f65aa1e7f170758f4671ac174e3b"
+    }
+  ],
+  "identity_binding": {
+    "base_url": "http://127.0.0.1:39164/v1",
+    "container_id": "<redacted-runtime-identifier>",
+    "image_digest": "sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826",
+    "model": "turboderp/DeepSeek-V4-Flash-0731-exl3",
+    "model_revision": "b5526babe907141a0750f265a5a2a5cf414f5a64",
+    "registry_sha256": "c0e82ce4ad1cff68e67e820c0a1995d877853cec3e3e9bf8b3a4a0a249169f95",
+    "served_model": "b5526babe907141a0750f265a5a2a5cf414f5a64",
+    "tabby_source_revision": "a3fed43efae3b18ec6181618d6a4a66153a9d14e",
+    "template_sha256": "1a729637657a554faee7a0357d993c384c6a16dd35a144b13f60535432214adc"
+  },
+  "limits": [
+    "No hardreasoning-tokenpartition orqualityimprovementclaim",
+    "062nativepreflightstreamingcallomitsreasoning_effortandinheritsnative; othercallsexplicitmax. PreflightnativeT1/p1; qualitySWEexplicitT1/p.95/max.",
+    "131Kconfigured/nativeallocation only; no full131K inputvalidation ortraining1Mcapacityclaim.",
+    "393216authormaxoutputrecommendation exceeds16384scout/65536currentprimary limits; retained asusagebudgetlimitation.",
+    "No promotion/routechange implied."
+  ],
+  "observed_at": "2026-10-13T18:27:38.131607+00:00",
+  "requested": {
+    "reasoning_effort": "max",
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_k": 0,
+    "top_k_source": "nativeTabbydefault/notrequestoverride",
+    "top_p": 0.95
+  },
+  "schema": "anvil-serving.control-evidence/v1",
+  "source": "PinnedTabbyOCIlabel+a3fedsource3runtimeSHA match; exactb552template; acceptednativecanonicalmaxpreflight. Runtime/sourceevidence, notmodelselfgrading.",
+  "status": "verified"
+}

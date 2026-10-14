@@ -1,0 +1,27 @@
+{
+  "command": "models recipes status --container intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec --registry public-path-015 --transport local",
+  "context": {
+    "command": "models-recipes-status",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": "public-gpu-role-001",
+    "gpu_uuid": "public-gpu-uuid-001",
+    "overlay": null,
+    "resource": "public-resource-003",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "{\"bound_port\":39126,\"bound_ports\":[39126],\"container\":\"intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec\",\"container_id\":\"public-container-001\",\"containment_error\":null,\"gpu_selection\":[\"public-gpu-003\",\"public-gpu-uuid-001\"],\"health\":null,\"host_memory\":{\"current_bytes\":55197499392,\"effective_limit_bytes\":55834574848,\"effective_swap_limit_bytes\":1048576,\"events\":{\"high\":0,\"low\":0,\"max\":14473,\"oom\":0,\"oom_group_kill\":0,\"oom_kill\":0},\"exit_code\":0,\"limit_bytes\":55834574848,\"oom_killed\":false,\"peak_bytes\":55834574848,\"ram_plus_swap_limit_bytes\":55835623424},\"image_digest\":\"sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692\",\"model\":\"brandonmusic/GLM-5.3-Flash-tr3-4bpw\",\"native_kv_offload\":false,\"recipe_digest\":\"54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b\",\"registry_digest\":\"3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6\",\"revision\":\"a5fee929cf4888b1824323e33e8a19b60129e025\",\"running\":true,\"served_identity\":\"glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec\",\"state\":\"running\"}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

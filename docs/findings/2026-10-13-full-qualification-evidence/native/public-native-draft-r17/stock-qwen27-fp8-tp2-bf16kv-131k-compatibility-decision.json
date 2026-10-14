@@ -1,0 +1,67 @@
+{
+  "schema": "anvil-serving.bounded-compatibility-decision/v1",
+  "observed_at": "2026-10-14T01:10:31.528367+00:00",
+  "status": "passed",
+  "container_id": "public-container-001",
+  "identity": {
+    "model": "Qwen/Qwen3.8-27B-FP8",
+    "revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+    "image": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+    "engine": "sglang0.5.19",
+    "engine_revision": "0bcd822377da7b5718e674eaf9c870d349424dd1",
+    "tensor_parallel": 2,
+    "context": 131072,
+    "concurrency": 1,
+    "kv_dtype": "bfloat16",
+    "kv_pool_tokens": 131072,
+    "kv_bytes_per_rank": 4294967296,
+    "recurrent_state_dtype": "float32",
+    "mamba_slots": 462,
+    "mamba_ssm_gib_per_rank": 32.55,
+    "speculation": false,
+    "cpu_offload": false
+  },
+  "functional_observations_passed": 13,
+  "limits": [
+    "Compatibilityonly; noTP2quality/SWE/performance/full131K/C4/MM/primary327K/promotion/coldRAMclaim.",
+    "NativeTP1mambaslots184/26.02GiBSSM vsTP2auto462/32.55GiBSSMeach; sameFP32precision butpoolallocationnotidentical.",
+    "ProtocolT1/p1/nativek20/xhigh; qualityT1/p.95differentcontrols; source062 streamingomitseffortinheritsxhigh."
+  ],
+  "files": [
+    {
+      "path": "private-evidence-path-011",
+      "sha256": "9acb2fb25410e739ed87967a0d90ced18708fdba2c7a4336e018a843c2f7577a",
+      "bytes": 131877
+    },
+    {
+      "path": "private-evidence-path-007",
+      "sha256": "8c4f82a5d5b3399fe50ebe2e07d471640e60195f8305059f73b82ce6d51f0247",
+      "bytes": 2997
+    },
+    {
+      "path": "private-evidence-path-006",
+      "sha256": "06beb69a7d5c09c89347218301c0fdaf5b854022d327b8955e3ee4d2e26b8f93",
+      "bytes": 32642
+    },
+    {
+      "path": "private-evidence-path-005",
+      "sha256": "c39ce907209ea7d14418bb6c324d63e5fdee1d3efea69a764b5b1ecbeecfe654",
+      "bytes": 1326
+    },
+    {
+      "path": "private-evidence-path-008",
+      "sha256": "c24adaad4ca397d473ec9b155e8aa6d19620c2d4953ecc555a4ec2cd5a3d9e57",
+      "bytes": 41195
+    },
+    {
+      "path": "private-evidence-path-010",
+      "sha256": "7b69033af7514dcd1353bed192e2f7af428be8b1b8a71668410b45f97a4ebc07",
+      "bytes": 11881
+    },
+    {
+      "path": "private-evidence-path-009",
+      "sha256": "c676df63874d77967d40356957624c68d690aca3e5ada0d40a682c682ae5b73b",
+      "bytes": 18587
+    }
+  ]
+}

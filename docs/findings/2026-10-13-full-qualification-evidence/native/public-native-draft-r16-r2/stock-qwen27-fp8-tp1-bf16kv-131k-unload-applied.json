@@ -1,0 +1,27 @@
+{
+  "command": "models recipes unload --container public-run-005 --registry private-evidence-path-011 --confirm --transport local",
+  "context": {
+    "command": "models-recipes-unload",
+    "command_host": "public-context-003",
+    "command_runtime": "public-context-002",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-context-003",
+    "execution_runtime": "public-context-001",
+    "gpu_role": "public-compute-role-001",
+    "gpu_uuid": "public-gpu-001",
+    "overlay": null,
+    "resource": "dark-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-context-003",
+    "resource_runtime": "public-context-001",
+    "target": null,
+    "topology": "public-context-004",
+    "transport": "local"
+  },
+  "data": "unloaded recipe container 'public-run-005'\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

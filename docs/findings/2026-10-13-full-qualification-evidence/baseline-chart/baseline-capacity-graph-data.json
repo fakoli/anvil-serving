@@ -1,0 +1,263 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 7537.887692975346,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 26879.09877402126,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 44983.13579199021,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 13456.844052008819,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Median visible TTFT",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 5311.821968693612,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 5139.652107415953,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 5026.296920963927,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 5136.557759128302,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Median effective prefill",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "tokens/s incl queueing"
+    },
+    {
+      "metric": "metrics.decode_tok_s_mean",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 77.14971911798193,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 77.37846230710444,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 78.60511372803796,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 29.889461305060436,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Mean decode including reasoning",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "completion tokens/s"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 12.960659196796483,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 13.016879224921128,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 12.886121289666912,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 41.72219958615425,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Median TPOT proxy",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "milliseconds/completion token"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 31.362115147433293,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 15.387862586315896,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 4.718380398423206,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 72.07671708994177,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate wall-time throughput",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "completion tokens/s"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "TP2 C1 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c1.json",
+              "artifact_sha256": "04cfbd4ebfcee82e7935a202a611360a68f354a07686a56f0e3b519a7c834033",
+              "value": 8071.583347977139,
+              "x": "target32K C1 N4"
+            },
+            {
+              "artifact": "baseline-capacity-code32-128k-c1.json",
+              "artifact_sha256": "73d166f40dd0c23cf5a205670354bc3a398856a2974ddb2560dc6fa1c707c3d0",
+              "value": 27417.201482021483,
+              "x": "target128K C1 N3"
+            },
+            {
+              "artifact": "baseline-capacity-code32-256k-c1.json",
+              "artifact_sha256": "fe5beaf17a7d31a7d336b7c1cad4026b3372e94e98210cc61fd457591c5b5790",
+              "value": 45523.124567000195,
+              "x": "target256K C1 N3"
+            }
+          ]
+        },
+        {
+          "label": "TP2 C4 unique-cache",
+          "points": [
+            {
+              "artifact": "baseline-capacity-code32-32k-c4.json",
+              "artifact_sha256": "65bf6ad42304decdad5be2051a4ad3439854aac78bd188b8608797e5be6cfe52",
+              "value": 14193.905446998542,
+              "x": "target32K C4 N8"
+            }
+          ]
+        }
+      ],
+      "title": "Median request end-to-end",
+      "x_label": "Configured workload target / concurrency / N",
+      "y_label": "milliseconds"
+    }
+  ],
+  "metric_semantics": {
+    "comparison_limit": "Same incumbent runtime/quant/TP2. Different context targets and concurrency remain separate; small-sample descriptive figures, not service-level tails. Actual prompt means 25,280.5/25,281.125/106,520/216,194.667 tokens, not full advertised targets.",
+    "population": "Four complete strict controlled-output32-word cells; sample sizes4,8,3,3. Decode/throughput count completion usage including reasoning; TPOT is aggregate proxy, not raw token-arrival ITL."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Unique-cache code32/canaries; C1 N4/3/3 and separate C4 N8. Targets are prompt construction labels; actual prompt counts are retained in each native artifact. No challenger speed or p99 claim.",
+  "title": "GLM EXL3 TP2 baseline: descriptive capacity scout"
+}

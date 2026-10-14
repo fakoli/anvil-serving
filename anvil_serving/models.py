@@ -33,8 +33,10 @@ import tomllib
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
 from . import config
+from . import docker_images
 from . import guard
 from . import host as host_ops
 from . import model_cache_native
@@ -65,6 +67,188 @@ _RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _RECIPE_MANAGED_LABEL = serve_recipes.RECIPE_MANAGED_LABEL
 _RECIPE_MODEL_LABEL = serve_recipes.RECIPE_MODEL_LABEL
 _RECIPE_REVISION_LABEL = serve_recipes.RECIPE_REVISION_LABEL
+_CONFIG_PATH_KEY_RE = re.compile(r"(?:^|[_\-.])(?:cache|path|dir|root|mount|volume)(?:$|[_\-.])")
+_KNOWN_DOCKER_MOUNT_TYPES = frozenset({"bind", "volume", "tmpfs", "npipe", "cluster"})
+
+
+def _paths_overlap(first, second):
+    try:
+        return os.path.commonpath((str(first), str(second))) in {str(first), str(second)}
+    except ValueError:
+        return False
+
+
+def _canonical_config_path(value, *, base=None, allow_relative=False):
+    """Return lexical and resolved absolute forms for conservative cache overlap checks."""
+    if not isinstance(value, str) or not value or "$" in value:
+        raise ValueError("operator configuration contains an unresolved path")
+    expanded = os.path.expanduser(value)
+    if value.startswith("~") and expanded == value:
+        raise ValueError("operator configuration contains an unresolved path")
+    candidate = Path(expanded)
+    if not candidate.is_absolute():
+        if not allow_relative or base is None:
+            raise ValueError("operator configuration contains an unresolved relative path")
+        candidate = Path(base) / candidate
+    candidate = Path(os.path.abspath(candidate))
+    try:
+        return candidate, Path(os.path.realpath(candidate))
+    except OSError as exc:
+        raise ValueError("operator configuration path audit is incomplete") from exc
+
+
+def _native_cache_guards(cache_dir, config_home, *, non_model_root_views=(), _run=subprocess.run):
+    """Fail closed when Docker or current operator configuration may use a native cache."""
+    cache = Path(os.path.abspath(os.path.expanduser(cache_dir)))
+    cache_forms = (cache, Path(os.path.realpath(cache)))
+    home = Path(os.path.abspath(os.path.expanduser(config_home)))
+    if not home.is_dir() or home.is_symlink():
+        raise ValueError("native cache config home must be a plain existing directory")
+    dependency_errors = docker_images._live_archive_dependency_errors(home, runner=_run)
+    if dependency_errors:
+        raise ValueError("operator configuration dependency audit is incomplete: %s" % dependency_errors[0])
+    try:
+        listed = _run(["docker", "container", "ls", "--all", "--quiet", "--no-trunc"],
+                      capture_output=True, text=True)
+    except OSError as exc:
+        raise ValueError("Docker container audit is unavailable: %s" % exc) from exc
+    if listed.returncode:
+        raise ValueError("Docker container audit failed: %s" % (listed.stderr or listed.stdout).strip())
+    containers = [line.strip() for line in listed.stdout.splitlines() if line.strip()]
+    declared_root_views = tuple(non_model_root_views)
+    if len(set(declared_root_views)) != len(declared_root_views):
+        raise ValueError("declared non-model root-view container IDs must be unique")
+    if any(not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{64}", container_id)
+           for container_id in declared_root_views):
+        raise ValueError("declared non-model root-view container ID must be a full 64-character lowercase hex ID")
+    if len(set(containers)) != len(containers):
+        raise ValueError("Docker container audit returned incomplete inventory")
+    if not set(declared_root_views).issubset(containers):
+        raise ValueError("declared non-model root-view container is absent from the Docker inventory")
+    if containers:
+        inspected = _run(["docker", "container", "inspect", *containers], capture_output=True, text=True)
+        if inspected.returncode:
+            raise ValueError("Docker container mount audit failed: %s" % (inspected.stderr or inspected.stdout).strip())
+        try:
+            rows = json.loads(inspected.stdout)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Docker container mount audit returned invalid JSON") from exc
+        if not isinstance(rows, list) or len(rows) != len(containers):
+            raise ValueError("Docker container mount audit returned incomplete inventory")
+        found = set()
+        validated_root_views = set()
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("Id"), str) or row["Id"] not in containers:
+                raise ValueError("Docker container mount audit returned invalid container identity")
+            container_id = row["Id"]
+            if container_id in found:
+                raise ValueError("Docker container mount audit returned incomplete inventory")
+            found.add(container_id)
+            is_declared_root_view = container_id in declared_root_views
+            if is_declared_root_view:
+                host_config = row.get("HostConfig")
+                if not isinstance(host_config, dict):
+                    raise ValueError("declared non-model root-view container lacks HostConfig")
+                device_requests = host_config.get("DeviceRequests")
+                if device_requests is not None and (
+                    not isinstance(device_requests, list) or device_requests
+                ):
+                    raise ValueError("declared non-model root-view container has GPU device requests")
+            mounts = row.get("Mounts")
+            if not isinstance(mounts, list):
+                raise ValueError("Docker container mount audit omitted mounts")
+            for mount in mounts:
+                if not isinstance(mount, dict) or not isinstance(mount.get("Type"), str) or not isinstance(mount.get("Source"), str):
+                    raise ValueError("Docker container mount audit returned invalid mount")
+                if mount["Type"] not in _KNOWN_DOCKER_MOUNT_TYPES:
+                    raise ValueError("Docker container mount audit returned unknown mount type")
+                if mount["Type"] != "bind":
+                    continue
+                if not mount["Source"] or not os.path.isabs(mount["Source"]):
+                    raise ValueError("Docker bind mount source is not an absolute path")
+                source = Path(mount["Source"])
+                source_forms = (source, Path(os.path.realpath(source)))
+                overlaps_cache = any(_paths_overlap(cache_form, source_form)
+                                     for cache_form in cache_forms for source_form in source_forms)
+                if not overlaps_cache:
+                    continue
+                is_declared_readonly_root = (
+                    is_declared_root_view
+                    and mount["Source"] == os.path.sep
+                    and mount.get("RW") is False
+                    and isinstance(mount.get("Destination"), str)
+                    and bool(mount["Destination"])
+                    and os.path.isabs(mount["Destination"])
+                )
+                if is_declared_readonly_root:
+                    validated_root_views.add(container_id)
+                    continue
+                raise ValueError("native cache is referenced by a running or stopped Docker container")
+        if found != set(containers) or validated_root_views != set(declared_root_views):
+            raise ValueError("Docker container mount audit returned incomplete or invalid declared root-view inventory")
+    def walk_error(exc):
+        raise ValueError("operator configuration audit is incomplete") from exc
+
+    for current, dirs, files in os.walk(home, followlinks=False, onerror=walk_error):
+        retained = []
+        for name in dirs:
+            if name in docker_images._NON_OPERATIONAL_CONFIG_DIRS or (name == "recovered-configs" and Path(current) == home):
+                continue
+            if (Path(current) / name).is_symlink():
+                raise ValueError("operator configuration audit is incomplete")
+            retained.append(name)
+        dirs[:] = retained
+        for name in files:
+            path = Path(current) / name
+            if path.suffix.lower() not in {".toml", ".json", ".yaml", ".yml"}:
+                continue
+            try:
+                unsafe = path.is_symlink() or path.stat().st_size > docker_images.MAX_CONFIG_BYTES
+            except OSError as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            if unsafe:
+                raise ValueError("operator configuration audit is incomplete")
+            try:
+                raw = path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            try:
+                if path.suffix.lower() == ".json":
+                    value = json.loads(raw)
+                elif path.suffix.lower() == ".toml":
+                    value = tomllib.loads(raw)
+                else:
+                    if docker_images._yaml_requires_compose_validation(path, raw):
+                        value = docker_images._compose_config_payload(
+                            path, runner=_run, timeout=docker_images.DEFAULT_TIMEOUT_SECONDS,
+                        )
+                    else:
+                        value = docker_images._standalone_yaml_config_payload(
+                            path, raw, runner=_run, timeout=docker_images.DEFAULT_TIMEOUT_SECONDS,
+                        )
+            except (OSError, json.JSONDecodeError, tomllib.TOMLDecodeError) as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            candidates = []
+            for field, configured in docker_images._walk_config_strings(value):
+                if _CONFIG_PATH_KEY_RE.search(field.lower()):
+                    candidates.extend(_canonical_config_path(
+                        configured, base=path.parent, allow_relative=True,
+                    ))
+                elif docker_images._is_manifest_path(field, document=value):
+                    candidates.extend(_canonical_config_path(
+                        configured, base=path.parent, allow_relative=True,
+                    ))
+            if path.suffix.lower() in {".yaml", ".yml"}:
+                try:
+                    for source in docker_images._compose_bind_sources(value, config_path=path):
+                        candidates.extend(_canonical_config_path(
+                            str(source), base=path.parent, allow_relative=True,
+                        ))
+                except OSError as exc:
+                    raise ValueError("operator configuration audit is incomplete") from exc
+            if any(_paths_overlap(cache_form, configured)
+                   for cache_form in cache_forms for configured in candidates):
+                raise ValueError("native cache is referenced by current operator configuration")
 
 # Shared by both embedded helper scripts below (spliced in, not run directly —
 # they're `python -c` payloads, not importable modules).
@@ -1148,19 +1332,26 @@ def pull_main(argv, *, _result_sink=None):
 
 
 def cache_remove_main(argv):
-    """Remove a Docker snapshot or preview one native cache snapshot safely."""
+    """Remove one exact Docker or guarded native cache snapshot safely."""
     ap = argparse.ArgumentParser(
         prog="anvil-serving models cache remove",
         description=(
-            "Plan or remove exactly one Hugging Face repository revision from a "
-            "named Docker cache volume. Unreferenced blobs are collected and the "
-            "post-delete snapshot absence is verified."
+            "Plan or remove one exact Hugging Face repository revision from a Docker "
+            "cache volume or guarded native cache. Native apply requires --cache-dir, "
+            "--config-home, and confirmation. Unreferenced blobs are collected and "
+            "the post-delete snapshot absence is verified."
         ),
     )
     ap.add_argument("repo_id", help="exact Hugging Face repository id (OWNER/REPO)")
     ap.add_argument("--revision", required=True, help="exact cached commit or ref")
     ap.add_argument("--volume", default=None)
-    ap.add_argument("--cache-dir", help="native Hugging Face cache root; dry-run planning only")
+    ap.add_argument("--cache-dir", help="native Hugging Face cache root")
+    ap.add_argument("--config-home", help="authoritative operator config home; required for native apply")
+    ap.add_argument(
+        "--non-model-root-view", action="append", default=[], metavar="CONTAINER_ID",
+        help=("full container ID the caller declares as a non-model read-only root observation; "
+              "native apply validates it before allowing that root bind"),
+    )
     ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -1178,19 +1369,15 @@ def cache_remove_main(argv):
     if args.cache_dir and args.volume:
         print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
         return 2
+    if args.config_home and not args.cache_dir:
+        print("--config-home is only supported with native --cache-dir removal", file=sys.stderr)
+        return 2
+    if args.non_model_root_view and not args.cache_dir:
+        print("--non-model-root-view is only supported with native --cache-dir removal", file=sys.stderr)
+        return 2
     if args.cache_dir:
         if args.image != DEFAULT_PULL_IMAGE:
             print("--image is only supported with Docker cache removal", file=sys.stderr)
-            return 2
-        if args.confirm:
-            print(
-                "native cache removal apply is unsupported: native cache ownership and "
-                "deletion safety are not implemented; use --dry-run to inspect the plan",
-                file=sys.stderr,
-            )
-            return 2
-        if not args.dry_run:
-            print("native cache removal is preview-only; pass --dry-run", file=sys.stderr)
             return 2
         try:
             plan = model_cache_native.removal_plan(args.cache_dir, args.repo_id, args.revision)
@@ -1205,7 +1392,35 @@ def cache_remove_main(argv):
         print("exclusive blobs: %s" % len(plan["exclusive_blob_names"]))
         print("shared blobs: %s" % len(plan["shared_blob_names"]))
         print("estimated reclaimable bytes: %s" % plan["reclaimable_bytes"])
-        print("apply: unsupported for native cache ownership and deletion safety")
+        if args.dry_run:
+            print("DRY-RUN: no cache bytes removed")
+            return 0
+        if not (args.confirm or guard.confirmation_authorized()):
+            print("apply requires the same command with --confirm", file=sys.stderr)
+            return 3
+        if not args.config_home:
+            print("native cache removal apply requires --config-home", file=sys.stderr)
+            return 2
+        try:
+            _native_cache_guards(
+                args.cache_dir, args.config_home,
+                non_model_root_views=args.non_model_root_view,
+            )
+            if args.non_model_root_view:
+                print("caller declared non-model read-only root observations: %s" %
+                      ", ".join(args.non_model_root_view))
+            result = model_cache_native.remove(
+                args.cache_dir, args.repo_id, args.revision, expected_plan=plan,
+            )
+        except (ValueError, model_cache_native.NativeCacheError) as exc:
+            print("native model cache removal failed: %s" % exc, file=sys.stderr)
+            return 1
+        if result["outcome"] == "already-absent":
+            print("snapshot is already absent; nothing to remove")
+            return 0
+        print("removed %s@%s; reclaimed %s bytes" % (
+            args.repo_id, args.revision, plan["reclaimable_bytes"],
+        ))
         return 0
     volume = args.volume or DEFAULT_PULL_VOLUME
     if any(separator in volume for separator in ("/", "\\", ":")):

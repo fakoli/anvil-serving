@@ -7,6 +7,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-13-full-qualification.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/configuration-and-identity.md`
+(TP1/TP2 protocol, quality, fixed-five SWE and baseline capacity on dual Max-Q hardware; incomplete and failed candidate runs are retained, with no promotion).
+
 `docs/findings/2026-10-06-mimo-qualification.md`
 (dual-Max-Q MiMo and abliterated GLM direct quality scout; both candidates not qualified, no performance or full-context claim, exact r11 restoration verified: direct 25/25, routed 7/7, unchanged configuration hashes, and router readmission);
 
@@ -267,3 +271,10 @@ qualification evidence).
 | `docs/findings/2026-09-23-thinkingcap-evidence/README.md` | wrong-target preparation | Records the corrected RTX 5090 target and explains that prior PRO 6000 preparation did not run ThinkingCap inference or a benchmark. |
 | `docs/findings/2026-09-23-thinkingcap-evidence/run-plan-initial-superseded.md` | wrong-target preparation | Preserved superseded plan that identifies the earlier PRO 6000 work as a targeting mistake with no ThinkingCap measurement. |
 | `docs/findings/2026-09-23-thinkingcap-evidence/friction-log.md` | wrong-target preparation | Operational chronology only: it records the corrected RTX 5090 authorization and that the PRO 6000/GLM line was superseded, without a ThinkingCap measurement. |
+
+## 2026-10-13 source-directory additions
+
+`docs/findings/2026-10-13-full-qualification-evidence/source-directory.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/community-addendum.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/source-guide.md`
+(`external-prior`: public hardware reports and recipe leads, with external measurements kept separate from this campaign).

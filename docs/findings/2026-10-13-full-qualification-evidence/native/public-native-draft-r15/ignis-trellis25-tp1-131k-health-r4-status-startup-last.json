@@ -1,0 +1,27 @@
+{
+  "command": "models recipes status --container public-candidate-001 --registry public-path-002 --transport local",
+  "context": {
+    "command": "models-recipes-status",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": "public-gpu-role-001",
+    "gpu_uuid": "public-gpu-001",
+    "overlay": null,
+    "resource": "public-resource-001",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "{\n  \"bound_port\": 39168,\n  \"bound_ports\": [\n    39168\n  ],\n  \"container\": \"public-candidate-001\",\n  \"container_id\": \"public-container-001\",\n  \"containment_error\": null,\n  \"gpu_selection\": [\n    \"public-gpu-001\"\n  ],\n  \"health\": null,\n  \"host_memory\": {\n    \"current_bytes\": 50940854272,\n    \"effective_limit_bytes\": 55834574848,\n    \"effective_swap_limit_bytes\": 0,\n    \"events\": {\n      \"high\": 0,\n      \"low\": 0,\n      \"max\": 0,\n      \"oom\": 0,\n      \"oom_group_kill\": 0,\n      \"oom_kill\": 0\n    },\n    \"exit_code\": 0,\n    \"limit_bytes\": 55834574848,\n    \"oom_killed\": false,\n    \"peak_bytes\": 50940854272,\n    \"ram_plus_swap_limit_bytes\": 55834574849\n  },\n  \"image_digest\": \"sha256:3144a2ed2240969343e2378c518232520a994833f364235b789a3e8d4b6bcdba\",\n  \"model\": \"gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis\",\n  \"native_kv_offload\": false,\n  \"recipe_digest\": \"f1717fcae479a3125d1a9ac58694b5e8133a5fc7c9a0d6630adccc5680093ab1\",\n  \"registry_digest\": \"59cf4a03e51a74bace01fbc355be5a5ffb0f4079e042042ac451f3e8429eed75\",\n  \"revision\": \"f75e492c6d726537a4d4c85858bc91ee06a070ef\",\n  \"running\": true,\n  \"served_identity\": \"gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

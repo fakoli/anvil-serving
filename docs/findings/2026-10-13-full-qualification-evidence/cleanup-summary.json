@@ -1,0 +1,152 @@
+{
+  "schema": "anvil-serving.campaign-cleanup-summary/v1",
+  "observed_at": "2026-10-14T07:41:50.258180+00:00",
+  "evidence_type": "derived cleanup summary; private managed receipts remain authoritative",
+  "complete": true,
+  "model_cache": {
+    "removed_snapshot_count": 11,
+    "docker_removed_snapshot_count": 6,
+    "native_removed_snapshot_count": 5,
+    "docker_reported_removed_logical_bytes": 624806192173,
+    "native_reported_removed_allocated_plan_bytes": 402592907264,
+    "accounting_caveat": "Docker helper reports logical repository-byte removal; native plans report inode-deduplicated st_blocks*512 allocation. These are different accounting measures and are not combined or presented as filesystem free-space measurement. Empty metadata and persistent lock paths may remain.",
+    "rows": [
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "emwesoft/Ornith-1.5-397B-EXL3-HQ-35bpw",
+        "revision": "e129875ccff0fdd263dd6ba7e1aa1a0144eeed0f",
+        "removed": true,
+        "reported_removed_logical_bytes": 178519745488,
+        "source_receipt_sha256": "d0724d206179db7f1f38857f7c7f84fdcb3f154fb451e0ddca9c51adf231bdf8",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+        "revision": "6909a5bed089a48fa07e956d3915af2537de9368",
+        "removed": true,
+        "reported_removed_logical_bytes": 103580998388,
+        "source_receipt_sha256": "ce4ed2d23354094593760d2c556543c9bf9cfc59a7c17ebc62d7c3fdd1f7fc69",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "RadixArk/Qwen3.8-Flash-Next-NVFP4",
+        "revision": "7b719225242aacd3dbd3f9407468c2ee9a9d2594",
+        "removed": true,
+        "reported_removed_logical_bytes": 135253717759,
+        "source_receipt_sha256": "2c7b24533c5589fc7817ef0f22644caa7c685d571b2e58d52af9f9a840330017",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "turboderp/Qwen3.8-Flash-Next-exl3",
+        "revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+        "removed": true,
+        "reported_removed_logical_bytes": 68399886993,
+        "source_receipt_sha256": "461f4d5e6dc24ef20631895bc75c977b868f525be9abbcf7c038b23289b9bc87",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "turboderp/Qwen3.8-Flash-Next-exl3",
+        "revision": "d2e238feca4c1c4d966943117356d8a42c2f4dcb",
+        "removed": true,
+        "reported_removed_logical_bytes": 139041643586,
+        "source_receipt_sha256": "0fed503e1562f372e9bd851c4ee86a3c9800da9478a7536eb4bde38e5cffedfe",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "Docker Hugging Face volume",
+        "repo_id": "ukisai/Swift-1.5-Qwen3.8-Flash-Next-NVFP4",
+        "revision": "3ff0520224f264a2d0ac4ab56ece8f2f13aadb38",
+        "removed": true,
+        "reported_removed_logical_bytes": 10199959,
+        "source_receipt_sha256": "a9e8d1c42bbbf5cfb77fe1cc58afef3a02c297b8b87b462731d765e57434bd6b",
+        "post_inventory_snapshot_absent": true
+      },
+      {
+        "cache_kind": "native Hugging Face cache",
+        "cache_group": "shared campaign cache",
+        "repo_id": "ProCreations/MiMo-V2.6-Flash-MOPD-NVFP4",
+        "revision": "da654d8ed8d0d2acbf0fc5b63df72a7b75a6bb2a",
+        "removed": true,
+        "post_inventory_snapshot_absent": true,
+        "reported_removed_allocated_plan_bytes": 198832508928,
+        "source_receipt_sha256": "677704001fe374a97fa0b22537fde5c1894d9dfc7f70c5a38b8bd468be16669d"
+      },
+      {
+        "cache_kind": "native Hugging Face cache",
+        "cache_group": "shared campaign cache",
+        "repo_id": "nerkyor/Qwen3.8-27B-Coder390-EfficientThink-Opus5.5-GPT6Astra-Grok4.7-DSV4Pro-K3-SFT-RLOO-MTP-DFlash2",
+        "revision": "ccec60c489c1d007704d38de436ec7019457edf8",
+        "removed": true,
+        "post_inventory_snapshot_absent": true,
+        "reported_removed_allocated_plan_bytes": 19438030848,
+        "source_receipt_sha256": "24a1d7c75817bd43329ada33262f174311222e7453c2c98d746e228448737575"
+      },
+      {
+        "cache_kind": "native Hugging Face cache",
+        "cache_group": "shared campaign cache",
+        "repo_id": "turboderp/DeepSeek-V4-Flash-0731-exl3",
+        "revision": "b5526babe907141a0750f265a5a2a5cf414f5a64",
+        "removed": true,
+        "post_inventory_snapshot_absent": true,
+        "reported_removed_allocated_plan_bytes": 82137952256,
+        "source_receipt_sha256": "6c6dd8d83c4f0ba9572f9f7bf691c1d294749c6979eebdfac1680edcb23b0448"
+      },
+      {
+        "cache_kind": "native Hugging Face cache",
+        "cache_group": "dedicated INT8 cache",
+        "repo_id": "nerkyor/Qwen3.8-27B-Coder390-EfficientThink-Opus5.5-GPT6Astra-Grok4.7-DSV4Pro-K3-SFT-RLOO-MTP-DFlash2",
+        "revision": "ccec60c489c1d007704d38de436ec7019457edf8",
+        "removed": true,
+        "post_inventory_snapshot_absent": true,
+        "reported_removed_allocated_plan_bytes": 30422511616,
+        "source_receipt_sha256": "985f272ca9b89bf37b526340f249a9b7254124a74292c37fb40129effd8e3f84"
+      },
+      {
+        "cache_kind": "native Hugging Face cache",
+        "cache_group": "dedicated Ignis cache",
+        "repo_id": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+        "revision": "f75e492c6d726537a4d4c85858bc91ee06a070ef",
+        "removed": true,
+        "post_inventory_snapshot_absent": true,
+        "reported_removed_allocated_plan_bytes": 71761903616,
+        "source_receipt_sha256": "38fb2ca209e6ee878c935ece9333f0d3d642fb1986d5f145164d31bfde16d03d"
+      }
+    ],
+    "docker_post_inventory_source_sha256": "bcf66a4b232d1734c46e564540272c70af92ab21c16131032215c98e87f11dc6"
+  },
+  "docker_images": {
+    "removed_count": 106,
+    "exact_target_absence_verified": true,
+    "remaining_image_count": 50,
+    "remaining_safely_removable_count": 0,
+    "remaining_reference_classes": [
+      "running or stopped containers",
+      "declared recipe, manifest, or rollback configurations",
+      "dependent child images"
+    ],
+    "config_audit_errors": 0,
+    "first_97_observed_filesystem_available_delta_bytes": 160793673728,
+    "filesystem_delta_caveat": "Observed available-space delta includes concurrent non-image filesystem work; unique-layer CLI reclaim values are estimates. Exact target absence verified per receipt.",
+    "transient_helper_note": "One mutable default cache-inspector image was acquired by a read-only probe after the zero-removable sweep; it was removed by fresh managed preview/apply. Subsequent cache commands selected a previously cached pinned helper.",
+    "source_receipt_sha256": "60dda2aec7c1466ce0d351e6f176a68150c9fcd489ac586e811c489c866a081a"
+  },
+  "protected_state": {
+    "exact_incumbent_identity_retained": true,
+    "incumbent_running": true,
+    "native_models_http_status": 200,
+    "router_file_unchanged": true,
+    "incumbent_acceptance_source_sha256": "b5d5a4e39ad8b13c1d1fb6bc829f9ea38364f43213aeec2062d0a7cbc721a66c",
+    "retained_assets": "Active services, declared rollback/library models, stopped-container references, and unsupported plain-cache roots were retained. No declaration or unrelated container was removed to force cache deletion."
+  },
+  "source_state": {
+    "native_cleanup_source_sha256": "87a438ab1fb7a6f4199be45042116e5338e090d4d1beedffc07b8155cd7c1fa7",
+    "reviewed_source_used": true,
+    "global_installed_cli_changed": false,
+    "native_locks": "Persistent unlocked Hugging Face lock files were fenced through deletion without unlinking them; final read-only verification follows lock release. External writers must remain quiescent."
+  },
+  "source_native_aggregate_sha256": "aaf01e1caaf1174b474929e84425faf319a9ad3d6df35b4805baebb272faae15"
+}

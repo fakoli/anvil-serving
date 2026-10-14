@@ -1,0 +1,84 @@
+{
+  "containment": {
+    "mem_limit_bytes": 8589934592,
+    "memswap_limit_bytes": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "paired_image_ids_canonical_sha256": "e2880b3b24051b0658dd3095f7564ae592ab970e110fed76028f3a8a301f9b65",
+    "paired_image_ids_file": "paired-image-ids.json",
+    "paired_image_ids_file_sha256": "ee83932b1bcb1188c3b625e6909bf117ec053296c33f53f873cb06d904cf6b68",
+    "pids_limit": 512,
+    "prebuilt_only": true,
+    "pull_policy": "never",
+    "receipt": "containment.json",
+    "receipt_sha256": "29eabd42fef9ed68af9676d78b3150d8b2dc8c0549f90fc7f25ad228ef7b6652"
+  },
+  "gold_patch_handling": {
+    "model_requests": 0,
+    "note": "The upstream grader emitted default-CWD per-case artifacts; their run-ID-specific source-tree report/log directory and an accidental raw copy were removed without reading patch contents. Only the aggregate non-patch grader report and containment receipt are retained.",
+    "prediction_source": "upstream gold sentinel; no patch file was supplied to the adapter or a model",
+    "retained_gold_patches": false
+  },
+  "interpretation": {
+    "current_grader_and_current_pinned_images_pass_fixed5_gold": true,
+    "does_not_establish": [
+      "historical image-ID parity for prior model runs: their containment receipts recorded paired_image_ids=null",
+      "model quality or historical model request controls",
+      "any performance claim"
+    ],
+    "historical_parity_status": "not established",
+    "rules_out": "a current official-grader/testcase failure as the cause of misses on these five cases when this exact current image mapping is used"
+  },
+  "invocation": {
+    "adapter": "anvil_serving/benchmarking/swe_grader_adapter.py",
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "max_workers": 1,
+    "mode": "official upstream --predictions_path gold",
+    "namespace": "swebench",
+    "split": "test",
+    "timeout_s_per_instance": 1800
+  },
+  "purpose": "current-ID-pinned official grader calibration for the fixed five SWE-bench Verified cases; it excludes grader/testcase defects from interpreting current model outcomes.",
+  "result": {
+    "completed_instances": 5,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "grader_report": "grader-report.json",
+    "grader_report_sha256": "5db653817be953f57312d61599cdf5da48d51e227f6b844370e89004d91a47f4",
+    "resolved_ids": [
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898",
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096"
+    ],
+    "resolved_instances": 5,
+    "stderr_sha256": "b17ccb84737e6757865eb578f7fe43d71a364099cdb27021f90a881b908a5a97",
+    "stdout_sha256": "69c4bc8285c2110cb89a2e5c59bdee8454b4975363c2c002614baa1c4066136c",
+    "unresolved_instances": 0
+  },
+  "run_id": "qualification-20261013-gold-calibration",
+  "schema": "anvil-serving.swe-gold-calibration-summary/v2",
+  "source": {
+    "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+    "anvil_serving_commit": "06299fddc9c1a2be4490de3ad0c4aa1aeb2d65ee",
+    "dataset_parquet_sha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+    "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "grader_revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+    "python_environment_cache_key": "swe-python-environments/0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93",
+    "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a"
+  },
+  "state_changes": {
+    "image_pull_build_install": false,
+    "model_lifecycle_router_requests": false,
+    "raw_docker_manual_operations": false,
+    "source_checkout_status_after_cleanup": "clean"
+  },
+  "status": "completed"
+}

@@ -205,6 +205,7 @@ def test_status_never_claims_installed_when_effective_policy_drifts(monkeypatch,
     monkeypatch.setattr(lifecycle, "_gateway_effective", lambda *args: False)
     monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
         "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "ready", "installed_at": 1})
+    monkeypatch.setattr(lifecycle, "_identity", lambda *args: (True, True))
     result = lifecycle._status(value, "a" * 64, None, owned)
     assert result["receipt_ready"] is True and result["ready"] is False and result["installed"] is False
     assert result["units"][owned["service_unit"].name]["effective"] is False

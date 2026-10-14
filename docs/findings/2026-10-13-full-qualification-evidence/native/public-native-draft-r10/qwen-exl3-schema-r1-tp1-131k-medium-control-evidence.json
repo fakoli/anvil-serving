@@ -1,0 +1,84 @@
+{
+  "control_mechanism": "reasoning_effort",
+  "files": [
+    {
+      "path": "qwen-exl3-schema-r1-tp1-131k-native-ready-gates.json",
+      "sha256": "32240888eaef0ce6898a7b4a91b9199d5f5c439a2670e59944d45cc5812df2ee"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-tp1-preflight-131k-xhigh-native.json",
+      "sha256": "b914556b587c6fcb6302ed7492bf5c17432f2a063e574e991dc6095199fb6efe"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-tp1-preflight-131k-xhigh-memory.json",
+      "sha256": "52ead110fd5fa7109cce62dcbac3691b397f8076d3385b4cb2f3bac33bf6a1e2"
+    },
+    {
+      "path": "qwen-schema-r1-numeric-string-native-regression.json",
+      "sha256": "0c40ea91d2bec713f8c4a1bdc021b3ff6bc6ad7a8de709e8525ec60b2c7c4d13"
+    },
+    {
+      "path": "qwen-schema-r1-numeric-string-native-regression-r2-memory.json",
+      "sha256": "41f192ff358394dd4af7c2f89e318ef1a4afbeaacc14438e5d8c21e86aa56cb2"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-preload-review.json",
+      "sha256": "b901129e766be93906b9521d0614cd716fa0bb780a1be663686b38afdfcc6b41"
+    },
+    {
+      "path": "tabby-qwen-schema-managed-build-r2-stage-decision.json",
+      "sha256": "f2063f0a858a03b73fa7b8bb320966fee63f5d2efa7ca19417197e90cac3d491"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-tp1-preflight-131k-medium-native.json",
+      "sha256": "da13c437ca7234d680651046b4dec3edbaf5bf9c8f366850f34f44575e5ffe3d"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-tp1-preflight-131k-medium-memory.json",
+      "sha256": "99b5885db68ab945eb00cfc5ab5cbb8d4181aa24b43022c8776f167a22c82c9e"
+    },
+    {
+      "path": "qwen-exl3-schema-r1-medium-remedy-boundary-review.json",
+      "sha256": "f7a165520e6ab2395012527507f6dad8c6a799b90e3deccabbc22a6bc83b1ed1"
+    }
+  ],
+  "identity_binding": {
+    "base_url": "http://127.0.0.1:39170/v1",
+    "container_id": "[REDACTED]",
+    "image_digest": "sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7",
+    "model": "turboderp/Qwen3.8-Flash-Next-exl3",
+    "model_revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+    "operator_patch_manifest_sha256": "997fda896d0f994eee3b97ea212d850fbbbd76f58c2bfbdbc667f3ac30a09502",
+    "registry_sha256": "265f6a5335147b4854a79095862aac7e6099ae3b61537baca8a14b85704501c3",
+    "served_model": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+    "tabby_base_source_revision": "a3fed43efae3b18ec6181618d6a4a66153a9d14e",
+    "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+  },
+  "limits": [
+    "One matched diagnostic only; medium strictquality12 and later gates remain required before promotion.",
+    "Source062 streaming preflight omits effort and inherits defaultxhigh; other13-suite requests explicitlymedium. Do not claim all13medium wires.",
+    "Protocol preflight nativeT1/p1; diagnosticSWE explicitlyT1/p.95/medium, native top_k0 unchanged.",
+    "No hard reasoning token partition, cold-RAMfloor, allGPUPLE, full131Kprompt, performance, route or promotion claim.",
+    "Same warm-cache container follows xhigh fixedfive; no model/image/reload intervention."
+  ],
+  "native_forwarding_file_sha256": {
+    "common/config_models.py": "e46af37311587951d71b1919563878a82bd6328521c7d0c83151e797fa2625ef",
+    "endpoints/OAI/types/chat_completion.py": "a68328f10f3ba947df205cad22fcb8c2d452818398930d35be7d1a528145858f",
+    "endpoints/OAI/utils/chat_completion.py": "fbc13d7e041789b7f1bdacd9d6a2be89dcc1ab65118cf8f798a8763c83416acc",
+    "endpoints/OAI/utils/toolcall_formats/common.py": "0fa9eb0dbf8f8e86eb5eb80ff761475772a8ee1732643889aa5e522629b33bce",
+    "endpoints/OAI/utils/toolcall_formats/qwen3_coder.py": "280dae0101ddf568e4e95eddacf27b47dcb4fecadc17d3f1628bbea994675f84",
+    "endpoints/OAI/utils/tools.py": "94ae3f8b247080d79ebda7219712071871a3ec12646ce488f2e2c4e68b9f61a3"
+  },
+  "observed_at": "2026-10-13T22:06:22.437469+00:00",
+  "requested": {
+    "reasoning_effort": "medium",
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_k": 0,
+    "top_k_source": "nativeTabbydefault/notrequestoverride",
+    "top_p": 0.95
+  },
+  "schema": "anvil-serving.control-evidence/v1",
+  "source": "Same pinned schema-r1 derived Tabby image and six native source hashes/template as xhigh arm. Exact smoke prompt native68tokens atxhigh vs26tokens atmedium demonstrates template effort forwarding;131K/C1/container/model unchanged. This verifies control, not medium quality.",
+  "status": "verified"
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "anvil-serving.model-lineage-check/v1",
+  "observed_at": "2026-10-14T04:54:52.290602+00:00",
+  "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "official_reference": "zai-org/GLM-5.3-Flash-BF16",
+  "official_reference_revision": "a6c167b62691b2bac901344b65cb651a70f53e43",
+  "publisher_role": "quant",
+  "quant_scope": "glm53_routed_experts_only",
+  "nonrouted_native_exact": true,
+  "publisher_declares_abliteration": false,
+  "decision": "Restore retained official-base quantization lineage; no abliterated derivative is selected.",
+  "evidence_limit": "Publisher provenance plus exact retained receipts; not a new full teacher-to-quant tensor audit or independent audit of upstream training.",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "6701140b9176bee7a65dd4966be34078f47a2796dbb398bd242c0ecd8ca6543e",
+      "bytes": 13315
+    },
+    {
+      "path": "quantization_config.json",
+      "sha256": "1e5cdf56da1929c2a7d8982085324de05bb92144882792f034239e289316c645",
+      "bytes": 37707425
+    },
+    {
+      "path": "materialization-receipt.json",
+      "sha256": "afe588284702c0676b7af5df48bc0e0568bb42b1821808ab71c6dfa1f0c48b61",
+      "bytes": 26933
+    },
+    {
+      "path": "receipts/checkpoint.json",
+      "sha256": "efeaed9daed88eb567df5518f1418f0ebbe5c03132a35e70f7506ab90a04efbd",
+      "bytes": 750
+    }
+  ]
+}

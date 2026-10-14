@@ -1,0 +1,17 @@
+{
+  "model": "qwen3.8-flash-next",
+  "messages": [
+    {
+      "role": "user",
+      "content": "public-redacted-text-002"
+    }
+  ],
+  "max_tokens": 9216,
+  "stream": false,
+  "temperature": 1.0,
+  "top_p": 0.95,
+  "top_k": 20,
+  "response_format": {
+    "type": "json_object"
+  }
+}

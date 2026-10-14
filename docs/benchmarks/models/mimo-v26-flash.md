@@ -72,5 +72,7 @@ Preflight passed 25/25 and frozen SWE resolved 4/5. Agentic results were 15/18 a
 
 ## Dated run history
 
+- [2026-10-13 full qualification closure](../../findings/2026-10-13-full-qualification.md): corrected 2 GiB offload selection and retained text-only/routed trust failures are a conversion-policy result. They do not establish physical non-fit, model quality, performance, or promotion.
+
 - 2026-10-06 — [Pinned vLLM no-spec TP2 quality scout](../../findings/2026-10-06-mimo-qualification.md), `not-qualified`/`no-promotion`; SWE 4/5, all three agentic policies below 18/18; exact r11 restored.
 - 2026-09-21 — [MiMo v2.6 Flash replacement qualification](../../findings/2026-09-21-mimo-v26-qualification.md), `no-promotion`.

@@ -1,0 +1,32 @@
+{
+  "command": "eval routed --transport local --base-url public-endpoint-005 --model llm.primary --expected-served-model glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec --expected-config-fingerprint glm53-r11-dcp1-vision8-apc-nospec-v84-fp8kv-tp2-c4-thinking49152 --expected-router-config-sha256 5b60f412504fbfe67cf380d0b10392a2704c625637f356540af6786465d4019f --min-context-tokens 327680 --clients openclaw --openclaw-provider anvil --hermes-provider anvil --hermes-expected-provider custom --no-harness-sync --run-id restore-glm-r11-final-openclaw-r3-20261014 --timeout-seconds 240 --confirm --output public-path-012",
+  "context": {
+    "command": "eval-routed",
+    "command_host": "public-command-host-002",
+    "command_runtime": "public-command-runtime-002",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-002",
+    "execution_runtime": "public-command-runtime-002",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "public-resource-002",
+    "resource_endpoint": "public-endpoint-006",
+    "resource_endpoint_kind": "host-relative-loopback",
+    "resource_host": "public-command-host-002",
+    "resource_runtime": "public-command-runtime-002",
+    "target": null,
+    "topology": "public-topology-002",
+    "transport": "local"
+  },
+  "data": "ROUTED EVAL FAIL alias=llm.primary clients=1/1 evidence=public-path-012\n",
+  "error": {
+    "class": "execution",
+    "code": "execution_failed",
+    "details": {},
+    "message": "command failed"
+  },
+  "ok": false,
+  "warnings": []
+}
