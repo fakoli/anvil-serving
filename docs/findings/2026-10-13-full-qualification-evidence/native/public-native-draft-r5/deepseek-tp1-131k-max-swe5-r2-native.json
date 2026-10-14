@@ -1,0 +1,764 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-13T18:39:15.080703Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "[redacted-local-path]"
+  },
+  "endpoint": {
+    "base_url": "[redacted-local-endpoint]/v1",
+    "model": "b5526babe907141a0750f265a5a2a5cf414f5a64"
+  },
+  "failure": {
+    "class": "model_failure",
+    "code": "swe_limits_exceeded",
+    "stage": "agent"
+  },
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "[redacted-local-path]",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "fd3f3fac36a73c40dd116179203d4d5318baa9f0133e7e00de50dd2ccbdc7c83",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "cmpl-008cd0b7aabd4e0aba3ff8e10abb03ba",
+        "cmpl-08542e5d6b164ba98632bb9136bf0229",
+        "cmpl-08c51a04d4d9443389ac2cff4089b2df",
+        "cmpl-0f9b4ba48aac412db33f9ca28e05fd89",
+        "cmpl-12b75038eb6d40d1b46ed0b6f3c24440",
+        "cmpl-13a0fe5bd7fa4ac4b473625a1f269ba9",
+        "cmpl-17eea604b9c64f098b307fb5facbb233",
+        "cmpl-1b01b0b86e684ee6b7f9715d07deeebb",
+        "cmpl-1cb68697d59a443ca6eabc918b6a6448",
+        "cmpl-1de659310e974001a67dcc4032612c3d",
+        "cmpl-2102f688a47641f09d2cb32181dbe90f",
+        "cmpl-26aa1e2f56294db687a6a7149c5a97a9",
+        "cmpl-28de1eb6e36d4d28912cce80d1f744f3",
+        "cmpl-32c87b77fd28441cb7b015d0afc31088",
+        "cmpl-3753f6214a1d4091a0763fe788105946",
+        "cmpl-3822609f334844ba8694dca9747859f7",
+        "cmpl-3a471b128d884faf871aaa4506f78fc7",
+        "cmpl-3ea99776584b4248ba398770b03dcf27",
+        "cmpl-4264c0eef2ef4209861274b022116208",
+        "cmpl-4295d340b4914a9987f93047573acbc5",
+        "cmpl-4442d6c565b246818d8139359c3582f0",
+        "cmpl-44eaaa5b12b64721a41c62912b25b25f",
+        "cmpl-4946f34382bb44cc8dfc4d0b6a91ceac",
+        "cmpl-4c0b324cbb44412089d42fe3c489b21f",
+        "cmpl-54fbbe0c9b0947ee90e2594a29fd8289",
+        "cmpl-5b06163f32924bbd8220ed912676ae62",
+        "cmpl-62ea27cf8d424be8a635d27ac975162b",
+        "cmpl-701394951def440d8d7720d132d860c2",
+        "cmpl-848118c3c99d4489a0c829d786d70f61",
+        "cmpl-89815b99686341a28911c11603ed8440",
+        "cmpl-9167c02181954b85907909089face16e",
+        "cmpl-92841b7f14d847a2a007562c5dbf572f",
+        "cmpl-9535546b14184dd09b12199c0339ae97",
+        "cmpl-963ba1241111469c905ba4e9a7566695",
+        "cmpl-978c87ac04244996a926cc36a141a1e4",
+        "cmpl-a0100fe73fa04a7d879b7f247522c666",
+        "cmpl-a42a42e69e6c4987ac9d2120223fb6d7",
+        "cmpl-a51862161cc9479f956594fcabdb817e",
+        "cmpl-a937d784517f4f93ae49071fa3e8c1cc",
+        "cmpl-ac02c90813364094b24741b2cdfd59ed",
+        "cmpl-af6bb01705a644cf9d9315e10a57ce37",
+        "cmpl-b74e9ed0aa56494e885659131e514f91",
+        "cmpl-b7b82d5d10ea4b45a3a7df2b1d9143d8",
+        "cmpl-b91cf1c6aaa54ae49022d45bf9ff974d",
+        "cmpl-bb4b592578be448f9ffe65653e209f10",
+        "cmpl-bb5ac6b14cd64de689308871de8f87c8",
+        "cmpl-c2e6a9858c0e483a84e279d10e2d1997",
+        "cmpl-c35751878bca4d169dacfa505842c8dc",
+        "cmpl-c823078aa96e416395529b12d4a726ee",
+        "cmpl-c8ef3a13cbe44bc492a712062516f6e5",
+        "cmpl-c94901cd0de6494a99f6d18999213e78",
+        "cmpl-cba853dde149401eb6be3b2a9fd69c2a",
+        "cmpl-cfc0bf79e8f04124802981a4a7356e83",
+        "cmpl-e0696426f11e467bb5be7b9dad390065",
+        "cmpl-e0985ea0d223454fa28ad8ff9e0518a8",
+        "cmpl-e1e94db479424778954c8f0dd31f75d1",
+        "cmpl-e306d10c6aab40a698c8f40ff30c1945",
+        "cmpl-e69a197005a749d780a60019cc33b033",
+        "cmpl-eb296ac6bc2d48cca119e6eae82b92b2",
+        "cmpl-f026dfeb977040718e4aeb48b4bad46d"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "[redacted-local-path]",
+        "sha256": "e7c9e3ec6113db2ec7800a09d1143d0f736b043c0340454bb94eebce1c86c5c8"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "fd3f3fac36a73c40dd116179203d4d5318baa9f0133e7e00de50dd2ccbdc7c83",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "cmpl-006276c58b4347b8a0e5d98937c05715",
+        "cmpl-0bad1a0a29e54c759bf032268377b560",
+        "cmpl-0de30d16dc2f47d4a3010041de6021f5",
+        "cmpl-10b726c8e83c4b5f95bc068b9e5b0fbf",
+        "cmpl-13c83b529292451da1e0625e470f32e5",
+        "cmpl-2620667812284d339a749a636c8f92c4",
+        "cmpl-2808abe4ad9a452ab2862d34d26662f2",
+        "cmpl-2bc1fa4677bd43d5bb4cdf95467b7949",
+        "cmpl-32a06c9bb5f54731bfef5018cecc2055",
+        "cmpl-35f09c77951d44d5b88c392bfe252954",
+        "cmpl-37dd14d84e464f3fa1d5bbc5e9ed1c38",
+        "cmpl-3a6c6a21fd25467d9f99a3d62c76fd27",
+        "cmpl-3b23ab1e5dd84ca7bc8a6b2baf224a9f",
+        "cmpl-3ca0fdef0de9463d9ce45379dbd2f665",
+        "cmpl-48426e6a172b4938867ecc612da7fed1",
+        "cmpl-498990c745904e9aa1e70772f705d379",
+        "cmpl-4a69b31748584dc88ba332aa66963302",
+        "cmpl-54d4bd781cc548dcac2973e2cd9d9d03",
+        "cmpl-5a4fbcd3c3ac4a8eb939cf753fe5c162",
+        "cmpl-5c4d0a7738ae43feb1151e309c57e450",
+        "cmpl-5d03ddaaad894082a5d4a94c5c47bef3",
+        "cmpl-639fea1041f04a518d39a4645a51a915",
+        "cmpl-715499fe5ea74ba6bc7223172299385f",
+        "cmpl-7590c3360e994e7db819102c86d3d2c2",
+        "cmpl-7874de1e96a1438290b3ddf4f20ec764",
+        "cmpl-792ac0e770af4a52b44db52b2f502859",
+        "cmpl-7a5ba908ba174829a22d4db7b486f539",
+        "cmpl-7bd14defd62b41678be372292def4ecf",
+        "cmpl-7c3e08a269c842228dbbda2d9d68b01f",
+        "cmpl-7ed4a2539ea74bfb93e3832339add6c2",
+        "cmpl-7f81b603480a484daa18d944e223bb5b",
+        "cmpl-7f968f92e94a43058aa7a52c847cd086",
+        "cmpl-815badf5189249f3853861bdf1782cb5",
+        "cmpl-84b58f9eec194b43a19e33120df9031f",
+        "cmpl-877f94570b0f48f1a32d653a7730502d",
+        "cmpl-8bdc9d6c9a6347fba9da2202ecdb3279",
+        "cmpl-8d1140e935594d27b11672b9946d2af0",
+        "cmpl-90cd4b276f4a4ea697418f3fa147de88",
+        "cmpl-9214b39473f94bbe961da2a98630cbf5",
+        "cmpl-92ae3e1ca2914f1abafe713bad4542aa",
+        "cmpl-93c48dc639f549d4b49be3bb34533a0e",
+        "cmpl-9f7b92cbffa54ae5a0636f0fea1454d6",
+        "cmpl-a2d86eab1d274e488cabfbb680daa7c3",
+        "cmpl-a42fdbd767b042359b26eafbe52db924",
+        "cmpl-a7a83abe1400406ba12bdd60c663cf38",
+        "cmpl-a7aad9d9ddc944e1b6de9d4d388f48cf",
+        "cmpl-ba5ef0dc5f8e4522b68d5d92a02888f0",
+        "cmpl-bb56b426628c44168201d28f7f155e8c",
+        "cmpl-bccaa035f47c415c9b3cf904eab7ea73",
+        "cmpl-d3e31bf8a03641f7ba0f69e5b92dca78",
+        "cmpl-d43f1eb519da4d10a1bfe6076544c927",
+        "cmpl-d93e1bd28765480ca941cf9c4553122f",
+        "cmpl-e0a6451d987b4e2ca010e671328891f2",
+        "cmpl-e117720194b44baba0fcdde4e7971eba",
+        "cmpl-e7a98e5e853748df9b08c952668f600d",
+        "cmpl-e98c4678808b495693b84cbc7f70e3da",
+        "cmpl-ef4dad6826234e3ca91b8a67adc0d2e3",
+        "cmpl-f49e3093959e42b5afb662dc0b0ee2bb",
+        "cmpl-fd9fb2ae46af40938857625d240cb604",
+        "cmpl-fdb1281cf46b40ddad75de9fef825e45"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "[redacted-local-path]",
+        "sha256": "115e78754d742932029c7f5c4b879150d1716d3f5dc7f8ce299d093458f807ce"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "fd3f3fac36a73c40dd116179203d4d5318baa9f0133e7e00de50dd2ccbdc7c83",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "dc05ad30c23e9ae7ec89364a74d591bfc74e834a64c7fb24c26cc805e1fd066f",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "cmpl-035a67dedbc64156bb8364e6246d9f10",
+        "cmpl-0aad670b0eaa4f5ebce5ad4ba0714989",
+        "cmpl-0bfb3929cf0d450d9aa3e1b5a32e4527",
+        "cmpl-12fb7c8b1e6842a8958cddf17665ddda",
+        "cmpl-19a53084501c4027a9f6962a0d212c41",
+        "cmpl-258596469c1348a69d28698c84cd9b43",
+        "cmpl-25af44f9efb3458da1a6aaa3671743b3",
+        "cmpl-25c372ae2a594cd1b1690031892f74e6",
+        "cmpl-2651aabb4a264edcb3cfbee85b1a5ee0",
+        "cmpl-26ffbc0ed4e240e08fce8e88d01cf258",
+        "cmpl-2cdf6d9306cf48f68ddb5f2b3a2b1a8a",
+        "cmpl-31377babc03242989e6e0de61afee38b",
+        "cmpl-363caed1f4a24957b2ff934ac9141637",
+        "cmpl-3a7e3ee2b8984966beeaf3ede36739da",
+        "cmpl-46839aaba4c74b1ea8847aed1a306b88",
+        "cmpl-484fb8790f234e3680656377dd957a92",
+        "cmpl-5503b4da81a5464ebb18ba954defde2c",
+        "cmpl-5599ecf9614348a087a3e0354697e6d4",
+        "cmpl-60b7d22c7dd84106bced047b480bd023",
+        "cmpl-63d5846f5f3749698ebcc8beefa18043",
+        "cmpl-708109520417409f91d6c4cbbd94b2aa",
+        "cmpl-7170c77cc0594a84becad6f5774bbd77",
+        "cmpl-7d5b46c11f86406cab6d5fe8638559e7",
+        "cmpl-86bf2764723b48c083f25b5bdbecb7bb",
+        "cmpl-8968f739cd3445ad8dfd75dc522a344b",
+        "cmpl-8c254cdb2711455b9979194612a2cc5e",
+        "cmpl-8fd9e5dbf3c44b709ffa9e12c386b435",
+        "cmpl-950b10ebca1f4687b300b2416fec55c7",
+        "cmpl-a291a6dfffed4c5b8fc24939aa365ec4",
+        "cmpl-a9936ab9b2074ddda8b4af0f3d66856d",
+        "cmpl-aceda275f4f5435ebc4e09708954d2ba",
+        "cmpl-ae07192db01143f382251450efe75e4b",
+        "cmpl-bb26a2b5b7174f7fa2e0c1b52abde56e",
+        "cmpl-c5c4b43daf804f3bb3078e872909c311",
+        "cmpl-c70d05e8597f46afa5b499426a576758",
+        "cmpl-cb8b1a8fa240407f94cb2ab86cbf4a5d",
+        "cmpl-ce7d23a808944dbca37831d176f7d898",
+        "cmpl-d0554ff1789c4ed5a6ee69557abf3eb2",
+        "cmpl-d1f29d743a634332956a7fe358355103",
+        "cmpl-d1f551b2cc544523893a4708618b6f14",
+        "cmpl-d41ec0c6018049a7bfd86995c7ffc136",
+        "cmpl-d72d842e7926427982376a63cb88f3e3",
+        "cmpl-d7670e0ade964f1e9c95112370873e2e",
+        "cmpl-d8cc3a539ad6423081f3be9e72dde113",
+        "cmpl-e15fb245378e4268a0c9f5e5a792b8e4",
+        "cmpl-e7bfb8354cb548db92cd3d22cb69297e",
+        "cmpl-ec742c5cf46c4029bab9650571d011a5",
+        "cmpl-ed5c867c48744be384865b1700e228b0",
+        "cmpl-fb56aa146ee741218f0dbfd24a1b8b0c",
+        "cmpl-fe7a063f94f34e13b67db1c798cc1b5c"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "[redacted-local-path]",
+        "sha256": "8b058a7ce6a6c02c59aea25523f7206a10da884e8e4dffef86ac96f217ccea6e"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "fd3f3fac36a73c40dd116179203d4d5318baa9f0133e7e00de50dd2ccbdc7c83",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "cmpl-02466a1272e040218f0e7f42378842b5",
+        "cmpl-0268813ed9de459395172b0c8f4f9d08",
+        "cmpl-03a08d09dc25420d8c423734d45af72d",
+        "cmpl-0d5c6fb81a754938819bef02e2480dea",
+        "cmpl-17e309b0b7744d82a85897684924e8bb",
+        "cmpl-1b4bd3e97fa140069754866c8b8f41f7",
+        "cmpl-28740d2e96564c9789b0e2a6c4b60ad8",
+        "cmpl-2a953de32ef148dc91d706c0e6015513",
+        "cmpl-316ebc409adc41b58fef7d307580251a",
+        "cmpl-32d5729f8d4a4fb085fa363f8a84d165",
+        "cmpl-33562736419c405bbda30d3c7448fd48",
+        "cmpl-350a3a527a61412e900d17ce47cfc19e",
+        "cmpl-38333e2a5fa146c29ca481e788644e64",
+        "cmpl-3941d817d7004826bb13c981cec3aaf9",
+        "cmpl-4288034b122249e3aa4976aae4c1f249",
+        "cmpl-4a32d27ba25a4e15873131408d8ba995",
+        "cmpl-4d70bbb10d0c49ecbb4e19b403014536",
+        "cmpl-66174f2042bf4bcc9691fd88771c4afa",
+        "cmpl-6963b9ce7a6b4c359690b2643e1d5a85",
+        "cmpl-6b86bc97f2b745ee86702b05a72fc1f2",
+        "cmpl-6beae1f139aa4c538157b9ae76058c94",
+        "cmpl-71e0bf46fc0f410390774f401ba77e4c",
+        "cmpl-738ce438b13846a483480335a0f7ac7c",
+        "cmpl-7a2380d9d972407780eaed6e83603083",
+        "cmpl-7aac6f03470b43e49ed86f04fb33fc17",
+        "cmpl-7ef77773092f4a9d98d53a70af8952e2",
+        "cmpl-88ffc9bfdce145aebc8e93ef97fd1246",
+        "cmpl-890faddacf9c4d098039e6895975c7da",
+        "cmpl-8e36997aebb94b25b6cef17469b29031",
+        "cmpl-8f28891d89e441d1955eaaa62bdf442f",
+        "cmpl-998f68497174475c80357cb14f0a55bb",
+        "cmpl-a3b08ebdfe23484386f96a4c7adde714",
+        "cmpl-a3cc5abd1ea44411844a98e2bd03ebbd",
+        "cmpl-a7bfb4fa25f84ff1b98875ce573e2d83",
+        "cmpl-b1d9d3dca59f44cf92d597085844025c",
+        "cmpl-b7120665fbfa4a0ab1ebb99ea3b1e6d1",
+        "cmpl-b9fe6272b0e745a183e218d4c11a0f38",
+        "cmpl-bb5655b7546b484c8d668ab78caf63b9",
+        "cmpl-bce6bc49a811410ab8e1aefe9e27099e",
+        "cmpl-bd21395e042a40be8ec521a5587537f8",
+        "cmpl-bea4cb38b2bd46008bc088ef655ed762",
+        "cmpl-c4ec0acc6c2741e6bc5a605f3070be87",
+        "cmpl-c53aa651952a47879cf81d302f274702",
+        "cmpl-c81739356c024826b48576c7801f7db9",
+        "cmpl-c9c64d0c7cb0411598c8ba0fad32da0a",
+        "cmpl-c9f7d38ddf544a66aac04d49f4e14e21",
+        "cmpl-ca56b10b8c8345ddbea40a331e612eaa",
+        "cmpl-cd07752ea9284fc795b86e4806f72775",
+        "cmpl-cea108dec6b946d78ce10d29f9c9feee",
+        "cmpl-d2aacb4158144cc382d0d5d7cc1576f2",
+        "cmpl-d5d0f234a758405abc91b60d981610fa",
+        "cmpl-dd8036f311624bd0b7baeb213b990cf3",
+        "cmpl-df9c99127934458bb798471c34150666",
+        "cmpl-e5bcc61406a442788eaf5f044ad361c7",
+        "cmpl-eaee3e151c1445afbd0a577f338e11e4",
+        "cmpl-eaf4de55396545cfa59d128054876161",
+        "cmpl-ebc987e75c454574a2257d818ada1477",
+        "cmpl-efb957ee32c7488788f47517a1f66a87",
+        "cmpl-fb2fe3a0fed447eea0e8722d2b693616",
+        "cmpl-fd54d27b03fa4889a6e96d86b66053e7"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "[redacted-local-path]",
+        "sha256": "321dea1b180bc4457e72f3265307d5ea2be4072e8640b76f0e1fd96c6dda99c0"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "fd3f3fac36a73c40dd116179203d4d5318baa9f0133e7e00de50dd2ccbdc7c83",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "cmpl-00b4e05bb0d64e60bfd7ee4f2e324c1f",
+        "cmpl-00ca569a936b4d49bb03aebc18a25331",
+        "cmpl-0280a5cbed254eba811e03a47dae28bd",
+        "cmpl-039dbd09cba84b0dae47eb75290ac003",
+        "cmpl-19a004fca3974ec2ad8a39ac98884b27",
+        "cmpl-1b2d784d02cf4f0b925054be86fe03a9",
+        "cmpl-21f4dd474807485a9dc64ad835e685a9",
+        "cmpl-24f2a304358e4dcda92f26329abc0a89",
+        "cmpl-30c7e92efca44a22b92e849be25f7166",
+        "cmpl-32cdde9cb7cf4539b9067de7f97a5825",
+        "cmpl-3cca3b9204164d499954f90e740d0374",
+        "cmpl-443d37776a2f415ba082fe97b6d9ab5d",
+        "cmpl-45b2647dc92e435e8ed0bf14d4b3f2d1",
+        "cmpl-46ed489e8b9b43a6978cb7a815caf5bb",
+        "cmpl-4ed570a3201e40d488717f35ff4052af",
+        "cmpl-516bd9ee962f43c9b1f9572b4db65fc7",
+        "cmpl-517e91165e914ab8a67b41a506843d74",
+        "cmpl-597f81f41889459fbe261942549f8e18",
+        "cmpl-5a1a1686cb6248b2acce505d4e709f29",
+        "cmpl-5aebc3419587434fbd60bc9bb97e3f4a",
+        "cmpl-5c18d9eed98a44fbb7be9689d923d69f",
+        "cmpl-63bef43233214dbaa8b5ee79e0f6b051",
+        "cmpl-675c7e7bdef54135960bd51a6631cda1",
+        "cmpl-6864bb7ab72c4c1181258528ce0d497b",
+        "cmpl-68b7f4579e084437b6d95b08394a47d8",
+        "cmpl-6d241317848649f081f625edb6bb605a",
+        "cmpl-6d251211fd224718835fe9f1bacfd016",
+        "cmpl-6f678266826a49358ffa9fc40021ca20",
+        "cmpl-6fea303b7a1a4d398f94408f5d78645b",
+        "cmpl-704bdbdb99d248ecad723fc107a7c193",
+        "cmpl-715e846d3c7a49e6b6f95221f9cf2a1a",
+        "cmpl-71a6944e3ec445db81aae5548eea2853",
+        "cmpl-755b41e92cf245198277cd367644c641",
+        "cmpl-78c98b57c7ba4738a43beb504ad3b6a8",
+        "cmpl-7db1aeb785644d9c9fe5dffc3b35cfa1",
+        "cmpl-81f393ffb23e4d9a9504abd10b00678b",
+        "cmpl-84b1f31ea83d4d75a355968d5c00853f",
+        "cmpl-87600aa7945b4e909548d1e9e7d2eb44",
+        "cmpl-8df445421ed24e02b56449fcb9828b31",
+        "cmpl-8f687a699ae944839f7499999f8f960b",
+        "cmpl-90d9c75558054281b62e46c64bfd9b8c",
+        "cmpl-924e701cce374188a9f8140f931d1d27",
+        "cmpl-9739fe4d046c4c75b220fc6060cb5ade",
+        "cmpl-9ab45e5313ee4e45801ef30fd3b5be31",
+        "cmpl-a416311af4cc4a7da666fcdbf1d72b78",
+        "cmpl-a84bc81ad596449a9f6272c138898000",
+        "cmpl-b003bb43572b46b69ed1369f516fd996",
+        "cmpl-d36f4b5ae41b42f4b6f5fdaec78b68df",
+        "cmpl-d45df7df3f1e40edbfee2d737bc066ac",
+        "cmpl-d60d7e0c5e6a45d89f466101364e4971",
+        "cmpl-dac062928edd4bd9bb3854f1cd5bc026",
+        "cmpl-e02920279ade41d592f2e6e10f0ce172",
+        "cmpl-e293ce9409194987ba42f861539a90e5",
+        "cmpl-e581b4646e954877ba3ad0a41ecd4f74",
+        "cmpl-f18dba94d9354d24b817f0b10a6cc80c",
+        "cmpl-f6cc0921d25f42cbaacfe67708a15504",
+        "cmpl-fa8561640fbd4e9dbf1d88d2e823039d",
+        "cmpl-fb16ca1999654883b7e15d2315917a55",
+        "cmpl-fcd5af8c14994c858048ebfda82bfbb3",
+        "cmpl-ffd7cb76b0c34795b2b49be1c63657ce"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "[redacted-local-path]",
+        "sha256": "00447966577718446987182c5092253126c70975f88bedfccbbd0f630ba97b97"
+      }
+    }
+  ],
+  "official_grader_complete": false,
+  "ownership_id": "qualification-20261013",
+  "paired_image_ids": {
+    "django__django-13512": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+    "pydata__xarray-4356": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+    "pylint-dev__pylint-8898": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+    "sphinx-doc__sphinx-9658": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+    "sympy__sympy-12096": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+  },
+  "plan_sha256": "b2a3a7b8b27e5dec669599e5183d201e92de5d47b47e65684027e6c7b639e0e1",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "qualification-20261013-deepseek-tp1-131k-max-swe5-r2",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "[redacted-local-path]",
+        "[redacted-local-path]",
+        "--output",
+        "[redacted-local-path]",
+        "--model",
+        "openai/b5526babe907141a0750f265a5a2a5cf414f5a64",
+        "--subset",
+        "[redacted-local-path]",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:sphinx\\-doc__sphinx\\-9658|sympy__sympy\\-12096|django__django\\-13512|pydata__xarray\\-4356|pylint\\-dev__pylint\\-8898)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "[redacted-local-path]",
+        "--config",
+        "[redacted-local-path]"
+      ],
+      "duration_s": 1849.93815,
+      "failure_class": "model_failure",
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n[redacted-local-path]\nark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-swe\n5-r2/work/mini-output                                                           \nLogging to '[redacted-local-path]'\nminisweagent: INFO: Loading dataset                                             \n[redacted-local-path]\nark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/da\nta, split test...                                                               \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['[redacted-local-path]\nhmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/\nminisweagent/config/benchmarks/swebench.yaml',                                  \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/anvil-swe-config.yaml']                                              \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [redacted-task-container-name] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-13512:latest sleep 2h    \nminisweagent.environment: INFO: Started container [redacted-task-container-name] with ID \n[redacted-task-container-id]                \nminisweagent: INFO: Saved trajectory to                                         \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/mini-output/django__django-13512/django__django-13512.traj.json'     \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [redacted-task-container-name] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest sleep 2h     \nminisweagent.environment: INFO: Started container [redacted-task-container-name] with ID \n[redacted-task-container-id]                \nminisweagent: INFO: Saved trajectory to                                         \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/mini-output/pydata__xarray-4356/pydata__xarray-4356.traj.json'       \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [redacted-task-container-name] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest sleep 2h \nminisweagent.environment: INFO: Started container [redacted-task-container-name] with ID \n[redacted-task-container-id]                \nminisweagent: INFO: Saved trajectory to                                         \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/mini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json\n'                                                                               \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [redacted-task-container-name] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest sleep 2h \nminisweagent.environment: INFO: Started container [redacted-task-container-name] with ID \n[redacted-task-container-id]                \nminisweagent: INFO: Saved trajectory to                                         \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/mini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json\n'                                                                               \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [redacted-task-container-name] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest sleep 2h      \nminisweagent.environment: INFO: Started container [redacted-task-container-name] with ID \n[redacted-task-container-id]                \nminisweagent: INFO: Saved trajectory to                                         \n'[redacted-local-path]\nmark-runs/qualification-20261013/qualification-20261013-deepseek-tp1-131k-max-sw\ne5-r2/work/mini-output/sympy__sympy-12096/sympy__sympy-12096.traj.json'         \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:30:48 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status    \u2503 Count \u2503 Most recent instances                               \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 LimitsExceeded \u2502     4 \u2502 sympy__sympy-12096, sphinx-doc__sphinx-9658,        \u2502\n\u2502                \u2502       \u2502 pylint-...                                          \u2502\n\u2502 Submitted      \u2502     1 \u2502 django__django-13512                                \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "command": [
+        "[redacted-local-path]",
+        "[redacted-local-path]",
+        "--grader-root",
+        "[redacted-local-path]",
+        "--adapter-sha256",
+        "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+        "--receipt",
+        "[redacted-local-path]",
+        "--image-identities",
+        "[redacted-local-path]",
+        "--image-identities-sha256",
+        "e2880b3b24051b0658dd3095f7564ae592ab970e110fed76028f3a8a301f9b65",
+        "--",
+        "--dataset_name",
+        "[redacted-local-path]",
+        "--split",
+        "test",
+        "--predictions_path",
+        "[redacted-local-path]",
+        "--max_workers",
+        "1",
+        "--namespace",
+        "swebench",
+        "--run_id",
+        "qualification-20261013-deepseek-tp1-131k-max-swe5-r2",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "[redacted-local-path]",
+        "--instance_ids",
+        "sphinx-doc__sphinx-9658",
+        "sympy__sympy-12096",
+        "django__django-13512",
+        "pydata__xarray-4356",
+        "pylint-dev__pylint-8898"
+      ],
+      "duration_s": 32.011606,
+      "failure_class": "test_failure",
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n\rEvaluation:   0%|          | 0/1 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/1 [00:19<?, ?it/s, \u2713=1, \u2716=0, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:19<00:00, 19.55s/it, \u2713=1, \u2716=0, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 1/1 [00:19<00:00, 19.55s/it, \u2713=1, \u2716=0, error=0]\n",
+      "stdout": "Found 1 existing instance images. Will reuse them.\nRunning 1 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 1\nInstances incomplete: 0\nInstances resolved: 1\nInstances unresolved: 0\nInstances with empty patches: 4\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__b5526babe907141a0750f265a5a2a5cf414f5a64.qualification-20261013-deepseek-tp1-131k-max-swe5-r2.json\n"
+    }
+  ],
+  "state": "incomplete",
+  "summary": {
+    "attempted": 5,
+    "graded": 1,
+    "resolve_rate": 1.0,
+    "resolved": 1
+  },
+  "task_container_network": "none"
+}

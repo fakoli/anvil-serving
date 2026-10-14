@@ -106,10 +106,18 @@ class DockerFixture:
             )
             return _completed(argv, stdout=output)
         if command[:1] == ["compose"]:
-            path = Path(command[command.index("--file") + 1])
-            raw = path.read_text(encoding="utf-8")
+            source = command[command.index("--file") + 1]
+            raw = _kwargs.get("input") if source == "-" else Path(source).read_text(encoding="utf-8")
             if "[\n" in raw:
                 return _completed(argv, returncode=1, stderr="invalid compose YAML")
+            if source == "-":
+                extension = {}
+                if "recovered-configs/serves.toml" in raw:
+                    key = "services_manifest" if "services_manifest" in raw else "serves_manifest"
+                    extension[key] = "recovered-configs/serves.toml"
+                return _completed(argv, stdout=json.dumps({
+                    "x-native-cache-audit": extension, "services": {},
+                }))
             if "${" in raw:
                 image = "${IMAGE}"
             elif "repo/app:old" in raw:
@@ -314,6 +322,182 @@ def test_artifact_and_dependency_trees_do_not_block_config_audit(tmp_path):
 
     assert result["outcome"] == "preview"
     assert result["inspection"]["references"]["config_audit_errors"] == []
+
+
+def test_recovered_config_yaml_is_excluded_from_live_config_audit(tmp_path):
+    path = tmp_path / "recovered-configs" / "docker-compose.recovered.yaml"
+    path.parent.mkdir()
+    path.write_text(
+        "services:\n  recovered:\n    image: ${HISTORICAL_IMAGE}\n",
+        encoding="utf-8",
+    )
+    fixture = DockerFixture(configured_tags=[])
+
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
+    )
+
+    assert result["outcome"] == "preview"
+    assert result["inspection"]["references"]["config_audit_errors"] == []
+
+
+@pytest.mark.parametrize("dependency_key", [
+    "manifest_path", "serves_manifest", "services_manifest",
+])
+def test_live_manifest_dependency_into_recovered_configs_blocks_image_removal(tmp_path, dependency_key):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (archive / "serves.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST, encoding="utf-8"
+    )
+    (tmp_path / "voice.toml").write_text(
+        '[stt]\n%s = "recovered-configs/serves.toml"\n' % dependency_key, encoding="utf-8"
+    )
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["config_audit_errors"] == [
+        "voice.toml: stt.%s references recovered-configs" % dependency_key
+    ]
+
+
+def test_only_grafana_template_definition_queries_are_not_manifest_paths(tmp_path):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (tmp_path / "dashboard.json").write_text(json.dumps({
+        "schemaVersion": 1, "panels": [],
+        "templating": {"list": [{"definition": "label_values(${QUERY})"}]},
+    }), encoding="utf-8")
+    assert docker_images._live_archive_dependency_errors(tmp_path) == []
+
+    (tmp_path / "config.json").write_text(
+        json.dumps({"definition": "recovered-configs/serves.toml"}), encoding="utf-8"
+    )
+    assert docker_images._live_archive_dependency_errors(tmp_path) == [
+        "config.json: definition references recovered-configs"
+    ]
+
+
+def test_live_yaml_dependency_alias_into_recovered_configs_blocks_image_removal(tmp_path):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (archive / "serves.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST, encoding="utf-8"
+    )
+    (tmp_path / "voice.yaml").write_text(
+        "services_manifest: recovered-configs/serves.toml\n", encoding="utf-8"
+    )
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["config_audit_errors"] == [
+        "voice.yaml: services_manifest references recovered-configs"
+    ]
+
+
+def test_live_yaml_dependency_block_scalar_fails_closed(tmp_path):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (archive / "serves.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST, encoding="utf-8"
+    )
+    (tmp_path / "voice.yaml").write_text(
+        "serves_manifest: >\n  recovered-configs/serves.toml\n", encoding="utf-8"
+    )
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["config_audit_errors"] == [
+        "voice.yaml: serves_manifest references recovered-configs"
+    ]
+
+
+def test_standalone_yaml_parser_uses_an_inert_extension_without_environment_resolution(tmp_path):
+    path = tmp_path / "application.yaml"
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return _completed(argv, stdout=json.dumps({
+            "x-native-cache-audit": {"application": {"auth": "${UNRESOLVED_SECRET}"}},
+            "services": {},
+        }))
+
+    payload = docker_images._standalone_yaml_config_payload(
+        path, "---\napplication:\n  auth: ${UNRESOLVED_SECRET}\n",
+        runner=runner, timeout=30,
+    )
+
+    assert payload == {"application": {"auth": "${UNRESOLVED_SECRET}"}}
+    argv, kwargs = calls[0]
+    assert argv[1:] == [
+        "compose", "--env-file", os.devnull, "--project-directory", str(tmp_path),
+        "--file", "-", "config", "--format", "json", "--no-interpolate",
+        "--no-env-resolution", "--no-path-resolution",
+    ]
+    assert kwargs["input"].startswith("x-native-cache-audit:\n  application:")
+    assert "${UNRESOLVED_SECRET}" in kwargs["input"]
+
+
+def test_standalone_yaml_parser_refuses_malformed_or_noncollection_output(tmp_path):
+    path = tmp_path / "application.yaml"
+
+    def malformed(argv, **_kwargs):
+        return _completed(argv, returncode=1, stderr="invalid YAML")
+
+    with pytest.raises(OSError, match="invalid YAML"):
+        docker_images._standalone_yaml_config_payload(
+            path, "application: [\n", runner=malformed, timeout=30,
+        )
+
+    def scalar(argv, **_kwargs):
+        return _completed(argv, stdout=json.dumps({
+            "x-native-cache-audit": "not-a-config", "services": {},
+        }))
+
+    with pytest.raises(OSError, match="extension"):
+        docker_images._standalone_yaml_config_payload(
+            path, "application: safe\n", runner=scalar, timeout=30,
+        )
+
+
+def test_archive_dependency_audit_ignores_nonkey_topology_and_environment_strings(tmp_path):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (tmp_path / "candidate.yaml").write_text(
+        "services:\n  app:\n    command: --topology topology.toml\n"
+        "    environment:\n      API_TOKEN: ${API_TOKEN}\n",
+        encoding="utf-8",
+    )
+
+    def compose_json(argv, **_kwargs):
+        if argv[1:2] == ["compose"]:
+            return _completed(argv, stdout=json.dumps({"services": {"app": {
+                "command": "--topology topology.toml",
+                "environment": {"API_TOKEN": "${API_TOKEN}"},
+            }}}))
+        pytest.fail("unexpected command: %r" % argv)
+
+    references, errors = docker_images._config_image_values(tmp_path, runner=compose_json)
+    assert references == []
+    assert errors == []
+
+
+def test_nested_recovered_configs_are_live_and_fail_closed(tmp_path):
+    path = tmp_path / "nested" / "recovered-configs" / "live.yaml"
+    path.parent.mkdir(parents=True)
+    path.write_text("services:\n  live:\n    image: ${LIVE_IMAGE}\n", encoding="utf-8")
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
 
 
 @pytest.mark.parametrize("filename", ["candidate-stack.yaml", "candidate-stack.json"])

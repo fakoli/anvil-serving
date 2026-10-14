@@ -79,7 +79,7 @@ SAFE_GPU_UUID_SHA256 = frozenset(
     }
 )
 LOCAL_HOST_PATTERN = re.compile(
-    r"\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.local\b(?!\.)", re.I
+    r"\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.local\b(?![a-z0-9.-])", re.I
 )
 REFERENCE_HOST_EXPRESSION = r"(?:fakoli-(?:dark|mini|mid-mod)(?:-2)?|ai-laptop-node)"
 NETWORK_CONTEXT_PATTERN = re.compile(
@@ -477,6 +477,7 @@ def self_test() -> int:
     private_tailnet_v6 = ":".join(("fd7a", "115c", "a1e0", "", "8701", "2247"))
     safe_tailnet_v6_prefix = ":".join(("fd7a", "115c", "a1e0", "", ""))
     private_local_host = "private-node.local"
+    public_local_prefix_hostname = "evals.local-inference-lab.ai"
     reference_host = "-".join(("fakoli", "mini"))
     private_operator_user = "-".join(("private", "operator"))
     sample = (
@@ -550,9 +551,25 @@ def self_test() -> int:
         and len(scan_text(separator.join(("C:", "Users", "agent")), path, "self-test")) == 1
         for path in PUBLIC_NATIVE_AGENT_HOME_FILES
     ) and len(scan_text(native_home, "docs/other.md", "self-test")) == 1
+    local_hostname_boundary_safe = (
+        not scan_text(
+            f"https://{public_local_prefix_hostname}/aider",
+            "docs/findings/fixture.json",
+            "self-test",
+        )
+        and len(
+            scan_text(
+                f"https://{private_local_host}:3000/path",
+                "docs/findings/fixture.json",
+                "self-test",
+            )
+        )
+        == 1
+    )
     passed = (
         scoped_constants_safe
         and native_constants_safe
+        and local_hostname_boundary_safe
         and
         Counter(finding["kind"] for finding in findings) == expected_semantic_kinds
         and file_kinds

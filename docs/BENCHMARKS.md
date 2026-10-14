@@ -1,5 +1,9 @@
 # Benchmark results
 
+**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](findings/2026-10-13-full-qualification.md).
+
+**2026-10-13 full qualification:** the [public campaign report](findings/2026-10-13-full-qualification.md) retains a GLM continuity baseline (complete fixed-five 2/5) and terminal Ignis diagnostic (2/5 resolved, three empty). Qwen, DeepSeek, and MiMo records remain bounded to their native lanes. No challenger met the complete 4/5 plus Django/Pylint gate; no challenger was promoted.
+
 **2026-10-05 RTX 5090:** [Swift15 host-cache promotion](findings/2026-10-05-swift-96gb-baseline.md)
 selects the same model/image at 262K/C4 with 8 GiB/eight host slots and a
 40 GiB/no-extra-swap bound. Twelve matched revisits per arm showed midpoint

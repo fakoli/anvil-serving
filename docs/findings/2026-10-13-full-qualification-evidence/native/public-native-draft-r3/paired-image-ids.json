@@ -1,0 +1,7 @@
+{
+  "swebench/sweb.eval.x86_64.django_1776_django-13512:latest": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+  "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+  "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+  "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+  "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+}

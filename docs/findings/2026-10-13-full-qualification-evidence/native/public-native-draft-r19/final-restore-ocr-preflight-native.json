@@ -1,0 +1,74 @@
+{
+  "base_url": "public-endpoint-003",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "vision.ocr",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "public-opaque-text-023",
+      "content_chars": 39,
+      "content_excerpt": "public-opaque-text-023",
+      "expected": [
+        "42917"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 246,
+      "reasoning_excerpt": "public-opaque-text-024",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.345,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 89,
+        "prompt_tokens": 334,
+        "total_tokens": 423
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "42917"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.3s all expected text present finish='stop' visible=39 reasoning_chars=246 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

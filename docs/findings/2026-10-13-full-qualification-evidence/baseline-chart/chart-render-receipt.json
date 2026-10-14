@@ -1,0 +1,18 @@
+{
+  "status": "staging-only",
+  "renderer": "skills/anvil-serving-benchmark-docs/scripts/plot_benchmark_matrix.py",
+  "deterministic_twice": true,
+  "files": [
+    {
+      "path": "baseline-capacity-graph-data.json",
+      "sha256": "6a51d015053ee68852508e9818536062898d354c3c9ba9a6259fb5bfbc90f154",
+      "bytes": 10024
+    },
+    {
+      "path": "baseline-capacity-matrix.svg",
+      "sha256": "73ca0e29702e0c55a5d829019130655c83a83bb470a92f4dba332d3428e77512",
+      "bytes": 14870
+    }
+  ],
+  "limits": "Descriptive baseline-only small-N capacity, no challenger ranking; targetcontext distinct from actual prompttokens."
+}

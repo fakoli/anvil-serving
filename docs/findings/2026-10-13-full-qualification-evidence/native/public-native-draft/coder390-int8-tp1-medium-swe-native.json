@@ -1,0 +1,249 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-13T15:27:24.074125Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "<redacted-local-dataset-root>"
+  },
+  "endpoint": {
+    "base_url": "<redacted-local-endpoint>",
+    "model": "coder390-int8w8a8-tp1-c1-131k-nospec"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "<redacted-local-containment-receipt>",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "ee256e7f9ed0b9a9cd5e8f9d2127a85ea6fc1f727a2292f4a8523ed8cea86f9c",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "4098d3d0a4eef1e7bf20270be91f2435e43585b066c33e45c0f20c0e54b3f424",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_id_count": 19,
+      "request_ids": "<redacted-request-ids>",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-local-trajectory>",
+        "sha256": "c14e0751287ff849ca960d538901337e9d972ee237da6c4a908918223793e2a6"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "ee256e7f9ed0b9a9cd5e8f9d2127a85ea6fc1f727a2292f4a8523ed8cea86f9c",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "9cddf12a16d7b57c654c2ef3401ee0c9df63c7c2b8c6442fb24b853882bb6c62",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_id_count": 17,
+      "request_ids": "<redacted-request-ids>",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-local-trajectory>",
+        "sha256": "2a7bda401b88e656e4c8ce707141275f0e7f5f248a97ad425938432fb6b6f152"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "ee256e7f9ed0b9a9cd5e8f9d2127a85ea6fc1f727a2292f4a8523ed8cea86f9c",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "40eb3bf9deb66aa85579f2be5ab074a4aa7b697a3fbbe9e826f3109c6cdaaa26",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_id_count": 17,
+      "request_ids": "<redacted-request-ids>",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-local-trajectory>",
+        "sha256": "6fb51607aefb0ed2cca5d9cc7c253b0c3c0d597d05c505edd17cd23c31ae82a8"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "ee256e7f9ed0b9a9cd5e8f9d2127a85ea6fc1f727a2292f4a8523ed8cea86f9c",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "5f7406ca38a8eb23094f6a0f484ae01cf13d7fdcf4f5f7dcf60e748556177dc2",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_id_count": 25,
+      "request_ids": "<redacted-request-ids>",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-local-trajectory>",
+        "sha256": "961669e9fc0ac9b81e56e53e5e6a35f491ea4c6cad01137f7c4f8929e6227f6b"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "ee256e7f9ed0b9a9cd5e8f9d2127a85ea6fc1f727a2292f4a8523ed8cea86f9c",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "855478324a496ff32492b2fddca2683440106579197756e2c5e7c0be3cfaf6ec",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_id_count": 21,
+      "request_ids": "<redacted-request-ids>",
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "<redacted-local-trajectory>",
+        "sha256": "5cae9d8d538c9894f1e3eb9e3f67bf5aa84480f6d000eca2395e2bed09cc7c5f"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "qualification-20261013",
+  "paired_image_ids": null,
+  "plan_sha256": "279d6a724d854c099d8f1c3134d1b69596bc090144849a272062a60eb30c12db",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": "medium",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.6,
+        "requested": 0.6,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "qualification-20261013-coder390-int8-tp1-medium-swe5",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stage_count": 2,
+  "stages": "<redacted-runtime-stage-transcripts>",
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.4,
+    "resolved": 2
+  },
+  "task_container_network": "none"
+}

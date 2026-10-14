@@ -1,0 +1,60 @@
+{
+  "control_mechanism": "reasoning_effort",
+  "files": [
+    {
+      "path": "qwen-exl3-405-tp1-131k-native-ready-gates.json",
+      "sha256": "98356cb2ab88c4a51dc7cdbb6e82ab39d99c9e8c4ef48eff8b07a8b5850dab1e"
+    },
+    {
+      "path": "qwen-exl3-405-tp1-preflight-131k-xhigh-native.json",
+      "sha256": "e3b8cb5e62592a1e85720cdd697592f211e5b236a5eef2fba8d9f218438b7777"
+    },
+    {
+      "path": "qwen-exl3-405-tp1-preflight-131k-xhigh-memory.json",
+      "sha256": "1b588c735a1d58b12a35c627204887af7876e17f3423ecca54251e543cb61e4f"
+    },
+    {
+      "path": "qwen-exl3-405-tp1-131k-preload-review.json",
+      "sha256": "669fd78d09322775e2b817adaa4f55ca78bc30ec1c7b0fdee54d07804d88a8f8"
+    },
+    {
+      "path": "qwen-exl3-next-preload-review-r2.json",
+      "sha256": "7224cdfd3b595558c758ce0dacffb30b29b9b07d727b5eccaba6bc2dd727a16d"
+    }
+  ],
+  "identity_binding": {
+    "base_url": "[redacted-local-endpoint]/v1",
+    "container_id": "[redacted-container-id]",
+    "image_digest": "sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826",
+    "model": "turboderp/Qwen3.8-Flash-Next-exl3",
+    "model_revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+    "registry_sha256": "aba01e752f15225c98e37f3b0601ff6417db0c7d4d7394993c4c60d949cb4e31",
+    "served_model": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+    "tabby_source_revision": "a3fed43efae3b18ec6181618d6a4a66153a9d14e",
+    "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+  },
+  "limits": [
+    "No hard reasoning token partition or quality improvement claim.",
+    "Source062 native streaming preflight omits effort and inherits exact native default xhigh; other preflight calls explicitly xhigh. Protocol preflight native T1/p1; quality and SWE explicitly T1/p.95/xhigh.",
+    "131K is configured and allocated; full 131K prompt, effective all-GPU PLE placement and bundled ExL core Git revision remain unverified.",
+    "Warm cache history follows 32K load and functional checks; no minimum RAM or context-caused memory claim.",
+    "No promotion or route change implied."
+  ],
+  "native_forwarding_file_sha256": {
+    "common/config_models.py": "e46af37311587951d71b1919563878a82bd6328521c7d0c83151e797fa2625ef",
+    "endpoints/OAI/types/chat_completion.py": "a68328f10f3ba947df205cad22fcb8c2d452818398930d35be7d1a528145858f",
+    "endpoints/OAI/utils/chat_completion.py": "aed57e2e669bf70c877431f2acc1b4083730d970fa48ab0c4104b701f68f6ca4"
+  },
+  "observed_at": "2026-10-13T20:21:29.480164+00:00",
+  "requested": {
+    "reasoning_effort": "xhigh",
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_k": 0,
+    "top_k_source": "nativeTabbydefault/notrequestoverride",
+    "top_p": 0.95
+  },
+  "schema": "anvil-serving.control-evidence/v1",
+  "source": "Exact Qwen template c3cf, pinned Tabby source a3fed and three native forwarding SHA matches; xhigh accepted by all 13 native functional checks. Independent checks, not model self grading.",
+  "status": "verified"
+}

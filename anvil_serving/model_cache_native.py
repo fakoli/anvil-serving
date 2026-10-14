@@ -8,7 +8,12 @@ without trusting a caller-controlled path outside the selected cache.
 """
 from __future__ import annotations
 
+import errno
 import os
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - native mutation is POSIX-only
+    fcntl = None
 from pathlib import Path
 import re
 import shutil
@@ -94,6 +99,11 @@ def _regular(path: Path) -> os.stat_result | None:
     except OSError:
         return None
     return info if stat.S_ISREG(info.st_mode) else None
+
+
+def _binding(info: os.stat_result) -> list[int]:
+    return [int(info.st_dev), int(info.st_ino), int(info.st_mode), int(info.st_size),
+            int(info.st_mtime_ns), int(info.st_ctime_ns), int(info.st_nlink)]
 
 
 def _children(path: Path, budget: _ScanBudget) -> list[Path]:
@@ -472,7 +482,7 @@ def removal_plan(cache_dir: str | os.PathLike[str], repo_id: str, revision: str)
             "shared_blob_names": [],
             "reclaimable_bytes": 0,
             "refs_to_remove": [],
-            "apply": "unsupported_native_cache_ownership",
+            "apply": "requires_confirmed_guarded_native_removal",
         }
     _directory(repo, "native repository cache")
     record = _repository(root, repo, repo_id, budget)
@@ -489,7 +499,7 @@ def removal_plan(cache_dir: str | os.PathLike[str], repo_id: str, revision: str)
             "shared_blob_names": [],
             "reclaimable_bytes": 0,
             "refs_to_remove": [],
-            "apply": "unsupported_native_cache_ownership",
+            "apply": "requires_confirmed_guarded_native_removal",
         }
     if selected["local_link_integrity"] != "valid":
         raise NativeCacheError("selected native cache snapshot is unsafe")
@@ -517,6 +527,26 @@ def removal_plan(cache_dir: str | os.PathLike[str], repo_id: str, revision: str)
     exclusive_allocated = [item["allocated_bytes"] for item in exclusive_records.values()]
     shared_allocated = [item["allocated_bytes"] for item in shared_records.values()]
     allocation_known = all(size is not None for size in exclusive_allocated + shared_allocated)
+    bindings = {
+        "root": _binding(root.lstat()), "hub": _binding(hub.lstat()), "repo": _binding(repo.lstat()),
+        "blobs": _binding((repo / "blobs").lstat()), "snapshots": _binding((repo / "snapshots").lstat()),
+        "refs": _binding((repo / "refs").lstat()) if os.path.lexists(repo / "refs") else None,
+        "blob_entries": {name: _binding((repo / "blobs" / name).lstat()) for name in sorted(blob_sizes)},
+        "snapshot_entries": {},
+        "ref_entries": {},
+    }
+    for snapshot in record["snapshots"]:
+        path = repo / "snapshots" / snapshot["revision"]
+        entries = {}
+        for base, _dirs, files in os.walk(path, followlinks=False):
+            for name in files:
+                item = Path(base) / name
+                entries[_relative(item, path)] = _binding(item.lstat())
+        bindings["snapshot_entries"][snapshot["revision"]] = {
+            "directory": _binding(path.lstat()), "links": entries,
+        }
+    for relative in record["refs"]:
+        bindings["ref_entries"][relative] = _binding((repo / "refs" / relative).lstat())
     return {
         "repo_id": repo_id,
         "revision": revision,
@@ -550,5 +580,314 @@ def removal_plan(cache_dir: str | os.PathLike[str], repo_id: str, revision: str)
             "Allocated-byte accounting is unavailable on this filesystem."
         ),
         "refs_to_remove": sorted(name for name, value in record["refs"].items() if value == revision),
-        "apply": "unsupported_native_cache_ownership",
+        "binding": bindings,
+        "apply": "requires_confirmed_guarded_native_removal",
     }
+
+
+def _open_absolute_directory(path: Path) -> int:
+    """Open every absolute component without following a caller-controlled link."""
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    directory = getattr(os, "O_DIRECTORY", None)
+    if nofollow is None or directory is None or not hasattr(os, "supports_dir_fd"):
+        raise NativeCacheError("native removal requires no-follow directory-descriptor support")
+    descriptor = os.open(os.path.sep, os.O_RDONLY | directory | nofollow)
+    try:
+        for part in path.parts[1:]:
+            child = os.open(part, os.O_RDONLY | directory | nofollow, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def _open_directory(name: str, parent: int) -> int:
+    return os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+
+
+def _require_binding(descriptor: int, expected: list[int] | None, label: str) -> None:
+    if expected is None or _binding(os.fstat(descriptor)) != expected:
+        raise NativeCacheError("native cache %s changed before mutation" % label)
+
+
+def _remove_tree(descriptor: int) -> None:
+    """Delete a previously validated link-farm directory through descriptors only."""
+    for name in os.listdir(descriptor):
+        info = os.lstat(name, dir_fd=descriptor)
+        if stat.S_ISDIR(info.st_mode):
+            child = _open_directory(name, descriptor)
+            try:
+                _remove_tree(child)
+            finally:
+                os.close(child)
+            os.rmdir(name, dir_fd=descriptor)
+        elif stat.S_ISLNK(info.st_mode):
+            os.unlink(name, dir_fd=descriptor)
+        else:
+            raise NativeCacheError("native cache snapshot changed to an unsafe entry")
+
+
+def _snapshot_blob_names(snapshot: Path, repo: Path, blobs: Path) -> set[str]:
+    result = _scan_snapshot(snapshot, repo, blobs, _ScanBudget())
+    if result["local_link_integrity"] != "valid":
+        raise NativeCacheError("native cache snapshot changed to an unsafe layout")
+    return set(result["blob_names"])
+
+
+def _snapshot_blobs_fd(snapshot_fd: int, blobs_fd: int, depth: int = 0) -> set[str]:
+    result: set[str] = set()
+    for name in os.listdir(snapshot_fd):
+        info = os.lstat(name, dir_fd=snapshot_fd)
+        if stat.S_ISDIR(info.st_mode):
+            child = _open_directory(name, snapshot_fd)
+            try:
+                result.update(_snapshot_blobs_fd(child, blobs_fd, depth + 1))
+            finally:
+                os.close(child)
+            continue
+        if not stat.S_ISLNK(info.st_mode):
+            raise NativeCacheError("native cache snapshot graph changed to an unsafe layout")
+        target = os.readlink(name, dir_fd=snapshot_fd)
+        prefix = "../" * (depth + 2) + "blobs/"
+        blob = target.removeprefix(prefix)
+        if not target.startswith(prefix) or not blob or "/" in blob:
+            raise NativeCacheError("native cache snapshot graph changed to an unsafe layout")
+        blob_info = os.lstat(blob, dir_fd=blobs_fd)
+        if not stat.S_ISREG(blob_info.st_mode) or blob_info.st_nlink != 1:
+            raise NativeCacheError("native cache snapshot graph changed to an unsafe layout")
+        result.add(blob)
+    return result
+
+
+def _snapshot_graph_fd(snapshots_fd: int, blobs_fd: int) -> dict[str, set[str]]:
+    result = {}
+    for revision in os.listdir(snapshots_fd):
+        info = os.lstat(revision, dir_fd=snapshots_fd)
+        if not _REVISION_RE.fullmatch(revision) or not stat.S_ISDIR(info.st_mode):
+            raise NativeCacheError("native cache snapshot graph changed to an unsafe layout")
+        descriptor = _open_directory(revision, snapshots_fd)
+        try:
+            result[revision] = _snapshot_blobs_fd(descriptor, blobs_fd)
+        finally:
+            os.close(descriptor)
+    return result
+
+
+def _acquire_hf_lock_fence(hub_fd: int) -> tuple[
+    list[int], list[int] | None, list[tuple[int, str, list[int], dict[str, list[int]]]],
+    list[tuple[int, str, list[int]]],
+]:
+    """Hold every existing native HF lock without treating its pathname as a lock.
+
+    Hugging Face's Unix ``FileLock`` deliberately retains lock paths after
+    release.  The descriptor's advisory lock, rather than its existence, is
+    therefore the active-writer signal.  Keep acquired descriptors through the
+    mutation so a cooperating writer cannot acquire one of these paths midway.
+    """
+    try:
+        root_info = os.lstat(".locks", dir_fd=hub_fd)
+    except FileNotFoundError:
+        return [], None, [], []
+    except OSError as exc:
+        raise NativeCacheError("cannot inspect Hugging Face lock directory") from exc
+    if stat.S_ISLNK(root_info.st_mode) or not stat.S_ISDIR(root_info.st_mode):
+        raise NativeCacheError("native cache has unsafe Hugging Face lock topology")
+    if fcntl is None or not hasattr(os, "O_NOFOLLOW"):
+        raise NativeCacheError("native removal requires POSIX Hugging Face lock fencing")
+
+    descriptors: list[int] = []
+    directories: list[tuple[int, str, list[int], dict[str, list[int]]]] = []
+    files: list[tuple[int, str, list[int]]] = []
+    budget = _ScanBudget()
+    try:
+        locks_fd = _open_directory(".locks", hub_fd)
+        descriptors.append(locks_fd)
+        root_binding = _binding(root_info)
+        _require_binding(locks_fd, root_binding, "Hugging Face lock directory")
+        pending: list[tuple[int, int]] = [(locks_fd, 0)]
+        directory_records: dict[int, tuple[str, list[int], dict[str, list[int]]]] = {
+            locks_fd: (".locks", root_binding, {}),
+        }
+        while pending:
+            parent_fd, depth = pending.pop()
+            parent_name, _parent_binding, expected_entries = directory_records[parent_fd]
+            if depth > _MAX_SCAN_DEPTH:
+                raise NativeCacheError("native cache Hugging Face locks exceed directory depth limit")
+            try:
+                names = sorted(os.listdir(parent_fd))
+            except OSError as exc:
+                raise NativeCacheError("cannot inspect Hugging Face lock directory") from exc
+            for name in names:
+                budget.consume()
+                try:
+                    info = os.lstat(name, dir_fd=parent_fd)
+                except OSError as exc:
+                    raise NativeCacheError("cannot inspect Hugging Face lock entry") from exc
+                relative = parent_name + "/" + name
+                binding = _binding(info)
+                expected_entries[name] = binding
+                if stat.S_ISDIR(info.st_mode):
+                    child_fd = _open_directory(name, parent_fd)
+                    descriptors.append(child_fd)
+                    _require_binding(child_fd, binding, "Hugging Face lock directory")
+                    directory_records[child_fd] = (relative, binding, {})
+                    pending.append((child_fd, depth + 1))
+                    continue
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                    raise NativeCacheError("native cache has unsafe Hugging Face lock topology")
+                descriptor = os.open(name, os.O_RDWR | os.O_NOFOLLOW, dir_fd=parent_fd)
+                try:
+                    _require_binding(descriptor, binding, "Hugging Face lock file")
+                    try:
+                        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except OSError as exc:
+                        if exc.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
+                            raise NativeCacheError("native cache has active Hugging Face lock files") from None
+                        raise NativeCacheError("cannot fence Hugging Face lock file") from exc
+                except BaseException:
+                    os.close(descriptor)
+                    raise
+                descriptors.append(descriptor)
+                files.append((descriptor, relative, binding))
+        directories = [
+            (descriptor, name, binding, expected_entries)
+            for descriptor, (name, binding, expected_entries) in directory_records.items()
+        ]
+        return descriptors, root_binding, directories, files
+    except BaseException:
+        for descriptor in reversed(descriptors):
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        raise
+
+
+def _verify_hf_lock_fence(
+    hub_fd: int, root_binding: list[int] | None,
+    directories: list[tuple[int, str, list[int], dict[str, list[int]]]],
+    files: list[tuple[int, str, list[int]]],
+) -> None:
+    """Reject a lock-tree change after its descriptors were fenced."""
+    try:
+        current_root = os.lstat(".locks", dir_fd=hub_fd)
+    except FileNotFoundError:
+        current_root = None
+    except OSError as exc:
+        raise NativeCacheError("cannot inspect Hugging Face lock directory") from exc
+    if root_binding is None:
+        if current_root is not None:
+            raise NativeCacheError("native cache Hugging Face lock tree changed before mutation")
+        return
+    if current_root is None or _binding(current_root) != root_binding:
+        raise NativeCacheError("native cache Hugging Face lock tree changed before mutation")
+    for descriptor, _relative, binding, expected_entries in directories:
+        _require_binding(descriptor, binding, "Hugging Face lock directory")
+        try:
+            names = tuple(sorted(os.listdir(descriptor)))
+        except OSError as exc:
+            raise NativeCacheError("cannot inspect Hugging Face lock directory") from exc
+        if names != tuple(sorted(expected_entries)):
+            raise NativeCacheError("native cache Hugging Face lock tree changed before mutation")
+        for name in names:
+            try:
+                if _binding(os.lstat(name, dir_fd=descriptor)) != expected_entries[name]:
+                    raise NativeCacheError("native cache Hugging Face lock tree changed before mutation")
+            except OSError as exc:
+                raise NativeCacheError("cannot inspect Hugging Face lock entry") from exc
+    for descriptor, _relative, binding in files:
+        _require_binding(descriptor, binding, "Hugging Face lock file")
+
+
+def remove(cache_dir: str | os.PathLike[str], repo_id: str, revision: str, *, expected_plan: dict[str, Any]) -> dict[str, Any]:
+    """Remove one re-planned native snapshot using no-follow directory descriptors."""
+    current = removal_plan(cache_dir, repo_id, revision)
+    guarded = ("snapshot_exists", "exclusive_blob_names", "shared_blob_names", "refs_to_remove", "binding")
+    if any(current.get(key) != expected_plan.get(key) for key in guarded):
+        raise NativeCacheError("native cache removal plan changed before mutation")
+    if not current["snapshot_exists"]:
+        return {"applied": False, "outcome": "already-absent", "plan": current}
+    root, hub, _direct = _root(cache_dir, _ScanBudget())
+    if hub is None:
+        raise NativeCacheError("native cache has no standard hub layout")
+    owner, name = repo_id.split("/", 1)
+    repo_name = "models--%s--%s" % (owner, name)
+    root_fd = _open_absolute_directory(root)
+    descriptors = [root_fd]
+    try:
+        if fcntl is None:
+            raise NativeCacheError("native removal requires POSIX operation locking")
+        try:
+            fcntl.flock(root_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise NativeCacheError("native cache removal is already in progress") from exc
+        hub_fd = root_fd if hub == root else _open_directory("hub", root_fd)
+        if hub_fd != root_fd:
+            descriptors.append(hub_fd)
+        repo_fd = _open_directory(repo_name, hub_fd)
+        snapshots_fd = _open_directory("snapshots", repo_fd)
+        blobs_fd = _open_directory("blobs", repo_fd)
+        descriptors.extend((repo_fd, snapshots_fd, blobs_fd))
+        snapshot_fd = _open_directory(revision, snapshots_fd)
+        descriptors.append(snapshot_fd)
+        bindings = current["binding"]
+        _require_binding(root_fd, bindings["root"], "root")
+        _require_binding(hub_fd, bindings["hub"], "hub")
+        _require_binding(repo_fd, bindings["repo"], "repository")
+        _require_binding(snapshots_fd, bindings["snapshots"], "snapshots")
+        _require_binding(blobs_fd, bindings["blobs"], "blobs")
+        _require_binding(snapshot_fd, bindings["snapshot_entries"][revision]["directory"], "snapshot")
+        lock_descriptors, lock_root, lock_directories, lock_files = _acquire_hf_lock_fence(hub_fd)
+        descriptors.extend(lock_descriptors)
+        expected_selected = set(current["exclusive_blob_names"] + current["shared_blob_names"])
+        graph = _snapshot_graph_fd(snapshots_fd, blobs_fd)
+        others = set().union(*(names for key, names in graph.items() if key != revision))
+        if graph.get(revision) != expected_selected or expected_selected & others != set(current["shared_blob_names"]):
+            raise NativeCacheError("native cache snapshot graph changed before mutation")
+        for blob in current["exclusive_blob_names"] + current["shared_blob_names"]:
+            info = os.lstat(blob, dir_fd=blobs_fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or _binding(info) != bindings["blob_entries"][blob]:
+                raise NativeCacheError("native cache blob changed before mutation")
+        refs_to_remove: list[tuple[int, str]] = []
+        if current["binding"]["refs"] is not None:
+            refs_fd = _open_directory("refs", repo_fd)
+            descriptors.append(refs_fd)
+            _require_binding(refs_fd, bindings["refs"], "refs")
+            for relative in current["refs_to_remove"]:
+                parent = refs_fd
+                parts = relative.split("/")
+                for part in parts[:-1]:
+                    parent = _open_directory(part, parent)
+                    descriptors.append(parent)
+                info = os.lstat(parts[-1], dir_fd=parent)
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or _binding(info) != bindings["ref_entries"][relative]:
+                    raise NativeCacheError("native cache ref changed before mutation")
+                with os.fdopen(os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent), "rb") as stream:
+                    if stream.read(_MAX_REF_BYTES + 1).decode("utf-8").strip() != revision:
+                        raise NativeCacheError("native cache ref changed before mutation")
+                refs_to_remove.append((parent, parts[-1]))
+        _verify_hf_lock_fence(hub_fd, lock_root, lock_directories, lock_files)
+        for parent, name in refs_to_remove:
+            os.unlink(name, dir_fd=parent)
+        _remove_tree(snapshot_fd)
+        os.rmdir(revision, dir_fd=snapshots_fd)
+        for blob in current["exclusive_blob_names"]:
+            if blob in set().union(*_snapshot_graph_fd(snapshots_fd, blobs_fd).values()):
+                continue
+            info = os.lstat(blob, dir_fd=blobs_fd)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_nlink != 1
+                or _binding(info) != bindings["blob_entries"][blob]
+            ):
+                raise NativeCacheError("native cache blob changed before mutation")
+            os.unlink(blob, dir_fd=blobs_fd)
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+    final = removal_plan(cache_dir, repo_id, revision)
+    if final["snapshot_exists"] or final["refs_to_remove"]:
+        raise NativeCacheError("native cache post-removal verification failed")
+    return {"applied": True, "outcome": "removed", "plan": current, "verification": final}

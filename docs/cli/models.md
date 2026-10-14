@@ -419,22 +419,43 @@ that snapshot, collects only blobs no remaining snapshot references, and
 verifies the target snapshot is absent. It does not approximate repository
 identity with a substring or wildcard.
 
-Native Hugging Face caches have an inspection-only removal plan. It takes an
-explicit local cache root, accepts only a 40-character lowercase commit revision,
-and never contacts Docker, the network, or credential sources:
+Native Hugging Face caches take an explicit local cache root and only a
+40-character lowercase commit revision. Preview is filesystem-only:
 
 ```bash
 anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT \
   --cache-dir /operator/model-cache/hub --dry-run
 ```
 
-The plan separates exclusive from shared blobs and reports an inode-deduplicated
-physical-byte reclaim estimate (`st_blocks * 512`) and refs that point to the
-selected snapshot. APFS copy-on-write or clone accounting can make eventual disk
-release lower. Native deletion is intentionally unsupported: `--confirm` is
-refused until the product has a native ownership and deletion-safety
-implementation. The scanner refuses symlinked selected-path ancestry and does
-not follow metadata links outside the selected repository.
+Apply requires `--confirm` and the authoritative operator configuration home:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --config-home /operator/home --confirm
+```
+
+Before deletion, the command audits running and stopped Docker bind mounts and
+current configuration references, rejects unresolved values and unsafe paths,
+then re-plans. It unlinks only the selected snapshot's links, refs, and
+exclusive blobs through no-follow directory descriptors, preserving other
+snapshots and shared blobs before verifying the snapshot is absent.
+Live configuration cannot delegate through the root `recovered-configs` archive;
+restore that manifest into an authoritative current location before attempting
+native cache removal.
+It refuses observed cache drift and active Hugging Face locks. Released Hugging
+Face lock paths persist, so it checks and retains their advisory locks through
+the deletion rather than treating a lock pathname as active. A writer that does
+not cooperate with those cache locks can still race filesystem metadata, so
+stop external cache writers before applying the reviewed command.
+
+An operator can declare one or more exact 64-character container IDs as
+non-model read-only root observations with `--non-model-root-view CONTAINER_ID`.
+This assertion is only used during confirmed native apply. For each declared ID,
+the current inventory must show an exact read-only bind from `/` to an absolute
+container destination and no GPU device requests. It permits only that one root
+observation; another overlapping mount, a mutable root view, an unknown ID, or
+a GPU request still blocks removal. The declaration records the caller's
+observation purpose and does not classify or otherwise exempt containers.
 
 ## Cache inventory
 

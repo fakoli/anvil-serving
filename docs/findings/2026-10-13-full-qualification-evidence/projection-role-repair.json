@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.public-projection-erratum/v1",
+  "revision": "r20",
+  "reason": "Four prior accepted CLI envelopes retained one private GPU role label. It was replaced with a synthetic public role. All keys, list order, types, numbers, public model/image identities, and other strings are unchanged. Earlier staging remains frozen outside this publication bundle.",
+  "artifacts": [
+    {
+      "path": "native/public-native-draft-r11/stock-qwen27-fp8-tp1-131k-unload-applied.json",
+      "prior_public_sha256": "72f00eead6d2bf7b55ec6aa7ff06138ec383958583a972d5ab100d9cb7e4a78b",
+      "public_sha256": "f69f4c658cebe556ea1645ffebe2b2394ad752f3ec84c0af5448771c547a96b5",
+      "string_changes": 1
+    },
+    {
+      "path": "native/public-native-draft-r11/stock-qwen27-fp8-tp1-bf16kv-131k-load.json",
+      "prior_public_sha256": "1960878b3362b6dbefaf0fa3371a908c1890ac52b5932700a917839a3e53072d",
+      "public_sha256": "e0e84c4a9b593a36bbb99745a90988e10394fe9f140838482b8fbc0986a0484c",
+      "string_changes": 1
+    },
+    {
+      "path": "native/public-native-draft-r11/stock-qwen27-fp8-tp1-131k-load.json",
+      "prior_public_sha256": "970e65058625959f86b1936e85620b592a2907081908045f3c0aef72cd01d0eb",
+      "public_sha256": "79825a47cc1500cf64bbbc9f82a88244a3e9d65ef102dc42bc7b0989ebf8ed26",
+      "string_changes": 1
+    },
+    {
+      "path": "native/public-native-draft-r16-r2/stock-qwen27-fp8-tp1-bf16kv-131k-unload-applied.json",
+      "prior_public_sha256": "7039ab033dd104545a87618354a029ec5897b9bd169974e09c9c25dda68c6cd2",
+      "public_sha256": "00d72101014230fe765f016cf0a3ddfe3d3b88bf39a4fec61f31554b8ea7048a",
+      "string_changes": 1
+    }
+  ]
+}

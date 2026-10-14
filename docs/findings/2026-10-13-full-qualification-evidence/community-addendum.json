@@ -1,0 +1,70 @@
+{
+  "schema": "anvil-serving.research-source-addendum/v1",
+  "observed_at": "2026-10-13T21:44:34.449504+00:00",
+  "published_date": null,
+  "age_class": "unknown-publication-date/current-observation",
+  "scope": "Public community navigation gap only; no inference/deployment measurement. No private Discord account/channel/message links.",
+  "sources": [
+    {
+      "title": "Local Inference Lab public organization",
+      "url": "https://github.com/local-inference-lab",
+      "evidence_type": "community-maintainer-directory",
+      "hardware_engine_relevance": "SM120 model/runtime research; repositories vary in topology",
+      "decision_impact": "Follow public changes; do not count linked projects as independent corroboration."
+    },
+    {
+      "title": "RTX PRO 6000 Blackwell field wiki",
+      "url": "https://github.com/local-inference-lab/rtx6kpro",
+      "evidence_type": "maintainer-runbook-and-field-measurements",
+      "hardware_engine_relevance": "SM120 PCIe; most reported measurements use 4, 8 or 16 GPUs",
+      "decision_impact": "Locate current model and kernel runbooks; transfer TP1/TP2 figures only with matched controls."
+    },
+    {
+      "title": "Local Inference Lab HF organization",
+      "url": "https://huggingface.co/local-inference-lab",
+      "evidence_type": "artifact-publisher-directory",
+      "hardware_engine_relevance": "Model variants/QAD/CSF and immutable artifact discovery",
+      "decision_impact": "Verify exact revision and architecture; organization metadata is not local quality evidence."
+    },
+    {
+      "title": "Blackwell runtime image builds",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker",
+      "evidence_type": "runtime-maintainer-source",
+      "hardware_engine_relevance": "SGLang/vLLM SM120 CUDA 13.2 images",
+      "decision_impact": "Pin source/image and native dispatch before using a reported fix."
+    },
+    {
+      "title": "Local Inference Lab throughput harness",
+      "url": "https://github.com/local-inference-lab/llm-inference-bench",
+      "evidence_type": "benchmark-harness-source",
+      "hardware_engine_relevance": "SGLang/vLLM decode context/concurrency sweeps",
+      "decision_impact": "Throughput method lead; not independent repository-repair evidence."
+    },
+    {
+      "title": "Local Inference Lab quant toolkit",
+      "url": "https://github.com/local-inference-lab/quant-toolkit",
+      "evidence_type": "quant-maintainer-source-directory",
+      "hardware_engine_relevance": "Exact current support unverified in this addendum",
+      "decision_impact": "Discover quant tooling; do not imply selected-model/runtime compatibility."
+    },
+    {
+      "title": "Local Inference Lab newcomer and Discord support guide",
+      "url": "https://github.com/local-inference-lab/rtx6kpro/blob/master/docs/newcomer-onboarding.md",
+      "evidence_type": "community-methodology",
+      "hardware_engine_relevance": "Exact image/model/topology/client/server evidence expected",
+      "decision_impact": "Use when learning from Discord; preserve logs/settings and isolate one variable."
+    },
+    {
+      "title": "Local Inference Lab archived b12x",
+      "url": "https://github.com/local-inference-lab/b12x",
+      "evidence_type": "historical-kernel-source",
+      "hardware_engine_relevance": "Organization declares development moved to FlashInfer",
+      "decision_impact": "Historical recipe lead; use current FlashInfer migration rather than treating archive as latest kernel."
+    }
+  ],
+  "limitations": [
+    "Public organization and mutable runbook observed current; no immutable code or artifact pin follows.",
+    "Discord participation was read-only; no messaging authorization used.",
+    "Failed fetch of the public daily-summaries directory is not evidence of its contents."
+  ]
+}

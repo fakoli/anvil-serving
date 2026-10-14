@@ -1,0 +1,35 @@
+{
+  "max_tokens": 9216,
+  "messages": [
+    {
+      "content": "Call record_weather_zip with zip 98101.",
+      "role": "user"
+    }
+  ],
+  "model": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+  "reasoning_effort": "xhigh",
+  "stream": true,
+  "temperature": 1.0,
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "function": {
+        "description": "Record the ZIP code the user supplied for weather lookup.",
+        "name": "record_weather_zip",
+        "parameters": {
+          "properties": {
+            "zip": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "zip"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "function"
+    }
+  ],
+  "top_p": 0.95
+}

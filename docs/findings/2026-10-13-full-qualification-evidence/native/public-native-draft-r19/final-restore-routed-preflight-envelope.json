@@ -1,0 +1,27 @@
+{
+  "command": "eval preflight --base-url public-endpoint-003 --api-key-env ANVIL_ROUTER_TOKEN --thinking-mode default --visible-answer-tokens 1024 --reasoning-headroom-tokens 8192 --timeout 180 --confirm --transport local --model llm.primary --json-out public-path-002 --checks smoke,json,tools,streaming-tools,tool-result,responses --tool-batch 8",
+  "context": {
+    "command": "eval-preflight",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "public-resource-001",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "PRE-FLIGHT  public-endpoint-003  model=llm.primary  thinking=default visible=1024 reasoning_headroom=8192 max_tokens=9216\n------------------------------------------------------------\n[PASS] smoke (short coding)                   3.8s got=\"```python\\nsum(xs)\\n```\\n\\nThat's the idiomatic way. I\" finish='stop' visible=512 reasoning_chars=542 reasoning_tokens=None\n[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=185 reasoning_tokens=None\n[PASS] shared-prefix tool batch x8            8/8 clean (sample: 2.5s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=78 reasoning_tokens=None)\n[PASS] streaming tool call                    0.7s done=True events=33 valid tool_call get_weather(city='Oakland') finish='tool_calls'\n[PASS] tool-result continuation               1.7s tool result retained finish='stop' visible=11 reasoning_chars=267 reasoning_tokens=None\n[PASS] Responses API subset                   1.3s status='completed' output='READY' reasoning_chars=0\n------------------------------------------------------------\nRESULT: ALL PASS\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

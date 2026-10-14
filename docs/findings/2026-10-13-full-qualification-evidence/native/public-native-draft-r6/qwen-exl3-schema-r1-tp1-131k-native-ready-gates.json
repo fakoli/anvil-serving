@@ -1,0 +1,60 @@
+{
+  "cache_size": 131072,
+  "configured_concurrency": 1,
+  "configured_context_tokens": 131072,
+  "configured_kv_dtype": "FP16",
+  "configured_speculation": "disabled",
+  "container_id": "[redacted-container-id]",
+  "exllamav3_native_version": "1.6.1",
+  "gpu_rows": [
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": 97887,
+      "used_mib": 67573
+    },
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": 97887,
+      "used_mib": 0
+    }
+  ],
+  "host_memory": {
+    "current_bytes": 12322713600,
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 55834574848,
+    "oom_killed": false,
+    "peak_bytes": 12458844160,
+    "ram_plus_swap_limit_bytes": 55834574849
+  },
+  "image_id": "sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7",
+  "limits": [
+    "Warm cache and cgroup-charge history after previous32K/131K loads. Lower memory.current is not causal evidence of a parser-fix RAM benefit or minimum RAM.",
+    "ngram_ram false requests streamed PLE; core source placement mapping and allGPU fit not established.",
+    "131K configured/allocation only; full131K prompt not validated.",
+    "No quality or SWE pass yet; no promotion."
+  ],
+  "native_forwarding_file_sha256": {
+    "common/config_models.py": "e46af37311587951d71b1919563878a82bd6328521c7d0c83151e797fa2625ef",
+    "endpoints/OAI/types/chat_completion.py": "a68328f10f3ba947df205cad22fcb8c2d452818398930d35be7d1a528145858f",
+    "endpoints/OAI/utils/chat_completion.py": "fbc13d7e041789b7f1bdacd9d6a2be89dcc1ab65118cf8f798a8763c83416acc",
+    "endpoints/OAI/utils/toolcall_formats/common.py": "0fa9eb0dbf8f8e86eb5eb80ff761475772a8ee1732643889aa5e522629b33bce",
+    "endpoints/OAI/utils/toolcall_formats/qwen3_coder.py": "280dae0101ddf568e4e95eddacf27b47dcb4fecadc17d3f1628bbea994675f84",
+    "endpoints/OAI/utils/tools.py": "94ae3f8b247080d79ebda7219712071871a3ec12646ce488f2e2c4e68b9f61a3"
+  },
+  "observed_at": "2026-10-13T21:03:42.527042+00:00",
+  "operator_patch_manifest_sha256": "997fda896d0f994eee3b97ea212d850fbbbd76f58c2bfbdbc667f3ac30a09502",
+  "package_build_versions": "Unchanged from pinned base image; native ExL version logged; no separate new torch/transformers version emitter.",
+  "promoted": false,
+  "registry_sha256": "265f6a5335147b4854a79095862aac7e6099ae3b61537baca8a14b85704501c3",
+  "schema_version": "native-ready-gates/v1"
+}

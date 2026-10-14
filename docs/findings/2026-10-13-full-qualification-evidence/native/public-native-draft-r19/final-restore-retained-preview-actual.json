@@ -1,0 +1,27 @@
+{
+  "command": "serves mode restore-retained tp2-glm53-exl3-327k-r11-dcp1-vision8-apc-nospec --manifest public-path-013 --manifest-sha256 9d16e3f347897ed660144d9212eadb0062e9e4d3c50840269257a0bbd6e69732 --registry-sha256 3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6 --expected-container-id public-container-001 --expected-image sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692 --topology public-path-014 --transport local --dry-run",
+  "context": {
+    "command": "serves-mode-restore-retained",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": "public-gpu-role-001",
+    "gpu_uuid": "public-gpu-uuid-001",
+    "overlay": null,
+    "resource": "public-resource-003",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "retained exclusive restore: exact existing ID only; no router, create, pull or alternate model\npreview only; --confirm required\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

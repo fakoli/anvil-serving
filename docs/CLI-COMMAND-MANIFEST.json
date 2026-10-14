@@ -3380,6 +3380,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--non-model-root-view"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declare an exact non-model read-only root-view container; repeat for each declaration; native apply validates mount and GPU fields.",
+          "value_name": "CONTAINER_ID"
         }
       ],
       "output_policy": "bounded",
@@ -3388,7 +3397,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-catalog",
-      "summary": "Remove one Docker revision or preview native-cache removal.",
+      "summary": "Remove one exact Docker or guarded native-cache revision.",
       "transports": [
         "local"
       ],

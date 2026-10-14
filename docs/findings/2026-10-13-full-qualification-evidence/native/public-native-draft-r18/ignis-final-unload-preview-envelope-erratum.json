@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.evidence-erratum/v1",
+  "observed_at": "2026-10-14T05:10:49.644444+00:00",
+  "failure": "Unloading preview was successful native human-text data inside JSON envelope; root attempted to json.loads its data and raised before actual mutation.",
+  "scope": "No workload/lifecycle failure; original status and successful preview retained; new actual unload separately named.",
+  "disposition": "Parse inner data as JSON only when the native command contract is JSON, preserving native outer envelope."
+}

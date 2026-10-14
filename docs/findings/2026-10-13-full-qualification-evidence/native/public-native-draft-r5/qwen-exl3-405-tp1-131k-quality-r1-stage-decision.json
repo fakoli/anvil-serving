@@ -1,0 +1,40 @@
+{
+  "candidate": "qwen-exl3-405-tp1-131k",
+  "containment_abort": null,
+  "counts": {
+    "intelligence": {
+      "attempted": 6,
+      "passed": 6
+    },
+    "session": {
+      "attempted": 3,
+      "passed": 3
+    },
+    "tool": {
+      "attempted": 3,
+      "passed": 0
+    }
+  },
+  "diagnostic_error": "failure class visible_answer_missing does not accurately describe this type mismatch; actual finish_reason tool_calls with one call and nonempty arguments",
+  "evidence": [
+    {
+      "path": "qwen-exl3-405-tp1-131k-xhigh-quality-r1.json",
+      "sha256": "f0cb0b45ecdaaae0db5ca2d17b6b071c859a2d6fffd6c433b0649521a59ba4b2"
+    },
+    {
+      "path": "qwen-exl3-405-tp1-131k-xhigh-quality-r1-memory.json",
+      "sha256": "dd7ec4bde8e5f0e88a526f75b8b8a3f4a9d0fd995f6dd2e5d20d1b31b0eb0c1c"
+    },
+    {
+      "path": "qwen-exl3-405-tp1-131k-logs-after-quality-r1.json",
+      "sha256": "bfc1c86cbfc9621a2a6207c38469284482e48854d1328d0f6398aa01210a4eb8"
+    }
+  ],
+  "observed_at": "2026-10-13T20:23:58.650138+00:00",
+  "promoted": false,
+  "quality_status": "failed",
+  "root_cause_status": "under investigation: numeric-looking required string becomes JSON integer in native qwen3_coder output; trace template and parser before model attribution",
+  "runtime_failure": false,
+  "schema_version": "campaign-stage-decision/v1",
+  "swe_submission": "held pending parser diagnosis"
+}

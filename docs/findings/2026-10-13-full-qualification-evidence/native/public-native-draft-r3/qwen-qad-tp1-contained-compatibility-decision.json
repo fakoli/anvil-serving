@@ -1,0 +1,69 @@
+{
+  "actual_swap_bytes": 0,
+  "configured_context_tokens": 131072,
+  "decision": "bounded131Kcompatibilitypass; fullquality/performance/promotionnotqualified",
+  "gpu_ready_mib": 83787,
+  "historical_limits": [
+    "Original32K4GiBstartupstrictsafe-envelopefailed at52GiB/maxevents14348; preserved",
+    "Original131K4GiBblocked: native94279KV<131072",
+    "New6GiB131startup hadwarm/sharedfilecachehistory; doNOTattribute lowerhostpeaktoKVincrease",
+    "First131onesmokepassedbutobservercomparedunstablemetadataandlostsamples; R2replacesmeasurementonly, oldnative/erratumretained",
+    "No measured131Kprompt/capacityrank/fullSWE/primarycontractclaim",
+    "TP2fixed5xhigh1resolved/5attempted3empty stillfailed floor"
+  ],
+  "host_peak_bytes": 45038280704,
+  "native_functional_observations": 13,
+  "native_kv_tokens": 302757,
+  "observed_at": "2026-10-13T18:12:12.542998+00:00",
+  "ple": "privateCUDA-mappedhost26.82GiB",
+  "promoted": false,
+  "request_scope_events": "R2smokeand13checks max/oom/killdeltasall0",
+  "schema_version": "qad-tp1-contained-compatibility-decision/v1",
+  "sources": [
+    {
+      "bytes": 2235,
+      "path": "raw/qwen-qad-tp1-131k-kv6-native-ready-gates.json",
+      "sha256": "6e264d102a9dd565fd6d1817d3dad3750ac4998d4902987ee329dffab397ae33"
+    },
+    {
+      "bytes": 171689,
+      "path": "raw/qwen-qad-tp1-131k-kv6-startup-memory-sampled.json",
+      "sha256": "ede268c37e2a6c283cb5fa562d82ae5366e81d128720e8f71338697bc9f4a754"
+    },
+    {
+      "bytes": 1900,
+      "path": "raw/qwen-qad-tp1-131k-kv6-one-smoke-native.json",
+      "sha256": "3cdbe6cdfcf16f8615544ad4ccbf32ec0e95460eb0579da853ae7329b88405c4"
+    },
+    {
+      "bytes": 656,
+      "path": "raw/qwen-qad-tp1-131k-kv6-observer-erratum.json",
+      "sha256": "4f0cfca2c86018b1d23026f0f538a72383a34ff580e4707f81ece06eed6aea53"
+    },
+    {
+      "bytes": 1901,
+      "path": "raw/qwen-qad-tp1-131k-kv6-one-smoke-r2-native.json",
+      "sha256": "02556c06e421b3a1e4e74fa021885e229f21f4f42d7fd71df3366a87b9949904"
+    },
+    {
+      "bytes": 9131,
+      "path": "raw/qwen-qad-tp1-131k-kv6-one-smoke-r2-memory.json",
+      "sha256": "16c08cc9b95f0ac19fa3165ac3406e5f4e54622dab7531ff47d050d102b17a2b"
+    },
+    {
+      "bytes": 13309,
+      "path": "raw/qwen-qad-tp1-131k-kv6-preflight-native.json",
+      "sha256": "02a5e562801db4da9ac339a10f9fbf096cf739e010275c8cd3741e16eb27908d"
+    },
+    {
+      "bytes": 33355,
+      "path": "raw/qwen-qad-tp1-131k-kv6-preflight-memory.json",
+      "sha256": "699a5d51e2e7298faf5ee77fea03e303f8756bb8c6ae12c22b7293f029269388"
+    },
+    {
+      "bytes": 17769,
+      "path": "raw/qwen-qad-tp1-131k-kv6-gate-review.json",
+      "sha256": "8d0e3091b12cc9448869fb29e273ac5e303aece880c06182e0191a861514f792"
+    }
+  ]
+}

@@ -1,0 +1,662 @@
+{
+  "schema": "anvil-serving.public-configuration-bindings/v1",
+  "scope": "Derived allowlist of pinned managed recipe fields and actual baseline identity; native records remain authoritative. Serving-image pins are not SWE grader paired-image IDs.",
+  "baseline_source": {
+    "basename": "baseline-swe-spec.json",
+    "sha256": "23a022c2ee4a8737e18434cdbdf166ea1ba07712a3dcaec70358cf7689660a87",
+    "identities": {
+      "model": {
+        "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+        "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+      },
+      "runtime": {
+        "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+        "image_id": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "context": {
+        "configured_tokens": 327680
+      },
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      }
+    }
+  },
+  "managed_recipe_pins": [
+    {
+      "source_basename": "coder390-int4w4a16-tp1-c1-131k-nospec.recipe.toml",
+      "source_sha256": "b6bba3d0fddea7ef0423cfe37bd83503055492cf90f16d6a2fcb6bd533956787",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "nerkyor/Qwen3.8-27B-Coder390-EfficientThink-Opus5.5-GPT6Astra-Grok4.7-DSV4Pro-K3-SFT-RLOO-MTP-DFlash2"
+        },
+        {
+          "field": "revision",
+          "value": "ccec60c489c1d007704d38de436ec7019457edf8"
+        },
+        {
+          "field": "engine",
+          "value": "vllm-0.28.0"
+        },
+        {
+          "field": "image",
+          "value": "vllm/vllm-openai:v0.28.0@sha256:2286e8533ca8b6bc777594bae30524f1426ba46ca21797524e06df6a94b06635"
+        },
+        {
+          "field": "quantization",
+          "value": "Qwen3_5ForConditionalGeneration; GPTQ W4A16 compressed-tensors, symmetric INT4 group 128; BF16 lm_head, embeddings, MTP and vision retained"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ],
+      "artifact_subdirectory": "INT4/W4A16"
+    },
+    {
+      "source_basename": "coder390-int8w8a8-tp1-c1-131k-nospec.recipe.toml",
+      "source_sha256": "62df879fe950f75fe7050260b20b48f8f9910d979c20f5005489b4da71067aa9",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "nerkyor/Qwen3.8-27B-Coder390-EfficientThink-Opus5.5-GPT6Astra-Grok4.7-DSV4Pro-K3-SFT-RLOO-MTP-DFlash2"
+        },
+        {
+          "field": "revision",
+          "value": "ccec60c489c1d007704d38de436ec7019457edf8"
+        },
+        {
+          "field": "engine",
+          "value": "vllm-0.28.0"
+        },
+        {
+          "field": "image",
+          "value": "vllm/vllm-openai:v0.28.0@sha256:2286e8533ca8b6bc777594bae30524f1426ba46ca21797524e06df6a94b06635"
+        },
+        {
+          "field": "quantization",
+          "value": "Qwen3_5ForConditionalGeneration; SmoothQuant W8A8 compressed-tensors (per-channel INT8 weights, dynamic per-token INT8 activations); BF16 retained components"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ],
+      "artifact_subdirectory": "INT8/W8A8"
+    },
+    {
+      "source_basename": "glm53-ormandj-mixed-tp2-131k-c1-nospec.recipe.toml",
+      "source_sha256": "b64a88abb61311ad6be29bf996961efd3be9547ed51dc283a1a5543fe31f892c",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO"
+        },
+        {
+          "field": "revision",
+          "value": "c3cbb9891b67c741bcbf6b176dd7af9265b069db"
+        },
+        {
+          "field": "engine",
+          "value": "sglang-glm53-sm120-v0.4.3"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:ec4243f940a179a27fea21895077efd47cd050501f99a1d2a5fecf7df2e7be71"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ]
+    },
+    {
+      "source_basename": "qwen38-flash-next-qad-tp2-262k-nospec.recipe.toml",
+      "source_sha256": "daaede7eda2047b4fe442f7c42c17d984d50c89bf273fb8dd8d260447893ee4b",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4"
+        },
+        {
+          "field": "revision",
+          "value": "6909a5bed089a48fa07e956d3915af2537de9368"
+        },
+        {
+          "field": "engine",
+          "value": "vllm-lil-karmic-e1ccbaf"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/local-inference-lab/vllm:karmic-kraken-beta-20261005-e1ccbaf0fc0f4f4c@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        {
+          "field": "context_tokens",
+          "value": 262144
+        },
+        {
+          "field": "quantization",
+          "value": "QAD NVFP4 routed experts and PLE; MXFP8 attention/shared experts; FP8 KV; FP32 recurrent state; GPU PLE; no MTP"
+        }
+      ]
+    },
+    {
+      "source_basename": "qwen38-flash-next-qad-tp1-c1-131k-kv6-host-ple-nospec.recipe.toml",
+      "source_sha256": "5458de90bdea64668ec90c8c6674a90a9860394ab91e1c8a8939618733ad1297",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4"
+        },
+        {
+          "field": "revision",
+          "value": "6909a5bed089a48fa07e956d3915af2537de9368"
+        },
+        {
+          "field": "engine",
+          "value": "vllm-lil-00a33e23142097f99fef95b1ecab6da4ea271e2e"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/local-inference-lab/vllm:karmic-kraken-beta-20261005-e1ccbaf0fc0f4f4c@sha256:6008f020c23065bef71390194f968af9f5ebbedf57807b1659f876632e4a1067"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        },
+        {
+          "field": "quantization",
+          "value": "QAD NVFP4 routed experts and PLE; MXFP8 attention/shared experts; FP8 KV; FP32 recurrent state; source-gated private CUDA-mapped-host PLE; no MTP"
+        }
+      ]
+    },
+    {
+      "source_basename": "serve-recipes.deepseek-131k.toml",
+      "source_sha256": "c0e82ce4ad1cff68e67e820c0a1995d877853cec3e3e9bf8b3a4a0a249169f95",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "turboderp/DeepSeek-V4-Flash-0731-exl3"
+        },
+        {
+          "field": "revision",
+          "value": "b5526babe907141a0750f265a5a2a5cf414f5a64"
+        },
+        {
+          "field": "engine",
+          "value": "tabbyapi-exllamav3"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/theroyallab/tabbyapi:cu13@sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826"
+        },
+        {
+          "field": "quantization",
+          "value": "EXL3 2.04bpw; FP16 KV; C1; MTP disabled; no CPU MoE offload"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        },
+        {
+          "field": "repo",
+          "value": "turboderp/DeepSeek-V4-Flash-0731-exl3"
+        },
+        {
+          "field": "revision",
+          "value": "b5526babe907141a0750f265a5a2a5cf414f5a64"
+        },
+        {
+          "field": "engine",
+          "value": "tabbyapi-exllamav3"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/theroyallab/tabbyapi:cu13@sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826"
+        },
+        {
+          "field": "quantization",
+          "value": "EXL3 2.04bpw; native TP2 requested; FP16 KV; C1; MTP disabled; no CPU MoE offload"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ]
+    },
+    {
+      "source_basename": "serve-recipes.qwen-schema-r1.toml",
+      "source_sha256": "265f6a5335147b4854a79095862aac7e6099ae3b61537baca8a14b85704501c3",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "turboderp/Qwen3.8-Flash-Next-exl3"
+        },
+        {
+          "field": "revision",
+          "value": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a"
+        },
+        {
+          "field": "engine",
+          "value": "tabbyapi-exllamav3"
+        },
+        {
+          "field": "image",
+          "value": "sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7"
+        },
+        {
+          "field": "quantization",
+          "value": "EXL3 4.05bpw_h6_ng6; FP16 KV; C1; MTP disabled; streamed-PLE requested"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        },
+        {
+          "field": "repo",
+          "value": "turboderp/Qwen3.8-Flash-Next-exl3"
+        },
+        {
+          "field": "revision",
+          "value": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a"
+        },
+        {
+          "field": "engine",
+          "value": "tabbyapi-exllamav3"
+        },
+        {
+          "field": "image",
+          "value": "sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7"
+        },
+        {
+          "field": "quantization",
+          "value": "EXL3 4.05bpw_h6_ng6; FP16 KV; C1; MTP disabled; streamed-PLE requested"
+        },
+        {
+          "field": "context_tokens",
+          "value": 32768
+        }
+      ]
+    },
+    {
+      "source_basename": "qwen38-27b-fp8-tp1-bf16kv-131k-c1-nospec.recipe.toml",
+      "source_sha256": "d144d843a6070e7c6de97d9c793eba3eea954572e1bf5f0124fb716ab6213592",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "Qwen/Qwen3.8-27B-FP8"
+        },
+        {
+          "field": "revision",
+          "value": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
+        },
+        {
+          "field": "engine",
+          "value": "sglang"
+        },
+        {
+          "field": "image",
+          "value": "lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ]
+    },
+    {
+      "source_basename": "mimo-v26-flash-mopd-nvfp4-tp2-c1-32k-textonly-offload2-routed-nospec-trust-r6.recipe.toml",
+      "source_sha256": "77740ebb027e9247e3bfb8231f2233ef2d125d5ba17bf7db51a3afa5f807a61d",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "ProCreations/MiMo-V2.6-Flash-MOPD-NVFP4"
+        },
+        {
+          "field": "revision",
+          "value": "da654d8ed8d0d2acbf0fc5b63df72a7b75a6bb2a"
+        },
+        {
+          "field": "engine",
+          "value": "vllm-0.28.0"
+        },
+        {
+          "field": "image",
+          "value": "vllm/vllm-openai:v0.28.0@sha256:2286e8533ca8b6bc777594bae30524f1426ba46ca21797524e06df6a94b06635"
+        },
+        {
+          "field": "quantization",
+          "value": "Native MiMoV2OmniForCausalLM language-only; ModelOpt mixed W4A16_NVFP4 experts and MXFP8 components"
+        },
+        {
+          "field": "context_tokens",
+          "value": 32768
+        }
+      ]
+    },
+    {
+      "source_basename": "ignis-flash-next-trellis25-tp1-c1-131k-nospec-health-r4.recipe.toml",
+      "source_sha256": "59cf4a03e51a74bace01fbc355be5a5ffb0f4079e042042ac451f3e8429eed75",
+      "public_fields": [
+        {
+          "field": "repo",
+          "value": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis"
+        },
+        {
+          "field": "revision",
+          "value": "f75e492c6d726537a4d4c85858bc91ee06a070ef"
+        },
+        {
+          "field": "engine",
+          "value": "ignis-0.6.2"
+        },
+        {
+          "field": "image",
+          "value": "ghcr.io/gpillon/ignis@sha256:3144a2ed2240969343e2378c518232520a994833f364235b789a3e8d4b6bcdba"
+        },
+        {
+          "field": "quantization",
+          "value": "Trellis mixed 2-4 bpw experts, 2.5 mean; streamed host-expert candidate; no MTP"
+        },
+        {
+          "field": "context_tokens",
+          "value": 131072
+        }
+      ]
+    }
+  ],
+  "mixed_runtime_source_binding": {
+    "schema": "anvil-serving.runtime-source-binding/v1",
+    "observed_at": "2026-10-13T13:41:54.795285+00:00",
+    "image_digest": "sha256:ec4243f940a179a27fea21895077efd47cd050501f99a1d2a5fecf7df2e7be71",
+    "status": "verified_image_labels_match_pinned_source",
+    "checks": {
+      "ai.sglang.head": true,
+      "ai.sglang.tree": true,
+      "ai.sglang.patch-sha256": true,
+      "ai.flashinfer.head": true,
+      "ai.flashinfer.tree": true,
+      "ai.modelopt.head": true
+    },
+    "labels": {
+      "ai.flashinfer.head": "2b750b2ebe9265bebae1bb8b37e868e7e3fe2a8a",
+      "ai.flashinfer.patch-sha256": "858d6cde28052b559e55c9866f83925cac7bdc7b7b4bc3150268640f60f5db41",
+      "ai.flashinfer.repository": "https://github.com/flashinfer-ai/flashinfer.git",
+      "ai.flashinfer.tree": "dd8ed31d4492b038b9e3c6e67d09a2c26ad80618",
+      "ai.hardware.target-architecture": "sm120",
+      "ai.modelopt.head": "022767c7ab3d7d36211affd85e5c496770cde768",
+      "ai.modelopt.release-tag": "0.47.0rc0",
+      "ai.modelopt.repository": "https://github.com/NVIDIA/Model-Optimizer.git",
+      "ai.modelopt.tree": "9ccd3a130aec6a0ebcf85f6a0dd724b50d0e8bd9",
+      "ai.release.cache-schema": "v84",
+      "ai.release.candidate": "rc.6",
+      "ai.sglang.head": "00143e9c23aee2dead5e6fe217bda4fa8739cb92",
+      "ai.sglang.patch-sha256": "a4ac6ed5bfca5cee9c51c72d9a07bc23588daef00823de1d452d24d1a31b47d1",
+      "ai.sglang.repository": "https://github.com/sgl-project/sglang.git",
+      "ai.sglang.tree": "ccd5e98e7952c86fda7f0779269edfc9f6aa06f0",
+      "org.opencontainers.image.revision": "386684975edf3cbce15c4b12df37908366e2aa8b",
+      "org.opencontainers.image.source": "https://github.com/ormandj/sglang-glm53-flash-sm120",
+      "org.opencontainers.image.version": "0.4.3"
+    },
+    "source_evidence": "glm-mixed-runtime-source-identity.md",
+    "native_evidence": "glm-mixed-image-component-labels.json",
+    "limitations": [
+      "These are immutable build labels, not an independently hashed live Python source tree. CUDA/PyTorch/Triton versions remain unmeasured. Native startup independently corroborates FlashInfer0.7.0 and NCCL2.30.7."
+    ]
+  },
+  "swe_request_controls": [
+    {
+      "native_artifact": "native/public-native-draft/baseline-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "enabled"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/coder390-int8-tp1-medium-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": "medium",
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/coder390-tp1-medium-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": "medium",
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/coder390-tp1-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "enabled"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/glm-mixed-tp2-nospec-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "enabled"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/glm-mixed-tp2-thinking-off-swe-native.json",
+      "request_controls": {
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.6,
+            "requested": 0.6,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "disabled"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft/qwen-qad-tp2-xhigh-swe5-native.json",
+      "request_controls": {
+        "reasoning_effort": "xhigh",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r10/qwen-exl3-schema-r1-tp1-131k-medium-swe5-native.json",
+      "request_controls": {
+        "reasoning_effort": "medium",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r10/qwen-exl3-schema-r1-tp1-131k-xhigh-swe5-native.json",
+      "request_controls": {
+        "reasoning_effort": "xhigh",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r16-r2/stock-qwen27-fp8-tp1-bf16kv-131k-xhigh-swe5-native.json",
+      "request_controls": {
+        "reasoning_effort": "xhigh",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r18/ignis-health-r4-swe5-r2-native.json",
+      "request_controls": {
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r5/deepseek-tp1-131k-low-swe5-native.json",
+      "request_controls": {
+        "reasoning_effort": "low",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "native_artifact": "native/public-native-draft-r5/deepseek-tp1-131k-max-swe5-r2-native.json",
+      "request_controls": {
+        "reasoning_effort": "max",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      }
+    }
+  ]
+}

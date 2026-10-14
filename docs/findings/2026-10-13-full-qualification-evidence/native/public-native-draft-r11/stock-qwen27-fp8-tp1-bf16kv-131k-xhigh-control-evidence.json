@@ -1,0 +1,91 @@
+{
+  "control_mechanism": "reasoning_effort",
+  "files": [
+    {
+      "bytes": 2868,
+      "path": "[REDACTED_PATH]",
+      "sha256": "e371a6ed39b17be198deff02b1853ec52dd52869ef4199c33b30266c43a22899"
+    },
+    {
+      "bytes": 129324,
+      "path": "[REDACTED_PATH]",
+      "sha256": "a7360409af3ff06f1669edab57e4ad2dcea69e3f394b6de10a6d1f3ef95c198f"
+    },
+    {
+      "bytes": 2220,
+      "path": "[REDACTED_PATH]",
+      "sha256": "03abce3c32ffbeffed99dc784d5c5c4d445619841864416eb1c304a1ab94f27a"
+    },
+    {
+      "bytes": 37109,
+      "path": "[REDACTED_PATH]",
+      "sha256": "bfba0e6442384f5c3394a8c5078d17b28a77fda9857924d498dbcd101cb8bf9c"
+    },
+    {
+      "bytes": 1326,
+      "path": "[REDACTED_PATH]",
+      "sha256": "64f6c7d2f42d8ef7ed281a3bdcbbf7191b9da53af921264c84c74548d2350417"
+    },
+    {
+      "bytes": 32641,
+      "path": "[REDACTED_PATH]",
+      "sha256": "c14650302aac222cfb8083413f04b00455f7e020bfebf5fe3cf8ebe68a58a48c"
+    },
+    {
+      "bytes": 11896,
+      "path": "[REDACTED_PATH]",
+      "sha256": "37de8f46be6c6d018d38b7dc64ad44ed24449be58932518cfecd1bd2647ecd08"
+    },
+    {
+      "bytes": 28518,
+      "path": "[REDACTED_PATH]",
+      "sha256": "ca9c93a924b9d3f044b82ff5326e72879addaa090f75aff5314ef44ae1bb1dec"
+    },
+    {
+      "bytes": 20404,
+      "path": "[REDACTED_PATH]",
+      "sha256": "21db7b30b780e059297fab082996bf96593b8bc3b45a741552c12b9b340f7d37"
+    },
+    {
+      "bytes": 17383,
+      "path": "[REDACTED_PATH]",
+      "sha256": "29bf1f356dcf443ac3dfd2a4e253e39677467af4e3fbb64161aa67879853039f"
+    }
+  ],
+  "identity_binding": {
+    "base_url": "http://127.0.0.1:39158/v1",
+    "container_id": "public-container-001",
+    "effective_kv_cache_dtype": "torch.bfloat16",
+    "effective_kv_pool_tokens": 131072,
+    "engine": "sglang",
+    "engine_revision": "0bcd822377da7b5718e674eaf9c870d349424dd1",
+    "engine_version": "0.5.19",
+    "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+    "mamba_ssm_dtype": "float32",
+    "model": "Qwen/Qwen3.8-27B-FP8",
+    "model_revision": "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a",
+    "registry_sha256": "d144d843a6070e7c6de97d9c793eba3eea954572e1bf5f0124fb716ab6213592",
+    "served_model": "qwen38-27b-fp8-tp1-bf16kv-131k-c1-nospec",
+    "template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+    "tensor_parallel_size": 1
+  },
+  "limits": [
+    "Protocol requests use native T1/p1, not quality/SWE explicitT1/p.95.",
+    "Source062 streaming preflight omits flat effort and inherits defaultxhigh.",
+    "No hard reasoning partition, full131K measured input, C4/MM/vision/327K contract, performance or promotion claim.",
+    "Warm-cache startup and requests: no cold-RAM floor.",
+    "FP8KV and BF16KV profiles were not matched quality A/B; no accuracy causal claim."
+  ],
+  "observed_at": "2026-10-13T23:13:59.662077+00:00",
+  "requested": {
+    "reasoning_effort": "xhigh",
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_k": 20,
+    "top_k_source": "Model generation_config native startup defaults + SGLang priority source; protocol/quality/SWE omit request top_k and inherit20.",
+    "top_p": 0.95
+  },
+  "schema": "anvil-serving.control-evidence/v1",
+  "source": "private-evidence-alias/native control files inspected in source review21db. Native BF16KV131072 startup, model identity and13 xhigh functional observations pass; parsed reasoning present. Flat effort forwarding is proven by exact pinned runtime source; streaming preflight inherits defaultxhigh.",
+  "status": "verified"
+}

@@ -290,6 +290,8 @@ functional, quality, capacity, and client gates.
 
 ## Dated run history
 
+- 2026-10-13 — [full qualification closure](../../findings/2026-10-13-full-qualification.md): QAD and EXL3 4.05 TP1 records retain distinct protocol and quality evidence; the Tabby parser correction has full-13 protocol and quality-12 coverage. The source-aligned top-k-20 control was cancelled before load/query, so no quality or speed improvement is claimed. Ignis R4 terminal SWE was 2/5 resolved, 2/5 graded, and three empty; serial C1 passed 6/6, the separate C8 preflight passed 6/13 with seven immediate 503 refusals, and 24 SWE engine-full retry notices all recovered. Pylint remained ungraded/empty; these retries do not explain the three empty patches. `no-promotion`.
+
 - 2026-10-05 — [Strata/UD-IQ4_XS research and Swift baseline](../../findings/2026-10-05-swift-96gb-baseline.md): 5090/96 GB initial feasibility; protocol/image checks passed, practical latency failed, instrumented diagnostics separate; no promotion.
 
 | Date | Event | Result |

@@ -1,5 +1,15 @@
 # Benchmark run catalog
 
+## 2026-10-13 full qualification campaign
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-10-13 | GLM continuity baseline and mixed TP2 diagnostics | Official-base GLM continuity line; C1/C4 controlled-output cells; mixed TP2 no-spec/thinking-off SWE diagnostics | 2x RTX PRO 6000 Blackwell Max-Q | baseline SWE 2/5 complete; actual prompt means 25,280.5/25,281.125/106,520/216,194.67 in separate C1/C4 cells; mixed lanes incomplete at 1/5 | continuity/contract baseline; `no-promotion`; no universal-quality or p99 claim | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | Qwen Coder390 and Flash Next | Coder390 TP1 INT4/INT8; QAD TP1/TP2; EXL3 4.05 TP1 parser-corrected lane | 2x RTX PRO 6000 Blackwell Max-Q | completed Coder390 medium 3/5 and INT8 control 2/5; other lanes retain protocol/quality/compatibility evidence; top-k-20 cancelled before load/query | `no-promotion`; no cross-lane ranking or claimed top-k improvement | [Qwen 27B](models/qwen38-27b.md) · [Flash Next](models/qwen38-flash-next.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | DeepSeek V4 Flash 0731 EXL3 | TP1 bounded protocol/quality and TP2 compatibility lane | 2x RTX PRO 6000 Blackwell Max-Q | retained functional/quality observations; TP2 is compatibility-only; invalid paired-image map excluded | `no-promotion`; no performance, context, or client claim | [DeepSeek](models/deepseek-v4-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | MiMo V2.6 Flash conversion/trust lane | NVFP4 TP2 text-only offload and routed trust checks | 2x RTX PRO 6000 Blackwell Max-Q | corrected 2 GiB offload selection; retained policy/trust failures | unresolved candidate; no physical-fit or quality conclusion | [MiMo](models/mimo-v26-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | Ignis R4 protocol and terminal SWE | TP1/C1 protocol, quality, and five-task SWE diagnostic | 2x RTX PRO 6000 Blackwell Max-Q | serial protocol 6/6; strict quality 12/12; C8 preflight 6/13 with seven immediate 503 refusals; separate SWE 24 engine-full retry notices all recovered; terminal SWE 2/5 resolved, 2/5 graded, three empty | `no-promotion`; protocol evidence is not capacity, C4, or client acceptance | [Flash Next](models/qwen38-flash-next.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+
 ## 2026-10-05 Xeon model qualification campaign
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |

@@ -1,0 +1,74 @@
+{
+  "base_url": "public-endpoint-003",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "image"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [
+    "ANVIL READY"
+  ],
+  "model": "vision.general",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "public-opaque-text-020",
+      "content_chars": 1121,
+      "content_excerpt": "public-opaque-text-021",
+      "expected": [
+        "ANVIL READY"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 592,
+      "reasoning_excerpt": "public-opaque-text-022",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 5.748,
+      "test": "image",
+      "usage": {
+        "completion_tokens": 390,
+        "prompt_tokens": 333,
+        "total_tokens": 723
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "5.7s all expected text present finish='stop' visible=1121 reasoning_chars=592 reasoning_tokens=None",
+      "name": "general image understanding",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

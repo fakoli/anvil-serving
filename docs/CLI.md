@@ -149,7 +149,7 @@ required operands, choices, and defaults.
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
 | `models cache inventory` | Inspect Docker or native Hugging Face model-cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
-| `models cache remove` | Remove one Docker revision or preview native-cache removal. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models cache remove` | Remove one exact Docker or guarded native-cache revision. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--non-model-root-view` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-deps` |

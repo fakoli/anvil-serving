@@ -1,0 +1,10 @@
+{
+  "actual": "25/25 passed,19guard samples, noabort/maxOOMswap0. This is a procedure overrun of12short requests, not extra independent quality coverage.",
+  "cause": "Root omitted --tool-batch8 on established preflight; default20 produced25observations rather than13 independently-cleared observations.",
+  "correction": "All subsequent campaign preflight invocations explicitly --tool-batch8; immutable native25 evidence retained, no rerun merely forcount.",
+  "observed_at": "2026-10-13T23:05:40.648382+00:00",
+  "promotion": false,
+  "schema": "anvil-serving.evidence-erratum/v1",
+  "source": "stock-qwen27-fp8-tp1-131k-preflight-xhigh-native.json",
+  "source_sha256": "d0ce6f6c8f81339032557a8ec0897d38430a46ce67097127593b13c4b48f1daf"
+}

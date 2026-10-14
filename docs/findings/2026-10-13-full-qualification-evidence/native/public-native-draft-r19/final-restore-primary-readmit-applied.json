@@ -1,0 +1,27 @@
+{
+  "command": "router readmit",
+  "context": {
+    "command": "router-readmit",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "public-resource-004",
+    "resource_endpoint": "public-endpoint-005",
+    "resource_endpoint_kind": "data-plane",
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "{\"action\":\"readmit\",\"applied\":true,\"result\":{\"readmitted\":true,\"reason\":\"readiness_passed\",\"status\":{\"tiers\":[{\"active_requests\":0,\"draining\":false,\"expected_model\":\"glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec\",\"metadata_source\":\"configured\",\"observed_context_limit\":null,\"observed_model\":\"glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec\",\"readiness_reason\":\"identity_passed\",\"readiness_state\":\"ready\",\"ready\":true,\"reason\":\"admitting\",\"state\":\"admitting\",\"tier_id\":\"primary-local\"}]}}}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}
