@@ -82,6 +82,32 @@ def test_preview_performs_no_systemd_or_identity_mutation(monkeypatch, tmp_path)
     assert calls == []
 
 
+@pytest.mark.parametrize("loaded", (False, True))
+def test_timer_state_accepts_systemd_metadata_without_service_only_main_pid(loaded):
+    fields = {
+        "LoadState": "loaded" if loaded else "not-found", "FragmentPath": "", "DropInPaths": "",
+        "ActiveState": "active" if loaded else "inactive", "SubState": "waiting" if loaded else "dead",
+        "UnitFileState": "enabled" if loaded else "",
+    }
+    def run(argv, timeout=30, identity=None):
+        assert "MainPID" not in argv[2]
+        return RunResult(0 if loaded else 1, "".join(f"{key}={value}\n" for key, value in fields.items()).encode(), b"")
+    assert lifecycle._state(run, "anvil-native-memory-personal-authority.timer") == fields
+
+
+@pytest.mark.parametrize("missing", ("MainPID", "DropInPaths", "UnitFileState"))
+def test_service_state_still_requires_complete_systemd_metadata(missing):
+    fields = {
+        "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/owned.service", "DropInPaths": "",
+        "ActiveState": "active", "SubState": "running", "UnitFileState": "enabled", "MainPID": "42",
+    }
+    del fields[missing]
+    def run(argv, timeout=30, identity=None):
+        return RunResult(0, "".join(f"{key}={value}\n" for key, value in fields.items()).encode(), b"")
+    with pytest.raises(lifecycle.LifecycleError, match="managed unit state is invalid"):
+        lifecycle._state(run, "anvil-native-memory-personal.service")
+
+
 def test_python_allows_normal_0777_symlink_mode_but_pins_resolved_regular_target(monkeypatch):
     class Link:
         def resolve(self, strict=False):
@@ -305,7 +331,8 @@ def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(
         target = lifecycle._unit_path(owned, name)
         return {
             "LoadState": "loaded", "FragmentPath": str(target), "DropInPaths": "",
-            "ActiveState": "inactive", "SubState": "dead", "MainPID": "0", "UnitFileState": "disabled"}
+            "ActiveState": "inactive", "SubState": "dead", "UnitFileState": "disabled",
+            **({"MainPID": "0"} if name.endswith(".service") else {})}
     monkeypatch.setattr(lifecycle, "_state", state)
     def run(argv, timeout=30, identity_arg=None):
         calls.append(tuple(argv))
@@ -316,13 +343,16 @@ def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(
     assert (lifecycle._SYSTEMCTL, "daemon-reload") in calls
 
 
-def test_interrupted_removal_rejects_active_cached_unit_after_unlink(monkeypatch, tmp_path):
+@pytest.mark.parametrize("active_key", ("service_unit", "timer_unit"))
+def test_interrupted_removal_rejects_active_cached_unit_after_unlink(monkeypatch, tmp_path, active_key):
     value, owned = declaration(), paths(tmp_path)
     monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
         "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "removing", "installed_at": 1})
     monkeypatch.setattr(lifecycle, "_state", lambda runner, name: {
         "LoadState": "loaded", "FragmentPath": str(lifecycle._unit_path(owned, name)), "DropInPaths": "",
-        "ActiveState": "active", "SubState": "running", "MainPID": "42", "UnitFileState": "disabled"})
+        "ActiveState": "active" if name == owned[active_key].name else "inactive",
+        "SubState": "running" if name == owned[active_key].name else "dead", "UnitFileState": "disabled",
+        **({"MainPID": "42" if name == owned[active_key].name else "0"} if name.endswith(".service") else {})})
     @contextmanager
     def unlocked():
         yield

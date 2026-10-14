@@ -280,10 +280,15 @@ def _must(result: manage.RunResult, message: str) -> None:
 
 
 def _state(runner, name: str) -> dict[str, str]:
-    result = _run(runner, (_SYSTEMCTL, "show", "--property=LoadState,FragmentPath,DropInPaths,ActiveState,SubState,MainPID,UnitFileState", name), 10)
+    names = ("LoadState", "FragmentPath", "DropInPaths", "ActiveState", "SubState", "UnitFileState")
+    # MainPID is a service property; real systemd timers never report it.
+    if name.endswith(".service"):
+        names += ("MainPID",)
+    elif not name.endswith(".timer"):
+        raise LifecycleError("managed unit kind is invalid")
+    result = _run(runner, (_SYSTEMCTL, "show", "--property=" + ",".join(names), name), 10)
     fields = dict(line.split("=", 1) for line in result.stdout.decode("utf-8", "replace").splitlines() if "=" in line)
-    required = {"LoadState", "FragmentPath", "DropInPaths", "ActiveState", "SubState", "MainPID", "UnitFileState"}
-    if set(fields) != required or result.returncode != 0 and fields.get("LoadState") != "not-found":
+    if set(fields) != set(names) or result.returncode != 0 and fields.get("LoadState") != "not-found":
         raise LifecycleError("managed unit state is invalid")
     return fields
 
@@ -750,7 +755,7 @@ def _remove(value: dict, digest: str, runner, paths: dict[str, Path], apply: boo
             cached_owned = (recovery and current is None and state["LoadState"] == "loaded"
                             and state["FragmentPath"] == str(target)
                             and state["ActiveState"] in {"inactive", "failed"}
-                            and state["MainPID"] == "0"
+                            and (name.endswith(".timer") or state["MainPID"] == "0")
                             and state["UnitFileState"] in {"disabled", "static"})
             absent = current is None and state["LoadState"] == "not-found" and not state["FragmentPath"]
             if (current is None and not (absent or cached_owned)
