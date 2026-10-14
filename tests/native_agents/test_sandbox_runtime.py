@@ -47,7 +47,19 @@ def test_gateway_peer_identity_scoped_key_header_filter_stream_and_redirect(tmp_
             conn=UnixHTTPConnection(target);conn.request("POST","/v1/chat/completions",body=b'{"model":"allowed","messages":[{"role":"user","content":"test"}]}',headers={"Authorization":"Bearer caller","X-Principal":"spoofed"});response=conn.getresponse();result=(response.status,response.read());conn.close();return result
         assert post()==(200,b'data: {"text":"test"}\n\ndata: [DONE]\n\n')
         assert seen[0]["Authorization"]=="Bearer scoped-fixture-key" and "X-Principal" not in seen[0]
-        current[0]=61002;assert post()[0]==403;assert len(seen)==1
+        current[0]=61002
+        # Wrong peers are rejected before the body is read. Sending only the
+        # headers proves that boundary without racing a body write against close.
+        rejected=UnixHTTPConnection(target)
+        try:
+            rejected.putrequest("POST","/v1/chat/completions")
+            rejected.putheader("Content-Length","64")
+            rejected.endheaders()
+            response=rejected.getresponse()
+            assert response.status==403
+            response.read()
+        finally:rejected.close()
+        assert len(seen)==1
         current[0]=61001;redirect[0]=True;assert post()[0]==502;assert len(seen)==2
         redirect[0]=False;monkeypatch.setattr("anvil_serving.native_agents.sandbox_runtime.MAX_RESPONSE",4)
         with pytest.raises(http.client.IncompleteRead):post()
