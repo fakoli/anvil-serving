@@ -63,6 +63,7 @@ _SERVE_ENV_PREFIXES = ("VLLM_", "FLASHINFER_", "CUDA_")
 # Where model weights are mounted in the container (a named volume, never a C:/ bind
 # mount — see the cold-load gotchas). Reconstructed commands reuse this exactly.
 HFCACHE_MOUNT = "-v vllm-hfcache:/root/.cache/huggingface"
+DEFAULT_CACHE_MOUNT = "/root/.cache/huggingface"
 REGISTRY_SCHEMA = "anvil-serving.serve-recipes/v1"
 _CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -168,17 +169,29 @@ def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
         raise RecipeError(
             "recipe.serve.named_volumes sources must be named Docker volumes"
         )
-    target_parts = target.split("/")
-    if (
-        not target.startswith("/")
-        or "\\" in target
-        or any(ch.isspace() for ch in target)
-        or any(not part or part in {".", ".."} for part in target_parts[1:])
-    ):
-        raise RecipeError(
-            "recipe.serve.named_volumes targets must be normalized absolute POSIX paths"
-        )
+    _validate_container_path(target, "recipe.serve.named_volumes targets")
     return source, target, len(parts) == 3
+
+
+def _validate_container_path(value: object, field: str) -> str:
+    """Return one normalized absolute POSIX container path."""
+    parts = value.split("/") if isinstance(value, str) else []
+    if (
+        not isinstance(value, str)
+        or not value.startswith("/")
+        or "\\" in value
+        or ":" in value
+        or any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
+        or any(ch.isspace() for ch in value)
+        or any(not part or part in {".", ".."} for part in parts[1:])
+    ):
+        raise RecipeError("%s must be a normalized absolute POSIX path" % field)
+    return value
+
+
+def _container_paths_overlap(left: str, right: str) -> bool:
+    """Return whether either normalized path would mask the other mount."""
+    return left == right or left.startswith(right + "/") or right.startswith(left + "/")
 
 
 # --------------------------------------------------------------------------- #
@@ -469,6 +482,12 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         recipe_memory.limits(serve)
     except ValueError as exc:
         raise RecipeError(str(exc)) from exc
+    download = recipe.get("download") or {}
+    custom_cache_mount = "cache_mount" in download
+    cache_mount = _validate_container_path(
+        download.get("cache_mount", DEFAULT_CACHE_MOUNT),
+        "recipe.download.cache_mount",
+    )
     if not require_loadable:
         return
     serve = recipe.get("serve")
@@ -481,21 +500,16 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError("recipe.serve.image must be a Docker image reference, not an option")
     model_path = serve.get("model_path")
     if model_path is not None:
-        path_parts = model_path.split("/") if isinstance(model_path, str) else []
-        if (
-            not isinstance(model_path, str)
-            or not model_path.startswith("/")
-            or "\\" in model_path
-            or any(ch in model_path for ch in ("\n", "\r", "\x00"))
-            or any(ch.isspace() for ch in model_path)
-            or any(not part or part in {".", ".."} for part in path_parts[1:])
-        ):
-            raise RecipeError(
-                "recipe.serve.model_path must be a normalized absolute POSIX path"
-            )
+        _validate_container_path(model_path, "recipe.serve.model_path")
         if serve.get("model_env"):
             raise RecipeError(
                 "recipe.serve.model_path is incompatible with recipe.serve.model_env"
+            )
+        if custom_cache_mount and (
+            model_path != cache_mount and not model_path.startswith(cache_mount + "/")
+        ):
+            raise RecipeError(
+                "recipe.serve.model_path must be inside recipe.download.cache_mount"
             )
     if "\x00" in model:
         raise RecipeError("recipe.model must not contain NUL bytes")
@@ -511,7 +525,6 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError(
             "recipe.serve.startup_timeout_seconds must be an integer from 1 to 86400"
         )
-    download = recipe.get("download") or {}
     require_complete_cache = download.get("require_complete_cache")
     if require_complete_cache is not None and not isinstance(
         require_complete_cache, bool
@@ -584,7 +597,11 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError(
             "recipe.serve.named_volumes must not repeat a source or target"
         )
-    if "/root/.cache/huggingface" in targets:
+    if any(
+        (custom_cache_mount and _container_paths_overlap(target, cache_mount))
+        or target == DEFAULT_CACHE_MOUNT
+        for target in targets
+    ):
         raise RecipeError(
             "recipe.serve.named_volumes cannot shadow the managed model-cache mount"
         )
@@ -861,7 +878,10 @@ def docker_run_argv(
             raise RecipeError("recipe.serve.env entries must be NAME=value without newlines")
         argv += ["-e", env]
     cache_volume = download.get("volume", "vllm-hfcache")
-    argv += ["-v", "%s:/root/.cache/huggingface" % cache_volume]
+    argv += [
+        "-v",
+        "%s:%s" % (cache_volume, download.get("cache_mount", DEFAULT_CACHE_MOUNT)),
+    ]
     for spec in serve.get("named_volumes", []):
         source, target, read_only = _parse_named_volume(spec)
         mount = "type=volume,source=%s,target=%s" % (source, target)
