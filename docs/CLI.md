@@ -433,6 +433,10 @@ required operands, choices, and defaults.
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
 | `connect native-authority` | Project fresh Connect grants for native Agents admission. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--output`<br>`--reader-gid`<br>`--dry-run`<br>`--confirm` |
+| `connect native-memory-service` | Manage one OIDC-authenticated native Memory sidecar. | `mutate` / `bounded` | - |
+| `connect native-memory-service install` | Preview or install and start the exact declared sidecar. | `mutate` / `bounded` | `--declaration`<br>`--dry-run`<br>`--confirm` |
+| `connect native-memory-service status` | Verify the exact declared sidecar and authority schedule. | `read` / `bounded` | `--declaration` |
+| `connect native-memory-service remove` | Preview or remove only the exact receipt-owned sidecar. | `mutate` / `bounded` | `--declaration`<br>`--dry-run`<br>`--confirm` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--services`<br>`--upgrade`<br>`--dry-run`<br>`--confirm` |
 | `connect down` | Preview or stop only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
