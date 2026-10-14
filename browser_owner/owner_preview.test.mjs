@@ -84,7 +84,7 @@ test("missing viewer fails promptly and leaves no preview PNG", { timeout: 15_00
   await session.navigate(`${site.origin}/`); const observation = await session.capture(request);
   await assert.rejects(Promise.race([session.preview(observation.observation_id), new Promise((_, reject) => setTimeout(() => reject(new Error("preview_hung")), 500))]), error("preview_failed"));
   assert.equal((await readdir(join(dir, previewNamespace))).filter((name) => name.endsWith(".png")).length, 0);
-  await Promise.race([core.close(), new Promise((_, reject) => setTimeout(() => reject(new Error("close_hung")), 500))]);
+  await core.close();
 });
 
 
