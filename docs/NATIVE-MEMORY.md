@@ -150,6 +150,16 @@ At install time it copies the two digest-matched credential sources into
 root-only deployment snapshots and gives systemd those snapshots through
 `LoadCredential`; credential values never enter the declaration or receipt.
 
+The authority projector needs temporary identifier exports and grant-inspection
+files in the exact Authelia and gateway state directories from the validated
+Connect manifest. Its read-only system policy permits writes only there, in its
+own authority directory, and to the existing Connect lock. Its capability set
+is limited to changing file ownership/mode, traversing the role-private state,
+switching to the declared role users, and terminating bounded subprocesses
+(`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETUID`, `SETGID`, `KILL`). These privileges
+belong only to the short-lived maintained projector. The serving gateway keeps
+an empty capability set and its dedicated unprivileged identity.
+
 Use `native-memory-service install` and `remove` without `--confirm` to inspect
 their plans; add `--confirm` to apply. `status` verifies the declaration-bound
 receipt, exact unit files, systemd fragment paths, absence of drop-ins, and live

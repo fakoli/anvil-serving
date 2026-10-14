@@ -27,6 +27,7 @@ def declaration() -> dict:
         "_python": "/usr/bin/python3.11",
         "_connect_root": "/etc/anvil-connect/rendered",
         "_authority_lock": "/etc/anvil-connect/.rendered.anvil-connect.lock",
+        "_authority_state_directories": ("/data/connect/idp", "/data/connect/gateway"),
     }
 
 
@@ -69,6 +70,8 @@ def test_render_is_closed_three_unit_set_and_never_embeds_credentials(tmp_path):
     authority = rendered["anvil-native-memory-personal-authority.service"].decode()
     assert '"native-authority"' in authority and '"--reader-gid" "62140"' in authority
     assert "RuntimeDirectoryPreserve=yes" in authority
+    assert "CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_KILL\n" in authority
+    assert 'ReadWritePaths="' + str(paths(tmp_path)["authority_dir"]) + '" "/etc/anvil-connect/.rendered.anvil-connect.lock" "/data/connect/idp" "/data/connect/gateway"\n' in authority
     assert "secret-value" not in "".join(item.decode() for item in rendered.values())
 
 
@@ -228,7 +231,8 @@ def test_status_never_claims_ready_when_gateway_is_failed(monkeypatch, tmp_path)
 
 
 @pytest.mark.parametrize("rollback_failure", (False, True))
-def test_failed_start_rolls_back_only_files_and_identity_created_by_attempt(monkeypatch, tmp_path, rollback_failure):
+@pytest.mark.parametrize("userdel_removes_group", (False, True))
+def test_failed_start_rolls_back_only_files_and_identity_created_by_attempt(monkeypatch, tmp_path, rollback_failure, userdel_removes_group):
     value, owned = declaration(), paths(tmp_path)
     identity = {"user": False, "group": False}
     calls = []
@@ -275,7 +279,10 @@ def test_failed_start_rolls_back_only_files_and_identity_created_by_attempt(monk
             identity["user"] = True
         elif argv[0] == "/usr/sbin/userdel":
             identity["user"] = False
+            if userdel_removes_group:
+                identity["group"] = False
         elif argv[0] == "/usr/sbin/groupdel":
+            assert identity["group"], "userdel already removed the group"
             identity["group"] = False
         if tuple(argv[:2]) == (lifecycle._SYSTEMCTL, "start") and argv[-1] == owned["authority_unit"].name:
             owned["authority_dir"].mkdir(parents=True)
@@ -312,11 +319,13 @@ def test_interrupted_install_requires_explicit_managed_removal(monkeypatch, tmp_
     assert calls == []
 
 
-def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(monkeypatch, tmp_path):
+@pytest.mark.parametrize("userdel_removes_group", (None, False, True))
+def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(monkeypatch, tmp_path, userdel_removes_group):
     value, owned = declaration(), paths(tmp_path)
+    identity = {"user": userdel_removes_group is not None, "group": userdel_removes_group is not None}
     monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
         "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "removing", "installed_at": 1})
-    monkeypatch.setattr(lifecycle, "_identity", lambda _: (False, False))
+    monkeypatch.setattr(lifecycle, "_identity", lambda _: (identity["user"], identity["group"]))
     monkeypatch.setattr(lifecycle, "_preflight_remove", lambda *args, **kwargs: None)
     monkeypatch.setattr(lifecycle, "_save_receipt", lambda *args, **kwargs: None)
     monkeypatch.setattr(lifecycle, "_remove_authority_runtime", lambda *args, **kwargs: None)
@@ -336,11 +345,43 @@ def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(
     monkeypatch.setattr(lifecycle, "_state", state)
     def run(argv, timeout=30, identity_arg=None):
         calls.append(tuple(argv))
+        if argv[0] == "/usr/sbin/userdel":
+            identity["user"] = False
+            if userdel_removes_group:
+                identity["group"] = False
+        elif argv[0] == "/usr/sbin/groupdel":
+            assert identity["group"], "userdel already removed the group"
+            identity["group"] = False
         return RunResult(0, b"", b"")
     result = lifecycle._remove(value, "a" * 64, run, owned, True)
     assert result["applied"] is True
     assert not any(item[1] in {"disable", "stop"} for item in calls)
     assert (lifecycle._SYSTEMCTL, "daemon-reload") in calls
+    assert identity == {"user": False, "group": False}
+
+
+@pytest.mark.parametrize("state,expected", (("vanished", True), ("missing-status", False),
+    ("permission-denied", False), ("matching-uid", False), ("other-uid", True), ("malformed", False)))
+def test_process_extinction_scan_ignores_only_confirmed_vanished_pids(monkeypatch, tmp_path, state, expected):
+    process = tmp_path / "123"
+    process.mkdir()
+    status = process / "status"
+    if state in {"matching-uid", "other-uid"}:
+        uid = 62140 if state == "matching-uid" else 1000
+        status.write_text(f"Name:\ttest\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\n")
+    elif state == "malformed":
+        status.write_text("Name:\ttest\nUid:\tunknown\n")
+    elif state == "vanished":
+        process.rmdir()
+    original_iterdir, original_read = Path.iterdir, Path.read_text
+    monkeypatch.setattr(lifecycle, "_PROC_ROOT", tmp_path)
+    monkeypatch.setattr(Path, "iterdir", lambda self: iter([process]) if self == tmp_path else original_iterdir(self))
+    def read(self, *args, **kwargs):
+        if self == status and state == "permission-denied":
+            raise PermissionError("unreadable PID")
+        return original_read(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_text", read)
+    assert lifecycle._no_processes(62140) is expected
 
 
 @pytest.mark.parametrize("active_key", ("service_unit", "timer_unit"))

@@ -30,6 +30,7 @@ _PYTHON_LINK = Path("/usr/bin/python3")
 _UNIT_ROOT = Path("/etc/systemd/system")
 _STATE_ROOT = Path("/var/lib/anvil-native-memory")
 _LOCK = Path("/run/lock/anvil-native-memory-service.lock")
+_PROC_ROOT = Path("/proc")
 _SHA = re.compile(r"[a-f0-9]{64}")
 _ID = re.compile(r"[a-z][a-z0-9-]{0,20}")
 _ACCOUNT = re.compile(r"[a-z_][a-z0-9_-]{0,30}")
@@ -165,6 +166,8 @@ def load_declaration(path: str | Path) -> tuple[dict, str]:
         root = Path(connect["config_root"])
         value["_connect_root"] = str(root)
         value["_authority_lock"] = str(root.parent / ("." + root.name + ".anvil-connect.lock"))
+        value["_authority_state_directories"] = tuple(
+            str(Path(connect[role]["state_directory"])) for role in ("authelia", "gateway"))
     except Exception:
         raise LifecycleError("authority declaration is invalid") from None
     if type(authority["resource"]) is not str or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", authority["resource"]) is None:
@@ -254,11 +257,16 @@ def render_units(value: dict, paths: dict[str, Path]) -> dict[str, bytes]:
         "NoNewPrivileges=true", "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true",
         "PrivateDevices=true", "ProtectKernelTunables=true", "ProtectKernelModules=true",
         "ProtectControlGroups=true", "RestrictSUIDSGID=true", "LockPersonality=true",
-        "RestrictRealtime=true", "CapabilityBoundingSet=CAP_CHOWN", "AmbientCapabilities=",
+        # The maintained projector exports identifiers and inspects grants as
+        # the declared role users, then removes their private temporary files.
+        "RestrictRealtime=true",
+        "CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_KILL",
+        "AmbientCapabilities=",
         "SystemCallArchitectures=native", "UMask=0077",
         "RuntimeDirectory=anvil-native-memory/" + dep + "/authority", "RuntimeDirectoryMode=0755",
-        "RuntimeDirectoryPreserve=yes", "ReadWritePaths=" + " ".join((
-            _quote(str(paths["authority_dir"])), _quote(value["_authority_lock"]))),
+        "RuntimeDirectoryPreserve=yes", "ReadWritePaths=" + " ".join(
+            _quote(item) for item in (str(paths["authority_dir"]), value["_authority_lock"],
+                                     *value["_authority_state_directories"])),
         "TimeoutStartSec=25s", "",
     )).encode()
     timer = "\n".join((
@@ -699,7 +707,7 @@ def _install(value: dict, digest: str, runner, paths: dict[str, Path], apply: bo
                     if not _no_processes(identity["uid"]):
                         raise LifecycleError("service uid still owns processes during rollback", may_have_executed=True)
                     _must(_run(runner, ("/usr/sbin/userdel", identity["user"])), "service user rollback failed")
-                if created_group:
+                if created_group and _identity(value)[1]:
                     _must(_run(runner, ("/usr/sbin/groupdel", identity["group"])), "service group rollback failed")
                 if state_dir_created and paths["receipt"].exists():
                     _finish_receipt(paths, digest, "installing", installed_at)
@@ -712,7 +720,7 @@ def _install(value: dict, digest: str, runner, paths: dict[str, Path], apply: bo
 
 
 def _no_processes(uid: int) -> bool:
-    root = Path("/proc")
+    root = _PROC_ROOT
     if not root.is_dir():
         return False
     for child in root.iterdir():
@@ -723,6 +731,16 @@ def _no_processes(uid: int) -> bool:
             row = next(line for line in fields if line.startswith("Uid:"))
             if uid in [int(item) for item in row.split()[1:]]:
                 return False
+        except FileNotFoundError:
+            # Unrelated processes can exit during the scan. Missing status on
+            # a still-present PID must continue to fail closed.
+            try:
+                child.stat()
+            except FileNotFoundError:
+                continue
+            except OSError:
+                return False
+            return False
         except (OSError, StopIteration, ValueError):
             return False
     return True
@@ -803,7 +821,7 @@ def _remove(value: dict, digest: str, runner, paths: dict[str, Path], apply: boo
                 directory.rmdir()
         if had_user:
             _must(_run(runner, ("/usr/sbin/userdel", value["identity"]["user"])), "service user removal failed")
-        if had_group:
+        if had_group and _identity(value)[1]:
             _must(_run(runner, ("/usr/sbin/groupdel", value["identity"]["group"])), "service group removal failed")
         _finish_receipt(paths, digest, "removing", receipt["installed_at"])
     return {**preview, "applied": True}
