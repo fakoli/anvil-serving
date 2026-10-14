@@ -261,7 +261,9 @@ def render_units(value: dict, paths: dict[str, Path]) -> dict[str, bytes]:
         # the declared role users, then removes their private temporary files.
         "RestrictRealtime=true",
         "CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_KILL",
-        "AmbientCapabilities=",
+        # systemd 259 drops root's effective SETUID under seccomp unless it is
+        # explicitly ambient. Role-user transitions clear the child's ambient set.
+        "AmbientCapabilities=CAP_SETUID",
         "SystemCallArchitectures=native", "UMask=0077",
         "RuntimeDirectory=anvil-native-memory/" + dep + "/authority", "RuntimeDirectoryMode=0755",
         "RuntimeDirectoryPreserve=yes", "ReadWritePaths=" + " ".join(

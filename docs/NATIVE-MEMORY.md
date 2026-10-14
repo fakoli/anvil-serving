@@ -159,6 +159,11 @@ switching to the declared role users, and terminating bounded subprocesses
 (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`, `SETUID`, `SETGID`, `KILL`). These privileges
 belong only to the short-lived maintained projector. The serving gateway keeps
 an empty capability set and its dedicated unprivileged identity.
+The projector explicitly keeps its already-bounded `SETUID` capability ambient:
+[systemd 259.5's root/seccomp setup](https://github.com/systemd/systemd/blob/v259.5/src/core/exec-invoke.c#L5590)
+otherwise drops it from the effective set before the required role-user launch.
+Changing from root to the role user clears that child's ambient capabilities;
+the serving gateway's ambient set remains empty.
 
 Use `native-memory-service install` and `remove` without `--confirm` to inspect
 their plans; add `--confirm` to apply. `status` verifies the declaration-bound

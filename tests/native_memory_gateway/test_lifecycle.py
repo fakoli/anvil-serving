@@ -66,11 +66,13 @@ def test_render_is_closed_three_unit_set_and_never_embeds_credentials(tmp_path):
     assert "LoadCredential=introspection-secret:" + str(paths(tmp_path)["introspection_credential"]) in gateway
     assert "NoNewPrivileges=true" in gateway and "ProtectSystem=strict" in gateway
     assert "CapabilityBoundingSet=\n" in gateway and "MemoryMax=268435456" in gateway
+    assert "AmbientCapabilities=\n" in gateway
     assert "MemorySwapMax=0" in gateway
     authority = rendered["anvil-native-memory-personal-authority.service"].decode()
     assert '"native-authority"' in authority and '"--reader-gid" "62140"' in authority
     assert "RuntimeDirectoryPreserve=yes" in authority
     assert "CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID CAP_KILL\n" in authority
+    assert "AmbientCapabilities=CAP_SETUID\n" in authority
     assert 'ReadWritePaths="' + str(paths(tmp_path)["authority_dir"]) + '" "/etc/anvil-connect/.rendered.anvil-connect.lock" "/data/connect/idp" "/data/connect/gateway"\n' in authority
     assert "secret-value" not in "".join(item.decode() for item in rendered.values())
 
