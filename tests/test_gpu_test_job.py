@@ -3,7 +3,6 @@ import io
 import json
 import os
 import subprocess
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -111,7 +110,6 @@ def test_schema_rejects_unknown_pytest_option_and_unreviewed_deselect():
 
 def test_containment_readback_mismatch_stops_before_start(monkeypatch):
     runtime = Runtime()
-    original = job._containment
     monkeypatch.setattr(job, "_containment", lambda *args, **kwargs: {"ok": False})
     result = job.run_job(spec(), dry_run=False, _runner=runtime, _attach=good_attach)
     assert not result["ok"] and not any("start" in call for call in runtime.calls)
