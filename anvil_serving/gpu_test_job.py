@@ -129,7 +129,7 @@ def validate_spec(value):
 
 
 RUNNER = r'''
-import hashlib, json, os, signal, subprocess, sys, threading, time, xml.etree.ElementTree as ET
+import hashlib, json, os, re, signal, subprocess, sys, threading, time, xml.etree.ElementTree as ET
 contract = json.loads(os.environ["ANVIL_GPU_TEST_CONTRACT"])
 deadline = time.monotonic() + contract["limits"]["timeout_seconds"]
 limit = 12288
@@ -179,6 +179,10 @@ def contained(c):
         quota, period = (int(value) for value in c["cpu.max"].split())
         return c["memory.max"] == str(contract["limits"]["memory_mib"] * 1024 * 1024) and c["memory.swap.max"] == "0" and 0 < quota <= contract["limits"]["cpus"] * period
     except (KeyError, ValueError): return False
+def canonical_uuid(value):
+    value = str(value).lower()
+    if value.startswith("gpu-"): value = value[4:]
+    return value if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value) else None
 result = {"source_hashes": {}, "commands": [], "torch_version": torch_version, "cgroups": cgroups(), "ok": False}
 try:
     for source in contract["sources"]:
@@ -186,9 +190,9 @@ try:
         if actual != source["sha256"]: raise RuntimeError("source hash mismatch")
     if not contained(result["cgroups"]): raise RuntimeError("container cgroup limits differ from contract")
     if torch is None or torch.cuda.device_count() != 1 or list(torch.cuda.get_device_capability(0)) != contract["gpu"]["compute_capability"]: raise RuntimeError("exact one CUDA device with requested capability is required")
-    actual_uuid = str(getattr(torch.cuda.get_device_properties(0), "uuid", "")).lower()
+    actual_uuid = canonical_uuid(getattr(torch.cuda.get_device_properties(0), "uuid", ""))
     result["cuda"] = {"device_count": 1, "capability": list(torch.cuda.get_device_capability(0)), "uuid": actual_uuid}
-    if actual_uuid != contract["gpu"]["uuid"].lower(): raise RuntimeError("CUDA device UUID differs from contract")
+    if actual_uuid is None or actual_uuid != canonical_uuid(contract["gpu"]["uuid"]): raise RuntimeError("CUDA device UUID differs from contract")
     for command in contract["commands"]:
         argv = list(command["argv"]); junit = "/tmp/" + command["id"] + ".xml"
         collection = None

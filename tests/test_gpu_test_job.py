@@ -179,3 +179,34 @@ def test_runner_fails_when_junit_is_missing(tmp_path):
     env = dict(os.environ, PYTHONPATH=str(tmp_path), ANVIL_GPU_TEST_CONTRACT=json.dumps(_runner_contract(tmp_path, source, kind="pytest")))
     result = subprocess.run(["python3", "-c", job.RUNNER], env=env, capture_output=True, text=True, check=False)
     assert '"ok": false' in result.stdout and "junit_missing" in result.stdout
+
+
+@pytest.mark.parametrize(("torch_uuid", "expected_ok"), [
+    (GPU, True),
+    (GPU.removeprefix("GPU-"), True),
+    ("GPU-00000000-0000-0000-0000-000000000002", False),
+])
+def test_runner_canonicalizes_only_full_cuda_uuids_before_commands(tmp_path, torch_uuid, expected_ok):
+    (tmp_path / "torch.py").write_text(
+        "__version__ = 'fixture'\n"
+        f"class props: uuid = {torch_uuid!r}\n"
+        "class cuda:\n"
+        "    device_count = staticmethod(lambda: 1)\n"
+        "    get_device_capability = staticmethod(lambda index: (12, 0))\n"
+        "    get_device_properties = staticmethod(lambda index: props())\n"
+    )
+    (tmp_path / "sitecustomize.py").write_text(
+        "import builtins, io\n"
+        "real = builtins.open\n"
+        "def open(path, *args, **kwargs):\n"
+        "    values = {'/sys/fs/cgroup/memory.max': '1073741824', '/sys/fs/cgroup/memory.swap.max': '0', '/sys/fs/cgroup/cpu.max': '400000 100000'}\n"
+        "    return io.StringIO(values[path]) if path in values else real(path, *args, **kwargs)\n"
+        "builtins.open = open\n"
+    )
+    source = tmp_path / "direct.py"
+    source.write_text("print('done')\n")
+    env = dict(os.environ, PYTHONPATH=str(tmp_path), ANVIL_GPU_TEST_CONTRACT=json.dumps(_runner_contract(tmp_path, source)))
+    result = subprocess.run(["python3", "-c", job.RUNNER], env=env, capture_output=True, text=True, check=False)
+    receipt = json.loads(result.stdout.split(" ", 1)[1])
+    assert receipt["ok"] is expected_ok
+    assert bool(receipt["commands"]) is expected_ok
