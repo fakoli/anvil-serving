@@ -61,6 +61,7 @@ DEFAULT_CATALOG_DIR = "model-library"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
 DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
+MIB = 1024**2
 _REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 _RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -501,9 +502,27 @@ def is_real_catalog_entry(entry):
     return bool(entry.get("model_type")) or entry.get("format") in ("safetensors", "GGUF")
 
 
+def _pull_memory_limits(memory_mib=None, memory_swap_mib=None):
+    """Validate optional Docker pull ceilings and return their byte values."""
+    if memory_mib is None and memory_swap_mib is None:
+        return None
+    if memory_mib is None or memory_swap_mib is None:
+        raise ValueError("--memory-mib and --memory-swap-mib must be provided together")
+    if (
+        isinstance(memory_mib, bool) or not isinstance(memory_mib, int) or memory_mib <= 0
+        or isinstance(memory_swap_mib, bool) or not isinstance(memory_swap_mib, int)
+        or memory_swap_mib <= 0
+    ):
+        raise ValueError("--memory-mib and --memory-swap-mib must be positive integers")
+    if memory_swap_mib < memory_mib:
+        raise ValueError("--memory-swap-mib must be greater than or equal to --memory-mib")
+    return memory_mib * MIB, memory_swap_mib * MIB
+
+
 def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
                     revision=None, include=None, exclude=None,
-                    token_env=DEFAULT_PULL_TOKEN_ENV):
+                    token_env=DEFAULT_PULL_TOKEN_ENV,
+                    memory_mib=None, memory_swap_mib=None):
     """Construct the ``docker run …`` argv that downloads ``repo_id`` into the
     NAMED docker ``volume`` by running ``hf download`` INSIDE the container.
 
@@ -520,8 +539,12 @@ def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAG
         the token VALUE never appears on argv. Pass ``None`` only for an explicitly
         unauthenticated pull.
     """
-    argv = ["docker", "run", "--rm",
-            "-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
+    argv = ["docker", "run", "--rm"]
+    limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+    if limits is not None:
+        memory_bytes, swap_bytes = limits
+        argv += ["--memory", str(memory_bytes), "--memory-swap", str(swap_bytes)]
+    argv += ["-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
     if token_env:
         # `-e HF_TOKEN` (no `=value`) tells docker to read HF_TOKEN from ITS OWN
         # environment — which is the child env we set in run_pull. The secret is
@@ -921,6 +944,7 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
              revision=None, include=None, exclude=None,
              token_env=DEFAULT_PULL_TOKEN_ENV,
              token_file=DEFAULT_PULL_TOKEN_FILE,
+             memory_mib=None, memory_swap_mib=None,
              dry_run=False, _run=subprocess.call, _environ=None):
     """Build and (unless ``dry_run``) execute the ``docker run … hf download`` argv.
 
@@ -963,8 +987,15 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
             )
             return 2
     environ = os.environ if _environ is None else _environ
-    argv = build_pull_argv(repo_id, volume=volume, image=image, revision=revision,
-                           include=include, exclude=exclude, token_env=token_env)
+    try:
+        argv = build_pull_argv(
+            repo_id, volume=volume, image=image, revision=revision,
+            include=include, exclude=exclude, token_env=token_env,
+            memory_mib=memory_mib, memory_swap_mib=memory_swap_mib,
+        )
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
 
     child_env = dict(environ)
     if token_env and not dry_run:
@@ -995,6 +1026,14 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
         print("image: %s" % image)
         print("include: %s" % (include or "(all files)"))
         print("exclude: %s" % (exclude or "(none)"))
+        limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+        if limits is None:
+            print("Docker memory ceilings: unbounded (legacy default)")
+        else:
+            print(
+                "Docker memory ceilings: requested memory=%d bytes; memory-plus-swap=%d bytes"
+                % limits
+            )
         if token_env:
             print("token environment variable: %s" % token_env)
             print(
@@ -1241,6 +1280,16 @@ def pull_main(argv, *, _result_sink=None):
     )
     ap.add_argument("--xet", action="store_true",
                     help="native only: opt into Xet with owned scratch on --cache-dir's filesystem")
+    ap.add_argument(
+        "--memory-mib",
+        type=int,
+        help="Docker only: requested container memory ceiling in MiB; requires --memory-swap-mib",
+    )
+    ap.add_argument(
+        "--memory-swap-mib",
+        type=int,
+        help="Docker only: requested container memory-plus-swap ceiling in MiB; requires --memory-mib",
+    )
     ap.add_argument("--dry-run", action="store_true",
                     help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
@@ -1250,7 +1299,15 @@ def pull_main(argv, *, _result_sink=None):
     if not math.isfinite(a.headroom_gib) or a.headroom_gib < 0:
         print("[anvil-serving] --headroom-gib must be a finite nonnegative number", file=sys.stderr)
         return 2
+    try:
+        _pull_memory_limits(a.memory_mib, a.memory_swap_mib)
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
     if a.cache_dir is not None:
+        if a.memory_mib is not None:
+            print("--memory-mib and --memory-swap-mib are only supported with Docker pulls", file=sys.stderr)
+            return 2
         return _native_pull_main(a, result_sink=_result_sink)
     if a.hf_executable is not None or a.evidence_out is not None or a.xet:
         print("--hf-executable, --evidence-out, and --xet require native --cache-dir", file=sys.stderr)
@@ -1299,7 +1356,9 @@ def pull_main(argv, *, _result_sink=None):
     rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
                   include=a.include, exclude=a.exclude,
                   token_env=None if a.no_token else a.token_env,
-                  token_file=a.token_file, dry_run=a.dry_run)
+                  token_file=a.token_file,
+                  memory_mib=a.memory_mib, memory_swap_mib=a.memory_swap_mib,
+                  dry_run=a.dry_run)
     if rc == 0 and not a.dry_run:
         try:
             verification = verify_pull(

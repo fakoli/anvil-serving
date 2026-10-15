@@ -42,6 +42,8 @@ def commands() -> CommandNode:
                     _option("--volume", summary="Docker cache volume; incompatible with native cache.", value_name="VOLUME"),
                     _option("--image", summary="Docker image containing hf; incompatible with native cache.", value_name="IMAGE"),
                     _option("--expected-bytes", summary="Docker storage estimate override; native uses verified inventory.", value_name="BYTES"),
+                    _option("--memory-mib", summary="Docker memory ceiling; requires --memory-swap-mib.", value_name="MIB"),
+                    _option("--memory-swap-mib", summary="Docker memory-plus-swap ceiling; requires --memory-mib.", value_name="MIB"),
                 ),
                 mutation="mutate",
                 docs_anchor="docs/cli/models.md#artifact-pull",

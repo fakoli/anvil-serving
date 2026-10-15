@@ -78,6 +78,35 @@ def test_pull_argv_honors_volume_image_revision_include_exclude():
     assert argv[argv.index("--exclude") + 1] == "*.bin"
 
 
+def test_pull_argv_uses_exact_requested_memory_and_swap_bytes():
+    argv = models.build_pull_argv(
+        "meta/model", memory_mib=2048, memory_swap_mib=2048,
+    )
+    assert argv[argv.index("--memory") + 1] == str(2048 * models.MIB)
+    assert argv[argv.index("--memory-swap") + 1] == str(2048 * models.MIB)
+
+
+@pytest.mark.parametrize(
+    "memory_mib,memory_swap_mib,expected",
+    [
+        (1024, None, "provided together"),
+        (None, 1024, "provided together"),
+        (0, 1024, "positive integers"),
+        (2048, 1024, "greater than or equal"),
+    ],
+)
+def test_pull_memory_limits_fail_closed_before_docker(
+        memory_mib, memory_swap_mib, expected, capsys):
+    called = []
+    assert models.run_pull(
+        "meta/model", memory_mib=memory_mib, memory_swap_mib=memory_swap_mib,
+        _run=lambda *_args, **_kwargs: called.append(True),
+        _environ={"HF_TOKEN": "test-token"},
+    ) == 2
+    assert called == []
+    assert expected in capsys.readouterr().err
+
+
 def test_pull_argv_forwards_hf_token_by_default():
     argv = models.build_pull_argv("openai/gpt-oss-120b")
     assert argv[argv.index("-e") + 1] == "HF_TOKEN"
@@ -135,6 +164,24 @@ def test_pull_dry_run_via_pull_main_explicit_unauthenticated(capsys):
     assert "automatic cache reclaim: disabled" in out
 
 
+def test_pull_dry_run_json_retains_requested_memory_argv(capsys):
+    assert cli.main([
+        "models", "pull", "some/repo", "--no-token", "--memory-mib", "2048",
+        "--memory-swap-mib", "2048", "--dry-run", "--json",
+    ]) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert "--memory 2147483648 --memory-swap 2147483648" in data
+    assert "requested memory=2147483648 bytes" in data
+
+
+def test_pull_native_cache_rejects_docker_memory_ceilings(tmp_path, capsys):
+    assert models.pull_main([
+        "org/model", "--revision", "a" * 40, "--cache-dir", str(tmp_path),
+        "--memory-mib", "2048", "--memory-swap-mib", "2048", "--dry-run",
+    ]) == 2
+    assert "only supported with Docker pulls" in capsys.readouterr().err
+
+
 def test_pull_dry_run_token_env_shows_name_only_not_value(monkeypatch, capsys):
     monkeypatch.setenv("MY_HF_TOKEN", "hf_supersecret_value")
     rc = models.pull_main(["some/repo", "--token-env", "MY_HF_TOKEN", "--dry-run"])
@@ -166,6 +213,21 @@ def test_pull_execution_shells_out_with_constructed_argv():
     assert "vllm-hfcache:/root/.cache/huggingface" in argv
     assert "download" in argv and "openai/gpt-oss-120b" in argv
     assert "huggingface-cli" not in argv
+
+
+def test_pull_execution_forwards_configured_memory_ceilings_to_docker():
+    seen = {}
+
+    def fake_run(argv, env=None):
+        seen["argv"] = argv
+        return 0
+
+    assert models.run_pull(
+        "meta/model", memory_mib=2048, memory_swap_mib=3072,
+        _run=fake_run, _environ={"HF_TOKEN": "test-token"},
+    ) == 0
+    assert seen["argv"][seen["argv"].index("--memory") + 1] == str(2048 * models.MIB)
+    assert seen["argv"][seen["argv"].index("--memory-swap") + 1] == str(3072 * models.MIB)
 
 
 def test_pull_nonzero_docker_exit_surfaces_clean_rc(capsys):
