@@ -539,7 +539,10 @@ no network, host mounts, host-environment inheritance, extra capabilities, or ef
 swap; it limits the job to 8 CPUs, 24 GiB RAM, and 45 minutes. The runner checks
 every requested source hash inside the image before test collection, writes JUnit
 proof for pytest, requires zero selected skips, xpasses, errors, and failures,
-and requires explicit completion markers for standalone scripts.
+and requires explicit completion markers for standalone scripts. Its only
+application-writable filesystem is a bounded 4 GiB `/tmp` tmpfs with `nosuid`, `nodev`, and
+explicit `exec` for reviewed JIT extensions; the runner records and rejects an
+effective mount that is not executable tmpfs before CUDA use or test execution.
 
 ```bash
 anvil-serving host gpu-test --spec /private/reviewed-gpu-job.json --output /private/gpu-test-receipt.json --dry-run
