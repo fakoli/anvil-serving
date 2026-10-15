@@ -30,6 +30,7 @@ from .jobs import (
 )
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
+from .swe import validate_swe_selection
 from .swe_images import (
     prepare_paired_images,
     validate_paired_image_ids,
@@ -227,9 +228,15 @@ def run(argv: list[str]) -> dict:
         }
     if args.action == "images":
         spec = _swe_image_spec(args.spec)
-        observed_hostname = _local_worker_identity(spec, args.worker)
-        parameters = spec.get("parameters", {})
-        selected = parameters.get("instance_ids")
+        parameters = spec.get("parameters")
+        if not isinstance(parameters, dict):
+            raise BenchmarkJobError(
+                "bad_swe_image_policy",
+                "SWE image specification parameters must be an object",
+            )
+        selected = validate_swe_selection(
+            load_profile(spec["profile"]), parameters.get("instance_ids")
+        )
         expected = validate_paired_image_ids(parameters.get("paired_image_ids"), selected)
         if expected is None:
             raise BenchmarkJobError(
@@ -239,6 +246,7 @@ def run(argv: list[str]) -> dict:
         repo_digests = validate_paired_image_repo_digests(
             parameters.get("paired_image_repo_digests"), selected
         )
+        observed_hostname = _local_worker_identity(spec, args.worker)
         confirm = bool(
             (args.confirm or confirmation_authorized()) and not args.dry_run
         )

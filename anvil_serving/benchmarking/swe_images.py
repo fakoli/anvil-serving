@@ -137,19 +137,19 @@ def _json_string(command, code, message):
 def _local_docker(*, executable, runner, env):
     """Pin a local Docker endpoint and identify its physical storage root."""
     commands = []
-    endpoint = env.get("DOCKER_HOST") or None
+    context = env.get("DOCKER_CONTEXT")
+    if context and (
+        not isinstance(context, str)
+        or len(context) > 256
+        or context.startswith("-")
+        or any(ord(character) < 32 or ord(character) == 127 for character in context)
+    ):
+        raise BenchmarkJobError(
+            "docker_context_unavailable",
+            "local Docker context selection is invalid",
+        )
+    endpoint = None if context else env.get("DOCKER_HOST") or None
     if endpoint is None:
-        context = env.get("DOCKER_CONTEXT")
-        if context and (
-            not isinstance(context, str)
-            or len(context) > 256
-            or context.startswith("-")
-            or any(ord(character) < 32 or ord(character) == 127 for character in context)
-        ):
-            raise BenchmarkJobError(
-                "docker_context_unavailable",
-                "local Docker context selection is invalid",
-            )
         argv = [
             executable,
             "context",

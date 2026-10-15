@@ -232,6 +232,39 @@ def test_remote_docker_override_is_rejected_before_receipt_or_command(tmp_path):
     assert not (tmp_path / "receipt.json").exists()
 
 
+def test_docker_context_overrides_host_and_pins_resolved_endpoint(tmp_path):
+    calls = []
+    arguments = _prepare_args(tmp_path, calls)
+    arguments.pop("_docker_root")
+    arguments.pop("_observed_paths")
+    arguments["env"] = {
+        "DOCKER_CONTEXT": "selected-local",
+        "DOCKER_HOST": "ssh://remote.example",
+    }
+
+    result = prepare_paired_images(
+        {INSTANCE: IMAGE_ID},
+        {INSTANCE: REGISTRY_DIGEST},
+        confirm=True,
+        **arguments,
+    )
+
+    assert result["status"] == "verified"
+    assert calls[0] == [
+        "/usr/bin/docker",
+        "context",
+        "inspect",
+        "--format",
+        "{{json .Endpoints.docker.Host}}",
+        "selected-local",
+    ]
+    assert all(
+        call[:3] == ["/usr/bin/docker", "--host", DOCKER_ENDPOINT]
+        for call in calls[1:]
+    )
+    assert all("ssh://remote.example" not in call for call in calls)
+
+
 def test_global_run_root_lock_serializes_different_receipt_directories(tmp_path):
     calls = []
     arguments = _prepare_args(tmp_path, calls)
@@ -261,7 +294,7 @@ def _job_spec(worker_id="worker-a"):
         "run_id": "swe-run",
         "ownership_id": "campaign",
         "suite": "swe",
-        "profile": "swe-smoke-v1",
+        "profile": "smoke",
         "endpoint": {
             "base_url": "http://127.0.0.1:8000/v1",
             "model": "candidate",
@@ -275,6 +308,88 @@ def _job_spec(worker_id="worker-a"):
             "paired_image_repo_digests": {INSTANCE: REGISTRY_DIGEST},
         },
     }
+
+
+@pytest.mark.parametrize(
+    ("profile", "instance_ids", "expected_code"),
+    [
+        ("smoke", [], "explicit_swe_selection_required"),
+        ("smoke", ["not-an-instance"], "bad_swe_selection"),
+        ("smoke", [INSTANCE, "astropy__astropy-12907"], "explicit_swe_selection_required"),
+        (
+            "scout",
+            [
+                INSTANCE,
+                "astropy__astropy-12907",
+                "pytest-dev__pytest-11143",
+                "sympy__sympy-20590",
+                INSTANCE,
+            ],
+            "bad_swe_selection",
+        ),
+    ],
+)
+def test_jobs_cli_rejects_invalid_swe_selection_before_docker_resolution(
+    tmp_path, monkeypatch, profile, instance_ids, expected_code
+):
+    spec = _job_spec()
+    spec["profile"] = profile
+    spec["parameters"]["instance_ids"] = instance_ids
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    monkeypatch.setattr(
+        jobs_cli,
+        "resolve_container_binary",
+        lambda: pytest.fail("Docker resolved before SWE selection validation"),
+    )
+
+    with pytest.raises(BenchmarkJobError) as raised:
+        jobs_cli.run(
+            [
+                "swe",
+                "images",
+                "--spec",
+                str(spec_path),
+                "--worker",
+                "worker-a",
+                "--dry-run",
+            ]
+        )
+
+    assert raised.value.code == expected_code
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [[], {"instance_ids": [INSTANCE], "paired_image_ids": {}, "paired_image_repo_digests": {}}],
+)
+def test_jobs_cli_rejects_invalid_swe_image_parameters_before_docker_resolution(
+    tmp_path, monkeypatch, parameters
+):
+    spec = _job_spec()
+    spec["parameters"] = parameters
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    monkeypatch.setattr(
+        jobs_cli,
+        "resolve_container_binary",
+        lambda: pytest.fail("Docker resolved before SWE image policy validation"),
+    )
+
+    with pytest.raises(BenchmarkJobError) as raised:
+        jobs_cli.run(
+            [
+                "swe",
+                "images",
+                "--spec",
+                str(spec_path),
+                "--worker",
+                "worker-a",
+                "--dry-run",
+            ]
+        )
+
+    assert raised.value.code == "bad_swe_image_policy"
 
 
 def test_jobs_cli_binds_requested_worker_to_actual_local_hostname(
