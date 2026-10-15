@@ -12,7 +12,7 @@ from .jobs import BenchmarkJobError
 
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
-AGENTIC_ORACLE_REVISION = "7"
+AGENTIC_ORACLE_REVISION = "8"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -92,8 +92,9 @@ def build_agentic_scenario(
         scenario["messages"] = [{
             "role": "user",
             "content": (
-                "Return the following workflow on one line, with arrows and no headings, "
-                "additional punctuation, or other text:\ninspect -> patch -> test"
+                "Return exactly the following one-line text, using the literal ASCII characters "
+                "-> for each arrow. Do not add headings, other punctuation, or any other text:\n"
+                "inspect -> patch -> test"
             ),
         }]
         expected["final"] = "inspect -> patch -> test"

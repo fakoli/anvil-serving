@@ -92,6 +92,7 @@ def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
     ("# Step 1: Inspect\n# Step 2: Patch\n# Step 3: Test", False),
     ("1. Inspect\n2. Patch\n3. Test", False),
     ("inspect, patch, test", False),
+    ("inspect → patch → test", False),
     ("inspect -> patch -> test.", False),
     ("patch -> inspect -> test", False),
     ("inspect -> patch -> test, then deploy", False),
@@ -102,12 +103,12 @@ def test_planning_requires_disclosed_canonical_workflow(answer, passed):
     trace["final_answer"] = answer
     result = score_agentic_trace(scenario, expected, trace)
     assert result["passed"] is passed
-    assert result["oracle_revision"] == "7"
+    assert result["oracle_revision"] == "8"
 
 
 def test_fixture_prompts_disclose_scored_format_result_and_tool_boundaries():
     planning, _ = build_agentic_scenario("planning")
-    assert "additional punctuation, or other text:\ninspect -> patch -> test" in planning["messages"][0]["content"]
+    assert "literal ASCII characters -> for each arrow" in planning["messages"][0]["content"]
     assert "inspect -> patch -> test" in planning["messages"][0]["content"]
     for case, requirement in (
         ("tool-sequence", "exact marker"),
