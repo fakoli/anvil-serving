@@ -246,6 +246,7 @@ required operands, choices, and defaults.
 | `eval benchmark swe` | Run pinned repository problem-solving benchmarks. | `read` / `bounded` | `--profile`<br>`--observed-context` |
 | `eval benchmark swe prepare` | Prepare digest-pinned swe harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
 | `eval benchmark swe assets` | Inspect prepared swe harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark swe images` | Preview or prepare only the frozen SWE task images from one job specification. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec`<br>`--worker`<br>`--min-free-bytes` |
 | `eval benchmark swe cleanup` | Clean only the owned work directory for a swe benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
 | `eval benchmark swe preflight` | Validate the endpoint and worker for a swe benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
 | `eval benchmark swe submit` | Submit a durable swe benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
