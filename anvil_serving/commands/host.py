@@ -164,6 +164,21 @@ def commands() -> tuple[CommandNode, ...]:
                     docs_anchor="docs/cli/host.md#nccl-collective-probe",
                 ),
                 _resource_node(
+                    "gpu-test",
+                    "Run reviewed numerical tests in one bounded digest-pinned GPU container.",
+                    "anvil_serving.gpu_test_job",
+                    role="host",
+                    argv_prefix=(),
+                    options=CONFIRM_OPTIONS + (
+                        _option("--spec", value_name="PATH", summary="Private reviewed GPU-test job JSON."),
+                        _option("--output", value_name="PATH", summary="Private JSON receipt path."),
+                    ),
+                    mutation="mutate",
+                    execution_runtime_roles=("native",),
+                    execution_host_os=("linux",),
+                    docs_anchor="docs/cli/host.md#bounded-gpu-numerical-test-job",
+                ),
+                _resource_node(
                     "doctor",
                     "Diagnose host configuration.",
                     "anvil_serving.host",
