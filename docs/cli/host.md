@@ -541,7 +541,8 @@ every requested source hash inside the image before test collection, writes JUni
 proof for pytest, requires zero selected skips, xpasses, errors, and failures,
 and requires explicit completion markers for standalone scripts. Its only
 application-writable filesystem is a bounded 4 GiB `/tmp` tmpfs with `nosuid`, `nodev`, and
-explicit `exec` for reviewed JIT extensions; the runner records and rejects an
+explicit `exec` for reviewed JIT extensions. It sets and reads back
+`TORCH_EXTENSIONS_DIR=/tmp/torch_extensions` and `TRITON_CACHE_DIR=/tmp/triton_cache`; the runner records and rejects an
 effective mount that is not executable tmpfs before CUDA use or test execution. It records
 the actual PID cgroup limit, current count, and saturation events before and after execution;
 any saturation event fails the receipt.

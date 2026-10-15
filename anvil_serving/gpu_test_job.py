@@ -307,7 +307,7 @@ def _containment(container_id, contract, *, _runner=subprocess.run):
     expected_memory, expected_memory_swap = recipe_memory.docker_limits({"memory_limit_mib": limits["memory_mib"], "memory_swap_limit_mib": limits["memory_swap_mib"], "host_memory_reserve_mib": 1024})
     expected_cpu = limits["cpus"] * 10**9
     environment = dict(item.split("=", 1) for item in config.get("Env", []) if "=" in item) if isinstance(config, dict) else {}
-    expected_env = {**contract["environment"], "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions", "TMPDIR": "/tmp", "PYTHONOPTIMIZE": "0", "PYTEST_ADDOPTS": ""}
+    expected_env = {**contract["environment"], "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions", "TRITON_CACHE_DIR": "/tmp/triton_cache", "TMPDIR": "/tmp", "PYTHONOPTIMIZE": "0", "PYTEST_ADDOPTS": ""}
     mounts = row.get("Mounts")
     requests = host.get("DeviceRequests") if isinstance(host, dict) else None
     exact_gpu = (isinstance(requests, list) and len(requests) == 1 and isinstance(requests[0], dict)
@@ -366,7 +366,7 @@ def run_job(contract, *, dry_run=True, _runner=subprocess.run, _attach=_bounded_
     encoded = json.dumps(contract, sort_keys=True, separators=(",", ":"))
     limits = contract["limits"]
     memory_bytes, swap_bytes = recipe_memory.docker_limits({"memory_limit_mib": limits["memory_mib"], "memory_swap_limit_mib": limits["memory_swap_mib"], "host_memory_reserve_mib": 1024})
-    command = nccl_probe.DOCKER + ["create", "--name", name, "--label", f"{LABEL}={run_id}", "--pull", "never", "--gpus", "device=" + contract["gpu"]["uuid"], "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(memory_bytes), "--memory-swap", str(swap_bytes), "--cpus", str(limits["cpus"]), "--pids-limit", str(PIDS_LIMIT), "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=4g", "--env", "ANVIL_GPU_TEST_CONTRACT=" + encoded, "--env", "TORCH_EXTENSIONS_DIR=/tmp/torch_extensions", "--env", "TMPDIR=/tmp", "--env", "PYTHONOPTIMIZE=0", "--env", "PYTEST_ADDOPTS="]
+    command = nccl_probe.DOCKER + ["create", "--name", name, "--label", f"{LABEL}={run_id}", "--pull", "never", "--gpus", "device=" + contract["gpu"]["uuid"], "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(memory_bytes), "--memory-swap", str(swap_bytes), "--cpus", str(limits["cpus"]), "--pids-limit", str(PIDS_LIMIT), "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=4g", "--env", "ANVIL_GPU_TEST_CONTRACT=" + encoded, "--env", "TORCH_EXTENSIONS_DIR=/tmp/torch_extensions", "--env", "TRITON_CACHE_DIR=/tmp/triton_cache", "--env", "TMPDIR=/tmp", "--env", "PYTHONOPTIMIZE=0", "--env", "PYTEST_ADDOPTS="]
     for key, value in contract["environment"].items(): command += ["--env", key + "=" + value]
     command += ["--entrypoint", "python3", image_id, "-c", RUNNER]
     artifact["container"] = name; artifact["resource_containment"] = {"requested": {"network": "none", "host_mounts": False, "extra_capabilities": False, "effective_swap": 0, "cpus": limits["cpus"], "memory_mib": limits["memory_mib"], "pids_limit": PIDS_LIMIT, "tmpfs": "/tmp:4g,exec"}}

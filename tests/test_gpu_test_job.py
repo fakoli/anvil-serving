@@ -36,8 +36,9 @@ def native(monkeypatch):
 
 
 class Runtime:
-    def __init__(self, busy=False, wrong_owner=False):
+    def __init__(self, busy=False, wrong_owner=False, triton_cache_dir="/tmp/triton_cache"):
         self.calls, self.busy, self.wrong_owner, self.removed = [], busy, wrong_owner, False
+        self.triton_cache_dir = triton_cache_dir
         self.label = None
 
     def __call__(self, argv, **kwargs):
@@ -61,7 +62,7 @@ class Runtime:
                         "MemorySwap": 1024 * 1024**2 + 1, "NanoCpus": 4 * 10**9, "PidsLimit": job.PIDS_LIMIT, "Binds": None,
                         "Tmpfs": {"/tmp": "rw,nosuid,nodev,exec,size=4g"},
                         "DeviceRequests": [{"Count": 0, "DeviceIDs": [GPU], "Capabilities": [["gpu"]]}]}
-                env = [key + "=" + value for key, value in {**job.ENVIRONMENT, "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions", "TMPDIR": "/tmp", "PYTHONOPTIMIZE": "0", "PYTEST_ADDOPTS": ""}.items()]
+                env = [key + "=" + value for key, value in {**job.ENVIRONMENT, "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions", "TRITON_CACHE_DIR": self.triton_cache_dir, "TMPDIR": "/tmp", "PYTHONOPTIMIZE": "0", "PYTEST_ADDOPTS": ""}.items()]
                 return subprocess.CompletedProcess(argv, 0, json.dumps({"Id": "a" * 64, "HostConfig": host, "Config": {"Env": env}, "Mounts": []}), "")
             label = "other" if self.wrong_owner else self.label
             return subprocess.CompletedProcess(argv, 0, json.dumps({job.LABEL: label}), "")
@@ -106,6 +107,13 @@ def test_schema_rejects_unknown_pytest_option_and_unreviewed_deselect():
     bad["commands"][0]["argv"][-1:] = ["--deselect", "/other.py::test_x"]
     with pytest.raises(ValueError, match="deselect"):
         job.validate_spec(bad)
+
+
+def test_containment_rejects_wrong_triton_cache_before_start():
+    runtime = Runtime(triton_cache_dir="/root/.triton")
+    result = job.run_job(spec(), dry_run=False, _runner=runtime, _attach=good_attach)
+    assert not result["ok"] and not any("start" in call for call in runtime.calls)
+    assert result["cleanup"]["ok"]
 
 
 def test_containment_readback_mismatch_stops_before_start(monkeypatch):
