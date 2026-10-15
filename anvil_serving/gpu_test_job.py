@@ -24,6 +24,7 @@ SCHEMA = "anvil-serving.gpu-test-job/v1"
 LABEL = "io.anvil-serving.gpu-test-job"
 MAX_LOG_BYTES = 256 * 1024
 COMMAND_LOG_BYTES = 12 * 1024
+PIDS_LIMIT = 1024
 IMAGE = re.compile(r"(?:sha256:[0-9a-f]{64}|[A-Za-z0-9][A-Za-z0-9._:/-]*@sha256:[0-9a-f]{64})")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 IDENT = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,63}")
@@ -169,7 +170,7 @@ except Exception:
     torch = None
     torch_version = None
 def cgroups():
-    names = ("memory.max", "memory.swap.max", "cpu.max")
+    names = ("memory.max", "memory.swap.max", "cpu.max", "pids.max", "pids.current", "pids.events")
     try:
         return {name: open("/sys/fs/cgroup/" + name).read().strip() for name in names}
     except OSError as exc:
@@ -177,7 +178,8 @@ def cgroups():
 def contained(c):
     try:
         quota, period = (int(value) for value in c["cpu.max"].split())
-        return c["memory.max"] == str(contract["limits"]["memory_mib"] * 1024 * 1024) and c["memory.swap.max"] == "0" and 0 < quota <= contract["limits"]["cpus"] * period
+        events = dict(line.split() for line in c["pids.events"].splitlines())
+        return c["memory.max"] == str(contract["limits"]["memory_mib"] * 1024 * 1024) and c["memory.swap.max"] == "0" and 0 < quota <= contract["limits"]["cpus"] * period and c["pids.max"] == "1024" and 0 < int(c["pids.current"]) <= 1024 and events.get("max") == "0"
     except (KeyError, ValueError): return False
 def tmp_mount():
     try:
@@ -241,6 +243,8 @@ except subprocess.TimeoutExpired:
     result["error"] = "whole job deadline expired"
 except Exception as exc:
     result["error"] = str(exc)
+finally:
+    result["cgroups_after"] = cgroups()
 print("ANVIL_GPU_TEST_RESULT " + json.dumps(result, sort_keys=True))
 '''
 
@@ -315,7 +319,7 @@ def _containment(container_id, contract, *, _runner=subprocess.run):
           and host.get("SecurityOpt") in (["no-new-privileges"], ["no-new-privileges=true"])
           and host.get("NetworkMode") == "none" and host.get("Memory") == expected_memory
           and host.get("MemorySwap") == expected_memory_swap and host.get("NanoCpus") == expected_cpu
-          and host.get("PidsLimit") == 512 and not host.get("Binds") and exact_gpu
+          and host.get("PidsLimit") == PIDS_LIMIT and not host.get("Binds") and exact_gpu
           and host.get("Tmpfs") == {"/tmp": "rw,nosuid,nodev,exec,size=4g"}
           and all(environment.get(key) == expected for key, expected in expected_env.items())
           and isinstance(mounts, list) and all(isinstance(mount, dict) and mount.get("Type") == "tmpfs" and mount.get("Destination") == "/tmp" for mount in mounts))
@@ -323,16 +327,21 @@ def _containment(container_id, contract, *, _runner=subprocess.run):
 
 
 def _runner_contained(runner, limits):
-    if not isinstance(runner, dict) or not isinstance(runner.get("cgroups"), dict):
+    if (not isinstance(runner, dict) or not isinstance(runner.get("cgroups"), dict)
+            or not isinstance(runner.get("cgroups_after"), dict)):
         return False
-    cgroups = runner["cgroups"]
-    if cgroups.get("memory.max") != str(limits["memory_mib"] * 1024 * 1024) or cgroups.get("memory.swap.max") != "0":
-        return False
-    try:
-        quota, period = (int(value) for value in cgroups.get("cpu.max", "").split())
-    except ValueError:
-        return False
-    return 0 < quota <= limits["cpus"] * period
+    for cgroups in (runner["cgroups"], runner["cgroups_after"]):
+        if cgroups.get("memory.max") != str(limits["memory_mib"] * 1024 * 1024) or cgroups.get("memory.swap.max") != "0":
+            return False
+        try:
+            quota, period = (int(value) for value in cgroups.get("cpu.max", "").split())
+            events = dict(line.split() for line in cgroups.get("pids.events", "").splitlines())
+            if not (0 < quota <= limits["cpus"] * period and cgroups.get("pids.max") == str(PIDS_LIMIT)
+                    and 0 < int(cgroups.get("pids.current", "")) <= PIDS_LIMIT and events.get("max") == "0"):
+                return False
+        except ValueError:
+            return False
+    return True
 
 
 def run_job(contract, *, dry_run=True, _runner=subprocess.run, _attach=_bounded_attach):
@@ -357,10 +366,10 @@ def run_job(contract, *, dry_run=True, _runner=subprocess.run, _attach=_bounded_
     encoded = json.dumps(contract, sort_keys=True, separators=(",", ":"))
     limits = contract["limits"]
     memory_bytes, swap_bytes = recipe_memory.docker_limits({"memory_limit_mib": limits["memory_mib"], "memory_swap_limit_mib": limits["memory_swap_mib"], "host_memory_reserve_mib": 1024})
-    command = nccl_probe.DOCKER + ["create", "--name", name, "--label", f"{LABEL}={run_id}", "--pull", "never", "--gpus", "device=" + contract["gpu"]["uuid"], "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(memory_bytes), "--memory-swap", str(swap_bytes), "--cpus", str(limits["cpus"]), "--pids-limit", "512", "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=4g", "--env", "ANVIL_GPU_TEST_CONTRACT=" + encoded, "--env", "TORCH_EXTENSIONS_DIR=/tmp/torch_extensions", "--env", "TMPDIR=/tmp", "--env", "PYTHONOPTIMIZE=0", "--env", "PYTEST_ADDOPTS="]
+    command = nccl_probe.DOCKER + ["create", "--name", name, "--label", f"{LABEL}={run_id}", "--pull", "never", "--gpus", "device=" + contract["gpu"]["uuid"], "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--memory", str(memory_bytes), "--memory-swap", str(swap_bytes), "--cpus", str(limits["cpus"]), "--pids-limit", str(PIDS_LIMIT), "--tmpfs", "/tmp:rw,nosuid,nodev,exec,size=4g", "--env", "ANVIL_GPU_TEST_CONTRACT=" + encoded, "--env", "TORCH_EXTENSIONS_DIR=/tmp/torch_extensions", "--env", "TMPDIR=/tmp", "--env", "PYTHONOPTIMIZE=0", "--env", "PYTEST_ADDOPTS="]
     for key, value in contract["environment"].items(): command += ["--env", key + "=" + value]
     command += ["--entrypoint", "python3", image_id, "-c", RUNNER]
-    artifact["container"] = name; artifact["resource_containment"] = {"requested": {"network": "none", "host_mounts": False, "extra_capabilities": False, "effective_swap": 0, "cpus": limits["cpus"], "memory_mib": limits["memory_mib"], "tmpfs": "/tmp:4g,exec"}}
+    artifact["container"] = name; artifact["resource_containment"] = {"requested": {"network": "none", "host_mounts": False, "extra_capabilities": False, "effective_swap": 0, "cpus": limits["cpus"], "memory_mib": limits["memory_mib"], "pids_limit": PIDS_LIMIT, "tmpfs": "/tmp:4g,exec"}}
     cleanup_target = name
     try:
         created = _local(command, _runner=_runner)

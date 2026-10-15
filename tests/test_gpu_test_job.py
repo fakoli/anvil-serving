@@ -58,7 +58,7 @@ class Runtime:
             if "{{json .}}" in argv:
                 host = {"ReadonlyRootfs": True, "Privileged": False, "CapDrop": ["ALL"], "CapAdd": None,
                         "SecurityOpt": ["no-new-privileges"], "NetworkMode": "none", "Memory": 1024 * 1024**2,
-                        "MemorySwap": 1024 * 1024**2 + 1, "NanoCpus": 4 * 10**9, "PidsLimit": 512, "Binds": None,
+                        "MemorySwap": 1024 * 1024**2 + 1, "NanoCpus": 4 * 10**9, "PidsLimit": job.PIDS_LIMIT, "Binds": None,
                         "Tmpfs": {"/tmp": "rw,nosuid,nodev,exec,size=4g"},
                         "DeviceRequests": [{"Count": 0, "DeviceIDs": [GPU], "Capabilities": [["gpu"]]}]}
                 env = [key + "=" + value for key, value in {**job.ENVIRONMENT, "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions", "TMPDIR": "/tmp", "PYTHONOPTIMIZE": "0", "PYTEST_ADDOPTS": ""}.items()]
@@ -73,7 +73,7 @@ class Runtime:
 
 def good_attach(argv, *, timeout):
     assert "start" in argv and timeout > 0
-    return 0, 'ANVIL_GPU_TEST_RESULT {"ok": true, "commands": [], "cgroups": {"memory.max": "1073741824", "memory.swap.max": "0", "cpu.max": "400000 100000"}}\n', False, False
+    return 0, 'ANVIL_GPU_TEST_RESULT {"ok": true, "commands": [], "cgroups": {"memory.max": "1073741824", "memory.swap.max": "0", "cpu.max": "400000 100000", "pids.max": "1024", "pids.current": "1", "pids.events": "max 0"}, "cgroups_after": {"memory.max": "1073741824", "memory.swap.max": "0", "cpu.max": "400000 100000", "pids.max": "1024", "pids.current": "1", "pids.events": "max 0"}}\n', False, False
 
 
 def test_validation_fails_before_any_external_io():
@@ -137,6 +137,21 @@ def test_owned_cleanup_and_timeout_are_required():
     assert command[command.index("--network") + 1] == "none"
     assert "--volume" not in command and "--mount" not in command
     assert int(command[command.index("--memory-swap") + 1]) == int(command[command.index("--memory") + 1]) + 1
+    assert command[command.index("--pids-limit") + 1] == str(job.PIDS_LIMIT)
+
+
+def test_post_run_pid_saturation_fails_closed_and_is_retained():
+    runtime = Runtime()
+
+    def saturated_attach(argv, *, timeout):
+        _exit, output, _timed_out, _truncated = good_attach(argv, timeout=timeout)
+        receipt = json.loads(output.removeprefix("ANVIL_GPU_TEST_RESULT "))
+        receipt["cgroups_after"]["pids.events"] = "max 1"
+        return 0, "ANVIL_GPU_TEST_RESULT " + json.dumps(receipt) + "\n", False, False
+
+    result = job.run_job(spec(), dry_run=False, _runner=runtime, _attach=saturated_attach)
+    assert not result["ok"] and result["runner"]["cgroups_after"]["pids.events"] == "max 1"
+    assert result["cleanup"]["ok"]
 
 
 def test_wrong_owner_never_removed():
@@ -151,8 +166,24 @@ def _runner_contract(path, source, *, kind="standalone", markers=("done",)):
     return {"gpu": {"uuid": GPU, "compute_capability": [12, 0]}, "limits": {"timeout_seconds": 20, "memory_mib": 1024, "cpus": 4}, "sources": [{"path": str(source), "sha256": digest}], "commands": [{"id": "test", "kind": kind, "argv": argv, "cwd": None, "source_paths": [str(source)], "completion_markers": list(markers if kind == "standalone" else ())}]}
 
 
-def _runner_sitecustomize(mount_options="rw,nosuid,nodev,relatime"):
-    return "import builtins, io\nreal = builtins.open\ndef open(path, *args, **kwargs):\n    values = {'/sys/fs/cgroup/memory.max': '1073741824', '/sys/fs/cgroup/memory.swap.max': '0', '/sys/fs/cgroup/cpu.max': '400000 100000', '/proc/self/mountinfo': '34 25 0:30 / /tmp " + mount_options + " - tmpfs tmpfs rw,size=4194304k\\n'}\n    return io.StringIO(values[path]) if path in values else real(path, *args, **kwargs)\nbuiltins.open = open\n"
+def _runner_sitecustomize(mount_options="rw,nosuid,nodev,relatime", *, pids_max="1024", pids_current="1", pids_events="max 0"):
+    return "import builtins, io\nreal = builtins.open\ndef open(path, *args, **kwargs):\n    values = {'/sys/fs/cgroup/memory.max': '1073741824', '/sys/fs/cgroup/memory.swap.max': '0', '/sys/fs/cgroup/cpu.max': '400000 100000', '/sys/fs/cgroup/pids.max': " + repr(pids_max) + ", '/sys/fs/cgroup/pids.current': " + repr(pids_current) + ", '/sys/fs/cgroup/pids.events': " + repr(pids_events) + ", '/proc/self/mountinfo': '34 25 0:30 / /tmp " + mount_options + " - tmpfs tmpfs rw,size=4194304k\\n'}\n    return io.StringIO(values[path]) if path in values else real(path, *args, **kwargs)\nbuiltins.open = open\n"
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"pids_max": "512"},
+    {"pids_current": "1025"},
+    {"pids_events": "max 1"},
+])
+def test_runner_refuses_pid_contract_before_cuda(tmp_path, kwargs):
+    (tmp_path / "torch.py").write_text("__version__ = 'fixture'\nclass cuda:\n    device_count = staticmethod(lambda: (_ for _ in ()).throw(RuntimeError('cuda touched')))\n")
+    (tmp_path / "sitecustomize.py").write_text(_runner_sitecustomize(**kwargs))
+    source = tmp_path / "direct.py"
+    source.write_text("print('done')\n")
+    env = dict(os.environ, PYTHONPATH=str(tmp_path), ANVIL_GPU_TEST_CONTRACT=json.dumps(_runner_contract(tmp_path, source)))
+    receipt = json.loads(subprocess.run(["python3", "-c", job.RUNNER], env=env, capture_output=True, text=True, check=False).stdout.split(" ", 1)[1])
+    assert receipt["commands"] == [] and receipt["error"] == "container cgroup limits differ from contract"
+    assert receipt["cgroups_after"]["pids.max"] == kwargs.get("pids_max", "1024")
 
 
 def test_runner_rejects_missing_marker_and_pytest_skip(tmp_path):
