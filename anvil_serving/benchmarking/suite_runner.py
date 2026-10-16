@@ -686,7 +686,6 @@ def run_agentic_suite(
         ) if key in parameters
     })
     sampling_kwargs = request_sampling_kwargs(sampling)
-    thinking_mode = request_controls["thinking_mode"]
     reasoning_effort = request_controls["reasoning_effort"]
     chat_template_kwargs = request_controls["chat_template_kwargs"]
     case_limit = parameters.get("case_limit")
