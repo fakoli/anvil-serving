@@ -1,5 +1,7 @@
 # Qwen3.8 Flash Next
 
+**2026-10-16 NVIDIA FP4 scout:** the pinned Qwen profile passed native preflight 6/6 and Oracle 54/54, then ended the five-case SWE run at 2/5 resolved and 4/5 graded. It missed the frozen 4/5 floor; vision, context, capacity, and stability are deliberate non-results. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md)
+
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date

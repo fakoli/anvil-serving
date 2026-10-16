@@ -1,0 +1,25 @@
+{
+  "control_values_retained": [
+    "enabled",
+    "none",
+    "strict",
+    "promotion boundary"
+  ],
+  "leaf_transforms": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "container_identity": "empty string",
+    "nested_tool_argument_string_leaves": "empty string; mapping/list shape and non-string scalar values retained",
+    "private_paths": "empty string",
+    "raw_text_fields": "empty string",
+    "request_ids": "redacted:sha256 of original request identifier",
+    "response_bearing_detail_fields": "empty string",
+    "runtime_alias": "nemotron35-super-vl-nvfp4-scout",
+    "stage_command_strings": "empty string; original list length retained",
+    "stage_stdout_stderr": "empty string"
+  },
+  "private_originals": "Retained outside this repository; source SHA-256 values are in nemotron-scout-source-ledger.json.",
+  "projection_contract": "Each native projection preserves original mapping/list paths, list lengths, and scalar JSON types. Raw model output, prompt, reasoning, tool arguments, commands, response-bearing details, private endpoint, path, host, GPU UUID, and container identity are removed or replaced with public-safe aliases.",
+  "schema": "anvil-serving.sanitized-evidence-provenance/v1",
+  "scope": "Nemotron scout projections listed in nemotron-scout-source-ledger.json",
+  "status": "terminal scout projection; C1 evidence includes three Oracle projections and terminal SWE. Qualification and promotion are not eligible; final campaign restoration is retained separately."
+}

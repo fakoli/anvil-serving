@@ -7,6 +7,9 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-16-sglang-qwen-comparison.md` and `docs/findings/2026-10-16-sglang-qwen-comparison-evidence/README.md` (bounded dual-GPU SGLang, Qwen, and Nemotron scout evidence; no performance comparison or promotion);
+`docs/benchmarks/models/nemotron35-super-vl-120b.md` (measured-on: bounded direct TP2 scout, no qualification);
+
 `docs/findings/2026-10-15-replacement-evaluation/README.md` (evidence index for measured bounded dual-GPU replacement gates and one-GPU numerical compatibility; no additional measurement);
 `docs/findings/2026-10-15-replacement-evaluation.md` (GLM, MiMo, and Mistral dual-GPU gates; DeepSeek Stage 2 separately classified as one-GPU numerical evidence; exact GLM restoration retained);
 `docs/findings/2026-10-16-glm-v091-trial.md` (measured bounded R1/R2 and restored-original GLM functional, Oracle, vision, context, reserve, and five-case SWE evidence on the dual Max-Q configuration; R2 and control both resolved 3/5, so no promotion or performance claim);

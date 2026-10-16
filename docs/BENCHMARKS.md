@@ -1,5 +1,7 @@
 # Benchmark results
 
+**2026-10-16 SGLang, Qwen, and Nemotron comparison:** the [closed campaign finding](findings/2026-10-16-sglang-qwen-comparison.md) retains the original GLM baseline C1 0/4 performance-eligible result, terminal SGLang and Qwen SWE failures, and Nemotron's 48/54 Oracle, C1 0/4, and terminal SWE 2/5 resolved (4/5 graded). No candidate qualified, and no controlled performance ranking or graph is published.
+
 **2026-10-15 replacement evaluation:** the completed [campaign finding](findings/2026-10-15-replacement-evaluation.md) records no eligible challenger. DeepSeek V4.1 Flash remained bounded to diagnostic gates, and exact GLM was restored and retained. The finding contains the sole detailed gate table; no new GLM qualification, route change, or performance ranking follows.
 
 **Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](findings/2026-10-13-full-qualification.md).

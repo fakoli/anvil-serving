@@ -1,0 +1,82 @@
+{
+  "completed_slice": "SGLang no-spec startup acceptance, runtime mHC source/numeric parity, direct preflight, three retained Oracle rounds, and terminal partial SWE evidence; r1 host-RAM policy failure and r2 GPU-reserve abort are retained as bounded failure evidence.",
+  "excluded_from_this_draft": [
+    "context",
+    "vision",
+    "capacity",
+    "stability",
+    "qualification",
+    "promotion"
+  ],
+  "identity": {
+    "concurrency": 4,
+    "configuration_field_sources": {
+      "no_spec_parity_recipe": {
+        "fields": [
+          "model_repository",
+          "model_revision",
+          "runtime_image",
+          "engine",
+          "tensor_parallelism",
+          "context_tokens",
+          "concurrency",
+          "quantization",
+          "host-memory-containment"
+        ],
+        "private_source_sha256": "69867be8be90d9531d31ba85c7d9afd33e3630e9beabe21315bc6c77bd5f8b0b"
+      },
+      "r1_host_ram_policy_recipe": {
+        "fields": [
+          "original 96 GiB cgroup policy",
+          "original 16 GiB host reserve"
+        ],
+        "private_source_sha256": "05c36ef9747d4dc7cbae9edf24429a1400dbfa8647c6e79f6fce318698948d53"
+      }
+    },
+    "configured_resource_policy": {
+      "distinction": "Configured recipe values, not measured workload capacity or steady-state memory use.",
+      "host_memory_reserve_mib": 16384,
+      "mem_fraction_static": 0.95,
+      "memory_limit_mib": 53248,
+      "memory_swap_limit_mib": 53248
+    },
+    "context_tokens": 262144,
+    "engine": "SGLang (sglang-glm53-sm120-v0.6.1)",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "model_repository": "ormandj/GLM-5.3-Flash-W4A16-NVFP4-K32-Experts-FP8-WO",
+    "model_revision": "ee0989a944b0e213589191d7fca63af825a0741e",
+    "public_served_alias": "glm53-flash-sglang-scout",
+    "quantization": "ModelOpt mixed W4A16 NVFP4 K32 routed experts with FP8 weight-only protected projections; FP8 E4M3 KV cache; BF16 recurrent state; native NextN/MTP weights retained with speculative execution disabled.",
+    "recipe_digest": "69867be8be90d9531d31ba85c7d9afd33e3630e9beabe21315bc6c77bd5f8b0b",
+    "registry_digest": "69867be8be90d9531d31ba85c7d9afd33e3630e9beabe21315bc6c77bd5f8b0b",
+    "runtime_image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:10d3a79629420d9c1953cbc2e25a8395364fe7a40a77d039444bb8a3e4b10dd9",
+    "served_alias_transformation": "The measured runtime alias is private and is consistently replaced by this public alias in the native projections.",
+    "tensor_parallelism": 2
+  },
+  "measured_scope": "Measured records in the native projections are limited to their own retained observations. The configured resource policy is not a performance, workload-capacity, or steady-state-memory result.",
+  "privacy_boundary": "No operator path, private endpoint, host ID, GPU UUID, container name, or container ID is retained. This record binds the synthetic public alias to public-safe exact model/runtime/recipe identities and names private-source hashes for configuration groups.",
+  "schema": "anvil-serving.public-sglang-scout-configuration/v1",
+  "status": "terminal scout support record; coding is incomplete below the frozen floor and later gates are deliberate stops. No qualification or promotion is eligible; final restoration and publication remain separate.",
+  "swe_terminal_scope": {
+    "attempted": 5,
+    "graded": 2,
+    "job_failure_class": "model_behavior",
+    "job_state": "failed",
+    "native_failure_code": "swe_limits_exceeded",
+    "native_run_state": "incomplete",
+    "official_grader_complete": false,
+    "resolved": 0,
+    "restoration": {
+      "binding": "Restored incumbent direct and routed JSON smoke passed after the scout; raw endpoint/model identifiers remain private.",
+      "private_source_bytes": 4731,
+      "private_source_sha256": "8e2e5ec2592c022fa552dff81d2646329c332052b83e8af17f8be05f3d38a82d",
+      "status": "passed-direct-and-routed-json"
+    },
+    "unrun_after_coding_gate": [
+      "vision",
+      "context",
+      "capacity",
+      "stability"
+    ]
+  }
+}

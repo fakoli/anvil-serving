@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-16-sglang-qwen-comparison",
+  "complete": true,
+  "headline_results": [
+    "Original GLM baseline C1: 0/4 performance-eligible requests.",
+    "SGLang GLM terminal SWE: 5 attempted, 2 graded, 0 resolved.",
+    "Qwen FP4 terminal SWE: 5 attempted, 4 graded, 2 resolved.",
+    "Nemotron: preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 performance-eligible, and terminal SWE 2/5 resolved (4/5 graded)."
+  ],
+  "gates": [
+    {"name": "frozen coding floor", "status": "failed", "evidence": ["native/sglang-scout-swe5.json", "native/qwen-scout-swe5.json", "native/nemotron-scout-r2-swe5.json"]},
+    {"name": "Nemotron exact Oracle", "status": "failed", "evidence": ["native/nemotron-scout-r2-oracle8-r1.json", "native/nemotron-scout-r2-oracle8-r2.json", "native/nemotron-scout-r2-oracle8-r3.json"]},
+    {"name": "eligible controlled capacity comparison", "status": "failed", "evidence": ["native/baseline-capacity-c1-r1.json", "native/nemotron-scout-r2-capacity-c1-r1.json"]},
+    {"name": "final restoration", "status": "passed", "evidence": ["restoration.json"]}
+  ],
+  "limitations": [
+    "No candidate has a passing complete replacement score.",
+    "No controlled performance population is eligible.",
+    "The accepted router custody checkpoint changed before trials; its actor and cause are unknown, and retained quiescence warnings preclude availability or traffic-exclusivity claims."
+  ],
+  "decision": {
+    "evidence_labels": ["functional", "quality", "compatibility-only"],
+    "decision_labels": ["no-promotion"],
+    "promotion_authorized": false,
+    "next_gate": "None; closed no-promotion evidence record."
+  },
+  "promotion_authorized": false
+}

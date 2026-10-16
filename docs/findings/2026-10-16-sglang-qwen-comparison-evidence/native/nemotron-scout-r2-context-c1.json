@@ -1,0 +1,95 @@
+{
+  "base_url": "http://127.0.0.1:30000/v1",
+  "budget": {
+    "max_completion_tokens": 4608,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "needle",
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "nemotron35-super-vl-nvfp4-scout",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "",
+      "content_chars": 18,
+      "content_excerpt": "",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 513,
+      "reasoning_excerpt": "",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 27.01,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 144,
+        "prompt_tokens": 235978,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 130,
+        "total_tokens": 236122
+      },
+      "validation_detail": ""
+    },
+    {
+      "content": "",
+      "content_chars": 1,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 123169,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 138,
+      "reasoning_excerpt": "",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "requested_context_tokens": 131072,
+      "seconds": 11.729,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 123169,
+        "prompt_tokens_details": null,
+        "reasoning_tokens": 34,
+        "total_tokens": 123230
+      },
+      "validation_detail": ""
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "",
+      "name": "needle @ ~262144 ctx",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "tool call after >=100K prompt (target 131072)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": {
+      "enable_thinking": true,
+      "force_nonempty_content": true
+    },
+    "mode": "enabled",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

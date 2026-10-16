@@ -1,0 +1,146 @@
+{
+  "artifacts": [
+    {
+      "native_schema": "preflight/v2",
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 25012,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "e38f6d396781bfe421a7497184182ab80587e8891afa8716407f9550352ec782",
+      "public_bytes": 20417,
+      "public_path": "native/qwen-scout-r3-preflight.json",
+      "public_sha256": "f391d7485baceb914080e31a7b4a91f4abb2027a5cedaae8a683c79d98b4df9f",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37121,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "8af0e83179956b725a11fbc5a3e600dce30b9f2beed7ac18af8f42f8aa94bfc5",
+      "public_bytes": 33608,
+      "public_path": "native/qwen-scout-r3-oracle8-r1.json",
+      "public_sha256": "3237ccdf88cd500b81568b800776c3b2e78193d333ef07acf50a829a3d3550d1",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 36929,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "28be43493d9a5124eece0bb392a17f86acaeabe0de05d3df54bbeb434c87abe5",
+      "public_bytes": 33610,
+      "public_path": "native/qwen-scout-r3-oracle8-r2.json",
+      "public_sha256": "1c019bc9acc46d3ff05122bb20e5be8564442dc193c0d678ef9082308f0d6b51",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 36761,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "88a9901860e4df12a1ea03189895f640ce678ba97318b336b9433e0b184aecdb",
+      "public_bytes": 33611,
+      "public_path": "native/qwen-scout-r3-oracle8-r3.json",
+      "public_sha256": "ad55313bf5a58a4f3ccff32f06fd96deb44a0d02e53d8098f5a5e7bc8eed9bd7",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "preserved_metric_paths": [
+        "container_created",
+        "model_requests",
+        "classification"
+      ],
+      "private_source_bytes": 409,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "d0b1c0f408ff21c555c4485cefd93fcb145735ac7826784b8e11370854214adf",
+      "public_bytes": 409,
+      "public_path": "native/qwen-scout-r2-admission-failure.json",
+      "public_sha256": "e676ba81d3a09f48fc3c325298a5414c6e7814f212d9ab299af2c47bd7cf7a33",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "preserved_metric_paths": [
+        "checks",
+        "host_memory",
+        "gpu_min_free_mib"
+      ],
+      "private_source_bytes": 1880,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "1b2f3520a6f9f51a141dc5d03646c1f1b40b3b30f0f8ad4d137337bc831b6cc0",
+      "public_bytes": 1756,
+      "public_path": "native/qwen-scout-r3-startup-gates.json",
+      "public_sha256": "6d296c9a4a81ef6cec2bec1de93b9fef2759424416bf478b07c46cd686958a76",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "preserved_metric_paths": [
+        "sha256",
+        "bytes",
+        "revision",
+        "image_id"
+      ],
+      "private_source_bytes": 906,
+      "private_source_label": "retained-qwen-scout-artifact",
+      "private_source_sha256": "449ee8351979a2bde64d9540c675accb0adbd7d2d327f4a370770aa1b548d180",
+      "public_bytes": 578,
+      "public_path": "native/qwen-scout-r3-runtime-template.json",
+      "public_sha256": "32c641b15952d2cffc67d1721e3bbc8e9f88470c6adfefeff6d12b60abbc6dd1",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.swe-run/v1",
+      "preserved_metric_paths": [
+        "state",
+        "failure",
+        "summary.attempted",
+        "summary.graded",
+        "summary.resolved",
+        "summary.resolve_rate",
+        "official_grader_complete",
+        "instances[].exit_status",
+        "instances[].failure_class",
+        "instances[].grader.completed",
+        "instances[].grader.resolved",
+        "request_controls",
+        "task_container_network",
+        "promotion"
+      ],
+      "private_source_bytes": 39094,
+      "private_source_label": "retained-qwen-terminal-swe-native-evidence",
+      "private_source_sha256": "6945863fd22134a088ba023e5938f29abbc8b781eb59cfbc959934f0b170ab94",
+      "public_bytes": 36684,
+      "public_path": "native/qwen-scout-swe5.json",
+      "public_sha256": "3dc76790bd6e405a4c91d7b3f1926ab88283a294ddcbc80a1b9477199df6dcf0",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    }
+  ],
+  "schema": "anvil-serving.public-evidence-source-ledger/v1",
+  "status": "draft; Qwen terminal SWE projection added; independent qualification review pending"
+}

@@ -1,0 +1,42 @@
+{
+  "identity": {
+    "configuration_field_sources": {
+      "exact_private_recipe": {
+        "fields": [
+          "engine",
+          "quantization",
+          "tensor_parallelism",
+          "context_tokens"
+        ],
+        "private_source_sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6"
+      },
+      "final_recipe_status": {
+        "fields": [
+          "model_repository",
+          "model_revision",
+          "runtime_image_digest",
+          "recipe_digest",
+          "registry_digest",
+          "served alias transformation"
+        ],
+        "private_source_sha256": "5136fffba2b333e4f4ad2a329bbfd93c73d3d3efc98f866523b11698893fe8e6"
+      }
+    },
+    "context_tokens": 327680,
+    "engine": "vLLM (vllm-exl3)",
+    "hardware": "2x NVIDIA RTX PRO 6000",
+    "model_repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "public_served_alias": "glm53-flash-baseline",
+    "quantization": "EXL3/TR3 uniform K4 for routed experts only; non-routed tensors at native precision; FP8 DS-MLA KV cache",
+    "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+    "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+    "runtime_image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "served_alias_transformation": "The measured runtime alias is private and is consistently replaced by this public alias in the native projections.",
+    "tensor_parallelism": 2
+  },
+  "privacy_boundary": "No operator path, private endpoint, host ID, GPU UUID, container name, or container ID is retained. This record binds the synthetic public alias to public-safe exact model/runtime/recipe identities and names the private-source hash for every disclosed configuration group.",
+  "private_source_sha256": "5136fffba2b333e4f4ad2a329bbfd93c73d3d3efc98f866523b11698893fe8e6",
+  "schema": "anvil-serving.public-baseline-configuration/v1",
+  "status": "draft support record; no qualification, promotion, or final publication claim"
+}

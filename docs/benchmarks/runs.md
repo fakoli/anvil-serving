@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-16 SGLang, Qwen, and Nemotron comparison
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | Original GLM baseline, GLM SGLang scout, Qwen FP4 scout, and Nemotron 3.5 Super VL NVFP4 scout | Native preflight, Oracle, context/vision where completed, strict C1, and terminal five-case SWE | 2x RTX PRO 6000 Blackwell Max-Q | Original GLM C1 0/4 performance-eligible; SGLang SWE 0/5 resolved, 2/5 graded; Qwen SWE 2/5, 4/5 graded; Nemotron preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 eligible, SWE 2/5 resolved and 4/5 graded | `no-promotion`; SGLang/Qwen coding miss the 4/5 floor; original GLM and Nemotron C1 are ineligible, and Nemotron misses exact Oracle. No eligible controlled performance population. | [GLM](models/glm53-flash.md) · [Qwen](models/qwen38-flash-next.md) · [Nemotron](models/nemotron35-super-vl-120b.md) · [finding](../findings/2026-10-16-sglang-qwen-comparison.md) |
+
 ## 2026-10-16 GLM v0.9.1 trial
 
 | Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |

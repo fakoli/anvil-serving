@@ -1,0 +1,13 @@
+{
+  "bytes": 8952,
+  "container_id": "",
+  "diagnostic_gap": "plans/qwen-runtime-template-diagnostic-plan.json",
+  "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "method": "bounded read-only exact-container template file hash; managed status/logs unavailable for this field",
+  "mutation": false,
+  "observed_at": "2026-10-16T11:45:54.188368+00:00",
+  "requested_path": "",
+  "resolved_path": "",
+  "revision": "b9ce18a6887e18c089fdea8509a33e63429a3300",
+  "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+}

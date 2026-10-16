@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-16 SGLang scout:** the original GLM baseline C1 record completed 0/4 performance-eligible requests, so it is not a performance control. The pinned SGLang GLM profile passed native preflight 6/6 and Oracle 54/54, but its terminal SWE artifact resolved 0/5 with 2/5 officially graded. It missed the frozen 4/5 floor; later gates were deliberately stopped. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md)
+
 **2026-10-16 v0.9.1 trial:** the R2 profile passed native preflight 6/6, Oracle 54/54, vision 18/18, bounded retrieval/tool-context, and the sampled reserve gate, then resolved 3/5 pinned SWE cases against a four-case floor. It is `rejected`/`no-promotion`. The exact restored incumbent passed direct/routed 6/6, a Pi read turn, fresh Oracle 54/54, vision 18/18, matching long-context probes, and the matched SWE suite at 3/5. The common resolved count and cases do not equate detailed grader failures or support comparative, causal, or performance claims. [Finding](../../findings/2026-10-16-glm-v091-trial.md)
 
 **2026-10-15 replacement evaluation:** no challenger cleared the completed frozen gates. Exact GLM was restored and retained as the baseline; this is continuity evidence, not a new GLM qualification. [Finding](../../findings/2026-10-15-replacement-evaluation.md)

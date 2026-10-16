@@ -1,0 +1,1693 @@
+{
+  "observations": [
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        55
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 77,
+          "finish_reason": "stop",
+          "latency_ms": 659.6841999562457,
+          "prompt_tokens": 55,
+          "reasoning_chars": 306,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        55
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 76,
+          "finish_reason": "stop",
+          "latency_ms": 644.1645940067247,
+          "prompt_tokens": 55,
+          "reasoning_chars": 293,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        35
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 107,
+          "finish_reason": "stop",
+          "latency_ms": 858.7215580046177,
+          "prompt_tokens": 35,
+          "reasoning_chars": 411,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        35
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 74,
+          "finish_reason": "stop",
+          "latency_ms": 628.6865309812129,
+          "prompt_tokens": 35,
+          "reasoning_chars": 234,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        39
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 335,
+          "finish_reason": "stop",
+          "latency_ms": 2455.76694898773,
+          "prompt_tokens": 39,
+          "reasoning_chars": 1293,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        39
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 148,
+          "finish_reason": "stop",
+          "latency_ms": 1147.0970090012997,
+          "prompt_tokens": 39,
+          "reasoning_chars": 483,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "b6a65903756bd28d16c39a1c9854697ee9b64d03bd3195272e1ff35338708b28",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        392,
+        502,
+        578
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-sequence",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "id": ""
+          },
+          "name": "read_ticket"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 86,
+          "finish_reason": "tool_calls",
+          "latency_ms": 721.3180949911475,
+          "prompt_tokens": 392,
+          "reasoning_chars": 225,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 51,
+          "finish_reason": "tool_calls",
+          "latency_ms": 488.18641202524304,
+          "prompt_tokens": 502,
+          "reasoning_chars": 76,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 88,
+          "finish_reason": "stop",
+          "latency_ms": 733.1898710108362,
+          "prompt_tokens": 578,
+          "reasoning_chars": 344,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "0c54357d6923173a016774bcdc36a98657823e70bca43993e0382a97db8b010a",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        392,
+        490,
+        566
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "tool-sequence",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "id": ""
+          },
+          "name": "read_ticket"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 74,
+          "finish_reason": "tool_calls",
+          "latency_ms": 35689.71909797983,
+          "prompt_tokens": 392,
+          "reasoning_chars": 179,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 51,
+          "finish_reason": "tool_calls",
+          "latency_ms": 480.1046079955995,
+          "prompt_tokens": 490,
+          "reasoning_chars": 76,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 67,
+          "finish_reason": "stop",
+          "latency_ms": 584.6138200140558,
+          "prompt_tokens": 566,
+          "reasoning_chars": 170,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "7f6a27f9694a7c7a0e47da86ef5102b8e83002102c0c45f38e630e8dc13a2e1b",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        297,
+        462
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "parallel-tools",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 115,
+          "finish_reason": "tool_calls",
+          "latency_ms": 926.5330539783463,
+          "prompt_tokens": 297,
+          "reasoning_chars": 278,
+          "tool_call_count": 2
+        },
+        {
+          "completion_tokens": 82,
+          "finish_reason": "stop",
+          "latency_ms": 690.7922319951467,
+          "prompt_tokens": 462,
+          "reasoning_chars": 197,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "e83a923219d770b9c70b75a0b3523075f2810d422c56ede814ec80c7ba6b3d2d",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        297,
+        440
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "parallel-tools",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 93,
+          "finish_reason": "tool_calls",
+          "latency_ms": 763.8647900312208,
+          "prompt_tokens": 297,
+          "reasoning_chars": 189,
+          "tool_call_count": 2
+        },
+        {
+          "completion_tokens": 60,
+          "finish_reason": "stop",
+          "latency_ms": 536.5872499532998,
+          "prompt_tokens": 440,
+          "reasoning_chars": 119,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "0f1f93838c795f56066a96cd54b06f82fc993d356b39ee6cf3fadb4a9ef8ad0f",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        411,
+        551,
+        645
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "dependent-result",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "name": ""
+          },
+          "name": "lookup_user"
+        },
+        {
+          "arguments": {
+            "id": "",
+            "state": ""
+          },
+          "name": "update_user"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 115,
+          "finish_reason": "tool_calls",
+          "latency_ms": 923.9663630141877,
+          "prompt_tokens": 411,
+          "reasoning_chars": 391,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 67,
+          "finish_reason": "tool_calls",
+          "latency_ms": 584.2765819979832,
+          "prompt_tokens": 551,
+          "reasoning_chars": 93,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 61,
+          "finish_reason": "stop",
+          "latency_ms": 550.0347550259903,
+          "prompt_tokens": 645,
+          "reasoning_chars": 199,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "bbafdc7a741bea6ec4b0a748071f6e37af456fc69b5c7460838142ad9cee5449",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        411,
+        521,
+        638
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "dependent-result",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "name": ""
+          },
+          "name": "lookup_user"
+        },
+        {
+          "arguments": {
+            "id": "",
+            "state": ""
+          },
+          "name": "update_user"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 85,
+          "finish_reason": "tool_calls",
+          "latency_ms": 710.8333730138838,
+          "prompt_tokens": 411,
+          "reasoning_chars": 238,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 90,
+          "finish_reason": "tool_calls",
+          "latency_ms": 754.1396040469408,
+          "prompt_tokens": 521,
+          "reasoning_chars": 190,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 64,
+          "finish_reason": "stop",
+          "latency_ms": 577.2475199773908,
+          "prompt_tokens": 638,
+          "reasoning_chars": 177,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "42f3e7dadd86bb7aa9d8ffbaf654438df1fe7a5010826674115c5291c4841320",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        338,
+        460,
+        566
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-recovery-error",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "attempt": "",
+            "id": ""
+          },
+          "name": "fetch_build"
+        },
+        {
+          "arguments": {
+            "attempt": "",
+            "id": ""
+          },
+          "name": "fetch_build"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 99,
+          "finish_reason": "tool_calls",
+          "latency_ms": 813.8040810008533,
+          "prompt_tokens": 338,
+          "reasoning_chars": 250,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 74,
+          "finish_reason": "tool_calls",
+          "latency_ms": 644.4567060098052,
+          "prompt_tokens": 460,
+          "reasoning_chars": 162,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 85,
+          "finish_reason": "stop",
+          "latency_ms": 705.6161220534705,
+          "prompt_tokens": 566,
+          "reasoning_chars": 231,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "0df1e9d03fb835c9b2e8ca7f759edf06aac4dce14779da17280471f4dc63a153",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        338,
+        572,
+        703
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "tool-recovery-error",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "attempt": "",
+            "id": ""
+          },
+          "name": "fetch_build"
+        },
+        {
+          "arguments": {
+            "attempt": "",
+            "id": ""
+          },
+          "name": "fetch_build"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 211,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1595.9928159718402,
+          "prompt_tokens": 338,
+          "reasoning_chars": 642,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 99,
+          "finish_reason": "tool_calls",
+          "latency_ms": 804.0655889781192,
+          "prompt_tokens": 572,
+          "reasoning_chars": 252,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 103,
+          "finish_reason": "stop",
+          "latency_ms": 843.8318730331957,
+          "prompt_tokens": 703,
+          "reasoning_chars": 151,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "fc8b8f2df0156c206fa2093ee82c5266ee6e7086d8b07c24c8b5f572277a5313",
+      "failure": null,
+      "failure_class": "protocol_failure",
+      "full_history": [],
+      "history_prompt_tokens": [
+        572,
+        709,
+        940,
+        1176,
+        1539,
+        1740,
+        1975,
+        2273,
+        2506,
+        2824,
+        3495,
+        3886,
+        4349,
+        4526,
+        4936,
+        5368,
+        5709,
+        5889,
+        6041,
+        6135
+      ],
+      "oracle_revision": "8",
+      "passed": false,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "debug-loop",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": false
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "edit": "",
+            "path": ""
+          },
+          "name": "apply_edit"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "edit": "",
+            "path": ""
+          },
+          "name": "apply_edit"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 111,
+          "finish_reason": "tool_calls",
+          "latency_ms": 901.4264449942857,
+          "prompt_tokens": 572,
+          "reasoning_chars": 331,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 205,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1567.728639987763,
+          "prompt_tokens": 709,
+          "reasoning_chars": 812,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 210,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1598.0821730336174,
+          "prompt_tokens": 940,
+          "reasoning_chars": 837,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 337,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2487.783709017094,
+          "prompt_tokens": 1176,
+          "reasoning_chars": 1417,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 175,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1353.4074460039847,
+          "prompt_tokens": 1539,
+          "reasoning_chars": 658,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 209,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1591.4905749959871,
+          "prompt_tokens": 1740,
+          "reasoning_chars": 801,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 272,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2034.046059998218,
+          "prompt_tokens": 1975,
+          "reasoning_chars": 1157,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 207,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1586.178721045144,
+          "prompt_tokens": 2273,
+          "reasoning_chars": 765,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 292,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2182.490342995152,
+          "prompt_tokens": 2506,
+          "reasoning_chars": 1227,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 645,
+          "finish_reason": "tool_calls",
+          "latency_ms": 4655.4947450058535,
+          "prompt_tokens": 2824,
+          "reasoning_chars": 2714,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 365,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2698.388291988522,
+          "prompt_tokens": 3495,
+          "reasoning_chars": 1537,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 437,
+          "finish_reason": "tool_calls",
+          "latency_ms": 3195.9888950223103,
+          "prompt_tokens": 3886,
+          "reasoning_chars": 1799,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 151,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1193.3459359570406,
+          "prompt_tokens": 4349,
+          "reasoning_chars": 594,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 384,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2835.4058559634723,
+          "prompt_tokens": 4526,
+          "reasoning_chars": 1677,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 406,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2988.5217509581707,
+          "prompt_tokens": 4936,
+          "reasoning_chars": 1671,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 312,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2339.5522149512544,
+          "prompt_tokens": 5368,
+          "reasoning_chars": 1294,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 148,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1175.9026640211232,
+          "prompt_tokens": 5709,
+          "reasoning_chars": 365,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 130,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1059.01198805077,
+          "prompt_tokens": 5889,
+          "reasoning_chars": 245,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 61,
+          "finish_reason": "tool_calls",
+          "latency_ms": 570.1518070418388,
+          "prompt_tokens": 6041,
+          "reasoning_chars": 94,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 241,
+          "finish_reason": "stop",
+          "latency_ms": 1843.1388919707388,
+          "prompt_tokens": 6135,
+          "reasoning_chars": 452,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "a1867490255b24a9a1cb7def5d0249b25c4509c6d43e03a684c2d49ac5b5f827",
+      "failure": null,
+      "failure_class": "protocol_failure",
+      "full_history": [],
+      "history_prompt_tokens": [
+        572,
+        703,
+        1023,
+        1142,
+        1250,
+        1323
+      ],
+      "oracle_revision": "8",
+      "passed": false,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "debug-loop",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": false
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": ""
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "edit": "",
+            "path": ""
+          },
+          "name": "apply_edit"
+        },
+        {
+          "arguments": {
+            "scope": ""
+          },
+          "name": "run_tests"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 105,
+          "finish_reason": "tool_calls",
+          "latency_ms": 854.1683239745907,
+          "prompt_tokens": 572,
+          "reasoning_chars": 317,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 291,
+          "finish_reason": "tool_calls",
+          "latency_ms": 2159.156447974965,
+          "prompt_tokens": 703,
+          "reasoning_chars": 1222,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 87,
+          "finish_reason": "tool_calls",
+          "latency_ms": 742.5279839662835,
+          "prompt_tokens": 1023,
+          "reasoning_chars": 254,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 86,
+          "finish_reason": "tool_calls",
+          "latency_ms": 723.8431129953824,
+          "prompt_tokens": 1142,
+          "reasoning_chars": 172,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 40,
+          "finish_reason": "tool_calls",
+          "latency_ms": 407.94256899971515,
+          "prompt_tokens": 1250,
+          "reasoning_chars": 53,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 140,
+          "finish_reason": "stop",
+          "latency_ms": 1102.2731259581633,
+          "prompt_tokens": 1323,
+          "reasoning_chars": 486,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "a1e72877adeaf6458d482d73c9450121bdf471507f9199e4b5a9af94b9f42929",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        }
+      ],
+      "history_prompt_tokens": [
+        340
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "context-recovery",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 94,
+          "finish_reason": "stop",
+          "latency_ms": 778.8207730045542,
+          "prompt_tokens": 340,
+          "reasoning_chars": 379,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    },
+    {
+      "answer_sha256": "a1e72877adeaf6458d482d73c9450121bdf471507f9199e4b5a9af94b9f42929",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        },
+        {
+          "content": "",
+          "role": "assistant"
+        },
+        {
+          "content": "",
+          "role": "user"
+        }
+      ],
+      "history_prompt_tokens": [
+        340
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "context-recovery",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 52,
+          "finish_reason": "stop",
+          "latency_ms": 483.21060300804675,
+          "prompt_tokens": 340,
+          "reasoning_chars": 197,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": ""
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": {
+      "enable_thinking": true,
+      "force_nonempty_content": true
+    },
+    "force_nonempty_content": true,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "request_ids": [],
+  "schema": "anvil-serving.agentic-suite-run/v1",
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 0.8888888888888888,
+    "passed": 16,
+    "required_pass_rate": 0.75
+  }
+}

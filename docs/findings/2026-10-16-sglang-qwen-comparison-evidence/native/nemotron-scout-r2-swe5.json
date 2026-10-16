@@ -1,0 +1,680 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-16T13:26:44.900516Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": ""
+  },
+  "endpoint": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "nemotron35-super-vl-nvfp4-scout"
+  },
+  "failure": {
+    "class": "model_failure",
+    "code": "swe_limits_exceeded",
+    "stage": "agent"
+  },
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "91f4c167ea6f42a331c18b615976ca653978236da44945562ed5bd2b7528974e",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "6d24cb5f6e81f7341092960172b59acca8daed00370e5ca13dd12c20f1115fd9",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "42817ef2155aa163ef799ea20a242e51665b4b1c7c1909f817ef04520bbcd8dc",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:73fca8797eca94b69d217d8b8f834209e65d6eff7306627364b860a12e9c54fa",
+        "redacted:sha256:8812dae8f8191b5d0920344721c3bacb8fd8c88aff7bb8df6a3fc8f7b319c302",
+        "redacted:sha256:49e3ae8ed1836ae2c3d79e4cad04b28d4714ae3f5b66381e0914a43006dd957a",
+        "redacted:sha256:3ba94f7d336c26bf2427f3e385df70c8fe773b9764e5c966a3b62f58f3a37030",
+        "redacted:sha256:0ad480f629fd2a86003da225090fe8221d5a32cd0e8498fbf6abba77a7d5dc92",
+        "redacted:sha256:2bdd705fb878df5b96ea0199954d8a3bba30faa88434b75d8cceae35b32b8e9c",
+        "redacted:sha256:fa016aa579667482498980bf0fcf1724772b1c610952405b02d9282836bb3275",
+        "redacted:sha256:6beb36c43779d0824ccb967d24d451deef08c572baf2d4800f075c2137c0da09",
+        "redacted:sha256:78612025353330bc83aeea8c92f4aa6f495904d2733e615c5d72e7cdcf774a3e",
+        "redacted:sha256:e4b245eb127f1675cf80693f52cb55186172bb14077b9f3ecca43d1770cfe4ae",
+        "redacted:sha256:ad6998e8086d2fde9c144f5201fae643a267565671e81de38406e991df7ccfb9",
+        "redacted:sha256:659a03cde3617bac4dc6da633d8e18cd6470d2655bf4a2d9b5e445cd93672f01",
+        "redacted:sha256:928c9681f69b07fe1e15d7860a31da8ca122ed927f62494547c30cb9859c1a9a",
+        "redacted:sha256:22c1d134d573a76943ef9aaf331656ac6a7008c58dd7ab1772b9aabe75729305",
+        "redacted:sha256:1ee4ab620c1b65eb83334de785314f8fd59976e6318c2b0ec994be42c46975ee",
+        "redacted:sha256:f82f0e2a9df0db5ac5482a6b33108415b1f1cef9c37c4d3da5376937a8476218",
+        "redacted:sha256:3f77041e7715c368b872f591f9b2a145b3969848ed5aeeacf51730d3a80e31cc",
+        "redacted:sha256:03387ea1f5aeadd8f7d0e57ce9365a2ac9ccf944c6856244f8314ffc6908866c",
+        "redacted:sha256:ee2bd4757435430dc8a2d19e622c405bad0f53d8189a83aae2d2f8e1870fd042",
+        "redacted:sha256:94bc65cc46dea082858cf6239d793fbc06bf1177257d96511d61bb4a52ca94c7",
+        "redacted:sha256:7bb1af605e4cb659b1a4664421b1bf96df7b5b3cafa6791d3d2c0fb195d51ca3",
+        "redacted:sha256:8e86e512c7d9a98355396a7b03e68b46f881d6790e253e6c2b1e5a3206647907",
+        "redacted:sha256:af1f04616ba8a45f8f8662b7a8545f8c55c58c711b0b8b88a40fc7645c037602",
+        "redacted:sha256:f2fd04f8171327fc77a684297ef87c191172592d832834dd3eef2f4bec983dd8",
+        "redacted:sha256:24ce32f4930129e23bfa108d22901900d22dcc3ffca520c8c16d2ae18b6c177c",
+        "redacted:sha256:40fa0dc96e41ec5f2dd56a892119b5a833604bf9c5512224d44698458e8657ae",
+        "redacted:sha256:b0f7caa756f8b8b0630a9135113fa80288852fcfbf1e4c30347fb2815a828aa7",
+        "redacted:sha256:4ec3e4a9b36d73b17f3aefc701fb2f77613e4929c0410299747fea0c000984fd",
+        "redacted:sha256:89e1bca7b794f01055eb97a339b2ce45f7a12545da24bff771dc6d2ebe112fd7",
+        "redacted:sha256:fe5b5f83cef9f03ef3462cbba1bb97910b1d02661cdadf0b99e8201c1634275f",
+        "redacted:sha256:dcb8ca5b82a481ace025b6cbe98860b5a3bc8c27a20e739b4cf1e54fc8bca69c",
+        "redacted:sha256:089562548359eec320451810218b0f0af6fdbadcba15738577bdd4c26db57f8b",
+        "redacted:sha256:b92ec223916aef155d90a740d49045481570c266a9b18f450ebc136fba52c66d",
+        "redacted:sha256:56cd1435198592bd096c8776d2a593e19afed3eacd03f014527c5d7d823fb3ac",
+        "redacted:sha256:718ccdf3479b9d6ef35f9dc9dcbc769c4422a0e027f116db624cf8a1d03d71d7",
+        "redacted:sha256:d131d6115a74028345328d6643833fff4fb46fad2d4f78d08f71c2363c1899ed",
+        "redacted:sha256:973515dd78744521949e25d5b9708e624143a56ebe8e47f724373cba4cf212ba",
+        "redacted:sha256:c51832cf796e957d348310186efd186f5767e17c824cc407c6180c561fd92301",
+        "redacted:sha256:f3515b0643d39a539456e1e5adb32d7d7d99e335912ab98f7777fde8c9763ef1",
+        "redacted:sha256:1f996e959694d9d50f048256dd668e19fe86a3df09e3eca502e029aecf253eb5",
+        "redacted:sha256:116a122e490445e656852d7f8a3e4a193e93b1d5edd0c6e11a1dd2416a805acd",
+        "redacted:sha256:bee2d5bf525a60f17be63d46cef536f85fa24ea108cd80b9e3896eef53b05dc7",
+        "redacted:sha256:c814353045717f984710ad742bc88ce515e84ce8430a30c04d0941a2e6186a11",
+        "redacted:sha256:78846482ab7e9c9814db96f32f3548343bc14aff3d0a687f65ead78db024152c",
+        "redacted:sha256:d2b453a713e8be8bcc79c6ab91f368a2639e1a6a0e306dfb3ec98428b71f6190",
+        "redacted:sha256:5d70c4c4e298d19d3562673d88ac16184cae08161c66dc09df0724fbecc4fc8a",
+        "redacted:sha256:4b492c4b8e8d40b97dc0d84d643ba6d380854b377b6dff4a73f527f71c6a0897",
+        "redacted:sha256:027c8843fa474bca445f5bbffddc60c2c5f316f8e05ade44afdb0e453ec7d449",
+        "redacted:sha256:0caa0644b2e35a94391e01eab187eb8bad3eadd407fcb2eacc9fced10a341a78",
+        "redacted:sha256:69411a7ff79402aeb65e6bddec0498d8097bde4713872ba4b6dabca285f4edfb",
+        "redacted:sha256:34670cad02a3be630d77ad08f7a6d7a7112cc3d8cab107620a1101a776b99dff",
+        "redacted:sha256:b42d7f44d3d0b84828d64df2db006bad12caaeb57ddc22525ae409a67ee3ec48",
+        "redacted:sha256:0a489aa423c889eb5da8a796ad2cb9815aef511bec31c04a7acdc558e55458ed",
+        "redacted:sha256:f3f76e3e52fea904707163a07e1686142832c4a2985197d51f20a8c53ebc32ba",
+        "redacted:sha256:9c6011db56028b2ff348af20d78f4035b04c2c7506a7c642756de7d63135c28a"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "82ac6aebeae1d22f1e2e25d958b831a80f7ff0bbbf2017ac6ca41098f5c11b8e"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "6d24cb5f6e81f7341092960172b59acca8daed00370e5ca13dd12c20f1115fd9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "05980a25ffd302efde9b044abde143cbd9c1f857f1e898dd1bc88049ba82ad73",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:6ccebc454cfaf4ca210c464dc04b1548f3dbabfe4fd3a620e9d25095d2389dee",
+        "redacted:sha256:c92790c3e3f9ea8028ea90c69d1263a1350086cda436c9f51d1db7c830d4d0ce",
+        "redacted:sha256:ceae6845d252b95044f39f91499fdc36a93ef77fe4fd488cd266bfc32499e17e",
+        "redacted:sha256:485abe520f9b2a401b18450e8ac8c00c7116dcfb9b5fedcc93586df01c171073",
+        "redacted:sha256:80f75cec8fd977e5886be32066bdc4cca2a78218d7dc374da807cca772ca712d",
+        "redacted:sha256:4adb667728c57a09a99bdb7f7bbdce4acb69fd206c778bf4b1000fa82eee2eb7",
+        "redacted:sha256:6354256ae9ee21289fbd9652df01727a1a58703f55e87ef89e7449657182a7ba",
+        "redacted:sha256:daf1caa688ced52d7695afd880f76f6f3cd843fab0cc65cf42349163fad6a0f5",
+        "redacted:sha256:dd969b450fd2fd61c6e3f653763ef7e4c31e8a6501442c7deb6f10b0b79cc698",
+        "redacted:sha256:ac2e822b7af692f7c3a91e519457f82e721d2d26d39108841f39400d9115083c",
+        "redacted:sha256:b1dec8dddd0202c17f13a88e1a44faa3c96e13ecd5a1e55a8f98315bfc9f151e",
+        "redacted:sha256:cc7f2e8f138dbff294867c73e0ac5c8ea6d81db636dc6d53b486f8880129e85f",
+        "redacted:sha256:e87ccefc7c1fc6b0dfd60c9460a8f660a264662b73e6fbc68f8180f00ee2920f",
+        "redacted:sha256:230a8cb3d7464b93eb1b9f7d3b050a082a62065bc04cd6b3a8ef72b0116d42fe",
+        "redacted:sha256:e0bde0afd862877582bfc497fa5e4e47cc73ad8c54ebd9945754ab7577ea2838",
+        "redacted:sha256:c180a2751d22b7294269ce5d56aa4ee5054bbf7cb5fdcac3c76925c5eb741421",
+        "redacted:sha256:0e35afa617d7418ac4317084f038c777f0c8985cdce81e268cbff1c2fc86e30b",
+        "redacted:sha256:23b36cc00f13053d876bfa46e8e0f9a61e901553c26c8984c6d6cc577ac034b8",
+        "redacted:sha256:75b07f57416c92f0bafb8a988a78ececed8a3d5521f5e3f97585d7872050beb6",
+        "redacted:sha256:633236c4f123031820f757e6b2b70f77c86823705b12d57ad78ad48360116665",
+        "redacted:sha256:09b7c300fc2ad6a880f383a2fce7f810a10f8f47d76f018297547d889d5ba577",
+        "redacted:sha256:4cde0f4c2cdbd62715dfb4fe67c6dc1500c293f5659cd63be0c01f01bb92b603",
+        "redacted:sha256:6e9edf7390d1f1c4abbf6ed159490e12bd2f6c3e274e2ab9cd9c74f5d29020f1",
+        "redacted:sha256:a92c66999a7f85cac645ed9ac1317fedab4a48f1b74039d07bd45376cf13cec2",
+        "redacted:sha256:677e068b7a2e8327ddd324dc96a9a0fc431d35abec43affe77993d4eab15f63a",
+        "redacted:sha256:f5c318e5aae90e63bbc8b16c8f735c6af9da47341ac47455665ab4fe1b657760",
+        "redacted:sha256:1cd2d0e7651ffa3a6b7440d0d1116897b3017479cfd701012511ecbc4a82b672",
+        "redacted:sha256:7614bc20eebd550c2c883cc33d4878929f0321d6ed1bc2038cd247edb0d51952",
+        "redacted:sha256:d448cdcbe0e4871532eb5404239b0ae3ad9af6030ed70fd6cca4c05f433f7c2d",
+        "redacted:sha256:289cb3a5dffa9c4566fe5674db143046b23c547f3255dcf47875e83cc09fa656",
+        "redacted:sha256:64a45c850e8cef14874440cb5bdfa52b2481ae8f744e11a8f33dc519e4c7ecb7",
+        "redacted:sha256:4c2bae32b1080891760b1c9ea9dac24609c61c57eded730f988bfe0a57ec7da9"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "eefeb502efef0b2aa29f35c2d8f7842ad1fb0ef9a6e4a5f0d8724e9341ac1718"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "6d24cb5f6e81f7341092960172b59acca8daed00370e5ca13dd12c20f1115fd9",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "40eb3bf9deb66aa85579f2be5ab074a4aa7b697a3fbbe9e826f3109c6cdaaa26",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:8c652a7a07d22c96a95bc3a48ec136a21986c98a2f076c5ea2861f8930d76140",
+        "redacted:sha256:ad754825f4d6f902e73eaf5ad80da9d2379e1409cc9a951166f53567a9a01f85",
+        "redacted:sha256:374547a1b61371e717b1e3b8605ef7204f0588c16c034b149177c1f5c8fb21f1",
+        "redacted:sha256:0cffff5ed678b060ca5d43e213046a4d5d96a32b42edcfd25d4783df13104db5",
+        "redacted:sha256:4c5374085af47341b739744d0bec69ffaa2d53468ac061a5200eed4558a0bac5",
+        "redacted:sha256:a5e5ca23807819a1db177e47e9f1f2569ec1d010dcd1173cd515e29a50073896",
+        "redacted:sha256:906085c6e02bfcbc90ef8d5d2b4362c1ab83cfdaaf4dbfd957359463d8de7d08",
+        "redacted:sha256:fdc8532c4bf7bbb180a93ab2e29c4f9614584a40da3ad69ee9eaec22c398bf94",
+        "redacted:sha256:3c3228e0bfef37b89f324c29172343997fc7c34bbf57fe253b7f20ac57ffff61",
+        "redacted:sha256:592f2767d66ba5b515eca69de2312e621f2348fb51be5088cfa05e505bc1133f",
+        "redacted:sha256:d2e795e09e000d1590ed872d5bb70c1ad5d148779970713981109fc6414bd751",
+        "redacted:sha256:508a9346d950e023dcfa2575dc0cb8fa08ccdafabfc0f68d968744ceb5ac90ee",
+        "redacted:sha256:609840e7cbb0229a1237632de3220703084b7aa07eaa36b6c5e24c739e6f4472",
+        "redacted:sha256:e9e27fff477f01623d0825821b59fff1c885c865848bc5f34b0712d86ffe4186",
+        "redacted:sha256:31a470ad8ef1621d8b2c4a313998c9c71e8e4987f7ab6e1f2915aef74421ef6b",
+        "redacted:sha256:bd453dc4fd12aa1d75fd6925b895d15090553677ca1766d97cfe25a0dfea2a3c",
+        "redacted:sha256:c34961c83e2f2f7f576183b63e2b1b8e7672795119b5835fea9fd707b9ed6aae",
+        "redacted:sha256:05548f40a0da9c08d34af91b6e75a575e116df6a44264ed1b9dbd3661f3e8644",
+        "redacted:sha256:4fc31441d3159d742a81e55876f2c65b9c6e7a7aba2429bf2f1db3c44b3b060e",
+        "redacted:sha256:b34f1b7077d6f30232e70710e80499f233ed58baa01ff143529119eeca61dd04",
+        "redacted:sha256:1f89abf2c64a9fb2421dfd41087fd97873237fe9f6bedd3eee8918d7b45bfe55",
+        "redacted:sha256:1794c5f678e0200d70b6960084a45b5c3a7650bf01b7982ef54509282025b46a",
+        "redacted:sha256:45b71c4ad3b768f32acd41df890bea183bcf059e725d16ccca7dc0a0af440efe",
+        "redacted:sha256:9753ee6642a11285207e0de806f606a2f9ed2016b3753424e6320b9f6a3d5747",
+        "redacted:sha256:83d6a4ca88160539d28257aa8f18fcb827add655bb71fbf7affa2eb6974d5148",
+        "redacted:sha256:60129013258e0f77110cd3f692eee5d166678f3c20bf13666c0af77d5c924b7c",
+        "redacted:sha256:92f3551f0be870377f79f017e2ba9391a49c7772a35d385a41dfb9fc574db5b5",
+        "redacted:sha256:a231476a993a0aa345cb079650aa605f173f4844e71b6c7ec4581e8571886d15"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "924ffd3829824761a2b85aad43230c525c9db3e2cdc61036fd50dd134a230e0c"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "6d24cb5f6e81f7341092960172b59acca8daed00370e5ca13dd12c20f1115fd9",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "a119b559281251e86ac0c1b03ae56247cd5ecea118b2692fd322758ff914499e",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:79cecca26d61a1149823a0f80f88de3baa08f78c4fbbcefeceda4dc92e6503d7",
+        "redacted:sha256:7e1a48abbcb7803b1367b928f3808f24130cf11573e415c614f1e1879fedd770",
+        "redacted:sha256:30c207d8f6b06f2ec83cca68db4974b42118ce23155add3127fefadcd5c5c152",
+        "redacted:sha256:9e993f5a1b0e412786382deba8709ba7515317f25cfca77c1b74ad6a19094f5e",
+        "redacted:sha256:b5903ac430dad26f34858e4563ad7a84bb6d715af27a28f7d8c0c90069dd0e3a",
+        "redacted:sha256:78a5d75a9f17549059b2760021cf56b584c091bafd9f564741253dc7e5d19e1e",
+        "redacted:sha256:97190a458f9de563d33d8c0a843be5bb53755854a1b563c8753e551f421202a9",
+        "redacted:sha256:9f5c27593b070f28831e43773f75887fd40567257fbcf6c86213e42ee8472461",
+        "redacted:sha256:5977f851431ca3b3cdac8194e2ebf9032381b6dce7bcf40602edb08ea61738fe",
+        "redacted:sha256:3ea3d2a1a34fe1db201f7c3fa7167872701884c7ce6e0187a4c2ebb711aca763",
+        "redacted:sha256:fb64842a407462a2be25d68b04cac1f8719eeee4e58bfc50656a86694ee64472",
+        "redacted:sha256:84885d2273fcedfad83ebeb6a9902fe71aa4fe3c6a3f7e2dc73e53912e78b6d7",
+        "redacted:sha256:ccecaea0b9ab3079bcaa97fadfc892448fddb6554f8d00396ba8a7b557192260",
+        "redacted:sha256:02ab47f5d1c7142ce22dc042559601b58d8be7a3adf870a2e8471ef45b6fd024",
+        "redacted:sha256:3562fbff480f573a792113c3865171b96eb053724a75ad66ef77c050c6d34cfe",
+        "redacted:sha256:75e2353377765ae97f0d1452c29476ec79b6fe347050eadf65e6f7a3534891c9",
+        "redacted:sha256:694c26031ec971dd4351034997bf9e81dd21d20d6ef96531c39fa2831731e560",
+        "redacted:sha256:301e6f21da8e3d7cbf2ef695276df29dca341f4813f919a5c17338e772a4926a",
+        "redacted:sha256:20d389066f387bcab68fedbbd2f7da47d1cd4333b665c178740446f924146325",
+        "redacted:sha256:fe3b7abbdbc7a8986dd89d608ad919ce59ef2b0971ca040bb40d250b509d8a95",
+        "redacted:sha256:8d1ab190ec5bf19558326dc946846dd71b870bd7b31df06c6abe150ba5f297b6",
+        "redacted:sha256:74290fb108a434bfcffef851c2d1d664ea0383a20e84bba2ec1c60a1a7f4bd4b",
+        "redacted:sha256:2613b9fed6ca0f61c8b1f3a911d7097a88e94718b2db28acc2276f5f387598d9",
+        "redacted:sha256:d079330bbf5c573b7a4d5f186614bc23f33d2d5667af16d3f297f0824c4c533c",
+        "redacted:sha256:18ad49e0b139a4b8ab46a6159d5d8615cc973b3259b649fbf2f3378f1f0da6b3",
+        "redacted:sha256:700256781211a4600188bfd653dc74a84ed994370884724911bc9263ad36e224"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "c50b38bea89716870146509e1e69be353e0f6501c619a75a1d66c64985fee9e1"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "6d24cb5f6e81f7341092960172b59acca8daed00370e5ca13dd12c20f1115fd9",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:eb66ab43ea39a4c01c4f917bb10bd83f1a8e1021ff88881a77599fcd62700e20",
+        "redacted:sha256:58daa65c3fec8b11d26dc0deea4b9df9ec6394fe5176b1be5071d0b01fdf7584",
+        "redacted:sha256:533536b834ddd1eea183517ff6a420fa514d0f2ef301d59a5be1a24eff634352",
+        "redacted:sha256:939bbe0962ac051f4a1635e8e4fefc6a2bce5138e458ad3133af179dabecb395",
+        "redacted:sha256:3a6be33c796bb97c3221b10bd491420eb82e8ddec5760c5de52b8a6817b5910a",
+        "redacted:sha256:08bcee1d3cad08294280793f26f2b0004319bcd4e8ef3416d3770b793bc5ef3b",
+        "redacted:sha256:21fc431484b901bfa1a4ba6b5c579cee294b1538ded25e67c9fd9a3611f57c80",
+        "redacted:sha256:c5f80a4c37b518fa3a37d38914a86caacbcc0d289a480e344cbf720f7add72b7",
+        "redacted:sha256:ed3fdf65c5905cdab6a5f8c473c28c6a09c64a3c0e9efc242c6d9c1c285a4182",
+        "redacted:sha256:704897e1a60b6dfbe8bc63424deaa6cb730b4bcd1a19b256e33be3950bd0f12c",
+        "redacted:sha256:9982e28d41661616c0a67c9569bbe4e44a3e463f3004c58984fa60a678f4f227",
+        "redacted:sha256:4c537096a803f0d6a00897e46584973b909bf33338227b295cc44ffa9f189065",
+        "redacted:sha256:48a0ab0dda8536fd912f3bce183eb0c7a81ea24280be6661902cd19e71b2d91d",
+        "redacted:sha256:154a7eb9a0ed1b7933e69ddf4ea6c66ec7f19541006162d17da63e24cb8e1127",
+        "redacted:sha256:fbd8b93b9352f7bfcd6c590a693f7ff5d440cdfaf0bab33ff676bb2e24870e33",
+        "redacted:sha256:d6f9ed2ff56c595d2e483289843477b937dd18aa508fdd686ede42c4d69dfaef",
+        "redacted:sha256:390e81bad97dbe4a3441a448673aba426cb9f452abab71d03553c28e8c02ccad",
+        "redacted:sha256:182d614599d4b4579e1066a0c18b5ad7982ff384e5a57f21a52f60549f485bd2",
+        "redacted:sha256:be3ff1ccfb9de5f0b225e0a53733f385f03d40fe6058d49e345f472cd74269f8",
+        "redacted:sha256:583aa27aec7572c5fd5b9b0f4d4271af271ca64fb6ef944b074441783aaf46d4",
+        "redacted:sha256:813ce50ef382980115cce5c7d55e8d54a0780bd40f2a8c7d3271c1dd94cb0d55",
+        "redacted:sha256:6fdc47a7505e6895fe6d82e8ffb107fe7d6671bb3196c5aea5e4ec5c989d4a3c",
+        "redacted:sha256:030925d486cd36a532f0c22b50d4d74dc6d1d1b29c7a12dba021fb59134d5c86",
+        "redacted:sha256:a027a74d268a2c5199cbe8809b12a6470dd37dd7380310c2626d5d11a391519f",
+        "redacted:sha256:9ba7c8d11981e2bf0d6a27c2135381da9beef5f60676147f434e2e1e921fc66b",
+        "redacted:sha256:6aad243a028f660234cf2adc7cd9d56409f7bcb3ee4dea205635d30c9794995f",
+        "redacted:sha256:dc95888bfc94d3ecb8f7ace2fcdf113e08d19e7319d4fa4d3138d9a4b9183a16",
+        "redacted:sha256:213000e96c35248c6dad65b73e21315753e622da008db07bdc269185617dff4c",
+        "redacted:sha256:11d88eb943fb3454f97d1e0d84babf4933786cfe95a97d0728014e6ef7b9025a",
+        "redacted:sha256:62f5e768af56984c8e0d2b4e7c9d35e5c29750324418381002845bc757bb067e",
+        "redacted:sha256:9d7c31a9674c960ea54a5078906344adf3bcb3ec8f9c07b4bae30cf5cdc27318",
+        "redacted:sha256:9c52e66ba8e2c11b0b5d6243a60c5226edb75fba99087a706df5ef6887afb315",
+        "redacted:sha256:69dce4f01eefc2b5744fb238bc0de2f5569b5efbe11a81bd37fd5ec89d5c9af2",
+        "redacted:sha256:06bca2354d8bf68f6d6447e795b790c477aa3abfe6c048cf13bc534fc441ae03",
+        "redacted:sha256:c3810d09daeb62de7a76ed334906b49567cbac321f202fdcecdcb6c04630f363",
+        "redacted:sha256:cbb2204e58eeb0e5b68d755ac07215eee940724b44ca72eeeb59b255669ac485",
+        "redacted:sha256:bcfa131ff57c16a9038ea57647affc3fbaef26d3b40e371b7d2bb7249feff743",
+        "redacted:sha256:2466fbee750d477ce46e296e05a885e7b97eb970484e5afc3fe8c66521a5987f",
+        "redacted:sha256:e06d1d79e525767621970f51b24f17d4007ce69fbda0c96ca0774c6c484488df",
+        "redacted:sha256:7a76bec53840b59deb8d659521200023d665b7c0384c0146c6ea1fb74511c50c",
+        "redacted:sha256:bd823752c8b67776098c3f73dd74d6c865a4923b030dc657dc4808ebf367e87b",
+        "redacted:sha256:0abf5fc16956a01b7ff38d673c99b30afee940ca41a6aa2b9e27091786357d9c",
+        "redacted:sha256:c33ded5966026f4e15c2a89868c5bd76c81763f02eedc6876fc7bf0f7c277987",
+        "redacted:sha256:8fe89b561fff5cb3d7bb4e56e46612b5387f1d87b8db73469d9f824d4bb1df94",
+        "redacted:sha256:b77a1b7c477fe06fbaa54c4be2f53e12b635f52f942c2c544f7696deea5bd606",
+        "redacted:sha256:2e4d85648d6d6c8dced4b0c6dcab90d68a3a8c386c7cd483fc563dfab0f370d7",
+        "redacted:sha256:ab2a831568e521ab20811d0c3b5571c3d4a36d1a3aa20f24b3ced609b8a144e0",
+        "redacted:sha256:2a941d0a8075bc6a9c29f3fafc6ce88f1a78752900fddad62f2b41205d5f59f6",
+        "redacted:sha256:4dad6c2630b3d8e6d8edea2320ef4ce42c865ecc050cd804aab9a7a261587369",
+        "redacted:sha256:0f19523d561bc4c99232281105ccb7009184a061ba195b846e95b4fa9c0e4002",
+        "redacted:sha256:55fd997ab6ab462e0a7ccee90fe5c63633cd588ebe84e9aee75755c5e7255adc",
+        "redacted:sha256:f0d4cf25502d0c02de1d77f1b09d595b2ef464d865c2793b1a853087bd83ed3c",
+        "redacted:sha256:df1f3dc0ff1027359ff6356f84ca2463a6338a8de6dda53c5f594979f63fb504",
+        "redacted:sha256:09c75daeef4f4a3a1390b6dc481725e160c8bf7ff417ba75f13b3814796e259e",
+        "redacted:sha256:cc2a3f4161376c8d331435d5d19c8b3a275f21349ea0674d099e102ecf8c2d12",
+        "redacted:sha256:71a082554425ad91be59445f73fb7025c9e76a95e10c7ad7a8f6175e0c6b6333",
+        "redacted:sha256:eea1a042b753de95f0b5edb178e4c81d889d50e15d343639c6d4bb052a6dffd8",
+        "redacted:sha256:4eb2797310de749dede06c36ea98081bb09bfbb832e25e75b07ab0ca7f4a4411",
+        "redacted:sha256:7160c3b1274ff6a067c1dc20249cf32d9349a4b2c41cb2439ecd0d442ae2b5da",
+        "redacted:sha256:92cf749946977197c60822f4ceb96a4fc5906c4871d06b6c5627fa6e3a2ebaea"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "e3217e4ee76898c7b02ccb2660c8fd8adbf339522f457809158df8ac699a8dbc"
+      }
+    }
+  ],
+  "official_grader_complete": false,
+  "ownership_id": "sglang-qwen-nemotron-20261016",
+  "paired_image_ids": {
+    "django__django-13512": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+    "pydata__xarray-4356": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+    "pylint-dev__pylint-8898": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+    "sphinx-doc__sphinx-9658": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+    "sympy__sympy-12096": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+  },
+  "plan_sha256": "343df76c9f8b31b33e721cf8a15a09be4007abbdf5b5f8b2d31875f36cafd717",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "chat_template_kwargs": {
+      "enable_thinking": true,
+      "force_nonempty_content": true
+    },
+    "force_nonempty_content": true,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "run_id": "sglang-qwen-20261016-nemotron-swe5-successor",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "duration_s": 403.788268,
+      "failure_class": "model_failure",
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "duration_s": 85.306335,
+      "failure_class": "test_failure",
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "state": "incomplete",
+  "summary": {
+    "attempted": 5,
+    "graded": 4,
+    "resolve_rate": 0.5,
+    "resolved": 2
+  },
+  "task_container_network": "none"
+}

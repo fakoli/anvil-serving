@@ -1,0 +1,22 @@
+{
+  "benchmark_requests_sent": 0,
+  "breach_samples": 657,
+  "engine_startup_warmups": "serving_coverage generated internal warmup traffic before abort",
+  "first_breach": [
+    "2026/10/16 02:54:54.109",
+    "GPU-REDACTED",
+    " 97887",
+    " 3949",
+    " 93393",
+    " 0",
+    " 53",
+    " 64.79"
+  ],
+  "load_exit_cause": "root managed unload after GPU reserve breach caused readiness waiter to see removed cgroup; not a spontaneous containment defect",
+  "minimum_free_mib": 3097.0,
+  "minimum_free_mib_final": 3097.0,
+  "next": "managed unload; preserve cap/no escalation",
+  "observed_at": "2026-10-16T09:56:51.399581+00:00",
+  "reason": "GPU reserve below 4096MiB/card during startup",
+  "requests_sent": 0
+}

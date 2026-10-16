@@ -1,0 +1,55 @@
+{
+  "atol": 0.002,
+  "float32_matmul_precision": "highest",
+  "geometry": {
+    "hc_hidden_size": 16384,
+    "hc_mult3": 24,
+    "split_k": 32
+  },
+  "input_dtype": "bfloat16",
+  "input_scale": 0.1,
+  "oracle_dtype": "float32",
+  "repetitions": 5,
+  "results": [
+    {
+      "max_abs_error": {
+        "out_partial": 4.03672456741333e-05,
+        "sqrsum_partial": 1.430511474609375e-06
+      },
+      "max_relative_error": {
+        "out_partial": 0.12413018941879272,
+        "sqrsum_partial": 2.772926563920919e-07
+      },
+      "repetitions": 5,
+      "status": "pass",
+      "tokens": 1
+    },
+    {
+      "max_abs_error": {
+        "out_partial": 4.9017369747161865e-05,
+        "sqrsum_partial": 2.384185791015625e-06
+      },
+      "max_relative_error": {
+        "out_partial": 373.3775634765625,
+        "sqrsum_partial": 4.2184444737358717e-07
+      },
+      "repetitions": 5,
+      "status": "pass",
+      "tokens": 129
+    }
+  ],
+  "rtol": 0.002,
+  "schema": "anvil-serving.mhc-parity/v2",
+  "seed": 20261016,
+  "sm": "120",
+  "source_path": "",
+  "source_sha256": "3c5949caa19631f2147b49d6636fcd946d78c7eee7170e38bb75ae81ecf51cc7",
+  "tf32_enabled": false,
+  "token_counts": [
+    1,
+    129
+  ],
+  "tolerance_provenance": "upstream end-to-end no-norm mHC tolerance; not stage-specific",
+  "weight_dtype": "float32",
+  "weight_scale": 0.01
+}

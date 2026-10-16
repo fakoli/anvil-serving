@@ -23,6 +23,7 @@ and links back to the exact TOML, dated finding, dossier, and raw evidence.
 
 | Configuration family | Recorded hardware and runtime | Served envelope | Exact source |
 |---|---|---|---|
+| 2026-10-16 unqualified SGLang GLM, Qwen FP4, and Nemotron NVFP4 scouts | 2x RTX PRO 6000 Blackwell Max-Q; pinned public-safe configuration records | configured 262,144-token scout envelopes; stopped before eligible capacity comparison | [Campaign configuration records](../findings/2026-10-16-sglang-qwen-comparison-evidence/) |
 | Qwen3.8 27B September 2026 PRO 6000 optimization family: Inferact finalist/TP2 control, RadixArk TTFT tradeoff, and kelnei vLLM MTP2/control | 1–2× RTX PRO 6000 Blackwell Max-Q, WSL2; digest-pinned SGLang and vLLM 0.27.1 | 262,144 tokens; C8 per service; matched 4K/C8 sustained-output evidence | [Open family](#qwen38-pro6000-current) |
 | GLM-5.3-Flash EXL3 K3 + DFlash2 K5 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, vLLM-derived local image, TP=2/DCP=2 | 524,288 tokens, max 16 sequences, up to 16 images, no video | [Open pair](#glm53-524k) |
 | GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang adaptive MTP and control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang rc14, TP=2 | current 393,216-token C1 lane; 245,760-token fallback, 131K A/B, and 499K negative controls retained | [Open family](#glm53-sglang-sm120) |
