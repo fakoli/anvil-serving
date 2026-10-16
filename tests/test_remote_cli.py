@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 import time
 
+import pytest
+
 from anvil_serving import cli, mcp
+from anvil_serving.benchmarking import jobs_cli
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from anvil_serving.control_plane.mcp.tools import benchmarks
@@ -195,3 +198,39 @@ def test_missing_stage_artifact_returns_typed_not_found(monkeypatch, tmp_path, c
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "job_not_found"
+
+
+@pytest.mark.parametrize("suite", ["context", "agentic", "swe"])
+def test_submit_dry_run_validates_without_store(monkeypatch, suite):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("dry-run opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("dry-run launched worker"))
+    result = jobs_cli.run([suite, "submit", "--spec-json", _spec(suite), "--dry-run"])
+    assert result["suite"] == suite
+    assert result["dry_run"] is True
+
+
+def test_submit_dry_run_rejects_malformed_without_store(monkeypatch):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("malformed dry-run opened job store"))
+    with pytest.raises(Exception):
+        jobs_cli.run(["context", "submit", "--spec-json", "{}", "--dry-run"])
+
+
+def test_submit_dry_run_cli_preview_preserves_normalized_target(monkeypatch, capsys):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("dry-run opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("dry-run launched worker"))
+    assert cli.main(["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--confirm", "--dry-run"]) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert data["endpoint"] == {"base_url": "http://127.0.0.1:8000/v1", "model": "deepseek"}
+    assert data["ownership_id"] == "campaign-001"
+    assert data["worker"] == {"id": "benchmark-worker"}
+
+
+def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
+    path, rest, unknown, _siblings = cli._resolve(
+        ["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--dry-run"]
+    )
+    assert unknown is None
+    from anvil_serving import mcp
+    monkeypatch.setattr(mcp, "call_tool", lambda *_args, **_kwargs: pytest.fail("remote dry-run dispatched"))
+    with pytest.raises(cli.UsageError, match="--dry-run is not supported"):
+        cli._remote_arguments(path[-1], rest, confirmed=False)

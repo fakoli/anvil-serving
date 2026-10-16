@@ -82,6 +82,7 @@ def _parser() -> argparse.ArgumentParser:
         cleanup.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         submit = actions.add_parser("submit")
         submit.add_argument("--spec-json", required=True)
+        submit.add_argument("--dry-run", action="store_true", help="validate the job specification without state changes")
         mode = submit.add_mutually_exclusive_group()
         mode.add_argument("--follow", action="store_true")
         mode.add_argument("--detach", action="store_true")
@@ -286,6 +287,19 @@ def run(argv: list[str]) -> dict:
             confirm=confirm,
             min_free_bytes=args.min_free_bytes,
         )
+    if args.action == "submit" and args.dry_run:
+        spec = _spec_json(args.spec_json, args.suite)
+        return {
+            "schema": "anvil-serving.benchmark-submit-preview/v1",
+            "suite": args.suite,
+            "run_id": spec["run_id"],
+            "ownership_id": spec["ownership_id"],
+            "endpoint": spec["endpoint"],
+            "worker": spec["worker"],
+            "spec_sha256": job_spec_sha256(spec),
+            "dry_run": True,
+            "deferred": ["job store", "worker launch", "model requests", "artifact write"],
+        }
     store = _store()
     if args.action in {"prepare", "assets", "cleanup"}:
         if args.action == "assets":
