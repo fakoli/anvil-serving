@@ -119,6 +119,39 @@ def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkey
     assert "    temperature: 1.0\n    top_p: 0.95\n" in result["config_text"]
 
 
+@pytest.mark.parametrize("force_nonempty_content", [True, False])
+def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force_nonempty_content):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {
+        "instance_ids": ["astropy__astropy-12907"],
+        "thinking_mode": "enabled",
+        "force_nonempty_content": force_nonempty_content,
+    }
+    profile = load_profile("smoke")
+
+    def fake_plan(profile, assets, *, endpoint, request_controls, **_kwargs):
+        controls = swe_benchmark._validate_request_controls(request_controls)
+        return {
+            "request_controls": controls,
+            "config_text": swe_benchmark._mini_config(
+                endpoint, profile["suites"]["swe"], controls, "docker"
+            ),
+        }
+
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
+    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", lambda plan: dict(plan))
+    result = benchmark_worker._run_suite(
+        SimpleNamespace(run_root=str(tmp_path / "runs")),
+        {"spec": value}, profile, {"assets": {}},
+    )
+
+    assert result["request_controls"]["chat_template_kwargs"] == {
+        "enable_thinking": True,
+        "force_nonempty_content": force_nonempty_content,
+    }
+
+
 def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
     observed = {}
 

@@ -12,9 +12,7 @@ import sys
 import time
 from typing import Any, Callable, Mapping, Sequence
 
-from ..model_controls import REASONING_EFFORT_CHOICES
 from .artifacts import atomic_write_json, path_is_within, real_path
-from .evaluation import normalize_sampling
 from .harnesses import (
     HARNESS_ASSETS_SCHEMA,
     MAX_HARNESS_OUTPUT_BYTES,
@@ -23,6 +21,7 @@ from .harnesses import (
     require_swe_worker_platform,
 )
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
+from .request_controls import resolve_job_request_controls
 from .profiles import validate_profile
 from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
 from .swe_images import instance_image_tag, observe_paired_images, validate_paired_image_ids
@@ -244,48 +243,9 @@ def _endpoint(value: Any) -> dict[str, str]:
 
 
 def _validate_request_controls(value: Mapping[str, Any] | None) -> dict[str, Any]:
-    controls = dict(value or {})
-    if set(controls) - {"thinking_mode", "reasoning_effort", "temperature", "top_p"}:
-        raise BenchmarkJobError("bad_request_controls", "SWE request controls are invalid")
-    thinking_mode = controls.get("thinking_mode", "default")
-    reasoning_effort = controls.get("reasoning_effort")
-    if thinking_mode not in {"default", "enabled", "disabled"}:
-        raise BenchmarkJobError(
-            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
-        )
-    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
-        raise BenchmarkJobError(
-            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
-        )
-    if reasoning_effort is not None and thinking_mode != "default":
-        raise BenchmarkJobError(
-            "conflicting_reasoning_controls",
-            "reasoning_effort and thinking_mode cannot both be explicit",
-        )
-    result = {"thinking_mode": thinking_mode, "reasoning_effort": reasoning_effort}
-    if "temperature" in controls or "top_p" in controls:
-        requested_temperature = controls.get("temperature")
-        requested_top_p = controls.get("top_p")
-        try:
-            result["sampling"] = normalize_sampling({
-                "temperature": {
-                    "requested": requested_temperature,
-                    "effective_request": (
-                        requested_temperature
-                        if requested_temperature is not None else 0.0
-                    ),
-                    "sent": True,
-                },
-                "top_p": {
-                    "requested": requested_top_p,
-                    "effective_request": requested_top_p,
-                    "sent": requested_top_p is not None,
-                },
-            })
-        except ValueError as exc:
-            raise BenchmarkJobError(
-                "bad_request_controls", "SWE sampler controls are invalid"
-            ) from exc
+    result = resolve_job_request_controls(value)
+    if "force_nonempty_content" not in dict(value or {}):
+        result.pop("chat_template_kwargs")
     return result
 
 
@@ -316,6 +276,9 @@ def _mini_config(
             "      chat_template_kwargs:\n"
             f"        enable_thinking: {enabled}\n"
         )
+        if "force_nonempty_content" in request_controls:
+            force_nonempty = "true" if request_controls["force_nonempty_content"] else "false"
+            control_lines += f"        force_nonempty_content: {force_nonempty}\n"
     sampling_lines = ""
     sampling = request_controls.get("sampling")
     if sampling is not None:

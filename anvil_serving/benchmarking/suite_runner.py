@@ -22,6 +22,7 @@ from .requests import (
     resolve_api_key,
     response_observation,
 )
+from .request_controls import resolve_job_request_controls
 from ..model_controls import REASONING_EFFORT_CHOICES
 
 
@@ -678,27 +679,16 @@ def run_agentic_suite(
     key = resolve_api_key(endpoint.get("auth_env"))
     parameters = spec.get("parameters", {})
     sampling = _sampling_request_controls(parameters)
+    request_controls = resolve_job_request_controls({
+        key: parameters[key] for key in (
+            "thinking_mode", "reasoning_effort", "temperature", "top_p",
+            "force_nonempty_content",
+        ) if key in parameters
+    })
     sampling_kwargs = request_sampling_kwargs(sampling)
-    thinking_mode = parameters.get("thinking_mode", "default")
-    if thinking_mode not in {"default", "enabled", "disabled"}:
-        raise BenchmarkJobError(
-            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
-        )
-    reasoning_effort = parameters.get("reasoning_effort")
-    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
-        raise BenchmarkJobError(
-            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
-        )
-    if reasoning_effort is not None and thinking_mode != "default":
-        raise BenchmarkJobError(
-            "conflicting_reasoning_controls",
-            "reasoning_effort and thinking_mode cannot both be explicit",
-        )
-    chat_template_kwargs = (
-        {"enable_thinking": True}
-        if thinking_mode == "enabled"
-        else {"enable_thinking": False} if thinking_mode == "disabled" else None
-    )
+    thinking_mode = request_controls["thinking_mode"]
+    reasoning_effort = request_controls["reasoning_effort"]
+    chat_template_kwargs = request_controls["chat_template_kwargs"]
     case_limit = parameters.get("case_limit")
     if case_limit is not None and (
         not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
@@ -768,11 +758,6 @@ def run_agentic_suite(
             "pass_rate": passed / len(observations),
             "required_pass_rate": suite["scoring"]["pass_rate_floor"],
         },
-        "request_controls": {
-            "thinking_mode": thinking_mode,
-            "chat_template_kwargs": chat_template_kwargs,
-            "reasoning_effort": reasoning_effort,
-            "sampling": sampling,
-        },
+        "request_controls": {**request_controls, "sampling": sampling},
         "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
     }

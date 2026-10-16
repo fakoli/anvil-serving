@@ -379,6 +379,48 @@ def test_agentic_runner_forwards_one_explicit_reasoning_control():
     assert all(item["temperature"] == 1.0 and item["top_p"] == 0.95 for item in caller.kwargs)
 
 
+@pytest.mark.parametrize("force_nonempty_content", [True, False])
+def test_agentic_runner_forwards_typed_force_nonempty_content(force_nonempty_content):
+    caller = AgentCaller()
+    result = run_agentic_suite(
+        load_profile("smoke"),
+        spec(
+            "agentic",
+            case_ids=["tool-recovery"],
+            thinking_mode="enabled",
+            force_nonempty_content=force_nonempty_content,
+        ),
+        caller=caller,
+    )
+
+    expected = {
+        "enable_thinking": True,
+        "force_nonempty_content": force_nonempty_content,
+    }
+    assert result["request_controls"]["chat_template_kwargs"] == expected
+    assert result["request_controls"]["force_nonempty_content"] is force_nonempty_content
+    assert all(item["chat_template_kwargs"] == expected for item in caller.kwargs)
+
+
+@pytest.mark.parametrize(
+    ("parameters", "code"),
+    [
+        ({"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+        ({"thinking_mode": "enabled", "force_nonempty_content": "true"}, "bad_force_nonempty_content"),
+        ({"thinking_mode": "enabled", "reasoning_effort": "max", "force_nonempty_content": True}, "conflicting_reasoning_controls"),
+    ],
+)
+def test_agentic_runner_rejects_invalid_force_nonempty_content_controls(parameters, code):
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_agentic_suite(
+            load_profile("smoke"),
+            spec("agentic", case_ids=["tool-recovery"], **parameters),
+            caller=AgentCaller(),
+        )
+
+    assert exc.value.code == code
+
+
 def test_agentic_runner_rejects_conflicting_reasoning_controls():
     with pytest.raises(BenchmarkJobError) as exc:
         run_agentic_suite(

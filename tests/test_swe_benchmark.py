@@ -180,6 +180,29 @@ def test_plan_forwards_and_records_reasoning_effort(tmp_path):
     assert '\n    reasoning_effort: "xhigh"\n' not in value["config_text"]
 
 
+@pytest.mark.parametrize("force_nonempty_content", [True, False])
+def test_plan_forwards_typed_force_nonempty_content(tmp_path, force_nonempty_content):
+    value = plan(
+        tmp_path,
+        request_controls={
+            "thinking_mode": "enabled",
+            "force_nonempty_content": force_nonempty_content,
+        },
+    )
+
+    assert value["request_controls"]["chat_template_kwargs"] == {
+        "enable_thinking": True,
+        "force_nonempty_content": force_nonempty_content,
+    }
+    assert value["request_controls"]["force_nonempty_content"] is force_nonempty_content
+    expected = "true" if force_nonempty_content else "false"
+    assert (
+        "      chat_template_kwargs:\n"
+        "        enable_thinking: true\n"
+        f"        force_nonempty_content: {expected}\n"
+    ) in value["config_text"]
+
+
 def test_plan_records_and_wires_explicit_sampling_to_litellm_model_kwargs(tmp_path):
     value = plan(
         tmp_path, request_controls={"temperature": 1.0, "top_p": 0.95}
@@ -213,6 +236,21 @@ def test_plan_rejects_conflicting_reasoning_controls(tmp_path):
         )
 
     assert exc.value.code == "conflicting_reasoning_controls"
+
+
+@pytest.mark.parametrize(
+    ("controls", "code"),
+    [
+        ({"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+        ({"thinking_mode": "enabled", "force_nonempty_content": 1}, "bad_force_nonempty_content"),
+        ({"thinking_mode": "enabled", "unknown": True}, "bad_request_controls"),
+    ],
+)
+def test_plan_rejects_invalid_force_nonempty_content_controls(tmp_path, controls, code):
+    with pytest.raises(BenchmarkJobError) as exc:
+        plan(tmp_path, request_controls=controls)
+
+    assert exc.value.code == code
 
 
 def test_selection_cannot_be_implicit_short_or_duplicated():

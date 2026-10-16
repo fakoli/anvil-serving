@@ -166,7 +166,8 @@ def _run_suite(
         run_id=spec["run_id"],
         request_controls={
             key: parameters[key]
-            for key in ("thinking_mode", "reasoning_effort", "temperature", "top_p")
+            for key in ("thinking_mode", "reasoning_effort", "temperature", "top_p",
+                        "force_nonempty_content")
             if key in parameters
         },
         paired_image_ids=parameters.get("paired_image_ids"),
