@@ -399,6 +399,11 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         default="default",
     )
     ap.add_argument(
+        "--force-nonempty-content",
+        action="store_true",
+        help="with enabled thinking, request a visible content field after reasoning",
+    )
+    ap.add_argument(
         "--reasoning-effort",
         choices=REASONING_EFFORT_CHOICES,
     )
@@ -430,6 +435,8 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         ap.error("--timeout-seconds must be greater than 0 and at most 3600")
     if args.reasoning_effort is not None and args.thinking_mode != "default":
         ap.error("--reasoning-effort cannot be combined with --thinking-mode")
+    if args.force_nonempty_content and args.thinking_mode != "enabled":
+        ap.error("--force-nonempty-content requires --thinking-mode enabled")
     allowed_finishes = {
         item.strip() for item in args.allowed_finish_reasons.split(",") if item.strip()
     }
@@ -459,6 +466,13 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         for case in corpus["cases"]
         for repetition in range(1, case["repetitions"] + 1)
     ]
+    ctk = (
+        {"enable_thinking": True, "force_nonempty_content": True}
+        if args.force_nonempty_content
+        else {"enable_thinking": True} if args.thinking_mode == "enabled"
+        else {"enable_thinking": False} if args.thinking_mode == "disabled"
+        else None
+    )
     if args.dry_run:
         print(json.dumps({
             "schema": "anvil-serving.eval-plan/v1",
@@ -481,6 +495,11 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
             "requests": len(work),
             "concurrency": args.concurrency,
             "sampling": sampling_controls,
+            "thinking": {
+                "mode": args.thinking_mode,
+                "chat_template_kwargs": ctk,
+                "reasoning_effort": args.reasoning_effort,
+            },
             "max_images_per_request": args.max_images_per_request,
             "max_videos_per_request": args.max_videos_per_request,
             "output": real_path(args.output),
@@ -501,11 +520,6 @@ def main(argv=None, *, prog="anvil-serving eval benchmark multimodal", chat_requ
         )
         return 1
 
-    ctk = (
-        {"enable_thinking": True} if args.thinking_mode == "enabled"
-        else {"enable_thinking": False} if args.thinking_mode == "disabled"
-        else None
-    )
     started_at = time.time()
 
     def run_one(case, repetition):

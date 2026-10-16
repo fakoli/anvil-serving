@@ -9,17 +9,29 @@ from .limits import MAX_QUALITY_COMPLETION_TOKENS
 def resolve_thinking_settings(args):
     """Resolve CLI thinking flags into request kwargs plus evidence metadata."""
     mode = getattr(args, "thinking_mode", None) or "default"
-    if getattr(args, "no_thinking", False):
+    no_thinking = getattr(args, "no_thinking", False)
+    if no_thinking and mode not in {"default", "disabled"}:
+        raise ValueError("--no-thinking conflicts with an explicit thinking mode")
+    if no_thinking:
         mode = "disabled"
+    force_nonempty_content = getattr(args, "force_nonempty_content", False)
+    if force_nonempty_content and mode != "enabled":
+        raise ValueError("--force-nonempty-content requires --thinking-mode enabled")
 
     if mode == "enabled":
         kwargs = {"enable_thinking": True}
+        if force_nonempty_content:
+            kwargs["force_nonempty_content"] = True
     elif mode == "disabled":
         kwargs = {"enable_thinking": False}
     else:
         kwargs = None
 
     reasoning_effort = getattr(args, "reasoning_effort", None)
+    if force_nonempty_content and reasoning_effort is not None:
+        raise ValueError(
+            "--force-nonempty-content cannot be combined with --reasoning-effort"
+        )
     if reasoning_effort is not None:
         kwargs = None
         mechanism = "reasoning_effort"
@@ -43,6 +55,7 @@ def resolve_thinking_settings(args):
         "mode": mode,
         "chat_template_kwargs": kwargs,
         "reasoning_effort": reasoning_effort,
+        "force_nonempty_content": force_nonempty_content,
         "control_mechanism": mechanism,
         "control_requested": requested,
         "control_status": control_status,

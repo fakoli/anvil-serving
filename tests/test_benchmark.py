@@ -14,6 +14,7 @@ import math
 import random
 import subprocess
 import sys
+import types
 import urllib.request
 from pathlib import Path
 
@@ -2083,6 +2084,101 @@ def test_capacity_dry_plan_records_explicit_sampling(capsys):
         "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
         "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
     }
+
+
+def test_capacity_force_nonempty_content_dry_plan_and_request_body(monkeypatch, tmp_path, capsys):
+    argv = [
+        "capacity",
+        "--base-url", "http://127.0.0.1:39015/v1",
+        "--model", "candidate",
+        "--thinking-mode", "enabled",
+        "--force-nonempty-content",
+    ]
+    assert bm.main([*argv, "--dry-run"]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    expected = {"enable_thinking": True, "force_nonempty_content": True}
+    assert plan["thinking"]["chat_template_kwargs"] == expected
+    assert plan["thinking"]["force_nonempty_content"] is True
+
+    seen = []
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *_args, **kwargs: seen.append(kwargs) or {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 8,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 8},
+        },
+    )
+    output = tmp_path / "capacity-force-content.json"
+    assert bm.main([
+        *argv,
+        "--requests", "1",
+        "--concurrency", "1",
+        "--ctx-tokens", "1024",
+        "--max-model-len", "8192",
+        "--output", str(output),
+    ]) == 0
+    assert seen == [{"timeout": 900.0, "chat_template_kwargs": expected}]
+    assert json.loads(output.read_text(encoding="utf-8"))["serve_flags"] == {
+        "shared_prefix_burst": False,
+        "no_thinking": False,
+        "thinking_mode": "enabled",
+        "reasoning_effort": None,
+        "chat_template_kwargs": expected,
+        "force_nonempty_content": True,
+    }
+
+
+@pytest.mark.parametrize("thinking_mode", ["default", "disabled"])
+def test_capacity_force_nonempty_content_requires_enabled_thinking(thinking_mode, capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--thinking-mode", thinking_mode,
+            "--force-nonempty-content",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert "requires --thinking-mode enabled" in capsys.readouterr().err
+
+
+def test_capacity_force_nonempty_content_rejects_no_thinking_conflict(capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:39015/v1",
+            "--model", "candidate",
+            "--thinking-mode", "enabled",
+            "--no-thinking",
+            "--force-nonempty-content",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert "--no-thinking conflicts with an explicit thinking mode" in capsys.readouterr().err
+
+
+def test_shared_thinking_resolver_rejects_no_thinking_conflict():
+    with pytest.raises(ValueError, match="--no-thinking conflicts"):
+        benchmark_evaluation.resolve_thinking_settings(types.SimpleNamespace(
+            thinking_mode="enabled",
+            no_thinking=True,
+            force_nonempty_content=True,
+            reasoning_effort=None,
+        ))
+
+
+def test_shared_thinking_resolver_rejects_force_content_with_reasoning_effort():
+    with pytest.raises(ValueError, match="force-nonempty-content cannot be combined"):
+        benchmark_evaluation.resolve_thinking_settings(types.SimpleNamespace(
+            thinking_mode="enabled",
+            no_thinking=False,
+            force_nonempty_content=True,
+            reasoning_effort="high",
+        ))
 
 
 @pytest.mark.parametrize("sampling", [
