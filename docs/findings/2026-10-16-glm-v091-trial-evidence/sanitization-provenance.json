@@ -1,0 +1,82 @@
+{
+  "schema": "anvil-serving.sanitized-evidence-provenance/v1",
+  "campaign_id": "2026-10-16-glm-v091-trial",
+  "source_boundary": "immutable private campaign evidence; original bytes remain outside this public bundle",
+  "redactions": [
+    "operator paths",
+    "host and resource names",
+    "GPU UUIDs",
+    "container identifiers",
+    "private endpoints and addresses"
+  ],
+  "derived_files": [
+    {
+      "path": "summary.json",
+      "source_artifacts": [
+        {
+          "path": "summary.json",
+          "sha256": "336e63fa1386d59231b5400fc2340500fde0697bcf31ab74143a1fad919c1c53"
+        },
+        {
+          "path": "raw/r2-t0-swe5-artifact.json",
+          "sha256": "9bae8d87f22ad0c0bb716dbd45c2a021912db0c65b1fc1c27a91a5654b972b80"
+        },
+        {
+          "path": "raw/r2-t0-oracle8-r1-artifact.json",
+          "sha256": "72d07736b5802e75b3fade0ed535513425ba3f25c3b55080368bd024770e1c8c"
+        },
+        {
+          "path": "raw/r2-t0-vision.json",
+          "sha256": "14e6060179d51be6dac5cd58154b87584b1c8cef2e4e221c579bca2745d79e27"
+        },
+        {
+          "path": "raw/r2-context-preflight.json",
+          "sha256": "c54f51a29a416dbac2d48c7b05b54a95d3c23b395609cf5cd7650d5532d58d0a"
+        },
+        {
+          "path": "raw/r2-gpu-reserve-summary.json",
+          "sha256": "9b6e2b9653e0f697120e39e261c572cf550971c16726e93fc554c2bcd6e9e105"
+        }
+      ]
+    },
+    {
+      "path": "restoration.json",
+      "source_artifacts": [
+        {
+          "path": "restoration.json",
+          "sha256": "573cf4f95ebf8483e96f0e7d84ca97ccfce45f6b926f6edecfb7affd00ce68c5"
+        },
+        {
+          "path": "raw/restore-final-applied.json",
+          "sha256": "bb05cde9aa2b83aa247a5a1f2c14d8a4758478b94be0e1bc1e31a1a2d987f2e9"
+        },
+        {
+          "path": "raw/restored-native-preflight.json",
+          "sha256": "9fa508da5a655575ea15db16f235c864759d8aee5f8b3947db6173e785dfe0e3"
+        },
+        {
+          "path": "raw/restored-routed-preflight.json",
+          "sha256": "5ffffc260b9378a726c29ac51ffe6fd098c09349cc8c8975d95d48090c32fde9"
+        }
+      ]
+    }
+  ],
+  "protected_omissions": [
+    {
+      "path": "raw/restored-control-final-logs.json",
+      "sha256": "8c98474e18c3d4b6c1d567a986c60612cb2d6f5b667cddde4672c2687514a604",
+      "reason": "raw operational log content"
+    },
+    {
+      "path": "raw/restored-grader-failures/django__django-13512/report.json",
+      "sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943",
+      "reason": "raw grader report and related patch/test output retained privately"
+    },
+    {
+      "path": "raw/restored-grader-failures/pylint-dev__pylint-8898/report.json",
+      "sha256": "c7bf3d9a65df546184f31b46b6a64f026fb3d1d37604e314627cedb6b836d1d7",
+      "reason": "raw grader report and related patch/test output retained privately"
+    }
+  ],
+  "retained_content": "Fixture prompts, bounded model observations and sanitized native stage output retain their native fields; full trajectories, patches and unsanitized operational logs remain protected."
+}

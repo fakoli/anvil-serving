@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-10-16 GLM v0.9.1 trial:** [closed finding](2026-10-16-glm-v091-trial.md) records R2's 6/6 native preflight, 54/54 Oracle, 18/18 vision, bounded context, and sampled reserve pass, followed by a 3/5 SWE coding-gate failure. The fresh restored-original control also completed the matched SWE suite 3/5, with the same resolved cases but distinct retained grader details. Both are below the four-case gate. Exact restoration, zero OOM, candidate removal, and primary router readmission are verified. No promotion, performance, causal, or model-family claim is published.
+
 **2026-10-15 replacement evaluation:** [campaign finding](2026-10-15-replacement-evaluation.md) closes the gate evaluation with no eligible challenger. DeepSeek V4.1 Stage 2, r12 dummy-path, and Stage 4 evidence remain bounded; full-role r2/r3 failed their exact resource gates and r4 failed its first required Oracle8 round after passing the resource gate. Exact GLM was restored; no promotion or permanent route change followed.
 
 **2026-10-13 full qualification:** [campaign report](2026-10-13-full-qualification.md) closes the public evidence transaction for GLM, Qwen, DeepSeek, MiMo, and Ignis lanes. The GLM fixed-five baseline completed at 2/5; terminal Ignis was 2/5 resolved with three empty cases; no challenger met the complete 4/5 plus Django/Pylint floor. Capacity cells retain actual prompt means from 25,280.5 to 216,194.67 under separate C1/C4 conditions. The exact official-base GLM lineage is the restoration choice; no promotion or route change follows.

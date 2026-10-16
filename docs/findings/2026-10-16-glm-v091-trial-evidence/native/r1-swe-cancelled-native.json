@@ -1,0 +1,123 @@
+{
+  "created_at": "2026-10-16T05:39:53.750421Z",
+  "failure": {
+    "class": "cancellation",
+    "code": "cancelled",
+    "message": "benchmark cancellation retained native partial output"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "base_url": "http://127.0.0.1:PORT_REDACTED/v1",
+      "model": "glm53-v091-tp2-327k-c4-vision8-nospec-r1"
+    },
+    "finished_at": "2026-10-16T05:39:53.750281Z",
+    "started_at": "2026-10-16T05:38:44.467533Z",
+    "submitted_at": "2026-10-16T05:38:44.272351+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "cancelled",
+      "created_at": "2026-10-16T05:39:53.732592Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "cancellation",
+        "code": "cancelled",
+        "message": "benchmark cancellation retained native partial output"
+      },
+      "identities": {
+        "concurrency": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "context": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "dataset": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "hardware": {
+          "worker_id": "Primary Node"
+        },
+        "harnesses": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "image": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "model": {
+          "alias": "glm53-v091-tp2-327k-c4-vision8-nospec-r1"
+        },
+        "runtime": {
+          "reason": "cancellation before collection",
+          "status": "unavailable"
+        },
+        "served_model": {
+          "id": "glm53-v091-tp2-327k-c4-vision8-nospec-r1",
+          "status": "unavailable"
+        },
+        "topology": {
+          "kind": "isolated-benchmark-worker",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "glm-v091-trial-20261016",
+        "profile": "scout",
+        "run_id": "glm-v091-candidate-t0-swe5-r1",
+        "spec_sha256": "8f9f03fedba94cdc20a49e88f44746d00ca9d8a402b535477aa6c27c2e6e36ab",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 430,
+              "path": "evidence/cancellation-native-output.json",
+              "sha256": "fc9700b3cf1c818d93cd49e8fec30b8531758377daa7d4f1176ac4c98fdd99d0"
+            }
+          ],
+          "name": "native_partial_outputs",
+          "sequence": 0,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "completed": false,
+        "native_partial_output": {
+          "bytes": 1381,
+          "files": [
+            {
+              "bytes": 1381,
+              "path": "minisweagent.log",
+              "sha256": "1e45a6821d2d1d6f189636d8ab3d4c67087055f5b0c5f8b06fd2bc66fe75d0ce"
+            }
+          ],
+          "source": "work/mini-output",
+          "state": "retained"
+        }
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "glm-v091-trial-20261016",
+    "profile": "scout",
+    "run_id": "glm-v091-candidate-t0-swe5-r1",
+    "spec_sha256": "8f9f03fedba94cdc20a49e88f44746d00ca9d8a402b535477aa6c27c2e6e36ab",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "cancelled"
+}

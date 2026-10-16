@@ -1,0 +1,32 @@
+{
+  "command": "models recipes status brandonmusic/GLM-5.3-Flash-tr3-4bpw --registry <EVIDENCE_ROOT>/2026-10-16-glm-v091-trial/config/recipes.v091-nospec-r2.toml --container CANDIDATE_CONTAINER_REDACTED --target host:Primary Node --transport local",
+  "context": {
+    "command": "models-recipes-status",
+    "command_host": "Primary Node",
+    "command_runtime": "primary-node-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "Primary Node",
+    "execution_runtime": "primary-node-container-runtime",
+    "gpu_role": "primary-compute-a",
+    "gpu_uuid": "GPU_UUID_REDACTED",
+    "overlay": null,
+    "resource": "primary-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "Primary Node",
+    "resource_runtime": "primary-node-container-runtime",
+    "target": "host:Primary Node",
+    "topology": "Primary Node-reference",
+    "transport": "local"
+  },
+  "data": null,
+  "error": {
+    "class": "execution",
+    "code": "execution_failed",
+    "details": {},
+    "message": "recipe container 'CANDIDATE_CONTAINER_REDACTED' does not exist or cannot be inspected: error: no such object: CANDIDATE_CONTAINER_REDACTED"
+  },
+  "ok": false,
+  "warnings": []
+}
