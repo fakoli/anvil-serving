@@ -18,6 +18,30 @@ from .swe import _validate_request_controls, validate_swe_selection
 from .swe_images import validate_paired_image_ids
 
 
+_RESERVED_PARAMETERS = {
+    "thinking_mode", "reasoning_effort", "temperature", "top_p",
+    "clear_thinking", "force_nonempty_content", "case_ids", "case_limit",
+    "token_buckets", "positions", "repetitions", "output_headroom_tokens",
+    "advertised_context", "recovery_result", "session_turns", "instance_ids",
+    "paired_image_ids", "paired_image_repo_digests",
+}
+_SUITE_PARAMETERS = {
+    "context": frozenset({
+        "thinking_mode", "reasoning_effort", "temperature", "top_p", "clear_thinking",
+        "case_ids", "case_limit", "token_buckets", "positions", "repetitions",
+        "output_headroom_tokens", "advertised_context",
+    }),
+    "agentic": frozenset({
+        "thinking_mode", "reasoning_effort", "temperature", "top_p", "force_nonempty_content",
+        "case_ids", "case_limit", "recovery_result", "session_turns",
+    }),
+    "swe": frozenset({
+        "thinking_mode", "reasoning_effort", "temperature", "top_p", "force_nonempty_content",
+        "instance_ids", "paired_image_ids", "paired_image_repo_digests",
+    }),
+}
+
+
 def _controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
     return {
         key: parameters[key]
@@ -27,6 +51,16 @@ def _controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
         )
         if key in parameters
     }
+
+
+def _validate_suite_parameters(suite: str, parameters: Mapping[str, Any]) -> None:
+    unsupported = sorted((_RESERVED_PARAMETERS - _SUITE_PARAMETERS[suite]).intersection(parameters))
+    if unsupported:
+        raise BenchmarkJobError(
+            "suite_incompatible_parameter",
+            "benchmark parameters include a control or selection unsupported by this suite",
+            {"suite": suite, "parameters": unsupported},
+        )
 
 
 def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
@@ -41,6 +75,7 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     parameters = spec.get("parameters", {})
     if not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_parameters", "benchmark parameters must be an object")
+    _validate_suite_parameters(suite_name, parameters)
     suite = profile["suites"][suite_name]
 
     if suite_name == "context":

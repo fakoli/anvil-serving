@@ -262,6 +262,46 @@ def test_mcp_submit_rejects_invalid_native_controls_before_store(monkeypatch, su
     assert result["error"]["code"] == code
 
 
+@pytest.mark.parametrize(("suite", "parameters"), [
+    ("context", {"thinking_mode": "enabled", "force_nonempty_content": True}),
+    ("agentic", {"thinking_mode": "enabled", "clear_thinking": True}),
+    ("swe", {"thinking_mode": "enabled", "clear_thinking": True}),
+    ("context", {"instance_ids": ["django__django-11099"]}),
+    ("agentic", {"instance_ids": ["django__django-11099"]}),
+    ("swe", {"case_ids": ["planning"]}),
+    ("swe", {"case_limit": 1}),
+])
+def test_submit_rejects_suite_incompatible_parameters_before_store_or_launch(
+    monkeypatch, suite, parameters,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("incompatible submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("incompatible submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert raised.value.code == "suite_incompatible_parameter"
+
+
+@pytest.mark.parametrize(("suite", "parameters"), [
+    ("context", {"force_nonempty_content": True}),
+    ("agentic", {"clear_thinking": True}),
+    ("swe", {"clear_thinking": True}),
+    ("context", {"instance_ids": ["django__django-11099"]}),
+    ("agentic", {"instance_ids": ["django__django-11099"]}),
+    ("swe", {"case_ids": ["planning"]}),
+    ("swe", {"case_limit": 1}),
+])
+def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
+    monkeypatch, suite, parameters,
+):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("incompatible MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "suite_incompatible_parameter"
+
+
 def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
     path, rest, unknown, _siblings = cli._resolve(
         ["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--dry-run"]
