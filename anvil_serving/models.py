@@ -270,9 +270,11 @@ def tree_bytes(path):
 """
 
 _VOLUME_CACHE_HELPER = r"""
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 
@@ -308,6 +310,39 @@ def referenced_blobs(excluded=""):
                         pass
     return used
 
+def blob_content_hash(path, expected):
+    if len(expected) == 64:
+        digest = hashlib.sha256()
+    elif len(expected) == 40:
+        digest = hashlib.sha1()
+        digest.update(("blob %d\0" % path.stat().st_size).encode("ascii"))
+    else:
+        return None
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest() == expected
+
+def selected_snapshot_partial_references(partials):
+    references = {item: [] for item in partials}
+    if not snapshot_path or not snapshot_path.is_dir():
+        return references
+    for base, _dirs, files in os.walk(snapshot_path, followlinks=False):
+        for name in files:
+            item = Path(base) / name
+            if not item.is_symlink():
+                continue
+            try:
+                target = item.resolve(strict=True)
+            except OSError:
+                continue
+            if target in references:
+                references[target].append(str(item.relative_to(snapshot_path)))
+    return references
+
 snapshot = snapshot_id()
 snapshot_path = root / "snapshots" / snapshot if snapshot else None
 incomplete = list(root.rglob("*.incomplete")) if root.exists() else []
@@ -320,6 +355,46 @@ if snapshot_path and snapshot_path.is_dir():
                 broken.append(str(item))
 
 before = tree_bytes(root)
+partial_references = selected_snapshot_partial_references(incomplete)
+partial_details = []
+blobs = root / "blobs"
+for item in incomplete:
+    try:
+        stat = item.lstat()
+        relative = str(item.relative_to(root))
+    except OSError:
+        partial_details.append({"path": str(item), "classification": "uninspectable"})
+        continue
+    match = re.fullmatch(r"([0-9a-f]{64}|[0-9a-f]{40})(?:\.([0-9a-f]{8}))?\.incomplete", item.name)
+    expected = match.group(1) if match else ""
+    counterpart = blobs / expected if expected else blobs / item.name
+    counterpart_relative = str(counterpart.relative_to(root))
+    regular_counterpart = False
+    hash_matches = False
+    try:
+        regular_counterpart = (
+            item.parent == blobs
+            and stat.st_mode & 0o170000 == 0o100000
+            and counterpart.is_file()
+            and not counterpart.is_symlink()
+        )
+        if regular_counterpart:
+            hash_matches = blob_content_hash(counterpart, expected) is True
+    except OSError:
+        regular_counterpart = False
+        hash_matches = False
+    references = partial_references.get(item, [])
+    harmless = bool(regular_counterpart and hash_matches and not references)
+    partial_details.append({
+        "path": relative,
+        "bytes": stat.st_size,
+        "expected_blob_name": expected or None,
+        "counterpart_path": counterpart_relative,
+        "counterpart_regular": regular_counterpart,
+        "counterpart_hash_matches": hash_matches,
+        "selected_snapshot_references": references,
+        "classification": "stale_completed_counterpart" if harmless else "unresolved",
+    })
 report = {
     "repo_id": repo_id,
     "revision": revision or "main",
@@ -328,6 +403,10 @@ report = {
     "repo_bytes": before,
     "free_bytes": shutil.disk_usage(cache).free,
     "incomplete_count": len(incomplete),
+    "incomplete_files": partial_details,
+    "stale_completed_incomplete_count": sum(
+        item["classification"] == "stale_completed_counterpart" for item in partial_details
+    ),
     "broken_symlink_count": len(broken),
 }
 
@@ -927,11 +1006,40 @@ def verify_pull(
     )
     if not report.get("snapshot_exists"):
         raise ValueError("download returned success but the requested snapshot is absent")
-    if report.get("incomplete_count"):
-        raise ValueError(
-            "download returned success but %s incomplete cache file(s) remain"
-            % report["incomplete_count"]
-        )
+    incomplete_count = report.get("incomplete_count")
+    if not isinstance(incomplete_count, int) or isinstance(incomplete_count, bool) or incomplete_count < 0:
+        raise ValueError("named model cache inspection returned invalid incomplete-file metadata")
+    if incomplete_count:
+        partials = report.get("incomplete_files")
+        if not isinstance(partials, list) or len(partials) != incomplete_count:
+            raise ValueError(
+                "download returned success but incomplete cache file metadata is absent"
+            )
+        harmless = 0
+        for partial in partials:
+            if not isinstance(partial, dict):
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            expected_keys = {
+                "path", "bytes", "expected_blob_name", "counterpart_path", "counterpart_regular",
+                "counterpart_hash_matches", "selected_snapshot_references", "classification",
+            }
+            if set(partial) != expected_keys:
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            if partial["classification"] == "stale_completed_counterpart":
+                if not (isinstance(partial["expected_blob_name"], str)
+                        and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", partial["expected_blob_name"])
+                        and partial["counterpart_regular"] is True
+                        and partial["counterpart_hash_matches"] is True
+                        and partial["selected_snapshot_references"] == []):
+                    raise ValueError("download returned success but incomplete cache metadata is inconsistent")
+                harmless += 1
+            elif partial["classification"] != "unresolved":
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+        if harmless != incomplete_count:
+            raise ValueError(
+                "download returned success but %s incomplete cache file(s) remain"
+                % incomplete_count
+            )
     if report.get("broken_symlink_count"):
         raise ValueError(
             "download returned success but %s snapshot link(s) are broken"

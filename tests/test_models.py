@@ -6,6 +6,7 @@ Every test is HERMETIC: docker is never invoked (subprocess is mocked or we
 stay on --dry-run). No real docker, no network.
 """
 import io
+import hashlib
 import importlib
 import json
 from pathlib import Path
@@ -309,6 +310,116 @@ def test_verify_pull_rejects_incomplete_snapshot(monkeypatch):
     )
     with pytest.raises(ValueError, match="incomplete"):
         models.verify_pull("org/model", "abc")
+
+
+def _cache_report_from_tree(cache):
+    """Run the embedded volume inspector against a temporary cache, never Docker."""
+    def run(argv, **_kwargs):
+        script = argv[-5]
+        action, _mount, repo_id, revision = argv[-4:]
+        result = subprocess.run(
+            [sys.executable, "-c", script, action, str(cache), repo_id, revision],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return types.SimpleNamespace(
+            returncode=result.returncode, stdout=result.stdout, stderr=result.stderr
+        )
+    return run
+
+
+def _complete_partial_cache(
+    tmp_path, *, partial_kind="regular", snapshot_partial=False, hash_kind="sha256"
+):
+    cache = tmp_path / "cache"
+    root = cache / "hub" / "models--org--model"
+    blobs = root / "blobs"
+    snapshot = root / "snapshots" / "revision"
+    blobs.mkdir(parents=True)
+    snapshot.mkdir(parents=True)
+    content = b"fully downloaded model weight"
+    if hash_kind == "sha256":
+        digest = hashlib.sha256(content).hexdigest()
+    elif hash_kind == "git_blob_sha1":
+        digest = hashlib.sha1(
+            f"blob {len(content)}\0".encode() + content
+        ).hexdigest()
+    else:
+        raise AssertionError(hash_kind)
+    complete = blobs / digest
+    complete.write_bytes(content)
+    partial = blobs / (digest + ".deadbeef.incomplete")
+    if partial_kind == "regular":
+        partial.write_bytes(b"abandoned partial")
+    elif partial_kind == "symlink":
+        partial.symlink_to(complete.name)
+    else:
+        raise AssertionError(partial_kind)
+    target = "../../blobs/" + (partial.name if snapshot_partial else complete.name)
+    (snapshot / "weights.safetensors").symlink_to(target)
+    return cache, root, complete, partial
+
+
+@pytest.mark.parametrize("hash_kind", ["sha256", "git_blob_sha1"])
+def test_verify_pull_accepts_only_hashed_completed_counterpart(tmp_path, hash_kind):
+    cache, _root, _complete, _partial = _complete_partial_cache(
+        tmp_path, hash_kind=hash_kind
+    )
+    report = models.verify_pull(
+        "org/model", "revision", _run=_cache_report_from_tree(cache)
+    )
+
+    assert report["incomplete_count"] == 1
+    assert report["stale_completed_incomplete_count"] == 1
+    partial = report["incomplete_files"]
+    assert len(partial) == 1
+    assert partial[0]["path"].endswith(".deadbeef.incomplete")
+    assert partial[0]["expected_blob_name"] == partial[0]["counterpart_path"].split("/")[-1]
+    assert partial[0]["bytes"] == len(b"abandoned partial")
+    assert partial[0]["counterpart_regular"] is True
+    assert partial[0]["counterpart_hash_matches"] is True
+    assert partial[0]["selected_snapshot_references"] == []
+    assert partial[0]["classification"] == "stale_completed_counterpart"
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["missing", "corrupt", "referenced", "partial_symlink", "counterpart_escape"],
+)
+def test_verify_pull_rejects_unresolved_incomplete_tree_entries(tmp_path, fault):
+    cache, _root, complete, partial = _complete_partial_cache(
+        tmp_path,
+        partial_kind="symlink" if fault == "partial_symlink" else "regular",
+        snapshot_partial=fault == "referenced",
+    )
+    if fault == "missing":
+        complete.unlink()
+    elif fault == "corrupt":
+        complete.write_bytes(b"wrong bytes")
+    elif fault == "counterpart_escape":
+        outside = tmp_path / "outside-blob"
+        outside.write_bytes(complete.read_bytes())
+        complete.unlink()
+        complete.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="incomplete cache file"):
+        models.verify_pull("org/model", "revision", _run=_cache_report_from_tree(cache))
+
+
+def test_verify_pull_fails_closed_for_legacy_partial_report(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: {
+            "snapshot_exists": True,
+            "incomplete_count": 1,
+            "broken_symlink_count": 0,
+        },
+    )
+
+    with pytest.raises(ValueError, match="metadata is absent"):
+        models.verify_pull("org/model", "revision")
 
 
 def test_cache_remove_exact_revision_dry_run_and_apply(monkeypatch, capsys):
