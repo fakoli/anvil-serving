@@ -311,3 +311,38 @@ def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
     monkeypatch.setattr(mcp, "call_tool", lambda *_args, **_kwargs: pytest.fail("remote dry-run dispatched"))
     with pytest.raises(cli.UsageError, match="--dry-run is not supported"):
         cli._remote_arguments(path[-1], rest, confirmed=False)
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
+])
+def test_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store_or_launch(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert raised.value.code == code
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
+])
+def test_mcp_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == code

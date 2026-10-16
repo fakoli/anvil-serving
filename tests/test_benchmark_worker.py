@@ -422,3 +422,26 @@ def test_real_detached_worker_completes_against_routed_protocol(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"instance_ids": ["astropy__astropy-12907"], "paired_image_repo_digests": []}, "bad_swe_image_policy"),
+])
+def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
+    monkeypatch, tmp_path, suite, parameters, code,
+):
+    value = spec()
+    value["suite"] = suite
+    value["parameters"] = parameters
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        "anvil_serving.benchmarking.worker.prepare_harness_assets",
+        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
+    )
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == code

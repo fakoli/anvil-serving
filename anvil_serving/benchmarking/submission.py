@@ -15,7 +15,7 @@ from .suite_runner import (
     _validate_case_limit,
 )
 from .swe import _validate_request_controls, validate_swe_selection
-from .swe_images import validate_paired_image_ids
+from .swe_images import validate_paired_image_ids, validate_paired_image_repo_digests
 
 
 _RESERVED_PARAMETERS = {
@@ -24,7 +24,9 @@ _RESERVED_PARAMETERS = {
     "token_buckets", "positions", "repetitions", "output_headroom_tokens",
     "advertised_context", "recovery_result", "session_turns", "instance_ids",
     "paired_image_ids", "paired_image_repo_digests",
+    "offline", "client_topology", "model_host_id", "identities",
 }
+_COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities"})
 _SUITE_PARAMETERS = {
     "context": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p", "clear_thinking",
@@ -54,13 +56,37 @@ def _controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _validate_suite_parameters(suite: str, parameters: Mapping[str, Any]) -> None:
-    unsupported = sorted((_RESERVED_PARAMETERS - _SUITE_PARAMETERS[suite]).intersection(parameters))
+    unsupported = sorted(
+        (_RESERVED_PARAMETERS - _COMMON_PARAMETERS - _SUITE_PARAMETERS[suite]).intersection(parameters)
+    )
     if unsupported:
         raise BenchmarkJobError(
             "suite_incompatible_parameter",
             "benchmark parameters include a control or selection unsupported by this suite",
             {"suite": suite, "parameters": unsupported},
         )
+
+
+def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
+    """Validate parameter fields consumed outside an individual suite runner."""
+    if "offline" in parameters and not isinstance(parameters["offline"], bool):
+        raise BenchmarkJobError("bad_offline", "offline must be boolean")
+    topology = parameters.get("client_topology", "isolated")
+    if topology not in {"co-resident", "isolated"}:
+        raise BenchmarkJobError(
+            "bad_client_topology", "client_topology must be 'co-resident' or 'isolated'"
+        )
+    model_host_id = parameters.get("model_host_id")
+    if model_host_id is not None and (
+        not isinstance(model_host_id, str)
+        or not model_host_id
+        or model_host_id != model_host_id.strip()
+    ):
+        raise BenchmarkJobError(
+            "bad_model_host_id", "model_host_id must be a non-empty trimmed string"
+        )
+    if "identities" in parameters and not isinstance(parameters["identities"], Mapping):
+        raise BenchmarkJobError("bad_identities", "identities must be an object")
 
 
 def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
@@ -76,6 +102,7 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_parameters", "benchmark parameters must be an object")
     _validate_suite_parameters(suite_name, parameters)
+    _validate_common_parameters(parameters)
     suite = profile["suites"][suite_name]
 
     if suite_name == "context":
@@ -92,9 +119,16 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         selected = validate_swe_selection(profile, parameters.get("instance_ids"))
         controls = _validate_request_controls(_controls(parameters))
         paired = validate_paired_image_ids(parameters.get("paired_image_ids"), selected)
+        repo_digests = validate_paired_image_repo_digests(
+            parameters.get("paired_image_repo_digests"), selected
+        ) if "paired_image_repo_digests" in parameters else None
         return {
             "profile": profile["name"],
             "request_controls": controls,
-            "selection": {"instance_ids": selected, "paired_image_ids": paired},
+            "selection": {
+                "instance_ids": selected,
+                "paired_image_ids": paired,
+                "paired_image_repo_digests": repo_digests,
+            },
         }
     raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
