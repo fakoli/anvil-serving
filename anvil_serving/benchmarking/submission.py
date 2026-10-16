@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from .artifacts import REQUIRED_MEASURED_IDENTITIES
 from .jobs import BenchmarkJobError
 from .profiles import load_profile
 from .request_controls import resolve_job_request_controls
@@ -85,8 +86,17 @@ def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
         raise BenchmarkJobError(
             "bad_model_host_id", "model_host_id must be a non-empty trimmed string"
         )
-    if "identities" in parameters and not isinstance(parameters["identities"], Mapping):
-        raise BenchmarkJobError("bad_identities", "identities must be an object")
+    if "identities" in parameters:
+        identities = parameters["identities"]
+        if (
+            not isinstance(identities, Mapping)
+            or set(identities) != REQUIRED_MEASURED_IDENTITIES
+            or any(not isinstance(value, Mapping) for value in identities.values())
+        ):
+            raise BenchmarkJobError(
+                "bad_identities",
+                "identities must contain every measured identity as an object",
+            )
 
 
 def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:

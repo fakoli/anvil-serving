@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
@@ -21,6 +22,12 @@ from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.worker import cancel_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
+
+
+def declared_identities(**overrides):
+    values = {name: {} for name in REQUIRED_MEASURED_IDENTITIES}
+    values.update(overrides)
+    return {"identities": values}
 
 
 def spec():
@@ -429,6 +436,7 @@ def test_real_detached_worker_completes_against_routed_protocol(tmp_path):
     ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
     ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
     ("swe", {"instance_ids": ["astropy__astropy-12907"], "paired_image_repo_digests": []}, "bad_swe_image_policy"),
+    ("context", declared_identities(model="spoofed-scalar"), "bad_identities"),
 ])
 def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
     monkeypatch, tmp_path, suite, parameters, code,

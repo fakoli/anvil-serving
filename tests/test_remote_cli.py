@@ -7,11 +7,18 @@ import pytest
 
 from anvil_serving import cli, mcp
 from anvil_serving.benchmarking import jobs_cli
+from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from anvil_serving.control_plane.mcp.tools import benchmarks
 from anvil_serving.observability.dashboard.access import Session
 from anvil_serving.observability.dashboard.console import Console
+
+
+def _declared_identities(**overrides) -> dict:
+    values = {name: {} for name in REQUIRED_MEASURED_IDENTITIES}
+    values.update(overrides)
+    return {"identities": values}
 
 
 def _spec(suite: str = "context", parameters: dict | None = None) -> str:
@@ -300,6 +307,34 @@ def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
     })
     assert result["ok"] is False
     assert result["error"]["code"] == "suite_incompatible_parameter"
+
+
+@pytest.mark.parametrize("parameters", [
+    {"identities": {"recipe": {}}},
+    _declared_identities(model="spoofed-scalar"),
+])
+def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
+    monkeypatch, parameters,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run(["context", "submit", "--spec-json", _spec("context", parameters), *extra])
+        assert raised.value.code == "bad_identities"
+
+
+@pytest.mark.parametrize("parameters", [
+    {"identities": {"recipe": {}}},
+    _declared_identities(model="spoofed-scalar"),
+])
+def test_mcp_submit_rejects_malformed_declared_identities_before_store(monkeypatch, parameters):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": "context", "spec_json": _spec("context", parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_identities"
 
 
 def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
