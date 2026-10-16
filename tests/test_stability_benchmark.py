@@ -130,6 +130,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
 
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert body["top_p"] == .95
             self.send_response(200)
             self.send_header("x-request-id", "synthetic-id")
             self.end_headers()
@@ -160,7 +161,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             mode[0] = selected
             contender_headers_observed.clear()
             anchor_content_observed.clear()
-            observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30),
+            observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30, top_p=.95),
                                      tmp_path / (selected + ".json"), stream=observed_stream,
                                      calibrate=calibration, identity=identity)
             assert observed["status"] == "completed", observed["rounds"]
@@ -206,7 +207,27 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
         thread.join()
 
 
+def test_stability_omits_top_p_when_not_requested(tmp_path):
+    calls = []
+
+    def stream(base, model, prompt, key, max_tokens, **kwargs):
+        calls.append(kwargs)
+        kwargs["observer"]("response", {})
+        kwargs["observer"]("delta", {"content": "expected"})
+        return result()
+
+    observed = stability.run(
+        scenario(mode="serial"), tmp_path / "omitted-top-p.json", stream=stream,
+        calibrate=calibration, metadata=metadata, identity=identity,
+    )
+
+    assert observed["status"] == "completed"
+    assert len(calls) == 2
+    assert all("top_p" not in call for call in calls)
+
+
 @pytest.mark.parametrize("changes", [{"rounds": True}, {"rounds": 100}, {"temperature": float("nan")},
+                                     {"top_p": 0}, {"top_p": 1.1}, {"top_p": float("nan")}, {"top_p": True},
                                      {"anchor_tokens": 4000}, {"base_url": "http://key@127.0.0.1/v1"},
                                      {"mode": "anything"}, {"base_url": "http://127.0.0.1:8001/v1\r\n"},
                                      {"model": "bad\nmodel"}, {"api_key_env": "KEY\x00"}])
