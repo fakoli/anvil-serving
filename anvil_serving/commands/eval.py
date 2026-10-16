@@ -272,6 +272,7 @@ def commands() -> CommandNode:
                         "video_expect",
                         "no_thinking",
                         "thinking_mode",
+                        "force_nonempty_content",
                         "reasoning_effort",
                         "reasoning_evidence",
                         "visible_answer_tokens",

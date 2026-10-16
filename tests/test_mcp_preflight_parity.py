@@ -1,3 +1,5 @@
+import pytest
+
 from anvil_serving import mcp
 from anvil_serving.control_plane.mcp.tools import benchmarks as benchmark_tools
 
@@ -74,12 +76,75 @@ def test_preflight_probe_schema_matches_local_bounds_and_controls():
     assert schema["reasoning_effort"]["enum"] == [
         "none", "minimal", "low", "medium", "high", "max", "xhigh"
     ]
+    assert schema["force_nonempty_content"] == {"type": "boolean"}
     assert "allowed_finish_reasons" in schema
     assert schema["image_expect"]["maxItems"] == 32
     assert schema["ocr_expect"]["items"]["maxLength"] == 256
     assert schema["video_expect"]["maxItems"] == 32
     assert "video_path" in schema
     assert "dry_run" in schema
+
+
+def test_preflight_probe_forwards_true_force_content_and_omits_false(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        benchmark_tools,
+        "_run_argv",
+        lambda argv, **kwargs: (
+            calls.append((argv, kwargs))
+            or {"command": argv, "returncode": 0, "stdout": "ok\\n", "stderr": ""}
+        ),
+    )
+    request = {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "model": "local",
+        "thinking_mode": "enabled",
+        "dry_run": True,
+    }
+
+    enabled = mcp.call_tool(
+        "preflight_probe", {**request, "force_nonempty_content": True}
+    )
+    omitted = mcp.call_tool(
+        "preflight_probe", {**request, "force_nonempty_content": False}
+    )
+
+    assert enabled["ok"] is True
+    assert omitted["ok"] is True
+    assert "--force-nonempty-content" in calls[0][0]
+    assert calls[0][0][calls[0][0].index("--thinking-mode") + 1] == "enabled"
+    assert "--force-nonempty-content" not in calls[1][0]
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    (
+        {},
+        {"thinking_mode": "disabled"},
+        {"thinking_mode": "unsupported"},
+        {"reasoning_effort": "max"},
+        {"force_nonempty_content": "true"},
+    ),
+)
+def test_preflight_probe_rejects_invalid_force_content_controls(monkeypatch, overrides):
+    monkeypatch.setattr(
+        benchmark_tools,
+        "_run_argv",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("ran child")),
+    )
+    result = mcp.call_tool(
+        "preflight_probe",
+        {
+            "base_url": "http://127.0.0.1:30000/v1",
+            "model": "local",
+            "force_nonempty_content": True,
+            **overrides,
+        },
+    )
+
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_argument"
 
 
 def test_preflight_probe_rejects_invalid_ports_and_unknown_checks():
