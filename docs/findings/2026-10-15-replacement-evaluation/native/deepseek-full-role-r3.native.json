@@ -1,0 +1,67 @@
+{
+  "boundaries": [
+    "The exact r3 configuration failed the frozen GPU reserve during the model-aware protocol window; it is pruned for that configuration.",
+    "The engine KV report is not usable-context, C4, image-8, or workload-fit proof.",
+    "Basic and model-aware protocol passes are bounded functional evidence only; no native quality, throughput, long-context, multimodal, capacity, stability, route, alias, or promotion conclusion is recorded.",
+    "This exact configuration outcome does not reject the wider model family.",
+    "Unrun follow-on gates are unmeasured, not measured model failures."
+  ],
+  "campaign": "DeepSeek V4.1 Flash EXL3 full-role r3",
+  "configuration": {
+    "candidate_revision": "f7451e9617f675087881b5016fb210a526c7f99c",
+    "concurrency": 4,
+    "configured_ram_mib": 65536,
+    "context_tokens": 327680,
+    "cpu_offload_gb_per_gpu": 4,
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "custom_all_reduce": "disabled",
+    "dense_mrow": 0,
+    "effective_swap_mib": 0,
+    "image_limit": 8,
+    "kv_cache_override_bytes": 1610612736,
+    "max_num_batched_tokens": 2048,
+    "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+    "quantization": "original candidate EXL3 2.7 bpw plan",
+    "runtime_image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+    "tensor_parallel": 2
+  },
+  "human_gate_required": true,
+  "independent_terminal_review": {
+    "decision": "do_not_promote",
+    "scope": "exact R3 resource-policy failure; does not reject the wider model family",
+    "source_basename": "independent-terminal-review.json",
+    "source_sha256": "4f317ee05aee444b27fea58d788638e06523daaf0a0961c417904581b67c3459"
+  },
+  "outcome": {
+    "basic_protocol_checks": {
+      "passed": 2,
+      "scope": "non-thinking basic protocol only",
+      "total": 2
+    },
+    "classification": "bounded_full_role_r3_resource_policy_failure",
+    "effective_host_limit_bytes": 68719476736,
+    "effective_swap_bytes": 0,
+    "followon_qualification_requests_sent": false,
+    "idle_free_gpu_mib_per_gpu": 5135,
+    "managed_teardown_verified": true,
+    "minimum_within_protocol_free_gpu_mib_per_gpu": 3961,
+    "model_aware_protocol_checks": {
+      "passed": 5,
+      "scope": "protocol controls only; native quality not measured",
+      "tool_batch_checks": 20,
+      "total": 5
+    },
+    "model_context_tokens": 327680,
+    "oom_events": 0,
+    "reported_engine_kv_capacity_interpretation": "reported engine value; not usable-context, C4, or image-8 workload proof",
+    "reported_engine_kv_capacity_tokens": 442913,
+    "required_free_gpu_mib_per_gpu": 4096,
+    "resource_monitor_samples": 163,
+    "resource_policy_deficit_mib_per_gpu": 135,
+    "startup_health_passed": true,
+    "within_model_aware_execution_samples": 25
+  },
+  "promoted": false,
+  "schema": "replacement-full-role-r3-native/v1",
+  "status": "completed_bounded_full_role_r3_evidence"
+}

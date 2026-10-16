@@ -7,6 +7,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-15-replacement-evaluation/README.md` (evidence index for measured bounded dual-GPU replacement gates and one-GPU numerical compatibility; no additional measurement);
+`docs/findings/2026-10-15-replacement-evaluation.md` (GLM, MiMo, and Mistral dual-GPU gates; DeepSeek Stage 2 separately classified as one-GPU numerical evidence; exact GLM restoration retained);
+`docs/benchmarks/models/mistral-medium-35.md` (measured-on: bounded direct TP2 qualification);
+`docs/benchmarks/models/deepseek-v41-flash.md` (measured-on: Stage 2 one-GPU numerical evidence; Stage 3 dummy-path, Stage 4 bounded real-weight, and full-role r2/r3 resource-gate diagnostics plus r4's first-round Oracle8 failure on the dual-GPU configuration);
 `docs/findings/2026-10-13-full-qualification.md`;
 `docs/findings/2026-10-13-full-qualification-evidence/configuration-and-identity.md`
 (TP1/TP2 protocol, quality, fixed-five SWE and baseline capacity on dual Max-Q hardware; incomplete and failed candidate runs are retained, with no promotion).

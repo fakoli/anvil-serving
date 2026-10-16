@@ -1,0 +1,356 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": "2026-10-15-replacement-full",
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.gpu-test-job/v1",
+    "anvil-serving.gpu-test-pids-observation/v1",
+    "anvil-serving.image-build/v1",
+    "anvil-serving.resource-candidate-outcome/v1",
+    "anvil-serving.swe-run/v1",
+    "deepseek-stage3-public-native/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2",
+    "replacement-candidate-terminal/v1",
+    "replacement-full-role-r2-native/v1",
+    "replacement-full-role-r3-native/v1",
+    "replacement-full-role-r4-native/v2",
+    "replacement-omitted-sampling-wire-evidence/v1",
+    "replacement-stage4-native/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "3d0418bf0a0e70dcdab519cab993ee63c6fd7fa04526cbf48c5cee5c40b49503",
+          "bytes": 1384
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "3e27c3b852dfc1656a84ef5f98b96b7338e178f41c3af8b5be26ff58107353b3",
+          "bytes": 8512
+        },
+        {
+          "path": "provenance-ledger.json",
+          "sha256": "2bebbce514508e6fba75bd2680c3e8bac6630585e16f2a2ee021107a2a6145da",
+          "bytes": 70857
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-and-plan.json",
+          "sha256": "9c8e2296d36aaef1fcb1051e32d6a2f2071743da6a4669c465f97924f97eb432",
+          "bytes": 7541
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-and-plan.json",
+          "sha256": "9c8e2296d36aaef1fcb1051e32d6a2f2071743da6a4669c465f97924f97eb432",
+          "bytes": 7541
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-identities.json",
+          "sha256": "6695a22e6924dded9fc4ae54a2a2145332a8fbd59161b85b62626217b966a219",
+          "bytes": 5462
+        },
+        {
+          "path": "configuration-reconstruction.json",
+          "sha256": "387b911998284849bdb3dd27611b091d32e0013a513adc5902b25caf17cc5bce",
+          "bytes": 60848
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/deepseek-build-r1.native.json",
+          "sha256": "0c1fc0ea966b13b2b3e72b5b61a29ec185d5f6c3ffad5edf1345335d1a348313",
+          "bytes": 452
+        },
+        {
+          "path": "native/deepseek-build-r2.native.json",
+          "sha256": "2f92c4cd33b2b7d3f7f2689266edff0b64ed04596264dbeb56e383013a702484",
+          "bytes": 457
+        },
+        {
+          "path": "native/deepseek-build-r3.native.json",
+          "sha256": "7adf6fd399133ed07d301e1ef402cd802e9deb32d82588cd679c40d0c9b1e40f",
+          "bytes": 460
+        },
+        {
+          "path": "native/deepseek-build-r4.native.json",
+          "sha256": "76e0ba36985b8b5ae2d545bcb211501a4f4db3cd5a93476709cd9dfb95725c36",
+          "bytes": 525
+        },
+        {
+          "path": "native/deepseek-full-role-r2.native.json",
+          "sha256": "b2c0faa448a8325168754480fa9766d9197179e03e1327968129ac0bb4827a4f",
+          "bytes": 2438
+        },
+        {
+          "path": "native/deepseek-full-role-r3.native.json",
+          "sha256": "e71b41d4269a809dfef6b82e1e20d2070fa573b0d12cb4d0a53633058853599a",
+          "bytes": 2946
+        },
+        {
+          "path": "native/deepseek-full-role-r4.native.json",
+          "sha256": "8db47000bfa1896eace7202b2e6d3e7a94031bb83dd84057d06887fd7aabef7e",
+          "bytes": 41804
+        },
+        {
+          "path": "native/deepseek-stage2-r1.native.json",
+          "sha256": "9a2a5b31bf9d2cd471f9858b6de846849451a8b31398e321292fab22e2cada49",
+          "bytes": 8259
+        },
+        {
+          "path": "native/deepseek-stage2-r2.native.json",
+          "sha256": "e0f0642d4cd3a232bb67ed1cdc86724323cbba9cf57768d2eb4873ae2d9bc514",
+          "bytes": 14074
+        },
+        {
+          "path": "native/deepseek-stage2-r3-spin-pids-observation.json",
+          "sha256": "fcef0a0ffa71b893d6f8bf3c23129b78d65141cbd947fe03d8ebf71b2d5173f2",
+          "bytes": 1429
+        },
+        {
+          "path": "native/deepseek-stage2-r3.native.json",
+          "sha256": "52e7aaf42436a3ba555883adfcb46467e4e28f2d16fd7856328f366eb81ed860",
+          "bytes": 13439
+        },
+        {
+          "path": "native/deepseek-stage2-r4.native.json",
+          "sha256": "d1555b2e151243136761f9b84613d916525acae13106e4e1e5697db191b1f4aa",
+          "bytes": 26326
+        },
+        {
+          "path": "native/deepseek-stage2-r5.native.json",
+          "sha256": "845b5adc51292f90d5d407f9019284ce3d28b068c794d8b441d9049017990cc6",
+          "bytes": 46306
+        },
+        {
+          "path": "native/deepseek-stage2-r6.native.json",
+          "sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+          "bytes": 45253
+        },
+        {
+          "path": "native/deepseek-stage3.native.json",
+          "sha256": "c65afaa13694394851a887648d756b3564ccd89441c0e4657f0a7cef391db07b",
+          "bytes": 12039
+        },
+        {
+          "path": "native/deepseek-stage4.native.json",
+          "sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438",
+          "bytes": 2597
+        },
+        {
+          "path": "native/glm-final-direct-preflight.native.json",
+          "sha256": "20c1ca6b648450ca8ab80f482110f3b8363f8278abb1e8d11591b383e54c90ae",
+          "bytes": 10201
+        },
+        {
+          "path": "native/glm-final-routed-preflight.native.json",
+          "sha256": "46cc0635cac91c5f0877347b54eff7f127a47a1ef88b9cd109675b12388f4c40",
+          "bytes": 10465
+        },
+        {
+          "path": "native/glm-native-quality.native.json",
+          "sha256": "652654f6fd7e4ce2bd4f0ca2d6b2db9521c2aa658994bc2f15acdd3d04a98b0a",
+          "bytes": 29773
+        },
+        {
+          "path": "native/glm-oracle7-native.json",
+          "sha256": "2d3c69d5b9663cc770f4292f9b72c4c9c51e6db74b6901f3a68cab764c16c4e0",
+          "bytes": 37045
+        },
+        {
+          "path": "native/glm-oracle7-r2-native.json",
+          "sha256": "84a5cb12fb9070f8321b0fc1c211bc6778df8e2980397d53bc35ef35c05c2d51",
+          "bytes": 37204
+        },
+        {
+          "path": "native/glm-oracle7-r3-native.json",
+          "sha256": "cef308240ee3d64a9907d3affe5f5234f2dc10469522436fb461efc7f6c05d02",
+          "bytes": 37169
+        },
+        {
+          "path": "native/glm-protocol.native.json",
+          "sha256": "09bc66201cdc8ddd6403afe0f9b4888336f904080837c9d179730f882c39488b",
+          "bytes": 5603
+        },
+        {
+          "path": "native/glm-swe5-infrastructure-failure.native.json",
+          "sha256": "bcee17d22da98f0137e9fcf12b8b6333108b24e31c31cd579ae0aa932d626331",
+          "bytes": 3682
+        },
+        {
+          "path": "native/glm-swe5-r2.native.json",
+          "sha256": "3b710369c088cfe93f3d02f197b3a258581b9d832c8a87ff7bd5431de5118556",
+          "bytes": 4753
+        },
+        {
+          "path": "native/glm-vision.native.json",
+          "sha256": "4e50e586918173e7886b1fca91d8a73783c9f0e22e09b00a83aebda97c094038",
+          "bytes": 33253
+        },
+        {
+          "path": "native/mimo-r4-oracle7.native.json",
+          "sha256": "15813e9ddf3422d450df2f5d53d774e9c3a6ffc7f333cc57cca8855071acd5dc",
+          "bytes": 36628
+        },
+        {
+          "path": "native/mimo-r4-protocol.native.json",
+          "sha256": "19a6e26bf542ae4ea6ed19303384341da5eee6b04d9efedc4810506908bdc3dc",
+          "bytes": 5468
+        },
+        {
+          "path": "native/mimo-r4-swe5-terminal.native.json",
+          "sha256": "0b02c50267f40f4829fdc31bc8a0ea30515b996b463558d2a18870b417d2845d",
+          "bytes": 4827
+        },
+        {
+          "path": "native/mimo-r5-oracle8-r1.native.json",
+          "sha256": "68cc91d6bafdb3d20569dd0e62a2cf9167237bd283e76176c52c7c69fa0b0521",
+          "bytes": 36601
+        },
+        {
+          "path": "native/mimo-r5-oracle8-r2.native.json",
+          "sha256": "7eea02d14ca0063026efaa07400307369d184acebdeeb98245a31930429f63c2",
+          "bytes": 36483
+        },
+        {
+          "path": "native/mimo-r5-oracle8-r3.native.json",
+          "sha256": "13f739b7a425d3623559a7d8930ec8275d6bf54cc8d31fd91b5aa0afacc5c6ed",
+          "bytes": 36564
+        },
+        {
+          "path": "native/mimo-r5-protocol.native.json",
+          "sha256": "0dc14385ae114c9922ced59a0401208adaa54e6468f0165125710710dfc82291",
+          "bytes": 5360
+        },
+        {
+          "path": "native/mimo-r5-swe5-terminal.native.json",
+          "sha256": "650c20df0c1dd54d5797c6ade27ed8798effd187588acdea9ca899b2a450f176",
+          "bytes": 4866
+        },
+        {
+          "path": "native/mimo-r5-wire6.native.json",
+          "sha256": "5f70c74de68e03b7d4bed2fef4eab0c81cc9f765773dec13b1a49f6d1e727282",
+          "bytes": 20799
+        },
+        {
+          "path": "native/mistral-r2-protocol.native.json",
+          "sha256": "97b3d07eec4845f1cc94ffca5adc4f2cdbba120e41ea6393227b1c80680e7320",
+          "bytes": 16167
+        },
+        {
+          "path": "native/mistral-r2-terminal-resource.native.json",
+          "sha256": "37d24fea7f1e79daf6c87977765548789bc3b28e0bf38ba2533bbee6dec8f3a8",
+          "bytes": 1169
+        },
+        {
+          "path": "native/mistral-r3-oracle8-r1.native.json",
+          "sha256": "6b24a2d114826aeba24aea2adefafd28eb0087b41a97c23f28ae3e2a02959490",
+          "bytes": 35356
+        },
+        {
+          "path": "native/mistral-r3-protocol.native.json",
+          "sha256": "b2133cf75956c13f6d4f08ffea81350a053e2475dd878ad4608d7b9bd5ad3a51",
+          "bytes": 16176
+        },
+        {
+          "path": "native/mistral-r3-terminal-resource.native.json",
+          "sha256": "de7506e1466dd53be51a85b57b61a5c9acc2d4b470bdaf6a325510e36ade9640",
+          "bytes": 1424
+        },
+        {
+          "path": "build-diagnostic-excerpts.json",
+          "sha256": "9bf8293a3317d787c00a580dca937f05b40c187c83964b12551722c1bc07643c",
+          "bytes": 2353
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "7cf1fe9707a091adb860d256c25a6bd6b216e59b5fcfa46dc67c75b8095436b6",
+          "bytes": 17286
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "5d2da1127bbbc0a26fcdbc80ab1b1e558024019cc96b177aac66c8e4e444889c",
+          "bytes": 5073
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "a26546d8f3f3eaf6d9467c7e35d9412e58ba36b733e607402df8688be0306244",
+          "bytes": 10080
+        },
+        {
+          "path": "closure-reviews.json",
+          "sha256": "fcb350ec505aac5c7e86347851ee0ff352108f8e800d54aa2c534a55d2952c02",
+          "bytes": 1819
+        }
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate compact external publication copy was requested."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "replacement-campaign-closure-reviews/v1",
+  "promoted": false,
+  "decision": "retain_incumbent_no_qualified_challenger",
+  "reviewer_role": "Independent model-quality and adversarial reviewers, separate from evaluated local models and evidence author",
+  "reviews": [
+    {
+      "role": "exact-r4-decision",
+      "source_basename": "independent-oracle8-terminal-review.json",
+      "source_sha256": "736b94db0a1376b617e881fa4c4e465e7c1fbeef58bd5dda780ac738c47e8b28",
+      "outcome": "do_not_promote"
+    },
+    {
+      "role": "r4-public-projection",
+      "source_basename": "independent-final-bundle-r4-review.json",
+      "source_sha256": "273aa57415752813e509cecd749c3ad155c1df099639094d7d90d4e336bfa4ff",
+      "outcome": "accepted"
+    },
+    {
+      "role": "public-narrative",
+      "source_basename": "independent-final-public-docs-review.json",
+      "source_sha256": "c95bf1d45bde2503193327bca3563196d24da5b79299429416ea1671c62666cb",
+      "outcome": "accepted"
+    },
+    {
+      "role": "final-restoration",
+      "source_basename": "independent-final-restoration-review.json",
+      "source_sha256": "4a88c47fd9bf86e88985733c95268da4dfa23d458eae2adbc213b207dd2fe5f9",
+      "outcome": "accepted"
+    },
+    {
+      "role": "historical-source-limits",
+      "source_basename": "independent-historical-source-assessment.json",
+      "source_sha256": "daa4827b4b15fed3fd35c8751b625df74ba8be22e123b8a969ac9e00193eef02",
+      "outcome": "accepted_with_recorded_limits"
+    }
+  ],
+  "boundaries": [
+    "No model grades its own output.",
+    "A failed prerequisite prunes downstream tests; unrun gates are not measured failures.",
+    "Restoration is separate from fresh qualification and full fleet/catalog propagation.",
+    "Publication does not authorize deployment or promotion."
+  ]
+}

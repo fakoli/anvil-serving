@@ -30,3 +30,13 @@ argv, so a separate receipt format is unnecessary for this bounded addition.
 - Documentation distinguishes configured Docker limits from measured cgroups.
 - Preview has no Docker, network, credential-value, or volume-write side
   effect.
+
+## Remaining observation gap
+
+The managed cache inventory identifies an active downloader, but `models pull`
+does not expose an in-flight cgroup observation. A bounded acquisition used a
+single read-only inspection of that exact discovered container and the existing
+`recipe_memory.observation` helper to verify its effective limits. This does not
+expand the configured-limit contract above into a native enforcement receipt.
+If recurring pull monitoring is needed, reuse that observation helper through
+the managed pull surface; do not add a separate operator script or receipt type.

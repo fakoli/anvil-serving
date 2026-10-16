@@ -331,6 +331,10 @@ image/OCR passed on both with CPU feature transport. The official-FP8 arm was
 subsequently human-promoted as the single-service Primary/general-vision/OCR
 profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
+## 2026-10-15 replacement evaluation
+
+The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6000 Blackwell Max-Q configuration and produced no eligible challenger. DeepSeek Stage 2 is separately one-GPU numerical evidence; Stage 3 r12 is a two-GPU dummy-path pass only. Stage 4 adds bounded real-weight 64K/C1/image=0 evidence; full-role r2/r3 are exact resource-policy failures and r4 failed its first required Oracle8 round after passing resources. Exact GLM was restored. No DeepSeek quality, throughput, route, or promotion result follows. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
+
 ## Recent changes
 
 - 2026-09-08: native Linux / retained WSL GLM comparison added above; same

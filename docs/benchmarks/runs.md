@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-15 replacement evaluation
+
+| Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-15 | GLM control, MiMo MOPD, Mistral Medium 3.5, and DeepSeek V4.1 diagnostics | completed replacement gates; DeepSeek Stage 2 numerical, r12 dummy-path, Stage 4 real-weight, and full-role diagnostics | dual RTX PRO 6000 for GLM/MiMo/Mistral and DeepSeek TP2 diagnostics; one GPU for DeepSeek Stage 2 | no candidate qualified; r2/r3 failed exact resource gates and r4 failed its first Oracle8 round after passing resources | `no-promotion`; GLM retained after restoration; no performance conclusion | [GLM](models/glm53-flash.md) · [MiMo](models/mimo-v26-flash.md) · [Mistral](models/mistral-medium-35.md) · [DeepSeek V4.1](models/deepseek-v41-flash.md) · [finding](../findings/2026-10-15-replacement-evaluation.md) |
+
 ## 2026-10-13 full qualification campaign
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |

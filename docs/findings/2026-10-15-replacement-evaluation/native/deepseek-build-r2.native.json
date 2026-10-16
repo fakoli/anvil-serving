@@ -1,0 +1,16 @@
+{
+  "cpus": 2,
+  "dockerfile_sha256": "3fda8837ff5be6ac439f9a145f3baa55e6b35bf5ffbdef717a0a8015d85822ba",
+  "dry_run": false,
+  "duration_seconds": 820.482,
+  "image": "anvil-deepseek-v41-exl3-sm120:20261015-r2",
+  "image_id": null,
+  "log_truncated": false,
+  "memory_mib": 8192,
+  "name": "deepseek-v41-exl3-sm120-r2",
+  "ok": false,
+  "platform": "linux/amd64",
+  "returncode": 1,
+  "schema": "anvil-serving.image-build/v1",
+  "timeout_seconds": 14400
+}

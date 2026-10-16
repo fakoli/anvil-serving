@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-15 replacement evaluation:** no challenger cleared the completed frozen gates. Exact GLM was restored and retained as the baseline; this is continuity evidence, not a new GLM qualification. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
+
 **Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
 
 **2026-10-06 uncensored GLM scout:** the separate `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6a` candidate is distinct from the base and CSF/QAD lanes. Its TP2/EP2/DCP1 no-spec recipe passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. It is `not-qualified`/`no-promotion`; no capacity, context, multimodal, or speed result is claimed. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete. See the [dated scout](../../findings/2026-10-06-mimo-qualification.md).
