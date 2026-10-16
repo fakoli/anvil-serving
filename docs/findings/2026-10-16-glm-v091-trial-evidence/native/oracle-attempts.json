@@ -1,0 +1,129 @@
+{
+  "schema": "anvil-serving.sanitized-evidence-index/v1",
+  "source_schema": "anvil-serving.benchmark-result/v1",
+  "suite": "agentic",
+  "dataset": {
+    "name": "deterministic-native",
+    "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+  },
+  "attempts": [
+    {
+      "configuration": "R1",
+      "round": 1,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 17,
+      "pass_rate": 0.9444444444444444,
+      "required_pass_rate": 1.0,
+      "status": "failed strict gate",
+      "source_sha256": "534e8acf27c2893bd218c5fec74538b1d454d947755ab2cfc987389fda224000"
+    },
+    {
+      "configuration": "R1 temperature 0",
+      "round": 1,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed sampling remedy",
+      "source_sha256": "482af4a7802f12b074d5d91d5cf509b2962c3298139b1e33b9eb771dac7616fb"
+    },
+    {
+      "configuration": "R1 temperature 0",
+      "round": 2,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed sampling remedy",
+      "source_sha256": "346285cdf76b5d9eb5b403fb52a6e12ed1af598e64165ba8799a5a8dfbe65f90"
+    },
+    {
+      "configuration": "R1 temperature 0",
+      "round": 3,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed sampling remedy",
+      "source_sha256": "8d51a49b42cc8995635cd88d0326ec2b9cdae9068506cf770ccc2ce754bc49b6"
+    },
+    {
+      "configuration": "R2",
+      "round": 1,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "72d07736b5802e75b3fade0ed535513425ba3f25c3b55080368bd024770e1c8c"
+    },
+    {
+      "configuration": "R2",
+      "round": 2,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "a5f605d8724912de2f4b8d45d280c38946c3b6a7e456651828da9f89be2119d1"
+    },
+    {
+      "configuration": "R2",
+      "round": 3,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "c12e290a7f1f5e0e2d403c197178fff32d8533e139d437107127433373dd0751"
+    },
+    {
+      "configuration": "restored original GLM",
+      "round": 1,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "d19dd04d80016ac3e6b5bc1bbfc88c83fb34f0269d35ea660a186c2b116d301f"
+    },
+    {
+      "configuration": "restored original GLM",
+      "round": 2,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "c4e545794952b2b2ffaa8e7b82d5271bd82833465f5fefd1b464e43160dcd072"
+    },
+    {
+      "configuration": "restored original GLM",
+      "round": 3,
+      "completeness": "completed",
+      "attempted": 18,
+      "passed": 18,
+      "pass_rate": 1.0,
+      "required_pass_rate": 0.75,
+      "status": "passed",
+      "source_sha256": "98b28479f057d6f59107f17ac9e7bc63b58110d756a52e628b8d736519bcae80"
+    }
+  ],
+  "sanitization": {
+    "removed": [
+      "endpoint",
+      "worker identity",
+      "free-disk observation",
+      "private evidence paths"
+    ]
+  }
+}

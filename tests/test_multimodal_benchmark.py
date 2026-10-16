@@ -246,6 +246,56 @@ def test_dry_run_validates_without_endpoint_or_artifact(monkeypatch, tmp_path, c
     assert not output.exists()
 
 
+def test_force_nonempty_content_is_planned_and_reaches_multimodal_request(
+    monkeypatch, tmp_path, capsys
+):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image])])
+    output = tmp_path / "evidence.json"
+    argv = _argv(corpus, output)
+    argv[argv.index("--thinking-mode") + 1] = "enabled"
+    expected = {"enable_thinking": True, "force_nonempty_content": True}
+
+    assert multimodal.main([*argv, "--force-nonempty-content", "--dry-run"]) == 0
+    assert json.loads(capsys.readouterr().out)["thinking"] == {
+        "mode": "enabled",
+        "chat_template_kwargs": expected,
+        "reasoning_effort": None,
+    }
+
+    monkeypatch.setattr(multimodal, "_endpoint_models", lambda *_args: ["agents-a1"])
+    seen = []
+
+    def fake_chat(*_args, **kwargs):
+        seen.append(kwargs["chat_template_kwargs"])
+        return {
+            "choices": [{
+                "finish_reason": "stop",
+                "message": {"content": "READY. RED changes to GREEN."},
+            }],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 7},
+        }, 0.25
+
+    assert multimodal.main([*argv, "--force-nonempty-content"], chat_request=fake_chat) == 0
+    assert seen == [expected] * 2
+    assert json.loads(output.read_text(encoding="utf-8"))["configuration"]["chat_template_kwargs"] == expected
+
+
+@pytest.mark.parametrize("thinking_mode", ["default", "disabled"])
+def test_multimodal_force_nonempty_content_requires_enabled_thinking(
+    tmp_path, thinking_mode
+):
+    image = _media(tmp_path, "scene.png", b"\x89PNG\r\n\x1a\nscene")
+    corpus = _manifest(tmp_path, [_case([image])])
+    output = tmp_path / "evidence.json"
+    argv = _argv(corpus, output)
+    argv[argv.index("--thinking-mode") + 1] = thinking_mode
+
+    with pytest.raises(SystemExit) as exc:
+        multimodal.main([*argv, "--force-nonempty-content", "--dry-run"])
+    assert exc.value.code == 2
+
+
 def test_runner_records_identity_media_sampling_outputs_and_aggregates(
     monkeypatch, tmp_path
 ):

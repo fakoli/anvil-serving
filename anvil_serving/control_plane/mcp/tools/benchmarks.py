@@ -8,6 +8,7 @@ import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ....benchmarking.submission import validate_submission_spec
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
@@ -96,6 +97,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
             raise BenchmarkJobError(
                 "suite_mismatch", "job specification suite does not match the command"
             )
+        validate_submission_spec(spec)
         store = _benchmark_job_store()
         disposition, job = store.submit(spec)
         launch = (
@@ -283,6 +285,9 @@ def tool_preflight_probe(args: dict) -> dict:
     needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=1000000)
     tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=128)
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
+    force_nonempty_content = _arg_bool(
+        args.get("force_nonempty_content"), False, name="force_nonempty_content"
+    )
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
     selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
     known_checks = {"smoke", "json", "needle", "tools", "image", "ocr", "video"}
@@ -351,6 +356,10 @@ def tool_preflight_probe(args: dict) -> dict:
         thinking_mode = "disabled"
     if reasoning_effort and thinking_mode != "default":
         raise ToolError("bad_argument", "reasoning_effort cannot be combined with thinking_mode")
+    if force_nonempty_content and thinking_mode != "enabled":
+        raise ToolError(
+            "bad_argument", "--force-nonempty-content requires --thinking-mode enabled"
+        )
     try:
         validate_reasoning_control(
             model,
@@ -414,6 +423,8 @@ def tool_preflight_probe(args: dict) -> dict:
         argv += ["--api-key-env", api_key_env]
     if no_thinking:
         argv.append("--no-thinking")
+    if force_nonempty_content:
+        argv.append("--force-nonempty-content")
     if reasoning_effort:
         argv += ["--reasoning-effort", reasoning_effort]
     if image_path:
@@ -715,6 +726,7 @@ FAMILY = ToolFamily(
                     "needle_ctx": _bounded_integer_schema(1, 1000000, 128000),
                     "tool_batch": _bounded_integer_schema(1, 128, 20),
                     "no_thinking": {"type": "boolean"},
+                    "force_nonempty_content": {"type": "boolean"},
                     "checks": {"type": "string"},
                     "image_path": {"type": "string"},
                     "image_expect": {

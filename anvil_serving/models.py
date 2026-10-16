@@ -61,6 +61,7 @@ DEFAULT_CATALOG_DIR = "model-library"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
 DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
+MIB = 1024**2
 _REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 _RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -269,9 +270,11 @@ def tree_bytes(path):
 """
 
 _VOLUME_CACHE_HELPER = r"""
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 
@@ -307,6 +310,39 @@ def referenced_blobs(excluded=""):
                         pass
     return used
 
+def blob_content_hash(path, expected):
+    if len(expected) == 64:
+        digest = hashlib.sha256()
+    elif len(expected) == 40:
+        digest = hashlib.sha1()
+        digest.update(("blob %d\0" % path.stat().st_size).encode("ascii"))
+    else:
+        return None
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest() == expected
+
+def selected_snapshot_partial_references(partials):
+    references = {item: [] for item in partials}
+    if not snapshot_path or not snapshot_path.is_dir():
+        return references
+    for base, _dirs, files in os.walk(snapshot_path, followlinks=False):
+        for name in files:
+            item = Path(base) / name
+            if not item.is_symlink():
+                continue
+            try:
+                target = item.resolve(strict=True)
+            except OSError:
+                continue
+            if target in references:
+                references[target].append(str(item.relative_to(snapshot_path)))
+    return references
+
 snapshot = snapshot_id()
 snapshot_path = root / "snapshots" / snapshot if snapshot else None
 incomplete = list(root.rglob("*.incomplete")) if root.exists() else []
@@ -319,6 +355,46 @@ if snapshot_path and snapshot_path.is_dir():
                 broken.append(str(item))
 
 before = tree_bytes(root)
+partial_references = selected_snapshot_partial_references(incomplete)
+partial_details = []
+blobs = root / "blobs"
+for item in incomplete:
+    try:
+        stat = item.lstat()
+        relative = str(item.relative_to(root))
+    except OSError:
+        partial_details.append({"path": str(item), "classification": "uninspectable"})
+        continue
+    match = re.fullmatch(r"([0-9a-f]{64}|[0-9a-f]{40})(?:\.([0-9a-f]{8}))?\.incomplete", item.name)
+    expected = match.group(1) if match else ""
+    counterpart = blobs / expected if expected else blobs / item.name
+    counterpart_relative = str(counterpart.relative_to(root))
+    regular_counterpart = False
+    hash_matches = False
+    try:
+        regular_counterpart = (
+            item.parent == blobs
+            and stat.st_mode & 0o170000 == 0o100000
+            and counterpart.is_file()
+            and not counterpart.is_symlink()
+        )
+        if regular_counterpart:
+            hash_matches = blob_content_hash(counterpart, expected) is True
+    except OSError:
+        regular_counterpart = False
+        hash_matches = False
+    references = partial_references.get(item, [])
+    harmless = bool(regular_counterpart and hash_matches and not references)
+    partial_details.append({
+        "path": relative,
+        "bytes": stat.st_size,
+        "expected_blob_name": expected or None,
+        "counterpart_path": counterpart_relative,
+        "counterpart_regular": regular_counterpart,
+        "counterpart_hash_matches": hash_matches,
+        "selected_snapshot_references": references,
+        "classification": "stale_completed_counterpart" if harmless else "unresolved",
+    })
 report = {
     "repo_id": repo_id,
     "revision": revision or "main",
@@ -327,6 +403,10 @@ report = {
     "repo_bytes": before,
     "free_bytes": shutil.disk_usage(cache).free,
     "incomplete_count": len(incomplete),
+    "incomplete_files": partial_details,
+    "stale_completed_incomplete_count": sum(
+        item["classification"] == "stale_completed_counterpart" for item in partial_details
+    ),
     "broken_symlink_count": len(broken),
 }
 
@@ -501,9 +581,27 @@ def is_real_catalog_entry(entry):
     return bool(entry.get("model_type")) or entry.get("format") in ("safetensors", "GGUF")
 
 
+def _pull_memory_limits(memory_mib=None, memory_swap_mib=None):
+    """Validate optional Docker pull ceilings and return their byte values."""
+    if memory_mib is None and memory_swap_mib is None:
+        return None
+    if memory_mib is None or memory_swap_mib is None:
+        raise ValueError("--memory-mib and --memory-swap-mib must be provided together")
+    if (
+        isinstance(memory_mib, bool) or not isinstance(memory_mib, int) or memory_mib <= 0
+        or isinstance(memory_swap_mib, bool) or not isinstance(memory_swap_mib, int)
+        or memory_swap_mib <= 0
+    ):
+        raise ValueError("--memory-mib and --memory-swap-mib must be positive integers")
+    if memory_swap_mib < memory_mib:
+        raise ValueError("--memory-swap-mib must be greater than or equal to --memory-mib")
+    return memory_mib * MIB, memory_swap_mib * MIB
+
+
 def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
                     revision=None, include=None, exclude=None,
-                    token_env=DEFAULT_PULL_TOKEN_ENV):
+                    token_env=DEFAULT_PULL_TOKEN_ENV,
+                    memory_mib=None, memory_swap_mib=None):
     """Construct the ``docker run …`` argv that downloads ``repo_id`` into the
     NAMED docker ``volume`` by running ``hf download`` INSIDE the container.
 
@@ -520,8 +618,12 @@ def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAG
         the token VALUE never appears on argv. Pass ``None`` only for an explicitly
         unauthenticated pull.
     """
-    argv = ["docker", "run", "--rm",
-            "-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
+    argv = ["docker", "run", "--rm"]
+    limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+    if limits is not None:
+        memory_bytes, swap_bytes = limits
+        argv += ["--memory", str(memory_bytes), "--memory-swap", str(swap_bytes)]
+    argv += ["-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
     if token_env:
         # `-e HF_TOKEN` (no `=value`) tells docker to read HF_TOKEN from ITS OWN
         # environment — which is the child env we set in run_pull. The secret is
@@ -904,11 +1006,40 @@ def verify_pull(
     )
     if not report.get("snapshot_exists"):
         raise ValueError("download returned success but the requested snapshot is absent")
-    if report.get("incomplete_count"):
-        raise ValueError(
-            "download returned success but %s incomplete cache file(s) remain"
-            % report["incomplete_count"]
-        )
+    incomplete_count = report.get("incomplete_count")
+    if not isinstance(incomplete_count, int) or isinstance(incomplete_count, bool) or incomplete_count < 0:
+        raise ValueError("named model cache inspection returned invalid incomplete-file metadata")
+    if incomplete_count:
+        partials = report.get("incomplete_files")
+        if not isinstance(partials, list) or len(partials) != incomplete_count:
+            raise ValueError(
+                "download returned success but incomplete cache file metadata is absent"
+            )
+        harmless = 0
+        for partial in partials:
+            if not isinstance(partial, dict):
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            expected_keys = {
+                "path", "bytes", "expected_blob_name", "counterpart_path", "counterpart_regular",
+                "counterpart_hash_matches", "selected_snapshot_references", "classification",
+            }
+            if set(partial) != expected_keys:
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            if partial["classification"] == "stale_completed_counterpart":
+                if not (isinstance(partial["expected_blob_name"], str)
+                        and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", partial["expected_blob_name"])
+                        and partial["counterpart_regular"] is True
+                        and partial["counterpart_hash_matches"] is True
+                        and partial["selected_snapshot_references"] == []):
+                    raise ValueError("download returned success but incomplete cache metadata is inconsistent")
+                harmless += 1
+            elif partial["classification"] != "unresolved":
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+        if harmless != incomplete_count:
+            raise ValueError(
+                "download returned success but %s incomplete cache file(s) remain"
+                % incomplete_count
+            )
     if report.get("broken_symlink_count"):
         raise ValueError(
             "download returned success but %s snapshot link(s) are broken"
@@ -921,6 +1052,7 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
              revision=None, include=None, exclude=None,
              token_env=DEFAULT_PULL_TOKEN_ENV,
              token_file=DEFAULT_PULL_TOKEN_FILE,
+             memory_mib=None, memory_swap_mib=None,
              dry_run=False, _run=subprocess.call, _environ=None):
     """Build and (unless ``dry_run``) execute the ``docker run … hf download`` argv.
 
@@ -963,8 +1095,15 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
             )
             return 2
     environ = os.environ if _environ is None else _environ
-    argv = build_pull_argv(repo_id, volume=volume, image=image, revision=revision,
-                           include=include, exclude=exclude, token_env=token_env)
+    try:
+        argv = build_pull_argv(
+            repo_id, volume=volume, image=image, revision=revision,
+            include=include, exclude=exclude, token_env=token_env,
+            memory_mib=memory_mib, memory_swap_mib=memory_swap_mib,
+        )
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
 
     child_env = dict(environ)
     if token_env and not dry_run:
@@ -995,6 +1134,14 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
         print("image: %s" % image)
         print("include: %s" % (include or "(all files)"))
         print("exclude: %s" % (exclude or "(none)"))
+        limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+        if limits is None:
+            print("Docker memory ceilings: unbounded (legacy default)")
+        else:
+            print(
+                "Docker memory ceilings: requested memory=%d bytes; memory-plus-swap=%d bytes"
+                % limits
+            )
         if token_env:
             print("token environment variable: %s" % token_env)
             print(
@@ -1241,6 +1388,16 @@ def pull_main(argv, *, _result_sink=None):
     )
     ap.add_argument("--xet", action="store_true",
                     help="native only: opt into Xet with owned scratch on --cache-dir's filesystem")
+    ap.add_argument(
+        "--memory-mib",
+        type=int,
+        help="Docker only: requested container memory ceiling in MiB; requires --memory-swap-mib",
+    )
+    ap.add_argument(
+        "--memory-swap-mib",
+        type=int,
+        help="Docker only: requested container memory-plus-swap ceiling in MiB; requires --memory-mib",
+    )
     ap.add_argument("--dry-run", action="store_true",
                     help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
@@ -1250,7 +1407,15 @@ def pull_main(argv, *, _result_sink=None):
     if not math.isfinite(a.headroom_gib) or a.headroom_gib < 0:
         print("[anvil-serving] --headroom-gib must be a finite nonnegative number", file=sys.stderr)
         return 2
+    try:
+        _pull_memory_limits(a.memory_mib, a.memory_swap_mib)
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
     if a.cache_dir is not None:
+        if a.memory_mib is not None:
+            print("--memory-mib and --memory-swap-mib are only supported with Docker pulls", file=sys.stderr)
+            return 2
         return _native_pull_main(a, result_sink=_result_sink)
     if a.hf_executable is not None or a.evidence_out is not None or a.xet:
         print("--hf-executable, --evidence-out, and --xet require native --cache-dir", file=sys.stderr)
@@ -1299,7 +1464,9 @@ def pull_main(argv, *, _result_sink=None):
     rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
                   include=a.include, exclude=a.exclude,
                   token_env=None if a.no_token else a.token_env,
-                  token_file=a.token_file, dry_run=a.dry_run)
+                  token_file=a.token_file,
+                  memory_mib=a.memory_mib, memory_swap_mib=a.memory_swap_mib,
+                  dry_run=a.dry_run)
     if rc == 0 and not a.dry_run:
         try:
             verification = verify_pull(

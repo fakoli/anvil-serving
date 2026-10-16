@@ -1,0 +1,98 @@
+{
+  "base_url": "http://127.0.0.1:PORT_REDACTED/v1",
+  "budget": {
+    "max_completion_tokens": 4608,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "needle",
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-v091-tp2-327k-c4-vision8-nospec-r2",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 594,
+      "reasoning_excerpt": "The user has provided a long, repetitive text about engineers and telemetry, and then at the very end, there's a line: \"IMPORTANT: The launch code is ZEBRA-42917-QUARTZ.\"\n\nThe user asks: \"What is the ",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 46.617,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 174,
+        "prompt_tokens": 216307,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 216481
+      },
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 110760,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 243,
+      "reasoning_excerpt": "The user has sent a massive amount of repeated text about \"Archived repository telemetry remained nominal during this interval\" and then asked \"What's the weather in Oakland? Use the tool.\"\n\nI should ",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "requested_context_tokens": 131072,
+      "seconds": 23.193,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 110760,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 110821
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "46.6s ctx~262144 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=594 reasoning_tokens=None",
+      "name": "needle @ ~262144 ctx",
+      "passed": true
+    },
+    {
+      "detail": "23.2s measured_prompt=110760 valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=243 reasoning_tokens=None",
+      "name": "tool call after >=100K prompt (target 131072)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

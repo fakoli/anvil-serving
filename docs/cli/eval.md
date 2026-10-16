@@ -34,6 +34,12 @@ anvil-serving eval preflight `
   --confirm
 ```
 
+For models whose native template requires it during reasoning-plus-tool calls,
+`--force-nonempty-content` requires `--thinking-mode enabled` and sends the
+typed `chat_template_kwargs` pair. The preflight artifact and dry-run plan
+retain that requested pair; a successful request remains endpoint evidence,
+not proof that a different model family honors the same control.
+
 ## Routed client evaluation
 
 Use `eval routed` after direct preflight when a candidate must be exercised

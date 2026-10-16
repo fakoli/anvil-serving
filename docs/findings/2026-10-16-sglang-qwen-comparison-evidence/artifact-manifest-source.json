@@ -1,0 +1,154 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-16-sglang-qwen-comparison",
+    "capability": "local LLM and VLM replacement qualification",
+    "observed_date": "2026-10-16",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.stability/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human-readable public-safe evidence map."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "baseline-source-ledger.json",
+        "nemotron-scout-source-ledger.json",
+        "qwen-scout-source-ledger.json",
+        "sglang-scout-source-ledger.json",
+        "source-registry.json"
+      ],
+      "reason": "Dated source registry and source/projection ledgers."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Frozen workload controls."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Frozen plan and explicit stop conditions."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "baseline-public-configuration.json",
+        "nemotron-scout-public-configuration.json",
+        "nemotron-scout-sanitization-provenance.json",
+        "qwen-scout-public-configuration.json",
+        "qwen-scout-sanitization-provenance.json",
+        "sanitization-provenance.json",
+        "sglang-scout-public-configuration.json",
+        "sglang-scout-sanitization-provenance.json"
+      ],
+      "reason": "Public-safe identity and redaction bindings."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/baseline-capacity-c1-r1.json",
+        "native/baseline-context.json",
+        "native/baseline-oracle8-r1.json",
+        "native/baseline-oracle8-r2.json",
+        "native/baseline-oracle8-r3.json",
+        "native/baseline-preflight.json",
+        "native/baseline-stability-r2.json",
+        "native/baseline-swe5.json",
+        "native/baseline-vision18.json",
+        "native/nemotron-scout-r2-capacity-c1-r1.json",
+        "native/nemotron-scout-r2-context-c1.json",
+        "native/nemotron-scout-r2-final-resource-summary.json",
+        "native/nemotron-scout-r2-oracle8-r1.json",
+        "native/nemotron-scout-r2-oracle8-r2.json",
+        "native/nemotron-scout-r2-oracle8-r3.json",
+        "native/nemotron-scout-r2-preflight.json",
+        "native/nemotron-scout-r2-swe5.json",
+        "native/nemotron-scout-r2-vision18-c1.json",
+        "native/qwen-scout-r2-admission-failure.json",
+        "native/qwen-scout-r3-oracle8-r1.json",
+        "native/qwen-scout-r3-oracle8-r2.json",
+        "native/qwen-scout-r3-oracle8-r3.json",
+        "native/qwen-scout-r3-preflight.json",
+        "native/qwen-scout-r3-runtime-template.json",
+        "native/qwen-scout-r3-startup-gates.json",
+        "native/qwen-scout-swe5.json",
+        "native/sglang-scout-mhc-parity.json",
+        "native/sglang-scout-mhc-runtime-source.json",
+        "native/sglang-scout-oracle8-r1.json",
+        "native/sglang-scout-oracle8-r2.json",
+        "native/sglang-scout-oracle8-r3.json",
+        "native/sglang-scout-preflight.json",
+        "native/sglang-scout-r1-host-ram-policy-failure.json",
+        "native/sglang-scout-r2-gpu-reserve-abort.json",
+        "native/sglang-scout-startup-acceptance.json",
+        "native/sglang-scout-swe5.json"
+      ],
+      "reason": "Schema-native public projections, including failed and partial runs."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Failure, stop, and source-validation dispositions."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Final public-safe incumbent restoration receipt."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Derived no-promotion decision summary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate compact external publication was requested; the dated finding carries the required result card."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "closed_inventory": true
+}

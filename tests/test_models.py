@@ -6,6 +6,7 @@ Every test is HERMETIC: docker is never invoked (subprocess is mocked or we
 stay on --dry-run). No real docker, no network.
 """
 import io
+import hashlib
 import importlib
 import json
 from pathlib import Path
@@ -78,6 +79,35 @@ def test_pull_argv_honors_volume_image_revision_include_exclude():
     assert argv[argv.index("--exclude") + 1] == "*.bin"
 
 
+def test_pull_argv_uses_exact_requested_memory_and_swap_bytes():
+    argv = models.build_pull_argv(
+        "meta/model", memory_mib=2048, memory_swap_mib=2048,
+    )
+    assert argv[argv.index("--memory") + 1] == str(2048 * models.MIB)
+    assert argv[argv.index("--memory-swap") + 1] == str(2048 * models.MIB)
+
+
+@pytest.mark.parametrize(
+    "memory_mib,memory_swap_mib,expected",
+    [
+        (1024, None, "provided together"),
+        (None, 1024, "provided together"),
+        (0, 1024, "positive integers"),
+        (2048, 1024, "greater than or equal"),
+    ],
+)
+def test_pull_memory_limits_fail_closed_before_docker(
+        memory_mib, memory_swap_mib, expected, capsys):
+    called = []
+    assert models.run_pull(
+        "meta/model", memory_mib=memory_mib, memory_swap_mib=memory_swap_mib,
+        _run=lambda *_args, **_kwargs: called.append(True),
+        _environ={"HF_TOKEN": "test-token"},
+    ) == 2
+    assert called == []
+    assert expected in capsys.readouterr().err
+
+
 def test_pull_argv_forwards_hf_token_by_default():
     argv = models.build_pull_argv("openai/gpt-oss-120b")
     assert argv[argv.index("-e") + 1] == "HF_TOKEN"
@@ -135,6 +165,24 @@ def test_pull_dry_run_via_pull_main_explicit_unauthenticated(capsys):
     assert "automatic cache reclaim: disabled" in out
 
 
+def test_pull_dry_run_json_retains_requested_memory_argv(capsys):
+    assert cli.main([
+        "models", "pull", "some/repo", "--no-token", "--memory-mib", "2048",
+        "--memory-swap-mib", "2048", "--dry-run", "--json",
+    ]) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert "--memory 2147483648 --memory-swap 2147483648" in data
+    assert "requested memory=2147483648 bytes" in data
+
+
+def test_pull_native_cache_rejects_docker_memory_ceilings(tmp_path, capsys):
+    assert models.pull_main([
+        "org/model", "--revision", "a" * 40, "--cache-dir", str(tmp_path),
+        "--memory-mib", "2048", "--memory-swap-mib", "2048", "--dry-run",
+    ]) == 2
+    assert "only supported with Docker pulls" in capsys.readouterr().err
+
+
 def test_pull_dry_run_token_env_shows_name_only_not_value(monkeypatch, capsys):
     monkeypatch.setenv("MY_HF_TOKEN", "hf_supersecret_value")
     rc = models.pull_main(["some/repo", "--token-env", "MY_HF_TOKEN", "--dry-run"])
@@ -166,6 +214,21 @@ def test_pull_execution_shells_out_with_constructed_argv():
     assert "vllm-hfcache:/root/.cache/huggingface" in argv
     assert "download" in argv and "openai/gpt-oss-120b" in argv
     assert "huggingface-cli" not in argv
+
+
+def test_pull_execution_forwards_configured_memory_ceilings_to_docker():
+    seen = {}
+
+    def fake_run(argv, env=None):
+        seen["argv"] = argv
+        return 0
+
+    assert models.run_pull(
+        "meta/model", memory_mib=2048, memory_swap_mib=3072,
+        _run=fake_run, _environ={"HF_TOKEN": "test-token"},
+    ) == 0
+    assert seen["argv"][seen["argv"].index("--memory") + 1] == str(2048 * models.MIB)
+    assert seen["argv"][seen["argv"].index("--memory-swap") + 1] == str(3072 * models.MIB)
 
 
 def test_pull_nonzero_docker_exit_surfaces_clean_rc(capsys):
@@ -247,6 +310,116 @@ def test_verify_pull_rejects_incomplete_snapshot(monkeypatch):
     )
     with pytest.raises(ValueError, match="incomplete"):
         models.verify_pull("org/model", "abc")
+
+
+def _cache_report_from_tree(cache):
+    """Run the embedded volume inspector against a temporary cache, never Docker."""
+    def run(argv, **_kwargs):
+        script = argv[-5]
+        action, _mount, repo_id, revision = argv[-4:]
+        result = subprocess.run(
+            [sys.executable, "-c", script, action, str(cache), repo_id, revision],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return types.SimpleNamespace(
+            returncode=result.returncode, stdout=result.stdout, stderr=result.stderr
+        )
+    return run
+
+
+def _complete_partial_cache(
+    tmp_path, *, partial_kind="regular", snapshot_partial=False, hash_kind="sha256"
+):
+    cache = tmp_path / "cache"
+    root = cache / "hub" / "models--org--model"
+    blobs = root / "blobs"
+    snapshot = root / "snapshots" / "revision"
+    blobs.mkdir(parents=True)
+    snapshot.mkdir(parents=True)
+    content = b"fully downloaded model weight"
+    if hash_kind == "sha256":
+        digest = hashlib.sha256(content).hexdigest()
+    elif hash_kind == "git_blob_sha1":
+        digest = hashlib.sha1(
+            f"blob {len(content)}\0".encode() + content
+        ).hexdigest()
+    else:
+        raise AssertionError(hash_kind)
+    complete = blobs / digest
+    complete.write_bytes(content)
+    partial = blobs / (digest + ".deadbeef.incomplete")
+    if partial_kind == "regular":
+        partial.write_bytes(b"abandoned partial")
+    elif partial_kind == "symlink":
+        partial.symlink_to(complete.name)
+    else:
+        raise AssertionError(partial_kind)
+    target = "../../blobs/" + (partial.name if snapshot_partial else complete.name)
+    (snapshot / "weights.safetensors").symlink_to(target)
+    return cache, root, complete, partial
+
+
+@pytest.mark.parametrize("hash_kind", ["sha256", "git_blob_sha1"])
+def test_verify_pull_accepts_only_hashed_completed_counterpart(tmp_path, hash_kind):
+    cache, _root, _complete, _partial = _complete_partial_cache(
+        tmp_path, hash_kind=hash_kind
+    )
+    report = models.verify_pull(
+        "org/model", "revision", _run=_cache_report_from_tree(cache)
+    )
+
+    assert report["incomplete_count"] == 1
+    assert report["stale_completed_incomplete_count"] == 1
+    partial = report["incomplete_files"]
+    assert len(partial) == 1
+    assert partial[0]["path"].endswith(".deadbeef.incomplete")
+    assert partial[0]["expected_blob_name"] == partial[0]["counterpart_path"].split("/")[-1]
+    assert partial[0]["bytes"] == len(b"abandoned partial")
+    assert partial[0]["counterpart_regular"] is True
+    assert partial[0]["counterpart_hash_matches"] is True
+    assert partial[0]["selected_snapshot_references"] == []
+    assert partial[0]["classification"] == "stale_completed_counterpart"
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["missing", "corrupt", "referenced", "partial_symlink", "counterpart_escape"],
+)
+def test_verify_pull_rejects_unresolved_incomplete_tree_entries(tmp_path, fault):
+    cache, _root, complete, partial = _complete_partial_cache(
+        tmp_path,
+        partial_kind="symlink" if fault == "partial_symlink" else "regular",
+        snapshot_partial=fault == "referenced",
+    )
+    if fault == "missing":
+        complete.unlink()
+    elif fault == "corrupt":
+        complete.write_bytes(b"wrong bytes")
+    elif fault == "counterpart_escape":
+        outside = tmp_path / "outside-blob"
+        outside.write_bytes(complete.read_bytes())
+        complete.unlink()
+        complete.symlink_to(outside)
+
+    with pytest.raises(ValueError, match="incomplete cache file"):
+        models.verify_pull("org/model", "revision", _run=_cache_report_from_tree(cache))
+
+
+def test_verify_pull_fails_closed_for_legacy_partial_report(monkeypatch):
+    monkeypatch.setattr(
+        models,
+        "_volume_cache_report",
+        lambda *args, **kwargs: {
+            "snapshot_exists": True,
+            "incomplete_count": 1,
+            "broken_symlink_count": 0,
+        },
+    )
+
+    with pytest.raises(ValueError, match="metadata is absent"):
+        models.verify_pull("org/model", "revision")
 
 
 def test_cache_remove_exact_revision_dry_run_and_apply(monkeypatch, capsys):

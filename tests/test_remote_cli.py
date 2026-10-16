@@ -3,22 +3,34 @@ from __future__ import annotations
 import json
 import time
 
+import pytest
+
 from anvil_serving import cli, mcp
-from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+from anvil_serving.benchmarking import jobs_cli
+from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
+from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from anvil_serving.control_plane.mcp.tools import benchmarks
 from anvil_serving.observability.dashboard.access import Session
 from anvil_serving.observability.dashboard.console import Console
 
 
-def _spec(suite: str = "context") -> str:
+def _declared_identities(**overrides) -> dict:
+    values = {name: {} for name in REQUIRED_MEASURED_IDENTITIES}
+    values.update(overrides)
+    return {"identities": values}
+
+
+def _spec(suite: str = "context", parameters: dict | None = None) -> str:
+    values = {"instance_ids": ["django__django-11099"]} if suite == "swe" else {}
+    values.update(parameters or {})
     return json.dumps(
         {
             "schema": JOB_SPEC_SCHEMA,
             "run_id": f"{suite}-001",
             "ownership_id": "campaign-001",
             "suite": suite,
-            "profile": f"{suite}-smoke-v1",
+            "profile": "smoke",
             "endpoint": {
                 "base_url": "http://127.0.0.1:8000/v1",
                 "model": "deepseek",
@@ -26,7 +38,7 @@ def _spec(suite: str = "context") -> str:
             "worker": {"id": "benchmark-worker"},
             "submitted_at": "2026-08-03T12:00:00Z",
             "timeout_s": 600,
-            "parameters": {},
+            "parameters": values,
         }
     )
 
@@ -63,7 +75,7 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
         "benchmark_job_submit",
         {
             "suite": "agentic",
-            "spec_json": _spec("agentic"),
+            "spec_json": _spec("agentic", {"identities": {"model": {"alias": "candidate"}}}),
             "detach": True,
             "confirm": True,
         },
@@ -83,7 +95,7 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
     assert listed["data"]["items"] == [{
         "native_id": "agentic-001",
         "suite": "agentic",
-        "profile": "agentic-smoke-v1",
+        "profile": "smoke",
         "model": "deepseek",
         "native_state": "queued",
         "submitted_at": "2026-08-03T12:00:00Z",
@@ -195,3 +207,179 @@ def test_missing_stage_artifact_returns_typed_not_found(monkeypatch, tmp_path, c
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "job_not_found"
+
+
+@pytest.mark.parametrize("suite", ["context", "agentic", "swe"])
+def test_submit_dry_run_validates_without_store(monkeypatch, suite):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("dry-run opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("dry-run launched worker"))
+    result = jobs_cli.run([suite, "submit", "--spec-json", _spec(suite), "--dry-run"])
+    assert result["suite"] == suite
+    assert result["dry_run"] is True
+
+
+def test_submit_dry_run_rejects_malformed_without_store(monkeypatch):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("malformed dry-run opened job store"))
+    with pytest.raises(Exception):
+        jobs_cli.run(["context", "submit", "--spec-json", "{}", "--dry-run"])
+
+
+def test_submit_dry_run_cli_preview_preserves_normalized_target(monkeypatch, capsys):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("dry-run opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("dry-run launched worker"))
+    assert cli.main(["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--confirm", "--dry-run"]) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert data["endpoint"] == {"base_url": "http://127.0.0.1:8000/v1", "model": "deepseek"}
+    assert data["ownership_id"] == "campaign-001"
+    assert data["worker"] == {"id": "benchmark-worker"}
+    assert data["suite_admission"]["request_controls"]["thinking_mode"] == "default"
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"thinking_mode": "bogus"}, "bad_thinking_mode"),
+    ("agentic", {
+        "thinking_mode": "enabled", "reasoning_effort": "max", "force_nonempty_content": True,
+    }, "conflicting_reasoning_controls"),
+    ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+])
+def test_submit_rejects_invalid_native_controls_before_store_or_launch(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert getattr(raised.value, "code", None) == code
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"thinking_mode": "bogus"}, "bad_thinking_mode"),
+    ("agentic", {
+        "thinking_mode": "enabled", "reasoning_effort": "max", "force_nonempty_content": True,
+    }, "conflicting_reasoning_controls"),
+    ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+])
+def test_mcp_submit_rejects_invalid_native_controls_before_store(monkeypatch, suite, parameters, code):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == code
+
+
+@pytest.mark.parametrize(("suite", "parameters"), [
+    ("context", {"thinking_mode": "enabled", "force_nonempty_content": True}),
+    ("agentic", {"thinking_mode": "enabled", "clear_thinking": True}),
+    ("swe", {"thinking_mode": "enabled", "clear_thinking": True}),
+    ("context", {"instance_ids": ["django__django-11099"]}),
+    ("agentic", {"instance_ids": ["django__django-11099"]}),
+    ("swe", {"case_ids": ["planning"]}),
+    ("swe", {"case_limit": 1}),
+])
+def test_submit_rejects_suite_incompatible_parameters_before_store_or_launch(
+    monkeypatch, suite, parameters,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("incompatible submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("incompatible submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert raised.value.code == "suite_incompatible_parameter"
+
+
+@pytest.mark.parametrize(("suite", "parameters"), [
+    ("context", {"force_nonempty_content": True}),
+    ("agentic", {"clear_thinking": True}),
+    ("swe", {"clear_thinking": True}),
+    ("context", {"instance_ids": ["django__django-11099"]}),
+    ("agentic", {"instance_ids": ["django__django-11099"]}),
+    ("swe", {"case_ids": ["planning"]}),
+    ("swe", {"case_limit": 1}),
+])
+def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
+    monkeypatch, suite, parameters,
+):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("incompatible MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "suite_incompatible_parameter"
+
+
+@pytest.mark.parametrize("parameters", [
+    {"identities": {"recipe": {}}},
+    _declared_identities(),
+    _declared_identities(model="spoofed-scalar"),
+])
+def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
+    monkeypatch, parameters,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run(["context", "submit", "--spec-json", _spec("context", parameters), *extra])
+        assert raised.value.code == "bad_identities"
+
+
+@pytest.mark.parametrize("parameters", [
+    {"identities": {"recipe": {}}},
+    _declared_identities(),
+    _declared_identities(model="spoofed-scalar"),
+])
+def test_mcp_submit_rejects_malformed_declared_identities_before_store(monkeypatch, parameters):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": "context", "spec_json": _spec("context", parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_identities"
+
+
+def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
+    path, rest, unknown, _siblings = cli._resolve(
+        ["eval", "benchmark", "context", "submit", "--spec-json", _spec(), "--dry-run"]
+    )
+    assert unknown is None
+    from anvil_serving import mcp
+    monkeypatch.setattr(mcp, "call_tool", lambda *_args, **_kwargs: pytest.fail("remote dry-run dispatched"))
+    with pytest.raises(cli.UsageError, match="--dry-run is not supported"):
+        cli._remote_arguments(path[-1], rest, confirmed=False)
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
+])
+def test_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store_or_launch(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert raised.value.code == code
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
+])
+def test_mcp_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == code

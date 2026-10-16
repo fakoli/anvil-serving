@@ -1,0 +1,16 @@
+{
+  "schema": "campaign-sampled-gpu-reserve/v1",
+  "sampling_ms": 200,
+  "source_sha256": "365e97807b0281298e1f409962ad0de892a53d0be7264c2a3a3c52c224bbc5a3",
+  "per_device": {
+    "GPU_UUID_REDACTED": {
+      "samples": 17164,
+      "minimum_free_mib": 1745.0,
+      "first": "2026/10/15 23:40:44.475",
+      "last": "2026/10/16 00:38:15.889"
+    }
+  },
+  "passed": null,
+  "policy": "Retained original historical waiver; challenger4096MiB gate not applied to exact restoration",
+  "limitation": "Between-sample behavior is not observed; original admitted to other callers"
+}

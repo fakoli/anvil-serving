@@ -1,0 +1,338 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-16-glm-v091-trial",
+    "capability": "LLM qualification",
+    "repository_revision": "4c8b73ed0e09c70f3b4015a675cc243c4d86949a",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "dirty_state": "Source clean at launch; campaign documentation and one CLI-gap ticket added after testing",
+    "started_at": "2026-10-16T05:13:17.935982+00:00",
+    "completed_at": "2026-10-16T07:56:28.851481+00:00"
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.agentic/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "multimodal-benchmark-evidence/v1",
+    "campaign-sampled-gpu-reserve/v1",
+    "recipe-container-status/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "2437ee02911a33b2ebde21a2d6a0720d9db16342c5404f642c03966c98da4e69",
+          "bytes": 1507
+        }
+      ],
+      "reason": "Human evidence map and claim boundary"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "ef0d548f00fff80d619e0a31ac8d70dd5f11937ea214ff7a7c9c7f66e2af806b",
+          "bytes": 1902
+        },
+        {
+          "path": "sanitization-provenance.json",
+          "sha256": "fcf6858ecc9df478d2040f0cbd3af5b31324e15d041dec85ef636170ab182a63",
+          "bytes": 3097
+        },
+        {
+          "path": "native/sanitization-map.json",
+          "sha256": "c9d9731e38e8e6c67037ac60a2ec3c75a15169a5df6be412bd52f4014826abc2",
+          "bytes": 12112
+        }
+      ],
+      "reason": "Dated upstream inputs and protected-source provenance"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-and-plan.md",
+          "sha256": "1bfeb9d5993ed62d2956f0fc59b091c645632742d5ef1ca419fe51e52539349c",
+          "bytes": 1517
+        }
+      ],
+      "reason": "Pinned workload, media and harness identities; native files retain fixture hashes"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-and-plan.md",
+          "sha256": "1bfeb9d5993ed62d2956f0fc59b091c645632742d5ef1ca419fe51e52539349c",
+          "bytes": 1517
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "adc1a8ba81b6baa2c29d2b38bc9984219be10c070aef7d999e6552b7d13a2874",
+          "bytes": 2410
+        },
+        {
+          "path": "matched-baseline-review.md",
+          "sha256": "2cdc37221f4c26663568ccf87ad2807392719182ea48c22b0d081456b89d6a1a",
+          "bytes": 1161
+        },
+        {
+          "path": "artifact-manifest-source.json",
+          "sha256": "886f720e05afefb8b6c3cab4b7537879c40bf4247a7ba84bd6d9a9ebfae0348a",
+          "bytes": 4888
+        }
+      ],
+      "reason": "Frozen gates, sequence and independently reviewed admitted-control boundary; shared references bind the same bytes"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-and-identity.md",
+          "sha256": "1eb6c08dacfca76ce5f981b2a76e97f9d23b740e21a86ab1aa102d493fafc256",
+          "bytes": 1752
+        }
+      ],
+      "reason": "Exact model/runtime, configuration and reconstruction boundary"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/baseline-disabled-thinking-preflight.json",
+          "sha256": "7e90dd64a686526762c3a47e369cf22020e2f56b0f83a0ea58220283be87cb72",
+          "bytes": 23336
+        },
+        {
+          "path": "native/candidate-disabled-thinking-preflight.json",
+          "sha256": "83d4e9a0f6211facfec946f3f32861fc9719dd939e3302b4d9f24ca3cf8b6449",
+          "bytes": 7722
+        },
+        {
+          "path": "native/gpu-reserve.json",
+          "sha256": "de9dbd8b6d5c7fe093bc0ea5874adbfaf46958020c93d41df37784c8db94f47b",
+          "bytes": 442
+        },
+        {
+          "path": "native/oracle-attempts.json",
+          "sha256": "b85ddd2b9a8c814a816ec37440eb4e4770b75e0c8067a464240b4626de688478",
+          "bytes": 3749
+        },
+        {
+          "path": "native/r1-final-absence.json",
+          "sha256": "40a20c352a476cf9ef0f1a81571417558332e62d501adf6085491979c4a8acb1",
+          "bytes": 1262
+        },
+        {
+          "path": "native/r1-oracle-t0-r1-native.json",
+          "sha256": "d20fdac1e47888e278700f25c4f850b8f08ceb0345cf7bb6f360fc656b0c495f",
+          "bytes": 37131
+        },
+        {
+          "path": "native/r1-oracle-t0-r2-native.json",
+          "sha256": "c9b8ec26dfaf1348968da9c2304641aa2dcb8aa41ea1df5e8a55ae78d95f04e7",
+          "bytes": 37184
+        },
+        {
+          "path": "native/r1-oracle-t0-r3-native.json",
+          "sha256": "53dafbb6055570b91b58adbb8c758c743d2875b13b0169f6cb2ddeb8db3a1189",
+          "bytes": 37224
+        },
+        {
+          "path": "native/r1-oracle-t1-native.json",
+          "sha256": "4f1e3c605f041b6954ff9113a913e404d6c8b57d4339a2c49598e97cbe059682",
+          "bytes": 37682
+        },
+        {
+          "path": "native/r1-preflight-full.json",
+          "sha256": "b68312ddcde6166f3b26dbe05cfc0c7611d66f3e28ac60ee20ffbc3083f97e2a",
+          "bytes": 10870
+        },
+        {
+          "path": "native/r1-swe-cancelled-native.json",
+          "sha256": "9f111ebf3db7af00e8df258951352a3f7b47527e34377541fe65b73a7eb13779",
+          "bytes": 3704
+        },
+        {
+          "path": "native/r1-t0-context-full.json",
+          "sha256": "4df6da7af3dd50be1e64597f83df1b89cecafadda51ceddb69ceede5edbc0150",
+          "bytes": 3091
+        },
+        {
+          "path": "native/r1-t0-vision-full.json",
+          "sha256": "36eb6ecd85ed84b7492e6c00bcd68d50ffe5960a01ee64588132e332428697ee",
+          "bytes": 43091
+        },
+        {
+          "path": "native/r2-context-full.json",
+          "sha256": "98372a6e5f80b73dffb2ffb8169705dbb4ee9058669a7432c88f1b6afe110953",
+          "bytes": 3092
+        },
+        {
+          "path": "native/r2-final-absence.json",
+          "sha256": "bf99a0f596e43dedfe55a903e538715560aa40333db91364723689a49912775a",
+          "bytes": 1262
+        },
+        {
+          "path": "native/r2-oracle-r1-native.json",
+          "sha256": "f7f8c51dea712b046ed9a11a46c84bec50d3c7d3ff0fab8004055d2079f0ef2a",
+          "bytes": 37197
+        },
+        {
+          "path": "native/r2-oracle-r2-native.json",
+          "sha256": "518f288b89dcc8c33dc176be02039465136f59e62ba4a538cf18f72a7a7c3937",
+          "bytes": 37068
+        },
+        {
+          "path": "native/r2-oracle-r3-native.json",
+          "sha256": "4cb2fcee5af8b255abb6f20f42dd65fd60835033b52afcbd716aa105f92d12bc",
+          "bytes": 37106
+        },
+        {
+          "path": "native/r2-preflight-full.json",
+          "sha256": "35ce221f3d72a055bf04cb4b4ec623b2beccbf7a866687b5915e51a7073882c1",
+          "bytes": 10888
+        },
+        {
+          "path": "native/r2-swe-native.json",
+          "sha256": "b82a27de1083593abbaddc5ee00fc24f720075bc7d9206d22b8ae7a7fe06fbcf",
+          "bytes": 31978
+        },
+        {
+          "path": "native/r2-vision-full.json",
+          "sha256": "7c2afe18e97498ba5581b285dab425ff6234c0e68aea98660b50896cea62067a",
+          "bytes": 43221
+        },
+        {
+          "path": "native/restoration-direct-preflight-full.json",
+          "sha256": "77710f076947ceebbda1467ae784acc2d042be17c6631bdf7d7faf74d678d519",
+          "bytes": 9992
+        },
+        {
+          "path": "native/restoration-pi-receipt.json",
+          "sha256": "f8a3acebf4dc8c3db87c2076bdc80a7a72588f498327d4c5dcd6e51fc5fd9188",
+          "bytes": 982
+        },
+        {
+          "path": "native/restoration-routed-preflight-full.json",
+          "sha256": "8e6aa35acfa9e099ded3baa0b5a85889551c5ca98eaa54d3db25c53db6e84142",
+          "bytes": 8938
+        },
+        {
+          "path": "native/restored-baseline-swe-native.json",
+          "sha256": "fd9f28c11d103fe9a28f11ebc279e0819648f28a3ef23dafe0ec9ec2420b40e5",
+          "bytes": 35592
+        },
+        {
+          "path": "native/restored-context-full.json",
+          "sha256": "6b7c83ee72fb9c18dac288268248378d8d72ceec696b64da856a796505913697",
+          "bytes": 2898
+        },
+        {
+          "path": "native/restored-control-final-status.json",
+          "sha256": "21280423033f28d57fe44ab75d7eadb75c64c64419e847eae078adca4e58d843",
+          "bytes": 1992
+        },
+        {
+          "path": "native/restored-gpu-reserve.json",
+          "sha256": "b37c768e3c5d52df18c2804a07de0287e2d53cde44a819eebc3b987374857827",
+          "bytes": 576
+        },
+        {
+          "path": "native/restored-oracle-r1-native.json",
+          "sha256": "1b87893d4f76b720de9bb38e00d9be2f78e287a8e9301aaf1c8a400fdd8ec45e",
+          "bytes": 37045
+        },
+        {
+          "path": "native/restored-oracle-r2-native.json",
+          "sha256": "926e79d04bc3aa9d62a752ffd6168a85d916c491633ab45015062de13406a4d9",
+          "bytes": 37017
+        },
+        {
+          "path": "native/restored-oracle-r3-native.json",
+          "sha256": "f2f31c94bfb7552d8e6cbddb54ff9406e4724a7413744b4b1b668e2fa7606e18",
+          "bytes": 37016
+        },
+        {
+          "path": "native/restored-vision-full.json",
+          "sha256": "b2c0a74ce62e678de071686b38b6efd8f975cb79f3eaa6d12caed9cd0d1b5791",
+          "bytes": 41182
+        },
+        {
+          "path": "native/router-primary-control-end.json",
+          "sha256": "b9fa3fd3143b3745bfe339e291b3ccd987609a5053312c92dbbe7d2ca964ce80",
+          "bytes": 1082
+        },
+        {
+          "path": "native/swe-evidence.json",
+          "sha256": "fc531d083deeb5848ce950189a35079fdb9509de3b918e2042d30575e14a8cba",
+          "bytes": 2447
+        }
+      ],
+      "reason": "Native preserved evidence plus explicitly labeled derivative summaries; duplicate views are not independent observations"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "3b48ac62e64f6d67fcb4d765553afb6caeb609cc35820d93230f028196c9564f",
+          "bytes": 2074
+        }
+      ],
+      "reason": "Failed configurations, policy stops and deferred CLI gap"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "2c41c4c95cf59f57637c31c6d86671879d6ed44ec25e5a0e36baf5838d78a2cf",
+          "bytes": 1115
+        }
+      ],
+      "reason": "Exact original restoration and post-run acceptance; supporting native artifacts retained in raw-run-evidence"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "46c8e213907c13ede58385868dcf710ecb8e63b31e71222e28da5628a57d0d8d",
+          "bytes": 3618
+        }
+      ],
+      "reason": "Bounded results and no-promotion decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No compact public communication or external post requested"
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

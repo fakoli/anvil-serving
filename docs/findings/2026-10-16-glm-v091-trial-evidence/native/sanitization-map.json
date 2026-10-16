@@ -1,0 +1,211 @@
+{
+  "schema": "anvil-serving.sanitization-map/v1",
+  "files": [
+    {
+      "path": "r1-preflight-full.json",
+      "source_path": "raw/candidate-native-preflight.json",
+      "source_sha256": "e6689941a2a602c731d094ad27fbdc10c8d9400c8a285819f1021d3c57b6ce08",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "r2-preflight-full.json",
+      "source_path": "raw/r2-native-preflight.json",
+      "source_sha256": "330371ec895bded1596ee425c3798690225e3c44a87d44807792f332942b2a5e",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "r1-t0-vision-full.json",
+      "source_path": "raw/candidate-t0-vision.json",
+      "source_sha256": "a10130be4ef8bd76207335d6404c0105feb06c5c5d03df4f660c97b6740af684",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "r2-vision-full.json",
+      "source_path": "raw/r2-t0-vision.json",
+      "source_sha256": "14e6060179d51be6dac5cd58154b87584b1c8cef2e4e221c579bca2745d79e27",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "restored-vision-full.json",
+      "source_path": "raw/restored-t0-vision.json",
+      "source_sha256": "2e48a00c977ebe6f61acbd1e686a7f2b7a011a77af104b2f034ded08a5364ec3",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "r1-t0-context-full.json",
+      "source_path": "raw/candidate-context-preflight.json",
+      "source_sha256": "150795063a1be02726ed904e08ea564d3577a9b833d8bd990f99a7665c394f5e",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "r2-context-full.json",
+      "source_path": "raw/r2-context-preflight.json",
+      "source_sha256": "c54f51a29a416dbac2d48c7b05b54a95d3c23b395609cf5cd7650d5532d58d0a",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "restored-context-full.json",
+      "source_path": "raw/restored-context-preflight.json",
+      "source_sha256": "65e22e4ca33ddf40e6dde6e8fe9866f13ce6925f29f5c119d354d3d14b1faf57",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, endpoint ports; native structure and observations retained"
+    },
+    {
+      "path": "restoration-direct-preflight-full.json",
+      "source_path": "raw/restored-native-preflight.json",
+      "source_sha256": "9fa508da5a655575ea15db16f235c864759d8aee5f8b3947db6173e785dfe0e3",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports; native structure retained"
+    },
+    {
+      "path": "restoration-routed-preflight-full.json",
+      "source_path": "raw/restored-routed-preflight.json",
+      "source_sha256": "5ffffc260b9378a726c29ac51ffe6fd098c09349cc8c8975d95d48090c32fde9",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports; native structure retained"
+    },
+    {
+      "path": "restoration-pi-receipt.json",
+      "source_path": "pi-acceptance/receipt.json",
+      "source_sha256": "279c2d6ff939a241316b824f1a8afff191705e410f7e72ecff96c6b5e7cb2e49",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports; native structure retained"
+    },
+    {
+      "path": "baseline-disabled-thinking-preflight.json",
+      "source_path": "raw/baseline-preflight.json",
+      "source_sha256": "b2edb7db9a36a11e4731c62a52ec4fb7fe729414c85f178e98a837b90bc816ac",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports; native structure retained"
+    },
+    {
+      "path": "candidate-disabled-thinking-preflight.json",
+      "source_path": "raw/candidate-disabled-preflight.json",
+      "source_sha256": "d620f96c9e991268634963c11605d7f9b14e00879b0ed96a9a0d410ab5b4741a",
+      "sanitization": "recursive replacement of private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports; native structure retained"
+    },
+    {
+      "path": "r1-oracle-t1-native.json",
+      "source_path": "raw/candidate-oracle8-r1-native-observations.json",
+      "source_sha256": "4f1e3c605f041b6954ff9113a913e404d6c8b57d4339a2c49598e97cbe059682",
+      "selection_path": "direct native agentic object",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r1-oracle-t0-r1-native.json",
+      "source_path": "raw/candidate-t0-oracle8-r1-observations.json",
+      "source_sha256": "4ee77f8e566bfa22fd224c6dec8330505565edd62f367ce9bd18f81a9a03f5f0",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r1-oracle-t0-r2-native.json",
+      "source_path": "raw/candidate-t0-oracle8-r2-observations.json",
+      "source_sha256": "673121e726734484616c3eeff71c0119cc75b96d0176893ae7321e6a381b7c8e",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r1-oracle-t0-r3-native.json",
+      "source_path": "raw/candidate-t0-oracle8-r3-observations.json",
+      "source_sha256": "41abab7bcac2e1412a0056f0fa0b30544182515497b10e12005fd0a2180fa45f",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r2-oracle-r1-native.json",
+      "source_path": "raw/r2-t0-oracle8-r1-native.json",
+      "source_sha256": "3f044f602702eeaf5a66d1e7c9429eaea5fcfcb2478b57d7695f0a35640556b1",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r2-oracle-r2-native.json",
+      "source_path": "raw/r2-t0-oracle8-r2-native.json",
+      "source_sha256": "2ff39bb27e7a5fcefe6cfd2fe915e5cc35288cf24d8692ea905b1dab6a15638c",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r2-oracle-r3-native.json",
+      "source_path": "raw/r2-t0-oracle8-r3-native.json",
+      "source_sha256": "6da425642ff740663acbfa1fe3003f77fc6f21b58878409eb6a78dd45efba247",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "restored-oracle-r1-native.json",
+      "source_path": "raw/restored-t0-oracle8-r1-native.json",
+      "source_sha256": "45e97ff6cc2174364f154977245aeb106b1ed26370367c8134d2d6502bd0e50a",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "restored-oracle-r2-native.json",
+      "source_path": "raw/restored-t0-oracle8-r2-native.json",
+      "source_sha256": "7199eefe4e8c1ad35a31c093ef4f56a48241286666bdc0f999ebdc165dde99bc",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "restored-oracle-r3-native.json",
+      "source_path": "raw/restored-t0-oracle8-r3-native.json",
+      "source_sha256": "b1de11bb08f2963196c7e8746539f36daca8c8486374a390ad2a7a3242e534be",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r2-swe-native.json",
+      "source_path": "raw/r2-t0-swe5-native.json",
+      "source_sha256": "c1bea8d34479f3e87bc851c03136aa7df75e20de15dbaf193dbe0d68afbf8d6a",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "r1-swe-cancelled-native.json",
+      "source_path": "raw/r1-swe5-partial-artifact.json",
+      "source_sha256": "5f6e06f2e28a94cf18c3fe959921b7e2e5c64d8b62ee0638d12ddf8d54c4f99d",
+      "selection_path": "outer.data JSON then .data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; native object retained"
+    },
+    {
+      "path": "restored-baseline-swe-native.json",
+      "source_path": "raw/restored-baseline-t0-swe5-native.json",
+      "source_sha256": "ac64804b0e5ae95479936779f4be6ea2d162b086dd562cd254b9e473dcb28b58",
+      "selected_native_sha256": "bd0bd81a5d67145c63b0e5e4d18dfcbe725c40e836486fe3c8202a46cfcd364f",
+      "selection_path": "outer.data JSON then .data.data",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    },
+    {
+      "path": "restored-control-final-status.json",
+      "source_path": "raw/restored-control-final-status.json",
+      "source_sha256": "c1b74eb66cb55fcce016e969ec77f8f58e3e030c74a7614c4f22520cf174442a",
+      "selection_path": "command envelope retained",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    },
+    {
+      "path": "r1-final-absence.json",
+      "source_path": "raw/r1-final-absence.json",
+      "source_sha256": "ee6bd6ee2d9af2efcea752a44536a4e4e2eddfb161d0c196539e43c433ebec54",
+      "selection_path": "command envelope retained",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    },
+    {
+      "path": "r2-final-absence.json",
+      "source_path": "raw/r2-final-absence.json",
+      "source_sha256": "c9f632832e13d4247d9b13041f77bbbde1a5b67af52c0249e69815596175f3e3",
+      "selection_path": "command envelope retained",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    },
+    {
+      "path": "restored-gpu-reserve.json",
+      "source_path": "raw/restored-gpu-reserve-summary.json",
+      "source_sha256": "dece46b5518ec26a7b71286eb527d048e9907471f77b856012215f71a3ab4f8c",
+      "selection_path": "direct native object",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    },
+    {
+      "path": "router-primary-control-end.json",
+      "source_path": "raw/router-primary-control-end.json",
+      "source_sha256": "b19cb93181a2b7a8ede69d8dd027945173ea088a9ab8aa3bd65ed753d5e639e1",
+      "selection_path": "command envelope retained",
+      "sanitization": "private paths, host IDs, GPU UUIDs, container IDs, and endpoint ports replaced; source structure retained"
+    }
+  ],
+  "additional_redaction": "Container fields, embedded with-ID runtime identifiers and temporary minisweagent names are redacted; public SHA256 values remain intact."
+}

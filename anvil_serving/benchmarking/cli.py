@@ -214,6 +214,14 @@ def main(
                          "disabled maps to chat_template_kwargs={'enable_thinking': False}; "
                          "enabled maps to {'enable_thinking': True}; unsupported records that "
                          "the serve has no supported thinking control.")
+    ap.add_argument(
+        "--force-nonempty-content",
+        action="store_true",
+        help=help_for(
+            "with enabled thinking, request a visible content field after reasoning",
+            "capacity",
+        ),
+    )
     ap.add_argument("--reasoning-effort", choices=REASONING_EFFORT_CHOICES,
                     default=None,
                     help="send the OpenAI-compatible reasoning_effort field for model families "
@@ -331,6 +339,7 @@ def main(
             "--recipe-status", "--recipe-model", "--seed", "--response-words",
             "--prompt-cache-mode", "--request-canaries", "--controlled-output-policy",
             "--clock-domain-id", "--configuration-fingerprint",
+            "--force-nonempty-content",
         },
     }
     if workload is not None:
@@ -398,11 +407,15 @@ def main(
     if not math.isfinite(a.eval_min_pass_rate) or not 0 < a.eval_min_pass_rate <= 1:
         ap.error("--eval-min-pass-rate must be greater than 0 and at most 1")
     explicit_thinking = a.no_thinking or a.thinking_mode not in (None, "default")
+    if a.no_thinking and a.thinking_mode not in (None, "default", "disabled"):
+        ap.error("--no-thinking conflicts with an explicit thinking mode")
     if a.reasoning_effort is not None and explicit_thinking:
         ap.error(
             "--reasoning-effort cannot be combined with --no-thinking or an explicit "
             "--thinking-mode"
         )
+    if a.force_nonempty_content and a.thinking_mode != "enabled":
+        ap.error("--force-nonempty-content requires --thinking-mode enabled")
     if a.temperature is not None and (
             not math.isfinite(a.temperature) or not 0 <= a.temperature <= 2):
         ap.error("--temperature must be finite and from 0 through 2")
@@ -944,6 +957,8 @@ def main(
             "no_thinking": bool(a.no_thinking),
             "thinking_mode": thinking["mode"],
             "reasoning_effort": reasoning_effort,
+            "chat_template_kwargs": ctk,
+            "force_nonempty_content": bool(a.force_nonempty_content),
         },
         "sampling": sampling,
         "timing_methodology": {

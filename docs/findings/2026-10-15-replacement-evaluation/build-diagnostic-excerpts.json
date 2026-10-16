@@ -1,0 +1,74 @@
+{
+  "schema": "replacement-build-diagnostic-excerpts/v1",
+  "scope": "Selected verbatim diagnostic lines; full build logs retained privately. Build and CPU checks do not qualify model quality or GPU correctness.",
+  "attempts": [
+    {
+      "attempt": "r1",
+      "native_artifact": "deepseek-build-r1.native.json",
+      "original_log_sha256": "194d025d649cdb4ff9b4dffb60f5810bae91c2a934dd7a93da81c6b3eff92dd2",
+      "diagnostic_excerpts": [
+        {
+          "line": 35,
+          "text": "#8 1.894 AssertionError: 2.14.0+cu130"
+        },
+        {
+          "line": 41,
+          "text": "1.894 AssertionError: 2.14.0+cu130"
+        },
+        {
+          "line": 50,
+          "text": "  30 | >>> assert torch.__version__.startswith(\"2.13.\"), torch.__version__"
+        }
+      ]
+    },
+    {
+      "attempt": "r2",
+      "native_artifact": "deepseek-build-r2.native.json",
+      "original_log_sha256": "10c220e6d037718ead9bf330ffb1303c9d5c539cda8e953ba177c2fa25849aed",
+      "diagnostic_excerpts": [
+        {
+          "line": 5833,
+          "text": "#15 681.2   Killed"
+        },
+        {
+          "line": 5835,
+          "text": "#15 686.0   ninja: build stopped: subcommand failed."
+        },
+        {
+          "line": 5897,
+          "text": "#15 686.3   error: subprocess-exited-with-error"
+        }
+      ]
+    },
+    {
+      "attempt": "r3",
+      "native_artifact": "deepseek-build-r3.native.json",
+      "original_log_sha256": "dcfdf3c094eb9a2953a2660ec509f8787076e4213fffd732a4fc30d8e132e70f",
+      "diagnostic_excerpts": [
+        {
+          "line": 16036,
+          "text": "#24 83.25 30 passed, 14 warnings in 81.28s (0:01:21)"
+        },
+        {
+          "line": 16042,
+          "text": "#25 0.144 ImportError: libc10.so: cannot open shared object file: No such file or directory"
+        },
+        {
+          "line": 16048,
+          "text": "0.144 ImportError: libc10.so: cannot open shared object file: No such file or directory"
+        }
+      ]
+    },
+    {
+      "attempt": "r4",
+      "native_artifact": "deepseek-build-r4.native.json",
+      "original_log_sha256": "611782e1b570236463519ee1a227e138758665c3ad1c0aebde407a3eab8fb708",
+      "diagnostic_excerpts": [
+        {
+          "line": 205,
+          "text": "#24 79.83 30 passed, 14 warnings in 77.91s (0:01:17)"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "campaign_id": "2026-10-15-replacement-full",
+  "observed_at": "2026-10-15",
+  "publication_state": "draft for campaign closure; DeepSeek evaluation, restoration and final independent disposition remain open; conditional promotion already authorized",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Control provenance only; it is not a quality or promotion prior.",
+      "evidence_type": "local-identity",
+      "hardware_runtime_relevance": "Pinned control checkpoint identity for the retained replacement evaluation.",
+      "id": "glm-incumbent-checkpoint",
+      "observed_at": "2026-10-15T14:23:00Z",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/brandonmusic/GLM-5.3-Flash-tr3-4bpw/tree/a5fee929cf4888b1824323e33e8a19b60129e025"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Documents checkpoint-recommended sampling; it does not establish local reliability or promotion.",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Pinned MiMo checkpoint guidance for the r4 and r5 profiles.",
+      "id": "mimo-checkpoint-model-card",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-MOPD/blob/b12f5573350bb1704513fcf119fca48e498b0423/README.md"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Source provenance only; the r5 result remains bounded by its recorded server configuration and campaign gates.",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Pinned checkpoint generation defaults used to distinguish the original r4 profile from the r5 server-default experiment.",
+      "id": "mimo-checkpoint-generation-config",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-MOPD/blob/b12f5573350bb1704513fcf119fca48e498b0423/generation_config.json"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Explains greedy normalization for a zero-temperature request; it is not an effective-request echo or a quality result.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Pinned vLLM sampling implementation for the MiMo r5 runtime.",
+      "id": "vllm-sampling-implementation",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/vllm-project/vllm/blob/eb87980585c10f7e5ee8f498fd3830898101d208/vllm/sampling_params.py"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Feasibility and configuration provenance only; configured context is not measured full-context coverage.",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Pinned source for the retained Mistral configuration with a configured 262144-token context.",
+      "id": "mistral-checkpoint",
+      "observed_at": "2026-10-15T14:23:00Z",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/mistralai/Mistral-Medium-3.5-128B/tree/22b2b868a15677cfa6061277ed2f653d1349a9ab"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Advisory compatibility provenance only; no numerical qualification follows from this source.",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Pinned official checkpoint source for the bounded SM120 compatibility branch.",
+      "id": "deepseek-official-checkpoint",
+      "observed_at": "2026-10-15T14:23:00Z",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/2cba9e42aa026125f3ed06c6d98c1db82f7ca027"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Advisory only; it cannot support qualification or promotion.",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Candidate quantization provenance for the bounded SM120 numerical-test plan.",
+      "id": "deepseek-exl3-quantization",
+      "observed_at": "2026-10-15T14:23:00Z",
+      "published_or_observed": "2026-10-15",
+      "url": "https://huggingface.co/sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw/tree/f7451e9617f675087881b5016fb210a526c7f99c"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Build provenance only; CPU import success and source pinning do not prove GPU numerical correctness.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Pinned vLLM source rebuilt for the SM120 runtime image.",
+      "id": "deepseek-vllm-source",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/vllm-project/vllm/tree/6e517b15c1833cf72a7f557ee32524d98682e617"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Build provenance only; the independently reviewed Stage 2 r6 native receipt accepts numerical runtime compatibility under the exact bound image, but this source does not support model quality, weight loading, TP2 serving, or promotion.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Pinned native-extension source rebuilt for the SM120 runtime image.",
+      "id": "deepseek-exllamav3-source",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/turboderp-org/exllamav3/tree/151539c77abc7ab7425d30da7a4e8e3c5c154e7b"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Build provenance only; no model-quality conclusion follows.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Pinned recipe-plugin source used by the bounded SM120 build.",
+      "id": "deepseek-recipe-source",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/sudoingX/dgx-spark-deepseek-v41/tree/cc59c3609e8e671418f39eb92aa16b0e4f770b77"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Supports the mount diagnosis only; it is not numerical-test evidence.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Defines the Linux no-execution mount flag relevant to loading JIT-built shared objects.",
+      "id": "moby-linux-mount-flags",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/moby/sys/blob/mount/v0.3.5/mount/flags_linux.go#L14-L20"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Supports explicit exec correction for reviewed JIT extensions; old effective mount was not retained, and unchanged numerical checks remain required.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Linux Docker user tmpfs setup seeds noexec,nosuid,nodev before merging requested options; retained exact source SHA256 e3f7dec471828614ad341a2eab02d790e9b817c518f83108bd496e56ce1ee842.",
+      "id": "moby-linux-tmpfs-defaults",
+      "observed_at": "2026-10-15T20:17:23.127003+00:00",
+      "published_or_observed": "2026-10-15T19:56:32Z",
+      "url": "https://github.com/moby/moby/blob/2c78eb06fa8edfcff7d11a5bc6c17ca9d194b36b/daemon/oci_linux.go#L525-L530"
+    },
+    {
+      "age_class": "current-campaign",
+      "decision_impact": "Supports the reviewed TRITON_CACHE_DIR override for the r4 read-only-root failure. The upstream pin is not the installed-image Triton revision; the independently reviewed fresh Stage 2 r6 receipt records the effective override, but does not establish model quality, weight loading, TP2 serving, or promotion.",
+      "evidence_type": "primary-source",
+      "hardware_runtime_relevance": "Pinned upstream Triton cache-location control reviewed in deepseek-stage2-triton-cache-audit; source pin e6f4c919fb18a99ed08f1cf3713ae15c686790d3. Retained audit copies: knobs.py SHA256 5d72c52e9d73a34d00a66773e3ff4069d8205768d07d57fe348d45a89942c76f and runtime/cache.py SHA256 e9a37eb81b28901620749be0479a37fade78cf9c5ff88605159e3e3c8c0a4666.",
+      "id": "triton-cache-control",
+      "observed_at": "2026-10-15",
+      "published_or_observed": "2026-10-15",
+      "url": "https://github.com/triton-lang/triton/blob/e6f4c919fb18a99ed08f1cf3713ae15c686790d3/python/triton/knobs.py"
+    }
+  ]
+}

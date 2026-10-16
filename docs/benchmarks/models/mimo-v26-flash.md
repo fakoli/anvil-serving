@@ -2,6 +2,8 @@
 
 <!-- benchmark-dossier/v2 -->
 
+**2026-10-15 MOPD replacement lanes:** r4 is a diagnostic historical-comparison lane and r5 did not clear the frozen coding gate. The completed campaign retained GLM; this adds no causal sampling, capacity, performance, route, or promotion claim. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
+
 ## Current status and review date
 
 **Status:** `not-qualified`, `no-promotion`. **Measured:** pinned `5711b268` on the LIL vLLM image passed direct preflight 25/25 and frozen SWE 4/5. Native agentic results were 15/18 at vendor sampling, 17/18 greedy, and 17/18 thinking-off, below the required 18/18 gate. **Limits:** configured 327,680 tokens, C4, and eight images were not measured as actual context, concurrent capacity, or multimodal acceptance. No performance result exists. **Evidence:** [2026-10-06 scout](../../findings/2026-10-06-mimo-qualification.md) and [sanitized raw artifacts](../../findings/artifacts/2026-10-06-mimo-qualification/README.md). The raw greedy capture shows the model itself emitted one parallel tool call and the parser preserved it; this is not parser-loss evidence. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete.

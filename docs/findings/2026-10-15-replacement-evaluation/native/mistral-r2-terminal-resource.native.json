@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.resource-candidate-outcome/v1",
+  "observed_at": "2026-10-15T19:10:01.637511+00:00",
+  "configuration": "mistral35-fp8kv-tp2-c4-262k-r2",
+  "protocol_passed": true,
+  "protocol_checks": 4,
+  "protocol_observations": 23,
+  "tool_calls_passed": 20,
+  "needle_prompt_tokens": 115586,
+  "configured_context_tokens": 262144,
+  "configured_concurrency": 4,
+  "startup_weights_gib_per_rank": 61.09,
+  "startup_kv_gib_per_rank": 27.84,
+  "startup_shared_cache_tokens": 331680,
+  "full_window_equivalents": 1.27,
+  "free_vram_mib_active_and_idle": [
+    3826,
+    3826
+  ],
+  "required_free_vram_mib": 4096,
+  "oom_events": 0,
+  "decision": "policy-infeasible;notphysicalOOMornumericalqualityfailure",
+  "managed_unload_and_absence_verified": true,
+  "superseding_resource_trial": "r3utilization0.94,allfreshqualityevidencerequired",
+  "promoted": false,
+  "caveats": [
+    "Startup warns uncalibratedq_scale/prob_scale1.0 withFP8attention; noqualityeffectquantified.",
+    "C4admissiondoesnotreservefourfull262Kwindows.",
+    "Configured262Knotfullytested;actualneedle115586tokensonly.",
+    "Nooracle8/SWEorfinalistbenchmarkattemptedforr2."
+  ]
+}

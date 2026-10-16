@@ -1,0 +1,18 @@
+{
+  "schema": "campaign-sampled-gpu-reserve/v1",
+  "sampling_ms": 200,
+  "required_free_mib": 4096,
+  "source_sha256": "6c6a4c0c6e75c300e9c43ad066b6e0a59215c8660bc9c43399f2f2eaa6b29a94",
+  "per_device": {
+    "gpu-0": {
+      "samples": 17291,
+      "minimum_free_mib": 4789
+    },
+    "gpu-1": {
+      "samples": 17291,
+      "minimum_free_mib": 5583
+    }
+  },
+  "passed": true,
+  "limitation": "Between-sample behavior is not observed."
+}

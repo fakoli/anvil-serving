@@ -530,6 +530,34 @@ Artifacts contain unsanitized host/GPU identity and belong in private storage.
 Capability flags, collective correctness and model qualification are separate
 gates; a passed probe never promotes a recipe or changes a route.
 
+## Bounded GPU numerical test job
+
+`host gpu-test` runs a reviewed private JSON contract in one temporary,
+digest-pinned image on one exact idle compute-only GPU. Preview reads the local
+image and device inventories but creates no container. Confirmed execution has
+no network, host mounts, host-environment inheritance, extra capabilities, or effective
+swap; it limits the job to 8 CPUs, 24 GiB RAM, 1,024 tasks, and 45 minutes. The runner checks
+every requested source hash inside the image before test collection, writes JUnit
+proof for pytest, requires zero selected skips, xpasses, errors, and failures,
+and requires explicit completion markers for standalone scripts. Its only
+application-writable filesystem is a bounded 4 GiB `/tmp` tmpfs with `nosuid`, `nodev`, and
+explicit `exec` for reviewed JIT extensions. It sets and reads back
+`TORCH_EXTENSIONS_DIR=/tmp/torch_extensions` and `TRITON_CACHE_DIR=/tmp/triton_cache`; the runner records and rejects an
+effective mount that is not executable tmpfs before CUDA use or test execution. It records
+the actual PID cgroup limit, current count, and saturation events before and after execution;
+any saturation event fails the receipt.
+
+```bash
+anvil-serving host gpu-test --spec /private/reviewed-gpu-job.json --output /private/gpu-test-receipt.json --dry-run
+anvil-serving host gpu-test --spec /private/reviewed-gpu-job.json --output /private/gpu-test-receipt.json --confirm
+```
+
+The spec and receipt contain private image, GPU, source, and test-path identity.
+Keep both outside the public product repository. A job deadline, command failure,
+source mismatch, missing collection, output truncation, or cleanup failure is a
+failed receipt. The temporary container carries an unpredictable ownership label
+and is removed only after that label is rechecked.
+
 ## GPU sharing
 
 Start with static, non-mutating inspection:

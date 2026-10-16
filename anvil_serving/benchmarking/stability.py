@@ -56,7 +56,7 @@ def validate_scenario(value):
                 "anchor_tokens", "contender_tokens", "anchor_max_tokens",
                 "contender_max_tokens", "rounds", "mode", "prefix_mode",
                 "timeout_seconds", "run_timeout_seconds", "managed_container"}
-    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature"}
+    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature", "top_p"}
     if not isinstance(value, dict) or not required <= value.keys() or value.keys() - required - optional:
         raise ValueError("scenario has missing or unknown fields")
     if value["schema"] != SCENARIO_SCHEMA:
@@ -109,6 +109,11 @@ def validate_scenario(value):
     temp = value.get("temperature", 0.0)
     if type(temp) not in (int, float) or not math.isfinite(temp) or not 0 <= temp <= 2:
         raise ValueError("temperature must be finite and between 0 and 2")
+    top_p = value.get("top_p")
+    if top_p is not None and (
+        type(top_p) not in (int, float) or not math.isfinite(top_p) or not 0 < top_p <= 1
+    ):
+        raise ValueError("top_p must be finite and between 0 (exclusive) and 1")
     return value
 
 
@@ -262,12 +267,18 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
 
         validation_failure = "protocol_error"
         try:
+            request_kwargs = {
+                "timeout": config["timeout_seconds"],
+                "chat_template_kwargs": config.get("chat_template_kwargs"),
+                "reasoning_effort": config.get("reasoning_effort"),
+                "temperature": config.get("temperature", 0.0),
+                "observer": observe,
+                "deadline_seconds": config["timeout_seconds"],
+            }
+            if "top_p" in config:
+                request_kwargs["top_p"] = config["top_p"]
             result = stream(config["base_url"], config["model"], prompt, key,
-                            config[role + "_max_tokens"], timeout=config["timeout_seconds"],
-                            chat_template_kwargs=config.get("chat_template_kwargs"),
-                            reasoning_effort=config.get("reasoning_effort"),
-                            temperature=config.get("temperature", 0.0), observer=observe,
-                            deadline_seconds=config["timeout_seconds"])
+                            config[role + "_max_tokens"], **request_kwargs)
             with lock:
                 row["result"] = result
             if (not isinstance(result, dict) or row.get("malformed_chunks")

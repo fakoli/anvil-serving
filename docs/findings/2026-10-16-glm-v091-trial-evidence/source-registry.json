@@ -1,0 +1,11 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-16-glm-v091-trial",
+  "observed_at": "2026-10-16T05:13:17Z",
+  "sources": [
+    {"id": "upstream-readme", "url": "https://github.com/tpurtell/glm-5.3-flash-ext3-2x-rtx/blob/0e4a5820cf1fde29a5fb6afc36a53e08760a9cbb/README.md", "published_or_observed": "2026-10-16", "age_class": "current campaign source", "evidence_type": "upstream-source", "hardware_runtime_relevance": "same quantization and dual SM120-class GPU layout", "decision_impact": "recipe lead only; local R2 quality gate remains decisive"},
+    {"id": "upstream-start", "url": "https://github.com/tpurtell/glm-5.3-flash-ext3-2x-rtx/blob/0e4a5820cf1fde29a5fb6afc36a53e08760a9cbb/start.sh", "published_or_observed": "2026-10-16", "age_class": "current campaign source", "evidence_type": "upstream-source", "hardware_runtime_relevance": "same quantization and dual SM120-class GPU layout", "decision_impact": "recipe lead only; no live configuration change follows"},
+    {"id": "v091-runtime-default", "url": "https://github.com/tpurtell/glm-5.3-flash-ext3-2x-rtx/blob/0e4a5820cf1fde29a5fb6afc36a53e08760a9cbb/benchmarks/v0.9.1/runtime-default.json", "published_or_observed": "2026-10-16", "age_class": "current campaign source", "evidence_type": "upstream-source", "hardware_runtime_relevance": "candidate runtime input", "decision_impact": "identifies the evaluated v0.9.1 configuration, not a qualification prior"},
+    {"id": "dcp1-patch", "url": "https://github.com/tpurtell/glm-5.3-flash-ext3-2x-rtx/blob/0e4a5820cf1fde29a5fb6afc36a53e08760a9cbb/patches/port-dcp1-kpool-tail-glm53.py", "published_or_observed": "2026-10-16", "age_class": "current campaign source", "evidence_type": "upstream-source", "hardware_runtime_relevance": "candidate runtime input", "decision_impact": "research provenance only; R2 failed the local replacement gate"}
+  ]
+}

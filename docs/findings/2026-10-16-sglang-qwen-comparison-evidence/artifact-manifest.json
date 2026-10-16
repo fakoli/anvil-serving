@@ -1,0 +1,374 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-16-sglang-qwen-comparison",
+    "capability": "local LLM and VLM replacement qualification",
+    "observed_date": "2026-10-16",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.stability/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "1046c47dcca8a09599abe334d9727caa12a9df59cd3e936e9ad95e85668bf2ec",
+          "bytes": 1537
+        }
+      ],
+      "reason": "Human-readable public-safe evidence map."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-source-ledger.json",
+          "sha256": "1ebf9d6cbe308c37cc10947582a5ac6d636564f52c5d3f1a05ad810885abc40e",
+          "bytes": 13549
+        },
+        {
+          "path": "nemotron-scout-source-ledger.json",
+          "sha256": "880dd1cc8c790e26293ebb5ddcdc22796f60906c214f3ab1cb9a18a32f088b56",
+          "bytes": 10394
+        },
+        {
+          "path": "qwen-scout-source-ledger.json",
+          "sha256": "298822f063576bb686f4a21881c84741b97374d7fe1423e69fb83ac28c69e98b",
+          "bytes": 6716
+        },
+        {
+          "path": "sglang-scout-source-ledger.json",
+          "sha256": "bc8849237bfd4f058cc723ecf5b2264cb6d35d6c8748bc69b8c3d453ae76a09c",
+          "bytes": 13957
+        },
+        {
+          "path": "source-registry.json",
+          "sha256": "71ef0b7fbe3050ebb33619bdc3663b27e688dd1a6c1b408f39b02ac5612175db",
+          "bytes": 5489
+        }
+      ],
+      "reason": "Dated source registry and source/projection ledgers."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "990264fbad24fa59a28836fe75310f4c8af13901c939f6d76e773dab53e706b1",
+          "bytes": 4196
+        }
+      ],
+      "reason": "Frozen workload controls."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "2bec30f678deda4adae5baa8bba44ee639978e893dca833e49f3de37a6235179",
+          "bytes": 2055
+        }
+      ],
+      "reason": "Frozen plan and explicit stop conditions."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "baseline-public-configuration.json",
+          "sha256": "f153452ec57b044b6c829634e9a7ba3765557e5f3751c2829461ca472e67baf0",
+          "bytes": 2129
+        },
+        {
+          "path": "nemotron-scout-public-configuration.json",
+          "sha256": "0adea797fbf740cfe1b4ab10aa68308237fdb384e28c5f6b3f16e48170119e35",
+          "bytes": 4045
+        },
+        {
+          "path": "nemotron-scout-sanitization-provenance.json",
+          "sha256": "85b655629936b33284131ae85ea2db9a2ff880371fdcbf5fcf135bd93a8cf802",
+          "bytes": 1512
+        },
+        {
+          "path": "qwen-scout-public-configuration.json",
+          "sha256": "c4026ce309ea3a0c2a0f219b207ab2566230677ba590d8924f289c6fd98066ba",
+          "bytes": 2575
+        },
+        {
+          "path": "qwen-scout-sanitization-provenance.json",
+          "sha256": "f22f39766ca67956af10d9f9dd25b1e072083fe6c5da740cd8f3cfff23a4466d",
+          "bytes": 1676
+        },
+        {
+          "path": "sanitization-provenance.json",
+          "sha256": "531b96a18984076fc8d8bb94c43e66fc77ba6cf8be1d624f3001e646be6827c8",
+          "bytes": 1717
+        },
+        {
+          "path": "sglang-scout-public-configuration.json",
+          "sha256": "4a394e03c974dd5e48702ecc444901c0245174d3feb2375859757730bbb0f240",
+          "bytes": 4091
+        },
+        {
+          "path": "sglang-scout-sanitization-provenance.json",
+          "sha256": "b6cf6a9af1d21a67de5e370add13640b1fface87c051b5e79346d022e3a080e3",
+          "bytes": 1973
+        }
+      ],
+      "reason": "Public-safe identity and redaction bindings."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/baseline-capacity-c1-r1.json",
+          "sha256": "270e7091a327046b8a4e37fe0c0eb189447cf62116051f1da86ebec3fab68ea2",
+          "bytes": 18715
+        },
+        {
+          "path": "native/baseline-context.json",
+          "sha256": "8d226f83811b832c231c0288d8e5a0614d71633999e5b1bd96dee042923d2fd4",
+          "bytes": 2088
+        },
+        {
+          "path": "native/baseline-oracle8-r1.json",
+          "sha256": "cdcceceb2b8e97ec82c6f5d7db05601095a4f708185b0d83f41636220d753e88",
+          "bytes": 33327
+        },
+        {
+          "path": "native/baseline-oracle8-r2.json",
+          "sha256": "8cae56e1f2c9c428f303dfbb0b3f1a3982fe2ba64566753b42021465f745ae30",
+          "bytes": 33323
+        },
+        {
+          "path": "native/baseline-oracle8-r3.json",
+          "sha256": "f052beba6bd3eb4de69dad91e7942a400f6a796e80f50a7df61a4ddab24b7235",
+          "bytes": 33322
+        },
+        {
+          "path": "native/baseline-preflight.json",
+          "sha256": "e20bb20f635defdeb921a15433f7ad95dc18103684de96ffca436728344137eb",
+          "bytes": 15545
+        },
+        {
+          "path": "native/baseline-stability-r2.json",
+          "sha256": "cd56e013c1c81d0412a91074636bc882f47e3a5895da84e2791c716c1f66ff57",
+          "bytes": 16081
+        },
+        {
+          "path": "native/baseline-swe5.json",
+          "sha256": "932445c37c7fba10108b1c197aec596af0edbf37041e730b74956989d372544b",
+          "bytes": 25031
+        },
+        {
+          "path": "native/baseline-vision18.json",
+          "sha256": "0fa471197bdd5788c74837bc481d53ca5123abdb6eddbb6f55ace0a7c34dd722",
+          "bytes": 36685
+        },
+        {
+          "path": "native/nemotron-scout-r2-capacity-c1-r1.json",
+          "sha256": "6847121ac1cf0882ac7ff364074ac9bf7435ce10d2811b8ac7c60b877a70fcda",
+          "bytes": 20657
+        },
+        {
+          "path": "native/nemotron-scout-r2-context-c1.json",
+          "sha256": "d0cb519471992486a6771f11a8549fd707e42171c48f3615758b3eee8f152d6a",
+          "bytes": 2249
+        },
+        {
+          "path": "native/nemotron-scout-r2-final-resource-summary.json",
+          "sha256": "9f82896942afcc331e3331175c1c1025cde3b2155335c9c2617f440b21b918e2",
+          "bytes": 892
+        },
+        {
+          "path": "native/nemotron-scout-r2-oracle8-r1.json",
+          "sha256": "247242a9c55fb4b5094b0b60f334c21b741fda3aa0a4e0aae4a889b0119f5578",
+          "bytes": 39644
+        },
+        {
+          "path": "native/nemotron-scout-r2-oracle8-r2.json",
+          "sha256": "299aa7015fdbb5fecf50ccf2349bbb76423ed831f9ab690e031ae099ee71fb14",
+          "bytes": 34477
+        },
+        {
+          "path": "native/nemotron-scout-r2-oracle8-r3.json",
+          "sha256": "72c4dcf68b1381898ca8389fe72f4519ce81b6c9a8f30e312b57593b814d6e34",
+          "bytes": 36636
+        },
+        {
+          "path": "native/nemotron-scout-r2-preflight.json",
+          "sha256": "4ffce9683e81f34b4104a3d4d394384f63920ae8f37505ff0903ef79b8d8db54",
+          "bytes": 16516
+        },
+        {
+          "path": "native/nemotron-scout-r2-swe5.json",
+          "sha256": "822de323ccf3a893d23e132922b2346c36fc37eb944678bad6dd66d734bf30b2",
+          "bytes": 34622
+        },
+        {
+          "path": "native/nemotron-scout-r2-vision18-c1.json",
+          "sha256": "84b071d547ef86915f9aa9fab09b20691be3ec7d7d66b8efef41aa19b6bb8845",
+          "bytes": 38643
+        },
+        {
+          "path": "native/qwen-scout-r2-admission-failure.json",
+          "sha256": "e676ba81d3a09f48fc3c325298a5414c6e7814f212d9ab299af2c47bd7cf7a33",
+          "bytes": 409
+        },
+        {
+          "path": "native/qwen-scout-r3-oracle8-r1.json",
+          "sha256": "3237ccdf88cd500b81568b800776c3b2e78193d333ef07acf50a829a3d3550d1",
+          "bytes": 33608
+        },
+        {
+          "path": "native/qwen-scout-r3-oracle8-r2.json",
+          "sha256": "1c019bc9acc46d3ff05122bb20e5be8564442dc193c0d678ef9082308f0d6b51",
+          "bytes": 33610
+        },
+        {
+          "path": "native/qwen-scout-r3-oracle8-r3.json",
+          "sha256": "ad55313bf5a58a4f3ccff32f06fd96deb44a0d02e53d8098f5a5e7bc8eed9bd7",
+          "bytes": 33611
+        },
+        {
+          "path": "native/qwen-scout-r3-preflight.json",
+          "sha256": "f391d7485baceb914080e31a7b4a91f4abb2027a5cedaae8a683c79d98b4df9f",
+          "bytes": 20417
+        },
+        {
+          "path": "native/qwen-scout-r3-runtime-template.json",
+          "sha256": "32c641b15952d2cffc67d1721e3bbc8e9f88470c6adfefeff6d12b60abbc6dd1",
+          "bytes": 578
+        },
+        {
+          "path": "native/qwen-scout-r3-startup-gates.json",
+          "sha256": "6d296c9a4a81ef6cec2bec1de93b9fef2759424416bf478b07c46cd686958a76",
+          "bytes": 1756
+        },
+        {
+          "path": "native/qwen-scout-swe5.json",
+          "sha256": "3dc76790bd6e405a4c91d7b3f1926ab88283a294ddcbc80a1b9477199df6dcf0",
+          "bytes": 36684
+        },
+        {
+          "path": "native/sglang-scout-mhc-parity.json",
+          "sha256": "bc4b9e37c86f2c2985a5405a8880ce6774406b6fe3241fceab94c9d24fe200be",
+          "bytes": 1357
+        },
+        {
+          "path": "native/sglang-scout-mhc-runtime-source.json",
+          "sha256": "b3b5e97013819da23bddd65948b434383aa3075103b574f561678d528f406ba2",
+          "bytes": 466
+        },
+        {
+          "path": "native/sglang-scout-oracle8-r1.json",
+          "sha256": "0073dd4f91177f908245c2ea9ca4059655829b6634601625e7c8c5f31a4e99a0",
+          "bytes": 33563
+        },
+        {
+          "path": "native/sglang-scout-oracle8-r2.json",
+          "sha256": "f701555132ed246ba2a5ac471c9fd6552daa4374e6ba466429558893d47a07c5",
+          "bytes": 33559
+        },
+        {
+          "path": "native/sglang-scout-oracle8-r3.json",
+          "sha256": "7c50cc24697f16b5b8ed91b48038439d288391f4a63fc2e0e2fd80b889946a1e",
+          "bytes": 33562
+        },
+        {
+          "path": "native/sglang-scout-preflight.json",
+          "sha256": "bd0d494e6c72856dcff45fba76ec536c305e6af2fbec8eb09529ea0300e321e9",
+          "bytes": 17167
+        },
+        {
+          "path": "native/sglang-scout-r1-host-ram-policy-failure.json",
+          "sha256": "4e5128c1a88d71811317dc6ec545802c0bb16d666ca1a5e8d704cb6b613f5834",
+          "bytes": 154
+        },
+        {
+          "path": "native/sglang-scout-r2-gpu-reserve-abort.json",
+          "sha256": "0d6a2210c3e5354d32fbf2708bbd504f4e254cc0115ebe674c8d3c249e136066",
+          "bytes": 717
+        },
+        {
+          "path": "native/sglang-scout-startup-acceptance.json",
+          "sha256": "e8ce3d37cc5cc203cb1c93056a0ed4069a07c580884988eca9cecb3aa73aef5c",
+          "bytes": 310
+        },
+        {
+          "path": "native/sglang-scout-swe5.json",
+          "sha256": "4847c30f6a2c2359d511579d06d9695ba4bbdb1a1f8f4f79334e12e4d65913eb",
+          "bytes": 36526
+        }
+      ],
+      "reason": "Schema-native public projections, including failed and partial runs."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "75ead3afaa8a299336aa93202caef2342981aaee743f6d88b33cb17cc69592a9",
+          "bytes": 2593
+        }
+      ],
+      "reason": "Failure, stop, and source-validation dispositions."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "5e9f490d170f6c969ee25f71ec09e0ace061726ada020ff0413d3509f8271ddb",
+          "bytes": 1337
+        }
+      ],
+      "reason": "Final public-safe incumbent restoration receipt."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "acccc2a2d797370c4ba4e9e965890c8f5d545dec607d8f7b3b3bb866aba1c469",
+          "bytes": 1766
+        }
+      ],
+      "reason": "Derived no-promotion decision summary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate compact external publication was requested; the dated finding carries the required result card."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

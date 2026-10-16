@@ -1,0 +1,90 @@
+{
+  "base_url": "http://127.0.0.1:30000/v1",
+  "budget": {
+    "max_completion_tokens": 4608,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "needle",
+    "long-tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-baseline",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "",
+      "content_chars": 18,
+      "content_excerpt": "",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 609,
+      "reasoning_excerpt": "",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 40.238,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 166,
+        "prompt_tokens": 216307,
+        "prompt_tokens_details": null,
+        "total_tokens": 216473
+      },
+      "validation_detail": ""
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "measured_prompt_tokens": 110760,
+      "minimum_prompt_tokens": 100000,
+      "passed": true,
+      "reasoning_chars": 271,
+      "reasoning_excerpt": "",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "requested_context_tokens": 131072,
+      "seconds": 20.211,
+      "test": "long-tools",
+      "usage": {
+        "completion_tokens": 70,
+        "prompt_tokens": 110760,
+        "prompt_tokens_details": null,
+        "total_tokens": 110830
+      },
+      "validation_detail": ""
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "",
+      "name": "needle @ ~262144 ctx",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "tool call after >=100K prompt (target 131072)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

@@ -1,0 +1,12 @@
+# Request-to-evidence coverage
+
+| Requested outcome | Retained evidence | Status | Claim allowed | Gap |
+|---|---|---|---|---|
+| R1/R2 functional checks | [native preflight](native/r2-preflight-full.json) | covered | R2 native preflight passed 6/6 | none |
+| disabled-thinking support | [baseline failure](native/baseline-disabled-thinking-preflight.json), [candidate failure](native/candidate-disabled-thinking-preflight.json) | rejected | default/max thinking is the matched operating mode | both profiles leaked reasoning into strict visible-output checks |
+| Oracle | [R2 native rounds](native/r2-oracle-r1-native.json), [restored native rounds](native/restored-oracle-r1-native.json) | covered | R2 and fresh restored-original controls both passed 54/54 across three rounds; R1 failed strict 17/18 | no causal or performance comparison |
+| vision and context | [R2 vision](native/r2-vision-full.json), [restored vision](native/restored-vision-full.json), [R2 context](native/r2-context-full.json), [restored context](native/restored-context-full.json) | covered | R2 and fresh restored-original controls passed vision 18/18 and separate retrieval/tool-context probes at 216307/110760 actual tokens | no full-window C4 claim |
+| coding quality | [R2 native SWE](native/r2-swe-native.json), [restored native SWE](native/restored-baseline-swe-native.json), [independent control review](matched-baseline-review.md) | rejected | R2 and restored original each resolved 3/5, below the 4/5 gate | matching resolved cases do not establish equivalent detailed grader failures |
+| reserve | [R2 sampled reserve](native/gpu-reserve.json), [restored telemetry](native/restored-gpu-reserve.json) | covered for R2 only | R2 sampled minimum free VRAM stayed above its 4096 MiB challenger gate | 200 ms sampling only; restored original minimum was 1725/1745 MiB under its retained historical waiver and is not assessed against the challenger gate |
+| capacity, stability, DFlash, performance | none | not run | none | coding gate failed |
+| exact restoration | [restoration](restoration.json), [final status](native/restored-control-final-status.json), [primary router receipt](native/router-primary-control-end.json) | covered | exact incumbent identity, direct/routed 6/6 acceptance, zero OOM, and primary router readmission restored | separate secondary tier remained unavailable; it is not a primary-control failure |

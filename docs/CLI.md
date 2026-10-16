@@ -133,7 +133,7 @@ required operands, choices, and defaults.
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
 | `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--cache-dir`<br>`--hf-executable`<br>`--evidence-out`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token`<br>`--headroom-gib`<br>`--xet`<br>`--volume`<br>`--image`<br>`--expected-bytes` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--cache-dir`<br>`--hf-executable`<br>`--evidence-out`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token`<br>`--headroom-gib`<br>`--xet`<br>`--volume`<br>`--image`<br>`--expected-bytes`<br>`--memory-mib`<br>`--memory-swap-mib` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
@@ -246,6 +246,7 @@ required operands, choices, and defaults.
 | `eval benchmark swe` | Run pinned repository problem-solving benchmarks. | `read` / `bounded` | `--profile`<br>`--observed-context` |
 | `eval benchmark swe prepare` | Prepare digest-pinned swe harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
 | `eval benchmark swe assets` | Inspect prepared swe harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark swe images` | Preview or prepare only the frozen SWE task images from one job specification. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec`<br>`--worker`<br>`--min-free-bytes` |
 | `eval benchmark swe cleanup` | Clean only the owned work directory for a swe benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
 | `eval benchmark swe preflight` | Validate the endpoint and worker for a swe benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
 | `eval benchmark swe submit` | Submit a durable swe benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
@@ -363,6 +364,7 @@ required operands, choices, and defaults.
 | `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | - |
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host nccl` | Check two-rank NCCL correctness and transport in a pinned local image. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--image`<br>`--gpu-uuid`<br>`--p2p`<br>`--cumem`<br>`--max-mib`<br>`--iterations`<br>`--timeout`<br>`--output` |
+| `host gpu-test` | Run reviewed numerical tests in one bounded digest-pinned GPU container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--spec`<br>`--output` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
 | `host native-memory-containment` | Prepare or explicitly execute a bounded self-only fatal-memory canary. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--prepare`<br>`--execute`<br>`--allow-privileged-probe`<br>`--expected-binary-sha256`<br>`--output` |
 | `host native-memory-probe` | Probe bounded Metal allocation accounting without loading a model. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--output` |

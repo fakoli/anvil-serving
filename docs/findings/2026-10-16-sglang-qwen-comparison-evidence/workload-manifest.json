@@ -1,0 +1,110 @@
+{
+  "campaign_id": "2026-10-16-sglang-qwen-comparison",
+  "capacity": {
+    "applicability": {
+      "GLM_and_Qwen": "C1 and C4 are planned only after their stated predecessor gates.",
+      "Nemotron_C4_successor": "separately pending a measured successor that changes max-running-requests; no C4 result is implied.",
+      "Nemotron_prepared_arm": "C1 only with no speculation; C4 is not runnable for this arm."
+    },
+    "campaign_concurrencies": [
+      1,
+      4
+    ],
+    "controlled_output_policy": "strict",
+    "ctx_tokens": 32000,
+    "max_tokens": 4096,
+    "prompt_cache_mode": "unique",
+    "repetitions": 3,
+    "request_canaries": true,
+    "requests_per_cell": 4,
+    "response_words": 128,
+    "seed": 41,
+    "timeout_seconds": 300
+  },
+  "comparison_envelope": {
+    "configured_context_tokens": 262144,
+    "distinction": "The larger incumbent native ceiling is a separately retained capability, not a matched-challenger advantage. Endpoint-tokenized actual prompt counts may differ by tokenizer.",
+    "incumbent_native_context_tokens": 327680
+  },
+  "context": {
+    "checks": [
+      "needle",
+      "long-tools"
+    ],
+    "configured_context_tokens": 262144,
+    "output_budget": {
+      "reasoning_headroom_tokens": 4096,
+      "visible_answer_tokens": 512
+    },
+    "prior_glm_actual_prompt_tokens": {
+      "long_tools": 110760,
+      "needle": 216307
+    },
+    "rule": "Actual endpoint prompt tokens are recorded; prior counts are regression references, not cross-tokenizer equality requirements.",
+    "targets": {
+      "long_tools_context_tokens": 131072,
+      "needle_context_tokens": 262144,
+      "timeout_seconds": 600
+    }
+  },
+  "preflight_and_oracle": {
+    "deterministic_gate": "100% required",
+    "oracle_and_swe_native_sampling": {
+      "GLM": "temperature 0.0, top_p 0.95, default thinking, max effort",
+      "Nemotron": "documented enabled-thinking native policy; exact request controls remain declared per frozen job",
+      "Qwen": "thinking enabled with effort omitted; pinned template default xhigh; temperature 1.0, top_p 0.95, native generation default top_k 20",
+      "scope": "Model-native policies are recorded as confounders and are not pooled into one sampling setting."
+    },
+    "oracle_attempts_per_round": 18,
+    "oracle_rounds": 3,
+    "oracle_total_attempts": 54,
+    "preflight_and_context_sampling": {
+      "scope": "Fixed preflight/context request path; this is separate from model-native Oracle, SWE, vision, capacity, and stability policies.",
+      "temperature": 0.0,
+      "top_p": "omitted"
+    },
+    "preflight_checks": [
+      "smoke",
+      "json",
+      "tools",
+      "streaming-tools",
+      "tool-result",
+      "responses"
+    ]
+  },
+  "schema": "anvil-serving.public-workload-manifest/v1",
+  "stability": {
+    "anchor_max_tokens": 9216,
+    "anchor_tokens": 175000,
+    "contender_max_tokens": 9216,
+    "contender_tokens": 32000,
+    "interpretation": "bounded retrieval/mixed-load diagnostic; not capacity or intelligence score.",
+    "mode": "overlap",
+    "prefix_mode": "unique",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "timeout_seconds": 600
+  },
+  "status": "frozen plan/support record; no result is asserted",
+  "swe5": {
+    "coding_gate": "at least 4 resolved of 5 attempted and no worse than fresh baseline",
+    "dataset_and_grader": "pinned independent SWE dataset/grader revisions retained privately",
+    "instances": "five frozen benchmark instances; identifiers and prompts are intentionally not public in this draft",
+    "max_agent_steps": 60,
+    "max_output_tokens": 16384,
+    "timeout_seconds": 21600,
+    "tool_budget": "frozen harness budget"
+  },
+  "unknowns": [
+    "No result is inferred from this workload record. Tokenizer calibration, request-format, and controlled-output failures require their own classification."
+  ],
+  "vision18": {
+    "corpus": "immutable hashed 8-image fixture corpus retained privately",
+    "corpus_sha256": "cc7eb79f04d7fb79531ceaf0286866446c3e6b2d0951907291d6eaca1b766431",
+    "expected_attempts": 18,
+    "max_images_per_request": 8,
+    "max_tokens": 8192,
+    "max_videos_per_request": 1,
+    "timeout_seconds": 300
+  }
+}

@@ -1,0 +1,699 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-16T12:05:23.400501Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": ""
+  },
+  "endpoint": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "qwen38-nvidia-fp4-local-scout"
+  },
+  "failure": {
+    "class": "model_failure",
+    "code": "swe_limits_exceeded",
+    "stage": "agent"
+  },
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "91f4c167ea6f42a331c18b615976ca653978236da44945562ed5bd2b7528974e",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "dc65918e6d77f4472e7d2da8763421829d9ee34399cd46b52d663328f975f0e0",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "c4c3eeeb2ffe2a3d8b035ecf00b8a60d40d8d97028c43a5b505feeecdae63f3a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:ea096378e3f7d2cd9c858a42c202755857befe21a2956b6f94fe3d3d48127f84",
+        "redacted:sha256:36a23c63abf70a17919fbded862526dff38e1ea2a160862a29392350412eac2c",
+        "redacted:sha256:fa850f886ce62e512a231e5c45bfdc4be8d06c0132368a744283d5055999b64a",
+        "redacted:sha256:3082225eba619d66a6236a8dcb53a6a2d54a97c08be51766a7982a9fd355d096",
+        "redacted:sha256:4d350fdd6a6d0a71e457b91b403d22018e45f7d29522521869bb62dca3dc89d6",
+        "redacted:sha256:3dc20005aa1beb2e95164b08b57ebc687738d91b4670cf0861afec79d7ad7875",
+        "redacted:sha256:b88a7cb37270a2b9f97c6b251070eafd998e976fb3a13c80af81bfccb4b96979",
+        "redacted:sha256:cb19757d4a119a14432c134d7373a9a6499a524d31eba25c61cc015301f899bd",
+        "redacted:sha256:f111ea9b74ab868ef503c8b1267b0780acc323695203752f79640b9dddeac281",
+        "redacted:sha256:8cc068d9ec3ea6f09f3e7995ccfe505a237b8fffd48cea15c6310fa8189100c3",
+        "redacted:sha256:f554e0d36afa728f02346d91da019d3f1ec836ecb2089daf3cd48612c9b8610f",
+        "redacted:sha256:5e514f856a9a4382bb9f01cac4c595112eb25f4fccb8f7a5b2382876a665ffbd",
+        "redacted:sha256:96c9d3feec136f150155bf324f51ee99b2be34ed902816e42460d93d57224b70",
+        "redacted:sha256:92f4ebaebd0f76964ed925917d54ec5fae650087f4a143446047596bdeee5486",
+        "redacted:sha256:f6cbaf7c21b8cb6e85a1fa401a45890516187a59ea8abf37d3b1f4959567a22c",
+        "redacted:sha256:1349751d1ff42c56f5b9258f09e42526ef988cb9123a94106b06152e0a2286c6",
+        "redacted:sha256:ad97b629179cd7adf03f41be98b67ff84c8d1ee40fb50e86b8c7df157af38704",
+        "redacted:sha256:06fc3f805ebac1516c42dcbfab9d0e94047b651b9e3582944840c7624925f8d5",
+        "redacted:sha256:8350927431da29e94f9862571c5e89ff4a8110f406df062bbbf69a7c54aac2c9",
+        "redacted:sha256:9493cd65363321406660e53ea468fe145b40582c6f6e40ab270d5bb3d88707b8",
+        "redacted:sha256:0c3ce4b7b17619e047669e01d27e966df6fc35e33cbc683077454b3d032ae171",
+        "redacted:sha256:be65794be1e37a828c7f6537dacddcd4c5a94ee30d42b721b6899c1f3f04b3aa",
+        "redacted:sha256:06b22a3dabd18d187495910b494a0d6f2e475f77a7c597caac22edafe7ba09f1",
+        "redacted:sha256:a73bc409466df84e94a4ab8834f577241b6d3e20807ec1317557381cbac64faf",
+        "redacted:sha256:b08922c0b09ef228bf37489231b3a598239bc385f88d41775dd3c3a1d1cb2729",
+        "redacted:sha256:1f4037874ce5656b723f5bd665bb2fa81a1537fa15fd203c29dacd0b981a4839",
+        "redacted:sha256:656728337a90ebc78fb43478aa9affb9fa551579881e531e913b14eb26bae6f0",
+        "redacted:sha256:d6d3590a39948e79efb585316e25c6069cd56e39fd9b2deb8116f85428fe9d4f",
+        "redacted:sha256:461ce38ee9fe9f301c585adf0051b5a5e07778b5e38fd9a0ce8cd991c8479500",
+        "redacted:sha256:e67bf73bf0df08c5aab447ccad501a8fb3667fd99d13942eefedd2f19f4d3131",
+        "redacted:sha256:b96232be5d69aa622de1346bfd91ae86b165959d4336f4fcd189fe9b744f86af",
+        "redacted:sha256:40f261cddead92e2d50e3d10f377b39bfc613358fc1556ade0fdf52c7dd58378",
+        "redacted:sha256:4d26ab2ac56ca224c35dcb60981df9b76e414edb56d0d246f75cf2166a936541",
+        "redacted:sha256:aed7034fbaa503d0af82d6be81cfb2a605115681dea5640203b0806642cf2f8e",
+        "redacted:sha256:64b30b54a61a24893dced6454dc061705d9a8e25a8b2a51f97fc56e05f06684e",
+        "redacted:sha256:c6d59b84b750614d886270f2c7f54a91e28e0c945b1b6d22fc00a70c72b4e678",
+        "redacted:sha256:4e58cdd3ff349e5fbf0a1ee6940a1d5fc141ee5e22782fd36e66e4f326c56a81",
+        "redacted:sha256:d13dd45728a830885a81cd06153bf3bc1dfb5dd64fc0d86e16633cc5b4bc6fa6",
+        "redacted:sha256:c0beb4c5d74d4d7c7b6b0348666ae374c3e4c7f54a1cb15736411e50dbe7b729",
+        "redacted:sha256:5bba6c9fb25e343c078999eb1dec82fb212d594e06297439dd87b89e60a8602a",
+        "redacted:sha256:c977cf424053201d3d3e8a97deff5b4f02e62accb178b55f2b4b36ef2dc0ca29",
+        "redacted:sha256:28e7d59aca995acc90ea1707c59c13cabb38a51680aead632331797ac7c392ba",
+        "redacted:sha256:2dfc01e9c9ce7fc04fedb580d72b3538ea5d9622c9820767f6d62f14b8619998",
+        "redacted:sha256:92478a80928d06328931bfb6d9af6d346d27a452567542e546f58944250ff7f4",
+        "redacted:sha256:42c5481fe1d4ee607fb462e80722333718298b9b767b2aeff94ca78e980f106c",
+        "redacted:sha256:8c121cb32e0ffcd6c9847ef6c95b50f5d332d88d5fabefb856967ec70f214aa6",
+        "redacted:sha256:f4bb99bd5f65cd2f3e2ddb64165259e36e25d0e0327e2df5799538eb6afd5aa6",
+        "redacted:sha256:9d9cf66614f646d84985464f3969a51e9853749601b4ad148862f2bc60bf372b",
+        "redacted:sha256:516a3983ae975e1d2bd3dfafa67abd958726371d99c33b81437390af1de472c5",
+        "redacted:sha256:00427ab67bf3e2f58b93af2465c8bed0e16842b6569f635d8198f76a243eb60a",
+        "redacted:sha256:d064625db4b9de8960a4856c30f26cb3c5e509965d5b4f45e6cbdea2750ccf99",
+        "redacted:sha256:44a9a7f0c2d53e01c20c6f75a4e7b4ce055d9962d976892e2ee2e976b07542f9"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "3cec80c74bce560c21186a69d539bce4777579d6d62446fda736995f400c047d"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "dc65918e6d77f4472e7d2da8763421829d9ee34399cd46b52d663328f975f0e0",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:d5f07dd0b7c308479418f8492827d1e614c1d78079aca1e30a80e766f130165a",
+        "redacted:sha256:cdc22c3be3d2a7d89e3556ffaeb1768db6daceb15114d09b170d3cec62199980",
+        "redacted:sha256:121d20a54656b26a933e09071f89efd460b4d92991d9c9328fce335103835649",
+        "redacted:sha256:5aa98ac499362d8a9dedd9e8e1dd97610e263034a7791466846ffb941ae4978e",
+        "redacted:sha256:00bb34900a7d74d04fc5b596b96fdb7d272ebfc0373fc7f87a0998dd6c9ea884",
+        "redacted:sha256:69998e32b28e05a923f9f94141170fa5329ea2eef365765240f88dd55c9676ab",
+        "redacted:sha256:40781e26dd624986ec9fcf671090ed8d7e9419bdc968d5e6fdd7018a3242fa1b",
+        "redacted:sha256:f4ed15e58ba59d2b58c329610f49ca2a8964ca7ad7e15446bf245d98c6cb9bbe",
+        "redacted:sha256:b0052af3eb53cc35125368922f3f2c360f2b8139e4dad9ccd7f5d80e655db114",
+        "redacted:sha256:1a6bd08676313c18a5c91e80cf322eeafbb721e2e4cb4db6eb11965c3369eb68",
+        "redacted:sha256:d593297b0670d3353c39d04c6883414df89fb3ff33662c2ec4a6ed46cd3126dd",
+        "redacted:sha256:735ce0a40be288ebadcda4c28a82acef41b49c7008941034bf082dc9d938ac1e",
+        "redacted:sha256:2a1c3776b14cc62f9225a390981b4786835e518eeaa2771d8e557c8dde9d1fc8",
+        "redacted:sha256:b43b90811a126caa665411d55a3ebc539ca8e2006a74f91910ef2130945fa155",
+        "redacted:sha256:0f3ab639b5026d64d32c908d8b472fc83e78435d80828dd05711d71dc351414e",
+        "redacted:sha256:d3a17cc1a7bf6a1fc089f3150d4fa8e5688673df908e8f3a5b3be137bbd3551a",
+        "redacted:sha256:38fe1528252e5dd57351ea683eff8791847c93099fa82192b053ffdc3463b167",
+        "redacted:sha256:5c4f4e020f8b6e9bcb3f88474ba924bf1f18856cecb59d05b74c49e74714231d",
+        "redacted:sha256:3e204df7b05ea69f719cc6492000fcd2582d79b9680014ac3f78425191daedf0",
+        "redacted:sha256:267da2e92889fdf7fa0e508be59dac0a7680d88827c70ba64bd0bde9d6f985ff",
+        "redacted:sha256:d042133361d56f5020b5b9571138ad8066b7c01199b41a6401e40d4dddc55394",
+        "redacted:sha256:d220a8f5e96b1ab4e7333f3f30c28fd91c32434f45d0f0c532fe5e0f450fabb2",
+        "redacted:sha256:096c84d9dc204172c6ae5601eec0a505ed87f305ee83df7e6d11ada0a845297e",
+        "redacted:sha256:c7377a19f604e6ef62be800d2f942ddc58170e665f6743a97f00f9ad7e9ec571",
+        "redacted:sha256:5a27e024319fd60fb03f1d2a56ce0eea9ba77f635fee533fbb0f3cd4e837750d",
+        "redacted:sha256:0fdfee9645748d62a553cbbbdda766ed59c58760a363d09ed27eaac7143ed2b6",
+        "redacted:sha256:ef08d0ff69d5999a5f0ab67eb428bc50e332c6c57e7a0782cea144463575aca7",
+        "redacted:sha256:6845012adfac2945b9aa26d8315f1d29d813ba7d6bbc3475f199ca5969d68a00",
+        "redacted:sha256:ab9cc8d75224b2e37fca587151242976f07e6b473a5b841406b41a55e3ebf109",
+        "redacted:sha256:309df5e9b3777f60471ed5d8eb54061c3272592bc4776e86b60c3c8cebdf5b4c",
+        "redacted:sha256:59af8aa46664eff22b1ba786520f27e874155ee6a9a85835dd7bd88828e63006",
+        "redacted:sha256:d6bba936906d1dbbed7b37d77657b8f7b1c5d50332b06487f003c3e10e32b9f8",
+        "redacted:sha256:e4996cf95f68b133e71c6030178918ce1c509f2bee54011b4f1b3668b77fc481",
+        "redacted:sha256:a445647d8ea487a98b336f9809278aa86d238fd43a99740c2403c54fd0d39c26",
+        "redacted:sha256:cb3127d9ad7359ecebf3bac93af72c65fd1901f2ebdbf73f04c83f6b39ccfd49",
+        "redacted:sha256:438c90d565546d6838490143f9639284a31b96fac3682f3addabea381840ebf7",
+        "redacted:sha256:41c101a72bbe49f4c2e7e2c9d68ecbb58a640a9509ecfa297969072389cfe38c",
+        "redacted:sha256:2aae33b60d5ceb6318f16db2c1f24042b7343cb2786f1bf1a98ab979800d08d1",
+        "redacted:sha256:ac47dc894ec51effa33932a73b291a10fae43cc6f93abeb18fef5d41d74e3189",
+        "redacted:sha256:f73eba10e6073f54550fcf23ee341a5674d893c9fc841ee7fed04657b683e517",
+        "redacted:sha256:7581aaac4f512158151672b432970bb29ebc817509b5b0dcb11a0da9670b1013",
+        "redacted:sha256:312f574b73f17f73ad41f1bd430623a23cfee6a4b70c8fad3bddfbdfb1017e04",
+        "redacted:sha256:2dee845e53a6ef0b5997a3ec16b74138532778a676fa8e5a0660c6f177cba54b",
+        "redacted:sha256:f1261aea5853507b770f83880d97700585faded60c0194af38604cdc8680b103",
+        "redacted:sha256:2061a887525c3a03881878d15f19162e2d9a6380335f594a93eb76c1f1f9578c",
+        "redacted:sha256:fd3b6d14ac60de4541468444078c0187ec15e69bd880ed9fb4b822c718feaf83",
+        "redacted:sha256:1a8ae3cdedcff939e301968a93439f8af097e3c15e7f27d7b4e7ae02b87bf45c",
+        "redacted:sha256:7f453e972c27abc6378876bc3c274718b66cf77032160d1d3095407407400ccc",
+        "redacted:sha256:6630af5d4c0221e9da5e26d36876d4a42d9f5c3a5a4acae66eac5b987448ab59",
+        "redacted:sha256:5a620eacabe3cfd22af716b7a48acfcbe24796ffe2a9285ff7951b88fda5602f",
+        "redacted:sha256:a0b857cf9648404ed24265610d87ac3d837fd842f392be5c4c64f63d91f9c5af",
+        "redacted:sha256:3d217be1dbf1d3621b8497f8eef4ac01d3fd9ff0a0237b662f6d000f7c062105",
+        "redacted:sha256:6b71f5c1c1a56633579c69eaf9ccd924cc9989d1c5ed77f0b0088b3fae28229f",
+        "redacted:sha256:6ea069bbe1dc6e4b82389eecdbe9bc10083af2294fc036d40255b4d2fbc30b8f",
+        "redacted:sha256:e6fd6f50671731c9afde01ef341a309128b0c18f7ec0efb2cf7eab1f42b65b2e",
+        "redacted:sha256:6c629e1c8ed2a97cf6756cd1e5e8d1c1d367579833ddcaec4adeedbe3bbc1cb6",
+        "redacted:sha256:cc8f3511ffb4e81ba02847ae002ae13fa0de1cab71bb99ad97360f3719678065",
+        "redacted:sha256:7e4bf2a4fb4a333a6c911b7ce5c83aab29184500485452a2ad251208802fb9ae",
+        "redacted:sha256:275ce8e9f7e86b1a090dfe8da4175e46bdb1fce67ff99af4d13b13382894b411",
+        "redacted:sha256:caee5714a9e748555a0ea01bf065c5c4f325a5af2e28e8e66a368aaf771652cb"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "e1f4662464b443365ad5cb4657dc566a49112648ea0f3bb01d381d9d20e14c3f"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "dc65918e6d77f4472e7d2da8763421829d9ee34399cd46b52d663328f975f0e0",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:daa3a60af172442609413db30b685e3aa27966301e9d2d7a3fe5f68398863dfa",
+        "redacted:sha256:b1c7f8247f4be84a011839000f5110b00f033476f50e5c74949a80c1a69a2e68",
+        "redacted:sha256:c415e384e59c10db56f58cdad75311417925e4730c456f5fa95b3d41d110adc2",
+        "redacted:sha256:6708d06d9e929db346b69e83921d3fb5e1601f96756a2d9d75f2836159979432",
+        "redacted:sha256:8bce942ed43adfbe8e82037d05db1482d0cfdd1d0a8490fbf019339acc740ca3",
+        "redacted:sha256:2818d8bb7c604e920cdd79a2f13fb0bacaf25740707b88502403aabfad94250f",
+        "redacted:sha256:ffae6cb1b39d36e2bc7d9fcf1c7bdc2ca81b774c137f142902a6bd8d9c7c37c1",
+        "redacted:sha256:e9b319e023a485d851f6fea8cb35dbd4c7e9b7ad7031d3cd08eb748ffeafab0b",
+        "redacted:sha256:6f987ca2dd893719affae48af3eb6a9584a8d28ad4df557dde61b7a7331169cf",
+        "redacted:sha256:175c885e722534af1f2c31ce93bd3724dab8a21bfda3f2866e4dd71c51a65b7f",
+        "redacted:sha256:9891ab510ada87afa80a364a6683c9556098d0aeb92ba792419501893b670f90",
+        "redacted:sha256:19be966cf9f43ef10825510164cc605426c4c48a95b4314ed10765833ea70332",
+        "redacted:sha256:c5d57e0f8a75276e24c8c710e51eed3e9ca7400d1d669a8a0023bb1a213ea947",
+        "redacted:sha256:53f622b9584944d8a80ef7a963a4c6c13e21b138b02756cbccc40e44b64bfe22",
+        "redacted:sha256:6c84cfb159954f719095e23ca00dcf6c182004bb8811d966f922fff102d182ae",
+        "redacted:sha256:d2baf56e673747aafe7847a5c93fbf1b185d384a6f8438ce168feda9b9c5d0c1",
+        "redacted:sha256:4ea844e24d43f5a66a501876e1983deedbcef9089d0f7776225ca5a66a9b18b9",
+        "redacted:sha256:7e62c7e511461952a83108a048b1698bce06be129b8443e3705dcb0d19f1f7a1",
+        "redacted:sha256:5a05072cc40fd0d21c420b8ce88c98463dac0d015ef7d747df0eee177e223a77",
+        "redacted:sha256:5819260f149926bb34bc651197f35386be5dce538403fe487a3f4ed103058864",
+        "redacted:sha256:26517ebf63a93ea245751b213a89135362e00f52ba6503610d9e1adf2bd589f6",
+        "redacted:sha256:0db6c7525429d06b0495724cc6accef7c773b7d1b4a7b1c3b1614749c2861e16"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "b1d1c7966e99d81cb9a892d919ccd8989a75b5ddb2f46802bc3a4a554bd71277"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "dc65918e6d77f4472e7d2da8763421829d9ee34399cd46b52d663328f975f0e0",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "d0e5a56754f8226b0f49f3a2ee513a766ac64e64faa289f8522e20bdfc314605",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:72595a69e1ef2a6a395f433c5ee84b26c7b37a884ad8b158924b8a2802b231c8",
+        "redacted:sha256:c808b827de2f736cfed2a494981f21580e5428d1934f6088159aad77c950723d",
+        "redacted:sha256:59d881ea59385e24e96012f4b704d3c8026e1b99e72cd58bff11f00327eaf1cb",
+        "redacted:sha256:fa860321014cca65e761cf377c670f6d653ca4e48b438c5526e2faec8d7d4a2c",
+        "redacted:sha256:494b581d12c5fce853572a1ed0b872699085f4eb06e5c2c7cd9a612845b86ac7",
+        "redacted:sha256:2193d56a896264f012b784e6b261f8778eebe117dafaf78ecd29a9319a777d2c",
+        "redacted:sha256:79c9a2fee7438f22adb0ed33f628d5af35879f1ab950149aadd22540a3cdccbc",
+        "redacted:sha256:398ef231c9993f697205741398cc857258a9222327374d08de3c5f1732b1883e",
+        "redacted:sha256:4dbc2d575a62450cba321555e08f065353a61b2d7213d90c4893a518c445364c",
+        "redacted:sha256:d1838a85059c018fac756d59f5a1f5520b8f4255d14c5119fce3f02f8cc764b9",
+        "redacted:sha256:2af39d77b391c19630115304292bc4ebec3fa88892783ab1a99dfe1c4d620f03",
+        "redacted:sha256:236fc639ad260449df89d1e909e65c668af056dbb8f794a61decfa6f04ba2106",
+        "redacted:sha256:634d5376461f9585756023b951e18a8dd1b1be81e742820f9754fef72965ddf6",
+        "redacted:sha256:9ff50b15517565384a727784f84978869428c1e981c1e2e35f52827e3be34a9e",
+        "redacted:sha256:90bfa7fc2290463bbce91c099dc92b1d8c2328207b7ffe8862cfacadf34f2765",
+        "redacted:sha256:7768637abcedacce4b6752c85abc16c26f43a68196d355e01b69f733b70924dc",
+        "redacted:sha256:21817b73498477850fc1f57ff53f8bfca1acaebac153a0eeb060bbf20fcbf37c",
+        "redacted:sha256:f56737de1c233ee9199e8c5fe915273fdcc0614b965806c5cd87e1d8b88436da",
+        "redacted:sha256:db62a44a666817aab41ab6330b5c7882654a6ef266177f1b9a1bd8ce6371291d",
+        "redacted:sha256:b77d95689a0021814cc1529a1824bb3485e07d28ae97368d173911671ebaf19b",
+        "redacted:sha256:a130791afef408e31ccddcf37e8eff17d71a2f7cb530da80f0a61099a25ecd63",
+        "redacted:sha256:3368172955b1ed298081c53dde01f9d1f5bb93eebec6f8748b011c2d55f1cd58",
+        "redacted:sha256:a8af0b2ceeecf73ff46c9c706c94a4be83cf5174d53bbf772ad22548236cdd7e",
+        "redacted:sha256:b6ebb5230d2172478837a502f3294cd3c47ebd1a4d9e34e65667cddc9d7b1d0e",
+        "redacted:sha256:1fdc8a560e92bd1db8b5b7adb06b0581bd7606ba88434e892ee1bcc0e292ddc7",
+        "redacted:sha256:53e91a0c1fdce8e51995df0caa754c9a07b693d64f240c7f5b26e7515fa02257",
+        "redacted:sha256:837f526d7c269798e4ae4cf9ac2af3f1514339833d96efb55fe47bf9ac82b263",
+        "redacted:sha256:9835966c0fe33276d2fd85486ed45fcf591e13a88826fd43be4c6f21e9adfb04",
+        "redacted:sha256:6e49237a87e4912522bf77812b551654707275520a252d17cf9353b30ed36c46",
+        "redacted:sha256:a2af7ac19b37f1418f6f896ec939440c7a6ef06ec5b13891c6c326f295a9b4f2",
+        "redacted:sha256:dfbc3bbb8d26ec83c5b986a897708d3ab880af5dcca891246c2f8cec3b3dabdd",
+        "redacted:sha256:3eaecf6a918589cc2873d2bf613678cced52847139153bb99d4ac74b1e42ba10",
+        "redacted:sha256:3246c6d569bfd6e24febab75cfb9593e5f24c7156cc99bddd6215a2eddc5397d",
+        "redacted:sha256:da90687902c667d152411655fba8bb3f0aa141f951a5062f5e69548d9141a5bc",
+        "redacted:sha256:540f085de2e2a44f98c5f77f6d09d94de7b4b9057b0f58876f857053e3604565",
+        "redacted:sha256:81c0a8072e8187bef8643e51fd4945f81d60edf6681b060338376a1cc1bba1bd",
+        "redacted:sha256:2039e6f01a600ebf0ec8cf06e59adbab4862b0dab56a419dfa3c122bf344311d",
+        "redacted:sha256:cc2b01f893e45c9a2b9eb9eeaa03f77241f5de67c4721bda7a9fdfcd05354590",
+        "redacted:sha256:4c7972dbbd772cbd45ea2860dd077cb3115f8c0e24bed610199b685f51c9a856"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "fc3f888e0a92acbd471a4177eb44a90cc814efa7e2a8dac43fea64952201f527"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "dc65918e6d77f4472e7d2da8763421829d9ee34399cd46b52d663328f975f0e0",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "d6cf6de4859025f6fc764abd346f2005e49fc984e3d04bcde670e3a89c3c97db",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "redacted:sha256:2632a0a7a6323541446fd4ea43a64c29d766f94b5ab63b22b1165d84239b8ae5",
+        "redacted:sha256:3b9d2afab57a55f426ebac2abb4410fd4aaca5929c6b07f7f6023d9e05d93a7f",
+        "redacted:sha256:5dc40a9dc78e24ad1a9cd0e04319bd020ad19507c4821f4e44fdcff128e5880f",
+        "redacted:sha256:1632b26e2654f54da1437770d8039d516ecaa8c67e7490a55a64bc5e816d87d7",
+        "redacted:sha256:6ab82374b2ea9b5f0651e0ec358b682c31f75e598df1391f339514e33b4aefc1",
+        "redacted:sha256:de153223267921b7007ede33fed0ebfc6fd949c4687ca2be058dd68dcc98d947",
+        "redacted:sha256:ebcb7e51be795dd1a3a38c2a56f9fd547dda05c7cd0b8890ccd4b5c813005fb8",
+        "redacted:sha256:046dfa870715185ece09470fcc0f4cfc54dfa3a9ca7867b5da3df6dddb262551",
+        "redacted:sha256:9a597379349b45e6a332d2cb544c3a507a6b7a86017dbd2cc9ae04377dfba2e9",
+        "redacted:sha256:f306be0d3cbb8cc6e2a0f0a66aed767ef3472b7732b59b89cb4c8b082b6b0a25",
+        "redacted:sha256:1692cf7214406b44ac7ac73c84d1380f855d94384dd09f5dd27de10788914273",
+        "redacted:sha256:11047daad8f0f03f0db1f3fdadc6f6f22e73b245d97fabd7163b0aa4ffa7e583",
+        "redacted:sha256:ec7c1650fac8b16bf45e68ae23b3f2a0532b395d42587fa03391da1688a8fe97",
+        "redacted:sha256:ad2a11b0f1775061b60429161c32d1a48ad2b7846fd0e521717ddb37dcae0782",
+        "redacted:sha256:e67880131ee28124cfff179a677b2e20d58ee89654542448bd6076db472cef43",
+        "redacted:sha256:c61586ed470f9a6446e2e136519c7be0302a9facc76d44410dba3fce027e1228",
+        "redacted:sha256:ec11f94eb48f668b585e39d7260f0bf957714585c45b84dcfb76153b4bdcc3fa",
+        "redacted:sha256:9765c97c158b7059c39c3eb6e2191d4c47e7fbbed13e1ddafe7cc24c8a5d59f6",
+        "redacted:sha256:5bf8e6878b3498cf75ac6b4ab9b4f1b26afc0a7688f02a97cb0c5e3a9b51195b",
+        "redacted:sha256:0d972c4b4fb7891ceb9bc47172764eb3806e789a181632d9d6605e6142fdd29e",
+        "redacted:sha256:1117d56728c29f5b6b4f1323d590588433f49b981cffa637ed8d1914fc875d1e",
+        "redacted:sha256:13b28e14673d11f8f786bc72073e6ef911e26c6f3070587fbc0fc5bc2b95fc6d",
+        "redacted:sha256:eeaa7ecfb4485fc44eaebc0f11a092bbd494b750ac1f546befef062acb09796e",
+        "redacted:sha256:52f23740bb3bce6dd448e1ad50efda2501cef7bc21f6326546e1b977ed0c95da",
+        "redacted:sha256:99b279cba01946442e10fbe2006f49dde2c946410e6b3053fb9574168471f99d",
+        "redacted:sha256:2212460e37e58d0fb9eed9d7d7717ffa732c86d7aba4e9d5d571a50d39184d25",
+        "redacted:sha256:60001387a34168913c0e0104075666d820fca42e66752519e7506ebf7f9bd938",
+        "redacted:sha256:bbf7666e28af3686714c1c2ee660b764bc13f74ae83935dca8beefe67019ac04",
+        "redacted:sha256:157b86424eb8ebf4896d4d0d23632e8da50c527543ff6526ba130b9066d98412",
+        "redacted:sha256:7662639f8bb7be83d7c0d64e232d258eb49c98411966696a8bc76465663fa276",
+        "redacted:sha256:77198e034c528e053a621508cdfcc1c5828be7e0c31547dd160ac9581b8ced3e",
+        "redacted:sha256:63b79e3067756491270261bcaa340c978aeabda7469c7f1fd53a1ce05b30d659",
+        "redacted:sha256:7dd268a0e257ca420e3b169747fe1ec95bded2398db3ec2c0b9a73bbd66c1ad0",
+        "redacted:sha256:951ec18ec0a4fb33952b94c13225d7a6ceea1ff43507232791d4f310c681858d",
+        "redacted:sha256:cdf6882d27a151a38a367b9db7c06c5d8a9e66dc5ab8e974fbd39055450395e1",
+        "redacted:sha256:47f17884a212b998244745315bb5547486798210ee630dbb81099cdef9830825",
+        "redacted:sha256:b83dedd6015958beffe5fd52785a2c5281eeb03ef25d7083d46ad6b0dca867b3",
+        "redacted:sha256:27c340aa7e4b6dd09165212cfad9701e9f2ad26c1521f87cb1123cec68267db7",
+        "redacted:sha256:639824d0fa6ed43b011e8d2332dfe30b1a179a16dd2adad3e3b5b0b1bfef20af",
+        "redacted:sha256:861cd986ea36f449178b0206376e3ec47478058f180f71211f1b139c487c774a",
+        "redacted:sha256:43e4e144c001d684934524eb6c1d87193b0b556c6b9067cc15ccfdf1befb079b",
+        "redacted:sha256:78867633ed77b163cb2128bfdf0f367b79e817f8dfce16aae914c6781735fc55",
+        "redacted:sha256:86b49af90bc11cd640e9f7bbf69dddbe4e119cff75d70191b792f8fe4efcdcdd",
+        "redacted:sha256:02694bd942fd275491e2ee21943db698dc16db73232088c4e03597037dbec63f",
+        "redacted:sha256:d5d9bef93509a20a6a584d819dcfbf4e6e055610375ecb8fa7561f7b19b4338c",
+        "redacted:sha256:9688cccb137bc9e907ea493e62c343286bf5249b1d02043720c2598bc8aa2f29",
+        "redacted:sha256:2d68aa1e3260784a8fa51e7e2e0df6bca007a7c2d30d652c1254046e08914acd",
+        "redacted:sha256:a8c980d7e003dc1f0336874a5c3c0aa977d0b87bff41dc17d6574dcbcc5c4697",
+        "redacted:sha256:9d58b2af05df806ed5a4d6ad76a4e2d1a94979403ac54c030c6224ef136cb1ca",
+        "redacted:sha256:8733f88e5c225c5cbe752fea9d2258a76ef7169b67e6ac32a85ee7097fb84967",
+        "redacted:sha256:f70e910297dec5f18ca922da23275b14e5eb3b8db1f831db80b41089ac1489ac",
+        "redacted:sha256:bff7d6d29722db3b44cbb928f2c203808d725d4afaf15906c0c37fe51ffa27bc"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "",
+        "sha256": "556b063c330284489822ea67d2e77f7d5caf83607a816ccc4b4d3ac1120dbb15"
+      }
+    }
+  ],
+  "official_grader_complete": false,
+  "ownership_id": "sglang-qwen-nemotron-20261016",
+  "paired_image_ids": {
+    "django__django-13512": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+    "pydata__xarray-4356": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+    "pylint-dev__pylint-8898": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+    "sphinx-doc__sphinx-9658": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+    "sympy__sympy-12096": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+  },
+  "plan_sha256": "4972023d72a208f57ae2d9bc9e49b867652b71e73fcda60c5794910ae9006320",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "run_id": "sglang-qwen-20261016-qwen-swe5-successor",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "duration_s": 2599.091161,
+      "failure_class": "model_failure",
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "duration_s": 93.431307,
+      "failure_class": "test_failure",
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed",
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "state": "incomplete",
+  "summary": {
+    "attempted": 5,
+    "graded": 4,
+    "resolve_rate": 0.5,
+    "resolved": 2
+  },
+  "task_container_network": "none"
+}

@@ -1,0 +1,725 @@
+{
+  "expected": [
+    {
+      "final": "inspect -> patch -> test",
+      "final_kind": "normalized_exact",
+      "final_terms": [],
+      "reasoning_required": false,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "planning",
+      "tool_calls": [],
+      "tool_mode": "none"
+    },
+    {
+      "final": "inspect -> patch -> test",
+      "final_kind": "normalized_exact",
+      "final_terms": [],
+      "reasoning_required": false,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "planning",
+      "tool_calls": [],
+      "tool_mode": "none"
+    },
+    {
+      "final": "42",
+      "final_kind": "normalized_exact",
+      "final_terms": [],
+      "reasoning_required": true,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "reasoning",
+      "tool_calls": [],
+      "tool_mode": "none"
+    },
+    {
+      "final": "42",
+      "final_kind": "normalized_exact",
+      "final_terms": [],
+      "reasoning_required": true,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "reasoning",
+      "tool_calls": [],
+      "tool_mode": "none"
+    },
+    {
+      "final": {
+        "file": "app.py",
+        "line": 12,
+        "value": 45
+      },
+      "final_kind": "exact_json",
+      "final_terms": [],
+      "reasoning_required": false,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "structured-edit",
+      "tool_calls": [],
+      "tool_mode": "none"
+    },
+    {
+      "final": {
+        "file": "app.py",
+        "line": 12,
+        "value": 45
+      },
+      "final_kind": "exact_json",
+      "final_terms": [],
+      "reasoning_required": false,
+      "recovery_required": false,
+      "result_markers": [],
+      "scenario_id": "structured-edit",
+      "tool_calls": [],
+      "tool_mode": "none"
+    }
+  ],
+  "manifest": {
+    "identities": {
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      },
+      "deployment": {
+        "concurrency": 4,
+        "configured_tokens": 327680,
+        "container": "replacement-mimo26-mopd-tp2-c4-327k-r5-greedy",
+        "kv_cache_dtype": "fp8",
+        "max_images_per_prompt": 8,
+        "override_generation_config": {
+          "temperature": 0.0,
+          "top_p": 0.95
+        },
+        "port": 39132,
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "hardware": {
+        "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "model": {
+        "repository": "XiaomiMiMo/MiMo-V2.6-Flash-MOPD",
+        "revision": "b12f5573350bb1704513fcf119fca48e498b0423",
+        "served_name": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy"
+      },
+      "runtime": {
+        "engine": "vLLM",
+        "image": "sha256:42ff601ea51f08c7598322ac22a363b843e1c8202c8358752bb50a01553b805b",
+        "recipe_digest": "9f332fe1ebf3cc652d456451ee69679db34f70d9d0f28fad76c789258b2dccb2",
+        "recipe_registry_sha256": "6fadf1b1722cbe1def1142bafdf0bc480e46cd82cdf824b3e0345c6267daf079",
+        "sampling_source_revision": "eb87980585c10f7e5ee8f498fd3830898101d208"
+      }
+    },
+    "instrument_sha256": "1f40041cbf13275ef3635f514fb8b23cbf23504778f79c1a02b0aeb2211132f6",
+    "managed_load_receipt_sha256": "44b8d11c606a9029894f1d35d7e3aa25086d2baa22ac4beeb971330ac63e5c17",
+    "managed_status_receipt_sha256": "3e21274b7e53b0d9b35f080127bd1c34fb4d1af2536c91a27409a99fb40a0ae1",
+    "model_lifecycle": false,
+    "observations_required": 6,
+    "oracle_revision": "8",
+    "route_mutation": false,
+    "sampling_claim": "Wire temperature and top_p absent; effective default follows pinned source and recipe, no runtime sampling echo",
+    "schema": "replacement-omitted-sampling-diagnostic/v1",
+    "script_sha256": "827402dfe1766a45e5bff5f1087082032f2bb739cf08e7b60b288db7822924fb",
+    "source_revision": "cf8a62186339526678c3d8554219a7d9f5c38bec",
+    "started_at": "2026-10-15T17:40:28.267879+00:00"
+  },
+  "observations": [
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.20991542702540755,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "request_id": "chatcmpl-be3d33b7823435ba",
+      "request_sha256": "69b3c51fc0e338e35941daaf12703b1467cb50a7d30851cc81db9a4fce7bb7c6",
+      "response_sha256": "9af09562dcd45a9e2d543cb32a34611df6f93ffc33fa8bcf831863745c135e27",
+      "sampling_fields_absent": true,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 18,
+        "completion_tokens_details": {
+          "reasoning_tokens": 10
+        },
+        "prompt_tokens": 43,
+        "prompt_tokens_details": null,
+        "total_tokens": 61
+      },
+      "visible_answer": "inspect -> patch -> test"
+    },
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.18297392904059961,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 2,
+      "request_id": "chatcmpl-b759f681b8dd564d",
+      "request_sha256": "69b3c51fc0e338e35941daaf12703b1467cb50a7d30851cc81db9a4fce7bb7c6",
+      "response_sha256": "0bfbfc9c1767290161f8943e216bc66c03ad205f63784040328b537da115963a",
+      "sampling_fields_absent": true,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 18,
+        "completion_tokens_details": {
+          "reasoning_tokens": 10
+        },
+        "prompt_tokens": 43,
+        "prompt_tokens_details": null,
+        "total_tokens": 61
+      },
+      "visible_answer": "inspect -> patch -> test"
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.14970288198674098,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "request_id": "chatcmpl-a2e2792c6755328b",
+      "request_sha256": "6f373f2d221f96838c41ca4f9842bc73dd3ef9a92a3a3ac9eec370237c9bbac9",
+      "response_sha256": "a5837ed7c64544e39ca6769550737ef8b10ea3f428b372b4e71195154f19107e",
+      "sampling_fields_absent": true,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 13,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8
+        },
+        "prompt_tokens": 26,
+        "prompt_tokens_details": null,
+        "total_tokens": 39
+      },
+      "visible_answer": "42"
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.14795477699954063,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 2,
+      "request_id": "chatcmpl-9adefefced7e8d71",
+      "request_sha256": "6f373f2d221f96838c41ca4f9842bc73dd3ef9a92a3a3ac9eec370237c9bbac9",
+      "response_sha256": "3878d0353b67934a46450d59dd54204fa819161b6ba8d2a9c854112eb0403ba7",
+      "sampling_fields_absent": true,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 13,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8
+        },
+        "prompt_tokens": 26,
+        "prompt_tokens_details": null,
+        "total_tokens": 39
+      },
+      "visible_answer": "42"
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.2929401770234108,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "request_id": "chatcmpl-b578e5115f5669b8",
+      "request_sha256": "12cdd91a05700839ef18d34c3d3a32374c374cc543bbeaf78e25218e5b6c6d20",
+      "response_sha256": "b3ed0923f232d12df2b6adfe92c461a5ded07aec7ca05bdce63d395bddf062bf",
+      "sampling_fields_absent": true,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 32,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 62
+      },
+      "visible_answer": "{\"file\":\"app.py\",\"line\":12,\"value\":45}"
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "diagnostic_passed": true,
+      "failure": null,
+      "failure_class": null,
+      "finish_reason": "stop",
+      "full_history": [],
+      "history_prompt_tokens": [],
+      "http_status": 200,
+      "latency_s": 0.3007712319958955,
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 2,
+      "request_id": "chatcmpl-aa1a058795368494",
+      "request_sha256": "12cdd91a05700839ef18d34c3d3a32374c374cc543bbeaf78e25218e5b6c6d20",
+      "response_sha256": "8378ef0f39af04aea436f0dce0036d41e67082d82dff99456e3a539fbf548b59",
+      "sampling_fields_absent": true,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [],
+      "usage": {
+        "completion_tokens": 32,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 62
+      },
+      "visible_answer": "{\"file\":\"app.py\",\"line\":12,\"value\":45}"
+    }
+  ],
+  "requests": [
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "Return exactly the following one-line text, using the literal ASCII characters -> for each arrow. Do not add headings, other punctuation, or any other text:\ninspect -> patch -> test",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    },
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "Return exactly the following one-line text, using the literal ASCII characters -> for each arrow. Do not add headings, other punctuation, or any other text:\ninspect -> patch -> test",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    },
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "A build has 7 groups of 6 tests. Return only the total number of tests.",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    },
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "A build has 7 groups of 6 tests. Return only the total number of tests.",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    },
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "Return only JSON describing an edit: {\"file\":\"app.py\",\"line\":12,\"value\":45}.",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    },
+    {
+      "max_tokens": 8192,
+      "messages": [
+        {
+          "content": "Return only JSON describing an edit: {\"file\":\"app.py\",\"line\":12,\"value\":45}.",
+          "role": "user"
+        }
+      ],
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "stream": false
+    }
+  ],
+  "responses": [
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "inspect -> patch -> test",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 18,
+        "completion_tokens_details": {
+          "reasoning_tokens": 10
+        },
+        "prompt_tokens": 43,
+        "prompt_tokens_details": null,
+        "total_tokens": 61
+      }
+    },
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "inspect -> patch -> test",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 18,
+        "completion_tokens_details": {
+          "reasoning_tokens": 10
+        },
+        "prompt_tokens": 43,
+        "prompt_tokens_details": null,
+        "total_tokens": 61
+      }
+    },
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "42",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 13,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8
+        },
+        "prompt_tokens": 26,
+        "prompt_tokens_details": null,
+        "total_tokens": 39
+      }
+    },
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "42",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 13,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8
+        },
+        "prompt_tokens": 26,
+        "prompt_tokens_details": null,
+        "total_tokens": 39
+      }
+    },
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "{\"file\":\"app.py\",\"line\":12,\"value\":45}",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 32,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 62
+      }
+    },
+    {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "annotations": null,
+            "audio": null,
+            "content": "{\"file\":\"app.py\",\"line\":12,\"value\":45}",
+            "function_call": null,
+            "refusal": null,
+            "role": "assistant"
+          },
+          "routed_experts": null,
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "metrics": null,
+      "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 32,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": null,
+        "total_tokens": 62
+      }
+    }
+  ],
+  "schema": "replacement-omitted-sampling-wire-evidence/v1",
+  "summary": {
+    "attempted": 6,
+    "finished_at": "2026-10-15T17:40:29.556058+00:00",
+    "native_benchmark": false,
+    "observations": "observations.json",
+    "passed": 6,
+    "required": 6
+  }
+}

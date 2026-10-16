@@ -265,6 +265,7 @@ def test_manifest_records_recursive_paths_and_metadata():
     assert {
         "allowed_finish_reasons",
         "dry_run",
+        "force_nonempty_content",
         "reasoning_effort",
         "timeout_seconds",
     } <= set(records["eval preflight"]["remote_operation"]["allowed_arguments"])

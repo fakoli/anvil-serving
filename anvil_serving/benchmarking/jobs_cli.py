@@ -5,15 +5,38 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
+import socket
+import subprocess
 import sys
+import tempfile
+from types import SimpleNamespace
+import uuid
 
 from ..guard import confirmation_authorized
-from ..control_plane.controller.store import BenchmarkJobStore
-from .harnesses import cleanup_harness_work, harness_asset_status, prepare_harness_assets
+from ..control_plane.controller.store import BenchmarkJobStore, DEFAULT_BENCHMARK_RUN_ROOT
+from .harnesses import (
+    cleanup_harness_work,
+    harness_asset_status,
+    prepare_harness_assets,
+    resolve_container_binary,
+)
 from .evidence_reader import read_referenced_job_evidence
-from .jobs import BenchmarkJobError, validate_job_spec
+from .jobs import (
+    BenchmarkJobError,
+    job_spec_sha256,
+    resolve_owned_run_path,
+    validate_job_spec,
+)
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
+from .swe import validate_swe_selection
+from .submission import validate_submission_spec
+from .swe_images import (
+    prepare_paired_images,
+    validate_paired_image_ids,
+    validate_paired_image_repo_digests,
+)
 from .worker import cancel_benchmark_job, launch_benchmark_job
 
 
@@ -47,12 +70,20 @@ def _parser() -> argparse.ArgumentParser:
         assets = actions.add_parser("assets")
         assets.add_argument("--run-id", required=True)
         assets.add_argument("--ownership-id", required=True)
+        if suite == "swe":
+            images = actions.add_parser("images")
+            images.add_argument("--spec", required=True)
+            images.add_argument("--worker", required=True)
+            images.add_argument("--min-free-bytes", type=int, default=100 * 1024**3)
+            images.add_argument("--dry-run", action="store_true")
+            images.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         cleanup = actions.add_parser("cleanup")
         cleanup.add_argument("--run-id", required=True)
         cleanup.add_argument("--ownership-id", required=True)
         cleanup.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         submit = actions.add_parser("submit")
         submit.add_argument("--spec-json", required=True)
+        submit.add_argument("--dry-run", action="store_true", help="validate the job specification without state changes")
         mode = submit.add_mutually_exclusive_group()
         mode.add_argument("--follow", action="store_true")
         mode.add_argument("--detach", action="store_true")
@@ -100,9 +131,88 @@ def _json_object(raw: str, *, field: str) -> dict:
     return value
 
 
+def _swe_image_spec(path: str) -> dict:
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("oversized")
+        return _require_suite(json.loads(raw), "swe")
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        raise BenchmarkJobError(
+            "bad_swe_image_spec",
+            "SWE image specification is missing or invalid",
+        ) from exc
+
+
+def _bounded_command_output(handle, max_bytes: int = 64 * 1024) -> tuple[str, bool]:
+    marker = b"\n...[bounded output omitted]...\n"
+    size = handle.seek(0, os.SEEK_END)
+    if size <= max_bytes:
+        handle.seek(0)
+        return handle.read().decode("utf-8", "replace"), False
+    remaining = max_bytes - len(marker)
+    head_bytes = remaining // 2
+    tail_bytes = remaining - head_bytes
+    handle.seek(0)
+    head = handle.read(head_bytes)
+    handle.seek(-tail_bytes, os.SEEK_END)
+    tail = handle.read(tail_bytes)
+    return (head + marker + tail).decode("utf-8", "replace"), True
+
+
+def _image_runner(argv, cwd, timeout, env):
+    """Run one Docker command without retaining unbounded output in memory."""
+    with tempfile.TemporaryFile() as stdout_file, tempfile.TemporaryFile() as stderr_file:
+        timed_out = False
+        try:
+            result = subprocess.run(
+                list(argv),
+                cwd=cwd,
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout_file,
+                stderr=stderr_file,
+                timeout=timeout,
+                check=False,
+            )
+            returncode = result.returncode
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            returncode = None
+        stdout, stdout_truncated = _bounded_command_output(stdout_file)
+        stderr, stderr_truncated = _bounded_command_output(stderr_file)
+    return SimpleNamespace(
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+        stdout_truncated=stdout_truncated,
+        stderr_truncated=stderr_truncated,
+        timed_out=timed_out,
+    )
+
+
+def _local_worker_identity(spec: dict, requested_worker: str) -> str:
+    declared_worker = spec["worker"]["id"]
+    if requested_worker != declared_worker:
+        raise BenchmarkJobError(
+            "swe_image_worker_mismatch",
+            "--worker must match the frozen SWE job specification",
+            {"requested": requested_worker, "declared": declared_worker},
+        )
+    hostname = socket.gethostname().strip()
+    identities = {hostname.casefold(), hostname.split(".", 1)[0].casefold()}
+    if requested_worker.casefold() not in identities:
+        raise BenchmarkJobError(
+            "swe_image_worker_mismatch",
+            "SWE image preparation must run locally on the worker named by the frozen specification",
+            {"requested": requested_worker, "observed_hostname": hostname},
+        )
+    return hostname
+
+
 def run(argv: list[str]) -> dict:
     args = _parser().parse_args(argv)
-    store = _store()
     if args.action == "plan":
         profile = load_profile(args.profile, observed_context=args.observed_context)
         return {
@@ -118,6 +228,88 @@ def run(argv: list[str]) -> dict:
             "dry_run": bool(args.dry_run),
             "deferred": ["benchmark preflight", "model requests", "artifact write"],
         }
+    if args.action == "images":
+        spec = _swe_image_spec(args.spec)
+        parameters = spec.get("parameters")
+        if not isinstance(parameters, dict):
+            raise BenchmarkJobError(
+                "bad_swe_image_policy",
+                "SWE image specification parameters must be an object",
+            )
+        selected = validate_swe_selection(
+            load_profile(spec["profile"]), parameters.get("instance_ids")
+        )
+        expected = validate_paired_image_ids(parameters.get("paired_image_ids"), selected)
+        if expected is None:
+            raise BenchmarkJobError(
+                "missing_paired_image_policy",
+                "SWE image specification has no paired image IDs",
+            )
+        repo_digests = validate_paired_image_repo_digests(
+            parameters.get("paired_image_repo_digests"), selected
+        )
+        observed_hostname = _local_worker_identity(spec, args.worker)
+        confirm = bool(
+            (args.confirm or confirmation_authorized()) and not args.dry_run
+        )
+        executable = resolve_container_binary()
+        if confirm and not executable:
+            raise BenchmarkJobError(
+                "container_capability_absent",
+                "Docker is required to prepare SWE task images",
+            )
+        run_root = os.environ.get("ANVIL_BENCHMARK_RUN_ROOT", DEFAULT_BENCHMARK_RUN_ROOT)
+        spec_sha256 = job_spec_sha256(spec)
+        root = Path(
+            resolve_owned_run_path(
+                run_root,
+                ownership_id=spec["ownership_id"],
+                run_id=spec["run_id"],
+                relative=f"swe-images/{spec_sha256}",
+            )
+        )
+        receipt_name = (
+            f"receipt-{uuid.uuid4().hex}.json" if confirm else "receipt-preview.json"
+        )
+        return prepare_paired_images(
+            expected,
+            repo_digests,
+            executable=executable or "docker",
+            runner=_image_runner,
+            cwd=str(root),
+            env=dict(os.environ),
+            receipt_path=str(root / receipt_name),
+            lock_root=os.path.realpath(os.path.abspath(os.path.expanduser(run_root))),
+            ownership_id=spec["ownership_id"],
+            run_id=spec["run_id"],
+            spec_sha256=spec_sha256,
+            worker_id=spec["worker"]["id"],
+            observed_hostname=observed_hostname,
+            confirm=confirm,
+            min_free_bytes=args.min_free_bytes,
+        )
+    if args.action == "submit" and args.dry_run:
+        spec = _spec_json(args.spec_json, args.suite)
+        admission = validate_submission_spec(spec)
+        return {
+            "schema": "anvil-serving.benchmark-submit-preview/v1",
+            "suite": args.suite,
+            "run_id": spec["run_id"],
+            "ownership_id": spec["ownership_id"],
+            "endpoint": spec["endpoint"],
+            "worker": spec["worker"],
+            "spec_sha256": job_spec_sha256(spec),
+            "suite_admission": admission,
+            "dry_run": True,
+            "deferred": ["job store", "worker launch", "model requests", "artifact write"],
+        }
+    submitted_spec = None
+    if args.action == "submit":
+        if not (args.confirm or confirmation_authorized()):
+            raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
+        submitted_spec = _spec_json(args.spec_json, args.suite)
+        validate_submission_spec(submitted_spec)
+    store = _store()
     if args.action in {"prepare", "assets", "cleanup"}:
         if args.action == "assets":
             return harness_asset_status(
@@ -157,9 +349,7 @@ def run(argv: list[str]) -> dict:
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
         )
     if args.action == "submit":
-        if not (args.confirm or confirmation_authorized()):
-            raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
-        disposition, job = store.submit(_spec_json(args.spec_json, args.suite))
+        disposition, job = store.submit(submitted_spec)
         launch = (
             launch_benchmark_job(
                 path=store.path,

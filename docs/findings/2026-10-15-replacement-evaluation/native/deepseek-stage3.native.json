@@ -1,0 +1,259 @@
+{
+  "candidate": {
+    "family": "DeepSeek V4.1 Flash EXL3 2.7 bpw",
+    "revision": "f7451e9617f675087881b5016fb210a526c7f99c",
+    "runtime_image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b"
+  },
+  "configured_scope": {
+    "autotune": false,
+    "concurrency": 1,
+    "engram_disk_offload": true,
+    "graph_mode": "FULL_DECODE_ONLY",
+    "host_reserve_mib": 12288,
+    "image_limit_per_prompt": 0,
+    "kv_cache_bytes": 536870912,
+    "load_format": "dummy",
+    "max_model_len": 65536,
+    "r8_memory_limit_mib": 65536,
+    "r8_memory_swap_limit_mib": 65536,
+    "rdma": false,
+    "speculation": false,
+    "tensor_parallel": 2
+  },
+  "decision": {
+    "label": "no-promotion",
+    "promoted": false,
+    "qualification_status": "incomplete",
+    "reason": "r8/a2 failed its dummy reserve policy and was later shown instrument-incomplete; r9 failed dense-mrow startup; r10 failed custom-all-reduce initialization; r11 failed the frozen idle reserve. Independently reviewed r12 passed the bounded Stage 3 dummy-path integrity, resource, containment, and one-probe graph gate. This does not qualify the candidate; real Stage 4 main-weight evidence remains pending."
+  },
+  "next_state": "The independently reviewed r12 Stage 3 dummy-path pass satisfies the conditional entry dependency for the already reviewed bounded Stage 4 real-weight workflow. Stage 4 remains separately pending its managed acquisition, integrity, resource, health, and request gates; no result here authorizes routing, promotion, or qualification.",
+  "outcomes": [
+    {
+      "claims_excluded": [
+        "candidate load",
+        "GPU compute",
+        "request",
+        "graph",
+        "quality"
+      ],
+      "classification": "lifecycle-preparation-failed-admission",
+      "configured_vs_measured": {
+        "configured_host_reserve_mib": 12288,
+        "configured_memory_limit_mib": 98304,
+        "configured_swap_limit_mib": 98304,
+        "measured_available_bytes": 92501106688,
+        "required_available_bytes": 115964116992
+      },
+      "earliest_actionable_error": "Available host memory was 92,501,106,688 bytes; the r7 admission required 115,964,116,992 bytes.",
+      "id": "r7-admission"
+    },
+    {
+      "claims_excluded": [
+        "model initialization",
+        "resource result",
+        "graph result",
+        "generation",
+        "quality"
+      ],
+      "classification": "metadata-missing-pre-model-stop",
+      "configured_vs_measured": {
+        "admission_required_available_bytes": 81604378624,
+        "configured_host_reserve_mib": 12288,
+        "configured_memory_limit_mib": 65536,
+        "configured_swap_limit_mib": 65536,
+        "measured_available_bytes": 92989640704
+      },
+      "earliest_actionable_error": "The pre-entrypoint candidate metadata snapshot was absent after verified official Engram input checks.",
+      "id": "r8-a1",
+      "remedy": "A bounded metadata-only managed pull completed before the next attempt."
+    },
+    {
+      "claims_excluded": [
+        "actual generation",
+        "five cached FULL graph replays",
+        "quality",
+        "real main-weight loading",
+        "image-8",
+        "327K",
+        "C4"
+      ],
+      "classification": "dummy-startup-resource-policy-failed-invalid-proxy",
+      "configured_vs_measured": {
+        "configured_host_reserve_mib": 12288,
+        "configured_memory_limit_mib": 65536,
+        "configured_swap_limit_mib": 65536,
+        "resource_policy_gpu_free_mib_per_device": 4096,
+        "startup_host_available_bytes": 85632675840,
+        "steady_gpu_free_mib_per_device": 859,
+        "steady_host_available_bytes_range": [
+          83216916480,
+          83249229824
+        ]
+      },
+      "earliest_actionable_error": "Three steady samples reported 859 MiB free per device, below the 4,096 MiB campaign reserve.",
+      "id": "r8-a2",
+      "instrument_limitation": "Later analysis found that the dummy helper replaced the original EXL3 configuration with a reduced object that omitted dense, head, and cooperative controls. This invalidates r8a2 as a real-residency proxy; it does not erase the observed dummy resource-policy failure.",
+      "observed_startup": [
+        "managed dummy startup reached readiness and model listing",
+        "official Engram index and both shard integrity checks were logged",
+        "text-only C1/64K configuration and CUDA-graph capture were logged"
+      ],
+      "resource_policy": "failed for the r8a2 dummy configuration; not a real-pack feasibility verdict"
+    },
+    {
+      "basis": "r9 restored the complete verified original EXL3 configuration after helper generation. Its terminal independent review is bound in provenance.",
+      "claims_excluded": [
+        "health",
+        "steady GPU resource result",
+        "completed graph capture",
+        "generation",
+        "graph replay count",
+        "real main-weight loading",
+        "performance",
+        "quality",
+        "qualification",
+        "promotion"
+      ],
+      "classification": "gpu-startup-oom-dense-mrow-before-health",
+      "configured_vs_measured": {
+        "configured_effective_swap_bytes": 0,
+        "configured_host_memory_limit_mib": 65536,
+        "model_allocation_gib_per_rank": 90.52,
+        "preexit_host_cgroup_oom_events": 0
+      },
+      "containment_interpretation": "Live pre-exit status showed the 64-GiB RAM ceiling, effective zero swap, and zero host-cgroup OOM events. The exited status could no longer read effective cgroups; that unavailable state is not a containment root cause. The terminal review records Docker OOMKilled=false.",
+      "earliest_actionable_error": "CUDA out of memory during startup sparse-MLA kernel warmup dummy run in the dense mrow path, before graph capture.",
+      "id": "r9",
+      "observed": [
+        "startup failed before health",
+        "no steady GPU free-memory measurement was obtained",
+        "graph capture did not complete",
+        "no generation request was sent",
+        "managed unload completed and post-unload absence was verified"
+      ],
+      "status": "terminal-profile-failure"
+    },
+    {
+      "basis": "The r10 terminal independent review is bound in provenance. The r9 corrected-proxy preexecution review v2 remains separately provenance-bound.",
+      "capture_boundary": "The outer capture progress reached 100% for 1/1 FULL capture in 1.63 seconds, then EngineCore failed in custom-all-reduce initialization. This is not a completed graph gate or successful graph replay.",
+      "claims_excluded": [
+        "health",
+        "steady GPU resource result",
+        "completed graph gate",
+        "graph replay count",
+        "generation request",
+        "real main-weight loading",
+        "performance",
+        "quality",
+        "qualification",
+        "promotion"
+      ],
+      "classification": "startup-custom-all-reduce-ipc-export-invalid-argument-before-health",
+      "configured_vs_measured": {
+        "computed_kv_capacity_tokens": 102818,
+        "configured_effective_swap_bytes": 0,
+        "configured_host_memory_limit_mib": 65536,
+        "kv_cache_bytes": 536870912,
+        "model_allocation_gib_per_rank": 89.74,
+        "preexit_host_cgroup_oom_events": 0
+      },
+      "containment_interpretation": "Live status showed the configured 64-GiB RAM ceiling, effective zero swap, and zero host-cgroup OOM events. Exited cgroup values became unavailable and are not treated as the cause; Docker OOMKilled was false.",
+      "earliest_actionable_error": "Both ranks reported CUDA invalid argument at custom_all_reduce.cuh:164 during EngineCore compile-or-warm-up initialization.",
+      "id": "r10",
+      "observed": [
+        "the prior r9 dense-mrow failure did not recur",
+        "startup failed before health",
+        "no steady GPU free-memory measurement was obtained",
+        "capture loop progress reached 100% but graph initialization/gate did not complete",
+        "no generation request was sent",
+        "managed unload completed and post-unload absence was verified"
+      ],
+      "status": "terminal-profile-failure"
+    },
+    {
+      "basis": "The r11 recipe, preexecution review, terminal receipts, corrected r2 memory audit, and rejected r1 audit are bound in provenance. The rejected r1 remains research friction only.",
+      "claims_excluded": [
+        "generation request",
+        "completed graph replay gate",
+        "quality",
+        "throughput",
+        "real main-weight loading",
+        "capacity",
+        "qualification",
+        "promotion"
+      ],
+      "classification": "healthy-dummy-startup-resource-policy-failed",
+      "configured_vs_measured": {
+        "configured_effective_swap_bytes": 0,
+        "configured_gpu_reserve_mib_per_device": 4096,
+        "configured_host_memory_limit_mib": 65536,
+        "configured_kv_cache_bytes": 536870912,
+        "idle_gpu_free_mib_per_device": 2929,
+        "resource_samples": 3
+      },
+      "earliest_actionable_error": "Three idle samples reported 2,929 MiB free per GPU, below the frozen 4,096-MiB reserve.",
+      "graph_boundary": "Configured capture loop completed, but no generation was sent and no graph replay gate passed.",
+      "health_boundary": "Managed health and model listing returned HTTP 200 before the resource gate failed.",
+      "id": "r11",
+      "observed": [
+        "verified startup and model availability",
+        "configured capture loop completed",
+        "three idle samples at 2,929 MiB free per GPU",
+        "no generation request or replay experiment",
+        "managed unload completed and absence was verified"
+      ],
+      "status": "terminal-resource-policy-failure"
+    },
+    {
+      "basis": "The r12 terminal independent review, root terminal decision record, managed receipts, and r12 pre-execution review r2 are bound in provenance.",
+      "bounded_probe": {
+        "completion_tokens": 16,
+        "finish_reason": "length",
+        "full_dispatch_count": 15,
+        "http_status": 200,
+        "none_dispatch_count": 1,
+        "prompt_tokens": 33,
+        "reasoning_tokens": 16,
+        "visible_content_required": false
+      },
+      "claims_excluded": [
+        "real main-weight loading or fit",
+        "quality or intelligence",
+        "throughput, latency, or performance",
+        "327K context",
+        "vision or image-8",
+        "C4 or concurrent capacity",
+        "stability qualification",
+        "promotion or route change"
+      ],
+      "classification": "stage3-dummy-path-pass-real-pack-unresolved",
+      "configured_vs_measured": {
+        "configured_effective_swap_bytes": 0,
+        "configured_gpu_reserve_mib_per_device": 4096,
+        "configured_host_memory_limit_mib": 65536,
+        "configured_kv_cache_bytes": 536870912,
+        "cpu_offload_gib_reported_per_rank": 4.48,
+        "host_peak_bytes": 59488813056,
+        "idle_gpu_free_mib_per_device": 7615,
+        "model_allocation_gib_reported_per_rank": 85.29,
+        "post_probe_gpu_free_mib_per_device": 7095,
+        "resource_samples": 3
+      },
+      "id": "r12",
+      "observed": [
+        "candidate and official Engram integrity checks passed before startup",
+        "managed health and model listing returned HTTP 200",
+        "configured capture completed on both ranks",
+        "three idle samples met the 4,096-MiB reserve on both GPUs",
+        "one bounded text-only C1 probe completed with 16 completion tokens",
+        "post-probe free memory remained 7,095 MiB per GPU",
+        "host peak remained below the 64-GiB limit with zero effective swap and zero recorded OOM events",
+        "managed unload completed and an exact subsequent status check found the candidate absent"
+      ],
+      "status": "terminal-stage3-pass",
+      "warning_boundary": "A first-use gumbel-sample JIT warning is retained in source evidence; it prevents latency or performance inference."
+    }
+  ],
+  "schema": "deepseek-stage3-public-native/v1",
+  "status": "completed_bounded_stage3_evidence"
+}

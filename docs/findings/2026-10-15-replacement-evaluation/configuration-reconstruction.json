@@ -1,0 +1,1362 @@
+{
+  "campaign_id": "2026-10-15-replacement-full",
+  "configurations": [
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "glm-r11",
+      "model": {
+        "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+        "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+        "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+      },
+      "qualification_role": "retained control configuration",
+      "runtime": {
+        "benchmark_native_generation_policy": {
+          "request_temperature": 1.0,
+          "request_top_p": 0.95,
+          "thinking_path": "rendered Max"
+        },
+        "context_tokens": 327680,
+        "decode_context_parallel_size": 1,
+        "engine": "vLLM EXL3",
+        "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+        "execution_dtype": "bfloat16",
+        "expert_parallel": true,
+        "gpu_memory_utilization": 0.97,
+        "image": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+        "kv_cache_dtype": "fp8_ds_mla",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 1,
+          "configured_memory_swap_limit_mib": 53249,
+          "configured_ram_mib": 53248,
+          "host_reserve_mib": 12288,
+          "readback_boundary": "configured contract only; the registry startup gate requires memory.max=55834574848 and memory.swap.max=1048576, but this supplement does not claim a separate retained live cgroup readback."
+        },
+        "model_artifact_quantization": "uniform K4 EXL3/TR3 routed experts; native-precision non-routed tensors",
+        "multimodal_limits": {
+          "image": 8,
+          "video": 0
+        },
+        "offload": "none recorded",
+        "reasoning_and_tools": {
+          "automatic_tool_choice": true,
+          "reasoning_parser": "glm45",
+          "tool_call_parser": "glm47"
+        },
+        "relevant_serving_flags": [
+          "bfloat16 dtype",
+          "safetensors load format",
+          "b12x MoE backend",
+          "FLASHINFER_MLA_SPARSE_SM120 attention backend",
+          "chunked prefill enabled",
+          "prefix caching enabled",
+          "custom all-reduce disabled"
+        ],
+        "sampling": "generation configuration from the pinned checkpoint; no explicit sampling override recorded",
+        "server_generation_defaults": "pinned checkpoint generation configuration; no explicit managed server sampling override recorded",
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "source_binding": {
+        "managed_registry_sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+        "original_source_sha256": "f75795a7edf6efbd127851eade3d954ce04142102fad7b6698c5c9c1904045d9",
+        "source_basename": "glm-agentic18-artifact.json"
+      }
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "mimo-r4",
+      "model": {
+        "repository": "XiaomiMiMo/MiMo-V2.6-Flash-MOPD",
+        "revision": "b12f5573350bb1704513fcf119fca48e498b0423",
+        "served_name": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r4"
+      },
+      "qualification_role": "unqualified r4 configuration; retained diagnostic evidence",
+      "runtime": {
+        "benchmark_native_generation_policy": {
+          "request_temperature": 1.0,
+          "request_top_p": 0.95,
+          "thinking_path": "automatic"
+        },
+        "context_tokens": 327680,
+        "decode_context_parallel_size": "unknown",
+        "engine": "vLLM",
+        "engine_revision": "eb87980585c10f7e5ee8f498fd3830898101d208",
+        "execution_dtype": "bfloat16",
+        "expert_parallel": "unknown",
+        "gpu_memory_utilization": 0.945,
+        "image": "sha256:42ff601ea51f08c7598322ac22a363b843e1c8202c8358752bb50a01553b805b",
+        "kv_cache_dtype": "fp8",
+        "max_num_batched_tokens": 4096,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 53248,
+          "configured_ram_mib": 53248,
+          "evidence_boundary": "Configured managed recipe RAM/swap contract; this row does not claim a separate retained live cgroup measurement.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": "not recorded in retained managed registry or accepted native identity",
+        "multimodal_limits": {
+          "audio": 0,
+          "image": 8,
+          "video": 0
+        },
+        "offload": "no CPU KV offload recorded",
+        "reasoning_and_tools": {
+          "automatic_tool_choice": true,
+          "reasoning_parser": "mimo",
+          "tool_call_parser": "mimo"
+        },
+        "relevant_serving_flags": [
+          "trust remote code",
+          "MP distributed executor",
+          "Marlin MoE backend",
+          "full-decode-only CUDA graph mode",
+          "custom all-reduce disabled"
+        ],
+        "server_generation_defaults": "generation configuration auto; no explicit managed server sampling override",
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "source_binding": {
+        "managed_registry_sha256": "b7b7a92d096af019fd61281c651564de7510ee81b5f60da44ac2e3018b699645",
+        "original_source_sha256": "e79b69add3245c4a5b0b2e26e28ae23163e8563f1daf4fc80865327ed5743c7c",
+        "recipe_snapshot_sha256": "615110a08629cbe919d6ad0b5a5a3e72fc5b79f4208361686c5a08264f147870",
+        "source_basename": "mimo-agentic18-r1-native.json"
+      }
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "mimo-r5-greedy",
+      "model": {
+        "repository": "XiaomiMiMo/MiMo-V2.6-Flash-MOPD",
+        "revision": "b12f5573350bb1704513fcf119fca48e498b0423",
+        "served_name": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy"
+      },
+      "qualification_role": "unqualified r5 configuration; sampling variant of r4",
+      "runtime": {
+        "benchmark_native_generation_policy": {
+          "request_temperature": 0.0,
+          "request_top_p": 0.95,
+          "thinking_path": "automatic"
+        },
+        "context_tokens": 327680,
+        "decode_context_parallel_size": "unknown",
+        "engine": "vLLM",
+        "engine_revision": "eb87980585c10f7e5ee8f498fd3830898101d208",
+        "execution_dtype": "bfloat16",
+        "expert_parallel": "unknown",
+        "gpu_memory_utilization": 0.945,
+        "image": "sha256:42ff601ea51f08c7598322ac22a363b843e1c8202c8358752bb50a01553b805b",
+        "kv_cache_dtype": "fp8",
+        "max_num_batched_tokens": 4096,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 53248,
+          "configured_ram_mib": 53248,
+          "evidence_boundary": "Configured managed recipe RAM/swap contract; this row does not claim a separate retained live cgroup measurement.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": "not recorded in retained managed registry or accepted native identity",
+        "multimodal_limits": {
+          "audio": 0,
+          "image": 8,
+          "video": 0
+        },
+        "offload": "no CPU KV offload recorded",
+        "reasoning_and_tools": {
+          "automatic_tool_choice": true,
+          "reasoning_parser": "mimo",
+          "tool_call_parser": "mimo"
+        },
+        "relevant_serving_flags": [
+          "trust remote code",
+          "MP distributed executor",
+          "Marlin MoE backend",
+          "full-decode-only CUDA graph mode",
+          "custom all-reduce disabled"
+        ],
+        "server_generation_defaults": {
+          "effective_greedy_normalization": "source-inferred only; not a response echo",
+          "override_generation_config": {
+            "temperature": 0.0,
+            "top_p": 0.95
+          }
+        },
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "source_binding": {
+        "managed_registry_sha256": "6fadf1b1722cbe1def1142bafdf0bc480e46cd82cdf824b3e0345c6267daf079",
+        "original_source_sha256": "e6fda11ac6ee2d057d436251417edcd00b8835178af9056c7a36b178eea0ae0b",
+        "source_basename": "mimo-r5-greedy-agentic18-r1-native.json"
+      }
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "mistral-r2",
+      "model": {
+        "repository": "mistralai/Mistral-Medium-3.5-128B",
+        "revision": "22b2b868a15677cfa6061277ed2f653d1349a9ab",
+        "served_name": "mistral35-fp8kv-tp2-c4-262k-r2"
+      },
+      "qualification_role": "rejected resource-policy configuration",
+      "runtime": {
+        "benchmark_native_generation_policy": {
+          "evidence_status": "Declared source-supported comparison policy; no r2 agentic benchmark executed. Bound r2 protocol preflight uses its separate fixed protocol sampling path.",
+          "reasoning_effort": "high",
+          "request_temperature": 0.7,
+          "request_top_p": 0.95,
+          "thinking_path": "default"
+        },
+        "context_tokens": 262144,
+        "decode_context_parallel_size": "unknown",
+        "engine": "vLLM",
+        "engine_revision": "3f1bcfd82bb2e93fcd364fc7a5491718453a77e2",
+        "execution_dtype": "bfloat16",
+        "expert_parallel": "not applicable",
+        "gpu_memory_utilization": 0.95,
+        "image": "vllm/vllm-openai@sha256:cb9bc64f0f038c2c2ebf13b31248fb87aca40c356c3d20f363be087cfcff1fcd",
+        "kv_cache_dtype": "fp8",
+        "max_num_batched_tokens": 4096,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 53248,
+          "configured_ram_mib": 53248,
+          "evidence_boundary": "Configured managed recipe RAM/swap contract; this row does not claim a separate retained live cgroup measurement.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": "not recorded in retained managed registry or accepted native identity",
+        "multimodal_limits": {
+          "image": 8,
+          "video": 0
+        },
+        "offload": "no host KV offload recorded",
+        "reasoning_and_tools": {
+          "automatic_tool_choice": true,
+          "native_reasoning_controls": [
+            "none",
+            "high"
+          ],
+          "reasoning_parser": "mistral",
+          "tool_call_parser": "mistral"
+        },
+        "relevant_serving_flags": [
+          "MP distributed executor"
+        ],
+        "server_generation_defaults": "generation configuration auto; no explicit managed server sampling override",
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "source_binding": {
+        "managed_registry_sha256": "b7b7a92d096af019fd61281c651564de7510ee81b5f60da44ac2e3018b699645",
+        "original_source_sha256": "fac143fa58a36fe706c71a6ac092d759abddc6dc3316f00aec558c13a47b286b",
+        "recipe_snapshot_sha256": "21937aaec6d37686c18ecbc96638ec8fe00eece552227d618947d8507fb33cd3",
+        "source_basename": "mistral-r2-model-aware-preflight.json"
+      }
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "mistral-r3",
+      "model": {
+        "repository": "mistralai/Mistral-Medium-3.5-128B",
+        "revision": "22b2b868a15677cfa6061277ed2f653d1349a9ab",
+        "served_name": "mistral35-fp8kv-tp2-c4-262k-r3"
+      },
+      "qualification_role": "rejected reliability configuration",
+      "runtime": {
+        "benchmark_native_generation_policy": {
+          "evidence_status": "Executed by the retained r3 agentic round; separate from deterministic protocol preflight.",
+          "reasoning_effort": "high",
+          "request_temperature": 0.7,
+          "request_top_p": 0.95,
+          "thinking_path": "default"
+        },
+        "context_tokens": 262144,
+        "decode_context_parallel_size": "unknown",
+        "engine": "vLLM",
+        "engine_revision": "3f1bcfd82bb2e93fcd364fc7a5491718453a77e2",
+        "execution_dtype": "bfloat16",
+        "expert_parallel": "not applicable",
+        "gpu_memory_utilization": 0.94,
+        "image": "vllm/vllm-openai@sha256:cb9bc64f0f038c2c2ebf13b31248fb87aca40c356c3d20f363be087cfcff1fcd",
+        "kv_cache_dtype": "fp8",
+        "max_num_batched_tokens": 4096,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 53248,
+          "configured_ram_mib": 53248,
+          "evidence_boundary": "Configured managed recipe RAM/swap contract; this row does not claim a separate retained live cgroup measurement.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": "not recorded in retained managed registry or accepted native identity",
+        "multimodal_limits": {
+          "image": 8,
+          "video": 0
+        },
+        "offload": "no host KV offload recorded",
+        "reasoning_and_tools": {
+          "automatic_tool_choice": true,
+          "native_reasoning_controls": [
+            "none",
+            "high"
+          ],
+          "reasoning_parser": "mistral",
+          "tool_call_parser": "mistral"
+        },
+        "relevant_serving_flags": [
+          "MP distributed executor"
+        ],
+        "server_generation_defaults": "generation configuration auto; no explicit managed server sampling override",
+        "speculation": false,
+        "tensor_parallel_size": 2
+      },
+      "source_binding": {
+        "managed_registry_sha256": "a8495d2db46959352b91ec509b64fb19e470aded43bd6be78ae35413c0843879",
+        "original_source_sha256": "5f23ba96489b23e819c5a9d3b415d9ed154bf3a7d66c2e575e6a5fb495888230",
+        "source_basename": "mistral-r3-agentic18-r1-evidence.json"
+      }
+    },
+    {
+      "hardware": {
+        "configuration": "one RTX PRO 6000 Blackwell Max-Q compute GPU",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-runtime-r4",
+      "model": {
+        "quantization_candidate": {
+          "evidence_status": "external-prior metadata only; no model load, serving configuration, or numerical qualification claim",
+          "format": "EXL3 2.7bpw",
+          "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+          "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+        },
+        "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "served_name": "not applicable: Stage 2 numerical-test contract"
+      },
+      "qualification_role": "unqualified runtime build and independently reviewed Stage 2 r6 one-GPU numerical-test contract; not a serving configuration",
+      "runtime": {
+        "base_image": "vllm/vllm-openai@sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3",
+        "build_precision_and_kv": "not applicable: r4 is a build and Stage 2 numerical-test contract, not a serving recipe",
+        "build_resource_contract": {
+          "cpus": 2,
+          "effective_swap_mib": 0,
+          "max_jobs": 1,
+          "nvcc_threads": 1,
+          "ram_mib": 16384,
+          "timeout_seconds": 1800
+        },
+        "context_tokens": "not applicable",
+        "decode_context_parallel_size": "not applicable",
+        "engine": "vLLM 0.31.0+dsv41.sm120 with EXL3 plugin",
+        "gpu_memory_utilization": "not applicable",
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "max_num_seqs": "not applicable",
+        "multimodal_limits": "not applicable",
+        "offload": "none recorded",
+        "relevant_runtime_controls": {
+          "cuda": "13.0.2",
+          "exl3_int8_gemv": false,
+          "rdma_all_reduce": false,
+          "target_architecture": "SM120",
+          "torch": "2.13.0+cu130",
+          "vllm_plugins": "exl3_moe"
+        },
+        "source_pins": {
+          "exllamav3": "151539c77abc7ab7425d30da7a4e8e3c5c154e7b",
+          "recipe_plugin": "cc59c3609e8e671418f39eb92aa16b0e4f770b77",
+          "vllm": "6e517b15c1833cf72a7f557ee32524d98682e617"
+        },
+        "speculation": false,
+        "stage2_resource_contract": {
+          "compute_gpus": 1,
+          "cpus": 8,
+          "effective_swap_mib": 0,
+          "host_mounts": "none",
+          "network": "none",
+          "ram_mib": 24576,
+          "required_compute_capability": [
+            12,
+            0
+          ],
+          "root_filesystem": "read-only",
+          "timeout_seconds": 2700,
+          "tmpfs": "bounded 4 GiB /tmp for JIT"
+        },
+        "tensor_parallel_size": "not applicable: Stage 2 uses exactly one compute GPU"
+      },
+      "source_binding": {
+        "additional_stage2_original_source_sha256": "1252b3adc0347cbc7d85b9ae745e20e76ee75bf06a566dd294c00531ee6ff2f8",
+        "additional_stage2_source_basename": "deepseek-stage2-r4-gpu-test-r2.json",
+        "build_config_sha256": "22a5e8ed63daa8785aead38e67cccb8fc92c0ca10373f2eaf967b731ffbed75a",
+        "original_source_sha256": "67a9203250e03a5be7a79c4bef33ee4a98596dc5fe2dda1cd5df378fdc718f86",
+        "revision_source_basename": "source-registry.json",
+        "revision_source_sha256": "3e27c3b852dfc1656a84ef5f98b96b7338e178f41c3af8b5be26ff58107353b3",
+        "source_basename": "deepseek-build-r4.json",
+        "source_lock_sha256": "22b2b086d0d5bdb144c77133b2e1b4fcb7dc22412dd57158794953cf394f8ecf",
+        "stage2_r6_native_source_basename": "deepseek-stage2-r6.native.json",
+        "stage2_r6_native_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "stage2_r6_review_source_basename": "independent-stage2-r6-review.json",
+        "stage2_r6_review_source_sha256": "95a190fd0dc0c3ff58408ca39fc0e652e878e949105161f65acd522e097ab555"
+      },
+      "status": "Verified Stage 2 r6 numerical runtime compatibility only; no model weights were loaded. This row does not describe a Stage 3 serving plan, capacity, quality, or promotion result."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage3-r8",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage3-dummy-r8",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "unqualified Stage 3 dummy hardware-proxy configuration",
+      "runtime": {
+        "context_tokens": 65536,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "dummy",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "EXL3 2.7bpw candidate artifact with dummy parameter allocation and verified official Engram disk tables; no main weight files"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "The helper-produced dummy EXL3 object omitted the original candidate dense, head, cooperative, and fused controls; r8 is not a faithful real-quant residency proxy."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "hardware_source_basename": "deepseek-stage2-r6.native.json",
+        "hardware_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "original_source_sha256": "9961d1d5149bd19ebb0ea0a947d72b949cdb2254a180d920800e2be215eeb70c",
+        "source_basename": "serve-recipes.stage3-dummy-r8-engram.toml"
+      },
+      "status": "Stage 3 dummy hardware-proxy configuration only; no quality, throughput, real main-weight fit, or promotion conclusion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage3-r9",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage3-dummy-r9",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "unqualified Stage 3 dummy hardware-proxy configuration",
+      "runtime": {
+        "context_tokens": 65536,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "dummy",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "EXL3 2.7bpw candidate artifact with dummy parameter allocation and verified official Engram disk tables; no main weight files"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "After helper generation, r9 restored and asserted exact equality of the verified candidate exl3_moe object, including head K4 and dense map."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "delta_source_basename": "delta-r9.md",
+        "delta_source_sha256": "6c95c4491cdc77fbad4a122057462e2dabe4a26024024f45e4cd706eb1587056",
+        "hardware_source_basename": "deepseek-stage2-r6.native.json",
+        "hardware_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "original_source_sha256": "2d5cf0c1bc3c2bff0ea26127f5862ace04a384e64e8bb6efefa9e88b73d74ea9",
+        "source_basename": "serve-recipes.stage3-dummy-r9-engram.toml"
+      },
+      "status": "Stage 3 dummy hardware-proxy configuration only; no quality, throughput, real main-weight fit, or promotion conclusion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage3-r10",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage3-dummy-r10",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "unqualified Stage 3 dummy hardware-proxy configuration",
+      "runtime": {
+        "context_tokens": 65536,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "dummy",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "EXL3 2.7bpw candidate artifact with dummy parameter allocation and verified official Engram disk tables; no main weight files"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "r10 preserves r9 restored candidate controls and adds only VLLM_EXL3_DENSE_MROW=0 as a supported diagnostic dense-path selection; no runtime outcome is asserted."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "delta_source_basename": "delta-r10.md",
+        "delta_source_sha256": "48322b9ec4c4c76725f10ce26d62797e61c23667401c9dfd2d5b163713f612c0",
+        "hardware_source_basename": "deepseek-stage2-r6.native.json",
+        "hardware_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "original_source_sha256": "8b44e91096ec877711316e39861e4c233ae311ff7ed4240881ab49700fcccbe6",
+        "source_basename": "serve-recipes.stage3-dummy-r10-engram.toml"
+      },
+      "status": "Stage 3 dummy hardware-proxy configuration only; no quality, throughput, real main-weight fit, or promotion conclusion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage3-r11",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage3-dummy-r11",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "unqualified Stage 3 dummy hardware-proxy configuration",
+      "runtime": {
+        "context_tokens": 65536,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "dummy",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "EXL3 2.7bpw candidate artifact with dummy parameter allocation and verified official Engram disk tables; no main weight files"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "r11 preserves r10 MROW=0 and adds only --disable-custom-all-reduce, the pinned NCCL-fallback diagnostic transport selection; no runtime outcome is asserted by this configuration row."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "delta_source_basename": "delta-r11.md",
+        "delta_source_sha256": "f5ea8256a0286f019bbc591be3d8f0596729c807665db5a24bb7f960d6578f9d",
+        "hardware_source_basename": "deepseek-stage2-r6.native.json",
+        "hardware_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "original_source_sha256": "9adc74db303105c48ecc1e76efa5355ab3db0cd138bf3107d6a6ac55d39cd676",
+        "source_basename": "serve-recipes.stage3-dummy-r11-engram.toml",
+        "source_manifest_basename": "manifest.json",
+        "source_manifest_sha256": "1d5113ca2f315ca22049b7176fb888e76b524f8e336280335e0bf6fda9f654c1"
+      },
+      "status": "Stage 3 dummy hardware-proxy configuration only; no quality, throughput, real main-weight fit, or promotion conclusion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage3-r12",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage3-dummy-r12",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "unqualified Stage 3 dummy hardware-proxy configuration",
+      "runtime": {
+        "context_tokens": 65536,
+        "cpu_offload_gb_per_tp_worker": 4,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "dummy",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "EXL3 2.7bpw candidate artifact with dummy parameter allocation and verified official Engram disk tables; no main weight files"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "r12 preserves r11 MROW=0 and disabled custom all-reduce, and adds only --cpu-offload-gb 4 per TP worker as a bounded generic-UVA diagnostic; the configuration row does not establish EXL3 offload support, real-weight fit, quality, throughput, or promotion."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "delta_source_basename": "delta-r12.md",
+        "delta_source_sha256": "bc61d2070282b8589d63a3250241c481309fd28b5d7f1b42e4b6bb8be0e082e3",
+        "hardware_source_basename": "deepseek-stage2-r6.native.json",
+        "hardware_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+        "offline_proof_source_basename": "offline-proof.json",
+        "offline_proof_source_sha256": "9679c2c2332e8f3432bb44689911c1100ee52f1958cd7a96c4cb087e3b9380bd",
+        "original_source_sha256": "46973d9517786f52307e7ac6f80160d0ad9d8fff563b42c57e2574ce483d4aff",
+        "preexecution_review_source_basename": "independent-review-r2.json",
+        "preexecution_review_source_sha256": "c39820a5d40812f34938d7cc0b08ac2068ce906877158386e9e4f6a75275d135",
+        "root_terminal_record_source_basename": "root-terminal-record.json",
+        "root_terminal_record_source_sha256": "2555576b40005be026b18335735286e811770235b87b8092ca42bfb30b25120f",
+        "source_basename": "serve-recipes.stage3-dummy-r12-engram.toml",
+        "source_manifest_basename": "manifest.json",
+        "source_manifest_sha256": "1d5113ca2f315ca22049b7176fb888e76b524f8e336280335e0bf6fda9f654c1",
+        "terminal_review_source_basename": "independent-terminal-review.json",
+        "terminal_review_source_sha256": "0ba617460d27a4e68ff38d6ca86890c93b706428e53e3d6aef673d082b6bc39a"
+      },
+      "status": "Stage 3 dummy hardware-proxy configuration with accepted bounded dummy-path evidence only; no quality, throughput, real main-weight fit, or promotion conclusion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage4-r7",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage4-real-text-r7",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "attempted bounded real-weight 64K/C1/image0 feasibility; pre-engine integrity rejection, no correctness request",
+      "runtime": {
+        "context_tokens": 65536,
+        "cpu_offload_gb_per_tp_worker": 4,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "dense_mrow": 0,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "engram_config": {
+          "cpu_offload": true,
+          "disk_offload": true,
+          "disk_threads": 256,
+          "dp_shared_memory": false
+        },
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "safetensors",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "Original EXL3 2.7bpw candidate main weights and verified official Engram disk tables"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "Pinned real main pack; exact original candidate plan and index; no dummy weights. r8 corrects the r7 index checksum transposition only, apart from attempt identity."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "original_source_sha256": "a8d0707d4568bbcdf69fdf775b2581c55de88d19a3c62d315765526bc887b037",
+        "public_native_derivative": "native/deepseek-stage4.native.json",
+        "public_native_derivative_sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438",
+        "source_basename": "serve-recipes.stage4-real-text-r7-c1-64k.toml",
+        "terminal_record_source_basename": "deepseek-stage4-r7-terminal.json",
+        "terminal_record_source_sha256": "0ec2f78cc2cf295c9814fda5d04b1b5c4499f177ad34caf1021fb48c4bf5b324"
+      },
+      "status": "Pre-engine checksum failure; no GPU weight load or requests."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-stage4-r8",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-stage4-real-text-r8",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "bounded real-weight 64K/C1/image0 feasibility and basic correctness",
+      "runtime": {
+        "context_tokens": 65536,
+        "cpu_offload_gb_per_tp_worker": 4,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "dense_mrow": 0,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "engram_config": {
+          "cpu_offload": true,
+          "disk_offload": true,
+          "disk_threads": 256,
+          "dp_shared_memory": false
+        },
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 536870912,
+        "load_format": "safetensors",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 1,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "Original EXL3 2.7bpw candidate main weights and verified official Engram disk tables"
+        },
+        "multimodal_limits": {
+          "image": 0
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "Pinned real main pack; exact original candidate plan and index; no dummy weights. r8 corrects the r7 index checksum transposition only, apart from attempt identity."
+      },
+      "source_binding": {
+        "candidate_config_source_basename": "artifact-config.json",
+        "candidate_config_source_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+        "original_source_sha256": "0c711e9a858a522c68e4dad0768e85e11a8f5779c1424aaadbd78a36d888d08f",
+        "public_native_derivative": "native/deepseek-stage4.native.json",
+        "public_native_derivative_sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438",
+        "source_basename": "serve-recipes.stage4-real-text-r8-c1-64k.toml",
+        "terminal_record_source_basename": "deepseek-stage4-r8-terminal.json",
+        "terminal_record_source_sha256": "42da253b1f8238b3bfdcd46cb0ab84b79bc6412a1cb1be2d55345f3dc254664c"
+      },
+      "status": "Bounded real-weight basic 2/2 and resource gate accepted independently; no native-quality, full-role or promotion result."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-full-role-r2",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-full-role-r2",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "full-role admission and initial nonthinking correctness/resource gate",
+      "runtime": {
+        "context_tokens": 327680,
+        "cpu_offload_gb_per_tp_worker": 4,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "dense_mrow": 0,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "engram_config": {
+          "cpu_offload": true,
+          "disk_offload": true,
+          "disk_threads": 256,
+          "dp_shared_memory": false
+        },
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 2147483648,
+        "load_format": "safetensors",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "Original EXL3 2.7bpw candidate main weights and verified official Engram disk tables"
+        },
+        "multimodal_limits": {
+          "image": 8
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "Full-role327680/C4/image8 with2GiB fixedKV; original weights and allother r8controls retained."
+      },
+      "source_binding": {
+        "original_source_sha256": "3a9bd964cec79f84f96433598aae4e96841a256db5d42c2e53bf6db9aa159dac",
+        "public_native_derivative": "native/deepseek-full-role-r2.native.json",
+        "public_native_derivative_sha256": "b2c0faa448a8325168754480fa9766d9197179e03e1327968129ac0bb4827a4f",
+        "source_basename": "serve-recipes.deepseek-full-role-r2.toml",
+        "terminal_record_source_basename": "deepseek-full-role-r2-terminal.json",
+        "terminal_record_source_sha256": "7f91a2d2e394c0ca02d47501648572ffde1b7a37b80286b826df5ea47fc8b5d5"
+      },
+      "status": "Startup and basic2/2 correctness passed; activeGPUreserve4087MiB/card failed4096policy. Unloaded, nofollowon qualityrequests orpromotion."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-full-role-r3",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-full-role-r3",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "full-role resource feasibility and bounded protocol controls; resource policy rejection",
+      "runtime": {
+        "context_tokens": 327680,
+        "cpu_offload_gb_per_tp_worker": 4,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "dense_mrow": 0,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "engram_config": {
+          "cpu_offload": true,
+          "disk_offload": true,
+          "disk_threads": 256,
+          "dp_shared_memory": false
+        },
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 1610612736,
+        "load_format": "safetensors",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "Original EXL3 2.7bpw candidate main weights and verified official Engram disk tables"
+        },
+        "multimodal_limits": {
+          "image": 8
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "Exact real main pack and official Engram; full role with 1.5 GiB KV per rank, CPU offload 4 GiB per worker; all runtime pins retained."
+      },
+      "source_binding": {
+        "original_source_sha256": "ff7897d7926d0aa340e86dc40c1233c820eb4f9f003659b7af9186a3657816f0",
+        "public_native_derivative": "native/deepseek-full-role-r3.native.json",
+        "public_native_derivative_sha256": "e71b41d4269a809dfef6b82e1e20d2070fa573b0d12cb4d0a53633058853599a",
+        "source_basename": "serve-recipes.deepseek-full-role-r3.toml",
+        "terminal_record_source_basename": "deepseek-full-role-r3-terminal.json",
+        "terminal_record_source_sha256": "64742e233fd235005268876e48fbfce5154ab87638d0bf4f7abfee9e292465b3"
+      },
+      "status": "Startup and basic2/2/model-aware5/5 passed, but observed active reserve3961MiB/card failed4096floor. Unloaded; no native-quality qualification."
+    },
+    {
+      "hardware": {
+        "configuration": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+        "vram_mib_per_gpu": 97887
+      },
+      "id": "deepseek-full-role-r4",
+      "model": {
+        "official_engram_repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+        "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+        "recipe_identity": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw-full-role-r4",
+        "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+        "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+      },
+      "qualification_role": "full-role candidate: protocol and resource gates passed; native agentic reliability gate failed",
+      "runtime": {
+        "context_tokens": 327680,
+        "cpu_offload_gb_per_tp_worker": 6,
+        "cuda_graph_mode": "FULL_DECODE_ONLY",
+        "custom_all_reduce_disabled": true,
+        "dense_mrow": 0,
+        "engine": "vLLM EXL3 DeepSeek V4.1 SM120 control runtime",
+        "engram_config": {
+          "cpu_offload": true,
+          "disk_offload": true,
+          "disk_threads": 256,
+          "dp_shared_memory": false
+        },
+        "flashinfer_autotune": false,
+        "gpu_memory_utilization": 0.95,
+        "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+        "kv_cache_memory_bytes": 1610612736,
+        "load_format": "safetensors",
+        "max_num_batched_tokens": 2048,
+        "max_num_seqs": 4,
+        "memory_contract": {
+          "configured_effective_swap_mib": 0,
+          "configured_memory_swap_limit_mib": 65536,
+          "configured_ram_mib": 65536,
+          "evidence_boundary": "Configured managed contract only; values do not establish capacity, quality, or promotion.",
+          "host_reserve_mib": 12288
+        },
+        "model_artifact_quantization": {
+          "candidate_configuration_sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253",
+          "candidate_exl3_moe": {
+            "coop_max_tokens": 32,
+            "decode_kernel": "coop",
+            "dense_map": {
+              "drafter": {
+                "attn.wo_b": 5,
+                "attn.wq_a": 5,
+                "attn.wq_b": 5,
+                "ffn.shared_experts.w1": 5,
+                "ffn.shared_experts.w2": 5
+              },
+              "k": {
+                "attn.wo_a": 5,
+                "attn.wo_b": 4,
+                "attn.wq_a": 4,
+                "attn.wq_b": 4,
+                "ffn.shared_experts.w1": 4,
+                "ffn.shared_experts.w2": 4
+              },
+              "layers": [
+                0,
+                39
+              ]
+            },
+            "exllamav3_version": "1.6.0",
+            "fused_rows": 256,
+            "head": "exl3",
+            "head_k": 4,
+            "plan_file": "exl3_moe_plan.json",
+            "tp_layout": "channels"
+          },
+          "format": "Original EXL3 2.7bpw candidate main weights and verified official Engram disk tables"
+        },
+        "multimodal_limits": {
+          "image": 8
+        },
+        "rdma_all_reduce": false,
+        "speculation": false,
+        "tensor_parallel_size": 2,
+        "variant_detail": "Exact real main pack and official Engram; configured1.5GiB KV per rank and6GiB CPU offload per worker; full327680/C4/image8 role. CPU parameter accounting may overshoot a parameter boundary; not resident RAM."
+      },
+      "source_binding": {
+        "source_basename": "serve-recipes.deepseek-full-role-r4.toml",
+        "original_source_sha256": "c567ca5443a3ee8d24415fc67531ccb0d3f9290f37b57e047c357cf13664c32a",
+        "terminal_record_source_basename": "deepseek-full-role-r4-oracle8-terminal-gate.json",
+        "terminal_record_source_sha256": "dff2a904acfa3b930b744434ea378aff67d9330e884aea68d0bee2c8945d5c45",
+        "independent_terminal_review_sha256": "736b94db0a1376b617e881fa4c4e465e7c1fbeef58bd5dda780ac738c47e8b28",
+        "public_native_derivative": "native/deepseek-full-role-r4.native.json",
+        "public_native_derivative_sha256": "8db47000bfa1896eace7202b2e6d3e7a94031bb83dd84057d06887fd7aabef7e"
+      },
+      "status": "Basic2/2 and model-aware5/5 passed; nativeOracle8 first round17/18 failed exact tool protocol. Resource minimum6539MiB/card passed. Unloaded; no follow-on rounds or finalist gates."
+    }
+  ],
+  "observed_date": "2026-10-15",
+  "redaction_policy": {
+    "omitted": [
+      "private paths",
+      "ports and endpoints",
+      "physical GPU UUIDs and bus identities",
+      "container names and IDs",
+      "named volumes and mount paths"
+    ],
+    "unknown_value": "unknown means the retained evidence did not record the field; it is not an inferred default."
+  },
+  "schema": "anvil-serving.replacement-publication-configuration-supplement/v1",
+  "scope": "Public-safe reconstruction details for retained configurations. This supplement contains no endpoint, host, port, physical-device, container, volume, or private-path identity. Configured values are not measured capacity, quality, or promotion claims."
+}

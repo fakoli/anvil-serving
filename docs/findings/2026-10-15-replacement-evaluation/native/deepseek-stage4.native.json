@@ -1,0 +1,66 @@
+{
+  "schema": "replacement-stage4-native/v1",
+  "campaign": "DeepSeek V4.1 Flash EXL3 Stage 4",
+  "status": "completed_bounded_stage4_evidence",
+  "configuration": {
+    "candidate_revision": "f7451e9617f675087881b5016fb210a526c7f99c",
+    "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+    "runtime_image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+    "quantization": "original candidate EXL3 2.7 bpw plan",
+    "tensor_parallel": 2,
+    "context_tokens": 65536,
+    "concurrency": 1,
+    "image_limit": 0,
+    "kv_cache_override_bytes": 536870912,
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "dense_mrow": 0,
+    "custom_all_reduce": "disabled",
+    "cpu_offload_gb_per_gpu": 4,
+    "configured_ram_mib": 65536,
+    "effective_swap_mib": 0
+  },
+  "outcomes": [
+    {
+      "attempt": "r7",
+      "classification": "pre_engine_configuration_failure",
+      "earliest_actionable_error": "candidate model.safetensors.index.json checksum mismatch",
+      "failed_digest": "d7368ca2c8ac48554b5a71e7eaca4bf330ebdf51d3929832cbc3c12ea7b50dc0",
+      "authoritative_digest": "d7368ca2c8ac48554b5a71e7aeca4bf330ebdf51d3929832cbc3c12ea7b50dc0",
+      "difference": "two-character transposition at one-based digest positions 25 and 26",
+      "authoritative_bytes": 13794908,
+      "other_critical_metadata_checks_passed": 5,
+      "engine_started": false,
+      "gpu_weight_load": false,
+      "basic_requests_sent": false,
+      "resource_conclusion": "none",
+      "quality_conclusion": "none"
+    },
+    {
+      "attempt": "r8",
+      "classification": "bounded_real_weight_text_protocol_and_resource_pass",
+      "integrity_pairs_passed_before_engine": 178,
+      "basic_protocol_checks": {
+        "passed": 2,
+        "total": 2,
+        "scope": "non-thinking text-only basic protocol"
+      },
+      "idle_free_gpu_mib_per_gpu": 7615,
+      "post_basic_free_gpu_mib_per_gpu": 7101,
+      "effective_host_limit_bytes": 68719476736,
+      "effective_swap_limit_bytes": 0,
+      "oom_events": 0,
+      "teardown_verified": true,
+      "native_quality_evidence": false,
+      "performance_evidence": false,
+      "full_role_evidence": false,
+      "promotion_qualified": false
+    }
+  ],
+  "boundaries": [
+    "No result for long context beyond configured 65536 tokens, C4, image input, or full-role capacity.",
+    "No native quality or throughput conclusion is recorded from the two basic protocol checks.",
+    "No route, alias, qualification, or promotion decision is recorded."
+  ],
+  "promoted": false,
+  "human_gate_required": true
+}

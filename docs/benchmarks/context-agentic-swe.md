@@ -48,6 +48,23 @@ with `--network none`, so an evaluated task cannot fetch a solution over the
 network or reach the endpoint directly. Image and pinned-asset preparation happen
 before the task container starts.
 
+When a frozen paired SWE job reports missing task images, preview and then
+prepare only that job's pinned image references:
+
+```bash
+anvil-serving eval benchmark swe images --spec SWE_JOB.json --worker WORKER_ID --dry-run
+anvil-serving eval benchmark swe images --spec SWE_JOB.json --worker WORKER_ID --confirm
+```
+
+Run the command locally on the Linux worker named by the frozen specification. The
+specification must bind both `paired_image_ids` and
+`paired_image_repo_digests` for every selected instance. The receipt records
+the observed local hostname, local Docker socket, Docker storage root, each
+selected instance, official tag, immutable registry digest, bounded command
+diagnostics, and post-pull identity observation. The command refuses a remote
+Docker endpoint or a tag whose local identity or registry digest differs from
+the frozen mapping.
+
 Before a measured campaign, verify:
 
 - the worker differs from the model host;

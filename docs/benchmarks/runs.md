@@ -1,5 +1,23 @@
 # Benchmark run catalog
 
+## 2026-10-16 SGLang, Qwen, and Nemotron comparison
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | Original GLM baseline, GLM SGLang scout, Qwen FP4 scout, and Nemotron 3.5 Super VL NVFP4 scout | Native preflight, Oracle, context/vision where completed, strict C1, and terminal five-case SWE | 2x RTX PRO 6000 Blackwell Max-Q | Original GLM C1 0/4 performance-eligible; SGLang SWE 0/5 resolved, 2/5 graded; Qwen SWE 2/5, 4/5 graded; Nemotron preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 eligible, SWE 2/5 resolved and 4/5 graded | `no-promotion`; SGLang/Qwen coding miss the 4/5 floor; original GLM and Nemotron C1 are ineligible, and Nemotron misses exact Oracle. No eligible controlled performance population. | [GLM](models/glm53-flash.md) · [Qwen](models/qwen38-flash-next.md) · [Nemotron](models/nemotron35-super-vl-120b.md) · [finding](../findings/2026-10-16-sglang-qwen-comparison.md) |
+
+## 2026-10-16 GLM v0.9.1 trial
+
+| Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | GLM-5.3-Flash v0.9.1 R2 | native preflight, strict Oracle, vision, bounded context, sampled reserve, and pinned SWE | 2x RTX PRO 6000 Blackwell Max-Q | R2: preflight 6/6, Oracle 54/54, vision 18/18, retrieval/tool-context at 216307/110760 actual tokens, SWE 3/5; restored original: direct/routed 6/6, Oracle 54/54, vision 18/18, matching context probes, SWE 3/5 | `rejected`, `no-promotion`; exact incumbent restored, zero OOM, candidates absent, primary router readmitted; both coding results below the four-case gate; no capacity, stability, DFlash, performance, causal, or model-family claim | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-16-glm-v091-trial.md) |
+
+## 2026-10-15 replacement evaluation
+
+| Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-15 | GLM control, MiMo MOPD, Mistral Medium 3.5, and DeepSeek V4.1 diagnostics | completed replacement gates; DeepSeek Stage 2 numerical, r12 dummy-path, Stage 4 real-weight, and full-role diagnostics | dual RTX PRO 6000 for GLM/MiMo/Mistral and DeepSeek TP2 diagnostics; one GPU for DeepSeek Stage 2 | no candidate qualified; r2/r3 failed exact resource gates and r4 failed its first Oracle8 round after passing resources | `no-promotion`; GLM retained after restoration; no performance conclusion | [GLM](models/glm53-flash.md) · [MiMo](models/mimo-v26-flash.md) · [Mistral](models/mistral-medium-35.md) · [DeepSeek V4.1](models/deepseek-v41-flash.md) · [finding](../findings/2026-10-15-replacement-evaluation.md) |
+
 ## 2026-10-13 full qualification campaign
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |

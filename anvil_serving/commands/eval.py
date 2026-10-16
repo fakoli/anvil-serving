@@ -77,6 +77,25 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                     allowed=("run_id", "ownership_id"),
                 ),
             ),
+            *(() if name != "swe" else (_resource_node(
+                "images",
+                "Preview or prepare only the frozen SWE task images from one job specification.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=CONFIRM_OPTIONS + (
+                    _option("--spec", summary="Frozen SWE job specification JSON file.", value_name="PATH"),
+                    _option(
+                        "--worker",
+                        summary="Local worker ID named by the frozen specification.",
+                        value_name="ID",
+                    ),
+                    _option("--min-free-bytes", summary="Required free disk reserve (minimum 100 GiB).", value_name="BYTES"),
+                ),
+                argv_prefix=(name, "images"),
+                forward_confirm_flag=True,
+                execution_host_os=("linux",),
+            ),)),
             _resource_node(
                 "cleanup",
                 f"Clean only the owned work directory for a {name} benchmark run.",
@@ -253,6 +272,7 @@ def commands() -> CommandNode:
                         "video_expect",
                         "no_thinking",
                         "thinking_mode",
+                        "force_nonempty_content",
                         "reasoning_effort",
                         "reasoning_evidence",
                         "visible_answer_tokens",

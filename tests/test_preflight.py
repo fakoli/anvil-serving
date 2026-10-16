@@ -84,6 +84,87 @@ def test_preflight_main_records_model_controls_and_budget(monkeypatch, tmp_path)
     assert artifact["observations"][0]["finish_reason"] == "stop"
 
 
+def test_preflight_force_nonempty_content_reaches_tool_request_and_evidence(
+    monkeypatch, tmp_path
+):
+    requests = []
+
+    class Response:
+        def read(self):
+            return json.dumps({"choices": [{"finish_reason": "tool_calls", "message": {
+                "tool_calls": [{"type": "function", "function": {
+                    "name": "get_weather", "arguments": '{"city":"Oakland"}',
+                }}],
+            }}]}).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def urlopen(request, **_kwargs):
+        requests.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", urlopen)
+    out = tmp_path / "preflight.json"
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+        "--checks", "tools", "--tool-batch", "1", "--thinking-mode", "enabled",
+        "--force-nonempty-content", "--json-out", str(out),
+    ]) == 0
+
+    expected = {"enable_thinking": True, "force_nonempty_content": True}
+    assert requests[0]["chat_template_kwargs"] == expected
+    assert json.loads(out.read_text(encoding="utf-8"))["thinking"]["chat_template_kwargs"] == expected
+
+
+def test_preflight_force_nonempty_content_dry_run_and_invalid_modes(monkeypatch, capsys):
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+        "--checks", "tools", "--thinking-mode", "enabled",
+        "--force-nonempty-content", "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["chat_template_kwargs"] == {
+        "enable_thinking": True, "force_nonempty_content": True,
+    }
+
+    monkeypatch.setattr(pf, "t_smoke", lambda *_args, **_kwargs: pytest.fail("request made"))
+    for controls in ([], ["--thinking-mode", "disabled"], ["--thinking-mode", "unsupported"],
+                     ["--reasoning-effort", "max"]):
+        with pytest.raises(SystemExit) as exc:
+            pf.main([
+                "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+                "--checks", "smoke", "--force-nonempty-content", *controls,
+            ])
+        assert exc.value.code == 2
+
+
+def test_preflight_chat_omits_template_kwargs_without_a_thinking_control(monkeypatch):
+    requests = []
+
+    class Response:
+        def read(self):
+            return b'{"choices": []}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def urlopen(request, **_kwargs):
+        requests.append(json.loads(request.data))
+        return Response()
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", urlopen)
+    pf.chat("http://127.0.0.1:30000/v1", "candidate", [{"role": "user", "content": "test"}])
+
+    assert "chat_template_kwargs" not in requests[0]
+
+
 def test_preflight_forwards_deepseek_max_reasoning_effort(monkeypatch):
     calls = []
 

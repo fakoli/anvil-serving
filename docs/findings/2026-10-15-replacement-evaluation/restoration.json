@@ -1,0 +1,128 @@
+{
+  "schema": "replacement-campaign-public-restoration/v1",
+  "status": "restored_and_client_verified",
+  "promoted": false,
+  "incumbent": "GLM-5.3-Flash EXL3 r11",
+  "exact_retained_container_identity_verified": true,
+  "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+  "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+  "candidate_unloaded_and_absent": true,
+  "direct": {
+    "passed": 5,
+    "attempted": 5,
+    "source": {
+      "path": "native/glm-final-direct-preflight.native.json",
+      "sha256": "20c1ca6b648450ca8ab80f482110f3b8363f8278abb1e8d11591b383e54c90ae"
+    }
+  },
+  "routed": {
+    "passed": 6,
+    "attempted": 6,
+    "source": {
+      "path": "native/glm-final-routed-preflight.native.json",
+      "sha256": "46cc0635cac91c5f0877347b54eff7f127a47a1ef88b9cd109675b12388f4c40"
+    }
+  },
+  "pi": {
+    "status": "passed",
+    "events": 122,
+    "read_tool_calls": 1,
+    "agent_end_count": 1,
+    "agent_settled": true,
+    "selected_provider": "anvil",
+    "selected_model": "llm.primary",
+    "persistent_provider_changes": false,
+    "scope": "selected anvil/llm.primary actual read turn; full provider catalog not tested"
+  },
+  "incumbent_resource_boundary": {
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 1048576,
+    "oom": 0,
+    "note": "Retained original52GiB/1MiB effective swap allowance; not modified to challenger64GiB/zero-swap contract. Grandfathered incumbent GPU reserve; no new reserve qualification."
+  },
+  "source_checkpoint": {
+    "source_basename": "final-restoration-checkpoint.json",
+    "sha256": "e899b8fd5224418b0c2aa616afdd63e2211e7dd676bab51cc8fcb4c9b6202025"
+  },
+  "sources": [
+    {
+      "path": "full/raw/deepseek-full-role-r4-unload-preview.json",
+      "sha256": "4d6ca805a964b3272266e29c9e2b69b397fddfb55d1dc8b87b4d93948b1a9a5b"
+    },
+    {
+      "path": "full/raw/deepseek-full-role-r4-unload-apply.json",
+      "sha256": "f6f40f444e99432e159a02f29bc4f9d7e232a7b079082ed623ad437cdcf011d8"
+    },
+    {
+      "path": "full/raw/deepseek-full-role-r4-absence-status.json",
+      "sha256": "c24a3e01ecd29fe2a04cec54161f623ad8b380112ff3556a08331cf06f04c2c6"
+    },
+    {
+      "path": "full/raw/deepseek-full-role-r4-qualification-resource-monitor-summary.json",
+      "sha256": "7befc5383525a98cbccd9bbe7c523550c1c18ca3cbaceefa9721d7877e63b9f8"
+    },
+    {
+      "path": "full/raw/glm-final-restore-preview.json",
+      "sha256": "f4363e76e7e1954464b1ce81b307005569436b1ea863446e190551e384963c8f"
+    },
+    {
+      "path": "full/raw/glm-final-restore-apply.json",
+      "sha256": "bb05cde9aa2b83aa247a5a1f2c14d8a4758478b94be0e1bc1e31a1a2d987f2e9"
+    },
+    {
+      "path": "full/raw/glm-final-models.json",
+      "sha256": "190001ca5f352b943685bb531a2d4e57d2cd766d4191678745044ac67a8b5c33"
+    },
+    {
+      "path": "full/raw/glm-final-managed-status.json",
+      "sha256": "c4d8f8e1d73047777dc2ff8ecc970175b38d8e55314c812309a6e428d8d6b8aa"
+    },
+    {
+      "path": "full/raw/glm-final-direct-preflight.json",
+      "sha256": "76d10f8ed5eae7bdc342e6a78804ed9f60e152b082d143221e99be884709d872"
+    },
+    {
+      "path": "full/raw/glm-final-direct-execution-receipt.json",
+      "sha256": "682de81ea89e299f076ee546891adde048b2c326240457310790cb0f491d6428"
+    },
+    {
+      "path": "full/raw/glm-final-readmit-preview.json",
+      "sha256": "4ff2be8df837d3b0e7fca5757abd5663983b4598d41f60ce41b92c68ec24b3e4"
+    },
+    {
+      "path": "full/raw/glm-final-readmit-apply.json",
+      "sha256": "9bc0e530e6b7aa817ba145955915926ef1cac1d7307e50e56a60280363869c9e"
+    },
+    {
+      "path": "full/raw/glm-final-routed-preflight.json",
+      "sha256": "764eb386f0fc88e475e84a98fa5d9382e0d1a0942673fefb7c492989d8ac34d8"
+    },
+    {
+      "path": "full/raw/glm-final-routed-execution-receipt.json",
+      "sha256": "7b8c5e23e7173b8b9170842082cc3f2be085c9f71e842271ce8dbfc9f0a98aa8"
+    },
+    {
+      "path": "full/raw/glm-final-gpu-snapshot.json",
+      "sha256": "7ec3ec56b7627beb9b72b19cb781d7d3d1d637077a9ac1df2cb61b527480482e"
+    },
+    {
+      "path": "full/final-glm-pi-acceptance/run_actual_pi_acceptance.py",
+      "sha256": "09a71fa783ed6a448492e9611e70038f2fa1069423f96542e45e25918724831b"
+    },
+    {
+      "path": "full/final-glm-pi-acceptance/execution-receipt.json",
+      "sha256": "9f44f378f77e9cb983c01d379515a22588a4fc2df8a710f74aeba87875ce90e5"
+    },
+    {
+      "path": "full/final-glm-pi-acceptance/receipt.json",
+      "sha256": "3001831eac00ff3325501732ac5dfedbcc0f1ab5ae584f89716d67ab168978a6"
+    },
+    {
+      "path": "full/final-glm-pi-acceptance/raw-turn-events.json",
+      "sha256": "0dc0fb506cc8892404d774addead60215f9f72eddf7475da13cf59b0a710a2d6"
+    }
+  ],
+  "scope": "Final original incumbent restoration and selected-alias client acceptance; not fresh model qualification or full catalog/fleet propagation."
+}

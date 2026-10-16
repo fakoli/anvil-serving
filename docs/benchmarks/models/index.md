@@ -9,6 +9,11 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| Nemotron 3.5 Super VL 120B-A12B NVFP4 TP2 scout | preflight 6/6, vision 18/18, context 2/2; Oracle 48/54; C1 0/4 eligible | exact Oracle and capacity prerequisite fail; no coding qualification, C4, speed, or promotion | 2026-10-16 | [Nemotron 3.5 Super VL](nemotron35-super-vl-120b.md) |
+| 2026-10-16 SGLang, Qwen, and Nemotron comparison | terminal SGLang/Qwen SWE failures; bounded Nemotron functional evidence | no candidate meets replacement gates; no performance comparison | 2026-10-16 | [Campaign finding](../../findings/2026-10-16-sglang-qwen-comparison.md) |
+| Mistral Medium 3.5 TP2 | bounded protocol and native reliability evidence | r2 resource-policy and r3 campaign reliability rejection; no promotion | 2026-10-15 | [Mistral Medium 3.5](mistral-medium-35.md) |
+| DeepSeek V4.1 Flash | Stage 2 compatibility-only, Stage 3 dummy-path, and Stage 4 bounded real-weight diagnostics | full-role r4 failed its first Oracle8 round; no serving, quality, throughput, or promotion claim | 2026-10-15 | [DeepSeek V4.1 Flash](deepseek-v41-flash.md) |
+| 2026-10-15 replacement evaluation | completed replacement gates and bounded DeepSeek diagnostics | no eligible challenger; exact GLM retained after restoration | 2026-10-15 | [Campaign finding](../../findings/2026-10-15-replacement-evaluation.md) |
 | GLM official-base TR3 EXL3 R11 retained | Fresh baseline SWE 2/5; R19 bounded restoration accepted | TP2/DCP1, 327K/C4, APC/no-spec/vision8; thinking-off gap; no challenger promotion | 2026-10-13 | [GLM-5.3-Flash](glm53-flash.md) |
 | MiMo V2.6 Flash RL TP2 no-spec | preflight 25/25 and frozen SWE 4/5 | Agentic profiles 15/18, 17/18, and 17/18 miss the 18/18 gate; no context, multimodal, C4, or speed measurement; `not-qualified` | 2026-10-06 | [MiMo v2.6 Flash](mimo-v26-flash.md) |
 | 2026-10-13 closure lanes | GLM baseline 2/5; terminal Ignis 2/5 resolved/three empty; Qwen, DeepSeek, and MiMo retain bounded native outcomes | No challenger clears complete 4/5 plus Django/Pylint; no promotion or cross-lane ranking | 2026-10-13 | [Campaign finding](../../findings/2026-10-13-full-qualification.md) |

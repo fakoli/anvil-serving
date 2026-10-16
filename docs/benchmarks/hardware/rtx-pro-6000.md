@@ -1,5 +1,9 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-16 SGLang, Qwen, and Nemotron comparison:** The original GLM baseline C1 and Nemotron C1 each had 0/4 performance-eligible requests. SGLang GLM and Qwen FP4 passed preflight/Oracle prerequisites but terminal SWE evidence was 0/5 resolved (2/5 graded) and 2/5 resolved (4/5 graded). Nemotron passed preflight 6/6, vision 18/18, and context 2/2, but Oracle was 48/54. No candidate entered C4 or a controlled throughput population; the exact GLM restoration remains the campaign boundary. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md).
+
+**2026-10-16 GLM v0.9.1 trial:** on the dual RTX PRO 6000 Blackwell Max-Q pair, the R2 candidate passed functional, Oracle, image, bounded-context, and sampled reserve checks, but resolved 3/5 pinned SWE cases below the four-case replacement gate. It is `rejected`/`no-promotion`; the original GLM was exactly restored. The fresh original control also resolved the same five cases at 3/5. Its 1725/1745 MiB sampled minima use the historical incumbent waiver and are not a challenger reserve pass. No capacity, stability, DFlash, throughput, causal, comparative-quality, or model-family claim is made. [Finding](../../findings/2026-10-16-glm-v091-trial.md).
+
 **Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
 
 **2026-10-13 full qualification:** only TP1/TP2 measurements on the dual RTX PRO 6000 Blackwell Max-Q pair are included. The GLM baseline capacity cells retained actual prompt means of 25,280.5 (32K/C1), 25,281.125 (32K/C4), 106,520 (128K/C1), and 216,194.67 (256K/C1); their 3–8 request populations do not support a p99 claim. The baseline fixed-five result was 2/5. Terminal Ignis was 2/5 resolved, 2/5 graded, and three empty, with C8 6/13 preflight, serial C1 6/6, and 24 recovered SWE engine-full retry notices retained separately. No candidate was promoted. [Finding](../../findings/2026-10-13-full-qualification.md).
@@ -330,6 +334,10 @@ raised official-FP8 decode to 111.3 tok/s and NVFP4 to 98.1, while bounded
 image/OCR passed on both with CPU feature transport. The official-FP8 arm was
 subsequently human-promoted as the single-service Primary/general-vision/OCR
 profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
+
+## 2026-10-15 replacement evaluation
+
+The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6000 Blackwell Max-Q configuration and produced no eligible challenger. DeepSeek Stage 2 is separately one-GPU numerical evidence; Stage 3 r12 is a two-GPU dummy-path pass only. Stage 4 adds bounded real-weight 64K/C1/image=0 evidence; full-role r2/r3 are exact resource-policy failures and r4 failed its first required Oracle8 round after passing resources. Exact GLM was restored. No DeepSeek quality, throughput, route, or promotion result follows. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
 
 ## Recent changes
 

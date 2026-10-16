@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
@@ -21,6 +22,12 @@ from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.worker import cancel_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
+
+
+def declared_identities(**overrides):
+    values = {name: {} for name in REQUIRED_MEASURED_IDENTITIES}
+    values.update(overrides)
+    return {"identities": values}
 
 
 def spec():
@@ -34,7 +41,11 @@ def spec():
         "worker": {"id": "worker"},
         "submitted_at": "2026-08-03T12:00:00Z",
         "timeout_s": 600,
-        "parameters": {"case_limit": 1, "model_host_id": "model-host"},
+        "parameters": {
+            "case_limit": 1,
+            "model_host_id": "model-host",
+            "identities": {"model": {"alias": "candidate"}},
+        },
     }
 
 
@@ -80,6 +91,21 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
         "asset_preparation", "preflight", "context"
     ]
     assert evidence["promotion"]["authorized"] is False
+    assert evidence["identities"]["model"] == {"alias": "candidate"}
+
+
+def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeypatch, tmp_path):
+    value = spec()
+    value["parameters"] = {"thinking_mode": "bogus"}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        "anvil_serving.benchmarking.worker.prepare_harness_assets",
+        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
+    )
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == "bad_thinking_mode"
 
 
 def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkeypatch, tmp_path):
@@ -117,6 +143,39 @@ def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkey
         "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
     }
     assert "    temperature: 1.0\n    top_p: 0.95\n" in result["config_text"]
+
+
+@pytest.mark.parametrize("force_nonempty_content", [True, False])
+def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force_nonempty_content):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {
+        "instance_ids": ["astropy__astropy-12907"],
+        "thinking_mode": "enabled",
+        "force_nonempty_content": force_nonempty_content,
+    }
+    profile = load_profile("smoke")
+
+    def fake_plan(profile, assets, *, endpoint, request_controls, **_kwargs):
+        controls = swe_benchmark._validate_request_controls(request_controls)
+        return {
+            "request_controls": controls,
+            "config_text": swe_benchmark._mini_config(
+                endpoint, profile["suites"]["swe"], controls, "docker"
+            ),
+        }
+
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
+    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", lambda plan: dict(plan))
+    result = benchmark_worker._run_suite(
+        SimpleNamespace(run_root=str(tmp_path / "runs")),
+        {"spec": value}, profile, {"assets": {}},
+    )
+
+    assert result["request_controls"]["chat_template_kwargs"] == {
+        "enable_thinking": True,
+        "force_nonempty_content": force_nonempty_content,
+    }
 
 
 def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
@@ -375,3 +434,28 @@ def test_real_detached_worker_completes_against_routed_protocol(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"offline": "false"}, "bad_offline"),
+    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
+    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
+    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
+    ("swe", {"instance_ids": ["astropy__astropy-12907"], "paired_image_repo_digests": []}, "bad_swe_image_policy"),
+    ("context", declared_identities(), "bad_identities"),
+    ("context", declared_identities(model="spoofed-scalar"), "bad_identities"),
+])
+def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
+    monkeypatch, tmp_path, suite, parameters, code,
+):
+    value = spec()
+    value["suite"] = suite
+    value["parameters"] = parameters
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        "anvil_serving.benchmarking.worker.prepare_harness_assets",
+        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
+    )
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == code

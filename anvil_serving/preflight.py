@@ -842,6 +842,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
                     help="case-insensitive text required in the video response; repeatable")
     ap.add_argument("--thinking-mode", choices=("default", "enabled", "disabled", "unsupported"),
                     default="default", help="model-family thinking control to request")
+    ap.add_argument("--force-nonempty-content", action="store_true",
+                    help="with enabled thinking, request a visible content field after reasoning")
     ap.add_argument("--reasoning-effort",
                     choices=REASONING_EFFORT_CHOICES,
                     help="top-level OpenAI reasoning_effort for model families that use it")
@@ -869,6 +871,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         a.thinking_mode = "disabled"
     if a.reasoning_effort is not None and a.thinking_mode != "default":
         ap.error("--reasoning-effort cannot be combined with --thinking-mode")
+    if a.force_nonempty_content and a.thinking_mode != "enabled":
+        ap.error("--force-nonempty-content requires --thinking-mode enabled")
     if a.visible_answer_tokens < 1 or a.reasoning_headroom_tokens < 0:
         ap.error("token allocations must be visible>=1 and reasoning>=0")
     max_tokens = a.visible_answer_tokens + a.reasoning_headroom_tokens
@@ -940,7 +944,9 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         api_key = resolve_api_key(a.api_key_env)
     except ValueError as exc:
         ap.error(str(exc))
-    ctk = ({"enable_thinking": True} if a.thinking_mode == "enabled" else
+    ctk = ({"enable_thinking": True, "force_nonempty_content": True}
+           if a.force_nonempty_content else
+           {"enable_thinking": True} if a.thinking_mode == "enabled" else
            {"enable_thinking": False} if a.thinking_mode == "disabled" else None)
     evidence = []
     if a.dry_run:
@@ -950,6 +956,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
             "target": {"base_url": a.base_url, "model": a.model, "tier": a.tier,
                        "manifest": a.manifest},
             "checks": selected,
+            "thinking": {"mode": a.thinking_mode, "chat_template_kwargs": ctk,
+                         "reasoning_effort": a.reasoning_effort},
             "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                        "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                        "max_completion_tokens": max_tokens},

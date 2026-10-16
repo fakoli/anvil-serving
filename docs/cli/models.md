@@ -116,6 +116,19 @@ plus `--headroom-gib`. The download keeps native `hf download` progress and
 resumability. Success is reported only after the exact requested snapshot
 exists with no incomplete files or broken links.
 
+For a bounded Docker downloader, provide both ceilings in MiB. Docker receives
+their exact byte values as `--memory` and `--memory-swap`; set both to the same
+value to request no extra host swap for the container.
+
+```bash
+anvil-serving models pull OWNER/REPO --memory-mib 2048 --memory-swap-mib 2048 --dry-run
+```
+
+These are requested Docker configuration limits, retained in the CLI JSON
+envelope's token-free plan output and exact Docker argv. They do not report
+measured cgroup values. Omitting both flags preserves the legacy unbounded
+downloader behavior. Native `--cache-dir` pulls reject the Docker-only flags.
+
 For native macOS MLX artifacts or another installed native engine, select the
 exact repository and immutable 40-character lowercase commit:
 

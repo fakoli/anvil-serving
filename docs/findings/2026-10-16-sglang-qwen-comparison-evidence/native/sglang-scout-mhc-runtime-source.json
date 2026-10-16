@@ -1,0 +1,8 @@
+{
+  "binding": "runtime observation from pinned image; not independent source attestation",
+  "image": "ghcr.io/ormandj/sglang-glm53-flash-sm120@sha256:10d3a79629420d9c1953cbc2e25a8395364fe7a40a77d039444bb8a3e4b10dd9",
+  "schema": "anvil-serving.mhc-runtime-source/v1",
+  "script_sha256": "48c57841a50fcad3aecff3ef3b5eb4fb09c53de8af068f68d8f29aa7fdb4bb43",
+  "source_path": "",
+  "source_sha256": "3c5949caa19631f2147b49d6636fcd946d78c7eee7170e38bb75ae81ecf51cc7"
+}

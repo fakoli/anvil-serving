@@ -1,0 +1,149 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": "2026-10-15-replacement-full",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.gpu-test-job/v1",
+    "anvil-serving.gpu-test-pids-observation/v1",
+    "anvil-serving.image-build/v1",
+    "anvil-serving.resource-candidate-outcome/v1",
+    "anvil-serving.swe-run/v1",
+    "deepseek-stage3-public-native/v1",
+    "multimodal-benchmark-evidence/v1",
+    "preflight/v2",
+    "replacement-candidate-terminal/v1",
+    "replacement-full-role-r2-native/v1",
+    "replacement-full-role-r3-native/v1",
+    "replacement-full-role-r4-native/v2",
+    "replacement-omitted-sampling-wire-evidence/v1",
+    "replacement-stage4-native/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "provenance-ledger.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-and-plan.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "workload-and-plan.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-identities.json",
+        "configuration-reconstruction.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/deepseek-build-r1.native.json",
+        "native/deepseek-build-r2.native.json",
+        "native/deepseek-build-r3.native.json",
+        "native/deepseek-build-r4.native.json",
+        "native/deepseek-full-role-r2.native.json",
+        "native/deepseek-full-role-r3.native.json",
+        "native/deepseek-full-role-r4.native.json",
+        "native/deepseek-stage2-r1.native.json",
+        "native/deepseek-stage2-r2.native.json",
+        "native/deepseek-stage2-r3-spin-pids-observation.json",
+        "native/deepseek-stage2-r3.native.json",
+        "native/deepseek-stage2-r4.native.json",
+        "native/deepseek-stage2-r5.native.json",
+        "native/deepseek-stage2-r6.native.json",
+        "native/deepseek-stage3.native.json",
+        "native/deepseek-stage4.native.json",
+        "native/glm-final-direct-preflight.native.json",
+        "native/glm-final-routed-preflight.native.json",
+        "native/glm-native-quality.native.json",
+        "native/glm-oracle7-native.json",
+        "native/glm-oracle7-r2-native.json",
+        "native/glm-oracle7-r3-native.json",
+        "native/glm-protocol.native.json",
+        "native/glm-swe5-infrastructure-failure.native.json",
+        "native/glm-swe5-r2.native.json",
+        "native/glm-vision.native.json",
+        "native/mimo-r4-oracle7.native.json",
+        "native/mimo-r4-protocol.native.json",
+        "native/mimo-r4-swe5-terminal.native.json",
+        "native/mimo-r5-oracle8-r1.native.json",
+        "native/mimo-r5-oracle8-r2.native.json",
+        "native/mimo-r5-oracle8-r3.native.json",
+        "native/mimo-r5-protocol.native.json",
+        "native/mimo-r5-swe5-terminal.native.json",
+        "native/mimo-r5-wire6.native.json",
+        "native/mistral-r2-protocol.native.json",
+        "native/mistral-r2-terminal-resource.native.json",
+        "native/mistral-r3-oracle8-r1.native.json",
+        "native/mistral-r3-protocol.native.json",
+        "native/mistral-r3-terminal-resource.native.json",
+        "build-diagnostic-excerpts.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "closure-reviews.json"
+      ],
+      "reason": "Authoritative retained terminal campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate compact external publication copy was requested."
+    }
+  ]
+}
