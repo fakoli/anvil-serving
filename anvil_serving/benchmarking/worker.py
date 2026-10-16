@@ -27,6 +27,7 @@ from .preflight import require_benchmark_preflight, run_benchmark_preflight
 from .profiles import load_profile
 from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
+from .submission import validate_submission_spec
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -179,12 +180,13 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     """Claim and execute one job, retaining evidence at each completed stage."""
     record = store.claim(run_id)
     spec = record["spec"]
-    store.append_log(run_id, level="info", message="benchmark worker claimed job")
     profile = load_profile(spec["profile"])
     stages: list[dict[str, Any]] = []
     assets = None
     preflight = None
     try:
+        validate_submission_spec(spec)
+        store.append_log(run_id, level="info", message="benchmark worker claimed job")
         store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
         assets = prepare_harness_assets(
             profile,

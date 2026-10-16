@@ -238,6 +238,48 @@ def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_case_limit(parameters: Mapping[str, Any], *, suite: str) -> int | None:
+    case_limit = parameters.get("case_limit")
+    if case_limit is not None and (
+        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
+    ):
+        raise BenchmarkJobError("bad_case_limit", f"{suite} case_limit must be positive")
+    return case_limit
+
+
+def _agentic_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) -> dict[str, Any]:
+    case_ids = parameters.get("case_ids")
+    if case_ids is not None:
+        if (
+            not isinstance(case_ids, list)
+            or not case_ids
+            or any(not isinstance(item, str) or not item for item in case_ids)
+            or len(set(case_ids)) != len(case_ids)
+        ):
+            raise BenchmarkJobError(
+                "bad_agentic_case_ids",
+                "agentic case_ids must be a non-empty list of unique strings",
+            )
+        unknown = set(case_ids).difference(suite["cases"])
+        if unknown:
+            raise BenchmarkJobError(
+                "unknown_agentic_case_id",
+                "agentic case_ids must be present in the pinned profile",
+            )
+        selected_cases = list(case_ids)
+    else:
+        selected_cases = list(suite["cases"])
+    recovery_result = parameters.get("recovery_result", "error")
+    session_turns = parameters.get("session_turns", 12)
+    # Reuse the scenario constructor's typed validation for its two inputs.
+    build_agentic_scenario(selected_cases[0], recovery_result=recovery_result, session_turns=session_turns)
+    return {
+        "case_ids": selected_cases,
+        "recovery_result": recovery_result,
+        "session_turns": session_turns,
+    }
+
+
 def _bounded_context_capture(response: Mapping[str, Any]) -> dict[str, Any]:
     observation = response_observation(response)
     message = _message(response)
@@ -288,11 +330,7 @@ def run_context_suite(
         ), timeout=timeout
     )
     selection = _context_selection(suite, parameters)
-    case_limit = parameters.get("case_limit")
-    if case_limit is not None and (
-        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
-    ):
-        raise BenchmarkJobError("bad_case_limit", "context case_limit must be positive")
+    case_limit = _validate_case_limit(parameters, suite="context")
     observations = []
     request_ids = []
     attempted = 0
@@ -688,33 +726,10 @@ def run_agentic_suite(
     sampling_kwargs = request_sampling_kwargs(sampling)
     reasoning_effort = request_controls["reasoning_effort"]
     chat_template_kwargs = request_controls["chat_template_kwargs"]
-    case_limit = parameters.get("case_limit")
-    if case_limit is not None and (
-        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
-    ):
-        raise BenchmarkJobError("bad_case_limit", "agentic case_limit must be positive")
-    case_ids = parameters.get("case_ids")
-    if case_ids is not None:
-        if (
-            not isinstance(case_ids, list)
-            or not case_ids
-            or any(not isinstance(item, str) or not item for item in case_ids)
-            or len(set(case_ids)) != len(case_ids)
-        ):
-            raise BenchmarkJobError(
-                "bad_agentic_case_ids",
-                "agentic case_ids must be a non-empty list of unique strings",
-            )
-        unknown = set(case_ids).difference(suite["cases"])
-        if unknown:
-            raise BenchmarkJobError(
-                "unknown_agentic_case_id",
-                "agentic case_ids must be present in the pinned profile",
-            )
-        selected_cases = case_ids
-    else:
-        selected_cases = suite["cases"]
-    recovery_result = parameters.get("recovery_result", "error")
+    case_limit = _validate_case_limit(parameters, suite="agentic")
+    selection = _agentic_selection(suite, parameters)
+    selected_cases = selection["case_ids"]
+    recovery_result = selection["recovery_result"]
     observations = []
     request_ids = []
     for case_type in selected_cases:
@@ -722,7 +737,7 @@ def run_agentic_suite(
             scenario, expected = build_agentic_scenario(
                 case_type,
                 recovery_result=recovery_result,
-                session_turns=parameters.get("session_turns", 12),
+                session_turns=selection["session_turns"],
             )
             observation, ids = _run_agentic_case(
                 scenario,

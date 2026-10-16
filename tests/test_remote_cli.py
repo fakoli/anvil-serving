@@ -7,21 +7,23 @@ import pytest
 
 from anvil_serving import cli, mcp
 from anvil_serving.benchmarking import jobs_cli
-from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from anvil_serving.control_plane.mcp.tools import benchmarks
 from anvil_serving.observability.dashboard.access import Session
 from anvil_serving.observability.dashboard.console import Console
 
 
-def _spec(suite: str = "context") -> str:
+def _spec(suite: str = "context", parameters: dict | None = None) -> str:
+    values = {"instance_ids": ["django__django-11099"]} if suite == "swe" else {}
+    values.update(parameters or {})
     return json.dumps(
         {
             "schema": JOB_SPEC_SCHEMA,
             "run_id": f"{suite}-001",
             "ownership_id": "campaign-001",
             "suite": suite,
-            "profile": f"{suite}-smoke-v1",
+            "profile": "smoke",
             "endpoint": {
                 "base_url": "http://127.0.0.1:8000/v1",
                 "model": "deepseek",
@@ -29,7 +31,7 @@ def _spec(suite: str = "context") -> str:
             "worker": {"id": "benchmark-worker"},
             "submitted_at": "2026-08-03T12:00:00Z",
             "timeout_s": 600,
-            "parameters": {},
+            "parameters": values,
         }
     )
 
@@ -86,7 +88,7 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
     assert listed["data"]["items"] == [{
         "native_id": "agentic-001",
         "suite": "agentic",
-        "profile": "agentic-smoke-v1",
+        "profile": "smoke",
         "model": "deepseek",
         "native_state": "queued",
         "submitted_at": "2026-08-03T12:00:00Z",
@@ -223,6 +225,41 @@ def test_submit_dry_run_cli_preview_preserves_normalized_target(monkeypatch, cap
     assert data["endpoint"] == {"base_url": "http://127.0.0.1:8000/v1", "model": "deepseek"}
     assert data["ownership_id"] == "campaign-001"
     assert data["worker"] == {"id": "benchmark-worker"}
+    assert data["suite_admission"]["request_controls"]["thinking_mode"] == "default"
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"thinking_mode": "bogus"}, "bad_thinking_mode"),
+    ("agentic", {
+        "thinking_mode": "enabled", "reasoning_effort": "max", "force_nonempty_content": True,
+    }, "conflicting_reasoning_controls"),
+    ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+])
+def test_submit_rejects_invalid_native_controls_before_store_or_launch(
+    monkeypatch, suite, parameters, code,
+):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
+    for extra in (["--dry-run"], ["--confirm"]):
+        with pytest.raises(BenchmarkJobError) as raised:
+            jobs_cli.run([suite, "submit", "--spec-json", _spec(suite, parameters), *extra])
+        assert getattr(raised.value, "code", None) == code
+
+
+@pytest.mark.parametrize(("suite", "parameters", "code"), [
+    ("context", {"thinking_mode": "bogus"}, "bad_thinking_mode"),
+    ("agentic", {
+        "thinking_mode": "enabled", "reasoning_effort": "max", "force_nonempty_content": True,
+    }, "conflicting_reasoning_controls"),
+    ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
+])
+def test_mcp_submit_rejects_invalid_native_controls_before_store(monkeypatch, suite, parameters, code):
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+    result = mcp.call_tool("benchmark_job_submit", {
+        "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == code
 
 
 def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):

@@ -82,6 +82,20 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
     assert evidence["promotion"]["authorized"] is False
 
 
+def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeypatch, tmp_path):
+    value = spec()
+    value["parameters"] = {"thinking_mode": "bogus"}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        "anvil_serving.benchmarking.worker.prepare_harness_assets",
+        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
+    )
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == "bad_thinking_mode"
+
+
 def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkeypatch, tmp_path):
     value = spec()
     value["suite"] = "swe"

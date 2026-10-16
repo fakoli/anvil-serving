@@ -8,6 +8,7 @@ import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
 from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ....benchmarking.submission import validate_submission_spec
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
@@ -96,6 +97,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
             raise BenchmarkJobError(
                 "suite_mismatch", "job specification suite does not match the command"
             )
+        validate_submission_spec(spec)
         store = _benchmark_job_store()
         disposition, job = store.submit(spec)
         launch = (

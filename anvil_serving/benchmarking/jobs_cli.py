@@ -31,6 +31,7 @@ from .jobs import (
 from .preflight import run_benchmark_preflight
 from .profiles import load_profile
 from .swe import validate_swe_selection
+from .submission import validate_submission_spec
 from .swe_images import (
     prepare_paired_images,
     validate_paired_image_ids,
@@ -289,6 +290,7 @@ def run(argv: list[str]) -> dict:
         )
     if args.action == "submit" and args.dry_run:
         spec = _spec_json(args.spec_json, args.suite)
+        admission = validate_submission_spec(spec)
         return {
             "schema": "anvil-serving.benchmark-submit-preview/v1",
             "suite": args.suite,
@@ -297,9 +299,16 @@ def run(argv: list[str]) -> dict:
             "endpoint": spec["endpoint"],
             "worker": spec["worker"],
             "spec_sha256": job_spec_sha256(spec),
+            "suite_admission": admission,
             "dry_run": True,
             "deferred": ["job store", "worker launch", "model requests", "artifact write"],
         }
+    submitted_spec = None
+    if args.action == "submit":
+        if not (args.confirm or confirmation_authorized()):
+            raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
+        submitted_spec = _spec_json(args.spec_json, args.suite)
+        validate_submission_spec(submitted_spec)
     store = _store()
     if args.action in {"prepare", "assets", "cleanup"}:
         if args.action == "assets":
@@ -340,9 +349,7 @@ def run(argv: list[str]) -> dict:
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
         )
     if args.action == "submit":
-        if not (args.confirm or confirmation_authorized()):
-            raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
-        disposition, job = store.submit(_spec_json(args.spec_json, args.suite))
+        disposition, job = store.submit(submitted_spec)
         launch = (
             launch_benchmark_job(
                 path=store.path,
