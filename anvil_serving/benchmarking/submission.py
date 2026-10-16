@@ -90,12 +90,13 @@ def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
         identities = parameters["identities"]
         if (
             not isinstance(identities, Mapping)
-            or set(identities) != REQUIRED_MEASURED_IDENTITIES
-            or any(not isinstance(value, Mapping) for value in identities.values())
+            or not identities
+            or not set(identities).issubset(REQUIRED_MEASURED_IDENTITIES)
+            or any(not isinstance(value, Mapping) or not value for value in identities.values())
         ):
             raise BenchmarkJobError(
                 "bad_identities",
-                "identities must contain every measured identity as an object",
+                "identities must contain supported non-empty identity objects",
             )
 
 

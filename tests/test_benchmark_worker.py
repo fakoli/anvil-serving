@@ -41,7 +41,11 @@ def spec():
         "worker": {"id": "worker"},
         "submitted_at": "2026-08-03T12:00:00Z",
         "timeout_s": 600,
-        "parameters": {"case_limit": 1, "model_host_id": "model-host"},
+        "parameters": {
+            "case_limit": 1,
+            "model_host_id": "model-host",
+            "identities": {"model": {"alias": "candidate"}},
+        },
     }
 
 
@@ -87,6 +91,7 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
         "asset_preparation", "preflight", "context"
     ]
     assert evidence["promotion"]["authorized"] is False
+    assert evidence["identities"]["model"] == {"alias": "candidate"}
 
 
 def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeypatch, tmp_path):
@@ -436,6 +441,7 @@ def test_real_detached_worker_completes_against_routed_protocol(tmp_path):
     ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
     ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
     ("swe", {"instance_ids": ["astropy__astropy-12907"], "paired_image_repo_digests": []}, "bad_swe_image_policy"),
+    ("context", declared_identities(), "bad_identities"),
     ("context", declared_identities(model="spoofed-scalar"), "bad_identities"),
 ])
 def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(

@@ -75,7 +75,7 @@ def test_remote_job_tools_share_the_portable_spec(monkeypatch, tmp_path):
         "benchmark_job_submit",
         {
             "suite": "agentic",
-            "spec_json": _spec("agentic"),
+            "spec_json": _spec("agentic", {"identities": {"model": {"alias": "candidate"}}}),
             "detach": True,
             "confirm": True,
         },
@@ -311,6 +311,7 @@ def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
 
 @pytest.mark.parametrize("parameters", [
     {"identities": {"recipe": {}}},
+    _declared_identities(),
     _declared_identities(model="spoofed-scalar"),
 ])
 def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
@@ -326,6 +327,7 @@ def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
 
 @pytest.mark.parametrize("parameters", [
     {"identities": {"recipe": {}}},
+    _declared_identities(),
     _declared_identities(model="spoofed-scalar"),
 ])
 def test_mcp_submit_rejects_malformed_declared_identities_before_store(monkeypatch, parameters):
