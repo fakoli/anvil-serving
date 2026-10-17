@@ -519,6 +519,7 @@ def _current_successor(successor, incarnation, *, _run, _read_config=None):
         require(all(getattr(before, name) == getattr(after, name) for name in
                     ('st_dev', 'st_ino', 'st_mode', 'st_uid', 'st_gid', 'st_nlink', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
     require(hashlib.sha256(raw).hexdigest() == successor['configuration_revision'])
+    return rendered
 
 
 @contextmanager

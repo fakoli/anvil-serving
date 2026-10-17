@@ -853,6 +853,32 @@ restore occurs. The intended successor is only an approved intent, not an
 automatic activation: use guarded `router up` separately. It starts CLOSED and
 requires a new successor-readmit preview and separate human acknowledgement.
 
+For a successor whose router configuration uses a new read-only bind source,
+pass the completed current-stop receipt to the existing lifecycle command:
+
+```bash
+anvil-serving router up --compose successor-compose.json --env-file /protected/router.env --current-stop-receipt /protected/current-stop.json --dry-run
+anvil-serving router up --compose successor-compose.json --env-file /protected/router.env --current-stop-receipt /protected/current-stop.json --confirm
+```
+
+Installation prepares those paths. The environment path and private file hash
+must match the stop preview's `environment` declaration; omit `--env-file` when
+there is no declaration and no implicit environment file. The receipt must name
+the exact stopped incarnation, finalized native death proof, retained store and
+closed generation. Its original acknowledgement must have been valid; expiry
+after a completed stop does not invalidate that proof. Pending, changed or
+already-transferred ownership refuses.
+
+This path supports only an unchanged image and runtime declaration with changed
+router configuration bytes and read-only bind sources. Existing mounts of the
+same configuration may follow the new source at their original destinations.
+All other declarations, writable storage, owner identities and physical storage
+lineage remain fixed. The successor image, configuration and Compose hashes must
+match the receipt. Preview performs fenced native readback without publishing
+custody, starting a successor or changing admission. Confirmation starts the new
+owner CLOSED; it never readmits traffic or claims remote memory completion.
+`--current-stop-receipt` and `--startup-abort-config` are mutually exclusive.
+
 This phase keeps the existing closure/anchor/death schemas. A predecessor that
 supports native maintenance-preview can be observed without replacing its
 running code. A successor supporting those custody schemas can recover the

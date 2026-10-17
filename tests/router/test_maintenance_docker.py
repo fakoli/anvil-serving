@@ -48,6 +48,8 @@ def test_supported_legacy_stop_import_successor_fenced_readmit_and_replay(docker
     f['config'].chmod(0o664)  # Actual admitted non-secret legacy mode is preserved.
     composed=json.loads(f['compose'].read_text())
     composed['services']['router']['volumes'][0]['target']='/var/lib/anvil-serving/router-keys'
+    composed['services']['router']['volumes'].append({'type':'bind','source':str(f['config']),
+        'target':'/fixture/consumer/router.toml','read_only':True})
     # Optional exact-image compatibility lane: the router and every native
     # helper import the real predecessor package, not the copied test source.
     predecessor=os.environ.get('ANVIL_ROUTER_DOCKER_PREDECESSOR')
@@ -200,6 +202,13 @@ server.serve_forever()
     # The native helper holds the real writer gate until this exact incarnation
     # stops; ordinary drain still refuses the remote terminal gap.
     candidate=dict(composed,services={'router':dict(composed['services']['router'])})
+    candidate_config=root/'successor-router.toml'
+    candidate_config.write_text(f['config'].read_text()+'\n# authorized successor config revision\n')
+    candidate_config.chmod(0o600)
+    candidate['services']['router']['volumes']=[dict(m, source=str(candidate_config))
+        if m.get('source')==str(f['config']) else dict(m)
+        for m in composed['services']['router']['volumes']]
+    candidate_revision=hashlib.sha256(candidate_config.read_bytes()).hexdigest()
     if successor_image:candidate['services']['router']['image']=successor_image
     candidate_compose=protected(root/'candidate-compose.json',candidate)
     candidate_id=(os.environ['ANVIL_ROUTER_DOCKER_SUCCESSOR_ID'] if successor_image else successor['image_id'])
@@ -210,7 +219,7 @@ server.serve_forever()
         schema='router-current-stop-authorization/v1',operation_id='8'*64,
         ingress_barrier='closed-generation-exact-container-stop',
         legacy_receipt_sha256=result['receipt_sha256'],
-        successor={'image_id':candidate_id,'configuration_revision':revision,
+        successor={'image_id':candidate_id,'configuration_revision':candidate_revision,
                    'compose':str(candidate_compose),
                    'compose_sha256':hashlib.sha256(candidate_compose.read_bytes()).hexdigest()})
     protected(authorization,current_auth)
@@ -226,13 +235,21 @@ server.serve_forever()
     assert current_result['unknown']==['memory'] and current_result['death_sha256']
     assert f['rows']('SELECT count(*) FROM usage_details')==[(1,)]
     with pytest.raises(ValueError):maintenance.run(config,confirm=True,_run=f['run'])
-    # Cold startup consumes the unchanged death-proof vocabulary. It does not
-    # need the new maintenance phase in its ordinary recovery/readmit path.
-    if successor_image:
-        protected(f['compose'],candidate)
-    assert router_manage.cmd_up(str(f['compose']),service='router',container=f['name'],_run=diagnostic_run)==0
-    f['start']()
-    assert f['transition']('status')['state']=='quiesced'
+    # Generic startup cannot swap the stopped owner's config mount. The exact
+    # completed receipt binds that change without publishing new death custody.
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],_run=diagnostic_run)==1
+    before_state=(root/'intent.json.router').read_bytes()
+    before_runs=f['rows']('SELECT * FROM usage_runs')
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
+        current_stop_receipt=values['receipt_out'],dry_run=True,_run=diagnostic_run)==0
+    assert (root/'intent.json.router').read_bytes()==before_state
+    assert f['rows']('SELECT * FROM usage_runs')==before_runs
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
+        current_stop_receipt=values['receipt_out'],_run=diagnostic_run)==0
+    f['start'](compose_path=candidate_compose)
+    status=f['transition']('status')
+    assert status['state']=='quiesced' and status['configuration_revision']==candidate_revision
+    assert status['generation']>current_preview['native']['observation']['closure']['generation']
     assert f['rows']('SELECT count(*) FROM usage_details')==[(1,)]
     with pytest.raises(ValueError):maintenance.run(config,confirm=True,_run=f['run'])
     successor=router_manage._container_incarnation(f['name'],_run=f['run'])
@@ -244,8 +261,8 @@ server.serve_forever()
     generation=f['transition']('status')['generation']
     subprocess.run(['docker','kill',successor['container_id']],check=True,
                    stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,timeout=10)
-    assert router_manage.cmd_up(str(f['compose']),service='router',container=f['name'],_run=diagnostic_run)==0
-    f['start']()
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],_run=diagnostic_run)==0
+    f['start'](compose_path=candidate_compose)
     restored=f['transition']('status')
     assert restored['state']=='quiesced' and restored['generation']>generation
     assert restored['maintenance']['remote_memory_terminal']=='UNKNOWN'

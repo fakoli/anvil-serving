@@ -108,7 +108,7 @@ def docker_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(router_manage, 'DEFAULT_CONTAINER', name)
     compose = tmp_path / 'compose.json'
     compose.write_text(json.dumps({'name':project,'services':{'router':{'image':tag,'container_name':name,
-        'user':'1000:1000','network_mode':'none','cpus':2,'mem_limit':'512m','pids_limit':64,
+        'user':f'{os.geteuid()}:{os.getegid()}','network_mode':'none','cpus':2,'mem_limit':'512m','pids_limit':64,
         'entrypoint':['python','/fixture/main.py'],'environment':{'SYNTHETIC_AUTH':'synthetic'},
         'volumes':[{'type':'bind','source':str(private),'target':'/fixture/private'},
                    {'type':'bind','source':str(main),'target':'/fixture/main.py','read_only':True},
@@ -117,8 +117,8 @@ def docker_owner(tmp_path, monkeypatch):
     owned_ids, namespace_fds = [], []
     def run(argv, **kwargs):
         return subprocess.run(argv, **kwargs)
-    def start(*, failed=False, legacy=False):
-        subprocess.run(router_manage._compose_up_argv(str(compose), 'router'), check=True,
+    def start(*, failed=False, legacy=False, compose_path=None):
+        subprocess.run(router_manage._compose_up_argv(str(compose_path or compose), 'router'), check=True,
                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, env=env, timeout=30)
         cid = subprocess.check_output(['docker','inspect','--format','{{.Id}}',name],text=True).strip()
         owned_ids.append(cid)
