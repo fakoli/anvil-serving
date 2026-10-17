@@ -453,7 +453,7 @@ def _print_leaf_help(path: Sequence[CommandNode]) -> bool:
 def _unknown_command(
     token: str, path: Sequence[CommandNode], siblings: Sequence[CommandNode]
 ) -> int:
-    if path and path[0].name == "connect":
+    if path and (path[0].name == "connect" or _command_name(path) == "eval benchmark speed"):
         # Account operands may contain private data; only echo declared paths.
         print("unknown action for: %s" % _command_name(path), file=sys.stderr)
     else:
@@ -1678,6 +1678,7 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
     # These metadata surfaces accept private origins and manifest paths. Their
     # family labels remain operand-free even when a leaf is missing/misspelled.
     protected_family = bool(path) and path[0].name in ("router", "edge", "connect")
+    protected_family = protected_family or canonical == "eval benchmark speed"
     protected_leaf = canonical in {
         "router diagnose", "edge bundle validate", "edge bundle render",
         "topology validate-router-config",

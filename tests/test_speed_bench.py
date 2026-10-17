@@ -280,3 +280,17 @@ def test_public_errors_hide_private_operands(capsys, json_mode, option):
     assert private not in captured.out + captured.err
     assert len(captured.out + captured.err) < 2000
     assert json.loads(captured.out)["error"]["code"] == ("usage_error" if option else "bad_speed_corpus")
+
+
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("action", [[], ["plna"], ["PRIVATE_ACTION"]])
+def test_incomplete_public_command_hides_operands(capsys, json_mode, action):
+    from anvil_serving import cli
+
+    args = (["--json"] if json_mode else []) + ["eval", "benchmark", "speed", *action,
+        "--manifest", "/private/PRIVATE_MANIFEST.json"]
+    assert cli.main(args) == 2
+    captured = capsys.readouterr()
+    assert "PRIVATE_" not in captured.out + captured.err
+    if json_mode:
+        assert json.loads(captured.out)["command"] == "eval benchmark speed"
