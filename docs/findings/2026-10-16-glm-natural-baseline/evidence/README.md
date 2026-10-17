@@ -5,34 +5,50 @@ route. The timing matrix is retained and coding repeatability was not
 established. It does not support a qualification, replacement ranking, or
 promotion decision.
 
-## Retained so far
+## Closed evidence index
 
-- Twelve native `anvil-serving.benchmark/v1` timing artifacts under
-  [`native/`](native/). Their routed endpoint field is replaced with the
-  non-routable `redacted://routed-capability` value; all other native metrics
-  and request timing fields are retained.
-- [`run-plan.json`](run-plan.json), [`workload-manifest.json`](workload-manifest.json),
-  and [`configuration-identity.json`](configuration-identity.json) are
-  public-safe derivatives of the private campaign plan and identity snapshots.
-- [`timing-summary.json`](timing-summary.json) derives the 239/240 timing
-  result without flattening its native sources. The deterministic
-  [`graph-manifest.json`](graph-manifest.json) produces the retained SVG and
-  graph-data pack under [`graphs/`](graphs/).
-- [`redaction-ledger.json`](redaction-ledger.json) binds each copied
-  native artifact to its private-source SHA-256 and the only transformation.
-- [`native/cached-swe-r1.json`](native/cached-swe-r1.json) retains the first
-  cached five-task SWE stage: 4/5 resolved and 5/5 independently graded. Its
-  companion [`native/swe-redaction-bindings.json`](native/swe-redaction-bindings.json)
-  binds the public derivative to the private native stage. The private wrapper,
-  trajectories, and raw process output are not published; R2 is retained as a terminal incomplete result.
-  The stage retains its public SWE-bench task image tags and immutable digests
-  at each observation point, plus the paired task-image mapping.
-- [`native/cached-swe-r1-campaign-evidence.json`](native/cached-swe-r1-campaign-evidence.json)
-  is a derived, public-safe extraction of the terminal wrapper's existing
-  `benchmark-evidence/v1` payload for campaign-level comparison. It retains the
-  workload gates and aggregate 4/5 score only; it has no per-task comparator
-  semantics. The native SWE stage and official grader report remain the
-  authoritative per-task evidence.
+The [common manifest](artifact-manifest.json) binds every retained file to its
+size, digest and role. Its [source inventory](artifact-manifest-source.json)
+contains all ten roles and no pending artifacts.
+
+- Plan and identity: [run plan](run-plan.json), [workload manifest](workload-manifest.json),
+  [configuration pins](configuration-identity.json), [source registry](source-registry.json),
+  and [coding amendment](coding-amendment.md).
+- Timing: [summary](timing-summary.json), [summary provenance](timing-summary-provenance.json),
+  [source hashes](timing-source-hashes.json), [graph manifest](graph-manifest.json),
+  [SVG chart](graphs/timing-matrix.svg), and [graph data](graphs/timing-graph-data.json).
+- Coding R1: [native SWE run](native/cached-swe-r1.json),
+  [official grader report](native/cached-swe-r1-official-grader.json), and
+  [aggregate campaign extraction](native/cached-swe-r1-campaign-evidence.json).
+  R1 resolved 4/5 with complete independent grading.
+- Coding R2: [native SWE run](native/cached-swe-r2.json),
+  [official grader report](native/cached-swe-r2-official-grader.json), and
+  [failed campaign extraction](native/cached-swe-r2-campaign-evidence.json).
+  R2 resolved 0/2 graded patches; three empty step-limit attempts were ungraded.
+  The failed aggregate extraction has no score.
+- Interpretation: [final coding summary](coding-summary-final.json),
+  [independent R2 review](independent-r2-review.json), and [decision summary](summary.json).
+- Failures, continuity and limits: [friction log](friction-log.md), [errata](errata.md),
+  and [serving continuity with open storage limitation](restoration.json).
+- Provenance: [redaction ledger](redaction-ledger.json) and
+  [SWE source/public bindings](native/swe-redaction-bindings.json).
+
+The twelve native timing artifacts retain their original metrics and request
+fields. Only the routed endpoint is replaced with the non-routable
+`redacted://routed-capability` value.
+
+| nominal context | concurrency | repeat 1 | repeat 2 | repeat 3 |
+| ---: | ---: | --- | --- | --- |
+| 8,192 | 1 | [r1](native/natural-ctx8192-c1-r1.json) | [r2, retained failure](native/natural-ctx8192-c1-r2.json) | [r3](native/natural-ctx8192-c1-r3.json) |
+| 8,192 | 4 | [r1](native/natural-ctx8192-c4-r1.json) | [r2](native/natural-ctx8192-c4-r2.json) | [r3](native/natural-ctx8192-c4-r3.json) |
+| 32,768 | 1 | [r1](native/natural-ctx32768-c1-r1.json) | [r2](native/natural-ctx32768-c1-r2.json) | [r3](native/natural-ctx32768-c1-r3.json) |
+| 32,768 | 4 | [r1](native/natural-ctx32768-c4-r1.json) | [r2](native/natural-ctx32768-c4-r2.json) | [r3](native/natural-ctx32768-c4-r3.json) |
+
+Native SWE stages and official grader reports are authoritative per task. The
+aggregate extractions preserve the existing wrapper evidence and do not add
+per-task comparison semantics. Private wrappers, trajectories and raw process
+output remain private. Task-image tags and immutable digests are retained at
+each image observation point.
 
 ## Boundaries
 
@@ -53,3 +69,10 @@ The coding baseline now uses the existing pinned five-task set twice because
 the fresh ten-task images are uncached and storage reserve is constrained. It
 is a repeatability observation, not a fresh held-out SWE score; see
 [`coding-amendment.md`](coding-amendment.md).
+
+All planned attempts are exhausted; grading is incomplete for R2 and coding
+repeatability was not established. Full SWE-interval server logs and per-retry
+transport telemetry are unavailable. Serving continuity was verified, but the
+post-run storage check was below the 100 GiB admission reserve. The cause is
+unproven, no pruning was performed, and further trials require that separate
+storage gate to be resolved.

@@ -538,6 +538,6 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 | 2026-08-31 | xgrammar fix-forward image, matched 524K no-spec/DFlash2 A/B, C2 250K-class gate, rollback drill, router, and real-client forward restore | corrected DFlash2 K5 selected at 524K; 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 2/2; full [finding and raw artifacts](../../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
 | 2026-08-30 | Current-source refresh, K5/K3/batch4,096 A/B, 4K-500K performance, 950K retrieval, image/OCR, quality, router, and real-client promotion | K5/batch2,048 selected as `current` one-week default; K3 verified alternate; batch4,096 rejected; full [finding and raw artifacts](../../findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md) |
 | 2026-08-29 | Cardillo/Purtell translation, adaptive/fixed/no-spec A/B, vision/OCR, 250K and near-500K capacity | TR3 vision fixed K5 and no-spec 524K qualified as challengers; adaptive MTP rejected; 0xSero 3.0-bpw watch-only; [historical finding](../../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |
-# 2026-10-16 comparison baseline
+## 2026-10-16 comparison baseline
 
 The frozen natural-output baseline is documented in [the dated finding](../../findings/2026-10-16-glm-natural-baseline.md). It does not establish coding repeatability and changes no recommendation or promotion state.

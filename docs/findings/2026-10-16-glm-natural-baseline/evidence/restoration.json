@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-restoration/v1",
   "campaign_id": "2026-10-16-glm-natural-baseline",
-  "status": "verified",
+  "status": "serving-continuity-verified-with-storage-limitation",
   "mutation_required": false,
   "starting_state": {
     "captured": true,
@@ -11,8 +11,23 @@
     "captured": true,
     "evidence": ["post-run-continuity-projection"]
   },
-  "differences": [],
+  "differences": [
+    {
+      "kind": "post-run-storage-reserve-gap",
+      "free_disk_bytes": 88034181120,
+      "required_reserve_bytes": 107374182400,
+      "operational_resource_closure": "open"
+    }
+  ],
   "post_run_checks": [
+    {
+      "name": "post-run storage reserve",
+      "passed": false,
+      "free_disk_bytes": 88034181120,
+      "required_reserve_bytes": 107374182400,
+      "future_trials_blocked": true,
+      "disposition": "No cleanup or pruning was performed; separately owned storage work is required."
+    },
     {
       "name": "model image pin and custody continuity",
       "passed": true,

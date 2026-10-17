@@ -81,6 +81,7 @@
     "Twenty requests per cell cannot establish stable p99 latency or service stability.",
     "One C1/8K request reached the output cap without visible content; C1/32K retains two long reasoning outliers.",
     "Coding uses five reused pinned tasks twice, not ten fresh held-out tasks."
+    ,"Post-run free storage is below the required reserve; future trials are blocked pending separately owned storage work, without attributing SWE outcomes to storage."
   ],
   "measurement": {
     "path": "routed shared-router natural-output observation",

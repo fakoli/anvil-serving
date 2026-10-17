@@ -29,8 +29,8 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "6bfd258a70325bc602c525f4f05054fda98f79afb564ee6f8d813f0f5850612d",
-          "bytes": 3328
+          "sha256": "a360ca59ea47538b0e743037fbb3c966f0c830aa56ddb064277953bf606d36fe",
+          "bytes": 4820
         }
       ],
       "reason": "Partial public-safe campaign index."
@@ -63,8 +63,8 @@
         },
         {
           "path": "coding-summary-final.json",
-          "sha256": "d93a05f20d0d4f11bc214e9bedfe7e22c6ba25ea37c3510953cd259ba4af98fe",
-          "bytes": 5045
+          "sha256": "dfa5a0a915ec6907693aa298753161445cee876daa3aa8fc2713dd61f1501f3c",
+          "bytes": 5163
         }
       ],
       "reason": "Timing controls and explicit coding amendment."
@@ -92,13 +92,13 @@
         },
         {
           "path": "redaction-ledger.json",
-          "sha256": "ca804b51a75bd3b5f6ac2b8bc292d8d6c6592dbb8560f2b90899f918aaa65c70",
-          "bytes": 6613
+          "sha256": "c070487bb9396214854eb113e70e749583077ee6527a3a81d7880135444c005f",
+          "bytes": 6499
         },
         {
           "path": "native/swe-redaction-bindings.json",
-          "sha256": "fb8c11260cd84547c21d38c1781bc5942c3b230de5c53f0fc845effa05a4a9c8",
-          "bytes": 4646
+          "sha256": "b9cacb90f72ecf8ae9ac35460a4ff2a00d6213784ffdb7e8f4284091ebe4fac3",
+          "bytes": 4441
         }
       ],
       "reason": "Sanitized incumbent identity and source-to-copy redaction bindings."
@@ -236,8 +236,8 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "eaded4d76a131576ba4908f6a8a05c8567fd0fcf7bf35a30848c3b5ce8995647",
-          "bytes": 923
+          "sha256": "4dbd5ed92688985bef5d9aff1a124824790c098ef580296931c64a2e447926ec",
+          "bytes": 1216
         },
         {
           "path": "errata.md",
@@ -258,8 +258,8 @@
       "files": [
         {
           "path": "restoration.json",
-          "sha256": "f878437fccb9727b066ca892a1dbbe85a6d7e434266731aa62decb864b1368b2",
-          "bytes": 2008
+          "sha256": "0e8378b66a65923b261ce3907978c89e41195bd0320224fe26455d56f3116a79",
+          "bytes": 2543
         }
       ],
       "reason": "Post-run continuity and actual model readiness verified without lifecycle mutation."
@@ -270,8 +270,8 @@
       "files": [
         {
           "path": "summary.json",
-          "sha256": "dcab24b8e53d83cba4fe8b73879a24cb5ae78e425a72e262c64ef2ef3a1f2a04",
-          "bytes": 3376
+          "sha256": "1d53dc5fc76439f552240cf237cf29f45792001352d8bbfc29d23316c11160e1",
+          "bytes": 3546
         }
       ],
       "reason": "Explicit incomplete decision boundary."
@@ -282,13 +282,13 @@
       "files": [
         {
           "path": "README.md",
-          "sha256": "6bfd258a70325bc602c525f4f05054fda98f79afb564ee6f8d813f0f5850612d",
-          "bytes": 3328
+          "sha256": "a360ca59ea47538b0e743037fbb3c966f0c830aa56ddb064277953bf606d36fe",
+          "bytes": 4820
         },
         {
           "path": "summary.json",
-          "sha256": "dcab24b8e53d83cba4fe8b73879a24cb5ae78e425a72e262c64ef2ef3a1f2a04",
-          "bytes": 3376
+          "sha256": "1d53dc5fc76439f552240cf237cf29f45792001352d8bbfc29d23316c11160e1",
+          "bytes": 3546
         }
       ],
       "reason": "Closed public-safe baseline bundle; source finding is published with matching evidence."

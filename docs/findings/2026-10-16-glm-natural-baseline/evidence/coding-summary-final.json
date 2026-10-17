@@ -63,9 +63,9 @@
   ],
   "source_artifacts": [
     {"path": "native/cached-swe-r1-stage.json", "byte_sha256": "daae6ffc2888d5d41532a3d2c4069b197dc0bb64132c59862b0af89923050294"},
-    {"path": "native/cached-swe-r1.json", "byte_sha256": "4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23", "canonical_json_sha256": "0cc9eddf8722cec5b8a874608ea8924fc0ddbf2d99d61cc0423cf398eaa03f83"},
+    {"path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r1-artifact.json", "byte_sha256": "4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23", "canonical_json_sha256": "0cc9eddf8722cec5b8a874608ea8924fc0ddbf2d99d61cc0423cf398eaa03f83"},
     {"path": "native/cached-swe-r2-stage.json", "byte_sha256": "f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4"},
-    {"path": "native/cached-swe-r2.json", "byte_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd", "canonical_json_sha256": "99c31a299a3925e0775e8315c3a08429a5c9a667d647877ce012af3d8b018729"},
+    {"path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r2-artifact.json", "byte_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd", "canonical_json_sha256": "99c31a299a3925e0775e8315c3a08429a5c9a667d647877ce012af3d8b018729"},
     {"path": "identity/cached-swe-r2-artifact-bindings.json", "official_grader_complete": false},
     {"path": "reviews/cached-swe-r2-failure-review.json", "role": "independent R2 failure classification"}
   ]

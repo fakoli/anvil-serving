@@ -27,7 +27,7 @@
       "public_path": "native/cached-swe-r1-official-grader.json",
       "public_sha256": "sha256:89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
       "redactions": [],
-      "transformation": "Public-safe official grader report retained with formatting-only normalization; counts and all submitted, completed, resolved, unresolved, incomplete, empty-patch, and error identifiers are unchanged."
+      "transformation": "Byte-exact retention; no transformation; official outcomes retained."
     },
     {
       "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r1-artifact.json",
@@ -55,7 +55,7 @@
       "public_path": "native/cached-swe-r2-official-grader.json",
       "public_sha256": "sha256:9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
       "redactions": [],
-      "transformation": "Public-safe official grader report retained with formatting-only normalization; incomplete grading and all empty-patch outcomes are retained."
+      "transformation": "Byte-exact retention; no transformation; official outcomes retained."
     },
     {
       "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r2-artifact.json",

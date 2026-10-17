@@ -90,7 +90,7 @@
       "source_sha256": "89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
       "output": "native/cached-swe-r1-official-grader.json",
       "output_sha256": "89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
-      "transformation": "formatting-only normalization of a public-safe official grader report; independent counts and per-instance outcomes retained"
+      "transformation": "byte-exact retention; no transformation; official outcomes retained"
     },
     {
       "source_sha256": "4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23",
@@ -108,7 +108,7 @@
       "source_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
       "output": "native/cached-swe-r2-official-grader.json",
       "output_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
-      "transformation": "formatting-only normalization of public-safe incomplete official grader evidence; empty-patch and ungraded outcomes retained"
+      "transformation": "byte-exact retention; no transformation; official outcomes retained"
     },
     {
       "source_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd",

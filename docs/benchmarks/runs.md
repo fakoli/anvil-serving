@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-16 GLM natural-output baseline
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | GLM-5.3-Flash r11 natural-output baseline | 12 natural timing cells plus two five-task coding repeats | 2x RTX PRO 6000 Blackwell Max-Q | 239/240 timing retained; R1 4/5 graded resolved; R2 0/2 graded resolved plus three step-limit failures | `no-promotion`; no pooled coding score and repeatability not established | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-16-glm-natural-baseline.md) |
+
 ## 2026-10-16 SGLang, Qwen, and Nemotron comparison
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
@@ -266,6 +272,3 @@ Static compatibility stops remain separate: Granite q8 group-size mismatch and E
 - [Model dossiers](models/index.md)
 - [RTX PRO 6000 mention audit](rtx-pro-6000-audit.md)
 - [Chronological findings](../findings/README.md)
-# 2026-10-16 GLM natural-output baseline
-
-See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md). The timing matrix retained 239/240 requests; cached SWE repeats were 4/5 complete R1 and terminal incomplete R2 (0/2 graded resolved plus three step-limit failures). No pooled coding score or promotion decision is reported.

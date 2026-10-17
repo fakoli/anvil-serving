@@ -584,6 +584,6 @@ The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6
 The complete PRO 6000 history, including failed loads and incomplete runs, is
 in the [run catalog](../runs.md#rtx-pro-6000-runs). Every row links its dated
 finding and a stable [model dossier](../models/index.md).
-# 2026-10-16 measured dual-GPU baseline
+## 2026-10-16 measured dual-GPU baseline
 
 The dated GLM baseline used a dual-GPU resident serve with shared host/router traffic; it was not an isolated hardware benchmark. See [the finding](../../findings/2026-10-16-glm-natural-baseline.md).

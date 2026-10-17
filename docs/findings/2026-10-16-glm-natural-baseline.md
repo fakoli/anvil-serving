@@ -17,6 +17,9 @@ and does not select, reject, or promote a replacement.
 > empty, ungraded submissions. Coding repeatability was not established.
 > These are ten attempts across five reused identities, not a fresh held-out score. The router
 > remained shared, and no model, route, or serving configuration changed.
+>
+> [Evidence index](2026-10-16-glm-natural-baseline/evidence/README.md) ·
+> [Common artifact manifest](2026-10-16-glm-natural-baseline/evidence/artifact-manifest.json).
 
 ## Configuration
 
@@ -75,6 +78,12 @@ records sampling, cache policy, configured coding limits and plan bindings.
 - This is shared-router client observation. The workload snapshot was
   unavailable, so the campaign does not claim traffic isolation or engine-only
   throughput.
+- Storage preflight passed with 109,701,644,288 bytes available. A separate
+  post-run check at 2026-10-17T03:21:20Z measured 88,034,181,120 bytes
+  (about 82 GiB), below the 100 GiB trial-admission reserve. The cause is
+  unproven and is not attributed to the coding failures. No cleanup or pruning
+  was performed. The measurement campaign is closed; storage resource closure
+  remains open and further trials require the reserve to be restored.
 - Natural output has variable length. Combined completion-token decode rates
   are workload-specific and may include reasoning tokens; they are not
   controlled-decode equivalence or visible-only token speed.
@@ -95,7 +104,7 @@ records sampling, cache policy, configured coding limits and plan bindings.
 Public evidence includes the [bundle README](2026-10-16-glm-natural-baseline/evidence/README.md), [common manifest](2026-10-16-glm-natural-baseline/evidence/artifact-manifest.json), [timing graph](2026-10-16-glm-natural-baseline/evidence/graphs/timing-matrix.svg), [graph data](2026-10-16-glm-natural-baseline/evidence/graphs/timing-graph-data.json), [final coding summary](2026-10-16-glm-natural-baseline/evidence/coding-summary-final.json), and [independent R2 review](2026-10-16-glm-natural-baseline/evidence/independent-r2-review.json).
 The index links all twelve native timing artifacts, both native SWE artifacts,
 official grading reports, failure records and post-run continuity evidence.
-Private work directories and raw logs remain retained privately; no cleanup was needed.
+Private work directories and raw logs remain retained privately; no cleanup was performed.
 Evidence labels are `functional`
 and observational `capacity`; decision labels are `current` (incumbent
 continuity) and `no-promotion`. This campaign proposes no promotion. R2 covers the full planned attempt set but official grading is incomplete; full SWE-interval retry and server telemetry remain unknown. A parallel low-priority CPU task overlapped the run; it is retained as a shared-host limitation without a causal claim.
