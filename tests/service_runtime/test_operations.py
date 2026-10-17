@@ -49,6 +49,7 @@ class Supervisor:
 class DockerSupervisor:
     def __init__(self):
         self.inspections = []
+        self.log_requests = []
 
     def verify_context(self):
         return None
@@ -63,7 +64,7 @@ class DockerSupervisor:
         ]
 
     def describe(self, binding):
-        return {"identity": binding["container"], "engine_hint": "none", "ports": []}
+        return {"identity": binding["container"], "image_id": binding["image_id"], "engine_hint": "none", "ports": []}
 
     def inspect(self, binding):
         self.inspections.append(binding["id"])
@@ -76,6 +77,10 @@ class DockerSupervisor:
             "pid": 456,
             "state": "running",
         }
+
+    def logs(self, binding, tail, *, since=None, until=None, timestamps=False, expected_identity=None):
+        self.log_requests.append((binding["id"], tail, since, until, timestamps, expected_identity))
+        return ['2026-10-16T12:00:01Z {"event":"admission"}']
 
 
 def native_docker_topology():
@@ -424,6 +429,44 @@ def test_native_identity_operates_same_host_docker_service(tmp_path):
 
     assert result["services"][0]["id"] == "hindsight"
     assert docker.inspections == ["hindsight"]
+
+
+def test_logs_passes_interval_to_declared_owner_and_returns_runtime_identity(tmp_path):
+    from anvil_serving.service_runtime.operations import execute
+
+    manifest = tmp_path / "services.toml"
+    save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
+    docker = DockerSupervisor()
+    result = execute(
+        "logs", "hindsight", manifest=manifest, topology=native_docker_topology(),
+        _adapters={"docker": docker}, _host_os="linux", tail=3,
+        since="2026-10-16T12:00:00Z", until="2026-10-16T12:01:00Z", timestamps=True,
+    )
+    assert docker.log_requests == [("hindsight", 3, "2026-10-16T12:00:00Z", "2026-10-16T12:01:00Z", True, "hindsight")]
+    assert result["observed_runtime"] == {
+        "manager": "docker", "identity": "hindsight", "image_id": "sha256:" + "a" * 64,
+        "observed_at": result["observed_runtime"]["observed_at"], "runtime_interval_continuity": "unknown",
+    }
+    assert result["requested_interval"] == {
+        "since": "2026-10-16T12:00:00Z", "until": "2026-10-16T12:01:00Z", "timestamps": True,
+    }
+
+
+def test_logs_reject_backwards_interval_before_supervisor_access(tmp_path):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import execute
+
+    manifest = tmp_path / "services.toml"
+    save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
+    docker = DockerSupervisor()
+    with pytest.raises(ServiceError, match="until") as raised:
+        execute(
+            "logs", "hindsight", manifest=manifest, topology=native_docker_topology(),
+            _adapters={"docker": docker}, _host_os="linux",
+            since="2026-10-16T12:01:00+01:00", until="2026-10-16T12:00:00+01:00",
+        )
+    assert raised.value.code == "invalid_interval"
+    assert docker.inspections == []
 
 
 def test_native_identity_adopts_same_host_docker_service(tmp_path):

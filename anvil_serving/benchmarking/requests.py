@@ -15,6 +15,17 @@ FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context
 CHARS_PER_TOKEN = 3.0
 DEFAULT_CTX_MARGIN = 1024
 VISIBLE_CONTENT_CAPTURE_LIMIT = 8192
+CAPACITY_PROMPT_CONTRACT_REVISION = "capacity-prompt-v1"
+
+
+def capacity_workload_identity(response_words):
+    """Describe the synthetic capacity prompt without changing its contract."""
+    return {
+        "prompt_contract_revision": CAPACITY_PROMPT_CONTRACT_REVISION,
+        "workload_kind": (
+            "synthetic-repeated-code" if response_words else "synthetic-summary"
+        ),
+    }
 
 
 def ctx_cap(max_model_len, max_tokens, margin=DEFAULT_CTX_MARGIN):
@@ -469,6 +480,7 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
         "content_chunks": content_chunks,
         "reasoning_chunks": reasoning_chunks,
         "visible_content": "".join(visible_content_parts),
+        "visible_content_captured_chars": visible_content_chars,
         "visible_content_truncated": visible_content_truncated,
         "visible_content_capture_limit": VISIBLE_CONTENT_CAPTURE_LIMIT,
         "finish_reasons": finish_reasons,

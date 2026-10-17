@@ -1,5 +1,6 @@
 import pytest
 
+from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.agentic import (
     RECOVERY_RESULT_TYPES,
     build_agentic_scenario,
@@ -32,6 +33,7 @@ def passing_trace(expected):
         "parallel-tools",
         "dependent-result",
         "debug-loop",
+        "debug-loop-v2",
     ],
 )
 def test_deterministic_scenarios_pass_without_model_judge(scenario_type):
@@ -150,6 +152,38 @@ def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
         "arguments": {"path": "calc.py", "edit": "Replace subtraction with addition"},
     }
     assert score_agentic_trace(scenario, expected, trace)["failure_class"] == "protocol_failure"
+
+
+def test_debug_loop_v2_is_a_distinct_explicit_unit_scope_contract():
+    legacy, legacy_expected = build_agentic_scenario("debug-loop")
+    scenario, expected = build_agentic_scenario("debug-loop-v2")
+
+    assert legacy["scenario_id"] == "debug-loop"
+    assert "oracle_revision" not in legacy
+    assert scenario["scenario_id"] == "debug-loop-v2"
+    assert scenario["oracle_revision"] == "9"
+    assert expected["oracle_revision"] == "9"
+    assert "scope `unit`" in scenario["messages"][0]["content"]
+    run_tests = next(tool["function"] for tool in scenario["tools"]
+                     if tool["function"]["name"] == "run_tests")
+    assert run_tests["parameters"]["properties"]["scope"]["enum"] == ["unit"]
+
+    assert score_agentic_trace(legacy, legacy_expected, passing_trace(legacy_expected))["oracle_revision"] == "8"
+    assert score_agentic_trace(scenario, expected, passing_trace(expected))["oracle_revision"] == "9"
+    wrong_scope = passing_trace(expected)
+    wrong_scope["tool_calls"] = [dict(call) for call in expected["tool_calls"]]
+    wrong_scope["tool_calls"][0] = {"name": "run_tests", "arguments": {"scope": "all"}}
+    assert score_agentic_trace(scenario, expected, wrong_scope)["failure_class"] == "protocol_failure"
+
+
+def test_agentic_oracle_revision_must_match_the_scenario_contract():
+    scenario, expected = build_agentic_scenario("debug-loop-v2")
+    mismatched = dict(expected, oracle_revision="8")
+
+    with pytest.raises(BenchmarkJobError, match="oracle revisions do not match") as error:
+        score_agentic_trace(scenario, mismatched, passing_trace(expected))
+
+    assert error.value.code == "oracle_revision_mismatch"
 
 
 @pytest.mark.parametrize(

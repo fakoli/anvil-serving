@@ -57,6 +57,7 @@ FAILURE_CLASS_ALIASES = {
     "model_failure": "model_behavior",
     "reasoning_failure": "model_behavior",
     "protocol_failure": "model_behavior",
+    "budget_exhausted": "resource_exhaustion",
     "resource_exhaustion": "resource_exhaustion",
     "timeout": "worker_runtime",
     "infrastructure_failure": "worker_runtime",

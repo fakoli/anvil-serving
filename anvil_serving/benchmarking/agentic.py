@@ -13,6 +13,8 @@ from .jobs import BenchmarkJobError
 AGENTIC_SCENARIO_SCHEMA = "anvil-serving.agentic-scenario/v1"
 AGENTIC_OBSERVATION_SCHEMA = "anvil-serving.agentic-observation/v1"
 AGENTIC_ORACLE_REVISION = "8"
+DEBUG_LOOP_V2_CASE = "debug-loop-v2"
+DEBUG_LOOP_V2_ORACLE_REVISION = "9"
 SCENARIO_TYPES = frozenset({
     "planning",
     "reasoning",
@@ -22,6 +24,7 @@ SCENARIO_TYPES = frozenset({
     "dependent-result",
     "tool-recovery",
     "debug-loop",
+    DEBUG_LOOP_V2_CASE,
     "context-recovery",
     "long-session",
 })
@@ -236,6 +239,43 @@ def build_agentic_scenario(
             "final_kind": "contains_terms",
             "final_terms": ["pass"],
         })
+    elif scenario_type == DEBUG_LOOP_V2_CASE:
+        scenario.update({
+            "oracle_revision": DEBUG_LOOP_V2_ORACLE_REVISION,
+            "messages": [{
+                "role": "user",
+                "content": (
+                    "This deterministic fixture's function must return the sum of its inputs a and b. "
+                    "Run unit tests with scope `unit`, inspect the failing file, apply the one-line fix, "
+                    "and rerun unit tests with scope `unit`. Make exactly those four tool calls in that "
+                    "order, one per turn; do not call extra tools or inspect other files. After the second "
+                    "test result, report whether the tests pass."
+                ),
+            }],
+            "tools": [
+                _tool("run_tests", ["scope"]),
+                _tool("read_file", ["path"]),
+                _tool("apply_edit", ["path", "edit"]),
+            ],
+        })
+        for tool in scenario["tools"]:
+            if tool["function"]["name"] == "run_tests":
+                tool["function"]["parameters"]["properties"]["scope"]["enum"] = ["unit"]
+        expected.update({
+            "oracle_revision": DEBUG_LOOP_V2_ORACLE_REVISION,
+            "tool_mode": "sequential",
+            "tool_calls": [
+                {"name": "run_tests", "arguments": {"scope": "unit"}},
+                {"name": "read_file", "arguments": {"path": "calc.py"}},
+                {"name": "apply_edit", "arguments": {"path": "calc.py", "edit": "return a + b"}},
+                {"name": "run_tests", "arguments": {"scope": "unit"}},
+            ],
+            "result_markers": [],
+            "result_terms": ["pass"],
+            "final": "tests pass",
+            "final_kind": "contains_terms",
+            "final_terms": ["pass"],
+        })
     else:
         code = "SESSION-8841"
         history = []
@@ -290,6 +330,10 @@ def score_agentic_trace(
         "scenario_id"
     ) != expected.get("scenario_id"):
         raise BenchmarkJobError("scenario_identity_mismatch", "scenario identity does not match")
+    scenario_revision = scenario.get("oracle_revision", AGENTIC_ORACLE_REVISION)
+    expected_revision = expected.get("oracle_revision", AGENTIC_ORACLE_REVISION)
+    if scenario_revision != expected_revision:
+        raise BenchmarkJobError("oracle_revision_mismatch", "scenario and oracle revisions do not match")
     tool_calls = trace.get("tool_calls", [])
     if not isinstance(tool_calls, list) or not all(isinstance(item, Mapping) for item in tool_calls):
         raise BenchmarkJobError("bad_agentic_trace", "tool_calls must be a list of objects")
@@ -397,7 +441,7 @@ def score_agentic_trace(
     }
     return {
         "schema": AGENTIC_OBSERVATION_SCHEMA,
-        "oracle_revision": AGENTIC_ORACLE_REVISION,
+        "oracle_revision": scenario_revision,
         "scenario_id": scenario["scenario_id"],
         "passed": classification is None and all(item["passed"] for item in stages.values()),
         "failure_class": classification,

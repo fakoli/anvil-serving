@@ -70,6 +70,8 @@ _RECIPE_MODEL_LABEL = serve_recipes.RECIPE_MODEL_LABEL
 _RECIPE_REVISION_LABEL = serve_recipes.RECIPE_REVISION_LABEL
 _CONFIG_PATH_KEY_RE = re.compile(r"(?:^|[_\-.])(?:cache|path|dir|root|mount|volume)(?:$|[_\-.])")
 _KNOWN_DOCKER_MOUNT_TYPES = frozenset({"bind", "volume", "tmpfs", "npipe", "cluster"})
+_RECIPE_LOG_CAPTURE_BYTES = 1024 * 1024
+_RECIPE_LOG_CAPTURE_SECONDS = 15
 
 
 def _paths_overlap(first, second):
@@ -2162,6 +2164,81 @@ def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
             "recipe container identity changed after selection; rediscover and retry"
         )
     return current
+
+
+def _bounded_recipe_log_capture(argv, *, _run=subprocess.run):
+    """Capture recipe logs with a combined byte bound before retaining text."""
+    if _run is not subprocess.run:
+        completed = _run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        stdout, stderr = completed.stdout or "", completed.stderr or ""
+        if len(stdout.encode("utf-8")) + len(stderr.encode("utf-8")) > _RECIPE_LOG_CAPTURE_BYTES:
+            raise serve_recipes.RecipeError("recipe container logs exceed the capture byte limit")
+        return completed.returncode, stdout, stderr
+    from .service_runtime.docker import _bounded_log_capture
+    from .service_runtime.contracts import ServiceError
+    try:
+        result = _bounded_log_capture(argv, timeout=_RECIPE_LOG_CAPTURE_SECONDS)
+    except ServiceError as exc:
+        raise serve_recipes.RecipeError("recipe log capture failed: " + exc.code) from exc
+    return result.returncode, result.stdout, result.stderr
+
+
+def collect_discovered_recipe_container_logs(
+    container,
+    *,
+    tail=200,
+    since=None,
+    until=None,
+    timestamps=False,
+    _run=subprocess.run,
+):
+    """Return bounded lines and the revalidated recipe-container identity for evidence callers."""
+    if not isinstance(container, str) or not _RECIPE_CONTAINER_RE.fullmatch(container):
+        raise serve_recipes.RecipeError("recipe container selector is invalid")
+    if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 1000:
+        raise serve_recipes.RecipeError("tail must be from 1 through 1000")
+    if not isinstance(timestamps, bool):
+        raise serve_recipes.RecipeError("timestamps must be boolean")
+    parsed = []
+    for value in (since, until):
+        if value is None:
+            parsed.append(None)
+            continue
+        try:
+            instant = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else None
+        except ValueError:
+            instant = None
+        if instant is None or instant.tzinfo is None or instant.utcoffset() is None:
+            raise serve_recipes.RecipeError("log interval must contain an RFC3339 timestamp")
+        parsed.append(instant)
+    if parsed[0] is not None and parsed[1] is not None and parsed[1] < parsed[0]:
+        raise serve_recipes.RecipeError("log interval end precedes start")
+    def bounded_run(argv, **kwargs):
+        kwargs["timeout"] = min(kwargs.get("timeout", _RECIPE_LOG_CAPTURE_SECONDS), _RECIPE_LOG_CAPTURE_SECONDS)
+        return _run(argv, **kwargs)
+    identity = serve_recipes.select_recipe_container(
+        serve_recipes.discover_recipe_containers(_run=bounded_run), container=container,
+    )
+    current = _recheck_discovered_recipe_container(identity, _run=bounded_run)
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since is not None:
+        argv.extend(("--since", since))
+    if until is not None:
+        argv.extend(("--until", until))
+    if timestamps:
+        argv.append("--timestamps")
+    argv.append(current["container_id"])
+    returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    if returncode:
+        raise serve_recipes.RecipeError("cannot read recipe container logs")
+    lines = (stdout.splitlines() + stderr.splitlines())[-tail:]
+    return {
+        "lines": lines,
+        "observed_runtime": {key: current.get(key) for key in (
+            "container", "container_id", "image_digest", "revision", "recipe_digest", "registry_digest",
+        )} | {"manager": "docker", "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "runtime_interval_continuity": "unknown"},
+        "bounds": {"tail_lines": tail, "capture_byte_limit": _RECIPE_LOG_CAPTURE_BYTES, "truncation": "unknown"},
+    }
 
 
 def _discovered_recipe_container_logs(

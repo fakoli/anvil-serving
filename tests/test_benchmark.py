@@ -442,6 +442,7 @@ def test_stream_chat_prefers_usage_tokens_over_sse_chunk_count(monkeypatch):
     assert result["content_chunks"] == 2
     assert result["output_token_source"] == "usage"
     assert result["visible_content"] == "hello world"
+    assert result["visible_content_captured_chars"] == len("hello world")
     assert result["visible_content_truncated"] is False
     assert result["stream_terminal_observed"] is True
 
@@ -606,6 +607,10 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
                             ttft=0.1,
                             e2e=0.2,
                             out_toks=8,
+                            finish_reasons=["stop"],
+                            stream_terminal_observed=True,
+                            visible_content_captured_chars=11,
+                            visible_content_capture_limit=8192,
                             usage={"prompt_tokens": 100, "prompt_tokens_details": {"cached_tokens": 40}},
                         ))
 
@@ -654,6 +659,14 @@ def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp
     assert summary["timestamp_precision"].startswith("nanosecond-unix-fields")
     assert isinstance(summary["started_at_unix_ns"], int)
     assert summary["wall_clock_ms"] > 0
+    assert summary["workload_identity"] == {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary",
+    }
+    assert summary["request_timings"][0]["stream_terminal_observed"] is True
+    assert summary["request_timings"][0]["finish_reasons"] == ["stop"]
+    assert summary["request_timings"][0]["visible_content_captured_chars"] == 11
+    assert summary["request_timings"][0]["visible_content_capture_limit"] == 8192
 
 
 def test_capacity_failure_retains_bounded_actionable_error(monkeypatch, tmp_path, capsys):
@@ -734,6 +747,7 @@ def test_canary_failure_retains_sanitized_response_timing_not_response_body(
     assert failure["response_metadata"]["usage"] == {
         "completion_tokens": 4, "prompt_tokens": 100
     }
+    assert failure["response_metadata"]["visible_content_captured_chars"] is None
     assert failure["request_canary"]["marker_at_start"] is False
     assert "prefix " not in raw
     assert artifact["request_timings"] == []

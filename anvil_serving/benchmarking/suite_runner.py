@@ -7,7 +7,14 @@ import json
 import math
 from typing import Any, Callable, Mapping
 
-from .agentic import _tool_call_matches, build_agentic_scenario, score_agentic_trace
+from .agentic import (
+    AGENTIC_ORACLE_REVISION,
+    DEBUG_LOOP_V2_CASE,
+    DEBUG_LOOP_V2_ORACLE_REVISION,
+    _tool_call_matches,
+    build_agentic_scenario,
+    score_agentic_trace,
+)
 from .evaluation import normalize_sampling, request_sampling_kwargs
 from .context import (
     NATIVE_CONTEXT_CASES,
@@ -248,6 +255,7 @@ def _validate_case_limit(parameters: Mapping[str, Any], *, suite: str) -> int | 
 
 
 def _agentic_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) -> dict[str, Any]:
+    available_cases = list(suite["cases"])
     case_ids = parameters.get("case_ids")
     if case_ids is not None:
         if (
@@ -260,7 +268,9 @@ def _agentic_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
                 "bad_agentic_case_ids",
                 "agentic case_ids must be a non-empty list of unique strings",
             )
-        unknown = set(case_ids).difference(suite["cases"])
+        unknown = set(case_ids).difference(available_cases)
+        if DEBUG_LOOP_V2_CASE in unknown and "debug-loop" in available_cases:
+            unknown.remove(DEBUG_LOOP_V2_CASE)
         if unknown:
             raise BenchmarkJobError(
                 "unknown_agentic_case_id",
@@ -268,7 +278,7 @@ def _agentic_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
             )
         selected_cases = list(case_ids)
     else:
-        selected_cases = list(suite["cases"])
+        selected_cases = available_cases
     recovery_result = parameters.get("recovery_result", "error")
     session_turns = parameters.get("session_turns", 12)
     # Reuse the scenario constructor's typed validation for its two inputs.
@@ -486,7 +496,7 @@ def _fixture_result(
         2: {"status": "edited"},
         3: {"status": "passed", "marker": "TESTS-PASS"},
     }
-    if scenario.get("scenario_type") == "debug-loop" and call_index in debug:
+    if scenario.get("scenario_type") in {"debug-loop", DEBUG_LOOP_V2_CASE} and call_index in debug:
         return debug[call_index]
     return {"error": "unexpected deterministic tool call"}
 
@@ -762,7 +772,7 @@ def run_agentic_suite(
     if not observations:
         raise BenchmarkJobError("no_agentic_cases", "profile selected no agentic scenarios")
     passed = sum(item["passed"] for item in observations)
-    return {
+    result = {
         "schema": "anvil-serving.agentic-suite-run/v1",
         "request_ids": sorted(set(request_ids)),
         "observations": observations,
@@ -775,3 +785,18 @@ def run_agentic_suite(
         "request_controls": {**request_controls, "sampling": sampling},
         "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
     }
+    if DEBUG_LOOP_V2_CASE in selected_cases:
+        result["scenario_contracts"] = [
+            {
+                "scenario_id": case_id,
+                "oracle_revision": (
+                    DEBUG_LOOP_V2_ORACLE_REVISION
+                    if case_id == DEBUG_LOOP_V2_CASE
+                    else AGENTIC_ORACLE_REVISION
+                ),
+                **({"replaces": "debug-loop"} if case_id == DEBUG_LOOP_V2_CASE else {}),
+            }
+            for case_id in selected_cases
+            if case_id in {"debug-loop", DEBUG_LOOP_V2_CASE}
+        ]
+    return result

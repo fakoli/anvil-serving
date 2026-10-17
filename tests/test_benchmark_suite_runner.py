@@ -9,6 +9,7 @@ import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.profiles import load_profile
+from anvil_serving.benchmarking.submission import validate_submission_spec
 from anvil_serving.benchmarking.suite_runner import run_agentic_suite, run_context_suite
 
 
@@ -56,6 +57,68 @@ def test_debug_fixture_rejects_extra_calls_without_advancing_state(extra):
         expected_results.insert(2, {"error": "unexpected deterministic tool call"})
     assert tool_results == expected_results
     assert result["observations"][0]["passed"] is (extra is None)
+
+
+@pytest.mark.parametrize(("scope", "passed"), [("unit", True), ("all", False)])
+def test_debug_loop_v2_runner_records_its_distinct_oracle_contract(scope, passed):
+    calls = [
+        ("run_tests", {"scope": "unit"}),
+        ("read_file", {"path": "calc.py"}),
+        ("apply_edit", {"path": "calc.py", "edit": "return a + b"}),
+        ("run_tests", {"scope": "unit"}),
+        None,
+        ("run_tests", {"scope": scope}),
+        ("read_file", {"path": "calc.py"}),
+        ("apply_edit", {"path": "calc.py", "edit": "return a + b"}),
+        ("run_tests", {"scope": "unit"}),
+    ]
+    replies = []
+
+    def caller(_base, _model, _key, _messages, **_kwargs):
+        index = len(replies)
+        replies.append(index)
+        message = {"content": "tests pass"}
+        if index < len(calls) and calls[index] is not None:
+            name, arguments = calls[index]
+            message = {"content": "", "tool_calls": [{
+                "id": f"call-{index}", "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)},
+            }]}
+        return {"latency_s": 0.01, "response": {
+            "choices": [{"message": message, "finish_reason": "stop"}],
+        }}
+
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["suites"]["agentic"]["repetitions"] = 1
+    result = run_agentic_suite(
+        profile, spec("agentic", case_ids=["debug-loop", "debug-loop-v2"]), caller=caller,
+    )
+    assert result["scenario_contracts"] == [
+        {"scenario_id": "debug-loop", "oracle_revision": "8"},
+        {"scenario_id": "debug-loop-v2", "oracle_revision": "9", "replaces": "debug-loop"},
+    ]
+    observation = next(item for item in result["observations"] if item["scenario_id"] == "debug-loop-v2")
+
+    assert observation["scenario_id"] == "debug-loop-v2"
+    assert observation["oracle_revision"] == "9"
+    assert observation["passed"] is passed
+    assert observation["failure_class"] == (None if passed else "protocol_failure")
+
+
+def test_debug_loop_v2_submission_opt_in_binds_profile_selection_and_contract():
+    job = spec("agentic", case_ids=["debug-loop-v2"])
+    job["profile"] = "deep"
+
+    admission = validate_submission_spec(job)
+
+    assert admission["selection"]["case_ids"] == ["debug-loop-v2"]
+
+
+def test_debug_loop_v2_submission_requires_legacy_case_authorization():
+    with pytest.raises(BenchmarkJobError) as error:
+        validate_submission_spec(spec("agentic", case_ids=["debug-loop-v2"]))
+
+    assert error.value.code == "unknown_agentic_case_id"
 
 
 def test_parallel_fixture_matches_arguments_and_rejects_duplicate_consumption():

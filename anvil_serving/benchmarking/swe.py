@@ -25,6 +25,10 @@ from .request_controls import resolve_job_request_controls
 from .profiles import validate_profile
 from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
 from .swe_images import instance_image_tag, observe_paired_images, validate_paired_image_ids
+from .swe_logs import validate_server_log_selector
+from .swe_agent_adapter import (
+    MINI_REVISION, SOURCE_HASHES as AGENT_SOURCE_HASHES, read_attempt_evidence,
+)
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
@@ -39,6 +43,7 @@ SWE_SUBSET = "verified"
 SWE_SPLIT = "test"
 TASK_CONTAINER_NETWORK = "none"
 SWE_FAILURE_CLASSES = frozenset({
+    "budget_exhausted",
     "broken_harness",
     "image_failure",
     "test_failure",
@@ -72,13 +77,25 @@ def _bounded_text(value: Any) -> tuple[str, bool]:
     return raw[:MAX_HARNESS_OUTPUT_BYTES].decode("utf-8", "replace"), truncated
 
 
-def _result_record(argv: Sequence[str], result: Any, duration_s: float) -> dict[str, Any]:
+def _result_record(
+    argv: Sequence[str], result: Any, duration_s: float, started_at: str,
+    ended_at: str | None = None,
+) -> dict[str, Any]:
     stdout, stdout_truncated = _bounded_text(getattr(result, "stdout", b""))
     stderr, stderr_truncated = _bounded_text(getattr(result, "stderr", b""))
     return {
         "command": list(argv),
         "returncode": int(getattr(result, "returncode", 1)),
         "duration_s": round(duration_s, 6),
+        "started_at": started_at,
+        "ended_at": ended_at or utc_now(),
+        "clock": {
+            "wall": "UTC system clock", "wall_precision_s": 0.000001,
+            "wall_resolution_s": time.get_clock_info("time").resolution,
+            "duration": "monotonic", "duration_resolution_s": time.get_clock_info("monotonic").resolution,
+            "synchronized": None,
+        },
+        "output_timing": "buffered; individual stdout/stderr event times unknown",
         "stdout": stdout,
         "stderr": stderr,
         "output_truncated": stdout_truncated or stderr_truncated,
@@ -338,6 +355,7 @@ def build_swe_run_plan(
     run_id: str,
     request_controls: Mapping[str, Any] | None = None,
     paired_image_ids: Mapping[str, str] | None = None,
+    server_log: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     require_swe_worker_platform()
@@ -347,6 +365,7 @@ def build_swe_run_plan(
     paired_images = validate_paired_image_ids(paired_image_ids, selected)
     target = _endpoint(endpoint)
     controls = _validate_request_controls(request_controls)
+    log_target = validate_server_log_selector(server_log) if server_log is not None else None
     Path(run_root).mkdir(parents=True, exist_ok=True)
     run_path = resolve_owned_run_path(run_root, ownership_id=ownership_id, run_id=run_id)
     work = resolve_owned_run_path(
@@ -370,6 +389,12 @@ def build_swe_run_plan(
     suite = validated["suites"]["swe"]
     if assets["swe-bench"]["revision"] != GRADER_REVISION:
         raise BenchmarkJobError("unsupported_grader_containment", "grader containment requires its qualified revision")
+    if assets["mini-swe-agent"]["revision"] != MINI_REVISION:
+        raise BenchmarkJobError("unsupported_agent_observation", "agent observation requires its qualified revision")
+    agent_adapter_path = str(Path(__file__).with_name("swe_agent_adapter.py"))
+    agent_adapter_sha256 = _sha256_file(agent_adapter_path)
+    # Keep flushed attempt evidence outside disposable work, including cancellation.
+    request_events_path = os.path.join(run_path, "swe-request-events.jsonl")
     adapter_path = str(Path(__file__).with_name("swe_grader_adapter.py"))
     adapter_sha256 = _sha256_file(adapter_path)
     containment_receipt = os.path.join(grader_work, "containment.json")
@@ -380,7 +405,10 @@ def build_swe_run_plan(
     container_executable = resolve_container_binary() or "docker"
     mini_command = [
         python_executable,
-        os.path.join(mini_root, "src", "minisweagent", "run", "benchmarks", "swebench.py"),
+        agent_adapter_path,
+        "--mini-root", mini_root,
+        "--adapter-sha256", agent_adapter_sha256,
+        "--events", request_events_path, "--",
         "--output", output,
         "--model", f"openai/{target['model']}",
         "--subset", dataset_snapshot["root"],
@@ -430,8 +458,13 @@ def build_swe_run_plan(
         "paired_image_ids": paired_images,
         "container_executable": container_executable,
         "request_controls": controls,
+        "server_log": log_target,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
+            "agent_observation": {
+                "adapter_sha256": agent_adapter_sha256,
+                "source_hashes": dict(AGENT_SOURCE_HASHES),
+            },
             "grader": {"name": "swe-bench", "revision": assets["swe-bench"]["revision"]},
             "grader_containment": {
                 "adapter_sha256": adapter_sha256,
@@ -458,6 +491,7 @@ def build_swe_run_plan(
             "grader_root": grader_root,
             "result": os.path.join(run_path, "swe-result.json"),
             "image_policy": image_policy_path,
+            "request_events": request_events_path,
         },
         "commands": {"agent": mini_command, "grader": grader_command},
         "config_text": _mini_config(
@@ -511,31 +545,148 @@ def _extract_request_ids(value: Any) -> list[str]:
     return sorted(found)
 
 
+def _nonnegative_int(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _retained_response_records(trajectory: Any) -> list[Mapping[str, Any]] | None:
+    """Return one complete, unique retained response per assistant turn."""
+    if not isinstance(trajectory, Mapping) or not isinstance(trajectory.get("messages"), list):
+        return None
+    info = trajectory.get("info") if isinstance(trajectory.get("info"), Mapping) else {}
+    stats = info.get("model_stats") if isinstance(info.get("model_stats"), Mapping) else {}
+    api_calls = _nonnegative_int(stats.get("api_calls"))
+    responses: list[Mapping[str, Any]] = []
+    response_ids: set[str] = set()
+    for message in trajectory["messages"]:
+        if not isinstance(message, Mapping):
+            return None
+        extra = message.get("extra")
+        response = extra.get("response") if isinstance(extra, Mapping) else None
+        if not isinstance(response, Mapping):
+            if message.get("role") == "assistant":
+                return None
+            continue
+        if message.get("role") not in {None, "assistant"}:
+            return None
+        response_id = response.get("id")
+        if isinstance(response_id, str) and response_id:
+            if response_id in response_ids:
+                return None
+            response_ids.add(response_id)
+        responses.append(response)
+    if api_calls is not None and api_calls != len(responses):
+        return None
+    return responses
+
+
 def _trajectory_metrics(trajectory: Any) -> dict[str, Any]:
     if not isinstance(trajectory, Mapping):
         return {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
     info = trajectory.get("info") if isinstance(trajectory.get("info"), Mapping) else {}
-    candidates = [
+    def number(value: Mapping[str, Any], *names: str) -> int | None:
+        for name in names:
+            item = _nonnegative_int(value.get(name))
+            if item is not None:
+                return item
+        return None
+
+    def usage_metrics(value: Mapping[str, Any]) -> dict[str, int | None]:
+        prompt = number(value, "prompt_tokens", "input_tokens")
+        completion = number(value, "completion_tokens", "output_tokens")
+        total = number(value, "total_tokens")
+        if total is None and prompt is not None and completion is not None:
+            total = prompt + completion
+        return {"prompt_tokens": prompt, "completion_tokens": completion, "total_tokens": total}
+
+    for usage in (
         info.get("model_stats"),
         info.get("usage"),
         trajectory.get("model_stats"),
         trajectory.get("usage"),
-    ]
-    usage = next((dict(item) for item in candidates if isinstance(item, Mapping)), {})
+    ):
+        if not isinstance(usage, Mapping):
+            continue
+        observed = usage_metrics(usage)
+        if any(value is not None for value in observed.values()):
+            return observed
 
-    def number(*names: str) -> int | None:
-        for name in names:
-            value = usage.get(name)
-            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
-                return value
-        return None
+    # Per-response usage is an alternative to aggregate model stats, never added to it.
+    responses = _retained_response_records(trajectory)
+    if not responses or any(not isinstance(response.get("usage"), Mapping) for response in responses):
+        return {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
+    response_usages = [usage_metrics(response["usage"]) for response in responses]
 
-    prompt = number("prompt_tokens", "input_tokens")
-    completion = number("completion_tokens", "output_tokens")
-    total = number("total_tokens")
+    def summed(field: str) -> int | None:
+        values = [item[field] for item in response_usages]
+        return sum(values) if all(value is not None for value in values) else None
+
+    prompt = summed("prompt_tokens")
+    completion = summed("completion_tokens")
+    total = summed("total_tokens")
     if total is None and prompt is not None and completion is not None:
         total = prompt + completion
     return {"prompt_tokens": prompt, "completion_tokens": completion, "total_tokens": total}
+
+
+def _response_finish_reasons(trajectory: Any) -> list[str | None]:
+    responses = _retained_response_records(trajectory)
+    if responses is None:
+        return []
+    reasons = []
+    for response in responses:
+        choices = response.get("choices")
+        if isinstance(choices, list) and len(choices) == 1 and isinstance(choices[0], Mapping):
+            reason = choices[0].get("finish_reason")
+            reasons.append(reason if isinstance(reason, str) else None)
+        elif "choices" not in response and isinstance(response.get("finish_reason"), str):
+            reasons.append(response["finish_reason"])
+        else:
+            # A multi-choice or malformed response cannot establish one turn's
+            # finish reason for a serial format-error diagnosis.
+            reasons.append(None)
+    return reasons
+
+
+def _swe_diagnostics(trajectory: Any, prediction: Mapping[str, Any]) -> dict[str, Any]:
+    """Additive observations; they neither alter patches nor grading decisions."""
+    info = trajectory.get("info", {}) if isinstance(trajectory, Mapping) else {}
+    exit_status = info.get("exit_status") if isinstance(info.get("exit_status"), str) else None
+    patch = prediction.get("model_patch")
+    patch_bytes = patch.encode("utf-8") if isinstance(patch, str) else b""
+    exit_kind = {
+        "Submitted": "submitted",
+        "LimitsExceeded": "limits_exceeded",
+        "RepeatedFormatError": "repeated_format_error",
+    }.get(exit_status, "missing" if trajectory is None else "other")
+    observation = {
+        "exit": {"status": exit_status, "kind": exit_kind},
+        "prediction": {
+            "present": isinstance(patch, str),
+            "nonempty": bool(patch_bytes),
+            "sha256": hashlib.sha256(patch_bytes).hexdigest(),
+            "bytes": len(patch_bytes),
+        },
+        "grading": {"status": "ungraded"},
+    }
+    if exit_kind == "limits_exceeded":
+        # LimitsExceeded can mean call, cost, or wall-clock budget.  The stored
+        # status alone does not identify which configured budget was reached.
+        observation["exit"]["limit_kind"] = "unknown"
+    elif exit_kind == "repeated_format_error":
+        reasons = _response_finish_reasons(trajectory)
+        if len(reasons) >= 3 and reasons[-3:] == ["length", "length", "length"]:
+            observation["exit"]["format_cause"] = "output_cap"
+        else:
+            observation["exit"]["format_cause"] = "unknown"
+    return observation
+
+
+def _set_grading_observation(instance: dict[str, Any]) -> None:
+    grader = instance["grader"]
+    instance["diagnostics"]["grading"]["status"] = (
+        "ungraded" if not grader["completed"] else "resolved" if grader["resolved"] else "unresolved"
+    )
 
 
 def _write_predictions_jsonl(path: str, predictions: Mapping[str, Any], selected: list[str]) -> None:
@@ -577,6 +728,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "stages": [],
         "summary": {"attempted": 0, "graded": 0, "resolved": 0, "resolve_rate": None},
         "failure": None,
+        "server_log_evidence": {"status": "not_requested" if plan.get("server_log") is None else "not_collected"},
         "promotion": {
             "authorized": False,
             "message": "Benchmark evidence does not authorize model promotion.",
@@ -589,6 +741,7 @@ def run_swe_benchmark(
     *,
     runner: SWECommandRunner = _default_runner,
     environ: Mapping[str, str] | None = None,
+    log_collector: Callable[[str, str], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run mini-SWE-agent, normalize predictions, then require the official grader."""
     require_swe_worker_platform()
@@ -647,18 +800,50 @@ def run_swe_benchmark(
     if paired_images is not None:
         atomic_write_json(paths["image_policy"], {instance_image_tag(k): v for k, v in paired_images.items()})
 
+    agent_started_at = utc_now()
     agent_started = time.monotonic()
+    def collect_logs(ended_at):
+        if log_collector is None:
+            return
+        try:
+            result["server_log_evidence"] = log_collector(agent_started_at, ended_at)
+        except Exception as exc:
+            # Evidence failures must not mask the agent's result or copy error bodies.
+            result["server_log_evidence"] = {
+                "status": "unavailable", "error": type(exc).__name__,
+                "requested_interval": {"started_at": agent_started_at, "ended_at": ended_at},
+            }
     try:
-        agent_process = runner(plan["commands"]["agent"], paths["work"], plan["timeout_s"], child_env)
+        try:
+            agent_process = runner(plan["commands"]["agent"], paths["work"], plan["timeout_s"], child_env)
+        finally:
+            agent_duration = time.monotonic() - agent_started
+            agent_ended_at = utc_now()
+            result["agent_interval"] = {
+                "started_at": agent_started_at, "ended_at": agent_ended_at,
+                "duration_s": round(agent_duration, 6),
+            }
+            collect_logs(agent_ended_at)
+            if paths.get("request_events"):
+                try:
+                    result["request_observations"] = read_attempt_evidence(
+                        paths["request_events"],
+                        expected_adapter_sha256=plan["harnesses"]["agent_observation"]["adapter_sha256"],
+                    )
+                except Exception as exc:
+                    result["request_observations"] = {
+                        "status": "unavailable", "error": type(exc).__name__, "events": [],
+                    }
+            atomic_write_json(paths["result"], result)
     except subprocess.TimeoutExpired as exc:
-        stage = _result_record(plan["commands"]["agent"], exc, time.monotonic() - agent_started)
+        stage = _result_record(plan["commands"]["agent"], exc, agent_duration, agent_started_at, agent_ended_at)
         stage.update({"name": "agent", "status": "failed", "failure_class": "timeout"})
         result["stages"].append(stage)
         result["failure"] = {"class": "timeout", "stage": "agent"}
         atomic_write_json(paths["result"], result)
         return result
     agent_stage = _result_record(
-        plan["commands"]["agent"], agent_process, time.monotonic() - agent_started
+        plan["commands"]["agent"], agent_process, agent_duration, agent_started_at, agent_ended_at
     )
     agent_stage.update({"name": "agent", "status": "completed"})
     result["stages"].append(agent_stage)
@@ -710,16 +895,21 @@ def run_swe_benchmark(
             "prompt_identity": {"dataset": plan["dataset"], "split": plan["split"]},
             "trajectory": {"path": trajectory_path, "sha256": trajectory_sha},
             "request_ids": _extract_request_ids(trajectory),
+            "request_observation_sequences": [
+                event["seq"] for event in result.get("request_observations", {}).get("events", [])
+                if event.get("task_instance_id") == instance_id
+            ],
             "tokens": _trajectory_metrics(trajectory),
             "duration_s": info.get("duration_s") if isinstance(info.get("duration_s"), (int, float)) else None,
             "exit_status": info.get("exit_status"),
             "prediction_sha256": hashlib.sha256(
                 str(prediction.get("model_patch") or "").encode("utf-8")
             ).hexdigest(),
+            "diagnostics": _swe_diagnostics(trajectory, prediction),
             "grader": {"name": "swe-bench", "revision": plan["harnesses"]["grader"]["revision"], "completed": False, "resolved": None},
             "failure_class": (
                 "broken_harness" if trajectory is None else
-                "model_failure" if info.get("exit_status") == "LimitsExceeded" else None
+                "budget_exhausted" if info.get("exit_status") == "LimitsExceeded" else None
             ),
         })
     result["summary"]["attempted"] = len(result["instances"])
@@ -736,15 +926,14 @@ def run_swe_benchmark(
             "stage": "agent",
             "code": "missing_swe_trajectory",
         }
-    elif any(instance["failure_class"] == "model_failure" for instance in result["instances"]):
-        agent_stage.update({"status": "failed", "failure_class": "model_failure"})
+    elif any(instance["failure_class"] == "budget_exhausted" for instance in result["instances"]):
+        agent_stage.update({"status": "failed", "failure_class": "budget_exhausted"})
         agent_failure = {
-            "class": "model_failure",
+            "class": "budget_exhausted",
             "stage": "agent",
             "code": "swe_limits_exceeded",
         }
 
-    grader_started = time.monotonic()
     if not image_boundary("before_grader"):
         return result
     try:
@@ -753,12 +942,14 @@ def run_swe_benchmark(
         result["failure"] = {"class": "broken_harness", "stage": "official_grader", "code": exc.code}
         atomic_write_json(paths["result"], result)
         return result
+    grader_started_at = utc_now()
+    grader_started = time.monotonic()
     try:
         grader_process = runner(
             plan["commands"]["grader"], paths["grader_work"], plan["timeout_s"], child_env
         )
     except subprocess.TimeoutExpired as exc:
-        stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started)
+        stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started, grader_started_at)
         stage.update({"name": "official_grader", "status": "failed", "failure_class": "timeout"})
         result["stages"].append(stage)
         result["failure"] = agent_failure or {
@@ -768,7 +959,7 @@ def run_swe_benchmark(
         atomic_write_json(paths["result"], result)
         return result
     grader_stage = _result_record(
-        plan["commands"]["grader"], grader_process, time.monotonic() - grader_started
+        plan["commands"]["grader"], grader_process, time.monotonic() - grader_started, grader_started_at
     )
     grader_stage.update({"name": "official_grader", "status": "completed"})
     result["stages"].append(grader_stage)
@@ -804,6 +995,7 @@ def run_swe_benchmark(
             else None,
             "report_sha256": report_sha256,
         })
+        _set_grading_observation(instance)
     result["official_grader_complete"] = len(valid_completed_ids) == len(selected)
     result["summary"] = {
         "attempted": len(selected),

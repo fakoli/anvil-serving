@@ -220,6 +220,117 @@ dataset, image, prediction, grader, and model reasoning-control identities
 remain bound in the artifact.
 See [the durable job workflow](context-agentic-swe.md).
 
+## Experiment purpose and failure attribution
+
+Keep product-budget evaluation, external benchmark reproduction, and failure
+diagnosis separate. A five-task regression scout is not a population estimate.
+The packaged scout's call/completion limits are deliberate operating budgets;
+an upstream harness default does not silently replace them. Compare the same
+selected tasks, harness revision, effective controls, retry policy and grader.
+Report first-attempt success separately from retry-inclusive success, including
+the extra time and tokens. Retain every attempt in the end-to-end denominator.
+
+New SWE results retain additive per-instance `diagnostics`: the upstream exit,
+prediction presence/byte count/hash, and official grading outcome. New
+`LimitsExceeded` exits use `budget_exhausted` while keeping the run incomplete
+and its gate failed. The enclosing cross-suite evidence uses its stable
+`resource_exhaustion` class and retains `budget_exhausted` as the code; the native
+SWE stage retains the more specific cause. The exit alone does not distinguish call, cost or time
+limits. Repeated format errors identify output-cap exhaustion only when retained
+single-choice responses support that diagnosis. An observed patch is not a
+submitted or correct patch; diagnostics never recover or submit one. Historical
+records keep their original failure classes and scores.
+
+The original `debug-loop` remains Oracle revision 8. To select the corrected
+contract in an agentic job, use `parameters.case_ids: ["debug-loop-v2"]` in the
+existing job specification with a profile that includes `debug-loop` (scout or
+deep). This is an explicit selection, not a new default. The v2 prompt and tool
+schema both disclose `scope="unit"`; its observations identify revision 9.
+Artifacts containing the new case retain `scenario_contracts`, including both
+revisions if both cases were selected. Scenario and expected revision must
+agree. The corrected contract is prospective; it does not rescore old failures.
+
+New capacity reports declare `workload_identity` with
+`prompt_contract_revision: "capacity-prompt-v1"` and either
+`synthetic-repeated-code` (positive `response_words`) or `synthetic-summary`
+(zero `response_words`). These identify existing prompts, not new benchmarks.
+`observe` does not change a repeated-word prompt into a natural workload, and a
+synthetic summary does not establish daily task quality. Comparison and replica
+aggregation reject unlike identities and mixing an identified workload with a
+legacy unidentified one. Legacy-only comparisons retain their prior meaning.
+
+`unique_prefix_namespace` separately identifies how unique-cache prompt headers
+are constructed. The declared unique-cache scheme is
+`capacity-v1:seed-request-index`; shared-cache artifacts use null. The seed itself
+remains per-run provenance. Comparison and aggregation validate the namespace
+against cache mode, retain declared metadata, and reject mixing declared and
+legacy unidentified unique-cache populations. Shared-cache null and absence both
+mean no unique prefix. Historical absence is never filled in with a guessed
+unique scheme. Report catalogs keep the existing `unique_prefix_namespace` key.
+
+Successful timing rows also retain bounded finish reasons, terminal observation,
+capture limit and captured character count. Missing historical metadata stays
+unknown. These observations do not relax output/canary eligibility: a received
+response is not necessarily a clean completion, and truncated capture cannot
+prove stream isolation. Strict finalist requirements remain unchanged. Natural
+task timing, exact instruction following and stream isolation need separately
+declared workloads before they can support separate conclusions.
+
+These contracts can be tested with synthetic traces and fake callers. Passing
+those tests establishes harness behavior, not corrected model accuracy,
+real-engine cancellation, production throughput or promotion readiness.
+
+### SWE retry timing and server-log coverage
+
+New SWE plans bind the observation adapter's hash, the pinned mini-SWE source,
+and supported client dependency versions. The adapter runs inside the existing
+harness environment. It observes mini-SWE's agent retries and the OpenAI SDK's
+HTTP attempts separately, preserving request parameters, retry decisions and
+backoff calculations. A dependency mismatch fails before agent execution;
+changing that supported environment requires separate validation.
+
+Agent and grader stages retain UTC start/end times and monotonic duration.
+`request_observations` contains ordered metadata for each logical query, task,
+step, agent attempt and HTTP attempt, including available status, typed errors,
+planned retry delay and terminal outcome. HTTP, router, model-response and
+engine request IDs are distinct namespaces. The existing aggregate
+`request_ids` stays available; per-instance `request_observation_sequences`
+indexes the ordered observations. Buffered stdout/stderr does not supply retry
+event timestamps. Wall-clock precision does not prove clock synchronization.
+
+The bounded `swe-request-events.jsonl` sidecar lives in the owned run directory,
+outside disposable work, so flushed observations survive cancellation cleanup.
+Its reader distinguishes missing, invalid, incomplete and truncated capture.
+The 2,000-event and 1 MiB bounds limit diagnostic coverage; they do not change
+the benchmark budget. Old artifacts are never assigned reconstructed timings.
+
+For a future authorized run, add one explicit target to the existing SWE job's
+`parameters` before freezing the specification:
+
+```json
+"server_log": {"recipe_container": "candidate", "tail": 1000}
+```
+
+Use `service` instead of `recipe_container` for a declared managed service.
+The worker requests timestamped logs for the actual agent interval through the
+managed owner and immutable container identity. It retains only recognized
+event metadata, including available admission, refusal, timeout, disconnect,
+cancellation acknowledgement and lane-release observations. A cancellation
+acknowledgement does not establish lane release. Raw log text, prompts, response
+bodies and arbitrary headers are excluded from this new capture.
+
+Log evidence separates successful collection from interval completeness. It
+records requested bounds, observed timestamps, the identity observed at
+collection, limits and errors. Rotation, continuity and clock offsets stay
+unknown when the owner cannot establish them. Timestamp ordering across output
+streams has explicit tie and clock limitations. A startup snapshot, empty log
+result or absent event cannot establish complete coverage. Omitting the target
+records `not_requested`; the worker never guesses a service from its endpoint.
+
+Offline fixtures validate capture behavior only. Real-engine cancellation,
+retry causes and model quality still require a separately authorized runtime
+experiment with retained interval evidence.
+
 ## Evaluation pipeline
 
 The [runtime stability workflow](runtime-stability.md) retains additive
@@ -401,6 +512,7 @@ Then:
 The benchmark guide should summarize evidence, never silently upgrade its
 confidence. A one-pass calibration stays one-pass; an operator-observed result
 without a retained artifact stays incomplete; a failed load remains a failure.
+
 ## Natural-output observational baseline
 
 The 2026-10-16 GLM comparison uses variable natural output through a shared router. Completion tokens may include reasoning tokens, and 20 requests per cell do not establish stable p99 latency. See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md).

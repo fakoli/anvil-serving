@@ -360,6 +360,119 @@ def _complete_capacity(model: str, *, concurrency: int, no_thinking: bool) -> di
     }
 
 
+def _capacity_workload_identity(response_words: int = 0) -> dict:
+    return {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": (
+            "synthetic-repeated-code" if response_words else "synthetic-summary"
+        ),
+    }
+
+
+def test_compare_capacity_workload_identity_is_backward_compatible_and_fail_closed(
+    tmp_path: Path,
+) -> None:
+    legacy_first = _complete_capacity("one", concurrency=5, no_thinking=True)
+    legacy_second = _complete_capacity("two", concurrency=5, no_thinking=True)
+    first = _write(tmp_path / "first.json", legacy_first)
+    second = _write(tmp_path / "second.json", legacy_second)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    modern_first = {**legacy_first, "response_words": 0,
+                    "workload_identity": _capacity_workload_identity()}
+    modern_second = {**legacy_second, "response_words": 0,
+                     "workload_identity": _capacity_workload_identity()}
+    first = _write(tmp_path / "modern-first.json", modern_first)
+    second = _write(tmp_path / "modern-second.json", modern_second)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    mixed = benchmark_evidence.compare_artifacts([
+        _write(tmp_path / "legacy.json", legacy_first), first,
+    ])
+    assert mixed["comparable"] is False
+    assert mixed["differences"]["capacity_workload_identity"] == [
+        None, _capacity_workload_identity(),
+    ]
+
+    malformed = _write(tmp_path / "malformed.json", {
+        **modern_second,
+        "workload_identity": {"prompt_contract_revision": "capacity-prompt-v1"},
+    })
+    invalid = benchmark_evidence.compare_artifacts([first, malformed])
+    assert invalid["comparable"] is False
+    assert any(
+        "workload_identity must declare" in error
+        for error in invalid["invalid_artifacts"][malformed.as_posix()]
+    )
+
+    explicit_null = _write(tmp_path / "explicit-null.json", {
+        **modern_second, "workload_identity": None,
+    })
+    null_result = benchmark_evidence.compare_artifacts([first, explicit_null])
+    assert any(
+        "workload_identity must declare" in error
+        for error in null_result["invalid_artifacts"][explicit_null.as_posix()]
+    )
+
+
+def test_compare_capacity_unique_prefix_namespace_keeps_declared_and_legacy_distinct(
+    tmp_path: Path,
+) -> None:
+    legacy_first = _complete_capacity("one", concurrency=5, no_thinking=True)
+    legacy_second = _complete_capacity("two", concurrency=5, no_thinking=True)
+    first = _write(tmp_path / "legacy-first.json", legacy_first)
+    second = _write(tmp_path / "legacy-second.json", legacy_second)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    unique_first = {
+        **legacy_first,
+        "prompt_cache_mode": "unique",
+        "unique_prefix_namespace": "capacity-v1:seed-request-index",
+    }
+    unique_second = {
+        **legacy_second,
+        "prompt_cache_mode": "unique",
+        "unique_prefix_namespace": "capacity-v1:seed-request-index",
+    }
+    first = _write(tmp_path / "unique-first.json", unique_first)
+    second = _write(tmp_path / "unique-second.json", unique_second)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    mixed = benchmark_evidence.compare_artifacts([
+        _write(tmp_path / "legacy.json", legacy_first), first,
+    ])
+    assert mixed["comparable"] is False
+    assert mixed["differences"]["unique_prefix_namespace_declared"] == [False, True]
+
+    shared_first = {
+        **legacy_first,
+        "prompt_cache_mode": "shared",
+        "unique_prefix_namespace": None,
+    }
+    shared_second = {
+        **legacy_second,
+        "prompt_cache_mode": "shared",
+        "unique_prefix_namespace": None,
+    }
+    first = _write(tmp_path / "shared-first.json", shared_first)
+    second = _write(tmp_path / "shared-second.json", shared_second)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    shared_legacy = {**legacy_second, "prompt_cache_mode": "shared"}
+    second = _write(tmp_path / "shared-legacy.json", shared_legacy)
+    assert benchmark_evidence.compare_artifacts([first, second])["comparable"] is True
+
+    malformed = _write(tmp_path / "malformed-namespace.json", {
+        **unique_second, "unique_prefix_namespace": "seed-7",
+    })
+    invalid = benchmark_evidence.compare_artifacts([first, malformed])
+    assert invalid["comparable"] is False
+    assert any(
+        "unique prompt_cache_mode requires" in error
+        for error in invalid["invalid_artifacts"][malformed.as_posix()]
+    )
+
+
 def test_compare_fails_closed_for_missing_material_fields(tmp_path: Path) -> None:
     first = _write(tmp_path / "first.json", {
         "schema": "anvil-serving.benchmark/v1", "metrics": {},

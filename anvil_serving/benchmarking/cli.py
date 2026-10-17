@@ -37,6 +37,7 @@ from .recipes import emit_recipe
 from .requests import (
     DEFAULT_CTX_MARGIN,
     VISIBLE_CONTENT_CAPTURE_LIMIT,
+    capacity_workload_identity,
     clamp_ctx,
     ctx_cap,
     detect_max_model_len,
@@ -690,14 +691,29 @@ def main(
                 timing = _result_timings([safe_result])
                 failure["response_timing"] = timing[0] if timing else None
                 usage = result.get("usage")
+                finish_reasons = result.get("finish_reasons")
                 failure["response_metadata"] = {
                     "output_token_source": result.get("output_token_source"),
                     "content_chunks": result.get("content_chunks"),
                     "reasoning_chunks": result.get("reasoning_chunks"),
-                    "finish_reasons": result.get("finish_reasons") or [],
-                    "stream_terminal_observed": result.get("stream_terminal_observed"),
+                    "finish_reasons": (
+                        [reason[:128] for reason in finish_reasons[:256]
+                         if isinstance(reason, str)]
+                        if isinstance(finish_reasons, list) else None
+                    ),
+                    "stream_terminal_observed": (
+                        result.get("stream_terminal_observed")
+                        if isinstance(result.get("stream_terminal_observed"), bool)
+                        else None
+                    ),
                     "visible_content_truncated": bool(
                         result.get("visible_content_truncated")
+                    ),
+                    "visible_content_captured_chars": result.get(
+                        "visible_content_captured_chars"
+                    ),
+                    "visible_content_capture_limit": result.get(
+                        "visible_content_capture_limit"
                     ),
                     "usage": {
                         key: usage.get(key)
@@ -938,6 +954,7 @@ def main(
         "shared_prefix_tokens": effective_shared_prefix_tokens,
         "request_canaries": bool(a.request_canaries),
         "controlled_output_policy": a.controlled_output_policy,
+        "workload_identity": capacity_workload_identity(a.response_words),
         "performance_eligible": performance_eligible,
         "metric_population": {
             "attempted_requests": n,

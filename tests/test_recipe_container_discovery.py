@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -333,6 +334,48 @@ def test_discovered_recipe_logs_read_revalidated_immutable_id(
         ["docker", "logs", "--tail", "17", identity["container_id"]]
     ]
     assert capsys.readouterr().out == "candidate ready\n"
+
+
+def test_recipe_log_metadata_rechecks_discovered_identity_and_uses_interval_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    assert identity is not None
+    monkeypatch.setattr(
+        serve_recipes, "discover_recipe_containers",
+        lambda **_kwargs: {"schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": [identity]},
+    )
+    calls = []
+    result = models.collect_discovered_recipe_container_logs(
+        "candidate", tail=3, since="2026-10-16T12:00:00Z", until="2026-10-16T12:01:00Z", timestamps=True,
+        _run=lambda argv, **_kwargs: calls.append(argv) or _completed(
+            argv, stdout='2026-10-16T12:00:02Z {"event":"admission"}\n'
+        ),
+    )
+    assert calls == [[
+        "docker", "logs", "--tail", "3", "--since", "2026-10-16T12:00:00Z",
+        "--until", "2026-10-16T12:01:00Z", "--timestamps", identity["container_id"],
+    ]]
+    assert result["observed_runtime"]["container_id"] == identity["container_id"]
+    assert result["lines"] == ['2026-10-16T12:00:02Z {"event":"admission"}']
+
+
+def test_default_recipe_log_capture_uses_bounded_popen_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Process:
+        returncode = 0
+        def __init__(self, argv, **kwargs):
+            self.argv, self.kwargs = argv, kwargs
+            self.stdout = io.BytesIO(b'{"event":"admission"}\n')
+        def wait(self, timeout=None):
+            return 0
+        def poll(self):
+            return self.returncode
+        def kill(self):
+            raise AssertionError("small output must not be killed")
+
+    captured = {}
+    monkeypatch.setattr(models.subprocess, "Popen", lambda argv, **kwargs: captured.setdefault("process", Process(argv, **kwargs)))
+    code, stdout, stderr = models._bounded_recipe_log_capture(["docker", "logs", "id"])
+    assert code == 0 and stdout == '{"event":"admission"}\n' and stderr == ""
+    assert captured["process"].kwargs["stderr"] is models.subprocess.STDOUT
 
 
 def test_discovered_recipe_unload_refuses_same_name_replacement(
