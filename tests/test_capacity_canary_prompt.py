@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from anvil_serving import benchmark as bm
 from anvil_serving.benchmarking.requests import make_prompt, output_contract_observation
 
@@ -58,3 +60,19 @@ def test_capacity_unique_prompt_namespace_uses_seed_but_shared_prompts_do_not(
     assert first_artifact["unique_prefix_namespace"] == "capacity-v1:seed-request-index"
     assert shared_first == shared_changed
     assert shared_artifact["unique_prefix_namespace"] is None
+
+
+def test_unique_prefix_never_truncates_large_seed_headers():
+    first_seed = "seed=" + "7" * 200
+    second_seed = "seed=" + "8" * 200
+    first = make_prompt("", 128, 0, unique_prefix=first_seed)
+    second = make_prompt("", 128, 0, unique_prefix=second_seed)
+
+    assert first != second
+    assert first.startswith(f"# unique benchmark request {first_seed}\n")
+    for seed in (first_seed, second_seed):
+        with pytest.raises(ValueError, match="unique benchmark prefix"):
+            make_prompt("", 32, 0, unique_prefix=seed)
+
+    shared = make_prompt("x" * 200, 32, 0)
+    assert shared.endswith("# request 0: summarize the above in one line.")
