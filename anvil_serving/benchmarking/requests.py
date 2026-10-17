@@ -84,12 +84,17 @@ def make_prompt(
             if marker
             else f"\n# request {uniq}: summarize the above in one line."
         )
-    unique_header = (
-        f"# unique benchmark request {marker or uniq}\n" if unique_prefix else ""
-    )
+    unique_header = ""
+    if unique_prefix:
+        unique_identifier = marker or (
+            uniq if unique_prefix is True else unique_prefix
+        )
+        unique_header = f"# unique benchmark request {unique_identifier}\n"
     prefix = unique_header + shared_prefix
     if int(budget * chars_per_token) <= len(tail):
         raise ValueError("context target is too small for the benchmark prompt envelope")
+    if unique_prefix and int(budget * chars_per_token) < len(unique_header) + len(tail):
+        raise ValueError("context target is too small for the unique benchmark prefix")
     char_budget = int(budget * chars_per_token) - len(prefix) - len(tail) - 1
     if char_budget <= 0:
         return prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail

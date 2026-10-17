@@ -284,3 +284,6 @@ path and public-artifact audit remains tracked by
 ## 2026-09-19: Huihui 64K C1 promotion
 
 The earlier Huihui NInfer MTP3 qualification used 65,536 context tokens at C1. Direct preflight passed 7/7, routed preflight 6/6, vision 12/12, and native Hermes 9/9 with the exact local alias. Descriptive, canary-free C1 short-input capacity passed 12/12 at 182.1 mean decode tokens/s; the long-input cell passed 6/6 at 167.1, with 60,769-60,776 actual prompt tokens. Post-workload GPU use was 24,224 MiB. The 32K results remain historical evidence. Endurance, interactive browser acceptance, and a matched 64K no-spec control remain unmeasured. See [the 64K finding](2026-09-19-qwen38-huihui-64k.md).
+## 2026-10-16
+
+- [GLM natural-output comparison baseline](2026-10-16-glm-natural-baseline.md) — closed observational baseline: timing retained, coding repeatability not established, no promotion.

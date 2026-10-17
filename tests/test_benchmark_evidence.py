@@ -761,6 +761,28 @@ def test_unknown_thinking_mode_and_malformed_optional_metric_fail_closed(
         assert "metrics.throughput_tok_s must be a finite number" in errors
 
 
+@pytest.mark.parametrize(
+    "value, expected_errors",
+    [
+        (None, []),
+        (True, ["artifact.max_context_tokens must be a finite number"]),
+        ("unknown", ["artifact.max_context_tokens must be a finite number"]),
+        (float("nan"), ["artifact.max_context_tokens must be a finite number"]),
+    ],
+)
+def test_optional_capacity_context_limit_accepts_only_null(value, expected_errors) -> None:
+    summary = benchmark_evidence.summarize_payload(
+        {
+            "schema": "anvil-serving.benchmark/v1",
+            "max_context_tokens": value,
+            "metrics": {},
+        },
+        "capacity.json",
+    )
+
+    assert [error for error in summary["validation_errors"] if "max_context_tokens" in error] == expected_errors
+
+
 def test_retained_protocol_v2_artifact_normalizes_without_custom_extraction() -> None:
     artifact = (
         ROOT

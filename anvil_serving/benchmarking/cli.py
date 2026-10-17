@@ -590,6 +590,11 @@ def main(
     effective_shared_prefix_tokens = (
         a.shared_prefix_tokens if a.prompt_cache_mode == "shared" else 0
     )
+    unique_prefix_namespace = (
+        "capacity-v1:seed-request-index"
+        if a.prompt_cache_mode == "unique"
+        else None
+    )
     if a.dry_run:
         print(json.dumps({
             "schema": "anvil-serving.eval-plan/v1",
@@ -610,6 +615,7 @@ def main(
                 "max_tokens": a.max_tokens,
                 "response_words": a.response_words,
                 "prompt_cache_mode": a.prompt_cache_mode,
+                "unique_prefix_namespace": unique_prefix_namespace,
                 "shared_prefix_tokens": effective_shared_prefix_tokens,
                 "request_canaries": bool(a.request_canaries),
                 "controlled_output_policy": a.controlled_output_policy,
@@ -731,7 +737,11 @@ def main(
                 max_prompt_tokens=cap,
                 marker=canaries[i] if a.request_canaries else None,
                 response_words=a.response_words,
-                unique_prefix=a.prompt_cache_mode == "unique",
+                unique_prefix=(
+                    f"seed={a.seed} index={i:05d}"
+                    if a.prompt_cache_mode == "unique"
+                    else False
+                ),
             )
             result = stream_request(
                 a.base_url, a.model, prompt, api_key, a.max_tokens,
@@ -940,6 +950,7 @@ def main(
         "max_tokens": a.max_tokens,
         "response_words": a.response_words,
         "prompt_cache_mode": a.prompt_cache_mode,
+        "unique_prefix_namespace": unique_prefix_namespace,
         "shared_prefix_tokens": effective_shared_prefix_tokens,
         "request_canaries": bool(a.request_canaries),
         "controlled_output_policy": a.controlled_output_policy,

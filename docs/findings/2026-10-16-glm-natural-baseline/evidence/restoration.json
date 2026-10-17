@@ -1,0 +1,62 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "status": "serving-continuity-verified-with-storage-limitation",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": true,
+    "evidence": ["configuration-identity.json"]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": ["post-run-continuity-projection"]
+  },
+  "differences": [
+    {
+      "kind": "post-run-storage-reserve-gap",
+      "free_disk_bytes": 88034181120,
+      "required_reserve_bytes": 107374182400,
+      "operational_resource_closure": "open"
+    }
+  ],
+  "post_run_checks": [
+    {
+      "name": "post-run storage reserve",
+      "passed": false,
+      "free_disk_bytes": 88034181120,
+      "required_reserve_bytes": 107374182400,
+      "future_trials_blocked": true,
+      "disposition": "No cleanup or pruning was performed; separately owned storage work is required."
+    },
+    {
+      "name": "model image pin and custody continuity",
+      "passed": true,
+      "restart_count": 0,
+      "start_predates_campaign": true
+    },
+    {
+      "name": "router custody and configuration continuity",
+      "passed": true,
+      "router_config_sha256": "426ef20eb036ea022c0784ff64abb3d5185f386bf48fa1f2f531fdf8a313c3fd"
+    },
+    {
+      "name": "actual serve readiness",
+      "passed": true,
+      "serve_health_status": 200,
+      "direct_model_identity_matches_starting_state": true,
+      "routed_catalog_status": 200,
+      "primary_alias_present": true
+    }
+  ],
+  "evidence_sources": [
+    {"name": "post-run-continuity", "sha256": "0af04eac19d4082e19dc5d0c65734c65b885cda6f522a9de2fe340c5173450fa"},
+    {"name": "router-status-after", "sha256": "c58049d3262b70353f3b81c78e56fe6b8c1c89da5d1fea30577bc7ed9797413c"},
+    {"name": "model-custody-after", "sha256": "19310f0589a23100e0be046bf4f95d522cf28fd161af0a4ce04b4640e18bab83"},
+    {"name": "serve-status-after", "sha256": "01ef1838c246c223f9332bd36fcb1dddc39bbd9a73941e2353a5f701a193bf26"},
+    {"name": "direct-models-after", "sha256": "770fbb7ebc9e4669b4228d3b56de02e15ed0835ba69ddf7eda61e2cb8bb62cfb"},
+    {"name": "routed-models-after", "sha256": "730d91579c98c542c5e88a4ae5edfe501ec0534ea80466563a341227df440725"}
+  ],
+  "verified": true,
+  "readiness_note": "Model-custody inspection confirms continuity only; readiness is established by managed serve status and direct/routed model readbacks.",
+  "campaign_inventory_status": "closed after independent review, final analysis, and explicit closure authorization"
+}

@@ -503,3 +503,6 @@ Then:
 The benchmark guide should summarize evidence, never silently upgrade its
 confidence. A one-pass calibration stays one-pass; an operator-observed result
 without a retained artifact stays incomplete; a failed load remains a failure.
+## Natural-output observational baseline
+
+The 2026-10-16 GLM comparison uses variable natural output through a shared router. Completion tokens may include reasoning tokens, and 20 requests per cell do not establish stable p99 latency. See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md).
