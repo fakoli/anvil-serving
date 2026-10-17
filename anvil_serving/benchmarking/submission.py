@@ -17,6 +17,7 @@ from .suite_runner import (
 )
 from .swe import _validate_request_controls, validate_swe_selection
 from .swe_images import validate_paired_image_ids, validate_paired_image_repo_digests
+from .swe_logs import validate_server_log_selector
 
 
 _RESERVED_PARAMETERS = {
@@ -25,6 +26,7 @@ _RESERVED_PARAMETERS = {
     "token_buckets", "positions", "repetitions", "output_headroom_tokens",
     "advertised_context", "recovery_result", "session_turns", "instance_ids",
     "paired_image_ids", "paired_image_repo_digests",
+    "server_log",
     "offline", "client_topology", "model_host_id", "identities",
 }
 _COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities"})
@@ -41,6 +43,7 @@ _SUITE_PARAMETERS = {
     "swe": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p", "force_nonempty_content",
         "instance_ids", "paired_image_ids", "paired_image_repo_digests",
+        "server_log",
     }),
 }
 
@@ -133,13 +136,16 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         repo_digests = validate_paired_image_repo_digests(
             parameters.get("paired_image_repo_digests"), selected
         ) if "paired_image_repo_digests" in parameters else None
+        server_log = validate_server_log_selector(parameters["server_log"]) if "server_log" in parameters else None
         return {
             "profile": profile["name"],
             "request_controls": controls,
+            "parameters": {"server_log": server_log},
             "selection": {
                 "instance_ids": selected,
                 "paired_image_ids": paired,
                 "paired_image_repo_digests": repo_digests,
+                "server_log": server_log,
             },
         }
     raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")

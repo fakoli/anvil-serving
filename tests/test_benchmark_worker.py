@@ -191,6 +191,32 @@ def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkey
     assert "    temperature: 1.0\n    top_p: 0.95\n" in result["config_text"]
 
 
+@pytest.mark.parametrize("selector", [
+    {"service": "candidate", "tail": 100},
+    {"recipe_container": "candidate", "tail": 100},
+])
+def test_worker_forwards_explicit_log_target_without_endpoint_inference(monkeypatch, tmp_path, selector):
+    value = spec()
+    value.update(suite="swe", parameters={"instance_ids": ["astropy__astropy-12907"], "server_log": selector})
+    from anvil_serving.benchmarking.submission import validate_submission_spec
+    assert validate_submission_spec(value)["parameters"]["server_log"] == selector
+    def fake_plan(*_args, server_log, **_kwargs):
+        assert server_log == selector
+        return {"server_log": server_log}
+    collector = object()
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
+    def bind(target):
+        assert target == selector
+        return collector
+    monkeypatch.setattr(benchmark_worker, "server_log_collector", bind)
+    def run(_plan, *, log_collector):
+        assert log_collector is collector
+        return {"state": "fixture"}
+    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", run)
+    assert benchmark_worker._run_suite(SimpleNamespace(run_root=str(tmp_path)), {"spec": value},
+                                       load_profile("smoke"), {}) == {"state": "fixture"}
+
+
 @pytest.mark.parametrize("force_nonempty_content", [True, False])
 def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force_nonempty_content):
     value = spec()
@@ -274,6 +300,8 @@ def test_cancellation_retains_native_output_and_stops_owned_child(monkeypatch, t
     trajectory = output / "trajectory.json"
     expected_trajectory = '{"patch":"retained"}\n'
     trajectory.write_text(expected_trajectory, encoding="utf-8")
+    request_events = run_path / "swe-request-events.jsonl"
+    request_events.write_text('{"partial":"flushed attempt metadata"}\n', encoding="utf-8")
     code = (
         "import subprocess,sys,time;"
         "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']);"
@@ -318,6 +346,7 @@ def test_cancellation_retains_native_output_and_stops_owned_child(monkeypatch, t
         assert evidence["failure"]["class"] == "cancellation"
         assert (run_path / "evidence" / "native-partial" / "case-1" / "trajectory.json").read_text(encoding="utf-8") == expected_trajectory
         assert not (run_path / "work").exists()
+        assert request_events.read_text() == '{"partial":"flushed attempt metadata"}\n'
     finally:
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)

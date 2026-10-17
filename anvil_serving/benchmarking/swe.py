@@ -25,6 +25,10 @@ from .request_controls import resolve_job_request_controls
 from .profiles import validate_profile
 from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
 from .swe_images import instance_image_tag, observe_paired_images, validate_paired_image_ids
+from .swe_logs import validate_server_log_selector
+from .swe_agent_adapter import (
+    MINI_REVISION, SOURCE_HASHES as AGENT_SOURCE_HASHES, read_attempt_evidence,
+)
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
@@ -73,13 +77,25 @@ def _bounded_text(value: Any) -> tuple[str, bool]:
     return raw[:MAX_HARNESS_OUTPUT_BYTES].decode("utf-8", "replace"), truncated
 
 
-def _result_record(argv: Sequence[str], result: Any, duration_s: float) -> dict[str, Any]:
+def _result_record(
+    argv: Sequence[str], result: Any, duration_s: float, started_at: str,
+    ended_at: str | None = None,
+) -> dict[str, Any]:
     stdout, stdout_truncated = _bounded_text(getattr(result, "stdout", b""))
     stderr, stderr_truncated = _bounded_text(getattr(result, "stderr", b""))
     return {
         "command": list(argv),
         "returncode": int(getattr(result, "returncode", 1)),
         "duration_s": round(duration_s, 6),
+        "started_at": started_at,
+        "ended_at": ended_at or utc_now(),
+        "clock": {
+            "wall": "UTC system clock", "wall_precision_s": 0.000001,
+            "wall_resolution_s": time.get_clock_info("time").resolution,
+            "duration": "monotonic", "duration_resolution_s": time.get_clock_info("monotonic").resolution,
+            "synchronized": None,
+        },
+        "output_timing": "buffered; individual stdout/stderr event times unknown",
         "stdout": stdout,
         "stderr": stderr,
         "output_truncated": stdout_truncated or stderr_truncated,
@@ -339,6 +355,7 @@ def build_swe_run_plan(
     run_id: str,
     request_controls: Mapping[str, Any] | None = None,
     paired_image_ids: Mapping[str, str] | None = None,
+    server_log: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     require_swe_worker_platform()
@@ -348,6 +365,7 @@ def build_swe_run_plan(
     paired_images = validate_paired_image_ids(paired_image_ids, selected)
     target = _endpoint(endpoint)
     controls = _validate_request_controls(request_controls)
+    log_target = validate_server_log_selector(server_log) if server_log is not None else None
     Path(run_root).mkdir(parents=True, exist_ok=True)
     run_path = resolve_owned_run_path(run_root, ownership_id=ownership_id, run_id=run_id)
     work = resolve_owned_run_path(
@@ -371,6 +389,12 @@ def build_swe_run_plan(
     suite = validated["suites"]["swe"]
     if assets["swe-bench"]["revision"] != GRADER_REVISION:
         raise BenchmarkJobError("unsupported_grader_containment", "grader containment requires its qualified revision")
+    if assets["mini-swe-agent"]["revision"] != MINI_REVISION:
+        raise BenchmarkJobError("unsupported_agent_observation", "agent observation requires its qualified revision")
+    agent_adapter_path = str(Path(__file__).with_name("swe_agent_adapter.py"))
+    agent_adapter_sha256 = _sha256_file(agent_adapter_path)
+    # Keep flushed attempt evidence outside disposable work, including cancellation.
+    request_events_path = os.path.join(run_path, "swe-request-events.jsonl")
     adapter_path = str(Path(__file__).with_name("swe_grader_adapter.py"))
     adapter_sha256 = _sha256_file(adapter_path)
     containment_receipt = os.path.join(grader_work, "containment.json")
@@ -381,7 +405,10 @@ def build_swe_run_plan(
     container_executable = resolve_container_binary() or "docker"
     mini_command = [
         python_executable,
-        os.path.join(mini_root, "src", "minisweagent", "run", "benchmarks", "swebench.py"),
+        agent_adapter_path,
+        "--mini-root", mini_root,
+        "--adapter-sha256", agent_adapter_sha256,
+        "--events", request_events_path, "--",
         "--output", output,
         "--model", f"openai/{target['model']}",
         "--subset", dataset_snapshot["root"],
@@ -431,8 +458,13 @@ def build_swe_run_plan(
         "paired_image_ids": paired_images,
         "container_executable": container_executable,
         "request_controls": controls,
+        "server_log": log_target,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
+            "agent_observation": {
+                "adapter_sha256": agent_adapter_sha256,
+                "source_hashes": dict(AGENT_SOURCE_HASHES),
+            },
             "grader": {"name": "swe-bench", "revision": assets["swe-bench"]["revision"]},
             "grader_containment": {
                 "adapter_sha256": adapter_sha256,
@@ -459,6 +491,7 @@ def build_swe_run_plan(
             "grader_root": grader_root,
             "result": os.path.join(run_path, "swe-result.json"),
             "image_policy": image_policy_path,
+            "request_events": request_events_path,
         },
         "commands": {"agent": mini_command, "grader": grader_command},
         "config_text": _mini_config(
@@ -695,6 +728,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "stages": [],
         "summary": {"attempted": 0, "graded": 0, "resolved": 0, "resolve_rate": None},
         "failure": None,
+        "server_log_evidence": {"status": "not_requested" if plan.get("server_log") is None else "not_collected"},
         "promotion": {
             "authorized": False,
             "message": "Benchmark evidence does not authorize model promotion.",
@@ -707,6 +741,7 @@ def run_swe_benchmark(
     *,
     runner: SWECommandRunner = _default_runner,
     environ: Mapping[str, str] | None = None,
+    log_collector: Callable[[str, str], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run mini-SWE-agent, normalize predictions, then require the official grader."""
     require_swe_worker_platform()
@@ -765,18 +800,50 @@ def run_swe_benchmark(
     if paired_images is not None:
         atomic_write_json(paths["image_policy"], {instance_image_tag(k): v for k, v in paired_images.items()})
 
+    agent_started_at = utc_now()
     agent_started = time.monotonic()
+    def collect_logs(ended_at):
+        if log_collector is None:
+            return
+        try:
+            result["server_log_evidence"] = log_collector(agent_started_at, ended_at)
+        except Exception as exc:
+            # Evidence failures must not mask the agent's result or copy error bodies.
+            result["server_log_evidence"] = {
+                "status": "unavailable", "error": type(exc).__name__,
+                "requested_interval": {"started_at": agent_started_at, "ended_at": ended_at},
+            }
     try:
-        agent_process = runner(plan["commands"]["agent"], paths["work"], plan["timeout_s"], child_env)
+        try:
+            agent_process = runner(plan["commands"]["agent"], paths["work"], plan["timeout_s"], child_env)
+        finally:
+            agent_duration = time.monotonic() - agent_started
+            agent_ended_at = utc_now()
+            result["agent_interval"] = {
+                "started_at": agent_started_at, "ended_at": agent_ended_at,
+                "duration_s": round(agent_duration, 6),
+            }
+            collect_logs(agent_ended_at)
+            if paths.get("request_events"):
+                try:
+                    result["request_observations"] = read_attempt_evidence(
+                        paths["request_events"],
+                        expected_adapter_sha256=plan["harnesses"]["agent_observation"]["adapter_sha256"],
+                    )
+                except Exception as exc:
+                    result["request_observations"] = {
+                        "status": "unavailable", "error": type(exc).__name__, "events": [],
+                    }
+            atomic_write_json(paths["result"], result)
     except subprocess.TimeoutExpired as exc:
-        stage = _result_record(plan["commands"]["agent"], exc, time.monotonic() - agent_started)
+        stage = _result_record(plan["commands"]["agent"], exc, agent_duration, agent_started_at, agent_ended_at)
         stage.update({"name": "agent", "status": "failed", "failure_class": "timeout"})
         result["stages"].append(stage)
         result["failure"] = {"class": "timeout", "stage": "agent"}
         atomic_write_json(paths["result"], result)
         return result
     agent_stage = _result_record(
-        plan["commands"]["agent"], agent_process, time.monotonic() - agent_started
+        plan["commands"]["agent"], agent_process, agent_duration, agent_started_at, agent_ended_at
     )
     agent_stage.update({"name": "agent", "status": "completed"})
     result["stages"].append(agent_stage)
@@ -828,6 +895,10 @@ def run_swe_benchmark(
             "prompt_identity": {"dataset": plan["dataset"], "split": plan["split"]},
             "trajectory": {"path": trajectory_path, "sha256": trajectory_sha},
             "request_ids": _extract_request_ids(trajectory),
+            "request_observation_sequences": [
+                event["seq"] for event in result.get("request_observations", {}).get("events", [])
+                if event.get("task_instance_id") == instance_id
+            ],
             "tokens": _trajectory_metrics(trajectory),
             "duration_s": info.get("duration_s") if isinstance(info.get("duration_s"), (int, float)) else None,
             "exit_status": info.get("exit_status"),
@@ -863,7 +934,6 @@ def run_swe_benchmark(
             "code": "swe_limits_exceeded",
         }
 
-    grader_started = time.monotonic()
     if not image_boundary("before_grader"):
         return result
     try:
@@ -872,12 +942,14 @@ def run_swe_benchmark(
         result["failure"] = {"class": "broken_harness", "stage": "official_grader", "code": exc.code}
         atomic_write_json(paths["result"], result)
         return result
+    grader_started_at = utc_now()
+    grader_started = time.monotonic()
     try:
         grader_process = runner(
             plan["commands"]["grader"], paths["grader_work"], plan["timeout_s"], child_env
         )
     except subprocess.TimeoutExpired as exc:
-        stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started)
+        stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started, grader_started_at)
         stage.update({"name": "official_grader", "status": "failed", "failure_class": "timeout"})
         result["stages"].append(stage)
         result["failure"] = agent_failure or {
@@ -887,7 +959,7 @@ def run_swe_benchmark(
         atomic_write_json(paths["result"], result)
         return result
     grader_stage = _result_record(
-        plan["commands"]["grader"], grader_process, time.monotonic() - grader_started
+        plan["commands"]["grader"], grader_process, time.monotonic() - grader_started, grader_started_at
     )
     grader_stage.update({"name": "official_grader", "status": "completed"})
     result["stages"].append(grader_stage)

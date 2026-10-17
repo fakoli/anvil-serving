@@ -271,6 +271,57 @@ These contracts can be tested with synthetic traces and fake callers. Passing
 those tests establishes harness behavior, not corrected model accuracy,
 real-engine cancellation, production throughput or promotion readiness.
 
+### SWE retry timing and server-log coverage
+
+New SWE plans bind the observation adapter's hash, the pinned mini-SWE source,
+and supported client dependency versions. The adapter runs inside the existing
+harness environment. It observes mini-SWE's agent retries and the OpenAI SDK's
+HTTP attempts separately, preserving request parameters, retry decisions and
+backoff calculations. A dependency mismatch fails before agent execution;
+changing that supported environment requires separate validation.
+
+Agent and grader stages retain UTC start/end times and monotonic duration.
+`request_observations` contains ordered metadata for each logical query, task,
+step, agent attempt and HTTP attempt, including available status, typed errors,
+planned retry delay and terminal outcome. HTTP, router, model-response and
+engine request IDs are distinct namespaces. The existing aggregate
+`request_ids` stays available; per-instance `request_observation_sequences`
+indexes the ordered observations. Buffered stdout/stderr does not supply retry
+event timestamps. Wall-clock precision does not prove clock synchronization.
+
+The bounded `swe-request-events.jsonl` sidecar lives in the owned run directory,
+outside disposable work, so flushed observations survive cancellation cleanup.
+Its reader distinguishes missing, invalid, incomplete and truncated capture.
+The 2,000-event and 1 MiB bounds limit diagnostic coverage; they do not change
+the benchmark budget. Old artifacts are never assigned reconstructed timings.
+
+For a future authorized run, add one explicit target to the existing SWE job's
+`parameters` before freezing the specification:
+
+```json
+"server_log": {"recipe_container": "candidate", "tail": 1000}
+```
+
+Use `service` instead of `recipe_container` for a declared managed service.
+The worker requests timestamped logs for the actual agent interval through the
+managed owner and immutable container identity. It retains only recognized
+event metadata, including available admission, refusal, timeout, disconnect,
+cancellation acknowledgement and lane-release observations. A cancellation
+acknowledgement does not establish lane release. Raw log text, prompts, response
+bodies and arbitrary headers are excluded from this new capture.
+
+Log evidence separates successful collection from interval completeness. It
+records requested bounds, observed timestamps, the identity observed at
+collection, limits and errors. Rotation, continuity and clock offsets stay
+unknown when the owner cannot establish them. Timestamp ordering across output
+streams has explicit tie and clock limitations. A startup snapshot, empty log
+result or absent event cannot establish complete coverage. Omitting the target
+records `not_requested`; the worker never guesses a service from its endpoint.
+
+Offline fixtures validate capture behavior only. Real-engine cancellation,
+retry causes and model quality still require a separately authorized runtime
+experiment with retained interval evidence.
+
 ## Evaluation pipeline
 
 The [runtime stability workflow](runtime-stability.md) retains additive

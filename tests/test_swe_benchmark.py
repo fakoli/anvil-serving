@@ -147,6 +147,11 @@ def test_plan_pins_selection_router_and_both_harnesses(tmp_path):
     assert value["commands"]["agent"][0] != os.sys.executable
     assert value["commands"]["agent"][0] == value["commands"]["grader"][0]
     assert value["harnesses"]["python_environment"]["resolved_packages_sha256"]
+    assert value["commands"]["agent"][1].endswith("swe_agent_adapter.py")
+    assert value["harnesses"]["agent_observation"]["adapter_sha256"] == hashlib.sha256(
+        Path(value["commands"]["agent"][1]).read_bytes()
+    ).hexdigest()
+    assert Path(value["paths"]["request_events"]).parent == Path(value["paths"]["run"])
     assert "secret" not in value["config_text"].lower()
     assert "http://100.64.0.10:8000/v1" in value["config_text"]
     assert "  executable:" in value["config_text"]
@@ -269,7 +274,7 @@ class SuccessfulRunner:
 
     def __call__(self, argv, cwd, timeout, env):
         self.calls.append((list(argv), cwd, timeout, dict(env)))
-        if "swebench.py" in argv[1]:
+        if argv[1].endswith("swe_agent_adapter.py"):
             output = Path(self.plan["paths"]["output"])
             instance_dir = output / INSTANCE
             instance_dir.mkdir(parents=True, exist_ok=True)
@@ -323,6 +328,13 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     ]
     assert runner.calls[0][3]["MSWEA_SILENT_STARTUP"] == "1"
     assert result["promotion"]["authorized"] is False
+    assert [stage["name"] for stage in result["stages"]] == ["agent", "official_grader"]
+    for stage in result["stages"]:
+        assert stage["started_at"].endswith("Z") and stage["ended_at"].endswith("Z")
+        assert stage["duration_s"] >= 0
+        assert stage["clock"]["duration"] == "monotonic"
+        assert stage["clock"]["synchronized"] is None
+        assert "buffered" in stage["output_timing"]
     serialized = json.dumps(result)
     assert "not-recorded" not in serialized
 
@@ -522,7 +534,7 @@ def test_limits_exceeded_with_trajectory_and_empty_patch_preserves_agent_failure
 
     def limits_exceeded(argv, cwd, timeout, env):
         result = runner(argv, cwd, timeout, env)
-        if "swebench.py" in argv[1]:
+        if argv[1].endswith("swe_agent_adapter.py"):
             output = Path(value["paths"]["output"])
             trajectory_path = output / INSTANCE / f"{INSTANCE}.traj.json"
             trajectory = json.loads(trajectory_path.read_text())
@@ -556,7 +568,7 @@ def test_agent_instance_failure_is_graded_but_remains_an_agent_failure(tmp_path)
 
     def failed_instance(argv, cwd, timeout, env):
         calls.append(list(argv))
-        if "swebench.py" in argv[1]:
+        if argv[1].endswith("swe_agent_adapter.py"):
             output = Path(value["paths"]["output"])
             output.mkdir(parents=True, exist_ok=True)
             (output / "preds.json").write_text(
@@ -615,7 +627,7 @@ def test_missing_trajectory_preserves_partial_official_grading(tmp_path):
 
     def partial_instance(argv, cwd, timeout, env):
         calls.append(list(argv))
-        if "swebench.py" in argv[1]:
+        if argv[1].endswith("swe_agent_adapter.py"):
             output = Path(value["paths"]["output"])
             output.mkdir(parents=True, exist_ok=True)
             predictions = {}
@@ -689,10 +701,82 @@ def test_timeout_and_failures_are_distinct(tmp_path):
         environ={"ANVIL_ROUTER_TOKEN": "token"},
     )
     assert result["failure"] == {"class": "timeout", "stage": "agent"}
+    assert result["stages"][0]["started_at"].endswith("Z")
+    assert result["stages"][0]["ended_at"].endswith("Z")
     assert classify_swe_failure(stage="agent", returncode=1, text="401 Unauthorized") == "model_failure"
     assert classify_swe_failure(stage="agent", returncode=1, text="Cannot connect to Docker daemon") == "infrastructure_failure"
     assert classify_swe_failure(stage="grader", returncode=0, text="tests failed") == "test_failure"
     assert classify_swe_failure(stage="agent", returncode=1, text="exec format error") == "image_failure"
+
+
+@pytest.mark.parametrize("outcome", ["success", "nonzero", "timeout", "unexpected"])
+def test_server_logs_use_actual_agent_interval_on_every_exit(tmp_path, outcome):
+    value = plan(tmp_path)
+    delegate = SuccessfulRunner(value)
+    captured = []
+
+    def collector(started_at, ended_at):
+        captured.append((started_at, ended_at))
+        return {"status": "partial", "coverage_complete": False}
+
+    def runner(argv, cwd, timeout, env):
+        if argv[1].endswith("swe_agent_adapter.py"):
+            if outcome == "timeout":
+                raise subprocess.TimeoutExpired(argv, timeout, stderr=b"buffered retry")
+            if outcome == "unexpected":
+                raise OSError("private transport detail")
+            if outcome == "nonzero":
+                return SimpleNamespace(returncode=1, stdout=b"", stderr=b"failed")
+        return delegate(argv, cwd, timeout, env)
+
+    if outcome == "unexpected":
+        with pytest.raises(OSError):
+            run_swe_benchmark(value, runner=runner, log_collector=collector,
+                              environ={"ANVIL_ROUTER_TOKEN": "token"})
+        result = json.loads(Path(value["paths"]["result"]).read_text())
+    else:
+        result = run_swe_benchmark(value, runner=runner, log_collector=collector,
+                                   environ={"ANVIL_ROUTER_TOKEN": "token"})
+        assert captured == [(result["stages"][0]["started_at"], result["stages"][0]["ended_at"])]
+    assert captured == [(result["agent_interval"]["started_at"], result["agent_interval"]["ended_at"])]
+    assert result["server_log_evidence"]["status"] == "partial"
+    assert "private transport detail" not in json.dumps(result)
+
+
+def test_log_collection_failure_cannot_change_grade_or_expose_error_body(tmp_path):
+    value = plan(tmp_path)
+    def collector(*_args):
+        raise RuntimeError("private error body")
+    result = run_swe_benchmark(value, runner=SuccessfulRunner(value), log_collector=collector,
+                               environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert result["state"] == "completed" and result["summary"]["resolved"] == 1
+    assert result["server_log_evidence"]["status"] == "unavailable"
+    assert result["server_log_evidence"]["error"] == "RuntimeError"
+    assert "private error body" not in json.dumps(result)
+
+
+def test_stage_wall_clock_jump_does_not_replace_monotonic_duration(monkeypatch):
+    monkeypatch.setattr(swe, "utc_now", lambda: "2026-10-16T00:00:00.000000Z")
+    stage = swe._result_record(["fixture"], SimpleNamespace(returncode=0), 2.5,
+                               "2026-10-16T00:00:03.000000Z")
+    assert stage["duration_s"] == 2.5
+    assert stage["ended_at"] < stage["started_at"]
+    assert stage["clock"]["synchronized"] is None
+
+
+@pytest.mark.parametrize("timed_out", [False, True])
+def test_attempt_reader_failure_preserves_agent_outcome(tmp_path, monkeypatch, timed_out):
+    value = plan(tmp_path)
+    def unreadable(_path, **_kwargs):
+        raise OSError("private filesystem details")
+    monkeypatch.setattr(swe, "read_attempt_evidence", unreadable)
+    def timeout(*_args):
+        raise subprocess.TimeoutExpired("fixture", 1)
+    result = run_swe_benchmark(value, runner=timeout if timed_out else SuccessfulRunner(value),
+                               environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert result["request_observations"] == {"status": "unavailable", "error": "OSError", "events": []}
+    assert result["failure"] == ({"class": "timeout", "stage": "agent"} if timed_out else None)
+    assert "private filesystem" not in json.dumps(result)
 
 
 def test_changed_dataset_rejected_before_model_or_grader(tmp_path):

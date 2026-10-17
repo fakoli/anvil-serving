@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import hashlib
 import subprocess
+import sys
+import time
 
 import pytest
 
@@ -573,6 +575,34 @@ def test_logs_uses_bounded_tail_and_immutable_identity():
     assert runner.calls[1][1]["timeout"] <= 15
 
 
+def test_logs_passes_bounded_interval_and_timestamps_to_immutable_identity():
+    from anvil_serving.service_runtime.docker import Adapter
+
+    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()])) )])
+    captured = []
+    Adapter(run=runner, capture=lambda argv: captured.append(argv) or completed("2026-10-16T12:00:01Z {\"event\":\"admitted\"}\n")).logs(
+        binding(), 2, since="2026-10-16T12:00:00Z", until="2026-10-16T12:00:02Z", timestamps=True,
+        expected_identity=CONTAINER_ID,
+    )
+    assert captured[0] == [
+        "docker", "logs", "--tail", "2", "--since", "2026-10-16T12:00:00Z",
+        "--until", "2026-10-16T12:00:02Z", "--timestamps", CONTAINER_ID,
+    ]
+
+
+def test_interval_logs_refuse_changed_container_identity_before_capture():
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import Adapter
+
+    runner = FakeRun([
+        (["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()]))),
+    ])
+    with pytest.raises(ServiceError, match="changed") as raised:
+        Adapter(run=runner).logs(binding(), 2, since="2026-10-16T12:00:00Z", expected_identity="b" * 64)
+    assert raised.value.code == "identity_changed"
+    assert len(runner.calls) == 1
+
+
 def test_logs_include_stderr_and_redact_shared_secret_patterns():
     from anvil_serving.service_runtime.docker import Adapter
 
@@ -601,6 +631,28 @@ def test_command_bounds_combined_stdout_and_stderr_and_classifies_timeout():
     with pytest.raises(ServiceError, match="timed out") as raised:
         Adapter(run=timed_out).inspect(binding())
     assert raised.value.code == "timeout"
+
+
+@pytest.mark.parametrize(("program", "error"), [
+    ("import time; time.sleep(10)", "timeout"),
+    ("import os,time; os.close(1); os.close(2); time.sleep(10)", "timeout"),
+    ("import sys; sys.stdout.write('x' * 1100000); sys.stdout.flush()", "output_too_large"),
+])
+def test_interval_capture_bounds_real_child_wait_and_output(program, error):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.docker import _bounded_log_capture
+    started = time.monotonic()
+    with pytest.raises(ServiceError) as caught:
+        _bounded_log_capture([sys.executable, "-c", program], timeout=.5)
+    assert caught.value.code == error
+    assert time.monotonic() - started < 4
+
+
+def test_interval_capture_preserves_complete_cross_stream_lines():
+    from anvil_serving.service_runtime.docker import _bounded_log_capture
+    result = _bounded_log_capture([sys.executable, "-c",
+        "import os; os.write(1,b'first\\n'); os.write(2,b'second\\n')"], timeout=3)
+    assert result.returncode == 0 and result.stdout == "first\nsecond\n" and result.stderr == ""
 
 
 def test_discover_filters_to_ownership_label_and_returns_safe_metadata():

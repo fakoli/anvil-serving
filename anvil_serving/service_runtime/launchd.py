@@ -149,8 +149,21 @@ class Adapter:
             return [] if enabled is True else [["launchctl", "enable", identity]]
         return [] if enabled is False else [["launchctl", "disable", identity]]
 
-    def logs(self, binding: dict[str, Any], tail: int) -> list[str]:
+    def logs(
+        self,
+        binding: dict[str, Any],
+        tail: int,
+        *,
+        since: str | None = None,
+        until: str | None = None,
+        timestamps: bool = False,
+        expected_identity: str | None = None,
+    ) -> list[str]:
         """Read a bounded tail from only secure plist-declared log files."""
+        if since is not None or until is not None or timestamps:
+            raise ServiceError("interval_unsupported", "launchd log files do not provide managed interval filtering")
+        if expected_identity is not None and self.inspect(binding).get("identity") != expected_identity:
+            raise ServiceError("identity_changed", "declared launchd service changed before interval log collection")
         details = self._binding_details(binding)
         if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= _MAX_LOG_LINES:
             raise ServiceError("invalid_tail", "log tail must be between 1 and 1000")

@@ -487,7 +487,7 @@ def _consume_retained_authorization(path, *, authorization_sha256, preview_sha25
 
 def execute(action, service=None, *, manifest=None, topology=None, topology_overlay=None, command_host=None,
             command_runtime=None, target=None, transport="local", dry_run=True, confirm=False,
-            tail=100, timeout_seconds=30, binding=None, remote=False,
+            tail=100, since=None, until=None, timestamps=False, timeout_seconds=30, binding=None, remote=False,
             expected_preview_sha256=None, operator_authorization_file=None,
             expected_model=None, expected_engine=None,
             _adapters=None, _run=subprocess.run, _host_os=None, _sleep=time.sleep, _engine=engine.inspect):
@@ -500,8 +500,24 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
         raise ServiceError("bad_action", "unknown service action")
     if (type(dry_run) is not bool or type(confirm) is not bool or isinstance(timeout_seconds, bool)
             or not isinstance(timeout_seconds, numbers.Real) or not math.isfinite(timeout_seconds)
-            or not 0 < timeout_seconds <= 7200 or type(tail) is not int or not 1 <= tail <= 1000):
+            or not 0 < timeout_seconds <= 7200 or type(tail) is not int or not 1 <= tail <= 1000
+            or type(timestamps) is not bool):
         raise ServiceError("bad_argument", "invalid service operation bounds or confirmation")
+    interval_values = {}
+    for field, value in (("since", since), ("until", until)):
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise ServiceError("bad_argument", f"{field} must be an RFC3339 timestamp")
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ServiceError("bad_argument", f"{field} must be an RFC3339 timestamp") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ServiceError("bad_argument", f"{field} must be an RFC3339 timestamp")
+        interval_values[field] = parsed
+    if interval_values.get("since") and interval_values.get("until") and interval_values["until"] < interval_values["since"]:
+        raise ServiceError("invalid_interval", "until must not precede since")
     if transport not in {"auto", "local"}:
         raise ServiceError("transport_required", "remote service operations must use the owner-selected CLI/controller dispatch")
     if remote and manifest is not None:
@@ -519,8 +535,10 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
     if action == "capabilities":
         return capabilities(host_os)
     from .launchd import Adapter as Launchd
-    from .docker import Adapter as Docker
-    adapters = _adapters or {"launchd": Launchd(run=_run), "docker": Docker(run=_run)}
+    from .docker import Adapter as Docker, _bounded_log_capture
+    def capture_logs(argv):
+        return _bounded_log_capture(argv, timeout=min(15, bounded_until[0] - time.monotonic()))
+    adapters = _adapters or {"launchd": Launchd(run=_run), "docker": Docker(run=_run, capture=capture_logs)}
     if action == "discover":
         found, errors = [], []
         for manager in capabilities(host_os)["managers"]:
@@ -640,7 +658,34 @@ def execute(action, service=None, *, manifest=None, topology=None, topology_over
             rows.append(_safe(item, inspect_process_environment=bindings[name].get("retained_container") is not True))
         return {"applied": False, "services": rows + (_safe(deferred) if deferred else [])}
     if action == "logs":
-        return _safe({"applied": False, "service": service, "lines": adapters[bindings[service]["manager"]].logs(bindings[service], tail)})
+        row = bindings[service]
+        interval_requested = since is not None or until is not None or timestamps
+        if interval_requested:
+            lines = adapters[row["manager"]].logs(
+                row, tail, since=since, until=until, timestamps=timestamps,
+                expected_identity=observations[service].get("identity"),
+            )
+        else:
+            lines = adapters[row["manager"]].logs(row, tail)
+        observed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        return _safe({
+            "applied": False,
+            "service": service,
+            "lines": lines,
+            "requested_interval": {"since": since, "until": until, "timestamps": timestamps},
+            "observed_runtime": {
+                "manager": row["manager"],
+                "identity": observations[service].get("identity"),
+                "image_id": descriptions[service].get("image_id"),
+                "observed_at": observed_at,
+                "runtime_interval_continuity": "unknown",
+            },
+            "bounds": {
+                "tail_lines": tail,
+                "capture_byte_limit": 1024 * 1024 if row["manager"] == "docker" else None,
+                "truncation": "unknown",
+            },
+        })
     for name in selected:
         row = bindings[name]
         if remote and action in {"down", "restart"} and (row.get("feature") == "controller" or owners[name].role == "controller" or descriptions[name].get("engine_hint") == "anvil_controller"):

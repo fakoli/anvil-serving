@@ -11,7 +11,10 @@ import json
 import hashlib
 import os
 import re
+import signal
 import subprocess
+import threading
+import time
 from collections.abc import Callable, Mapping
 from typing import Any
 from urllib.parse import urlsplit
@@ -56,11 +59,76 @@ _RETAINED_INSPECT_FORMAT = (
 )
 
 
+def _bounded_log_capture(argv: list[str], *, timeout: float = _TIMEOUT_SECONDS) -> subprocess.CompletedProcess[str]:
+    """Read one interval log command without retaining more than 1 MiB."""
+    if timeout <= 0:
+        raise ServiceError("timeout", "Docker log command deadline expired")
+    try:
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, start_new_session=os.name != "nt")
+    except OSError as exc:
+        raise ServiceError("supervisor_unreachable", "Docker is unavailable while reading service logs") from exc
+    output = bytearray()
+    overflow, read_error = threading.Event(), threading.Event()
+
+    def drain():
+        try:
+            while True:
+                chunk = process.stdout.read1(min(65536, _MAX_OUTPUT_BYTES - len(output) + 1))
+                if not chunk:
+                    return
+                if len(output) + len(chunk) > _MAX_OUTPUT_BYTES:
+                    overflow.set()
+                    return
+                output.extend(chunk)
+        except OSError:
+            read_error.set()
+
+    def stop():
+        try:
+            if os.name != "nt":
+                os.killpg(process.pid, signal.SIGKILL)
+            elif process.poll() is None:
+                process.kill()
+        except ProcessLookupError:
+            pass
+
+    reader = threading.Thread(target=drain, daemon=True)
+    deadline = time.monotonic() + timeout
+    reader.start()
+    try:
+        while reader.is_alive() and time.monotonic() < deadline:
+            reader.join(min(.05, max(0, deadline - time.monotonic())))
+        if overflow.is_set():
+            raise ServiceError("output_too_large", "Docker log output exceeds the safety bound")
+        if read_error.is_set():
+            raise ServiceError("log_read_failed", "Docker log pipe could not be read")
+        if reader.is_alive():
+            raise ServiceError("timeout", "Docker log command timed out")
+        try:
+            process.wait(timeout=max(0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired as exc:
+            raise ServiceError("timeout", "Docker log command timed out") from exc
+        return subprocess.CompletedProcess(argv, process.returncode, output.decode("utf-8", "replace"), "")
+    finally:
+        if process.poll() is None or reader.is_alive():
+            stop()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            stop()
+        reader.join(.25)
+        if not reader.is_alive():
+            process.stdout.close()
+
+
 class Adapter:
     """Read Docker state and construct commands without executing mutations."""
 
-    def __init__(self, *, run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run):
+    def __init__(self, *, run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+                 capture: Callable[[list[str]], subprocess.CompletedProcess[str]] | None = None):
         self._run = run
+        self._capture = capture or _bounded_log_capture
 
     def verify_context(self) -> None:
         """Refuse Docker CLI operations that would target a remote daemon."""
@@ -206,7 +274,16 @@ class Adapter:
             return [] if enabled is True else [["docker", "update", "--restart", _enable_policy(binding), identity]]
         return [] if enabled is False else [["docker", "update", "--restart", "no", identity]]
 
-    def logs(self, binding: Mapping[str, Any], tail: int) -> list[str]:
+    def logs(
+        self,
+        binding: Mapping[str, Any],
+        tail: int,
+        *,
+        since: str | None = None,
+        until: str | None = None,
+        timestamps: bool = False,
+        expected_identity: str | None = None,
+    ) -> list[str]:
         """Read a bounded number of logs after an exact identity reinspection."""
         if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= _MAX_LOG_TAIL:
             raise ServiceError("invalid_tail", "Docker log tail must be an integer from 1 through 5000")
@@ -214,7 +291,17 @@ class Adapter:
         identity = observed.get("identity")
         if observed.get("registered") is not True or not isinstance(identity, str):
             raise ServiceError("missing", "declared Docker container is not registered")
-        result = self._command(["docker", "logs", "--tail", str(tail), identity])
+        if expected_identity is not None and identity != expected_identity:
+            raise ServiceError("identity_changed", "declared Docker container changed before interval log collection")
+        command = ["docker", "logs", "--tail", str(tail)]
+        if since is not None:
+            command.extend(("--since", since))
+        if until is not None:
+            command.extend(("--until", until))
+        if timestamps:
+            command.append("--timestamps")
+        command.append(identity)
+        result = self._capture(command) if (since is not None or until is not None or timestamps) else self._command(command)
         if result is None:
             raise ServiceError("supervisor_unreachable", "Docker is unavailable while reading service logs")
         if result.returncode:

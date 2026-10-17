@@ -28,6 +28,7 @@ from .profiles import load_profile
 from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
+from .swe_logs import server_log_collector
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -172,8 +173,11 @@ def _run_suite(
             if key in parameters
         },
         paired_image_ids=parameters.get("paired_image_ids"),
+        server_log=parameters.get("server_log"),
     )
-    return run_swe_benchmark(plan)
+    selector = plan.get("server_log")
+    collector = server_log_collector(selector) if selector is not None else None
+    return run_swe_benchmark(plan, **({"log_collector": collector} if collector else {}))
 
 
 def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
