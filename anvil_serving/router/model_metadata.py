@@ -281,6 +281,37 @@ def build_model_fingerprints(
     return {"object": "list", "data": rows}
 
 
+def device_model_capabilities(payload: dict, principal) -> dict:
+    """Expose client catalog fields only for aliases granted to this device."""
+    if not isinstance(payload, dict) or payload.get("object") != "list" or not isinstance(payload.get("data"), list):
+        raise ValueError("invalid capability metadata")
+    rows = []
+    for row in payload["data"]:
+        if (not isinstance(row, dict) or not isinstance(row.get("aliases"), list)
+                or any(not isinstance(alias, str) for alias in row["aliases"])):
+            raise ValueError("invalid capability aliases")
+        aliases = [alias for alias in row["aliases"] if principal.allows_model(alias)]
+        if not aliases:
+            continue
+        limits = row.get("limits")
+        if not isinstance(limits, dict):
+            raise ValueError("invalid capability limits")
+        rows.append({"aliases": aliases, "context_limit_tokens": row.get("context_limit_tokens"),
+            "limits": {key: limits.get(key) for key in ("max_output_tokens", "images_per_request", "video_per_request")},
+            "modalities": _safe_modalities(row.get("modalities")),
+            "thinking": _thinking(row.get("thinking")), "compat": _compat(row.get("compat"))})
+    return {"object": "list", "data": rows}
+
+
+def device_router_status(payload: dict, principal) -> dict:
+    """Retain the opaque global config binding without exposing other aliases."""
+    aliases = payload.get("model_aliases") if isinstance(payload, dict) else None
+    if not isinstance(aliases, list) or any(not isinstance(alias, str) for alias in aliases):
+        raise ValueError("invalid status aliases")
+    return {"package_version": payload.get("package_version"), "config_sha256": payload.get("config_sha256"),
+        "model_aliases": [alias for alias in aliases if principal.allows_model(alias)]}
+
+
 def _canonical_public_config(config: RouterConfig) -> bytes:
     """Serialize only safe, emitted topology facts for a stable config hash."""
     aliases_by_tier = _aliases_by_tier(config)
