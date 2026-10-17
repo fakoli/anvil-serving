@@ -202,7 +202,7 @@ def _arguments(argv: list[str]) -> tuple[str, dict]:
     return action, arguments
 
 
-def _call(url: str, token: str, name: str, arguments: dict, *, timeout: int = 15) -> dict:
+def _call(url: str, token: str, name: str, arguments: dict, *, timeout: int = 40) -> dict:
     response = remote_controller_request(url, {
         "jsonrpc": "2.0", "id": 1, "method": "tools/call",
         "params": {"name": name, "arguments": arguments,

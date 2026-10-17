@@ -81,7 +81,7 @@ def test_start_uses_bounded_authenticated_owner_operation(monkeypatch):
     assert result.exit_code == 0 and result.data["intent_id"] == "intent-1"
     assert len(seen) == 1 and seen[0][1]["params"]["name"] == "propagation.accept.v1"
     assert seen[0][1]["params"]["arguments"] == {"approval_ref": "approved-1", "request_id": "retry-1"}
-    assert seen[0][3]["timeout"] == 15 and seen[0][3]["max_response_bytes"] == 131_072
+    assert seen[0][3]["timeout"] == 40 and seen[0][3]["max_response_bytes"] == 131_072
 
 
 def test_native_current_read_uses_closed_owner_operation(monkeypatch):
