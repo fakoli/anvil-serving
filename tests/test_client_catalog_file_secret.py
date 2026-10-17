@@ -57,10 +57,12 @@ def test_fenced_batch_file_reference_keeps_credentials_out_of_effects(tmp_path, 
     assert not (path.parent / ".env").exists()
 
 
-def test_file_reference_requires_a_declared_file_provider(tmp_path):
+@pytest.mark.parametrize("provider", [None, {}, {"source": "file", "path": "/synthetic/key"},
+    {"source": "file", "path": "/synthetic/key", "mode": "json"}])
+def test_file_reference_requires_a_declared_file_provider(tmp_path, provider):
     path, _, _ = _write_inputs(tmp_path)
     _file_reference(path)
-    document = json.loads(path.read_text()); document["secrets"] = {"providers": {}}
+    document = json.loads(path.read_text()); document["secrets"] = {"providers": {"native_router": provider}}
     path.write_text(json.dumps(document))
     with pytest.raises(ClientCatalogError, match="declared file SecretRef"):
         _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))

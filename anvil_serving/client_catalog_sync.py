@@ -907,6 +907,7 @@ def _openclaw_secret_env_name(openclaw: Mapping) -> str | None:
         providers = secrets.get("providers") if isinstance(secrets, Mapping) else None
         file_provider = providers.get(api_key["provider"]) if isinstance(providers, Mapping) else None
         if (isinstance(file_provider, Mapping) and file_provider.get("source") == "file"
+                and file_provider.get("mode") == "singleValue" and api_key["id"] == "value"
                 and isinstance(file_provider.get("path"), str) and file_provider["path"]):
             return None
     if isinstance(api_key, Mapping) and api_key.get("source") == "env":
