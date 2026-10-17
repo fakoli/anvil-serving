@@ -73,12 +73,51 @@ evidence cards were verified independently. No public Pages deployment is
 authorized or recorded.
 
 One fresh Primary Node Pi tool smoke has passed with the exact alias, provider, nonce,
-one tool call, normal completion, and no session. The Companion Node and Mac
-owner-local minimal evaluator calls failed locally before dispatch because the
-required evaluator credential environment was unset; no client request reached
-the model. Earlier Companion transport and Mac argument-filter observations are
-setup failures, not model-quality evidence. This is not fleet-wide client
-convergence.
+one tool call, normal completion, and no session. Subsequent real OpenClaw
+Gateway smokes passed on Companion Node and Mac with the selected primary alias,
+327,680-token context, one successful tool call, exact nonce, normal completion,
+and no fallback. The first Mac attempt encountered its headless execution
+approval policy; the bounded retry passed using the permitted read tool without
+changing that policy. The failure remains retained.
+
+Earlier owner-local evaluator attempts failed before dispatch because their
+credential environment was unset. Those setup failures remain separate from
+the later Gateway results. The native Gateway counters did not expose usable
+token accounting or engine timing; client wall-clock durations are not TTFT or
+decode throughput. The existing 17-family capacity evidence remains the
+performance record.
+
+Five additional Pi process combinations passed fresh no-session read-tool
+checks across Primary Node, Companion Node, and Mac. Each retained the exact
+nonce, selected provider and primary alias, normal stop, and `agent_settled`.
+Post-run executable hashes identify the tested combinations; two use an
+explicit Node interpreter instead of the launcher shebang. Two earlier lost
+captures remain excluded: seven client turns produced five accepted captures,
+not seven accepted results or an inferred HTTP request count. Mac retained a
+stale model-pattern warning even though its explicit primary invocation passed.
+
+Both Companion Node Hermes profiles selecting the primary alias passed fresh
+CLI checks with one terminal read, the exact nonce, and normal completion.
+Exact-session exports bind both to the approved router. Profile metadata names
+the provider `anvil`; runtime exports name it `custom`. Their context, fallback,
+and effective reasoning fields remain unavailable. The two secondary profiles
+are outside this primary-model check. These results do not validate existing
+conversations, Pi Web, or the running Hermes Gateway. Full catalog and session
+propagation remains blocked by the native workflow's custody gap.
+
+A fresh owner and pinned-source audit confirmed that the older failed workflow
+has no terminal custody receipt. Its missing fixture records held random native
+session identities that cannot be reconstructed from the job identifier. Empty
+fixture directories do not prove those sessions settled. Recovery still needs
+an authenticated owner barrier bound to the original job and targets.
+
+Open WebUI catalog reconciliation passed for all six approved aliases and three
+active accounts. Its repaired infrastructure helper verifies the complete
+approved catalog using the owner's credential, while WebUI retains its limited
+credential. Managed preview, apply, scheduled execution, and repeat checks
+passed; repeat apply reported zero changes. The model, router, and WebUI
+container identities and start times were unchanged. This closes the separate
+WebUI catalog defect without settling the older fleet workflow.
 
 Private operator receipts hold raw request captures, configuration identities,
 and full hashes. This finding links the sanitized local
