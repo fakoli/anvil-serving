@@ -1,0 +1,245 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-16-quasar-swift15",
+    "capability": "text-coding-and-tools",
+    "completed_at": "2026-10-17T02:57:49Z",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "Dirty 1.2.1 helper/publication worktree; installed 1.5.0 collection revision unavailable"
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.coding-fixture-grade/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.harness-source-fingerprint/v1",
+    "anvil-serving.restoration-verification/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "9c2630d587799708c76c4682fa363221d8ff40e63a90e858e1c8d91963633dc7",
+          "bytes": 3632
+        },
+        {
+          "path": "raw-evidence-index.md",
+          "sha256": "28371911d853340310935b418c225052cc857a63d93948dc768d1bdeb724e7bf",
+          "bytes": 1762
+        }
+      ],
+      "reason": "Public index and redaction boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "a7f83dd3f6aa8920383372dd13ab57232d4aa89f235acb34c794db8fc58e1e07",
+          "bytes": 1440
+        },
+        {
+          "path": "source-review-notes.md",
+          "sha256": "f0743b402fa0e4beda58efd1d564f6a721be5d0a040636e5a9f0673eda4cc31f",
+          "bytes": 2825
+        }
+      ],
+      "reason": "Pinned identity sources; no performance prior."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "fixture/suite.json",
+          "sha256": "3f7f061135313c81e9002f9971f682ee80d03ae485f566cfdb2fd17ea9b7c57a",
+          "bytes": 6645
+        },
+        {
+          "path": "fixture/grade.py",
+          "sha256": "f3048e159926ea8b6223cae6f76368bd4a6f81d92151ae35f749b268e27b66d6",
+          "bytes": 18290
+        },
+        {
+          "path": "fixture/README.md",
+          "sha256": "6c1215b9b75b4d5d7055f3c58cade947042fce93d19100e3846f147bbb3e37c8",
+          "bytes": 1962
+        }
+      ],
+      "reason": "Sanitized fixture source and grader."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "ee83b92d880818c36c729b6718367e113778ebc54ec884c526668b683db6947b",
+          "bytes": 1029
+        }
+      ],
+      "reason": "Matched finalist controls and workloads."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-and-identity.md",
+          "sha256": "5fe1547e8cca90da3378c45d59e4e530f725e867885531374d6d8fd1c78e8523",
+          "bytes": 2079
+        },
+        {
+          "path": "recipes/quasar-text32k.toml",
+          "sha256": "6ac23b5579da91d6f4b99884bb1659f2de8a71980397ebb6a786d8297898252a",
+          "bytes": 2712
+        },
+        {
+          "path": "recipes/swift15-text32k.toml",
+          "sha256": "330583971160dd81fd510f3116bffd50bd897587536ee0320c5f818dbf529f04",
+          "bytes": 2746
+        },
+        {
+          "path": "native/harness-provenance.json",
+          "sha256": "b9e475ed24719143867a677dabe4cc8248326c6dfad5ddcdf11079363d02b16e",
+          "bytes": 55402
+        }
+      ],
+      "reason": "Public-safe identity, recipe, and harness provenance."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/quasar-32k-preflight.json",
+          "sha256": "5c299f3d3908a69ef5ec620da44a2c52e40eb27d202197855f9e26ed50b64f96",
+          "bytes": 19058
+        },
+        {
+          "path": "native/swift15-text32k-preflight.json",
+          "sha256": "59cf0ad8c1d262d48efbc62c2664ec2e6228eb72380a65fc78cd744c0707e10d",
+          "bytes": 19058
+        },
+        {
+          "path": "native/quasar-text32k-agentic-raw.json",
+          "sha256": "8b30cf8efc550916c04bbc766b5c75a6c4895ad23dd7c77de3a3d41bbbec0b6f",
+          "bytes": 39940
+        },
+        {
+          "path": "native/swift15-text32k-agentic-raw.json",
+          "sha256": "7d78e52ed7d75d2a09add1fd53162cb0bb5232cd086f0f74ff40fe008992d30a",
+          "bytes": 40557
+        },
+        {
+          "path": "native/quasar-text32k-coding-raw.json",
+          "sha256": "52f992dd5d78af09e40f4c8a64bf664bfb685b69991e52aa24962179763c8189",
+          "bytes": 65886
+        },
+        {
+          "path": "native/swift15-text32k-coding-raw.json",
+          "sha256": "589bd264b7f2e11c662436f84f07e9eb69d5106aab7a7cc25b98a12f30d2149d",
+          "bytes": 64755
+        },
+        {
+          "path": "native/quasar-text32k-coding-grade.json",
+          "sha256": "3307cec73e100cb72240727ad1b5f9a121a66004e3c6cddb19c7a3c91848e1d0",
+          "bytes": 25952
+        },
+        {
+          "path": "native/quasar-text32k-coding-grade-tuple-edges.json",
+          "sha256": "12618f561b8f2c447829ab3a825435bdba80ff2a8d7aa6d3d22f235a4f101d45",
+          "bytes": 27028
+        },
+        {
+          "path": "native/swift15-text32k-coding-grade.json",
+          "sha256": "f9893b22d00b5878a87c9d360a5356837ba4d08a60027e52f3f9b579d2bd9a88",
+          "bytes": 26326
+        },
+        {
+          "path": "native/swift15-text32k-coding-grade-tuple-edges.json",
+          "sha256": "7bae34a73e6f4438ed1cd4071990e9944adedbf7b5c5383ac45549dabd0d6783",
+          "bytes": 27058
+        },
+        {
+          "path": "redaction-lineage.json",
+          "sha256": "4fa28bc8cf1fc3407d5fea3043d57a40d5f2d6f3c4adf2cc6771738d9d1ce891",
+          "bytes": 8495
+        }
+      ],
+      "reason": "Sanitized native artifacts preserve prompts, cases, outputs, grades, and provenance."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "bb3ec02abf6b9f5e0db24e5bc1dd377b2b33ceb76bab021a48e6421bd1bce5de",
+          "bytes": 3486
+        }
+      ],
+      "reason": "Negative evidence and qualification limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "20512e6ca07e9ef0152044573bf0fa8cf0de42d644ab6feffe6803f5d721ffec",
+          "bytes": 583
+        },
+        {
+          "path": "native/final-restored-preflight.json",
+          "sha256": "b427f2174333b825c466481593677acda7ce5dcd6c865239b8141b54b18d9713",
+          "bytes": 19066
+        },
+        {
+          "path": "native/final-restored-verification.json",
+          "sha256": "17f3866c7d8561c75fefd30244b67e13ee6a6f549b131517a9f8d21b494df59b",
+          "bytes": 2088
+        }
+      ],
+      "reason": "Public preflight plus independent restoration verification; detailed operator state remains private."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "c9d635dfc28e6d65853c2025d5bd03e590c6b1a5cf9c5434940b7eb2c72284c4",
+          "bytes": 1204
+        }
+      ],
+      "reason": "No-promotion decision and bounded result."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "b6822b10fbeb721f86edd5a5d374701032410ccffe27b13d7c19213dd19f9020",
+          "bytes": 2950
+        }
+      ],
+      "reason": "Derivative public summary for the bounded functional result."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

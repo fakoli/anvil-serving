@@ -129,6 +129,24 @@ envelope's token-free plan output and exact Docker argv. They do not report
 measured cgroup values. Omitting both flags preserves the legacy unbounded
 downloader behavior. Native `--cache-dir` pulls reject the Docker-only flags.
 
+For one public LFS artifact on Windows, `--native-stage` uses the installed
+`curl.exe` to resume into a declared host directory, verifies the immutable
+LFS SHA-256, and imports through a read-only bind into the Docker cache volume:
+
+```powershell
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT --include weights.ninfer --native-stage C:/model-stage --no-token --dry-run
+```
+
+Apply the reviewed command with `--confirm` in place of `--dry-run`. This path
+requires one literal file path, a full lowercase commit revision, and
+`--no-token`; it does not read Hugging Face credentials. Confirmed apply checks
+both staging and volume capacity, rehashes the imported bytes, and verifies the
+snapshot. Preview performs no metadata/storage probes or writes. The import
+container has no network. `--cache-dir`, `--exclude`, and Docker memory flags
+are incompatible with staging. A failed transfer retains staged bytes for
+resumption; imported cache bytes have no automatic rollback. It does not start
+a model or change routing.
+
 For native macOS MLX artifacts or another installed native engine, select the
 exact repository and immutable 40-character lowercase commit:
 
