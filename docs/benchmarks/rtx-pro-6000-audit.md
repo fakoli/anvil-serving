@@ -304,3 +304,7 @@ quality campaign);
 `docs/findings/2026-10-17-glm53-nvidia-fp4-ab-evidence/diagnostic-research.md`
 (`external-prior`: pinned recipe and runtime fault-isolation research only;
 it records no additional local measurement).
+
+`docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/source/skills/anvil-serving-benchmark-docs/SKILL.md`
+(`topology-only`: frozen publication-methodology snapshot; its hardware examples
+do not constitute another measured run).
