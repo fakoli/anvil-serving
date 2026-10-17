@@ -48,6 +48,11 @@
           "bytes": 10864
         },
         {
+          "path": "plans/source/git-supplement-provenance.json",
+          "sha256": "2445c6478f201c478d0468bcb3fee6b906ee1d6e58044be1ff0bb2e039538745",
+          "bytes": 1508
+        },
+        {
           "path": "private-origin-provenance.json",
           "sha256": "533e4157fefca6fb26802e726e1c1897abeb82868e450f6436d90ced4c2645fc",
           "bytes": 305062
@@ -264,6 +269,11 @@
           "bytes": 43255
         },
         {
+          "path": "plans/source/git-supplement-provenance.json",
+          "sha256": "2445c6478f201c478d0468bcb3fee6b906ee1d6e58044be1ff0bb2e039538745",
+          "bytes": 1508
+        },
+        {
           "path": "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
           "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
           "bytes": 25394
@@ -282,6 +292,11 @@
           "path": "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
           "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
           "bytes": 5435
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
+          "sha256": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277",
+          "bytes": 10489
         }
       ],
       "reason": "Observed recipe identities and frozen producer source."
@@ -2176,6 +2191,11 @@
           "bytes": 43255
         },
         {
+          "path": "plans/source/git-supplement-provenance.json",
+          "sha256": "2445c6478f201c478d0468bcb3fee6b906ee1d6e58044be1ff0bb2e039538745",
+          "bytes": 1508
+        },
+        {
           "path": "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
           "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
           "bytes": 25394
@@ -2194,6 +2214,11 @@
           "path": "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
           "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
           "bytes": 5435
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
+          "sha256": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277",
+          "bytes": 10489
         },
         {
           "path": "plans/validation-source-freeze-before-review-fix.json",

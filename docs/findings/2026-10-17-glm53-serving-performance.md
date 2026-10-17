@@ -159,8 +159,9 @@ Qualification, benchmark publication and Workbench instructions use that contrac
 A post-campaign producer fix journals each terminal request with flush/fsync so
 an interrupted run retains completed outcomes. Its overhead was not introduced
 between these measured arms. A reusable numerical telemetry command remains a
-separate [product follow-up](../../.tickets/2026-10-17-capacity-numerical-telemetry.md);
-this campaign's reviewed collector is retained as evidence.
+separate product follow-up tracked in
+`.tickets/2026-10-17-capacity-numerical-telemetry.md`; this campaign's reviewed
+collector is retained as evidence.
 
 At **2026-10-17T13:03:57Z**, the candidate was absent, the exact retained r11
 container and image were running, direct smoke/JSON passed 2/2, the router was

@@ -12,6 +12,7 @@
       "files": [
         "README.md",
         "plans/comparison-plan.json",
+        "plans/source/git-supplement-provenance.json",
         "private-origin-provenance.json"
       ],
       "reason": "Pinned model/runtime/source identities and private-to-public provenance.",
@@ -72,10 +73,12 @@
         "plans/source/anvil_serving/benchmarking/cli.py",
         "plans/source/anvil_serving/benchmarking/requests.py",
         "plans/source/anvil_serving/benchmarking/runner.py",
+        "plans/source/git-supplement-provenance.json",
         "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
         "plans/source/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
         "plans/source/skills/anvil-serving-llm-qualification/SKILL.md",
-        "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md"
+        "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+        "plans/source/skills/anvil-serving-llm-qualification/references/runtime-investigation.md"
       ],
       "reason": "Observed recipe identities and frozen producer source.",
       "role": "configuration-and-identity",
@@ -460,10 +463,12 @@
         "plans/source/anvil_serving/benchmarking/cli.py",
         "plans/source/anvil_serving/benchmarking/requests.py",
         "plans/source/anvil_serving/benchmarking/runner.py",
+        "plans/source/git-supplement-provenance.json",
         "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
         "plans/source/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
         "plans/source/skills/anvil-serving-llm-qualification/SKILL.md",
         "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+        "plans/source/skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
         "plans/validation-source-freeze-before-review-fix.json",
         "plans/validation-source-freeze.json",
         "private-origin-provenance.json",

@@ -1,0 +1,26 @@
+{
+  "existing_provenance": {
+    "bytes": 305062,
+    "path": "private-origin-provenance.json",
+    "sha256": "533e4157fefca6fb26802e726e1c1897abeb82868e450f6436d90ced4c2645fc"
+  },
+  "existing_provenance_scope": "The unchanged private-origin provenance remains valid for its original 656 source-to-published bindings. It does not claim this later Git supplement; this record binds the additional file separately. The original producer receipt is unchanged.",
+  "git_origin": {
+    "blob_sha1": "33bb8b375b2662d3775bcd602a42bca51b9b2df3",
+    "commit": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+    "content_bytes": 10489,
+    "content_sha256": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277",
+    "repository": "fakoli/anvil-serving",
+    "source_path": "skills/anvil-serving-llm-qualification/references/runtime-investigation.md"
+  },
+  "promotion_authorized": false,
+  "published": {
+    "bytes": 10489,
+    "path": "plans/source/skills/anvil-serving-llm-qualification/references/runtime-investigation.md",
+    "sha256": "3944a809baeed048df70549dc8fef55edaa0087b4271922bf76c9681dface277"
+  },
+  "purpose": "Restore the local reference required by the already-retained frozen qualification skill. This is an added documentary source dependency, not a new measurement or original producer artifact.",
+  "schema": "frozen-git-source-supplement/v1",
+  "status": "later-packaging-dependency-closure-repair",
+  "transformation": "None; published bytes exactly equal the frozen Git blob."
+}
