@@ -12,6 +12,7 @@ import random
 import re
 import statistics
 import sys
+import threading
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -663,8 +664,12 @@ def main(
         for _ in range(n)
     ]
     canaries = [f"ANVIL_REQ_{a.seed}_{i:05d}" for i in range(n)]
+    client_lock = threading.Lock()
+    client_active = 0
+    client_peak = 0
 
     def run_request(i):
+        nonlocal client_active, client_peak
         ctx = planned_contexts[i]
         request_started = time.perf_counter()
         result = None
@@ -743,10 +748,17 @@ def main(
                     else False
                 ),
             )
-            result = stream_request(
-                a.base_url, a.model, prompt, api_key, a.max_tokens,
-                timeout=a.timeout, **control_kwargs, **sampling_kwargs,
-            )
+            with client_lock:
+                client_active += 1
+                client_peak = max(client_peak, client_active)
+            try:
+                result = stream_request(
+                    a.base_url, a.model, prompt, api_key, a.max_tokens,
+                    timeout=a.timeout, **control_kwargs, **sampling_kwargs,
+                )
+            finally:
+                with client_lock:
+                    client_active -= 1
         except Exception as exc:
             return failed(exc, "request_error")
 
@@ -854,6 +866,7 @@ def main(
     }
     print("-"*60)
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
+    print(f"client overlap:   {client_peak} observed peak / {conc} requested")
     p99_note = (
         "tail estimate; N>=100" if len(results) >= 100
         else "descriptive only; N<100"
@@ -943,6 +956,7 @@ def main(
         "failed": len(failures),
         "failures": sorted(failures, key=lambda item: item["request_index"]),
         "concurrency": conc,
+        "client_concurrency_observed_max": client_peak,
         "context_tokens": a.ctx_tokens or None,
         "context_seed": a.seed,
         "context_distribution": context_distribution,
@@ -990,6 +1004,11 @@ def main(
         },
         "sampling": sampling,
         "timing_methodology": {
+            "client_concurrency": (
+                "peak overlapping client stream_request calls, including failed attempts; "
+                "excludes prompt construction and response validation; does not prove "
+                "simultaneous engine execution or KV residency"
+            ),
             "clock": "client time.perf_counter",
             "artifact_timestamps": (
                 "time.time_ns Unix timestamps; independent artifacts may align them "

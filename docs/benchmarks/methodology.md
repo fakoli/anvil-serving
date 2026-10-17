@@ -417,7 +417,10 @@ measured, is qualified, or is deployed.
 
 ## Required publication record
 
-Every new benchmark finding should preserve:
+Every new benchmark finding must preserve the following fields for every
+claimed serving comparison. A focused smoke or quality-only finding may state a
+narrower scope and why performance was not remeasured; it must not claim a full
+comparison.
 
 | Area | Required fields |
 |---|---|
@@ -427,9 +430,19 @@ Every new benchmark finding should preserve:
 | Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap, default and effective per-device reserve, waiver scope/rationale, startup and post-representative-workload free VRAM |
 | Generation recipe | sampling settings, thinking control, reasoning headroom, visible-answer allowance, MTP/speculative settings |
 | Workload | suite revision, prompt length, request count, concurrency, cache policy, expected answer protocol |
-| Results | completion and performance-eligibility count, TTFT, effective prefill, generation duration, decode rate, TPOT/legacy mean-ITL proxy, E2E, token counts, throughput class or bounds, output adherence, quality attempts, truncations and failures |
+| Results | completion and performance-eligibility count; effective prefill; TTFO and visible TTFT when separately observable; generation duration, decode rate, TPOT/legacy mean-ITL proxy, E2E, aggregate output throughput; actual input/output counts and distributions; requested and observed concurrency/occupancy; sample counts and p50/p95; output adherence, quality attempts, truncations, OOM/admission, and other failures |
 | Provenance | observed date, source dates, age class, raw artifact links, checksums or run lineage when available |
-| Decision | candidate role, caveats, gate status, and whether any human-approved promotion occurred |
+| Decision | candidate role, caveats, gate status, `metrics_coverage` states, and whether any human-approved promotion occurred |
+
+Retain a content-bound frozen plan for the profile × workload × context ×
+requested-concurrency matrix before requests, then state each required metric as `measured`, `configured`,
+`estimated`, `blocked`, or `not_collected`. Only retained observations are
+measured. In particular, engine-reported KV token pools are runtime allocation
+estimates. A full-context concurrency calculation from them is a separately
+labeled estimate, not observed occupancy or simultaneous capacity. A full serving comparison is complete only when every required metric
+in every frozen cell is measured; failed or physically blocked cells remain
+valuable evidence but limit the claim to the completed scope. See
+[repeatable campaigns](repeatable-campaigns.md) for failure disposition.
 
 Use `127.0.0.1` in local endpoint examples. Credentials belong in environment
 resolution only and must be redacted from artifacts.
@@ -475,7 +488,8 @@ anvil-serving eval benchmark evidence compare FIRST.json SECOND.json --format js
 
 This summary surface omits prompts, full responses, reasoning text, and arbitrary
 stored command/method text; bounds recursive scans and artifact sizes; and flags
-material workload differences before displaying rows.
+material workload differences before displaying rows. `evidence show` is fail-closed:
+validation errors return a nonzero exit and no usable evidence result.
 It replaces ad hoc `find`/`rg` plus JSON extraction for routine evidence
 navigation. Comparison is fail-closed: missing controls or provenance make the
 result non-comparable, and the command exits non-zero unless the operator passes

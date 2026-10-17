@@ -42,9 +42,35 @@ and runtime failures distinct in the decision record.
 
 ## Comparison and publication
 
+Every model validation or test campaign declares whether it is a serving
+comparison, focused quality check, or smoke before requests. A serving
+comparison retains a content-bound `frozen_plan` with
+`frozen_before_requests: true`, pinned source revision/file hashes, at least two
+model/revision/image/runtime/hardware arms, and required cells mapping arm,
+workload, context, concurrency, and request count. `metrics_coverage.required_cells`
+exactly matches the plan. Each cell declares the required families:
+effective prefill; TTFO and visible TTFT when separately observable; decode,
+TPOT, E2E, and aggregate output throughput; actual input/output counts and
+distributions; weights, memory, and KV capacity (KV bytes and runtime token
+pool separately); context; requested and observed concurrency/occupancy; GPU,
+host, and cgroup memory; OOM/admission failures; sample count, p50/p95,
+workload identity, and recipe identity. Record each metric as `measured`,
+`configured`, `estimated`, `blocked`, or `not_collected`. Only retained native
+observations are measured. Engine-reported `kv_cache_tokens` are allocated slots; a full-context
+concurrency calculation from them is a separately labeled estimate, not
+simultaneous-capacity proof. Configured concurrency is not measured occupancy.
+
 Record native, configured, and measured context separately, including input
 size, output/reasoning reserve, and simultaneous requests. An untested larger
-window remains unknown even if advertised or configured.
+window remains unknown even if advertised or configured. A focused smoke or
+quality-only check may scope performance out and explain why it was not
+remeasured; it is not a full serving comparison.
+
+Performance measurement, quality, and promotion are independent. Preserve an
+ordinary quality miss and complete separately planned safe diagnostic timing
+cells when authorized; infrastructure, identity, resource, OOM, or admission
+failure stops unsafe work. A run may finish with failed or blocked cells, but
+no full-comparison claim is allowed while any required metric is non-measured.
 
 Report logical checkpoint bytes separately from runtime GPU allocation, KV
 capacity, throughput, and latency. A quant is Pareto-preferred only after every

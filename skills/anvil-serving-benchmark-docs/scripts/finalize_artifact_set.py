@@ -9,6 +9,7 @@ import json
 import os
 import tempfile
 import re
+import sys
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
@@ -145,6 +146,104 @@ def _validate_artifact_payload(payload: bytes, path: Path, relative: str, legacy
     _validate_serialized_json(value, label=relative)
 
 
+def _load_cross_suite_validator():
+    """Import the validator from this checkout, never an installed package."""
+    product_root = Path(__file__).resolve().parents[3]
+    source = product_root / "anvil_serving" / "benchmarking" / "artifacts.py"
+    if not source.is_file():
+        raise ValueError("cannot locate the product artifact validator")
+    root_text = str(product_root)
+    if root_text not in sys.path:
+        sys.path.insert(0, root_text)
+    from anvil_serving.benchmarking import artifacts
+
+    try:
+        artifacts_file = Path(artifacts.__file__).resolve()
+        artifacts_file.relative_to(product_root)
+    except (AttributeError, ValueError) as exc:
+        raise ValueError("artifact validator did not resolve from this product checkout") from exc
+    return artifacts.validate_cross_suite_evidence, artifacts.BenchmarkArtifactError
+
+
+def _reference_matches_entry(reference: Any, entry: dict[str, Any]) -> bool:
+    return (
+        isinstance(reference, dict)
+        and reference.get("path") == entry["path"]
+        and reference.get("sha256") == entry["sha256"]
+        and reference.get("bytes") == entry["bytes"]
+    )
+
+
+def _validate_serving_comparison_semantics(
+    base: Path,
+    finalized_roles: list[dict[str, Any]],
+    json_payloads: dict[str, dict[str, Any]],
+) -> None:
+    """Bind complete serving summaries to retained native evidence without rereads."""
+    raw_entries = {
+        entry["path"]: entry
+        for role in finalized_roles
+        if role["role"] == "raw-run-evidence"
+        for entry in role["files"]
+    }
+    serving_native_paths = {
+        relative
+        for relative, payload in json_payloads.items()
+        if relative in raw_entries
+        and payload.get("schema") == "anvil-serving.benchmark-evidence/v1"
+        and isinstance(payload.get("run"), dict)
+        and payload["run"].get("profile") == "serving-comparison/v1"
+    }
+    decision_summaries = [
+        (relative, payload)
+        for relative, payload in json_payloads.items()
+        if payload.get("schema") == "anvil-serving.benchmark-decision-summary/v1"
+    ]
+    if not serving_native_paths and not decision_summaries:
+        return
+
+    validate, validation_error = _load_cross_suite_validator()
+    validated_native: dict[str, dict[str, Any]] = {}
+    for relative in serving_native_paths:
+        try:
+            validated_native[relative] = validate(
+                json_payloads[relative], artifact_root=str(base)
+            )
+        except validation_error as exc:
+            raise ValueError(f"retained serving comparison evidence is invalid: {relative}: {exc}") from exc
+
+    for _, summary in decision_summaries:
+        coverage = summary.get("metrics_coverage")
+        is_serving = isinstance(coverage, dict) and coverage.get("profile") == "serving-comparison/v1"
+        complete = summary.get("complete") is True
+        if not is_serving:
+            if complete and serving_native_paths:
+                raise ValueError("complete decision summary for serving comparison requires metrics_coverage and comparison_evidence")
+            continue
+        reference = summary.get("comparison_evidence")
+        if reference is None:
+            if complete:
+                raise ValueError("complete serving comparison summary requires a hash-bound retained comparison_evidence reference")
+            continue
+        matching = [
+            raw_entry for raw_entry in raw_entries.values()
+            if _reference_matches_entry(reference, raw_entry)
+        ]
+        if len(matching) != 1:
+            raise ValueError("serving comparison summary requires a hash-bound retained comparison_evidence reference")
+        native = validated_native.get(matching[0]["path"])
+        if native is None:
+            raise ValueError("comparison_evidence must reference a retained serving-comparison native envelope")
+        native_coverage = native["metrics_coverage"]
+        if coverage != native_coverage:
+            raise ValueError("serving comparison summary metrics coverage must exactly match validated native evidence")
+        if complete and (
+            native_coverage.get("status") != "complete"
+            or native_coverage.get("missing_required_metrics")
+        ):
+            raise ValueError("complete serving comparison summary requires complete native metrics coverage")
+
+
 def _assert_closed_inventory(
     base: Path, *, source_path: Path, output_path: Path, declared: set[str]
 ) -> None:
@@ -224,6 +323,7 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
 
     finalized_roles: list[dict[str, Any]] = []
     declared_files: set[str] = set()
+    json_payloads: dict[str, dict[str, Any]] = {}
     for item in roles:
         status = item.get("status")
         files = item.get("files")
@@ -264,6 +364,10 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
             with path.open("rb") as handle:
                 payload = handle.read(max_artifact_bytes + 1 if max_artifact_bytes is not None else -1)
             _validate_artifact_payload(payload, path, normalized_relative, legacy_plaintext)
+            if path.suffix.lower() == ".json" and normalized_relative not in legacy_plaintext:
+                parsed_payload = _json_loads(payload.decode("utf-8"), label=normalized_relative)
+                if isinstance(parsed_payload, dict):
+                    json_payloads[normalized_relative] = parsed_payload
             if max_artifact_bytes is not None and len(payload) >= max_artifact_bytes:
                 raise ValueError(
                     f"retained artifact violates size_policy: {normalized_relative} "
@@ -289,6 +393,7 @@ def finalize(source_path: Path) -> tuple[Path, dict[str, Any]]:
         missing = ", ".join(sorted(legacy_plaintext - declared_files))
         raise ValueError(f"legacy plaintext file is not retained: {missing}")
     _assert_output_target(output_path)
+    _validate_serving_comparison_semantics(base, finalized_roles, json_payloads)
 
     output = {
         "schema": OUTPUT_SCHEMA,

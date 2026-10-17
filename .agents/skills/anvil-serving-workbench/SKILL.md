@@ -199,7 +199,14 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
   tier-transition mutation is preview-first and live only with `confirm=true`
   plus `dry_run=false`.
-- Evaluation: use `preflight_probe` with the model family's declared thinking
+- Evaluation: before model validation or comparison, load
+  `skills/anvil-serving-llm-qualification/references/evidence-contract.md`
+  and `skills/anvil-serving-benchmark-docs/SKILL.md`. Declare the test scope
+  and freeze the required serving-metrics matrix before requests. A focused
+  smoke check must identify its limited scope; a full comparison requires
+  verified coverage of the frozen matrix. Preserve quality failures separately
+  from safe performance measurements and report every unmeasured metric.
+  Use `preflight_probe` with the model family's declared thinking
   mode, reasoning effort/evidence expectation, visible-answer budget,
   reasoning headroom, and allowed finish reasons. Use `benchmark_probe` or
   `benchmark_artifact` for capacity only. For quality, run

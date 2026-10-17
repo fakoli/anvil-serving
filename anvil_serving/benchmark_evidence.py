@@ -378,7 +378,22 @@ def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
 def summarize_artifact(path: str | Path) -> dict[str, Any]:
     """Return a prompt-free normalized summary for one benchmark artifact."""
     artifact_path = Path(path)
-    return summarize_payload(_load_json(artifact_path), artifact_path)
+    raw = _load_json(artifact_path)
+    summary = summarize_payload(raw, artifact_path)
+    if summary.get("kind") == "campaign":
+        from .benchmarking.artifacts import BenchmarkArtifactError, validate_cross_suite_evidence
+        try:
+            validated = validate_cross_suite_evidence(raw, artifact_root=str(artifact_path.parent))
+            coverage = _mapping(validated.get("metrics_coverage"))
+            if summary.get("metrics_coverage") is not None:
+                summary["metrics_coverage"] = {
+                    "status": _text(coverage.get("status")),
+                    "missing_required_metrics": _list(coverage.get("missing_required_metrics")),
+                    "verified": bool(coverage.get("plan_verified")),
+                }
+        except BenchmarkArtifactError as exc:
+            summary["validation_errors"] = [f"{exc.code}: {exc.message}"]
+    return summary
 
 
 def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[str, Any]:
@@ -471,9 +486,10 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         )
 
         try:
-            validate_cross_suite_evidence(raw, verify_files=False)
+            normalized_evidence = validate_cross_suite_evidence(raw, verify_files=False)
             validation_errors = []
         except BenchmarkArtifactError as exc:
+            normalized_evidence = raw
             validation_errors = [f"{exc.code}: {exc.message}"]
         run = _mapping(raw.get("run"))
         identities = _mapping(raw.get("identities"))
@@ -481,6 +497,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         served = _mapping(identities.get("served_model"))
         source = _mapping(raw.get("source"))
         summary = _mapping(raw.get("summary"))
+        coverage = _mapping(normalized_evidence.get("metrics_coverage"))
         return {
             "path": _text(artifact_path.as_posix()),
             "schema": _text(raw.get("schema")),
@@ -495,6 +512,11 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "completeness": _text(raw.get("completeness")),
             "suite": _text(run.get("suite")),
             "profile": _text(run.get("profile")),
+            "metrics_coverage": {
+                "status": _text(coverage.get("status")),
+                "missing_required_metrics": _list(coverage.get("missing_required_metrics")),
+                "verified": bool(coverage.get("plan_verified")),
+            } if coverage else None,
             "source_url": _text(source.get("url")),
             "summary": {
                 "attempted": _number(summary.get("attempted")),
@@ -928,6 +950,13 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             unknown_fields.setdefault(
                 "campaign.semantic_workload_sampling_identity", []
             ).append(str(summary.get("path")))
+            coverage = _mapping(summary.get("metrics_coverage"))
+            if summary.get("profile") == "serving-comparison/v1":
+                missing = _list(coverage.get("missing_required_metrics"))
+                if coverage.get("status") != "complete" or missing or coverage.get("verified") is not True:
+                    unknown_fields.setdefault("metrics_coverage.missing_required_metrics", []).append(
+                        str(summary.get("path"))
+                    )
     if any(summary.get("kind") == "quality" and not _suite_signature(summary)
            for summary in summaries):
         unknown_fields["suites"] = [
@@ -1163,6 +1192,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         _render_compare(result)
     if args.action == "compare" and not result["comparable"] and not args.allow_mismatch:
+        return 1
+    if args.action == "show" and result.get("validation_errors"):
         return 1
     return 0
 

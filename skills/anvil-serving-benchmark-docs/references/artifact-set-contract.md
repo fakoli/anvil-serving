@@ -110,11 +110,48 @@ the campaign; do not add a placeholder source.
 ## Request coverage and compact campaign state
 
 Translate every material user request into one row of
-`coverage-and-gaps.md` before measuring. Name the evidence condition that would
-make the request covered, then link the retained artifact or leave the gap
-explicit. A configured maximum, startup log, external result, or planned test
-does not satisfy a measured request. Keep rejected, partial, and deferred rows
-visible through publication.
+`coverage-and-gaps.md` before measuring. Every model validation or test campaign
+first declares whether it is a serving comparison, focused quality check, or
+smoke. For a serving comparison, retain a content-bound `frozen_plan` reference before
+the first request. Its `serving-comparison/v1` plan sets
+`frozen_before_requests: true`, pins the source revision and source-file hashes,
+has at least two arms each with model/revision/image/runtime/hardware identity,
+and maps every required cell to arm, workload, context tokens, concurrency, and
+request count. `metrics_coverage.required_cells` must exactly equal the plan's
+cell keys. A cell with any `measured` metric binds its metrics to a
+content-bound `measurement` receipt. The receipt names the exact plan arm and
+cell, repeats that arm identity, and content-binds native JSON whose model,
+context, concurrency, and request count match the cell. Each `measured` metric
+must itself reference that cell's hash-bound native JSON. A wholly blocked or
+unrun cell may set `measurement` to `null` only when it has no measured metrics
+and preserves its reasoned disposition. Validation checks this
+arm/configuration/workload/request-population binding; it does not recompute the
+reported metric statistics. Every cell declares the required metric families and
+their evidence condition: effective prefill; TTFO and visible TTFT when the protocol exposes
+those distinct events; decode, TPOT, and E2E; aggregate output throughput;
+actual input/output counts and distributions; memory, weights, and KV capacity
+(bytes and runtime token pool are separate); context; requested and observed
+concurrency/occupancy; GPU, host, and cgroup memory; and OOM/admission failures.
+Also bind the workload and recipe identity, sample count, and p50/p95 policy.
+
+For each metric record exactly one state: `measured`, `configured`, `estimated`,
+`blocked`, or `not_collected`. When a native evidence envelope carries
+`metrics_coverage`, use the plan's `frozen_plan` reference, profile
+`serving-comparison/v1`, `required_cells`, per-cell `metrics`, and derived
+`missing_required_metrics` entries as `cell_id.metric_key`. Each metric carries
+`status`, `evidence`, and, where applicable, `value`, `observation`, or
+`reason`: `measured` requires a value or observation plus evidence;
+`configured`/`estimated` require reason plus evidence; `blocked`/`not_collected`
+require a reason. `measured` requires the retained native result; configured or
+theoretical concurrency is never measured capacity. Engine-reported `kv_cache_tokens` are allocated KV slots, not a measured
+simultaneous full-context capacity. Any full-context concurrency calculation
+from those slots is a separately labeled derived estimate, never a completed
+request count. A configured maximum, startup
+log, external result, or planned test does not satisfy a measured request. Keep
+rejected, partial, and deferred rows visible through publication.
+
+A focused quality-only or smoke check may explicitly scope performance metrics
+out and state why they were not remeasured. It is not a full serving comparison.
 
 Use `campaign-state.json` as a compact resume ledger. Update only stage state,
 verified launcher identity, active assignments, completed cells, failures,
@@ -135,9 +172,15 @@ no-history handoff.
 3. Use explicit `research`, `feasibility`, `scout`, `finalist`, `quality`,
    `restoration`, and `publication` stages. A scout advances only after its
    identity, completion, correctness, and resource gates pass. A finalist uses
-   the controlled comparison workload and adequate sample population. A
-   performance winner is not qualified until the separately declared quality
-   and integration gates pass or remain visibly missing.
+   the frozen controlled comparison matrix and adequate sample population.
+   Performance measurement, quality, and promotion are independent gates. A
+   quality miss preserves its native evidence and makes that quality gate fail;
+   it does not silently remove safe, separately planned timing cells. Stop
+   unsafe infrastructure, identity, resource, or admission work, preserve its
+   limits, and record each unrun cell as `blocked` or `not_collected` with a
+   disposition. A performance winner is not qualified until separately declared
+   quality and integration gates pass; missing gates remain visible and block
+   the claim that the comparison is complete.
 4. Retain the native plan, workload/corpus manifest, exact configuration, and
    raw evidence without changing their schemas. Preserve partial and failed
    attempts.
@@ -287,5 +330,14 @@ A campaign artifact set is structurally complete only when:
 - `promotion_authorized` remains `false` unless a separate human-gated
   promotion record says otherwise.
 
-Artifact-set completion is documentation and evidence hygiene. It never
-authorizes a serve, route, client catalog, or deployment change.
+Structural artifact-set completion is documentation and evidence hygiene. It is
+separate from execution completion and comparison completion. A serving decision
+summary with `metrics_coverage` must carry `comparison_evidence`, a hash-bound
+reference to a retained native serving-comparison envelope. Its coverage status
+and gaps must match that envelope. A summary may
+claim a **full serving comparison complete** only when every required metric in
+every frozen matrix cell is `measured`; a failed or physically blocked cell
+retains its limits and failure but cannot satisfy that condition. Missing or
+non-measured required values must appear in `summary.json` and the coverage
+matrix, and limit the claim to the completed scope. Neither completion state
+authorizes a serve, route, client catalog, deployment, or promotion.
