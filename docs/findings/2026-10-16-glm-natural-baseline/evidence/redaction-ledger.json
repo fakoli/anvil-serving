@@ -1,0 +1,120 @@
+{
+  "schema": "anvil-serving.evidence-redaction-ledger/v1",
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "status": "partial",
+  "rules": [
+    "Do not publish private paths, endpoint addresses, host or operator labels, container IDs, GPU UUIDs, raw CLI logs, credentials, or request bodies.",
+    "Preserve the native schema and metrics; replace only the routed endpoint with redacted://routed-capability.",
+    "For SWE stages, retain public task image tags and immutable image digests while omitting private execution identifiers and raw process output."
+  ],
+  "artifacts": [
+    {
+      "source_sha256": "db3f3e7be8c46c77c7d315e1c1213d7bd5f9ad51093e9faee7e6e39ff6d7e0dd",
+      "output": "native/natural-ctx32768-c1-r1.json",
+      "output_sha256": "3a9662739604527bbf558ea84ba68f25f44232106d03c072277fccce5495f205",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "4446ec1d6bbe7c4cfbaee5fec6e163f7198cfd9126f6f64a4ccbe808ecd92bbd",
+      "output": "native/natural-ctx32768-c1-r2.json",
+      "output_sha256": "c8ed20fda02139e2ed070bbf23876c8703742223727c1cb524fb8577eb4f318f",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "25419aac80021729a86a413041ec89c2a68c0e04de0bc1addcc702434914a6ac",
+      "output": "native/natural-ctx32768-c1-r3.json",
+      "output_sha256": "7afe6ac9b54ba5076ede3ac8512acce14569a956284bd96645dd5f75e849661a",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "799f10512ba236c7620babc3b39446a32479903fcd09de58f17b3aaa17ed10e9",
+      "output": "native/natural-ctx32768-c4-r1.json",
+      "output_sha256": "01fde2ce8c356d6a5dd239ee1d5b79eab1cd10cdd53ec747cfdb1d95ca010f46",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "2f59cc5d65423ff6b4bcfc721015cf5eb046c11947a41ccafff9f888cab01136",
+      "output": "native/natural-ctx32768-c4-r2.json",
+      "output_sha256": "3a84d3bf1d1cee640b284f69f6015f23e561cd4d61f4012c7cbaccaf670fc59d",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "5b0d6f6f4c0a680a7d83f1da8082f0badb8a76d04be9d4f50d4667a1d93fd45c",
+      "output": "native/natural-ctx32768-c4-r3.json",
+      "output_sha256": "97b7aff6f585a5deb9cefe63f53dd4441d9e3b0141b6096e934eeab16518eb42",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "d5c9c20dc5ebe8a63f22feabee5e29342fca39fbdf3e7d3088e74b9808613d5a",
+      "output": "native/natural-ctx8192-c1-r1.json",
+      "output_sha256": "4e515deb5d413921b197335951ee36e7f012241accc07573559bbc84753a675e",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "5b7a25fb31d741494d9f6db7c6eb92e3c37033d2684143357d44eb06dc85f4e0",
+      "output": "native/natural-ctx8192-c1-r2.json",
+      "output_sha256": "be46c7f6ea8097b1cc9ca562d6ac0ff92bda82e38f7c6f38f16c53360c3d142c",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "205e76ccbe2ecad090b4a261b40120c2277595e7627a812590edb57bfe162679",
+      "output": "native/natural-ctx8192-c1-r3.json",
+      "output_sha256": "e085dac4f12cd93cdca8cd18b89f3526abc376090445f66eec7c286297630b4e",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "c42bf383275026046e182458fea1e84abfaf1d9eebe54bf6709520414334e112",
+      "output": "native/natural-ctx8192-c4-r1.json",
+      "output_sha256": "862237607d48cdc0d8598038cf8a032a9d092bf97e892bd921972115edf3ed85",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "8b47ceede0ce0aebeb35ba5bc9d3418cb642590efed891d84b3505831c6bba6e",
+      "output": "native/natural-ctx8192-c4-r2.json",
+      "output_sha256": "a9633809e2acc7adca35bd994abbb52333c5d42ab9acc815b001ed19080e6bf1",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "e11c94bb4ae2d7c992fecc90103a5f32e4e6db9808d7f3ad2c7d92bf2afce3a7",
+      "output": "native/natural-ctx8192-c4-r3.json",
+      "output_sha256": "84601bb505690ea8db6c925380e7b93a6d8044b48a35dc4130374421bad57a51",
+      "transformation": "base_url replaced"
+    },
+    {
+      "source_sha256": "daae6ffc2888d5d41532a3d2c4069b197dc0bb64132c59862b0af89923050294",
+      "output": "native/cached-swe-r1.json",
+      "output_sha256": "5a6b43f47056932b26c45e0aa6736f0397a68e214b04d22f86e5c0a9bf08795f",
+      "transformation": "retained public task image tags and immutable digests; redacted private paths, execution identifiers, request IDs, commands, and process output"
+    },
+    {
+      "source_sha256": "89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
+      "output": "native/cached-swe-r1-official-grader.json",
+      "output_sha256": "89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
+      "transformation": "formatting-only normalization of a public-safe official grader report; independent counts and per-instance outcomes retained"
+    },
+    {
+      "source_sha256": "4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23",
+      "output": "native/cached-swe-r1-campaign-evidence.json",
+      "output_sha256": "aaee35b842b004e2610237c08c10fa0695bf3d6bd558179aa6f27f2f0b3dc5f5",
+      "transformation": "extracted the terminal wrapper results.evidence payload; redacted hardware and topology identifiers plus local evidence paths while preserving campaign aggregate and workload gates"
+    },
+    {
+      "source_sha256": "f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4",
+      "output": "native/cached-swe-r2.json",
+      "output_sha256": "8f8c456e1518b9038226bf72c4efab4a0b52a4dcd229b7a72bed98030dda057f",
+      "transformation": "retained incomplete SWE-run/v1 controls, image observations, task mapping, and failures; redacted private execution material"
+    },
+    {
+      "source_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+      "output": "native/cached-swe-r2-official-grader.json",
+      "output_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+      "transformation": "formatting-only normalization of public-safe incomplete official grader evidence; empty-patch and ungraded outcomes retained"
+    },
+    {
+      "source_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd",
+      "output": "native/cached-swe-r2-campaign-evidence.json",
+      "output_sha256": "05f1cb9c3bc094e150ea587a1876288b80e4edd5cfac2ff0879ea55ea7c78fce",
+      "transformation": "extracted failed terminal-wrapper results.evidence; redacted hardware and topology identifiers plus local evidence paths, with no aggregate score"
+    }
+  ]
+}

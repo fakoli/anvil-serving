@@ -1,0 +1,37 @@
+{
+  "schema": "glm-natural-baseline-configuration-identity/v1",
+  "served_model": "GLM-5.3-Flash",
+  "weights_repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+  "weights_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "runtime": {
+    "engine": "vllm-glm53-exl3-b12x-v84-fp8-control",
+    "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "quantization": "EXL3 4 bpw",
+    "kv_format": "FP8",
+    "parallelism": "TP2/DCP1",
+    "configured_context_tokens": 327680,
+    "configured_concurrency": 4,
+    "speculation": "off"
+  },
+  "hardware": {
+    "measured": "two NVIDIA RTX PRO 6000 Blackwell Max-Q GPUs",
+    "topology": "dual-GPU resident model serve; observations used a shared host/router and the workload snapshot was unavailable"
+  },
+  "routing": {
+    "capability_alias": "llm.primary",
+    "endpoint": "redacted://routed-capability",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "reasoning_effort": "max",
+    "thinking_token_budget": 49152,
+    "caller_max_tokens": 16384
+  },
+  "redactions": [
+    "host and operator labels",
+    "network endpoints and paths",
+    "container identifiers",
+    "GPU UUIDs",
+    "credential references"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "glm-natural-baseline-workload/v1",
+  "timing_population": {
+    "planned_cells": 12,
+    "planned_requests": 240,
+    "contexts_nominal_tokens": [8192, 32768],
+    "concurrency": [1, 4],
+    "requests_per_cell": 20,
+    "repetitions": 3,
+    "prompt_cache_mode": "unique",
+    "unique_prompt_namespace": "capacity-v1:seed-request-index",
+    "response_words": 0,
+    "controlled_output_policy": "observe",
+    "success_contract": "visible output plus terminal observation; finish reason and semantic correctness are not retained for successful timing rows"
+  },
+  "coding_population": {
+    "task_count": 5,
+    "repetitions": 2,
+    "selection": "existing pinned task set reused because the fresh ten-task images are uncached and the storage reserve is constrained",
+    "grading": "independent pinned SWE-bench grader",
+    "configured_profile": {
+      "profile": "scout",
+      "instance_limit": 5,
+      "max_completion_tokens": 16384,
+      "max_steps": 60,
+      "source_plan_sha256": {
+        "cached-swe-r1": "e109ff5672b6acb933b9fac2aaba8ac693107d666b9cb41dd4c9f597b9dfe056",
+        "cached-swe-r2": "9aaf5da5edcce4bf3461b392c735325de9a83f31f26a67d93ff16a3e78940f73"
+      },
+      "source_note": "Both private cached-SWE plans have identical configured profile contracts. These are plan controls, not retained per-request output usage or token accounting."
+    }
+  },
+  "limits": [
+    "nominal context is not validated context",
+    "completion tokens may include reasoning tokens",
+    "shared-router observation is not traffic-isolated throughput",
+    "20 requests per cell do not support a stable p99 claim"
+  ]
+}

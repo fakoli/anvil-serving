@@ -1,0 +1,30 @@
+{
+  "schema": "independent-review/v1",
+  "reviewer": "baseline_swe_failure_review",
+  "reviewer_role": "anvil-quality-critic",
+  "reviewer_model": "GPT-5.6 Sol high",
+  "native_stage_sha256": "f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4",
+  "wrapper_file_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd",
+  "verdict": "Valid negative reliability evidence; planned attempts exhausted, no recovery rerun required",
+  "attempted": 5,
+  "graded": 2,
+  "resolved": 0,
+  "official_grader_complete": false,
+  "step_limit_failures": ["sympy__sympy-12096", "pydata__xarray-4356", "pylint-dev__pylint-8898"],
+  "step_limit_evidence": "Each has 60 assistant turns, LimitsExceeded and an empty submission; none was graded.",
+  "submitted_but_unresolved": {
+    "django__django-13512": "Patch applied. JSONField.prepare_value test passed but admin Unicode display remained escaped; earliest gold assertion at test_output.txt:357.",
+    "sphinx-doc__sphinx-9658": "Patch applied. Mock branch emitted unknown.secret. instead of unknown.secret.Class; earliest gold assertion at test_output.txt:472."
+  },
+  "grader_errors": 0,
+  "empty_patches": 3,
+  "r1_r2_configuration_match": {
+    "generated_configuration_byte_identical": true,
+    "fields_verified": ["profile", "dataset", "endpoint alias", "request controls", "harness revisions", "Python environment", "container limits", "selection", "paired image IDs"],
+    "plan_hashes": "Different as expected for separate run identities"
+  },
+  "classification": "Three planned step-budget/model failures plus two wrong patches; no harness defect or configuration drift found",
+  "reporting": "0/2 officially graded plus 3/5 step-limit failures; do not relabel as 0/5 graded or complete independent grading",
+  "limits": "R1 4/5 versus R2 materially challenges repeat reliability under this contract; it does not prove a quantization or general-intelligence defect.",
+  "promoted": false
+}

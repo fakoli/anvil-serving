@@ -1,0 +1,413 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-17T01:46:44.680436Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+  },
+  "endpoint": {
+    "base_url": "redacted://routed-capability",
+    "model": "llm.primary"
+  },
+  "failure": {
+    "class": "model_failure",
+    "code": "swe_limits_exceeded",
+    "stage": "agent"
+  },
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "91f4c167ea6f42a331c18b615976ca653978236da44945562ed5bd2b7528974e",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+          "instance_id": "sphinx-doc__sphinx-9658",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658@sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest"
+        },
+        {
+          "image_id": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+          "instance_id": "sympy__sympy-12096",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096@sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+        },
+        {
+          "image_id": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+          "instance_id": "django__django-13512",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-13512@sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest"
+        },
+        {
+          "image_id": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+          "instance_id": "pydata__xarray-4356",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356@sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest"
+        },
+        {
+          "image_id": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+          "instance_id": "pylint-dev__pylint-8898",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898@sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "ecb206751416f1573254a690ab1db615f68acdaba03eea6ab5dbb81b6dd7730b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "retained_private": true,
+        "sha256": "a5cece0a53113bbe90bdf5eef0ea14c0868a4b0fca540ee5fa107782bf3e0b11"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "retained_private": true,
+        "sha256": "d57dc2bc4cf2e6f7c97c52b605d739f025731d2b3a5fb32b451f75deee717079"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "retained_private": true,
+        "sha256": "09aba75834af88b7bbb87732a756956ebe273949c77ad5f3184e9d75e91b1865"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "retained_private": true,
+        "sha256": "88b1d44f76e7a2460c71c1fbdaaead3c3d9fd425b87177b4fa7a06ff3bf807a9"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "retained_private": true,
+        "sha256": "417bc281c7854e2b89d3001face357efec55c50f88b6e2fa56e3366fb59859a8"
+      }
+    }
+  ],
+  "official_grader_complete": false,
+  "ownership_id": "glm-natural-baseline-20261016",
+  "paired_image_ids": {
+    "django__django-13512": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+    "pydata__xarray-4356": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+    "pylint-dev__pylint-8898": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+    "sphinx-doc__sphinx-9658": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+    "sympy__sympy-12096": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+  },
+  "plan_sha256": "16ed81b6e345f0cd9ca9f113d38e23b8c4f1e6fc34c9b29f2b5347ba6007c706",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "campaign_decision": "no-promotion",
+    "message": "This baseline campaign does not propose a promotion."
+  },
+  "public_sanitization": {
+    "omitted": [
+      "dataset cache path",
+      "grader containment receipt path",
+      "request IDs",
+      "trajectory paths",
+      "commands",
+      "stdout and stderr",
+      "actual execution identifiers",
+      "endpoint address",
+      "credential reference"
+    ],
+    "private_companion": "The wrapper artifact and raw execution material remain private."
+  },
+  "request_controls": {
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.6,
+        "requested": 0.6,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "run_id": "glm-natural-baseline-20261016-cached-swe-r2",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "duration_s": 4990.587019,
+      "failure_class": "model_failure",
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed"
+    },
+    {
+      "duration_s": 44.945373,
+      "failure_class": "test_failure",
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "failed"
+    }
+  ],
+  "state": "incomplete",
+  "summary": {
+    "attempted": 5,
+    "graded": 2,
+    "resolve_rate": 0.0,
+    "resolved": 0
+  },
+  "task_container_network": "none"
+}

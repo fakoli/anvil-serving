@@ -266,3 +266,6 @@ Static compatibility stops remain separate: Granite q8 group-size mismatch and E
 - [Model dossiers](models/index.md)
 - [RTX PRO 6000 mention audit](rtx-pro-6000-audit.md)
 - [Chronological findings](../findings/README.md)
+# 2026-10-16 GLM natural-output baseline
+
+See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md). The timing matrix retained 239/240 requests; cached SWE repeats were 4/5 complete R1 and terminal incomplete R2 (0/2 graded resolved plus three step-limit failures). No pooled coding score or promotion decision is reported.

@@ -1,0 +1,97 @@
+{
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "coding_r1": {
+    "aggregate_status": "R1 retained; final comparison is in coding-summary-final.json",
+    "artifact": "native/cached-swe-r1.json",
+    "attempted": 5,
+    "graded": 5,
+    "official_grader_complete": true,
+    "promotion_scope": "This campaign proposes no promotion.",
+    "resolve_rate": 0.8,
+    "resolved": 4,
+    "scope": "cached fixed five-task SWE stage"
+  },
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "next_gate": "No further measurement gate in this closed campaign; retain the negative result and no-promotion decision.",
+    "coding_repeatability_established": false,
+    "coding_summary": "coding-summary-final.json",
+    "independent_r2_review": "independent-r2-review.json",
+    "promotion_in_campaign": false
+  },
+  "evidence": [
+    "timing-summary.json",
+    "graph-manifest.json",
+    "graphs/timing-graph-data.json",
+    "graphs/timing-matrix.svg"
+  ],
+  "failures": [
+    {
+      "aggregate_throughput_eligible": false,
+      "artifact": "native/natural-ctx8192-c1-r2.json",
+      "class": "stream_validation_failed",
+      "completion_tokens": 16384,
+      "content_chunks": 0,
+      "elapsed_ms": 213753.305,
+      "error": "stream completed without visible content",
+      "finish_reason": "length",
+      "performance_eligible": false,
+      "prompt_tokens": 6078,
+      "reasoning_chunks": 15397,
+      "request_index": 16
+    }
+  ],
+  "gates": [
+    {
+      "claim": "stream compatibility only",
+      "name": "routed preflight",
+      "status": "passed"
+    },
+    {
+      "claim": "observational timing only; no stable p99 or service-stability claim",
+      "name": "timing matrix",
+      "status": "complete-with-one-retained-failure"
+    },
+    {
+      "claim": "R2 terminal incomplete; no pooled score or repeatability claim",
+      "name": "cached five-task coding repeats",
+      "status": "closed-negative"
+    }
+  ],
+  "headline_results": [
+    "Timing: 239/240 retained; one no-visible-output failure at the output cap.",
+    "Coding: R1 4/5 fully graded; R2 terminal incomplete with 0/2 graded resolved and three step-limit failures."
+  ],
+  "identity": {
+    "configuration": "configuration-identity.json"
+  },
+  "limitations": [
+    "Variable natural-output lengths.",
+    "Completion tokens may include reasoning tokens.",
+    "Shared-router observation without traffic isolation.",
+    "Successful timing rows lack finish reasons and semantic validation.",
+    "Twenty requests per cell cannot establish stable p99 latency or service stability.",
+    "One C1/8K request reached the output cap without visible content; C1/32K retains two long reasoning outliers.",
+    "Coding uses five reused pinned tasks twice, not ten fresh held-out tasks."
+  ],
+  "measurement": {
+    "path": "routed shared-router natural-output observation",
+    "sample_count": 240,
+    "statistics": [
+      "12 timing artifacts: 239 completed requests and one retained no-visible-output failure; coding repeatability not established"
+    ],
+    "warm_cold_state": "unique prompt bytes; no cache flush or traffic isolation"
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "manifest": "workload-manifest.json"
+  }
+}
