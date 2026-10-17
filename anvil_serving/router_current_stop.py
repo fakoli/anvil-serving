@@ -3,6 +3,7 @@ import hashlib
 from copy import deepcopy
 from pathlib import Path
 import time
+import tempfile
 import tomllib
 
 from . import router_manage as lifecycle
@@ -70,6 +71,8 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
     # their exact destinations and every other runtime/mount declaration.
     def normalized(rendered):
         result = deepcopy(rendered)
+        # The exact successor image is independently pinned by _current_successor.
+        result['services'][service]['image'] = '<acknowledged-router-image>'
         mounts = result['services'][service]['volumes']
         source = next(m['source'] for m in mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
         aliases = [m for m in mounts if m.get('type') == 'bind'
@@ -79,8 +82,7 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
             if mount.get('type') == 'bind' and mount.get('read_only') is True and mount['source'] == source:
                 mount['source'] = '<acknowledged-router-config>'
         return result
-    require(normalized(candidate) == normalized(old['rendered'])
-        and successor['image_id'] == stopped['image_id'])
+    require(normalized(candidate) == normalized(old['rendered']))
     mounts = selected['volumes']
     config = next(m for m in mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
     def read(argv):
@@ -135,5 +137,18 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
         and record['death']['stopped'] == stopped and digest(record['death']) == receipt['death_sha256']
         and record['death']['closure_generation'] == native['observation']['closure']['generation']
         and record['death']['closure_consumed'] is False)
+    if auth['successor']['image_id'] != stopped['image_id']:
+        # An image update is bounded to unchanged config bytes. Probe the exact
+        # new image with the old bind sources so generic incumbent custody stays
+        # strict; the actual successor's source relocation is separately bound.
+        require(auth['successor']['configuration_revision'] == auth['expected_configuration_revision'])
+        probe = strict_json(read_private_auth_file(preview['compose_path'], max_bytes=2*1024**2))
+        probe['services'][service]['image'] = before[2]['services'][service]['image']
+        from .router.maintenance import _publish
+        with tempfile.TemporaryDirectory(prefix='anvil-router-successor-probe-') as directory:
+            probe_path = Path(directory) / 'compose.json'
+            _publish(probe_path, probe)
+            lifecycle.require_router_offline(str(probe_path), service, container=container, _run=_run,
+                env_file=env_file, execution_env=execution_env)
     require(snapshot() == before)
     return receipt

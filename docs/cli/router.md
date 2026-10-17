@@ -876,8 +876,12 @@ closed generation. Its original acknowledgement must have been valid; expiry
 after a completed stop does not invalidate that proof. Pending, changed or
 already-transferred ownership refuses.
 
-This path supports only an unchanged image and runtime declaration with changed
-router configuration bytes and read-only bind sources. Existing mounts of the
+This path supports an explicitly acknowledged successor image with unchanged
+configuration bytes, or a configuration change on the same image. Both may
+relocate read-only configuration bind sources. The exact new image ID is verified
+independently and its native offline schema and custody check runs with the
+retained old bind sources before launch. Simultaneous image and configuration
+content changes require separate maintenance operations. Existing mounts of the
 same configuration may follow the new source at their original destinations.
 All other declarations, writable storage, owner identities and physical storage
 lineage remain fixed. The successor image, configuration and Compose hashes must
