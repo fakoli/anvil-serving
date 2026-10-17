@@ -1,0 +1,121 @@
+{
+  "schema": "anvil-serving.controlled-ab-workloads/v1",
+  "preflight": {
+    "checks": [
+      "smoke",
+      "json",
+      "needle",
+      "tools",
+      "long-tools",
+      "streaming-tools",
+      "tool-result",
+      "responses",
+      "image",
+      "ocr"
+    ],
+    "max_completion_tokens": 65536,
+    "reasoning_effort": "max",
+    "ocr_note": "Baseline combined OCR fixture was invalid; retain it and compare the corrected dedicated OCR observation."
+  },
+  "vision": {
+    "observations": 18,
+    "unique_fixture_images": 8,
+    "max_images_per_request": 8,
+    "concurrency": 1,
+    "max_completion_tokens": 9216,
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "agentic": {
+    "case_ids": [
+      "planning",
+      "reasoning",
+      "structured-edit",
+      "tool-sequence",
+      "parallel-tools",
+      "dependent-result",
+      "tool-recovery",
+      "debug-loop",
+      "context-recovery"
+    ],
+    "oracle_revision": "8",
+    "instrument_sha256": "1f40041cbf13275ef3635f514fb8b23cbf23504778f79c1a02b0aeb2211132f6",
+    "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+    "max_steps": 24,
+    "max_completion_tokens": 8192,
+    "thinking_mode": "default",
+    "reasoning_effort": "max",
+    "temperature": 0.0,
+    "top_p": 0.95,
+    "repetitions": 2,
+    "campaign_required_pass_rate": 1.0
+  },
+  "context": {
+    "case_ids": [
+      "native-needle",
+      "native-order",
+      "native-distractor"
+    ],
+    "token_buckets": [
+      32768,
+      318464
+    ],
+    "positions": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "repetitions": 1,
+    "output_headroom_tokens": 9216,
+    "advertised_context": 327680,
+    "thinking_mode": "default",
+    "reasoning_effort": "max",
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "stability": {
+    "scenario": "baseline-stability-scout-r3.json",
+    "anchor_tokens": 32000,
+    "contender_tokens": 8192,
+    "anchor_max_tokens": 16384,
+    "contender_max_tokens": 8192,
+    "reasoning_effort": "max",
+    "temperature": 0.0,
+    "top_p": 0.95,
+    "rounds": 1,
+    "purpose": "bounded overlap/retrieval diagnostic; not scheduler proof, endurance, or performance ranking"
+  },
+  "timing": {
+    "cells": [
+      {
+        "context_tokens": 8192,
+        "concurrency": 1,
+        "seed": 941111
+      },
+      {
+        "context_tokens": 8192,
+        "concurrency": 4,
+        "seed": 941112
+      },
+      {
+        "context_tokens": 32768,
+        "concurrency": 1,
+        "seed": 941113
+      },
+      {
+        "context_tokens": 32768,
+        "concurrency": 4,
+        "seed": 941114
+      }
+    ],
+    "requests_per_cell": 8,
+    "max_completion_tokens": 16384,
+    "prompt_cache_mode": "unique",
+    "response_words": 0,
+    "controlled_output_policy": "observe",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "reasoning_effort": "max",
+    "scope": "Natural completion latency and observed generation; output lengths may differ. Eight observations per cell do not establish tail-latency SLOs."
+  }
+}

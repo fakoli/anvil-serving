@@ -1,0 +1,34 @@
+{
+  "argv": [
+    "nvidia-smi",
+    "--query-gpu=index,uuid,name,memory.total,memory.used,memory.free,utilization.gpu,power.draw,temperature.gpu",
+    "--format=csv,noheader,nounits"
+  ],
+  "returncode": 0,
+  "rows": [
+    {
+      "index": 0,
+      "memory_free_mib": 2429,
+      "memory_total_mib": 97887,
+      "memory_used_mib": 94913,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "power_draw_w": 17.32,
+      "temperature_gpu_c": 46,
+      "utilization_gpu_percent": 0,
+      "uuid": "GPU-REDACTED"
+    },
+    {
+      "index": 1,
+      "memory_free_mib": 2429,
+      "memory_total_mib": 97887,
+      "memory_used_mib": 94913,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "power_draw_w": 11.76,
+      "temperature_gpu_c": 49,
+      "utilization_gpu_percent": 0,
+      "uuid": "GPU-REDACTED"
+    }
+  ],
+  "stderr": "",
+  "stdout": "0, GPU-REDACTED, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887, 94913, 2429, 0, 17.32, 46\n1, GPU-REDACTED, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887, 94913, 2429, 0, 11.76, 49\n"
+}

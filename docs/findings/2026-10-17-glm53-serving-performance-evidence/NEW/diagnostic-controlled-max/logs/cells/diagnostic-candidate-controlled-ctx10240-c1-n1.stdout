@@ -1,0 +1,10 @@
+BENCH http://127.0.0.1:31843/v1 model=glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2  n=1 concurrency=1 mixed max_tokens=16384 cache=unique canaries=True response_words=128 max_model_len=327680(ctx<=310272) reasoning_effort=max
+  req error: ValueError: request canary validation failed
+------------------------------------------------------------
+completed:        0/1 in 51.8s
+client overlap:   1 observed peak / 1 requested
+throughput:       withheld (incomplete request population)
+prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: [PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/native/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1.json

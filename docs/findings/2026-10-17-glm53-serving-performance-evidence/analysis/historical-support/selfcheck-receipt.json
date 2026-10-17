@@ -1,0 +1,19 @@
+{
+  "coincident_metric_number_preserved": true,
+  "configured_private_port_mapped": true,
+  "embedded_original_bytes_exact": true,
+  "helper_sha256": "28700cd2089e663a3079f14baf921e861d5a5330c6297b6373d9ae38c03a637e",
+  "limitation": "This check validates snapshots; final combined bundle requires its own whole-bundle privacy/reference/finalizer pass.",
+  "numeric_values_preserved_except_explicit_port_fields": true,
+  "originals_unchanged": true,
+  "privacy_checked_in_memory_with_reviewed_text_path": true,
+  "private_keys_redacted_by_whole_text_sanitization": true,
+  "provenance": {
+    "bytes": 11153,
+    "path": "analysis/historical-support/provenance.json",
+    "sha256": "53f7b8188edfd3d8bee666ce224b403b2d226de3079be1c6eecfff8038172ecb"
+  },
+  "schema": "opaque-archival-support-selfcheck/v1",
+  "snapshots_checked": 11,
+  "status": "passed"
+}

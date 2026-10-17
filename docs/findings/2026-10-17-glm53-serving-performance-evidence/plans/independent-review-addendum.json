@@ -1,0 +1,118 @@
+{
+  "advisory_priors": [
+    "The 310272 nominal input target is a capacity-edge probe. Actual input tokens must be reported and may be lower.",
+    "A blocked or failed edge cell narrows observed capacity only; it does not invalidate completed lower-context cells or prove a general physical limit without supporting engine evidence."
+  ],
+  "artifacts": {
+    "findings_summary": {
+      "blockers": [],
+      "edge_review": {
+        "claim_boundary": "The edge cells probe capacity; they do not assume fit. Admission, preemption, OOM, engine-death, and deadline stops remain authoritative.",
+        "classification": "accepted",
+        "comparability": "Retain actual prompt-token distributions. If arm distributions differ materially, keep the evidence but mark the latency comparison non-comparable.",
+        "reserve_equation": "310272 input target + 16384 max output + 1024 margin = 327680 configured context"
+      },
+      "matrix": {
+        "concurrencies": [
+          1,
+          2,
+          4
+        ],
+        "contexts": [
+          10240,
+          40960,
+          163840,
+          310272
+        ],
+        "edge_cells_per_arm": 3,
+        "edge_order": "last within each arm",
+        "edge_requests_per_cell": 4,
+        "edge_warmups_per_arm": 1,
+        "excluded_warmups": 6,
+        "measured_cells": 42,
+        "measured_cells_per_arm": 21,
+        "measured_requests_per_arm": 264,
+        "native_workloads": {
+          "synthetic-repeated-code": 18,
+          "synthetic-summary": 24
+        },
+        "total_measured_requests": 528,
+        "total_rows": 48
+      },
+      "missing_tests": [],
+      "residual_risk": [
+        "Full-suite closure and the final deadline/freeze receipt remain pending and are mandatory before dispatch.",
+        "Metric values remain provenance-bound and typed but are not recomputed by the guard.",
+        "The prior candidate context miss remains independent quality evidence.",
+        "No performance result, qualification winner, or promotion exists."
+      ],
+      "source_review": {
+        "commit_matches_reviewed_code": true,
+        "comparison_plan_frozen_before_requests": false,
+        "comparison_plan_source_references_verified": 9,
+        "comparison_plan_source_revision_matches_commit": true,
+        "stale_validation_head": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+        "validation_source_freeze_is_stale": true
+      }
+    },
+    "hashes": {
+      "comparison_plan_pre_freeze_sha256": "092399fb5609b0936c5ee8fcffc3ab06689a47e0ee6719cfbe792a673806122c",
+      "run_plan_pre_freeze_sha256": "c3ad913284b56ed53b8bc9978f405c5aecffe04aa0effbd401eba27beba0a32c",
+      "validation_source_freeze_stale_sha256": "f564e0fd3606d48a74c67e71c2b2f3fabb7a3971f844a46ba69c4c35eacb6811"
+    },
+    "verification": {
+      "comparison_plan_source_hashes": "9/9 verified",
+      "edge_cli_dry_runs": "coordinator reported 8/8 pass; not independently rerun",
+      "git_diff_check": "pass"
+    }
+  },
+  "gate_state": {
+    "pre_request_state": "not_yet_frozen",
+    "prepared_matrix": "pass",
+    "promotion": "not_authorized",
+    "remaining_before_dispatch": [
+      "full repository test closure",
+      "refresh validation-source-freeze.json to commit 5e1f92fbe2624b2121f443c146db422dd36d62cb and current file hashes",
+      "set the absolute campaign deadline and preserve the 16200-second request cutoff plus 5400-second restoration reserve",
+      "set comparison-plan frozen_before_requests=true only after the preceding checks and validate it"
+    ],
+    "source_commit": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+    "state": "pass_for_final_freeze_then_authorized_execution"
+  },
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": {
+    "decision": "accept",
+    "scope": "complete the listed mechanical freeze gates, then execute the already-authorized expanded A/B under the existing stop and exact-restoration rules"
+  },
+  "request": {
+    "authorization": "[REDACTED]",
+    "evaluated_models": [
+      "GLM-5.3-Flash EXL3/TR3 K4 r11 incumbent",
+      "NVIDIA GLM-5.3-Flash-FP4-Local r2 candidate"
+    ],
+    "implementer": "GPT-6 Astra coordinator",
+    "operation": "post-expansion independent review of prepared GLM-5.3 serving performance matrix",
+    "reviewed_at": "2026-10-17T10:36:09.193189+00:00",
+    "reviewer": {
+      "independent_from_evaluated_models": true,
+      "independent_from_implementer": true,
+      "model": "GPT-5.6 Sol"
+    }
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "plans/run-plan.json",
+    "plans/comparison-plan.json",
+    "plans/validation-source-freeze.json",
+    "plans/source/",
+    "commit 5e1f92fbe2624b2121f443c146db422dd36d62cb"
+  ],
+  "tools_used": [
+    "read-only git identity/status/diff-check inspection",
+    "read-only private plan parsing and SHA-256 verification",
+    "read-only source-file reference hash verification",
+    "operation_contracts unavailable in this session",
+    "workflow_packet_validate unavailable in this session"
+  ]
+}

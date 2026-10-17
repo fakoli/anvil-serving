@@ -1,0 +1,55 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: identity/candidate-source-verification.json
+Original SHA256: 9abae0190acdae1fae23d8bbbff19beab92dc59633f58ded6021c091f8f774f5
+Original bytes: 2211
+
+{
+  "at": "2026-10-17T12:37:29.831091+00:00",
+  "files": [
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving/benchmarking/cli.py",
+      "sha256": "e6170f7b990eb51623bdc154110a54c572d2ea71488b43ecfd2f1318bd51c800",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving/benchmarking/requests.py",
+      "sha256": "3de134738d29210b2cf3bbedc221d11bb4ba396a7cded14ed5314e1e5590012d",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving/benchmarking/runner.py",
+      "sha256": "0def9fc2b4d1b9dc9eec2ab1c8864be6cca9ab6645fa3543dceada4d3240fd7e",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving/benchmarking/artifacts.py",
+      "sha256": "c3b7bc545187db0c5ca21d00cb6078226ad7c1855796c77d2e80b8578d9f3ca3",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving/benchmark_evidence.py",
+      "sha256": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-llm-qualification/SKILL.md",
+      "sha256": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+      "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-benchmark-docs/SKILL.md",
+      "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
+      "matches_frozen": true
+    },
+    {
+      "path": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
+      "sha256": "6526774c49e5d183cb4d32a15d86ea489b1b716bd158201be73620215c783ce1",
+      "matches_frozen": true
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-10-17-glm53-nvidia-fp4-ab",
+  "updated_at": "2026-10-17T09:02:33.299986+00:00",
+  "status": "complete",
+  "current_stage": "closed",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": "1.5.0",
+    "repository_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "complete",
+      "evidence": [
+        "source-registry.json",
+        "diagnostic-research.md"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "complete",
+      "evidence": [
+        "feasibility-input-preload.json",
+        "feasibility-result-preload.md",
+        "feasibility-startup-observation.json"
+      ],
+      "failures": [
+        "r1 admission refused before creation; r2 zero-swap allowance verified"
+      ]
+    },
+    {
+      "id": "scout",
+      "status": "complete",
+      "evidence": [
+        "native/baseline/baseline-native-index.json",
+        "native/candidate/candidate-native-index.json"
+      ],
+      "failures": [
+        "initial candidate context gate 17/18; original miss preserved"
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "not-run",
+      "evidence": [
+        "run-plan.json",
+        "coverage-and-gaps.md"
+      ],
+      "failures": [],
+      "reason": "Initial correctness stop deferred candidate timing and overlap; diagnostic did not reopen qualification."
+    },
+    {
+      "id": "quality",
+      "status": "complete",
+      "evidence": [
+        "context-fixture-check.json",
+        "diagnostic-plan.json",
+        "diagnostic-result.json",
+        "native/diagnostic/diagnostic-native-index.json"
+      ],
+      "failures": [
+        "initial 17/18 remains a failed gate; unchanged diagnostic 18/18 plus two isolated 1/1 results do not establish a configuration fix or qualification"
+      ]
+    },
+    {
+      "id": "restoration",
+      "status": "complete",
+      "evidence": [
+        "restoration.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "publication",
+      "status": "complete",
+      "evidence": [
+        "summary.json",
+        "verification.json",
+        "artifact-manifest.json"
+      ],
+      "failures": []
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [
+    "baseline-smoke:2/2",
+    "baseline-functional:9/9 applicable checks; original OCR fixture error retained",
+    "baseline-ocr-corrected:1/1",
+    "baseline-vision:18/18",
+    "baseline-agentic:18/18",
+    "baseline-context:18/18; max actual input316266",
+    "baseline-overlap-r3:runtime, coverage and retrieval passed",
+    "baseline-timing:32/32 completed",
+    "candidate-startup:ready, containment verified",
+    "candidate-preflight:9+1/9+1",
+    "candidate-vision:18/18",
+    "candidate-agentic:18/18",
+    "candidate-context:17/18; failed mandatory gate",
+    "first-restoration:exact original r11; direct2/2 and authenticated routed2/2; original config hashes unchanged",
+    "diagnostic-r2-full:18/18",
+    "diagnostic-r2-failed-case-followups:3/3; reconstruction/usage matched",
+    "MTP-off:not run; recurrence condition not met",
+    "second-restoration:exact original r11; direct2/2 and authenticated routed2/2; original config hashes unchanged; candidate absent",
+    "independent-review:diagnostic, publication corrections and final restoration accepted",
+    "repository-verification:all12249 collected nodes covered across documented audit correction; continuation6865 passed/43 skipped; original prefix5330 passed/32 skipped;21 overlap;62 subtest passes separate",
+    "publication:independent review accepted; public matrix/audit and closed artifact inventory complete"
+  ],
+  "next_actions": [],
+  "promotion_authorized": false,
+  "completed_at": "2026-10-17T09:02:33.299986+00:00",
+  "closure_scope": "Bounded A/B scout and authorized recurrence/configuration diagnostic complete. Candidate remains unqualified and unpromoted; deferred work is recorded in coverage-and-gaps.md."
+}

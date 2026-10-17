@@ -1,0 +1,89 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-17-glm53-nvidia-fp4-ab",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "configuration.json"
+    ]
+  },
+  "first_restoration": {
+    "observed_at": "2026-10-17T08:18:06.784714+00:00",
+    "restored_exact_original_container": true,
+    "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "effective_ram_bytes": 55834574848,
+    "effective_swap_bytes": 1048576,
+    "oom_events": 0,
+    "direct_smoke_json_passed": true,
+    "router_readmitted": true,
+    "authenticated_routed_smoke_json_passed": true,
+    "original_config_hashes_unchanged": true,
+    "all_original_manifests_unchanged": true,
+    "candidate_absent": true,
+    "promoted": false,
+    "protected_source_sha256": "3672823757227b05507a06ace09d7758ecdbd775cbdb55e670443f36301327d8"
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "native/diagnostic/restored-direct-smoke.json",
+      "native/diagnostic/restored-routed-smoke.json"
+    ],
+    "receipt": {
+      "observed_at": "2026-10-17T08:45:59.026100+00:00",
+      "restored_exact_original_container": true,
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "effective_ram_bytes": 55834574848,
+      "effective_swap_bytes": 1048576,
+      "oom_events": 0,
+      "direct_smoke_json_passed": true,
+      "router_readmitted": true,
+      "authenticated_routed_smoke_json_passed": true,
+      "original_config_hashes_unchanged": true,
+      "all_original_manifests_unchanged": true,
+      "candidate_absent": true,
+      "promoted": false,
+      "protected_source_sha256": "87aaaa536fb22eaaf3e5c5ddaeddb67a7df06d849e6a145254678ecbae31c508"
+    }
+  },
+  "differences": [
+    "Candidate model/runtime caches retained for audit and possible future work; no candidate service remains.",
+    "Private candidate recipe and evidence records added; incumbent manifests, routes and provider choices preserved."
+  ],
+  "post_run_checks": [
+    {
+      "check": "exact retained identity, image, model revision and GPU order",
+      "passed": true
+    },
+    {
+      "check": "original RAM52GiB/swap1MiB and OOM counters",
+      "passed": true
+    },
+    {
+      "check": "direct smoke and JSON",
+      "passed": true,
+      "count": "2/2"
+    },
+    {
+      "check": "authenticated llm.primary smoke and JSON after readmission",
+      "passed": true,
+      "count": "2/2"
+    },
+    {
+      "check": "original three configuration hashes and all ten manifest hashes",
+      "passed": true
+    },
+    {
+      "check": "candidate absent and no promotion",
+      "passed": true
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

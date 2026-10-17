@@ -1,0 +1,3838 @@
+{
+  "cells": {
+    "baseline-capacity-edge-ctx310272-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-capacity-edge-ctx310272-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-capacity-edge-ctx310272-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx10240-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx10240-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx10240-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx163840-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx163840-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx163840-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx40960-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx40960-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-controlled-ctx40960-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx10240-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx10240-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx10240-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx163840-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx163840-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx163840-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx40960-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx40960-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "baseline-natural-ctx40960-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-capacity-edge-ctx310272-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-capacity-edge-ctx310272-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-capacity-edge-ctx310272-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx10240-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx10240-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx10240-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx163840-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx163840-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx163840-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx40960-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx40960-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-controlled-ctx40960-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx10240-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx10240-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx10240-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx163840-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx163840-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx163840-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx40960-c1": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx40960-c2": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    },
+    "candidate-natural-ctx40960-c4": {
+      "measurement": null,
+      "metrics": {
+        "admission_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "completion_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "concurrency": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "context_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "decode_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "e2e_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "effective_prefill_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "gpu_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "host_memory": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_bytes": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "kv_cache_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "oom_status": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "prompt_tokens": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "throughput_tok_s": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "time_to_first_output_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "tpot_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        },
+        "ttft_ms": {
+          "reason": "Frozen plan; cell not started.",
+          "status": "not_collected"
+        }
+      }
+    }
+  },
+  "frozen_plan": {
+    "bytes": 10864,
+    "path": "plans/comparison-plan.json",
+    "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+  },
+  "missing_required_metrics": [
+    "baseline-natural-ctx10240-c1.admission_status",
+    "baseline-natural-ctx10240-c1.completion_tokens",
+    "baseline-natural-ctx10240-c1.concurrency",
+    "baseline-natural-ctx10240-c1.context_tokens",
+    "baseline-natural-ctx10240-c1.decode_tok_s",
+    "baseline-natural-ctx10240-c1.e2e_ms",
+    "baseline-natural-ctx10240-c1.effective_prefill_tok_s",
+    "baseline-natural-ctx10240-c1.gpu_memory",
+    "baseline-natural-ctx10240-c1.host_memory",
+    "baseline-natural-ctx10240-c1.kv_cache_bytes",
+    "baseline-natural-ctx10240-c1.kv_cache_tokens",
+    "baseline-natural-ctx10240-c1.oom_status",
+    "baseline-natural-ctx10240-c1.prompt_tokens",
+    "baseline-natural-ctx10240-c1.throughput_tok_s",
+    "baseline-natural-ctx10240-c1.time_to_first_output_ms",
+    "baseline-natural-ctx10240-c1.tpot_ms",
+    "baseline-natural-ctx10240-c1.ttft_ms",
+    "baseline-natural-ctx10240-c2.admission_status",
+    "baseline-natural-ctx10240-c2.completion_tokens",
+    "baseline-natural-ctx10240-c2.concurrency",
+    "baseline-natural-ctx10240-c2.context_tokens",
+    "baseline-natural-ctx10240-c2.decode_tok_s",
+    "baseline-natural-ctx10240-c2.e2e_ms",
+    "baseline-natural-ctx10240-c2.effective_prefill_tok_s",
+    "baseline-natural-ctx10240-c2.gpu_memory",
+    "baseline-natural-ctx10240-c2.host_memory",
+    "baseline-natural-ctx10240-c2.kv_cache_bytes",
+    "baseline-natural-ctx10240-c2.kv_cache_tokens",
+    "baseline-natural-ctx10240-c2.oom_status",
+    "baseline-natural-ctx10240-c2.prompt_tokens",
+    "baseline-natural-ctx10240-c2.throughput_tok_s",
+    "baseline-natural-ctx10240-c2.time_to_first_output_ms",
+    "baseline-natural-ctx10240-c2.tpot_ms",
+    "baseline-natural-ctx10240-c2.ttft_ms",
+    "baseline-natural-ctx10240-c4.admission_status",
+    "baseline-natural-ctx10240-c4.completion_tokens",
+    "baseline-natural-ctx10240-c4.concurrency",
+    "baseline-natural-ctx10240-c4.context_tokens",
+    "baseline-natural-ctx10240-c4.decode_tok_s",
+    "baseline-natural-ctx10240-c4.e2e_ms",
+    "baseline-natural-ctx10240-c4.effective_prefill_tok_s",
+    "baseline-natural-ctx10240-c4.gpu_memory",
+    "baseline-natural-ctx10240-c4.host_memory",
+    "baseline-natural-ctx10240-c4.kv_cache_bytes",
+    "baseline-natural-ctx10240-c4.kv_cache_tokens",
+    "baseline-natural-ctx10240-c4.oom_status",
+    "baseline-natural-ctx10240-c4.prompt_tokens",
+    "baseline-natural-ctx10240-c4.throughput_tok_s",
+    "baseline-natural-ctx10240-c4.time_to_first_output_ms",
+    "baseline-natural-ctx10240-c4.tpot_ms",
+    "baseline-natural-ctx10240-c4.ttft_ms",
+    "baseline-natural-ctx40960-c1.admission_status",
+    "baseline-natural-ctx40960-c1.completion_tokens",
+    "baseline-natural-ctx40960-c1.concurrency",
+    "baseline-natural-ctx40960-c1.context_tokens",
+    "baseline-natural-ctx40960-c1.decode_tok_s",
+    "baseline-natural-ctx40960-c1.e2e_ms",
+    "baseline-natural-ctx40960-c1.effective_prefill_tok_s",
+    "baseline-natural-ctx40960-c1.gpu_memory",
+    "baseline-natural-ctx40960-c1.host_memory",
+    "baseline-natural-ctx40960-c1.kv_cache_bytes",
+    "baseline-natural-ctx40960-c1.kv_cache_tokens",
+    "baseline-natural-ctx40960-c1.oom_status",
+    "baseline-natural-ctx40960-c1.prompt_tokens",
+    "baseline-natural-ctx40960-c1.throughput_tok_s",
+    "baseline-natural-ctx40960-c1.time_to_first_output_ms",
+    "baseline-natural-ctx40960-c1.tpot_ms",
+    "baseline-natural-ctx40960-c1.ttft_ms",
+    "baseline-natural-ctx40960-c2.admission_status",
+    "baseline-natural-ctx40960-c2.completion_tokens",
+    "baseline-natural-ctx40960-c2.concurrency",
+    "baseline-natural-ctx40960-c2.context_tokens",
+    "baseline-natural-ctx40960-c2.decode_tok_s",
+    "baseline-natural-ctx40960-c2.e2e_ms",
+    "baseline-natural-ctx40960-c2.effective_prefill_tok_s",
+    "baseline-natural-ctx40960-c2.gpu_memory",
+    "baseline-natural-ctx40960-c2.host_memory",
+    "baseline-natural-ctx40960-c2.kv_cache_bytes",
+    "baseline-natural-ctx40960-c2.kv_cache_tokens",
+    "baseline-natural-ctx40960-c2.oom_status",
+    "baseline-natural-ctx40960-c2.prompt_tokens",
+    "baseline-natural-ctx40960-c2.throughput_tok_s",
+    "baseline-natural-ctx40960-c2.time_to_first_output_ms",
+    "baseline-natural-ctx40960-c2.tpot_ms",
+    "baseline-natural-ctx40960-c2.ttft_ms",
+    "baseline-natural-ctx40960-c4.admission_status",
+    "baseline-natural-ctx40960-c4.completion_tokens",
+    "baseline-natural-ctx40960-c4.concurrency",
+    "baseline-natural-ctx40960-c4.context_tokens",
+    "baseline-natural-ctx40960-c4.decode_tok_s",
+    "baseline-natural-ctx40960-c4.e2e_ms",
+    "baseline-natural-ctx40960-c4.effective_prefill_tok_s",
+    "baseline-natural-ctx40960-c4.gpu_memory",
+    "baseline-natural-ctx40960-c4.host_memory",
+    "baseline-natural-ctx40960-c4.kv_cache_bytes",
+    "baseline-natural-ctx40960-c4.kv_cache_tokens",
+    "baseline-natural-ctx40960-c4.oom_status",
+    "baseline-natural-ctx40960-c4.prompt_tokens",
+    "baseline-natural-ctx40960-c4.throughput_tok_s",
+    "baseline-natural-ctx40960-c4.time_to_first_output_ms",
+    "baseline-natural-ctx40960-c4.tpot_ms",
+    "baseline-natural-ctx40960-c4.ttft_ms",
+    "baseline-natural-ctx163840-c1.admission_status",
+    "baseline-natural-ctx163840-c1.completion_tokens",
+    "baseline-natural-ctx163840-c1.concurrency",
+    "baseline-natural-ctx163840-c1.context_tokens",
+    "baseline-natural-ctx163840-c1.decode_tok_s",
+    "baseline-natural-ctx163840-c1.e2e_ms",
+    "baseline-natural-ctx163840-c1.effective_prefill_tok_s",
+    "baseline-natural-ctx163840-c1.gpu_memory",
+    "baseline-natural-ctx163840-c1.host_memory",
+    "baseline-natural-ctx163840-c1.kv_cache_bytes",
+    "baseline-natural-ctx163840-c1.kv_cache_tokens",
+    "baseline-natural-ctx163840-c1.oom_status",
+    "baseline-natural-ctx163840-c1.prompt_tokens",
+    "baseline-natural-ctx163840-c1.throughput_tok_s",
+    "baseline-natural-ctx163840-c1.time_to_first_output_ms",
+    "baseline-natural-ctx163840-c1.tpot_ms",
+    "baseline-natural-ctx163840-c1.ttft_ms",
+    "baseline-natural-ctx163840-c2.admission_status",
+    "baseline-natural-ctx163840-c2.completion_tokens",
+    "baseline-natural-ctx163840-c2.concurrency",
+    "baseline-natural-ctx163840-c2.context_tokens",
+    "baseline-natural-ctx163840-c2.decode_tok_s",
+    "baseline-natural-ctx163840-c2.e2e_ms",
+    "baseline-natural-ctx163840-c2.effective_prefill_tok_s",
+    "baseline-natural-ctx163840-c2.gpu_memory",
+    "baseline-natural-ctx163840-c2.host_memory",
+    "baseline-natural-ctx163840-c2.kv_cache_bytes",
+    "baseline-natural-ctx163840-c2.kv_cache_tokens",
+    "baseline-natural-ctx163840-c2.oom_status",
+    "baseline-natural-ctx163840-c2.prompt_tokens",
+    "baseline-natural-ctx163840-c2.throughput_tok_s",
+    "baseline-natural-ctx163840-c2.time_to_first_output_ms",
+    "baseline-natural-ctx163840-c2.tpot_ms",
+    "baseline-natural-ctx163840-c2.ttft_ms",
+    "baseline-natural-ctx163840-c4.admission_status",
+    "baseline-natural-ctx163840-c4.completion_tokens",
+    "baseline-natural-ctx163840-c4.concurrency",
+    "baseline-natural-ctx163840-c4.context_tokens",
+    "baseline-natural-ctx163840-c4.decode_tok_s",
+    "baseline-natural-ctx163840-c4.e2e_ms",
+    "baseline-natural-ctx163840-c4.effective_prefill_tok_s",
+    "baseline-natural-ctx163840-c4.gpu_memory",
+    "baseline-natural-ctx163840-c4.host_memory",
+    "baseline-natural-ctx163840-c4.kv_cache_bytes",
+    "baseline-natural-ctx163840-c4.kv_cache_tokens",
+    "baseline-natural-ctx163840-c4.oom_status",
+    "baseline-natural-ctx163840-c4.prompt_tokens",
+    "baseline-natural-ctx163840-c4.throughput_tok_s",
+    "baseline-natural-ctx163840-c4.time_to_first_output_ms",
+    "baseline-natural-ctx163840-c4.tpot_ms",
+    "baseline-natural-ctx163840-c4.ttft_ms",
+    "baseline-controlled-ctx10240-c1.admission_status",
+    "baseline-controlled-ctx10240-c1.completion_tokens",
+    "baseline-controlled-ctx10240-c1.concurrency",
+    "baseline-controlled-ctx10240-c1.context_tokens",
+    "baseline-controlled-ctx10240-c1.decode_tok_s",
+    "baseline-controlled-ctx10240-c1.e2e_ms",
+    "baseline-controlled-ctx10240-c1.effective_prefill_tok_s",
+    "baseline-controlled-ctx10240-c1.gpu_memory",
+    "baseline-controlled-ctx10240-c1.host_memory",
+    "baseline-controlled-ctx10240-c1.kv_cache_bytes",
+    "baseline-controlled-ctx10240-c1.kv_cache_tokens",
+    "baseline-controlled-ctx10240-c1.oom_status",
+    "baseline-controlled-ctx10240-c1.prompt_tokens",
+    "baseline-controlled-ctx10240-c1.throughput_tok_s",
+    "baseline-controlled-ctx10240-c1.time_to_first_output_ms",
+    "baseline-controlled-ctx10240-c1.tpot_ms",
+    "baseline-controlled-ctx10240-c1.ttft_ms",
+    "baseline-controlled-ctx10240-c2.admission_status",
+    "baseline-controlled-ctx10240-c2.completion_tokens",
+    "baseline-controlled-ctx10240-c2.concurrency",
+    "baseline-controlled-ctx10240-c2.context_tokens",
+    "baseline-controlled-ctx10240-c2.decode_tok_s",
+    "baseline-controlled-ctx10240-c2.e2e_ms",
+    "baseline-controlled-ctx10240-c2.effective_prefill_tok_s",
+    "baseline-controlled-ctx10240-c2.gpu_memory",
+    "baseline-controlled-ctx10240-c2.host_memory",
+    "baseline-controlled-ctx10240-c2.kv_cache_bytes",
+    "baseline-controlled-ctx10240-c2.kv_cache_tokens",
+    "baseline-controlled-ctx10240-c2.oom_status",
+    "baseline-controlled-ctx10240-c2.prompt_tokens",
+    "baseline-controlled-ctx10240-c2.throughput_tok_s",
+    "baseline-controlled-ctx10240-c2.time_to_first_output_ms",
+    "baseline-controlled-ctx10240-c2.tpot_ms",
+    "baseline-controlled-ctx10240-c2.ttft_ms",
+    "baseline-controlled-ctx10240-c4.admission_status",
+    "baseline-controlled-ctx10240-c4.completion_tokens",
+    "baseline-controlled-ctx10240-c4.concurrency",
+    "baseline-controlled-ctx10240-c4.context_tokens",
+    "baseline-controlled-ctx10240-c4.decode_tok_s",
+    "baseline-controlled-ctx10240-c4.e2e_ms",
+    "baseline-controlled-ctx10240-c4.effective_prefill_tok_s",
+    "baseline-controlled-ctx10240-c4.gpu_memory",
+    "baseline-controlled-ctx10240-c4.host_memory",
+    "baseline-controlled-ctx10240-c4.kv_cache_bytes",
+    "baseline-controlled-ctx10240-c4.kv_cache_tokens",
+    "baseline-controlled-ctx10240-c4.oom_status",
+    "baseline-controlled-ctx10240-c4.prompt_tokens",
+    "baseline-controlled-ctx10240-c4.throughput_tok_s",
+    "baseline-controlled-ctx10240-c4.time_to_first_output_ms",
+    "baseline-controlled-ctx10240-c4.tpot_ms",
+    "baseline-controlled-ctx10240-c4.ttft_ms",
+    "baseline-controlled-ctx40960-c1.admission_status",
+    "baseline-controlled-ctx40960-c1.completion_tokens",
+    "baseline-controlled-ctx40960-c1.concurrency",
+    "baseline-controlled-ctx40960-c1.context_tokens",
+    "baseline-controlled-ctx40960-c1.decode_tok_s",
+    "baseline-controlled-ctx40960-c1.e2e_ms",
+    "baseline-controlled-ctx40960-c1.effective_prefill_tok_s",
+    "baseline-controlled-ctx40960-c1.gpu_memory",
+    "baseline-controlled-ctx40960-c1.host_memory",
+    "baseline-controlled-ctx40960-c1.kv_cache_bytes",
+    "baseline-controlled-ctx40960-c1.kv_cache_tokens",
+    "baseline-controlled-ctx40960-c1.oom_status",
+    "baseline-controlled-ctx40960-c1.prompt_tokens",
+    "baseline-controlled-ctx40960-c1.throughput_tok_s",
+    "baseline-controlled-ctx40960-c1.time_to_first_output_ms",
+    "baseline-controlled-ctx40960-c1.tpot_ms",
+    "baseline-controlled-ctx40960-c1.ttft_ms",
+    "baseline-controlled-ctx40960-c2.admission_status",
+    "baseline-controlled-ctx40960-c2.completion_tokens",
+    "baseline-controlled-ctx40960-c2.concurrency",
+    "baseline-controlled-ctx40960-c2.context_tokens",
+    "baseline-controlled-ctx40960-c2.decode_tok_s",
+    "baseline-controlled-ctx40960-c2.e2e_ms",
+    "baseline-controlled-ctx40960-c2.effective_prefill_tok_s",
+    "baseline-controlled-ctx40960-c2.gpu_memory",
+    "baseline-controlled-ctx40960-c2.host_memory",
+    "baseline-controlled-ctx40960-c2.kv_cache_bytes",
+    "baseline-controlled-ctx40960-c2.kv_cache_tokens",
+    "baseline-controlled-ctx40960-c2.oom_status",
+    "baseline-controlled-ctx40960-c2.prompt_tokens",
+    "baseline-controlled-ctx40960-c2.throughput_tok_s",
+    "baseline-controlled-ctx40960-c2.time_to_first_output_ms",
+    "baseline-controlled-ctx40960-c2.tpot_ms",
+    "baseline-controlled-ctx40960-c2.ttft_ms",
+    "baseline-controlled-ctx40960-c4.admission_status",
+    "baseline-controlled-ctx40960-c4.completion_tokens",
+    "baseline-controlled-ctx40960-c4.concurrency",
+    "baseline-controlled-ctx40960-c4.context_tokens",
+    "baseline-controlled-ctx40960-c4.decode_tok_s",
+    "baseline-controlled-ctx40960-c4.e2e_ms",
+    "baseline-controlled-ctx40960-c4.effective_prefill_tok_s",
+    "baseline-controlled-ctx40960-c4.gpu_memory",
+    "baseline-controlled-ctx40960-c4.host_memory",
+    "baseline-controlled-ctx40960-c4.kv_cache_bytes",
+    "baseline-controlled-ctx40960-c4.kv_cache_tokens",
+    "baseline-controlled-ctx40960-c4.oom_status",
+    "baseline-controlled-ctx40960-c4.prompt_tokens",
+    "baseline-controlled-ctx40960-c4.throughput_tok_s",
+    "baseline-controlled-ctx40960-c4.time_to_first_output_ms",
+    "baseline-controlled-ctx40960-c4.tpot_ms",
+    "baseline-controlled-ctx40960-c4.ttft_ms",
+    "baseline-controlled-ctx163840-c1.admission_status",
+    "baseline-controlled-ctx163840-c1.completion_tokens",
+    "baseline-controlled-ctx163840-c1.concurrency",
+    "baseline-controlled-ctx163840-c1.context_tokens",
+    "baseline-controlled-ctx163840-c1.decode_tok_s",
+    "baseline-controlled-ctx163840-c1.e2e_ms",
+    "baseline-controlled-ctx163840-c1.effective_prefill_tok_s",
+    "baseline-controlled-ctx163840-c1.gpu_memory",
+    "baseline-controlled-ctx163840-c1.host_memory",
+    "baseline-controlled-ctx163840-c1.kv_cache_bytes",
+    "baseline-controlled-ctx163840-c1.kv_cache_tokens",
+    "baseline-controlled-ctx163840-c1.oom_status",
+    "baseline-controlled-ctx163840-c1.prompt_tokens",
+    "baseline-controlled-ctx163840-c1.throughput_tok_s",
+    "baseline-controlled-ctx163840-c1.time_to_first_output_ms",
+    "baseline-controlled-ctx163840-c1.tpot_ms",
+    "baseline-controlled-ctx163840-c1.ttft_ms",
+    "baseline-controlled-ctx163840-c2.admission_status",
+    "baseline-controlled-ctx163840-c2.completion_tokens",
+    "baseline-controlled-ctx163840-c2.concurrency",
+    "baseline-controlled-ctx163840-c2.context_tokens",
+    "baseline-controlled-ctx163840-c2.decode_tok_s",
+    "baseline-controlled-ctx163840-c2.e2e_ms",
+    "baseline-controlled-ctx163840-c2.effective_prefill_tok_s",
+    "baseline-controlled-ctx163840-c2.gpu_memory",
+    "baseline-controlled-ctx163840-c2.host_memory",
+    "baseline-controlled-ctx163840-c2.kv_cache_bytes",
+    "baseline-controlled-ctx163840-c2.kv_cache_tokens",
+    "baseline-controlled-ctx163840-c2.oom_status",
+    "baseline-controlled-ctx163840-c2.prompt_tokens",
+    "baseline-controlled-ctx163840-c2.throughput_tok_s",
+    "baseline-controlled-ctx163840-c2.time_to_first_output_ms",
+    "baseline-controlled-ctx163840-c2.tpot_ms",
+    "baseline-controlled-ctx163840-c2.ttft_ms",
+    "baseline-controlled-ctx163840-c4.admission_status",
+    "baseline-controlled-ctx163840-c4.completion_tokens",
+    "baseline-controlled-ctx163840-c4.concurrency",
+    "baseline-controlled-ctx163840-c4.context_tokens",
+    "baseline-controlled-ctx163840-c4.decode_tok_s",
+    "baseline-controlled-ctx163840-c4.e2e_ms",
+    "baseline-controlled-ctx163840-c4.effective_prefill_tok_s",
+    "baseline-controlled-ctx163840-c4.gpu_memory",
+    "baseline-controlled-ctx163840-c4.host_memory",
+    "baseline-controlled-ctx163840-c4.kv_cache_bytes",
+    "baseline-controlled-ctx163840-c4.kv_cache_tokens",
+    "baseline-controlled-ctx163840-c4.oom_status",
+    "baseline-controlled-ctx163840-c4.prompt_tokens",
+    "baseline-controlled-ctx163840-c4.throughput_tok_s",
+    "baseline-controlled-ctx163840-c4.time_to_first_output_ms",
+    "baseline-controlled-ctx163840-c4.tpot_ms",
+    "baseline-controlled-ctx163840-c4.ttft_ms",
+    "baseline-capacity-edge-ctx310272-c1.admission_status",
+    "baseline-capacity-edge-ctx310272-c1.completion_tokens",
+    "baseline-capacity-edge-ctx310272-c1.concurrency",
+    "baseline-capacity-edge-ctx310272-c1.context_tokens",
+    "baseline-capacity-edge-ctx310272-c1.decode_tok_s",
+    "baseline-capacity-edge-ctx310272-c1.e2e_ms",
+    "baseline-capacity-edge-ctx310272-c1.effective_prefill_tok_s",
+    "baseline-capacity-edge-ctx310272-c1.gpu_memory",
+    "baseline-capacity-edge-ctx310272-c1.host_memory",
+    "baseline-capacity-edge-ctx310272-c1.kv_cache_bytes",
+    "baseline-capacity-edge-ctx310272-c1.kv_cache_tokens",
+    "baseline-capacity-edge-ctx310272-c1.oom_status",
+    "baseline-capacity-edge-ctx310272-c1.prompt_tokens",
+    "baseline-capacity-edge-ctx310272-c1.throughput_tok_s",
+    "baseline-capacity-edge-ctx310272-c1.time_to_first_output_ms",
+    "baseline-capacity-edge-ctx310272-c1.tpot_ms",
+    "baseline-capacity-edge-ctx310272-c1.ttft_ms",
+    "baseline-capacity-edge-ctx310272-c2.admission_status",
+    "baseline-capacity-edge-ctx310272-c2.completion_tokens",
+    "baseline-capacity-edge-ctx310272-c2.concurrency",
+    "baseline-capacity-edge-ctx310272-c2.context_tokens",
+    "baseline-capacity-edge-ctx310272-c2.decode_tok_s",
+    "baseline-capacity-edge-ctx310272-c2.e2e_ms",
+    "baseline-capacity-edge-ctx310272-c2.effective_prefill_tok_s",
+    "baseline-capacity-edge-ctx310272-c2.gpu_memory",
+    "baseline-capacity-edge-ctx310272-c2.host_memory",
+    "baseline-capacity-edge-ctx310272-c2.kv_cache_bytes",
+    "baseline-capacity-edge-ctx310272-c2.kv_cache_tokens",
+    "baseline-capacity-edge-ctx310272-c2.oom_status",
+    "baseline-capacity-edge-ctx310272-c2.prompt_tokens",
+    "baseline-capacity-edge-ctx310272-c2.throughput_tok_s",
+    "baseline-capacity-edge-ctx310272-c2.time_to_first_output_ms",
+    "baseline-capacity-edge-ctx310272-c2.tpot_ms",
+    "baseline-capacity-edge-ctx310272-c2.ttft_ms",
+    "baseline-capacity-edge-ctx310272-c4.admission_status",
+    "baseline-capacity-edge-ctx310272-c4.completion_tokens",
+    "baseline-capacity-edge-ctx310272-c4.concurrency",
+    "baseline-capacity-edge-ctx310272-c4.context_tokens",
+    "baseline-capacity-edge-ctx310272-c4.decode_tok_s",
+    "baseline-capacity-edge-ctx310272-c4.e2e_ms",
+    "baseline-capacity-edge-ctx310272-c4.effective_prefill_tok_s",
+    "baseline-capacity-edge-ctx310272-c4.gpu_memory",
+    "baseline-capacity-edge-ctx310272-c4.host_memory",
+    "baseline-capacity-edge-ctx310272-c4.kv_cache_bytes",
+    "baseline-capacity-edge-ctx310272-c4.kv_cache_tokens",
+    "baseline-capacity-edge-ctx310272-c4.oom_status",
+    "baseline-capacity-edge-ctx310272-c4.prompt_tokens",
+    "baseline-capacity-edge-ctx310272-c4.throughput_tok_s",
+    "baseline-capacity-edge-ctx310272-c4.time_to_first_output_ms",
+    "baseline-capacity-edge-ctx310272-c4.tpot_ms",
+    "baseline-capacity-edge-ctx310272-c4.ttft_ms",
+    "candidate-natural-ctx10240-c1.admission_status",
+    "candidate-natural-ctx10240-c1.completion_tokens",
+    "candidate-natural-ctx10240-c1.concurrency",
+    "candidate-natural-ctx10240-c1.context_tokens",
+    "candidate-natural-ctx10240-c1.decode_tok_s",
+    "candidate-natural-ctx10240-c1.e2e_ms",
+    "candidate-natural-ctx10240-c1.effective_prefill_tok_s",
+    "candidate-natural-ctx10240-c1.gpu_memory",
+    "candidate-natural-ctx10240-c1.host_memory",
+    "candidate-natural-ctx10240-c1.kv_cache_bytes",
+    "candidate-natural-ctx10240-c1.kv_cache_tokens",
+    "candidate-natural-ctx10240-c1.oom_status",
+    "candidate-natural-ctx10240-c1.prompt_tokens",
+    "candidate-natural-ctx10240-c1.throughput_tok_s",
+    "candidate-natural-ctx10240-c1.time_to_first_output_ms",
+    "candidate-natural-ctx10240-c1.tpot_ms",
+    "candidate-natural-ctx10240-c1.ttft_ms",
+    "candidate-natural-ctx10240-c2.admission_status",
+    "candidate-natural-ctx10240-c2.completion_tokens",
+    "candidate-natural-ctx10240-c2.concurrency",
+    "candidate-natural-ctx10240-c2.context_tokens",
+    "candidate-natural-ctx10240-c2.decode_tok_s",
+    "candidate-natural-ctx10240-c2.e2e_ms",
+    "candidate-natural-ctx10240-c2.effective_prefill_tok_s",
+    "candidate-natural-ctx10240-c2.gpu_memory",
+    "candidate-natural-ctx10240-c2.host_memory",
+    "candidate-natural-ctx10240-c2.kv_cache_bytes",
+    "candidate-natural-ctx10240-c2.kv_cache_tokens",
+    "candidate-natural-ctx10240-c2.oom_status",
+    "candidate-natural-ctx10240-c2.prompt_tokens",
+    "candidate-natural-ctx10240-c2.throughput_tok_s",
+    "candidate-natural-ctx10240-c2.time_to_first_output_ms",
+    "candidate-natural-ctx10240-c2.tpot_ms",
+    "candidate-natural-ctx10240-c2.ttft_ms",
+    "candidate-natural-ctx10240-c4.admission_status",
+    "candidate-natural-ctx10240-c4.completion_tokens",
+    "candidate-natural-ctx10240-c4.concurrency",
+    "candidate-natural-ctx10240-c4.context_tokens",
+    "candidate-natural-ctx10240-c4.decode_tok_s",
+    "candidate-natural-ctx10240-c4.e2e_ms",
+    "candidate-natural-ctx10240-c4.effective_prefill_tok_s",
+    "candidate-natural-ctx10240-c4.gpu_memory",
+    "candidate-natural-ctx10240-c4.host_memory",
+    "candidate-natural-ctx10240-c4.kv_cache_bytes",
+    "candidate-natural-ctx10240-c4.kv_cache_tokens",
+    "candidate-natural-ctx10240-c4.oom_status",
+    "candidate-natural-ctx10240-c4.prompt_tokens",
+    "candidate-natural-ctx10240-c4.throughput_tok_s",
+    "candidate-natural-ctx10240-c4.time_to_first_output_ms",
+    "candidate-natural-ctx10240-c4.tpot_ms",
+    "candidate-natural-ctx10240-c4.ttft_ms",
+    "candidate-natural-ctx40960-c1.admission_status",
+    "candidate-natural-ctx40960-c1.completion_tokens",
+    "candidate-natural-ctx40960-c1.concurrency",
+    "candidate-natural-ctx40960-c1.context_tokens",
+    "candidate-natural-ctx40960-c1.decode_tok_s",
+    "candidate-natural-ctx40960-c1.e2e_ms",
+    "candidate-natural-ctx40960-c1.effective_prefill_tok_s",
+    "candidate-natural-ctx40960-c1.gpu_memory",
+    "candidate-natural-ctx40960-c1.host_memory",
+    "candidate-natural-ctx40960-c1.kv_cache_bytes",
+    "candidate-natural-ctx40960-c1.kv_cache_tokens",
+    "candidate-natural-ctx40960-c1.oom_status",
+    "candidate-natural-ctx40960-c1.prompt_tokens",
+    "candidate-natural-ctx40960-c1.throughput_tok_s",
+    "candidate-natural-ctx40960-c1.time_to_first_output_ms",
+    "candidate-natural-ctx40960-c1.tpot_ms",
+    "candidate-natural-ctx40960-c1.ttft_ms",
+    "candidate-natural-ctx40960-c2.admission_status",
+    "candidate-natural-ctx40960-c2.completion_tokens",
+    "candidate-natural-ctx40960-c2.concurrency",
+    "candidate-natural-ctx40960-c2.context_tokens",
+    "candidate-natural-ctx40960-c2.decode_tok_s",
+    "candidate-natural-ctx40960-c2.e2e_ms",
+    "candidate-natural-ctx40960-c2.effective_prefill_tok_s",
+    "candidate-natural-ctx40960-c2.gpu_memory",
+    "candidate-natural-ctx40960-c2.host_memory",
+    "candidate-natural-ctx40960-c2.kv_cache_bytes",
+    "candidate-natural-ctx40960-c2.kv_cache_tokens",
+    "candidate-natural-ctx40960-c2.oom_status",
+    "candidate-natural-ctx40960-c2.prompt_tokens",
+    "candidate-natural-ctx40960-c2.throughput_tok_s",
+    "candidate-natural-ctx40960-c2.time_to_first_output_ms",
+    "candidate-natural-ctx40960-c2.tpot_ms",
+    "candidate-natural-ctx40960-c2.ttft_ms",
+    "candidate-natural-ctx40960-c4.admission_status",
+    "candidate-natural-ctx40960-c4.completion_tokens",
+    "candidate-natural-ctx40960-c4.concurrency",
+    "candidate-natural-ctx40960-c4.context_tokens",
+    "candidate-natural-ctx40960-c4.decode_tok_s",
+    "candidate-natural-ctx40960-c4.e2e_ms",
+    "candidate-natural-ctx40960-c4.effective_prefill_tok_s",
+    "candidate-natural-ctx40960-c4.gpu_memory",
+    "candidate-natural-ctx40960-c4.host_memory",
+    "candidate-natural-ctx40960-c4.kv_cache_bytes",
+    "candidate-natural-ctx40960-c4.kv_cache_tokens",
+    "candidate-natural-ctx40960-c4.oom_status",
+    "candidate-natural-ctx40960-c4.prompt_tokens",
+    "candidate-natural-ctx40960-c4.throughput_tok_s",
+    "candidate-natural-ctx40960-c4.time_to_first_output_ms",
+    "candidate-natural-ctx40960-c4.tpot_ms",
+    "candidate-natural-ctx40960-c4.ttft_ms",
+    "candidate-natural-ctx163840-c1.admission_status",
+    "candidate-natural-ctx163840-c1.completion_tokens",
+    "candidate-natural-ctx163840-c1.concurrency",
+    "candidate-natural-ctx163840-c1.context_tokens",
+    "candidate-natural-ctx163840-c1.decode_tok_s",
+    "candidate-natural-ctx163840-c1.e2e_ms",
+    "candidate-natural-ctx163840-c1.effective_prefill_tok_s",
+    "candidate-natural-ctx163840-c1.gpu_memory",
+    "candidate-natural-ctx163840-c1.host_memory",
+    "candidate-natural-ctx163840-c1.kv_cache_bytes",
+    "candidate-natural-ctx163840-c1.kv_cache_tokens",
+    "candidate-natural-ctx163840-c1.oom_status",
+    "candidate-natural-ctx163840-c1.prompt_tokens",
+    "candidate-natural-ctx163840-c1.throughput_tok_s",
+    "candidate-natural-ctx163840-c1.time_to_first_output_ms",
+    "candidate-natural-ctx163840-c1.tpot_ms",
+    "candidate-natural-ctx163840-c1.ttft_ms",
+    "candidate-natural-ctx163840-c2.admission_status",
+    "candidate-natural-ctx163840-c2.completion_tokens",
+    "candidate-natural-ctx163840-c2.concurrency",
+    "candidate-natural-ctx163840-c2.context_tokens",
+    "candidate-natural-ctx163840-c2.decode_tok_s",
+    "candidate-natural-ctx163840-c2.e2e_ms",
+    "candidate-natural-ctx163840-c2.effective_prefill_tok_s",
+    "candidate-natural-ctx163840-c2.gpu_memory",
+    "candidate-natural-ctx163840-c2.host_memory",
+    "candidate-natural-ctx163840-c2.kv_cache_bytes",
+    "candidate-natural-ctx163840-c2.kv_cache_tokens",
+    "candidate-natural-ctx163840-c2.oom_status",
+    "candidate-natural-ctx163840-c2.prompt_tokens",
+    "candidate-natural-ctx163840-c2.throughput_tok_s",
+    "candidate-natural-ctx163840-c2.time_to_first_output_ms",
+    "candidate-natural-ctx163840-c2.tpot_ms",
+    "candidate-natural-ctx163840-c2.ttft_ms",
+    "candidate-natural-ctx163840-c4.admission_status",
+    "candidate-natural-ctx163840-c4.completion_tokens",
+    "candidate-natural-ctx163840-c4.concurrency",
+    "candidate-natural-ctx163840-c4.context_tokens",
+    "candidate-natural-ctx163840-c4.decode_tok_s",
+    "candidate-natural-ctx163840-c4.e2e_ms",
+    "candidate-natural-ctx163840-c4.effective_prefill_tok_s",
+    "candidate-natural-ctx163840-c4.gpu_memory",
+    "candidate-natural-ctx163840-c4.host_memory",
+    "candidate-natural-ctx163840-c4.kv_cache_bytes",
+    "candidate-natural-ctx163840-c4.kv_cache_tokens",
+    "candidate-natural-ctx163840-c4.oom_status",
+    "candidate-natural-ctx163840-c4.prompt_tokens",
+    "candidate-natural-ctx163840-c4.throughput_tok_s",
+    "candidate-natural-ctx163840-c4.time_to_first_output_ms",
+    "candidate-natural-ctx163840-c4.tpot_ms",
+    "candidate-natural-ctx163840-c4.ttft_ms",
+    "candidate-controlled-ctx10240-c1.admission_status",
+    "candidate-controlled-ctx10240-c1.completion_tokens",
+    "candidate-controlled-ctx10240-c1.concurrency",
+    "candidate-controlled-ctx10240-c1.context_tokens",
+    "candidate-controlled-ctx10240-c1.decode_tok_s",
+    "candidate-controlled-ctx10240-c1.e2e_ms",
+    "candidate-controlled-ctx10240-c1.effective_prefill_tok_s",
+    "candidate-controlled-ctx10240-c1.gpu_memory",
+    "candidate-controlled-ctx10240-c1.host_memory",
+    "candidate-controlled-ctx10240-c1.kv_cache_bytes",
+    "candidate-controlled-ctx10240-c1.kv_cache_tokens",
+    "candidate-controlled-ctx10240-c1.oom_status",
+    "candidate-controlled-ctx10240-c1.prompt_tokens",
+    "candidate-controlled-ctx10240-c1.throughput_tok_s",
+    "candidate-controlled-ctx10240-c1.time_to_first_output_ms",
+    "candidate-controlled-ctx10240-c1.tpot_ms",
+    "candidate-controlled-ctx10240-c1.ttft_ms",
+    "candidate-controlled-ctx10240-c2.admission_status",
+    "candidate-controlled-ctx10240-c2.completion_tokens",
+    "candidate-controlled-ctx10240-c2.concurrency",
+    "candidate-controlled-ctx10240-c2.context_tokens",
+    "candidate-controlled-ctx10240-c2.decode_tok_s",
+    "candidate-controlled-ctx10240-c2.e2e_ms",
+    "candidate-controlled-ctx10240-c2.effective_prefill_tok_s",
+    "candidate-controlled-ctx10240-c2.gpu_memory",
+    "candidate-controlled-ctx10240-c2.host_memory",
+    "candidate-controlled-ctx10240-c2.kv_cache_bytes",
+    "candidate-controlled-ctx10240-c2.kv_cache_tokens",
+    "candidate-controlled-ctx10240-c2.oom_status",
+    "candidate-controlled-ctx10240-c2.prompt_tokens",
+    "candidate-controlled-ctx10240-c2.throughput_tok_s",
+    "candidate-controlled-ctx10240-c2.time_to_first_output_ms",
+    "candidate-controlled-ctx10240-c2.tpot_ms",
+    "candidate-controlled-ctx10240-c2.ttft_ms",
+    "candidate-controlled-ctx10240-c4.admission_status",
+    "candidate-controlled-ctx10240-c4.completion_tokens",
+    "candidate-controlled-ctx10240-c4.concurrency",
+    "candidate-controlled-ctx10240-c4.context_tokens",
+    "candidate-controlled-ctx10240-c4.decode_tok_s",
+    "candidate-controlled-ctx10240-c4.e2e_ms",
+    "candidate-controlled-ctx10240-c4.effective_prefill_tok_s",
+    "candidate-controlled-ctx10240-c4.gpu_memory",
+    "candidate-controlled-ctx10240-c4.host_memory",
+    "candidate-controlled-ctx10240-c4.kv_cache_bytes",
+    "candidate-controlled-ctx10240-c4.kv_cache_tokens",
+    "candidate-controlled-ctx10240-c4.oom_status",
+    "candidate-controlled-ctx10240-c4.prompt_tokens",
+    "candidate-controlled-ctx10240-c4.throughput_tok_s",
+    "candidate-controlled-ctx10240-c4.time_to_first_output_ms",
+    "candidate-controlled-ctx10240-c4.tpot_ms",
+    "candidate-controlled-ctx10240-c4.ttft_ms",
+    "candidate-controlled-ctx40960-c1.admission_status",
+    "candidate-controlled-ctx40960-c1.completion_tokens",
+    "candidate-controlled-ctx40960-c1.concurrency",
+    "candidate-controlled-ctx40960-c1.context_tokens",
+    "candidate-controlled-ctx40960-c1.decode_tok_s",
+    "candidate-controlled-ctx40960-c1.e2e_ms",
+    "candidate-controlled-ctx40960-c1.effective_prefill_tok_s",
+    "candidate-controlled-ctx40960-c1.gpu_memory",
+    "candidate-controlled-ctx40960-c1.host_memory",
+    "candidate-controlled-ctx40960-c1.kv_cache_bytes",
+    "candidate-controlled-ctx40960-c1.kv_cache_tokens",
+    "candidate-controlled-ctx40960-c1.oom_status",
+    "candidate-controlled-ctx40960-c1.prompt_tokens",
+    "candidate-controlled-ctx40960-c1.throughput_tok_s",
+    "candidate-controlled-ctx40960-c1.time_to_first_output_ms",
+    "candidate-controlled-ctx40960-c1.tpot_ms",
+    "candidate-controlled-ctx40960-c1.ttft_ms",
+    "candidate-controlled-ctx40960-c2.admission_status",
+    "candidate-controlled-ctx40960-c2.completion_tokens",
+    "candidate-controlled-ctx40960-c2.concurrency",
+    "candidate-controlled-ctx40960-c2.context_tokens",
+    "candidate-controlled-ctx40960-c2.decode_tok_s",
+    "candidate-controlled-ctx40960-c2.e2e_ms",
+    "candidate-controlled-ctx40960-c2.effective_prefill_tok_s",
+    "candidate-controlled-ctx40960-c2.gpu_memory",
+    "candidate-controlled-ctx40960-c2.host_memory",
+    "candidate-controlled-ctx40960-c2.kv_cache_bytes",
+    "candidate-controlled-ctx40960-c2.kv_cache_tokens",
+    "candidate-controlled-ctx40960-c2.oom_status",
+    "candidate-controlled-ctx40960-c2.prompt_tokens",
+    "candidate-controlled-ctx40960-c2.throughput_tok_s",
+    "candidate-controlled-ctx40960-c2.time_to_first_output_ms",
+    "candidate-controlled-ctx40960-c2.tpot_ms",
+    "candidate-controlled-ctx40960-c2.ttft_ms",
+    "candidate-controlled-ctx40960-c4.admission_status",
+    "candidate-controlled-ctx40960-c4.completion_tokens",
+    "candidate-controlled-ctx40960-c4.concurrency",
+    "candidate-controlled-ctx40960-c4.context_tokens",
+    "candidate-controlled-ctx40960-c4.decode_tok_s",
+    "candidate-controlled-ctx40960-c4.e2e_ms",
+    "candidate-controlled-ctx40960-c4.effective_prefill_tok_s",
+    "candidate-controlled-ctx40960-c4.gpu_memory",
+    "candidate-controlled-ctx40960-c4.host_memory",
+    "candidate-controlled-ctx40960-c4.kv_cache_bytes",
+    "candidate-controlled-ctx40960-c4.kv_cache_tokens",
+    "candidate-controlled-ctx40960-c4.oom_status",
+    "candidate-controlled-ctx40960-c4.prompt_tokens",
+    "candidate-controlled-ctx40960-c4.throughput_tok_s",
+    "candidate-controlled-ctx40960-c4.time_to_first_output_ms",
+    "candidate-controlled-ctx40960-c4.tpot_ms",
+    "candidate-controlled-ctx40960-c4.ttft_ms",
+    "candidate-controlled-ctx163840-c1.admission_status",
+    "candidate-controlled-ctx163840-c1.completion_tokens",
+    "candidate-controlled-ctx163840-c1.concurrency",
+    "candidate-controlled-ctx163840-c1.context_tokens",
+    "candidate-controlled-ctx163840-c1.decode_tok_s",
+    "candidate-controlled-ctx163840-c1.e2e_ms",
+    "candidate-controlled-ctx163840-c1.effective_prefill_tok_s",
+    "candidate-controlled-ctx163840-c1.gpu_memory",
+    "candidate-controlled-ctx163840-c1.host_memory",
+    "candidate-controlled-ctx163840-c1.kv_cache_bytes",
+    "candidate-controlled-ctx163840-c1.kv_cache_tokens",
+    "candidate-controlled-ctx163840-c1.oom_status",
+    "candidate-controlled-ctx163840-c1.prompt_tokens",
+    "candidate-controlled-ctx163840-c1.throughput_tok_s",
+    "candidate-controlled-ctx163840-c1.time_to_first_output_ms",
+    "candidate-controlled-ctx163840-c1.tpot_ms",
+    "candidate-controlled-ctx163840-c1.ttft_ms",
+    "candidate-controlled-ctx163840-c2.admission_status",
+    "candidate-controlled-ctx163840-c2.completion_tokens",
+    "candidate-controlled-ctx163840-c2.concurrency",
+    "candidate-controlled-ctx163840-c2.context_tokens",
+    "candidate-controlled-ctx163840-c2.decode_tok_s",
+    "candidate-controlled-ctx163840-c2.e2e_ms",
+    "candidate-controlled-ctx163840-c2.effective_prefill_tok_s",
+    "candidate-controlled-ctx163840-c2.gpu_memory",
+    "candidate-controlled-ctx163840-c2.host_memory",
+    "candidate-controlled-ctx163840-c2.kv_cache_bytes",
+    "candidate-controlled-ctx163840-c2.kv_cache_tokens",
+    "candidate-controlled-ctx163840-c2.oom_status",
+    "candidate-controlled-ctx163840-c2.prompt_tokens",
+    "candidate-controlled-ctx163840-c2.throughput_tok_s",
+    "candidate-controlled-ctx163840-c2.time_to_first_output_ms",
+    "candidate-controlled-ctx163840-c2.tpot_ms",
+    "candidate-controlled-ctx163840-c2.ttft_ms",
+    "candidate-controlled-ctx163840-c4.admission_status",
+    "candidate-controlled-ctx163840-c4.completion_tokens",
+    "candidate-controlled-ctx163840-c4.concurrency",
+    "candidate-controlled-ctx163840-c4.context_tokens",
+    "candidate-controlled-ctx163840-c4.decode_tok_s",
+    "candidate-controlled-ctx163840-c4.e2e_ms",
+    "candidate-controlled-ctx163840-c4.effective_prefill_tok_s",
+    "candidate-controlled-ctx163840-c4.gpu_memory",
+    "candidate-controlled-ctx163840-c4.host_memory",
+    "candidate-controlled-ctx163840-c4.kv_cache_bytes",
+    "candidate-controlled-ctx163840-c4.kv_cache_tokens",
+    "candidate-controlled-ctx163840-c4.oom_status",
+    "candidate-controlled-ctx163840-c4.prompt_tokens",
+    "candidate-controlled-ctx163840-c4.throughput_tok_s",
+    "candidate-controlled-ctx163840-c4.time_to_first_output_ms",
+    "candidate-controlled-ctx163840-c4.tpot_ms",
+    "candidate-controlled-ctx163840-c4.ttft_ms",
+    "candidate-capacity-edge-ctx310272-c1.admission_status",
+    "candidate-capacity-edge-ctx310272-c1.completion_tokens",
+    "candidate-capacity-edge-ctx310272-c1.concurrency",
+    "candidate-capacity-edge-ctx310272-c1.context_tokens",
+    "candidate-capacity-edge-ctx310272-c1.decode_tok_s",
+    "candidate-capacity-edge-ctx310272-c1.e2e_ms",
+    "candidate-capacity-edge-ctx310272-c1.effective_prefill_tok_s",
+    "candidate-capacity-edge-ctx310272-c1.gpu_memory",
+    "candidate-capacity-edge-ctx310272-c1.host_memory",
+    "candidate-capacity-edge-ctx310272-c1.kv_cache_bytes",
+    "candidate-capacity-edge-ctx310272-c1.kv_cache_tokens",
+    "candidate-capacity-edge-ctx310272-c1.oom_status",
+    "candidate-capacity-edge-ctx310272-c1.prompt_tokens",
+    "candidate-capacity-edge-ctx310272-c1.throughput_tok_s",
+    "candidate-capacity-edge-ctx310272-c1.time_to_first_output_ms",
+    "candidate-capacity-edge-ctx310272-c1.tpot_ms",
+    "candidate-capacity-edge-ctx310272-c1.ttft_ms",
+    "candidate-capacity-edge-ctx310272-c2.admission_status",
+    "candidate-capacity-edge-ctx310272-c2.completion_tokens",
+    "candidate-capacity-edge-ctx310272-c2.concurrency",
+    "candidate-capacity-edge-ctx310272-c2.context_tokens",
+    "candidate-capacity-edge-ctx310272-c2.decode_tok_s",
+    "candidate-capacity-edge-ctx310272-c2.e2e_ms",
+    "candidate-capacity-edge-ctx310272-c2.effective_prefill_tok_s",
+    "candidate-capacity-edge-ctx310272-c2.gpu_memory",
+    "candidate-capacity-edge-ctx310272-c2.host_memory",
+    "candidate-capacity-edge-ctx310272-c2.kv_cache_bytes",
+    "candidate-capacity-edge-ctx310272-c2.kv_cache_tokens",
+    "candidate-capacity-edge-ctx310272-c2.oom_status",
+    "candidate-capacity-edge-ctx310272-c2.prompt_tokens",
+    "candidate-capacity-edge-ctx310272-c2.throughput_tok_s",
+    "candidate-capacity-edge-ctx310272-c2.time_to_first_output_ms",
+    "candidate-capacity-edge-ctx310272-c2.tpot_ms",
+    "candidate-capacity-edge-ctx310272-c2.ttft_ms",
+    "candidate-capacity-edge-ctx310272-c4.admission_status",
+    "candidate-capacity-edge-ctx310272-c4.completion_tokens",
+    "candidate-capacity-edge-ctx310272-c4.concurrency",
+    "candidate-capacity-edge-ctx310272-c4.context_tokens",
+    "candidate-capacity-edge-ctx310272-c4.decode_tok_s",
+    "candidate-capacity-edge-ctx310272-c4.e2e_ms",
+    "candidate-capacity-edge-ctx310272-c4.effective_prefill_tok_s",
+    "candidate-capacity-edge-ctx310272-c4.gpu_memory",
+    "candidate-capacity-edge-ctx310272-c4.host_memory",
+    "candidate-capacity-edge-ctx310272-c4.kv_cache_bytes",
+    "candidate-capacity-edge-ctx310272-c4.kv_cache_tokens",
+    "candidate-capacity-edge-ctx310272-c4.oom_status",
+    "candidate-capacity-edge-ctx310272-c4.prompt_tokens",
+    "candidate-capacity-edge-ctx310272-c4.throughput_tok_s",
+    "candidate-capacity-edge-ctx310272-c4.time_to_first_output_ms",
+    "candidate-capacity-edge-ctx310272-c4.tpot_ms",
+    "candidate-capacity-edge-ctx310272-c4.ttft_ms"
+  ],
+  "plan_verified": true,
+  "profile": "serving-comparison/v1",
+  "required_cells": [
+    "baseline-natural-ctx10240-c1",
+    "baseline-natural-ctx10240-c2",
+    "baseline-natural-ctx10240-c4",
+    "baseline-natural-ctx40960-c1",
+    "baseline-natural-ctx40960-c2",
+    "baseline-natural-ctx40960-c4",
+    "baseline-natural-ctx163840-c1",
+    "baseline-natural-ctx163840-c2",
+    "baseline-natural-ctx163840-c4",
+    "baseline-controlled-ctx10240-c1",
+    "baseline-controlled-ctx10240-c2",
+    "baseline-controlled-ctx10240-c4",
+    "baseline-controlled-ctx40960-c1",
+    "baseline-controlled-ctx40960-c2",
+    "baseline-controlled-ctx40960-c4",
+    "baseline-controlled-ctx163840-c1",
+    "baseline-controlled-ctx163840-c2",
+    "baseline-controlled-ctx163840-c4",
+    "baseline-capacity-edge-ctx310272-c1",
+    "baseline-capacity-edge-ctx310272-c2",
+    "baseline-capacity-edge-ctx310272-c4",
+    "candidate-natural-ctx10240-c1",
+    "candidate-natural-ctx10240-c2",
+    "candidate-natural-ctx10240-c4",
+    "candidate-natural-ctx40960-c1",
+    "candidate-natural-ctx40960-c2",
+    "candidate-natural-ctx40960-c4",
+    "candidate-natural-ctx163840-c1",
+    "candidate-natural-ctx163840-c2",
+    "candidate-natural-ctx163840-c4",
+    "candidate-controlled-ctx10240-c1",
+    "candidate-controlled-ctx10240-c2",
+    "candidate-controlled-ctx10240-c4",
+    "candidate-controlled-ctx40960-c1",
+    "candidate-controlled-ctx40960-c2",
+    "candidate-controlled-ctx40960-c4",
+    "candidate-controlled-ctx163840-c1",
+    "candidate-controlled-ctx163840-c2",
+    "candidate-controlled-ctx163840-c4",
+    "candidate-capacity-edge-ctx310272-c1",
+    "candidate-capacity-edge-ctx310272-c2",
+    "candidate-capacity-edge-ctx310272-c4"
+  ],
+  "status": "partial"
+}

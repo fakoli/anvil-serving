@@ -1,0 +1,88 @@
+{
+  "base_url": "http://127.0.0.1/v1",
+  "budget": {
+    "max_completion_tokens": 65536,
+    "reasoning_headroom_tokens": 49152,
+    "visible_answer_tokens": 16384
+  },
+  "checks": [
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 162,
+      "reasoning_excerpt": "The image shows text on a dark navy background:\n- \"ANVIL READY\" in green\n- \"CODE 42917\" in white\n- \"TEMPERATURE 42 C\" in light blue\n\nI need to transcribe exactly.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 51,
+      "seconds": 0.66,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 70,
+        "completion_tokens_details": {
+          "reasoning_tokens": 51
+        },
+        "prompt_tokens": 334,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": {
+            "image": 299
+          }
+        },
+        "total_tokens": 404
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.7s all expected text present finish='stop' visible=39 reasoning_chars=162 reasoning_tokens=51",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

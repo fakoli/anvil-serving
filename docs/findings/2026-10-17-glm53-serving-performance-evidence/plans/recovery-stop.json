@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "serves",
+    "down",
+    "tp2-glm53-exl3-327k-r11-dcp1-vision8-apc-nospec",
+    "--manifest",
+    "[PRIVATE_OPERATOR_ROOT]/serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+    "--keep-container",
+    "--transport",
+    "local",
+    "--confirm"
+  ],
+  "finished_at": "2026-10-17T11:22:40.096960+00:00",
+  "returncode": 0,
+  "stderr": "",
+  "stdout": "  stop intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec\n  stopped and kept intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec\n"
+}

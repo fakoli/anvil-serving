@@ -1,0 +1,25 @@
+{
+  "baseline_instruction_hashes": {
+    ".agents/skills/anvil-serving-workbench/SKILL.md": "0ab26013d17c468ad0d1feca932de12286d7850a22e036b3c2b4a28b14b58f01",
+    ".claude/skills/anvil-serving-workbench/SKILL.md": "0b77237c79d8396a8d0bd77099cf7f3efa13bfc57f39b0a63eb5c28ecef37404",
+    "skills/anvil-serving-benchmark-docs/SKILL.md": "a444ab28d9605a132e7fd3cfe80fc8f60e2b2ac66401ccd386a6d052f6474194",
+    "skills/anvil-serving-benchmark-docs/references/artifact-set-contract.md": "22c67b3b54ff13c345726ce08127c06bd2ce8e938e522a240f2554a3280418da",
+    "skills/anvil-serving-llm-qualification/SKILL.md": "14fef87f0b02ee8d5f350c185cd86d8aca6e8a8ea8ac11f877b5178df1dc85ae",
+    "skills/anvil-serving-llm-qualification/references/evidence-contract.md": "73209d7693b8ee4a29c0fa3537f633be72b1f1e86a48752e6943a46dd305c6ba"
+  },
+  "falsifiable_requirement": "A full-serving-comparison completion assertion must fail when any declared cell or required metric lacks measured evidence; a focused quality-only run remains valid as scoped evidence.",
+  "fresh_holdouts": [
+    "partial candidate arm",
+    "tampered metric source",
+    "invalid numeric observation",
+    "summary falsely complete"
+  ],
+  "judge": "independent Sol review plus executable regressions; no claim that source tests prove all future agent behavior",
+  "matched_cases": [
+    "original comparison without timing coverage",
+    "complete matched matrix",
+    "focused quality-only non-applicable comparison"
+  ],
+  "observed_problem": "Candidate quality miss ended timing collection; no enforced per-arm serving-metrics ledger prevented gaps.",
+  "source_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1"
+}

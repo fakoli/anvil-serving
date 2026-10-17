@@ -1,0 +1,40 @@
+{
+  "absolute_campaign_deadline": "2026-10-17T16:55:51.522595+00:00",
+  "absolute_request_cutoff": "2026-10-17T15:25:51.522595+00:00",
+  "frozen_at": "2026-10-17T10:55:51.522595+00:00",
+  "initial_missing_metrics": 714,
+  "measured_cells": 42,
+  "references": [
+    {
+      "bytes": 76940,
+      "path": "plans/run-plan.json",
+      "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f"
+    },
+    {
+      "bytes": 10864,
+      "path": "plans/comparison-plan.json",
+      "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+    },
+    {
+      "bytes": 3030,
+      "path": "plans/validation-source-freeze.json",
+      "sha256": "304b0a63e4924711911e9bbc8c2851ae4f76d1147fbc3d45e1bcf5aa65dbd737"
+    },
+    {
+      "bytes": 1006,
+      "path": "plans/full-suite-receipt.json",
+      "sha256": "864a82686a9371db3dcd70315fe3e97676d84c208ed3210114a1e0494d7ab00d"
+    },
+    {
+      "bytes": 8404,
+      "path": "plans/independent-review.json",
+      "sha256": "c88edbcc58c5f7987be6b4d84f14fc8fb6f82f63740647bb012ab4ae33d3fabe"
+    },
+    {
+      "bytes": 5044,
+      "path": "plans/independent-review-addendum.json",
+      "sha256": "98191171a07149a46aba635702504193f755d202d2bd9febde3a61ae45056349"
+    }
+  ],
+  "source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb"
+}

@@ -1,0 +1,351 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-17-glm53-nvidia-fp4-ab",
+    "capability": "local-llm-controlled-ab",
+    "repository_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+    "dirty_state": "Campaign finding and evidence directory are untracked; five benchmark matrix/index/audit documents are modified. Product code is unchanged.",
+    "started_at": "2026-10-17T07:15:09.304105+00:00",
+    "completed_at": "2026-10-17T09:02:33.299986+00:00",
+    "evidence_labels": [
+      "scout",
+      "diagnostic"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.context-suite-run/v1",
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.stability/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "624cef7c169cda679d02135fac9e35c317a0db921a96ff6261b518520714dd69",
+          "bytes": 1904
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "07eca9915647a2ffc22aead7025706c42c181fb119eb3e8f84b126bece09729a",
+          "bytes": 1984
+        },
+        {
+          "path": "diagnostic-research.md",
+          "sha256": "65166785b4449b11a725ee8dccb40f54c1459b7ae083baaf9a068312b07c2ce9",
+          "bytes": 3887
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "e9489292ede2b592d930b2ea07df0cb8fccdadb75f42a002cd16cb8029ed13ef",
+          "bytes": 3015
+        },
+        {
+          "path": "context-fixture-check.json",
+          "sha256": "da26c57fce16843091cb17647b11e942dcf68e8fe6ae17679eb1ab723917c76a",
+          "bytes": 3871
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "c2920f8a8370bdd0bd286ab91300e15b6156b078e35b334b064c7e37ed0d6482",
+          "bytes": 4471
+        },
+        {
+          "path": "diagnostic-plan.json",
+          "sha256": "68f8a2f2330f6c017f5c136bf7fb2dac1e2987253882c6fbb8d8f35c273c6aa4",
+          "bytes": 2275
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "b6dcbe0aeb29dc0ad86ad0b85aa91cf689d0f022790098c5ea845368fd8861b9",
+          "bytes": 4119
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "88ae286161dfe500fa8a51d4ff01e964fdd57d357a75e5d7f9b2a4f2bb87095c",
+          "bytes": 1655
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "0600c6ac6fbff9f032b298af8ff91fac110e82b18b3338ba88804344e3f4a387",
+          "bytes": 8511
+        },
+        {
+          "path": "feasibility-input-preload.json",
+          "sha256": "0adecd28f6e58bca123596aa86f8115cd6b78d27d3e330c3a56903542b4f01ba",
+          "bytes": 3513
+        },
+        {
+          "path": "feasibility-result-preload.md",
+          "sha256": "f0dd7616a36b4fa4b36a499986867926dbca07bb0886d7be3939aad80aa2c429",
+          "bytes": 1327
+        },
+        {
+          "path": "feasibility-startup-observation.json",
+          "sha256": "d1e3f612ab8b530aa839409893c681724d6ed2613ef3a75a3ba649d22db5ad68",
+          "bytes": 2730
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native/baseline/0-agentic.json",
+          "sha256": "f0248d2402130abfff5bd940b9dfb3a103e40716bb1d36d974fde94a74e01f05",
+          "bytes": 37139
+        },
+        {
+          "path": "native/baseline/0-context.json",
+          "sha256": "b58b13c084a27bf5960976a12ebcc44bc98cf84937a71c67a08d1769fcb8e1ec",
+          "bytes": 58053
+        },
+        {
+          "path": "native/baseline/baseline-full-preflight.json",
+          "sha256": "c0e7feec968f65b8e5bec927c952dd9def6ec959a48178a01131d4b57c9c058e",
+          "bytes": 26885
+        },
+        {
+          "path": "native/baseline/baseline-native-index.json",
+          "sha256": "8539850aee6babc71085f8a166486b01950285d70e68c0af48f612ffbf4204ab",
+          "bytes": 9329
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx32768-c1-r1.json",
+          "sha256": "e33a52a178785b728e809d310232d34caf1489240bfcfbe04569529457393ae0",
+          "bytes": 19746
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx32768-c4-r1.json",
+          "sha256": "ffc4ed2611233bf7d9b485d3927288cc278f767911ea88cfb97ae5e476a021a0",
+          "bytes": 19764
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx8192-c1-r1.json",
+          "sha256": "306a95140e87e988847f60bb0de25c44b10069617150bca40047e22e946cb0b6",
+          "bytes": 19771
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx8192-c4-r1.json",
+          "sha256": "d5f83454bdde2cfb880eca1298e4e471885c657b8c553e6ad9304d3cbcf7ee56",
+          "bytes": 19753
+        },
+        {
+          "path": "native/baseline/baseline-ocr-preflight-r2.json",
+          "sha256": "0d0fcd16956d1e63e4302b512a20aa72049fc1eeba434e80f3b1017a78942697",
+          "bytes": 2171
+        },
+        {
+          "path": "native/baseline/baseline-smoke.json",
+          "sha256": "ad3e7ed0ad4c6cc27be70b33d9166d4fad31d8046650e65cd84089cbb0db762f",
+          "bytes": 3279
+        },
+        {
+          "path": "native/baseline/baseline-stability-scout-r1.json",
+          "sha256": "ef5da708f1e4d3d4a957806507eaf09044dfb10d143667e25830a91d2bbae6d6",
+          "bytes": 1667
+        },
+        {
+          "path": "native/baseline/baseline-stability-scout-r2.json",
+          "sha256": "c1ba68dd75454da514a5a67cf651870f7133b44ced0244c8b4d9d2fca0e0afec",
+          "bytes": 7508
+        },
+        {
+          "path": "native/baseline/baseline-stability-scout-r3.json",
+          "sha256": "224be1b4356fb55829a5e692a8bad834ab3fd290d3461d15a04d63c81b4099d0",
+          "bytes": 24041
+        },
+        {
+          "path": "native/baseline/baseline-vision.json",
+          "sha256": "21d922c3731c15108b442f1f909064a04c43d97cd2813facecd7b7b64b69525c",
+          "bytes": 39584
+        },
+        {
+          "path": "native/candidate/0-agentic.json",
+          "sha256": "dd4de9ec6dc64375a914b8620bb6a92aa7aa071acf58cf2f1dd889dc6a1bad0e",
+          "bytes": 37081
+        },
+        {
+          "path": "native/candidate/0-context.json",
+          "sha256": "028dc36ff4117d9f412c7f714ff904303eade73a36246bd1fa7e7e5d1d8987de",
+          "bytes": 72408
+        },
+        {
+          "path": "native/candidate/candidate-native-index.json",
+          "sha256": "b0bdba9d0e9da1e2a089188cee730cc9dff587b656f203e4e85a712527583070",
+          "bytes": 4346
+        },
+        {
+          "path": "native/candidate/candidate-ocr-preflight-r2.json",
+          "sha256": "d64d0eddc5e874f0196597cd8e95edd2048e192e108a32959a8786645191c7c0",
+          "bytes": 2328
+        },
+        {
+          "path": "native/candidate/candidate-smoke.json",
+          "sha256": "7fedeff6fbe3a83bf08777ccc91e29ce4d1aeb61acdf31fd4e6b45a032fd2618",
+          "bytes": 3671
+        },
+        {
+          "path": "native/candidate/candidate-text-image-preflight-r2.json",
+          "sha256": "569bdab3e3fc679c1f21c3bb1ae9fae524019ba8dd9064898c47085f0a7e2a5b",
+          "bytes": 30927
+        },
+        {
+          "path": "native/candidate/candidate-vision.json",
+          "sha256": "cae515e94341a22887c07fe5e14125dea46853896cfee0899a1fac19711660d1",
+          "bytes": 44330
+        },
+        {
+          "path": "native/diagnostic/diagnostic-native-index.json",
+          "sha256": "82a6dd894e604be401be9584c0a0408bbc0b74501077c8ee68f0032619b88850",
+          "bytes": 4695
+        },
+        {
+          "path": "native/diagnostic/r2-full-context.json",
+          "sha256": "275b68eebd534e35c056d637b382a8a4825bb192fdcf71934ba9bd26f5008d9d",
+          "bytes": 58035
+        },
+        {
+          "path": "native/diagnostic/r2-smoke.json",
+          "sha256": "1be6b566759166bc2efff77e793ba36d883fcd5a00b618c8afe7a6ab0669efb0",
+          "bytes": 3669
+        },
+        {
+          "path": "native/diagnostic/r2-target1-context.json",
+          "sha256": "228cd1db739e4161ac1b57a43b6d8cf50cb36476dc8180f6e9c9417a275d3b63",
+          "bytes": 5113
+        },
+        {
+          "path": "native/diagnostic/r2-target2-context.json",
+          "sha256": "111d2e1c89df4eb003b7e79f6b8c87a364f7040bef16492f9266a7331e9e7b2f",
+          "bytes": 4787
+        },
+        {
+          "path": "native/diagnostic/restored-direct-smoke.json",
+          "sha256": "5bd041777d13331ff82fc3cdf937228a2960669896ea105222be4e695546df14",
+          "bytes": 3150
+        },
+        {
+          "path": "native/diagnostic/restored-routed-smoke.json",
+          "sha256": "d986ae04bacdd711d942e4e6c81c4e0c383a2ab83fed2c335ff5469f06b11510",
+          "bytes": 2995
+        },
+        {
+          "path": "native/restoration/restoration-native-index.json",
+          "sha256": "b7c04d825f4dc7d1eb1230d597d655d072258ff3fc8ff9ae4c9fc79bc8ce53b0",
+          "bytes": 1761
+        },
+        {
+          "path": "native/restoration/restored-direct-smoke.json",
+          "sha256": "4007de0b42f7f6f8bb9df03099124ae8ff4e0edbe6a1040b6a3e3e7915a45e7c",
+          "bytes": 3341
+        },
+        {
+          "path": "native/restoration/restored-routed-smoke.json",
+          "sha256": "f94ce8d03adb42cf2c5af5afb559b3f391bd2c645d93ee54e09c81de63e8e8aa",
+          "bytes": 3018
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "d69b92f881531698deab58384e86bce5acf36f5dc9b729d138b0231f801f7fcb",
+          "bytes": 5211
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "05de430098549543ef36936f102a4395334da011727521bf6098c2adac9deddb",
+          "bytes": 1564
+        },
+        {
+          "path": "verification.json",
+          "sha256": "327baf18813a7e58bd8b617ffc50e55047a76747e4e8713f0d11a39d71bcb94e",
+          "bytes": 5178
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "534bac0627cbd18bf077909d447adeb203f9624df7c64620195e7a847c87f0a1",
+          "bytes": 3137
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "195eebe2965cbe0e007023e21d26a7c8e38a498ac8f17b96118239e53a25046d",
+          "bytes": 4268
+        },
+        {
+          "path": "diagnostic-result.json",
+          "sha256": "76d926110d84ed3ac96a663424835d84ab936a759f36736206ad7c952474d714",
+          "bytes": 4166
+        }
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate external compact publication was requested."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "generated_from": "artifact-source.json"
+}

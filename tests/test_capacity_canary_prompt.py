@@ -35,9 +35,9 @@ def test_prompt_declares_the_unchanged_canary_delimiter_contract():
 def test_capacity_unique_prompt_namespace_uses_seed_but_shared_prompts_do_not(
     monkeypatch, tmp_path
 ):
-    def prompts_for(seed, mode):
+    def prompts_for(seed, mode, run="first"):
         prompts = []
-        artifact = tmp_path / f"{mode}-{seed}.json"
+        artifact = tmp_path / f"{mode}-{seed}-{run}.json"
 
         def stream_request(_base, _model, prompt, _key, _max_tokens, **_kwargs):
             prompts.append(prompt)
@@ -64,7 +64,7 @@ def test_capacity_unique_prompt_namespace_uses_seed_but_shared_prompts_do_not(
         return prompts, json.loads(artifact.read_text(encoding="utf-8"))
 
     first, first_artifact = prompts_for(7, "unique")
-    repeated, _ = prompts_for(7, "unique")
+    repeated, _ = prompts_for(7, "unique", "repeat")
     changed, _ = prompts_for(8, "unique")
     shared_first, shared_artifact = prompts_for(7, "shared")
     shared_changed, _ = prompts_for(8, "shared")

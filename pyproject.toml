@@ -111,6 +111,8 @@ precision = 2
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+# Retained, sanitized producer snapshots are documentary evidence, not live code.
+extend-exclude = ["docs/findings/2026-10-17-glm53-serving-performance-evidence"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]

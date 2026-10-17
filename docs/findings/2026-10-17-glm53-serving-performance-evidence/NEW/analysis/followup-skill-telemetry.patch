@@ -1,0 +1,36 @@
+diff --git a/skills/anvil-serving-llm-qualification/SKILL.md b/skills/anvil-serving-llm-qualification/SKILL.md
+--- a/skills/anvil-serving-llm-qualification/SKILL.md
++++ b/skills/anvil-serving-llm-qualification/SKILL.md
+@@ -79,2 +79,14 @@ Apply the shared `session-improvement-loop:research-synthesis` policy through it
+     never call the comparison complete with required non-measured metrics.
++   Use a reviewed runner bound to the frozen plan, runner, and collector hashes
++   for scored cells. It must launch only the frozen argv and retain in-process
++   cadence for engine occupancy, numerical per-GPU memory, Linux host
++   `MemAvailable`, and managed cgroup memory/events. Require exact
++   serve/container/GPU identity on slow samples and model/engine/process identity
++   on every engine sample, then reconcile native request/token totals after drain.
++   `host gpus` inventory and before/after-only samples are not memory telemetry.
++   An offline orchestration fixture must enter that runner with fake process and
++   probe seams, prove all collectors sample while the child runs, and prove
++   collector failure, timeout, identity drift, and counter mismatch fail closed.
++   Missing required telemetry leaves the cell blocked/incomplete, never a full
++   comparison result.
+ 12. For images/video, run direct endpoint preflight and
+diff --git a/docs/benchmarks/repeatable-campaigns.md b/docs/benchmarks/repeatable-campaigns.md
+--- a/docs/benchmarks/repeatable-campaigns.md
++++ b/docs/benchmarks/repeatable-campaigns.md
+@@ -39,3 +39,14 @@
+ simultaneous capacity.
++
++For scored cells, retain a reviewed hash-bound runner and an offline orchestration
++fixture for that exact runner. The runner launches only the frozen argv, samples
++engine occupancy plus numerical GPU, Linux host `MemAvailable`, and managed
++cgroup memory/events during the owned client process. It binds the frozen plan,
++runner, and collector hashes; checks exact serve/container/GPU identity on slow
++samples and model/engine/process identity on every engine sample; and reconciles
++engine counters to native request/token totals after drain. Inventory-only GPU
++output and before/after snapshots do not satisfy this
++requirement. Any missing family, cadence gap, collector error, identity drift,
++counter mismatch, or timeout blocks that cell and therefore a full comparison.
+ 
+ A focused smoke or quality-only check may declare performance out of scope and

@@ -1,0 +1,9 @@
+{
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "pyproject_sha256": "ca124f70cd0393446ab98bdb58d45fc5f6773a4e9fe049e7ff40d32ac2162501",
+  "python_executable": "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+  "python_version": "3.12.14 (main, Sep  1 2026, 14:16:52) [Clang 22.1.3 ]",
+  "source_module_root": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/anvil_serving",
+  "source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+  "tracked_code_dirty": []
+}

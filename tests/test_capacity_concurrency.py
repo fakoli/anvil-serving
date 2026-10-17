@@ -34,6 +34,7 @@ def test_client_overlap_is_observed_and_released_after_failed_calls(tmp_path, fa
     assert "does not prove" in artifact["timing_methodology"]["client_concurrency"]
 
     # Asking for four workers with one request must report one observed call.
+    output = tmp_path / "single-request.json"
     main([
         "capacity", "--base-url", "http://127.0.0.1:30002/v1", "--model", "test",
         "--requests", "1", "--concurrency", "4", "--ctx-tokens", "1024",

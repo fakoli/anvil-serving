@@ -38,9 +38,29 @@ concurrency is not measured capacity, and engine-reported `kv_cache_tokens` are 
 concurrency calculated from them is a separately labeled estimate, not measured
 simultaneous capacity.
 
+For scored cells, retain a reviewed hash-bound runner and an offline orchestration
+fixture for that exact runner. The runner launches only the frozen argv, samples
+engine occupancy plus numerical GPU, Linux host `MemAvailable`, and managed
+cgroup memory/events during the owned client process. It binds the frozen plan,
+runner, and collector hashes; checks exact serve/container/GPU identity on slow
+samples and model/engine/process identity on every engine sample; and reconciles
+engine counters to native request/token totals after drain. Inventory-only GPU
+output and before/after snapshots do not satisfy this
+requirement. Any missing family, cadence gap, collector error, identity drift,
+counter mismatch, or timeout blocks that cell and therefore a full comparison.
+
 A focused smoke or quality-only check may declare performance out of scope and
 state why it was not remeasured. It must not be presented as a full serving
 comparison.
+
+Capacity runs with `--output` now append each terminal request outcome to
+`<output>.journal.jsonl` and flush/fsync it before continuing. Use a fresh output
+path for every run; an existing journal is never overwritten. A missing
+completion footer or partial last line means an interrupted run. Earlier complete
+lines preserve terminal outcomes for diagnosis, but do not make the run complete
+or recover in-flight token chunks. The final native artifact binds the completed
+journal by hash and byte count. Journal I/O is included in measured wall time;
+do not pool results from producers with different journaling behavior.
 
 ## Verify the executing source
 

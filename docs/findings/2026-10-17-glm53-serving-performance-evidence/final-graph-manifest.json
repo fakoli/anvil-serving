@@ -1,0 +1,805 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill p50 (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Effective prefill p50 (tok/s)"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TTFO p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TTFO p50 (ms)"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TTFT p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TTFT p50 (ms)"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Decode p50 (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Decode p50 (tok/s)"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TPOT p50 (ms)"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "E2E p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "E2E p50 (ms)"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output throughput (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Aggregate output throughput (tok/s)"
+    }
+  ],
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "subtitle": "12 matched pairs; X labels are nominal input targets, actual token counts are in the tables",
+  "title": "GLM-5.3 matched serving comparison"
+}

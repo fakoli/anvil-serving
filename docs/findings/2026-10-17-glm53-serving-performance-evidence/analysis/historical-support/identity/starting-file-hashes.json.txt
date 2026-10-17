@@ -1,0 +1,63 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: identity/starting-file-hashes.json
+Original SHA256: d008932ee171312a0b4a045dab8d51f81547c1c5d667b0d7cc74bb776e2e1d66
+Original bytes: 3141
+
+{
+  "[PRIVATE_OPERATOR_ROOT]/router.toml": {
+    "sha256": "34032baa98f3359990d37fd506588a61f15ffda8bfb6b93b96462b498be3fc70",
+    "bytes": 8122
+  },
+  "[PRIVATE_OPERATOR_ROOT]/operator-topology.toml": {
+    "sha256": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+    "bytes": 6718
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml": {
+    "sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+    "bytes": 5454
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml": {
+    "sha256": "773394b53c51728df11f1369ce32eed12b5a10985cefba3fdbc8815063d153b3",
+    "bytes": 5980
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.toml": {
+    "sha256": "ac8479d6c1cc9d07424f81d17b019e027f40f64174e30e0cf46ad64fc09fee75",
+    "bytes": 3490
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-v043-promotion.toml": {
+    "sha256": "2b3f3e4f7e48ff422dc241f97de0650e0bb23dd0dd07553ea0a499e3d8d29b9a",
+    "bytes": 4270
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml": {
+    "sha256": "df3e9d39b26cbcaaa913049b34f46b6724337dc80514ecc02f634e87ccb8c899",
+    "bytes": 1185
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.tp2-campaign.toml": {
+    "sha256": "29555561105ede3c526d8c8728c0a11e7af3a4b6dca1ea056f455c3c2ce19dff",
+    "bytes": 18767
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-sglang-sm120-393k.toml": {
+    "sha256": "41420b61989af605c1e743b2f139a10b4c9c68a4b52480f1148fda1e337ee46d",
+    "bytes": 1127
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-exl3-327k-r9-vision8-nospec.toml": {
+    "sha256": "658faa3938a968d8904d18c055a9d358123184cba8bff6d8badd7bb02f57290e",
+    "bytes": 1149
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml": {
+    "sha256": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975",
+    "bytes": 1313
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.mimo26-isolated-20261006.toml": {
+    "sha256": "bfce5bab91e66a1de64512f452d6fb47d0d8fb100101324ead80d2afcaebcf98",
+    "bytes": 1046
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-abliterated-isolated-20261006.toml": {
+    "sha256": "bf8242b4e2afae08a5c34f79e6ba8f858c130c1d9c14ef3b90276e5f091678c7",
+    "bytes": 1085
+  },
+  "[PRIVATE_OPERATOR_ROOT]/serves.glm53-abliterated-promotion.toml": {
+    "sha256": "a59977035cfbfda09ea738379a26625c7c949f61a76e247be2934b15a2a60ef9",
+    "bytes": 3637
+  }
+}

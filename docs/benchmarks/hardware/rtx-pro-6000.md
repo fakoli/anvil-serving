@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-17 GLM serving-performance comparison:** on the dual RTX PRO 6000 Blackwell Max-Q pair, 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs produced 24 accepted cells and 84 requests per arm across four actual-input strata and C1/C2/C4. The retained canonical finding carries the full measured table and coverage, including per-device memory and runtime-KV observations; allocated KV tokens are not proof of simultaneous full-window capacity. The original 42-cell matrix closed partial with one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate is not qualified or promoted; SWE, endurance, no-speculation, and MTP-off comparisons were not measured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. [Finding](../../findings/2026-10-17-glm53-serving-performance.md).
+
 **2026-10-16 SGLang, Qwen, and Nemotron comparison:** The original GLM baseline C1 and Nemotron C1 each had 0/4 performance-eligible requests. SGLang GLM and Qwen FP4 passed preflight/Oracle prerequisites but terminal SWE evidence was 0/5 resolved (2/5 graded) and 2/5 resolved (4/5 graded). Nemotron passed preflight 6/6, vision 18/18, and context 2/2, but Oracle was 48/54. No candidate entered C4 or a controlled throughput population; the exact GLM restoration remains the campaign boundary. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md).
 
 **2026-10-16 GLM v0.9.1 trial:** on the dual RTX PRO 6000 Blackwell Max-Q pair, the R2 candidate passed functional, Oracle, image, bounded-context, and sampled reserve checks, but resolved 3/5 pinned SWE cases below the four-case replacement gate. It is `rejected`/`no-promotion`; the original GLM was exactly restored. The fresh original control also resolved the same five cases at 3/5. Its 1725/1745 MiB sampled minima use the historical incumbent waiver and are not a challenger reserve pass. No capacity, stability, DFlash, throughput, causal, comparative-quality, or model-family claim is made. [Finding](../../findings/2026-10-16-glm-v091-trial.md).
@@ -73,8 +75,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-05. **Evidence
-interpretation reviewed:** 2026-10-05.
+history. **Last locally measured:** 2026-10-17. **Evidence
+interpretation reviewed:** 2026-10-17.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

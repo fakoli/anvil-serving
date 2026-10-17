@@ -1,0 +1,152 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "campaign": {
+    "id": "2026-10-17-glm53-nvidia-fp4-ab",
+    "capability": "local-llm-controlled-ab",
+    "repository_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+    "dirty_state": "Campaign finding and evidence directory are untracked; five benchmark matrix/index/audit documents are modified. Product code is unchanged.",
+    "started_at": "2026-10-17T07:15:09.304105+00:00",
+    "completed_at": "2026-10-17T09:02:33.299986+00:00",
+    "evidence_labels": [
+      "scout",
+      "diagnostic"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.context-suite-run/v1",
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.stability/v1",
+    "multimodal-benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "diagnostic-research.md"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json",
+        "context-fixture-check.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json",
+        "diagnostic-plan.json",
+        "campaign-state.json",
+        "dispatch-packet.md"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "feasibility-input-preload.json",
+        "feasibility-result-preload.md",
+        "feasibility-startup-observation.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/baseline/0-agentic.json",
+        "native/baseline/0-context.json",
+        "native/baseline/baseline-full-preflight.json",
+        "native/baseline/baseline-native-index.json",
+        "native/baseline/baseline-natural-ctx32768-c1-r1.json",
+        "native/baseline/baseline-natural-ctx32768-c4-r1.json",
+        "native/baseline/baseline-natural-ctx8192-c1-r1.json",
+        "native/baseline/baseline-natural-ctx8192-c4-r1.json",
+        "native/baseline/baseline-ocr-preflight-r2.json",
+        "native/baseline/baseline-smoke.json",
+        "native/baseline/baseline-stability-scout-r1.json",
+        "native/baseline/baseline-stability-scout-r2.json",
+        "native/baseline/baseline-stability-scout-r3.json",
+        "native/baseline/baseline-vision.json",
+        "native/candidate/0-agentic.json",
+        "native/candidate/0-context.json",
+        "native/candidate/candidate-native-index.json",
+        "native/candidate/candidate-ocr-preflight-r2.json",
+        "native/candidate/candidate-smoke.json",
+        "native/candidate/candidate-text-image-preflight-r2.json",
+        "native/candidate/candidate-vision.json",
+        "native/diagnostic/diagnostic-native-index.json",
+        "native/diagnostic/r2-full-context.json",
+        "native/diagnostic/r2-smoke.json",
+        "native/diagnostic/r2-target1-context.json",
+        "native/diagnostic/r2-target2-context.json",
+        "native/diagnostic/restored-direct-smoke.json",
+        "native/diagnostic/restored-routed-smoke.json",
+        "native/restoration/restoration-native-index.json",
+        "native/restoration/restored-direct-smoke.json",
+        "native/restoration/restored-routed-smoke.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md",
+        "verification.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "diagnostic-result.json"
+      ],
+      "reason": "Public evidence retained with protected identities sanitized."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate external compact publication was requested."
+    }
+  ]
+}

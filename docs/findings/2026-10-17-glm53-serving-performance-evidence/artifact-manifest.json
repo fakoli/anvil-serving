@@ -1,0 +1,4178 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "capability": "llm",
+    "completed_at": "2026-10-17T13:03:57Z",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "measurement producer frozen; exact file hashes retained in comparison plan",
+    "evidence_labels": [
+      "capacity",
+      "functional"
+    ],
+    "execution_status": "closed_partial",
+    "id": "2026-10-17-glm53-serving-performance",
+    "promotion_authorized": false,
+    "repository_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "0eb1e408c480897f1b826d598f63e37fc84c9d2f5bd2fe8e9570dff4340b255c",
+          "bytes": 3317
+        }
+      ],
+      "reason": "Human entry point to native evidence and the closed scope."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "0eb1e408c480897f1b826d598f63e37fc84c9d2f5bd2fe8e9570dff4340b255c",
+          "bytes": 3317
+        },
+        {
+          "path": "plans/comparison-plan.json",
+          "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1",
+          "bytes": 10864
+        },
+        {
+          "path": "private-origin-provenance.json",
+          "sha256": "533e4157fefca6fb26802e726e1c1897abeb82868e450f6436d90ced4c2645fc",
+          "bytes": 305062
+        }
+      ],
+      "reason": "Pinned model/runtime/source identities and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plans/comparison-plan.json",
+          "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1",
+          "bytes": 10864
+        },
+        {
+          "path": "plans/run-plan.json",
+          "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f",
+          "bytes": 76940
+        }
+      ],
+      "reason": "Frozen request controls, arms and required matrix."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plans/comparison-plan.json",
+          "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1",
+          "bytes": 10864
+        },
+        {
+          "path": "plans/run-plan.json",
+          "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f",
+          "bytes": 76940
+        }
+      ],
+      "reason": "Frozen dispatch and comparison plans; failed cells remain required."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity/baseline-controlled-length-observation.json",
+          "sha256": "8dcd429634cccc16f1a1405db3950e47ac15e04de5dd5de443e0df0d0bb0099d",
+          "bytes": 84377
+        },
+        {
+          "path": "identity/baseline-drain.json",
+          "sha256": "9f55efc49fd47244a638daa6aa7d40cce314cc19bd7023e5e8beb0b10c96846d",
+          "bytes": 839
+        },
+        {
+          "path": "identity/baseline-end-metrics.txt",
+          "sha256": "fa23e7f88f00dcc0c51d93263d84fea473727df9478c7512db62ddcfc4e111f6",
+          "bytes": 81067
+        },
+        {
+          "path": "identity/baseline-end-status.json",
+          "sha256": "63733425a43778581236ecb225430d8fca5f64220811d15abda6e54d41bc29a3",
+          "bytes": 2135
+        },
+        {
+          "path": "identity/baseline-metrics.txt",
+          "sha256": "b90562141a6f34c4571ece2543df0dc64aec509cdb62cd5ca15d2014fa7d12c9",
+          "bytes": 80846
+        },
+        {
+          "path": "identity/baseline-quiesce.json",
+          "sha256": "b4a64b5fa8f142f68ab07b76c1ea0c854a4d597d1da0ea6fba50ce397cd894d5",
+          "bytes": 786
+        },
+        {
+          "path": "identity/baseline-recipe-show.json",
+          "sha256": "7a1df70a2960e8c41d1a34ce7077ae049673a4e6f42d2e4db3f1415d10bad6ac",
+          "bytes": 3824
+        },
+        {
+          "path": "identity/baseline-recipe-status.json",
+          "sha256": "2edadec545f9a01666a72bd28e522e430d6b58b6f9f2bce3b2f45495eed7b8be",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/baseline-status.json",
+          "sha256": "2f419d58bb9bcf7528436bbabb06b6bb10afcd8f74f217720c2baa6854f86cc4",
+          "bytes": 9108
+        },
+        {
+          "path": "identity/baseline-transition.json",
+          "sha256": "22c69daeb216e9a502da37883efb449b8d426bcb12194ccaaf83f8b679052815",
+          "bytes": 1106
+        },
+        {
+          "path": "identity/baseline-v1-models.txt",
+          "sha256": "4f89e462732cfaebcd0852d7b3e7690ed590afcf1b4404cd15d9ea7385cfe97f",
+          "bytes": 529
+        },
+        {
+          "path": "identity/candidate-fresh-metrics.txt",
+          "sha256": "ec1fef8a1c0064ddf4ddaa5e1c418417a4049be88238ecccb2d69557a4bfc719",
+          "bytes": 73744
+        },
+        {
+          "path": "identity/candidate-fresh-models.json",
+          "sha256": "1b3696d52321f117b25025998e85ef7093ec3e480c76c1fa5694c450ed6d2fe2",
+          "bytes": 853
+        },
+        {
+          "path": "identity/candidate-recipe-show.json",
+          "sha256": "75df25d732494505f748e6f52fdecfe0a44fc4e0f6cbae9f04a93da04a16a2e7",
+          "bytes": 5478
+        },
+        {
+          "path": "identity/candidate-status.json",
+          "sha256": "3974d19b2e661c16c8c7f83074c475ab73b97d64840ebfd21838e0ac0cdda1d0",
+          "bytes": 2033
+        },
+        {
+          "path": "identity/gpus-start.json",
+          "sha256": "054e93d4c44075f64ca4765409ab935706aabb43d0a7780f44e1da9598bf7653",
+          "bytes": 804
+        },
+        {
+          "path": "identity/host-meminfo-start.txt",
+          "sha256": "4f22c556b167392a540ca52ee07c3443a3ad8fa6bd2b74ab1b0f4b0fcdfa19c9",
+          "bytes": 1677
+        },
+        {
+          "path": "identity/mode-status.json",
+          "sha256": "a09cff6152bf30ec8211d36f3503b781d1d8cb769b8d90e83ffd56b2acb1953f",
+          "bytes": 2891
+        },
+        {
+          "path": "identity/phase2-baseline-fresh-metrics.txt",
+          "sha256": "28a2663fecf90e1ca26dd1393dd27a5c3498da8bb749e3b450ed64c2283a1812",
+          "bytes": 79033
+        },
+        {
+          "path": "identity/phase2-baseline-models.json",
+          "sha256": "b822cfeab2e8afc6bb7e7da1fe9b521f31c029f6edf7e1cf8315b90b543e33a5",
+          "bytes": 785
+        },
+        {
+          "path": "identity/phase2-baseline-status.json",
+          "sha256": "590f987e239fe9d93b79da0f385cac5965f41c4e6cc89f7ecc85b1ed76bcf309",
+          "bytes": 2135
+        },
+        {
+          "path": "identity/phase2-gpus.json",
+          "sha256": "9cc3a3a91d60d3fae0dc2e44fcb2620973a3804f53bc9ac4823c713406582312",
+          "bytes": 1122
+        },
+        {
+          "path": "identity/pre-dispatch-baseline.json",
+          "sha256": "76533aa0abbbda0298b09216ec29d1245fdd831fe55a2a12c9c312056f233cba",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/pre-dispatch-mode.json",
+          "sha256": "a09cff6152bf30ec8211d36f3503b781d1d8cb769b8d90e83ffd56b2acb1953f",
+          "bytes": 2891
+        },
+        {
+          "path": "identity/pre-dispatch-primary.json",
+          "sha256": "110d07fa9863adaeee08a1fadaf955b43dcf0f969614dab63824215340eae394",
+          "bytes": 1108
+        },
+        {
+          "path": "identity/pre-recovery-baseline.json",
+          "sha256": "40ebbff5bea4ccad00cd740709c695caac896e3714c41a4885e3f5ef5a2654c0",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/pre-recovery-metrics.txt",
+          "sha256": "8e45e489673529ba7247fa03d9c7033fddba12670b9318a99d347249781dab6e",
+          "bytes": 80915
+        },
+        {
+          "path": "identity/producer-environment.json",
+          "sha256": "538ffadf8da20b58c712981554212c0a5a0c08dca40ef0247d0b5ce1bd79b8a0",
+          "bytes": 493
+        },
+        {
+          "path": "identity/router-transition.json",
+          "sha256": "c852c03afce126001fdca6d1193137c7d32ef77dc8c8c1116f1aa584a62c1ba3",
+          "bytes": 1586
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmark_evidence.py",
+          "sha256": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a",
+          "bytes": 54185
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/artifacts.py",
+          "sha256": "184acedc2dad969ee4540ea7ee19780ca501612e048ffcd5dd88d2adf8be7c9d",
+          "bytes": 42554
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/cli.py",
+          "sha256": "7de809fdd33ce48d840b60eecc20620a0888e828dc3c5787fcb49e884bcbde12",
+          "bytes": 51621
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/requests.py",
+          "sha256": "ef11795059446ea38abfbbefe86a8d6c64ab3b12ba86e40e28528ea9b229b0d9",
+          "bytes": 20550
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/runner.py",
+          "sha256": "0def9fc2b4d1b9dc9eec2ab1c8864be6cca9ab6645fa3543dceada4d3240fd7e",
+          "bytes": 43255
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
+          "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
+          "bytes": 25394
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
+          "sha256": "6526774c49e5d183cb4d32a15d86ea489b1b716bd158201be73620215c783ce1",
+          "bytes": 18915
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/SKILL.md",
+          "sha256": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2",
+          "bytes": 9244
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+          "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
+          "bytes": 5435
+        }
+      ],
+      "reason": "Observed recipe identities and frozen producer source."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "NEW/analysis/followup-skill-telemetry-ticket.md",
+          "sha256": "5db3e4127b725ba80e2ec4d18bc7567d20cbeb9883fcf4cf9362aa30ff496305",
+          "bytes": 2494
+        },
+        {
+          "path": "NEW/analysis/followup-skill-telemetry.patch",
+          "sha256": "4dfdb0caa7ee49bc93085c3ce216e3b9382622dab539e07531f9b14e42fb3835",
+          "bytes": 2441
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1.stderr",
+          "sha256": "c9a296b7026ad71ed90250b9ca42812e70cf22ec7c39aab78bb52fa884a141b6",
+          "bytes": 2420
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1.stdout",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/after-metrics.json",
+          "sha256": "8ef937e5cad04d6024b55a87ea058a8a52b9135e7c815adf6b619a8050577fe0",
+          "bytes": 84419
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/after-slow.json",
+          "sha256": "60dd47cc160a21e89e11b5b68afb1a51df19c7f3575fb6a4bfb8b9a2423e7d4e",
+          "bytes": 5310
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/before-metrics.json",
+          "sha256": "ed0c4e9f73a603abe762e33ebfc3282afeebc42ca6d4ca750490a854ca479491",
+          "bytes": 84407
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/before-slow.json",
+          "sha256": "618a8984ab77601d46fd8f719dc602e7e04776b8d6f85897ddc73fd18c92be47",
+          "bytes": 5310
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/cell-summary.json",
+          "sha256": "01eeb5bb1d126078bc80465719c5fa6b0cc6a2c2095d487ead5caa49d9b01d70",
+          "bytes": 2338
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/engine-metrics.jsonl.gz",
+          "sha256": "8320d76b918cd6cc229c103bd17609e356cbdb9d4cdcdab9e54fa8424d88b95e",
+          "bytes": 6194
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/settle-metrics.jsonl.gz",
+          "sha256": "df48797081207950cf25b8080bdbab421f2f66433d3a660e20a165e47348b0ba",
+          "bytes": 6197
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/diagnostic-baseline-controlled-ctx10240-c1-n1/slow.jsonl.gz",
+          "sha256": "dab89b2675469da8ea6741a6451402909516fdf478981835637d46765aef97f5",
+          "bytes": 1544
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/excluded/precondition-output-parent/relocation.json",
+          "sha256": "97fd2fc1c7d9206170ebfae05069c6659126894d9d85be298d2331a1fc59f3ec",
+          "bytes": 2934
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/identity/baseline-dispatch-authorization.json",
+          "sha256": "be36d9db2f6a748f5073b1e40240a576311c1d338e5c2be6e76ceb89ea8c04ce",
+          "bytes": 721
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/identity/baseline-pre-dispatch.json",
+          "sha256": "c1ff48f3d2cfb5167ef379f57d9cd56226c95caa5de8e5834d46395e64373213",
+          "bytes": 2135
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/identity/candidate-pre-dispatch.json",
+          "sha256": "ee5102fe4d951ee6d2c20e95de35e14201a0fb1ab1bcb7cf526c03f798afbe39",
+          "bytes": 2033
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/logs/cells/diagnostic-baseline-controlled-ctx10240-c1-n1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/logs/cells/diagnostic-baseline-controlled-ctx10240-c1-n1.stdout",
+          "sha256": "37a40132e889a68337850f8369d9500125d36ae434de34aab13836d1c49bdb2a",
+          "bytes": 944
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/logs/cells/diagnostic-candidate-controlled-ctx10240-c1-n1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/logs/cells/diagnostic-candidate-controlled-ctx10240-c1-n1.stdout",
+          "sha256": "33a400835636d7defe924ff2aa683701671d16d632d8ce54452a203868e35f8d",
+          "bytes": 918
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/native/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1.json",
+          "sha256": "e7f036430f30df625cf26ccbb962e050bdf67e6c6f17326548e9ee4b28deae42",
+          "bytes": 13524
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/native/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1.json",
+          "sha256": "622268060f934e5eacf2b4ec53ed9d3cd2bae1f11209a8adb08794da379debdf",
+          "bytes": 13502
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/baseline-queue.json",
+          "sha256": "5c45221f9ce0295522a09fcd9cbba06360ef204b3a30826ad468a0849a21bbcb",
+          "bytes": 54
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/candidate-queue.json",
+          "sha256": "650f9f5ca1b0bc4d840f06ffa7939154a2afdff3d8094a62ce880116bc46bfb6",
+          "bytes": 55
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/dispatch-policy.json",
+          "sha256": "f69d3a98223f6c78edf383546c678e32987fd8e58eeb2bea5dd2bf6cedcfb36d",
+          "bytes": 555
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/offline-fixture-receipt.json",
+          "sha256": "1ca0bbf7bc271c8bf464ce265d6bdff36e7b624324f2654e2bf2f927f255f6a3",
+          "bytes": 1018
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/run-plan.json",
+          "sha256": "fe2de922e3e7776b966be9e26dcb64866fd9c6764f9bac6bdd0f853d42ad6a0c",
+          "bytes": 4573
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/plans/runner-source-diff.patch",
+          "sha256": "2b22f96a353679d2c997d395060a816c57c62776c637b83c957c6ce088bd05a9",
+          "bytes": 1827
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/after-metrics.json",
+          "sha256": "ccfb22a3980f2ac223e3afb658861349475f5d517cc75b137510cff5cd67e064",
+          "bytes": 84422
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/after-slow.json",
+          "sha256": "623af11f3d0be13c035e0900e80c32b5cc228f04900a6479b32e217f4ffffcd1",
+          "bytes": 5316
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/before-metrics.json",
+          "sha256": "9f80deae5dbf4b414bdb84a6b726048a697909557ce274cc0dd30076f6a1f73c",
+          "bytes": 84406
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/before-slow.json",
+          "sha256": "b995b6d8efb6f907c5cb04e9eddf7fb4d5fce8f5dde977a52ad25bed54cf89ef",
+          "bytes": 5309
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/cell-summary.json",
+          "sha256": "339baa572937f4e22722b2153a68a61b9c60aafc979b7e77b72fada2c044256e",
+          "bytes": 2554
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/engine-metrics.jsonl.gz",
+          "sha256": "e30d7843e6c463212d2569c7fa76fd20810070591979a5b855acd097e24d5b3e",
+          "bytes": 2531659
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/settle-metrics.jsonl.gz",
+          "sha256": "5c1c1c7dea9f7534ee6c6eb16a294a53df6320aad31311dd041bfa43be237481",
+          "bytes": 6207
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/slow.jsonl.gz",
+          "sha256": "3d092de74b3a8dffb1550807271d0bdb3851ac7deca3f35bc018e1e4e374261f",
+          "bytes": 10556
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/after-metrics.json",
+          "sha256": "d4ce1ae0db1d086b1c22e5cb70721a87cb75a7f735fa852f7ac1d368244afcbd",
+          "bytes": 81300
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/after-slow.json",
+          "sha256": "046b1f0e3d7b6dae130e014d04b90ed6ee432dd97709506d22dfbfbb910623df",
+          "bytes": 5105
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/before-metrics.json",
+          "sha256": "6786cfd53aac8b42011f9ab8c1b36dcd992842f75394de0895b05362051fac4c",
+          "bytes": 81270
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/before-slow.json",
+          "sha256": "cd3a0d9ff3f616581eadbd3c6827ee1705c78c666f7ea83a12a3baa68abb2988",
+          "bytes": 5101
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/cell-summary.json",
+          "sha256": "384bca66ef7cbdce8c0d1c627af0fd8250b31eb51edcc39c8a2e70c4d646d144",
+          "bytes": 2540
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/engine-metrics.jsonl.gz",
+          "sha256": "92123828a0fa46168802835681dd8840da239f859309b43890fd5d648832f371",
+          "bytes": 688018
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/settle-metrics.jsonl.gz",
+          "sha256": "d37d7d8772513981fcaea3e057239762d023d9d4a81a9c63d65f3598c8f1e650",
+          "bytes": 6867
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/slow.jsonl.gz",
+          "sha256": "f7a78edf858618c07b4e2b245117660aa99dae56d4065f975b4ba7bc2ca0fd3e",
+          "bytes": 3816
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/collector.py",
+          "sha256": "12762d85f810d74c6bc65254ff2b761a00042f1fbeeaca10efbf73696e771286",
+          "bytes": 8050
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/run_cell.py",
+          "sha256": "c22917721a18e0b4dda9df76bbd1f0246d6ba203b3965cdb0026cbd2ec589ed1",
+          "bytes": 15823
+        },
+        {
+          "path": "NEW/diagnostic-controlled-max/telemetry/test_run_cell.py",
+          "sha256": "318515d6bafd7b28749cd347e9a0aefe8847454b8c12da44243fac5d4848dc28",
+          "bytes": 14261
+        },
+        {
+          "path": "README.md",
+          "sha256": "0eb1e408c480897f1b826d598f63e37fc84c9d2f5bd2fe8e9570dff4340b255c",
+          "bytes": 3317
+        },
+        {
+          "path": "analysis/assemble_final_campaign.py",
+          "sha256": "5ae93de0a0d53e49274a1913556887da3c75e4c870db01578a04da5940869784",
+          "bytes": 10978
+        },
+        {
+          "path": "analysis/assemble_partial_coverage.py",
+          "sha256": "c8d58c33fab5d3dd03a0ad863983cc1f084750d8210c82ce3d026003daafdc2a",
+          "bytes": 10521
+        },
+        {
+          "path": "analysis/capacity-journal/REVIEW.md",
+          "sha256": "a0be9ddbdc2b879359ac71f95cd68cfba90bded4750edf8ec2b53fb44c942a50",
+          "bytes": 5066
+        },
+        {
+          "path": "analysis/capacity-journal/baseline_regression.log",
+          "sha256": "7e2c6535f73f7275f1a6835f7ce4036ee8b5780db7ac9400558e66073b852520",
+          "bytes": 2028
+        },
+        {
+          "path": "analysis/capacity-journal/candidate.log",
+          "sha256": "b5b6a63d10ff94529307d24b008e99be339e5aeed8560a9543ade45c72e7491f",
+          "bytes": 274
+        },
+        {
+          "path": "analysis/capacity-journal/capacity-journal.patch",
+          "sha256": "0744ccc7cbe850219fb8d5adb67c0146dd9384feab57c9efaa30c1ac266fc72a",
+          "bytes": 17602
+        },
+        {
+          "path": "analysis/capacity-journal/receipt.json",
+          "sha256": "e4426d27d29418598c2975d10bf090163bdd4ad1a6747f75959b9576de3a01a6",
+          "bytes": 2144
+        },
+        {
+          "path": "analysis/capacity-journal/source/anvil_serving/benchmarking/cli.py",
+          "sha256": "0eff6d842847d024926197d3bb40f411fb3692efc0de93b555c1122ca3010ce2",
+          "bytes": 56311
+        },
+        {
+          "path": "analysis/capacity-journal/source/tests/test_benchmark.py",
+          "sha256": "aa4c191ffcf56a35d65414c00d5afb45d4460f4ee0ef252659796fe3683e4fdb",
+          "bytes": 94530
+        },
+        {
+          "path": "analysis/capacity-journal/source/tests/test_capacity_journal.py",
+          "sha256": "ac273423f7300468cf71ea6f32269cccb83c272c85ee4284438a408217cbe828",
+          "bytes": 9767
+        },
+        {
+          "path": "analysis/final-closed/comparison-tables.md",
+          "sha256": "b8c7364809bcfb3da6043c063547ac2df5ce2cda561e53e791222db02cd47785",
+          "bytes": 7658
+        },
+        {
+          "path": "analysis/final-closed/figure-repeatability.json",
+          "sha256": "377fca1c15931b1091ddde2a33148a2ff4b135b0695d54c468f78039e40050d2",
+          "bytes": 372
+        },
+        {
+          "path": "analysis/final-closed/summary-table.json",
+          "sha256": "49dd78af08fcf55cc54be795f85c7be41f2c78cfba1a81ea3221e9302746a2ab",
+          "bytes": 78455
+        },
+        {
+          "path": "analysis/final-closed/summary.md",
+          "sha256": "ac70a9f111d1c9a1a45074a46f323ff89221f1a7f7403388fb06501591b17806",
+          "bytes": 3419
+        },
+        {
+          "path": "analysis/final-root-review-fixture.json",
+          "sha256": "fea336c6e4bb1c2458c2e380818bf01b2fea14a03259e1b9f7c1ddab0290ce1f",
+          "bytes": 675
+        },
+        {
+          "path": "analysis/final-serving-comparison-evidence.json",
+          "sha256": "31125339e63804594d2f41703a7cc10ca8f9ac2a37d5f40b7dc4af547a7dbab1",
+          "bytes": 880513
+        },
+        {
+          "path": "analysis/historical-support/NEW/diagnostic-controlled-max/plans/source-binding.json.txt",
+          "sha256": "a09e9ef903fb1952f91018fdbdc6df34907effa4d2681dffb5f39c0d541c4441",
+          "bytes": 8373
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/projections/baseline-natural-ctx10240-c1.json.txt",
+          "sha256": "855cf26c980648a16eca71f4d403ab0514b38c2484e624a030fd7cd58de0c598",
+          "bytes": 22422
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/receipts/baseline-natural-ctx10240-c1.json.txt",
+          "sha256": "4e7fa54c22e63f69a3e46f175fb70af0e4fa245d37730d257266e5012578f13f",
+          "bytes": 1108
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json.txt",
+          "sha256": "ba7d835729b944c5b2bf6828f719b8d7ed083b8130e4e5648e47be75dcbd9e5e",
+          "bytes": 2683
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json.txt",
+          "sha256": "750310a8b6878220522da13708cea675de10934c5d444cab31d220391529e6e6",
+          "bytes": 2308
+        },
+        {
+          "path": "analysis/historical-support/identity/candidate-source-verification.json.txt",
+          "sha256": "621a15d54943d9effa8e0cfe207582ecd9c50ace7a7aa81c20dae61624738d51",
+          "bytes": 2567
+        },
+        {
+          "path": "analysis/historical-support/identity/starting-file-hashes.json.txt",
+          "sha256": "717e6f4bc5de47c0dfccd31c5b5511be1529a939d3ef6331d11632bd20c25191",
+          "bytes": 2689
+        },
+        {
+          "path": "analysis/historical-support/plans/coverage-validation-receipt.json.txt",
+          "sha256": "9de5aa335d16727dfb8f075137a883f34636eb32534e26d64e5f6758e281ae23",
+          "bytes": 1980
+        },
+        {
+          "path": "analysis/historical-support/plans/partial-evidence-independent-review.json.txt",
+          "sha256": "7c00105c1bcf8f032eeaf836f88c9f3f3c0864c3f438a4da448f13cf3a36a72d",
+          "bytes": 4135
+        },
+        {
+          "path": "analysis/historical-support/plans/telemetry-independent-review.json.txt",
+          "sha256": "c68faf458fdf745123ab0f38cdc2bbd1f1a12185d225d4a82ecb7d5a41c5387b",
+          "bytes": 8728
+        },
+        {
+          "path": "analysis/historical-support/provenance.json",
+          "sha256": "53f7b8188edfd3d8bee666ce224b403b2d226de3079be1c6eecfff8038172ecb",
+          "bytes": 11153
+        },
+        {
+          "path": "analysis/historical-support/selfcheck-receipt.json",
+          "sha256": "c917ef2371d278722da506d1fe723ef2ad2d57540ff6903e6ba31fb06514b0fd",
+          "bytes": 856
+        },
+        {
+          "path": "analysis/historical-support/telemetry/collector-receipt.json.txt",
+          "sha256": "fcf190ce13c4a1b0f60a8e2223bfcccea3ac3cdda665265280872007c60fe0a5",
+          "bytes": 1328
+        },
+        {
+          "path": "analysis/partial-serving-comparison-evidence.json",
+          "sha256": "e91848450e0e430bd434757dc76de9b67a11cbd9007f1c8ad64173150415dbe3",
+          "bytes": 880080
+        },
+        {
+          "path": "analysis/project_cell.py",
+          "sha256": "3f9e95edc0c1669193f5abe62eab9497ef32aa91c16b17a2662c8409329488f7",
+          "bytes": 32375
+        },
+        {
+          "path": "analysis/projections/baseline-capacity-edge-ctx310272-c1.json",
+          "sha256": "5940730cf760983d17d265513eaa48a00808337b64cc9b0f951de9722ea86139",
+          "bytes": 38913
+        },
+        {
+          "path": "analysis/projections/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "aa6ab25d757f6f00b4c3c856b58feab68796d6077de77bfae34e60b211c5d7a0",
+          "bytes": 38908
+        },
+        {
+          "path": "analysis/projections/baseline-capacity-edge-ctx310272-c4.json",
+          "sha256": "87b10ce9411a1c11b46e0b6f47cba7ca13739212c8c0cd02a34989fc5f3cbeea",
+          "bytes": 38903
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx10240-c1.json",
+          "sha256": "b7e785b5fca4ac2bb63e2cd3a1e54b1a27ce0f8b5b2f05116a66db10bf972e5a",
+          "bytes": 39338
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx10240-c2.json",
+          "sha256": "23474299a39712dc39833cb377204dc0198603abe87db8b912fa83f6030bff7c",
+          "bytes": 39335
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx10240-c4.json",
+          "sha256": "3ca9061ad6db64703a26d4ed08beb055caa3112a0741ae6f0b26a259704bca15",
+          "bytes": 39326
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx163840-c1.json",
+          "sha256": "01f0ad924374f9c5fe8fba9391e2d258e1282834feb0deb9568ecaedffef9ad8",
+          "bytes": 39472
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx163840-c2.json",
+          "sha256": "7de5912efcc201a42f38dd595b62bbc6a4f844c691014509be328db7d0445842",
+          "bytes": 39465
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx163840-c4.json",
+          "sha256": "16d6494dcdf3713a3010bbee729926d3afde5d84fd3758bd7ace23b2115f5ccd",
+          "bytes": 39461
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx40960-c1.json",
+          "sha256": "3d90f79aad182fe7fcb06f0fecddecf42e99d057c18108deb2d22403ad6dbe31",
+          "bytes": 39352
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx40960-c2.json",
+          "sha256": "dc5c3e804efae406487059fcf3dd6630515d5ec4d72af733c21f048c1eda6a3d",
+          "bytes": 39341
+        },
+        {
+          "path": "analysis/projections/baseline-natural-ctx40960-c4.json",
+          "sha256": "42799a028ab9e5ff1fe909687a28ff1f9ca88fffa87f2c550a3ba072ec0b4737",
+          "bytes": 39337
+        },
+        {
+          "path": "analysis/projections/candidate-capacity-edge-ctx310272-c1.json",
+          "sha256": "9de92fef5f41ddc5c25f84650cba9f4b72bd185de6658aa7bf5e60f2b44e8328",
+          "bytes": 38966
+        },
+        {
+          "path": "analysis/projections/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "021dc3cdf96c14de9b5a2f9238988dcfdc462dfee8549d1a97ce8833dd961226",
+          "bytes": 38953
+        },
+        {
+          "path": "analysis/projections/candidate-capacity-edge-ctx310272-c4.json",
+          "sha256": "5cf379419c7c6083089209bbedda93925961e19dc496d5f71f96be4b16a6b527",
+          "bytes": 38954
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx10240-c1.json",
+          "sha256": "09e849aac1961a270227346e2657bd4d65ecd08b9076744c8a5d930b7f32e66b",
+          "bytes": 39395
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx10240-c2.json",
+          "sha256": "fb380fc1ac93ab906ca8388166e7acce1e5c96f25cf04dbd8283606425d443e8",
+          "bytes": 39394
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx10240-c4.json",
+          "sha256": "e764611e3b574256298c503de6647ce646df0843757e855298153f76fa007cc8",
+          "bytes": 39386
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx163840-c1.json",
+          "sha256": "7da1286b9e3714ce73a0e3c527b7fb5775f4dd3d5fed201acec356340d6c2403",
+          "bytes": 39529
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx163840-c2.json",
+          "sha256": "86c13c8e194df937b41a84402de3b2f763a0db1260f29ba2c93f9cd4c14d77c0",
+          "bytes": 39517
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx163840-c4.json",
+          "sha256": "84c3f6d3bad04959bd42fb679bde21c98db934a5ac935d75803f4484b6990a0c",
+          "bytes": 39517
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx40960-c1.json",
+          "sha256": "a2ec58bbe530c2af263f6f75df3754368c0311cafc2c2b0f01b18f1409ac80a7",
+          "bytes": 39403
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx40960-c2.json",
+          "sha256": "6b64f14a0302843b009945370c24f49f1ad3f19c39de01291013ee38948604ce",
+          "bytes": 39398
+        },
+        {
+          "path": "analysis/projections/candidate-natural-ctx40960-c4.json",
+          "sha256": "c90ccb44d8822fa7716988b7206a7e0dd295f534344581d98a692b3d194621d1",
+          "bytes": 39398
+        },
+        {
+          "path": "analysis/receipts/baseline-capacity-edge-ctx310272-c1.json",
+          "sha256": "778a5b94bbe0c9ca2c0494ad4e9db3cbf8c384374558a09f03cfba60f03d993a",
+          "bytes": 816
+        },
+        {
+          "path": "analysis/receipts/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "8cdfe69d3f180bb88d02e88bfc5f72d129f5a5eb87472df779bfd51e082e5315",
+          "bytes": 816
+        },
+        {
+          "path": "analysis/receipts/baseline-capacity-edge-ctx310272-c4.json",
+          "sha256": "d14fc27d0ec9436b8052ae4bbb5c1f116c821e0d40485bb6dfd6a1684a748f6d",
+          "bytes": 816
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx10240-c1.json",
+          "sha256": "fe89546fd4e35b2aad7602d9fa7f0cedc6621273253f5e45462095fa13f8e632",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx10240-c2.json",
+          "sha256": "6e090146e361e68bfbcc4eb4651c8f58fe95086243d7c29f70acc44b25538526",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx10240-c4.json",
+          "sha256": "b4854f157796d5f67f56ce94961886eb7607ec282a41f288410d7086ad2e0e1d",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx163840-c1.json",
+          "sha256": "491ae9a71847337e0d76020a17d55253dace5717a77df6b4531fbd203b3e8558",
+          "bytes": 810
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx163840-c2.json",
+          "sha256": "c348f346d132cfccbb3c9b7d7a5c5ec6d20a73ca327d1224070efa9fd3edc654",
+          "bytes": 810
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx163840-c4.json",
+          "sha256": "6b3dae5a772767050aadd410f34194124cd261cf7df5ad0bb68fead31f011301",
+          "bytes": 810
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx40960-c1.json",
+          "sha256": "b06d899528bfc6346aaf1a888d46a6954d29916209745b7e1b6da8c06191375c",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx40960-c2.json",
+          "sha256": "a73686309a2b3f8cc83b481676644097a465466a8cb07cfb9d5773d20e2e629c",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/baseline-natural-ctx40960-c4.json",
+          "sha256": "8d17be7d8a26b315ea43cf869c43696d2c9eba73caaaafeaaec8f9ded59b7ac2",
+          "bytes": 808
+        },
+        {
+          "path": "analysis/receipts/candidate-capacity-edge-ctx310272-c1.json",
+          "sha256": "7e3b86107ef2433a613bb271e783a9ce3336ee785db76a18be551d2f59d77e96",
+          "bytes": 785
+        },
+        {
+          "path": "analysis/receipts/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "bedd185bffd3ac54e68c26f087324df792d06bd3fb164252c1f57c86e3a74dbf",
+          "bytes": 785
+        },
+        {
+          "path": "analysis/receipts/candidate-capacity-edge-ctx310272-c4.json",
+          "sha256": "7154b111bc7435776b2e35a19115462abf875ff34abb367a5c58fe5f737f590f",
+          "bytes": 785
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx10240-c1.json",
+          "sha256": "7ba3b07e0d3e775987870feec481cbfcf0a535764aca802d20b5133cd2bf36c9",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx10240-c2.json",
+          "sha256": "1e1757d41383f32a55f19b99d657c1dfef76753c89b5e05ff22409cc1565488b",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx10240-c4.json",
+          "sha256": "98273aa55fb3144d6bcb2c2eadf648e7dc57b5a019e4cce153ac05cca2c49f8a",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx163840-c1.json",
+          "sha256": "571779f3dabdb5c7f4cc7088c99e527b6fb2e32b24e3f8e528be0ea5b6834be5",
+          "bytes": 779
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx163840-c2.json",
+          "sha256": "a6bc5f3a7dd82e9087b1f229c3afe00d2e9fc0269b91a60fd92d11e402b3df2d",
+          "bytes": 779
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx163840-c4.json",
+          "sha256": "54d201aa2724b55fbaf33b5c2097b8e0e41f8dbfb873c9c8904e26d705ee63ac",
+          "bytes": 779
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx40960-c1.json",
+          "sha256": "8ddb5c7d248763eda5a958aa0db7d2aa0e773f4bc06fe34e2f0731a7e9fbcf77",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx40960-c2.json",
+          "sha256": "0445ad9e5e843d44181379c24078acbc685e4d7172d26a56ec3c734c89b27503",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/receipts/candidate-natural-ctx40960-c4.json",
+          "sha256": "9feb37496d8105cc506fe9f5c65375e1323fc718e01661355c35e5bb5baf717c",
+          "bytes": 777
+        },
+        {
+          "path": "analysis/render_comparison_tables.py",
+          "sha256": "a2c0fe6918f112058fe8e2b405dfdfc663bc094dfb32ca2ffe183815272fc189",
+          "bytes": 3744
+        },
+        {
+          "path": "benchmark-graph-data.json",
+          "sha256": "066024de319ed636ab9e90d2a7ea925957241fcad9c4c07a62fd53fbc0bf7f73",
+          "bytes": 53848
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "ee9ea5bd9a49f3f71c8fce47cddaa12caf35087691160f5f9d1b4476404b21dd",
+          "bytes": 45736
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stdout.log",
+          "sha256": "3c083679c4c680533549132282fa2dcc95ee8152ecabdd7a783b2face0f16c86",
+          "bytes": 1273
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stdout.log",
+          "sha256": "51ac409b9037ff939bc7534bc37489038b1ffb985742adeca4657b4abc0d738b",
+          "bytes": 1275
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stdout.log",
+          "sha256": "a85ac6117ce6ca4c1464d8efbdf7bbdfcbe3a33b81c8371370aba1e121d9da26",
+          "bytes": 1271
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stdout.log",
+          "sha256": "52747120b94c595470e749ed7a31e9194baa1e717e28e5df4eff5f94d51853af",
+          "bytes": 1282
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-natural-ctx10240-c1.json",
+          "sha256": "6d7e30b6a8347e3c064a5f55f1c3abcb7077e02db112d742f6ff6fdefd6d4c91",
+          "bytes": 21722
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx10240-c1.json",
+          "sha256": "bad3c2d02f07f00c2715c8cefd63947b8a1f4b9507688ced6586e894c6cadd87",
+          "bytes": 13174
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx163840-c1.json",
+          "sha256": "3f503768b8cb3d942157849ae56d53be6ab02b1e0923a49bdc22154caa7e4c63",
+          "bytes": 13215
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/preflight.json",
+          "sha256": "ed6d2a509e9ac684c9bfad6114b7194fd6da234345408950850673e129c25fc1",
+          "bytes": 3273
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/relocation-manifest.json",
+          "sha256": "ef16fddf25a912d18c935f8888bf7a67c679f03c1b7aaabbcf52440d1646ad78",
+          "bytes": 12858
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+          "sha256": "65ef3b8e72cf7158b90052a3745ffbddd55c3534aa15e56d1895f3c7d4d95343",
+          "bytes": 84372
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+          "sha256": "9a1486bbb4a6b79fb45064a7b7b78691f84b5ac3200dfbcafa48c20ac076d723",
+          "bytes": 5318
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+          "sha256": "6a0b3734a0c622ed6961d011a8d931862f020e5f9db710b21af7a17171dc1d6a",
+          "bytes": 84366
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+          "sha256": "dabda19fd57bd855238dbfdf556177e8c97ddb1ca67b7f3d345baf833afe80f1",
+          "bytes": 5309
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "eb1f9f0180e8fa03f7e8cbf1e214f20de348c9b7cbf226713facce822ac2c20d",
+          "bytes": 378009
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "be22cf923ed4b579d8b2d0cb2142dc5da2ddef36b1078645d56ad15004354823",
+          "bytes": 6065
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "dd1edb874263b83290e4de6e0b26fb661a763a8ea2e2eb28fbfc3459b67f1e74",
+          "bytes": 3242
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-cgroup.json",
+          "sha256": "8b1831bdaf31fbbd8d1ba82f14d3e47dccd3f0ff274a9ef75af9c145235facfc",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-gpus.json",
+          "sha256": "d48b7e636bd9fd7d28898f6a58847581a628185ee6d998923024d41955f9764d",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-metrics.json",
+          "sha256": "5a65ed472197cb3bb15d354b84a4107cd3a6b4f0227f3c2e1c1f75a105c55a41",
+          "bytes": 84278
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-cgroup.json",
+          "sha256": "e0d9fc59eba1bd2f545c76a1541185a458a584e2e6a0ef3b7c850f798363da57",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-gpus.json",
+          "sha256": "8be7f43a0abddc3219317cc9c78a0c0ced171fea05cf5e2099dfb92564c80a1d",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-metrics.json",
+          "sha256": "96eeabb65bdb1687289cc6dd82bc2aaf7f4c3b7dc33d4478e1a543004cab61e0",
+          "bytes": 84281
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cell-summary.json",
+          "sha256": "8528f20af02f91e916d2f8cb78fdb1b8bf5117e284d8254c91a561fac97022f4",
+          "bytes": 1511
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cgroup.jsonl.gz",
+          "sha256": "f1dfa439518334b6aff39360f13079cd2b938367edced7ae932c4b60dc262944",
+          "bytes": 1053
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "5dc4f56548aadc197b5a47417d530345555ea65e5e7c5e7cbb17f6e46d6b2b2b",
+          "bytes": 51923
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/gpu.jsonl.gz",
+          "sha256": "423b3188f99240841a7df0f615e17197cccab8f32ef28cf83ea8ebaac21ee5ed",
+          "bytes": 446
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-cgroup.json",
+          "sha256": "a2f53d7af8b3559ac2503a2c92d90e04c3ca956100c4901efe0d352efa0aa36c",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-gpus.json",
+          "sha256": "ba94f4ad587357d67d1cc032acaaf488b0f35df7ef87bb847cfada2d7dce15df",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-metrics.json",
+          "sha256": "ee55d3bbfdf242dc24cd9e8c06c70bc380f2172f6426ca81feea8ca7394c2822",
+          "bytes": 84283
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-cgroup.json",
+          "sha256": "b40dc7c07f2375f77402cfa81c0ea902a43a34f0e87e8a9eae455fd4f23317e9",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-gpus.json",
+          "sha256": "bd73d05fa5877f6400e5123f487a916116bb6d47a3ea86bf5e50335c68fdba4a",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-metrics.json",
+          "sha256": "7e71c6f45046c9edb5d0943b5c9c298aae24abe7a3443419f181d3ef2f0f9bfc",
+          "bytes": 84277
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cell-summary.json",
+          "sha256": "2c16b96c70b0a3709f638f3e05a83f519f0a551a6edf5f2ed52eadf187f608a6",
+          "bytes": 1518
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cgroup.jsonl.gz",
+          "sha256": "b6ca14dd9fb69b07f2ccaaad9c02c1d37467f8b1e37a2888e122dc3d07ba17f6",
+          "bytes": 1521
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "d273eb17758c0ae8192530aa30da3ac32ca2c738f812ed0dd6aca913b0a4c66e",
+          "bytes": 304724
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/gpu.jsonl.gz",
+          "sha256": "59f8c5158fa5a4d033ad41879534c42c49448f7774beaa29ba847507f927234f",
+          "bytes": 700
+        },
+        {
+          "path": "final-graph-manifest.json",
+          "sha256": "0bee34dee61f7702bcf10b9a08cf036920cd5681e4c94f13a404eb4ae8ebe9e2",
+          "bytes": 29754
+        },
+        {
+          "path": "identity/baseline-controlled-length-observation.json",
+          "sha256": "8dcd429634cccc16f1a1405db3950e47ac15e04de5dd5de443e0df0d0bb0099d",
+          "bytes": 84377
+        },
+        {
+          "path": "identity/baseline-drain.json",
+          "sha256": "9f55efc49fd47244a638daa6aa7d40cce314cc19bd7023e5e8beb0b10c96846d",
+          "bytes": 839
+        },
+        {
+          "path": "identity/baseline-end-metrics.txt",
+          "sha256": "fa23e7f88f00dcc0c51d93263d84fea473727df9478c7512db62ddcfc4e111f6",
+          "bytes": 81067
+        },
+        {
+          "path": "identity/baseline-end-status.json",
+          "sha256": "63733425a43778581236ecb225430d8fca5f64220811d15abda6e54d41bc29a3",
+          "bytes": 2135
+        },
+        {
+          "path": "identity/baseline-metrics.txt",
+          "sha256": "b90562141a6f34c4571ece2543df0dc64aec509cdb62cd5ca15d2014fa7d12c9",
+          "bytes": 80846
+        },
+        {
+          "path": "identity/baseline-quiesce.json",
+          "sha256": "b4a64b5fa8f142f68ab07b76c1ea0c854a4d597d1da0ea6fba50ce397cd894d5",
+          "bytes": 786
+        },
+        {
+          "path": "identity/baseline-recipe-show.json",
+          "sha256": "7a1df70a2960e8c41d1a34ce7077ae049673a4e6f42d2e4db3f1415d10bad6ac",
+          "bytes": 3824
+        },
+        {
+          "path": "identity/baseline-recipe-status.json",
+          "sha256": "2edadec545f9a01666a72bd28e522e430d6b58b6f9f2bce3b2f45495eed7b8be",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/baseline-status.json",
+          "sha256": "2f419d58bb9bcf7528436bbabb06b6bb10afcd8f74f217720c2baa6854f86cc4",
+          "bytes": 9108
+        },
+        {
+          "path": "identity/baseline-transition.json",
+          "sha256": "22c69daeb216e9a502da37883efb449b8d426bcb12194ccaaf83f8b679052815",
+          "bytes": 1106
+        },
+        {
+          "path": "identity/baseline-v1-models.txt",
+          "sha256": "4f89e462732cfaebcd0852d7b3e7690ed590afcf1b4404cd15d9ea7385cfe97f",
+          "bytes": 529
+        },
+        {
+          "path": "identity/candidate-fresh-metrics.txt",
+          "sha256": "ec1fef8a1c0064ddf4ddaa5e1c418417a4049be88238ecccb2d69557a4bfc719",
+          "bytes": 73744
+        },
+        {
+          "path": "identity/candidate-fresh-models.json",
+          "sha256": "1b3696d52321f117b25025998e85ef7093ec3e480c76c1fa5694c450ed6d2fe2",
+          "bytes": 853
+        },
+        {
+          "path": "identity/candidate-recipe-show.json",
+          "sha256": "75df25d732494505f748e6f52fdecfe0a44fc4e0f6cbae9f04a93da04a16a2e7",
+          "bytes": 5478
+        },
+        {
+          "path": "identity/candidate-status.json",
+          "sha256": "3974d19b2e661c16c8c7f83074c475ab73b97d64840ebfd21838e0ac0cdda1d0",
+          "bytes": 2033
+        },
+        {
+          "path": "identity/gpus-start.json",
+          "sha256": "054e93d4c44075f64ca4765409ab935706aabb43d0a7780f44e1da9598bf7653",
+          "bytes": 804
+        },
+        {
+          "path": "identity/host-meminfo-start.txt",
+          "sha256": "4f22c556b167392a540ca52ee07c3443a3ad8fa6bd2b74ab1b0f4b0fcdfa19c9",
+          "bytes": 1677
+        },
+        {
+          "path": "identity/mode-status.json",
+          "sha256": "a09cff6152bf30ec8211d36f3503b781d1d8cb769b8d90e83ffd56b2acb1953f",
+          "bytes": 2891
+        },
+        {
+          "path": "identity/phase2-baseline-fresh-metrics.txt",
+          "sha256": "28a2663fecf90e1ca26dd1393dd27a5c3498da8bb749e3b450ed64c2283a1812",
+          "bytes": 79033
+        },
+        {
+          "path": "identity/phase2-baseline-models.json",
+          "sha256": "b822cfeab2e8afc6bb7e7da1fe9b521f31c029f6edf7e1cf8315b90b543e33a5",
+          "bytes": 785
+        },
+        {
+          "path": "identity/phase2-baseline-status.json",
+          "sha256": "590f987e239fe9d93b79da0f385cac5965f41c4e6cc89f7ecc85b1ed76bcf309",
+          "bytes": 2135
+        },
+        {
+          "path": "identity/phase2-gpus.json",
+          "sha256": "9cc3a3a91d60d3fae0dc2e44fcb2620973a3804f53bc9ac4823c713406582312",
+          "bytes": 1122
+        },
+        {
+          "path": "identity/pre-dispatch-baseline.json",
+          "sha256": "76533aa0abbbda0298b09216ec29d1245fdd831fe55a2a12c9c312056f233cba",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/pre-dispatch-mode.json",
+          "sha256": "a09cff6152bf30ec8211d36f3503b781d1d8cb769b8d90e83ffd56b2acb1953f",
+          "bytes": 2891
+        },
+        {
+          "path": "identity/pre-dispatch-primary.json",
+          "sha256": "110d07fa9863adaeee08a1fadaf955b43dcf0f969614dab63824215340eae394",
+          "bytes": 1108
+        },
+        {
+          "path": "identity/pre-recovery-baseline.json",
+          "sha256": "40ebbff5bea4ccad00cd740709c695caac896e3714c41a4885e3f5ef5a2654c0",
+          "bytes": 2134
+        },
+        {
+          "path": "identity/pre-recovery-metrics.txt",
+          "sha256": "8e45e489673529ba7247fa03d9c7033fddba12670b9318a99d347249781dab6e",
+          "bytes": 80915
+        },
+        {
+          "path": "identity/producer-environment.json",
+          "sha256": "538ffadf8da20b58c712981554212c0a5a0c08dca40ef0247d0b5ce1bd79b8a0",
+          "bytes": 493
+        },
+        {
+          "path": "identity/router-transition.json",
+          "sha256": "c852c03afce126001fdca6d1193137c7d32ef77dc8c8c1116f1aa584a62c1ba3",
+          "bytes": 1586
+        },
+        {
+          "path": "logs/baseline-controlled-diagnostic-filtered.log",
+          "sha256": "2a489357403a94c94877fc93bd567c4b8164ed7de8738041c3b958f1952a4c37",
+          "bytes": 6100
+        },
+        {
+          "path": "logs/baseline-controlled-diagnostic.log",
+          "sha256": "86d4cd607619f2baa6c7ff7858e8bdc0d6134c7311a933395da253bf1b1ed5ad",
+          "bytes": 21484
+        },
+        {
+          "path": "logs/baseline-drain.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/baseline-end-logs.json",
+          "sha256": "151dca9c493c8c5f499cb9dca53268dd95015f254cf7740089b944f042a8e666",
+          "bytes": 445598
+        },
+        {
+          "path": "logs/baseline-phase2-preflight.log",
+          "sha256": "e9987d33dd5e6c717e42a888a8f1b4828b380f18d66c2620a70e3fa4e0380d0d",
+          "bytes": 1504
+        },
+        {
+          "path": "logs/baseline-phase2-startup.log",
+          "sha256": "d09228425759834876ad10f66007cb8d799ea5c444403c81540612bcd116c9a2",
+          "bytes": 26713
+        },
+        {
+          "path": "logs/baseline-preflight.log",
+          "sha256": "4474e6b7c5f6cc21baad4a01fba41d935aedfb1c63fb92f5d17ffadd4533aa16",
+          "bytes": 1504
+        },
+        {
+          "path": "logs/baseline-quiesce.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/baseline-startup.log",
+          "sha256": "ebce9d7b9cd2901fc28abaa1b7aaba4a8351d0c131bb2758ff7884cc6624bfc2",
+          "bytes": 556880
+        },
+        {
+          "path": "logs/baseline-transition.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/candidate-preflight.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/candidate-preflight.stdout",
+          "sha256": "29612fbfebabe78ef4b4232d2c7cffe69a89babd3927ec2170985da6e597aa9d",
+          "bytes": 1455
+        },
+        {
+          "path": "logs/candidate-startup-part0.json",
+          "sha256": "12aee133afeedae6e82c0409b4e9d8daf6afa7dbefdbc0f8e7c6911dd1d78190",
+          "bytes": 61783
+        },
+        {
+          "path": "logs/candidate-startup.json",
+          "sha256": "2a281505487d6ff27c260f5b9e944aa273ccc9559c8acff21c2d2319bc7bbfe0",
+          "bytes": 75152
+        },
+        {
+          "path": "logs/candidate-startup.log",
+          "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f",
+          "bytes": 71176
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c1.stdout",
+          "sha256": "78f57188eb57ab078218630c32099cec0eca0a6e4d498b02af0e3065e7380353",
+          "bytes": 1290
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c2.stdout",
+          "sha256": "b3647345d43e1a0bc99824b145a31f8f3ed68a294749c03d18b29c494b90aa64",
+          "bytes": 1298
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-capacity-edge-ctx310272-c4.stdout",
+          "sha256": "6b7684858dcc2aecc34c4d53413d7e73f214ca17b12708f830a0d70d24332717",
+          "bytes": 1301
+        },
+        {
+          "path": "logs/cells/baseline-controlled-ctx10240-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-controlled-ctx10240-c1.stdout",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c1.stdout",
+          "sha256": "fe50e9c48c49f9d7a96d928836d9efa486658e4590c84adda30b5f50698077e8",
+          "bytes": 1273
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c2.stdout",
+          "sha256": "70188ec725cad5e94ec5fbc95dcc443df6c3dc283e71f7db0716b30ab645a0b4",
+          "bytes": 1275
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx10240-c4.stdout",
+          "sha256": "a857af5480a72391932a01fb9593db158b0b8403a853a45ede0d92d8296869e5",
+          "bytes": 1278
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c1.stdout",
+          "sha256": "6969574c718657a3bbac9610aec2535f1443ef298e64e83010d80669ab1829fd",
+          "bytes": 1284
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c2.stdout",
+          "sha256": "5ac577f097b39091c27eedd37c7c0a438008420af02164f8ea81be7c63f790ec",
+          "bytes": 1284
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx163840-c4.stdout",
+          "sha256": "6d5eb23c1ea5903b8b80574661cb5c48a8f879e1a0a35cb2c0b1e9a28a42fb31",
+          "bytes": 1292
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c1.stdout",
+          "sha256": "da5394ab2c133308a32580eaa371757fb7c48e8eb92b5ae43cdd26c46771d031",
+          "bytes": 1277
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c2.stdout",
+          "sha256": "2d3bc06ee80de45c9b6aae55ff196c60c797e10b3ce37346e59f43be76a46fd1",
+          "bytes": 1281
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-natural-ctx40960-c4.stdout",
+          "sha256": "89a3e8129ee3ac17c1e3fc28fb69d96875a479adaa76309db15688df50d8a64e",
+          "bytes": 1284
+        },
+        {
+          "path": "logs/cells/baseline-warmup-ctx10240-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-warmup-ctx10240-c1.stdout",
+          "sha256": "effd4dbdeb134dd0a68616621005509013a8cfab433e30b385d1a83daf6a644c",
+          "bytes": 1271
+        },
+        {
+          "path": "logs/cells/baseline-warmup-ctx163840-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-warmup-ctx163840-c1.stdout",
+          "sha256": "7f3e918805fe29eda00562f4cde36bfab14d94aa9518ab0b911978532c414470",
+          "bytes": 1282
+        },
+        {
+          "path": "logs/cells/baseline-warmup-edge-ctx310272-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/baseline-warmup-edge-ctx310272-c1.stdout",
+          "sha256": "4df05a2252c47d504b235619ff5447380159ee382e8e3a7233468ef705ea1cbb",
+          "bytes": 1287
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c1.stdout",
+          "sha256": "621bd0893ee7c21f1a2c67835a49b51a1e87e88265cecbaf814cac8d9c8d0c9d",
+          "bytes": 1249
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c2.stdout",
+          "sha256": "7fe1544dae854f0bd3748d97c846389e377575115cb806b4d8263a817a12f22c",
+          "bytes": 1248
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-capacity-edge-ctx310272-c4.stdout",
+          "sha256": "1c7e232bb26c280abdb7fd20357ac4039eaea417e2b8f69851a29d09459bbbb2",
+          "bytes": 1253
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c1.stdout",
+          "sha256": "4881f4b0a231a4bed032a20a74ae96be64187b2d5cd2fc50c441faf89e09265d",
+          "bytes": 1233
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c2.stdout",
+          "sha256": "fa9274be34ffc60861045ed3783e522bb23cd588f23a5c5ac668a751429b0a06",
+          "bytes": 1233
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx10240-c4.stdout",
+          "sha256": "63ef570b7a139a2b3d9be4666ab54b58d2f7227efaa0ceb68f6c8e44f47474ad",
+          "bytes": 1233
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c1.stdout",
+          "sha256": "f0b4fcafb031129b8799deb43260fbaec86d4f2f809c88f25c8778dcf6693f43",
+          "bytes": 1244
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c2.stdout",
+          "sha256": "7a2eb460a2de5687312b070075cf3adb18449f0cce429538eb12ddeb659828f7",
+          "bytes": 1243
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx163840-c4.stdout",
+          "sha256": "b870534a82a61adf80b3f78a5336938c8f312414cb4a27c512bebb6174a5cd30",
+          "bytes": 1244
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c1.stdout",
+          "sha256": "d7369556cc95ff843f05c9eb852e5b84f20535d929878706b3806aff569ac864",
+          "bytes": 1232
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c2.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c2.stdout",
+          "sha256": "a62e108ba74ca4ba97289b348f6e26744c278aa6137f780b77ce4718ad48ddcf",
+          "bytes": 1237
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c4.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-natural-ctx40960-c4.stdout",
+          "sha256": "0ca22919706620bc89bc2c17f28e018950bf709f567bbaaeca27e1dbcdeb35ae",
+          "bytes": 1242
+        },
+        {
+          "path": "logs/cells/candidate-warmup-ctx10240-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-warmup-ctx10240-c1.stdout",
+          "sha256": "1f3929b2e1d706d0fe7a4911fa67a9c8f10597221da53f0f88dbb2f7d41a7c04",
+          "bytes": 1230
+        },
+        {
+          "path": "logs/cells/candidate-warmup-ctx163840-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-warmup-ctx163840-c1.stdout",
+          "sha256": "dde9577943633db75938b6b8bb775ca3e2d17bfb247cbfd3e2fa740fcbf4235f",
+          "bytes": 1241
+        },
+        {
+          "path": "logs/cells/candidate-warmup-edge-ctx310272-c1.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/cells/candidate-warmup-edge-ctx310272-c1.stdout",
+          "sha256": "d13e5728acd3a9eaba554316908993c038334849ace571b612b42b0eb3eabc74",
+          "bytes": 1246
+        },
+        {
+          "path": "logs/cli-audit.log",
+          "sha256": "d1f6217f66316042042bac24dc3031d4a32b80c8e00ba014f182cffd574fde13",
+          "bytes": 68
+        },
+        {
+          "path": "logs/final-focused.log",
+          "sha256": "08d0f8b2afb136124d1aba19a2cf10747b5c60dbc9eeac236b2f141b65bdfb98",
+          "bytes": 99
+        },
+        {
+          "path": "logs/full-suite-before-final-freeze.log",
+          "sha256": "64a41d522d31b1d16477755dace94d29ec67dd239bbd99e8eebfb630b3eab49a",
+          "bytes": 14276
+        },
+        {
+          "path": "logs/full-suite.log",
+          "sha256": "051e56d5df8e99788351d6e227d3c5c790afc4cdcecc7460a6099ffb780eb25d",
+          "bytes": 14276
+        },
+        {
+          "path": "logs/pre-dispatch-baseline.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/pre-dispatch-mode.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/pre-dispatch-primary.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/quiesce-preview.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/readmit-preview.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "logs/recovery-restore.log",
+          "sha256": "6dd9f67be5407410afcf5745fae202778fadbc9fcbef87fce3d3b04abd00e312",
+          "bytes": 177
+        },
+        {
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+          "sha256": "f3b87cbc09120c22b0d99fc26c1354ba337ac0fe79241688b773a6d7fd0cdbff",
+          "bytes": 16993
+        },
+        {
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb",
+          "bytes": 16987
+        },
+        {
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+          "sha256": "fccedef35f7f33164f5d85fe5642585d3058c727f5b3b438c5c87022122070b1",
+          "bytes": 17003
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx10240-c1.json",
+          "sha256": "b5f06a2826ce86363c2f75bf7ff3e4823a2e8135d49a02e6a9af3d8d4df74cae",
+          "bytes": 21732
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx10240-c2.json",
+          "sha256": "aeae59638d38287bdd9d55911a72ab86a0127ce1b84bf46241232307ced64485",
+          "bytes": 21708
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx10240-c4.json",
+          "sha256": "6c5f7411d33a8eb434e1a0c58543ab552104d90b7f195cf253ee2a42ec7ba1bc",
+          "bytes": 21681
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx163840-c1.json",
+          "sha256": "e4b900a89d7d290978051d5aa0d04601ef3c86fb482534573c8f09ec1b4ed5f1",
+          "bytes": 21760
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx163840-c2.json",
+          "sha256": "b91cdc624757488b3f93048d3f8080b859da039c05c3076b2d5788e71128ada4",
+          "bytes": 21730
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx163840-c4.json",
+          "sha256": "69a0ded020ab8cbffb34e824b9dcdad4356aa159d49dabeda7b486cc328f6d64",
+          "bytes": 21762
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx40960-c1.json",
+          "sha256": "9a7d045808eccf9bf7bd47a01f0c91d26c67b6ae3dc833f669d870de1fb46c9e",
+          "bytes": 21725
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx40960-c2.json",
+          "sha256": "43d94daf8c07474739fa5600dca363705b8a027f0e523be48f4094042340d679",
+          "bytes": 21726
+        },
+        {
+          "path": "native/baseline/baseline-natural-ctx40960-c4.json",
+          "sha256": "a89c44d118452b05f8dd8f6c83bc0cc31b98e79679160ac91938ca3c7a9503f9",
+          "bytes": 21698
+        },
+        {
+          "path": "native/baseline/baseline-warmup-ctx10240-c1.json",
+          "sha256": "dfb3dccc9071e35ff8a65249f9d0c02265ea68ca20e837092afc2a6110d1efb0",
+          "bytes": 13198
+        },
+        {
+          "path": "native/baseline/baseline-warmup-ctx163840-c1.json",
+          "sha256": "3e972bdc5fd79f5e75a2248a18e336c2e1b377b336d5cfb8b9f4b08b28d72c1e",
+          "bytes": 13214
+        },
+        {
+          "path": "native/baseline/baseline-warmup-edge-ctx310272-c1.json",
+          "sha256": "52b04ca424050a74d1fca5d6959a3f450270a2f98347df70e1a52f3664a5d48d",
+          "bytes": 13228
+        },
+        {
+          "path": "native/baseline/preflight.json",
+          "sha256": "5c2439a6ba1efbde204622bd2e0dfa79d923b073bcba8906c5d505f7b0960017",
+          "bytes": 3251
+        },
+        {
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+          "sha256": "6e588b1f25bc1ca3d113683bb5ff1971162565013b40ec258fdad13d3ddce27f",
+          "bytes": 16926
+        },
+        {
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec",
+          "bytes": 16954
+        },
+        {
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+          "sha256": "f2251279413b8c4417b8225e34882e3c47ecf823cdf13de61268b5fecf09d89d",
+          "bytes": 16963
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx10240-c1.json",
+          "sha256": "421ce10a5efa2f5e7ccfc47d1c2dfb8abda82eb38607514b66333dca4bb1f6d5",
+          "bytes": 21676
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx10240-c2.json",
+          "sha256": "ec1619669f647f15fae983a4c534787ea7aade16400c5e538681b731bee8f879",
+          "bytes": 21679
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx10240-c4.json",
+          "sha256": "fb0a39d81dbb59a705134b4d151a24387706ef0c4b5c7c0c2bd6a6a9c9aaf579",
+          "bytes": 21624
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx163840-c1.json",
+          "sha256": "6c2564840ebbdbfd067f4869c3e1e0f7e205429681552d8270205544a8a75061",
+          "bytes": 21717
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx163840-c2.json",
+          "sha256": "3a1bd2ed7f82447e80eebd094cdb022cf0fbbedf384edcdab4b96e4ce5647888",
+          "bytes": 21740
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx163840-c4.json",
+          "sha256": "836f5fd48f42c44de7a153cdc8816c3ced59cb616e51275e0c483a57cd0052ee",
+          "bytes": 21719
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx40960-c1.json",
+          "sha256": "b496d99e4c5814c458c995bacae742e51e09b359fd68a45087ad520ab67d3876",
+          "bytes": 21689
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx40960-c2.json",
+          "sha256": "a8e7bea1eaa048205b5a282b8838c805e2391fc2fc06ee9c5a8aa33326f5b5f8",
+          "bytes": 21698
+        },
+        {
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852",
+          "bytes": 21687
+        },
+        {
+          "path": "native/candidate/candidate-warmup-ctx10240-c1.json",
+          "sha256": "6aa6dcd5f58826e5b343e930ef3aabddb4bc2dd162f0c065080c0315e6d40279",
+          "bytes": 13157
+        },
+        {
+          "path": "native/candidate/candidate-warmup-ctx163840-c1.json",
+          "sha256": "4fddb6c8b6f8237fe97844d301c4aa35c026bcb356a04cf39d7c46f11412bfbc",
+          "bytes": 13236
+        },
+        {
+          "path": "native/candidate/candidate-warmup-edge-ctx310272-c1.json",
+          "sha256": "8304fdb5e9b1a898949561652cf0f52b3d0ac78e2f1197c903c03568bbaf1b28",
+          "bytes": 13176
+        },
+        {
+          "path": "native/candidate/preflight.json",
+          "sha256": "f95c8903c1c78519205a1eca3f9faa621e5765203709fc0bc79622ff0c84dd3a",
+          "bytes": 3597
+        },
+        {
+          "path": "plans/baseline-controlled-log-receipt.json",
+          "sha256": "d6b5363157da60566f6cbb958c6790c5db866311d9848434f947c7b97f663341",
+          "bytes": 603
+        },
+        {
+          "path": "plans/baseline-edge-queue.json",
+          "sha256": "8a9af86722532f6b5fbe54b14104f85894273d83f6a6042f45c6782260bcc3c9",
+          "bytes": 165
+        },
+        {
+          "path": "plans/baseline-end-stop-preview.json",
+          "sha256": "06575b1ab7294f789b0d2977130750c3b8a28ac398a687886380868ff8a59465",
+          "bytes": 519
+        },
+        {
+          "path": "plans/baseline-end-stop-receipt.json",
+          "sha256": "77f934ce3d906d20ac8e6a7d5504e64904db67142452100d49901bbf88452f91",
+          "bytes": 594
+        },
+        {
+          "path": "plans/baseline-phase2-preflight-receipt.json",
+          "sha256": "2e8d94897392cd6d5fd26becf66aa638ba97afac7644f916932d6a6aaa64ac43",
+          "bytes": 782
+        },
+        {
+          "path": "plans/baseline-phase2-queue.json",
+          "sha256": "8a1ce0f17d7c45e3ee4127ff4b04739d5dc1c71b5748a1526a1c1b72ce065b8d",
+          "bytes": 877
+        },
+        {
+          "path": "plans/baseline-preflight-argv.json",
+          "sha256": "51387d3dfedd9b7fffc7e537145abd1e99452c56404e917220a0ec038238a9b8",
+          "bytes": 592
+        },
+        {
+          "path": "plans/baseline-preflight-receipt.json",
+          "sha256": "967f72cfd3478301a15a56e270a32de34f05fbdf1b81dfd741401498b5d88d72",
+          "bytes": 132
+        },
+        {
+          "path": "plans/baseline-remaining-queue.json",
+          "sha256": "52cbc7e4391625b361c1e55e8bc2d0b96c3d72af755793e5c5c1f88c77f31855",
+          "bytes": 776
+        },
+        {
+          "path": "plans/candidate-edge-queue.json",
+          "sha256": "aae670cf93bfc5b78069dd908970f309ba41eb05ea37abaa0ede610c5f0d7aaf",
+          "bytes": 169
+        },
+        {
+          "path": "plans/candidate-first-cell-independent-review.json",
+          "sha256": "ecbe612a7e3e3ea1e74896703ed0a1b13803dd5320bf6cdc61d6987094491bc6",
+          "bytes": 7723
+        },
+        {
+          "path": "plans/candidate-load-preview.json",
+          "sha256": "1fdbcdb063b5f04ea7dd8dd30cdab4f845e60a2cb62edec440592599083bcd31",
+          "bytes": 6482
+        },
+        {
+          "path": "plans/candidate-load-receipt.json",
+          "sha256": "02978b61c8151e98924450c57e5a67594e5cb6a315c3463a4280e998edeb36f8",
+          "bytes": 5805
+        },
+        {
+          "path": "plans/candidate-natural-queue.json",
+          "sha256": "441980714c0c203b6d3e943c7291c97858459604a292c0e421878ab9e1ba32e5",
+          "bytes": 390
+        },
+        {
+          "path": "plans/candidate-preflight-argv.json",
+          "sha256": "782e324e4d0d8728808b60d8f9894f6b8a29a4587b80c60e0893fb547616a46e",
+          "bytes": 566
+        },
+        {
+          "path": "plans/candidate-queue.json",
+          "sha256": "3492acfbcb4708701836e739e0ae3aca3b360775f90feacac27b6fed712b6234",
+          "bytes": 901
+        },
+        {
+          "path": "plans/cell-dry-runs.json",
+          "sha256": "68b4fe3653916a6eb2ef091bcd498d9ec187193224cacd52f718cb43517a2163",
+          "bytes": 76721
+        },
+        {
+          "path": "plans/collection-recovery.json",
+          "sha256": "9a2af2e184f1e581006dd4c3535b2241b6dbea5951a20e4f6c6f7bfcfd0875bf",
+          "bytes": 1716
+        },
+        {
+          "path": "plans/collector-gap-disposition.json",
+          "sha256": "422dec0e3dda57ab5b8444ea884bfed31044a4f6bbf47be84b4bab31caceec92",
+          "bytes": 1250
+        },
+        {
+          "path": "plans/comparison-plan.json",
+          "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1",
+          "bytes": 10864
+        },
+        {
+          "path": "plans/controlled-budget-observation.json",
+          "sha256": "6aaf2f30bc2444fa97f71c55a53191a9e5592e53d57acc8b585ed2debb205819",
+          "bytes": 813
+        },
+        {
+          "path": "plans/controlled-diagnostic-adjudication.json",
+          "sha256": "1fc691188dc510d46136522022eb85f8a920f8b7735c8f900116d6128fdd018c",
+          "bytes": 1031
+        },
+        {
+          "path": "plans/edge-cell-dry-runs.json",
+          "sha256": "6ffd9a8acf2838cd20b8d32d1af7bac19977eddd73db5c40c2c4bc32d3e24799",
+          "bytes": 15463
+        },
+        {
+          "path": "plans/final-focused-test-receipt.json",
+          "sha256": "4c64044b541d6eaa3bf9990b7607b3afa28442426229b7a85b18be0f36339626",
+          "bytes": 1226
+        },
+        {
+          "path": "plans/final-measurement-independent-review.json",
+          "sha256": "57ca8be26d8bda4de703c175e7cb393135fc2ea1b9df72d6c8c6192276e11223",
+          "bytes": 8363
+        },
+        {
+          "path": "plans/final-restoration-independent-review.json",
+          "sha256": "f0a86dc3d142c38cf9697206523d0871ed2a65b01b8ab6ecd8a1836778fa45b2",
+          "bytes": 8599
+        },
+        {
+          "path": "plans/first-full-suite-disposition.json",
+          "sha256": "ece9d9c963f0e76318694df67cbd99896aabd624d945de85eed494a087663a5b",
+          "bytes": 652
+        },
+        {
+          "path": "plans/frozen-plan-receipt.json",
+          "sha256": "4ed15749f4b32196fef072eb6b1077d23ea7f6d2092375d667a8a5b6cd3773bf",
+          "bytes": 1320
+        },
+        {
+          "path": "plans/full-suite-receipt.json",
+          "sha256": "864a82686a9371db3dcd70315fe3e97676d84c208ed3210114a1e0494d7ab00d",
+          "bytes": 1006
+        },
+        {
+          "path": "plans/independent-review-addendum.json",
+          "sha256": "98191171a07149a46aba635702504193f755d202d2bd9febde3a61ae45056349",
+          "bytes": 5044
+        },
+        {
+          "path": "plans/independent-review.json",
+          "sha256": "c88edbcc58c5f7987be6b4d84f14fc8fb6f82f63740647bb012ab4ae33d3fabe",
+          "bytes": 8404
+        },
+        {
+          "path": "plans/initial-metrics-coverage.json",
+          "sha256": "da63916ec5ddd471ed36c7b6db1247ff9c5eda7a76d01b06aff6a3fc01faddc4",
+          "bytes": 135842
+        },
+        {
+          "path": "plans/load-preview.txt",
+          "sha256": "ac1685fc519524a46d360acc84331eebf3dbfe5f4248bda618ec4ed4eb6e48b5",
+          "bytes": 5888
+        },
+        {
+          "path": "plans/metric-extraction-spec.md",
+          "sha256": "87aef605f3fee8265dbd75e181d2266c73293f9b1cd30522ddb2f5f37edb5354",
+          "bytes": 6310
+        },
+        {
+          "path": "plans/original-controlled-stop-adjudication.json",
+          "sha256": "dbf4e6155665498a4b6f27ad7c1aa80cff7a427af19996a8ec8e4883975fe65a",
+          "bytes": 1239
+        },
+        {
+          "path": "plans/paired-controlled-diagnostic-adjudication.json",
+          "sha256": "1ce169b69b2e65f93c48dd3cd0ca95be81064b2dd60418eb8c3fb8174b7a0645",
+          "bytes": 2625
+        },
+        {
+          "path": "plans/pre-candidate-restore-preview.json",
+          "sha256": "027a426494fe9b62f5bc15311b248e90e60c7431b3ab53e18d0dfe2cd08f7fd6",
+          "bytes": 1227
+        },
+        {
+          "path": "plans/prompt-reconstruction-review.json",
+          "sha256": "614480d6affd73020efd82d2ad7a97dcac8122ebd6b399a50883215ed3e26819",
+          "bytes": 39826
+        },
+        {
+          "path": "plans/publication-preparation.md",
+          "sha256": "453be8e8c8e548b3ea5277c90e73b14fc8b3c937261ab56ab5618da79689561c",
+          "bytes": 7514
+        },
+        {
+          "path": "plans/quiesce-preview.json",
+          "sha256": "1636f54b471084b7c7d018cd68e813b3eecca6de6830f4e43496c62303e0e8c2",
+          "bytes": 739
+        },
+        {
+          "path": "plans/readmit-preview.json",
+          "sha256": "2893f366514986258e8c43eddf0879556d45cbac8b941460cc118cb4f1dee9b7",
+          "bytes": 739
+        },
+        {
+          "path": "plans/recovery-restore-preview.json",
+          "sha256": "77e56a7e988187d120eb02d6f83a227eb98e4843b35015814a0c2d8296b3e035",
+          "bytes": 1183
+        },
+        {
+          "path": "plans/recovery-restore-receipt.json",
+          "sha256": "2dfabd51f86716172818bbf100153a3af37ad7c2db5baeee34076202041710ec",
+          "bytes": 1164
+        },
+        {
+          "path": "plans/recovery-stop-preview.json",
+          "sha256": "088c4f3c8440eddd55841d1857a9d93ff4355ba268e66e69ff54b80abab818ba",
+          "bytes": 475
+        },
+        {
+          "path": "plans/recovery-stop.json",
+          "sha256": "69da2288458daa0f43a0acd1be3d9e4bbd2c995413593bd3abe6696084b7a805",
+          "bytes": 603
+        },
+        {
+          "path": "plans/restore-preview.json",
+          "sha256": "f506bc3db3dd1e6bc28df8d468053b4a49270d2990ed087ec97a9a8e1efa1784",
+          "bytes": 1685
+        },
+        {
+          "path": "plans/restore-preview.txt",
+          "sha256": "b0d38e68b261d854364e1dff3c4644de9f89d8b2b61991dbc44ec27f13441cc9",
+          "bytes": 82
+        },
+        {
+          "path": "plans/run-plan.json",
+          "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f",
+          "bytes": 76940
+        },
+        {
+          "path": "plans/runner-independent-review.json",
+          "sha256": "e5b2018f122c3dd24313f07371b96fd3425dfe7d22809c4d5759a7d1d9f912d0",
+          "bytes": 4551
+        },
+        {
+          "path": "plans/skill-activation-preview.json",
+          "sha256": "51d582f99c504df9e69e016c02a6e03a91d1e332c2b6193d8a899dc5a07dd81b",
+          "bytes": 1181
+        },
+        {
+          "path": "plans/skill-activation-receipt.json",
+          "sha256": "3763a97651ef6625731766df568f2223f496087765384db0a455a82872689ade",
+          "bytes": 1298
+        },
+        {
+          "path": "plans/skill-improvement-baseline.json",
+          "sha256": "f0fe8e3f936b2354493cb0a7ba2cbce02dfa49b68fb8828e01523b894c25f77a",
+          "bytes": 1676
+        },
+        {
+          "path": "plans/skill-improvement-replay.json",
+          "sha256": "ed4ea06b110b9571d20faa5197a094021f6bed6d58d78e7c4a5016e319574c8e",
+          "bytes": 592
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmark_evidence.py",
+          "sha256": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a",
+          "bytes": 54185
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/artifacts.py",
+          "sha256": "184acedc2dad969ee4540ea7ee19780ca501612e048ffcd5dd88d2adf8be7c9d",
+          "bytes": 42554
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/cli.py",
+          "sha256": "7de809fdd33ce48d840b60eecc20620a0888e828dc3c5787fcb49e884bcbde12",
+          "bytes": 51621
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/requests.py",
+          "sha256": "ef11795059446ea38abfbbefe86a8d6c64ab3b12ba86e40e28528ea9b229b0d9",
+          "bytes": 20550
+        },
+        {
+          "path": "plans/source/anvil_serving/benchmarking/runner.py",
+          "sha256": "0def9fc2b4d1b9dc9eec2ab1c8864be6cca9ab6645fa3543dceada4d3240fd7e",
+          "bytes": 43255
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
+          "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
+          "bytes": 25394
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
+          "sha256": "6526774c49e5d183cb4d32a15d86ea489b1b716bd158201be73620215c783ce1",
+          "bytes": 18915
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/SKILL.md",
+          "sha256": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2",
+          "bytes": 9244
+        },
+        {
+          "path": "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+          "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
+          "bytes": 5435
+        },
+        {
+          "path": "plans/validation-source-freeze-before-review-fix.json",
+          "sha256": "41f060b2320027c65da5cd86c6b56f01f74f0e05f452009987d432ff1a2e70e6",
+          "bytes": 3050
+        },
+        {
+          "path": "plans/validation-source-freeze.json",
+          "sha256": "304b0a63e4924711911e9bbc8c2851ae4f76d1147fbc3d45e1bcf5aa65dbd737",
+          "bytes": 3030
+        },
+        {
+          "path": "private-origin-provenance.json",
+          "sha256": "533e4157fefca6fb26802e726e1c1897abeb82868e450f6436d90ced4c2645fc",
+          "bytes": 305062
+        },
+        {
+          "path": "restoration/baseline-restored-models.json",
+          "sha256": "259991754b50579c2184d6a14e4e54ccf83ec95e635b70fc51d9d25397229689",
+          "bytes": 785
+        },
+        {
+          "path": "restoration/baseline-restored-status.json",
+          "sha256": "15e40c17ee40c0db9b9f56a8265e00ae4768b0aef87f1df3c89d18f7891b949b",
+          "bytes": 2134
+        },
+        {
+          "path": "restoration/candidate-end-logs.json",
+          "sha256": "7749c888089ab8cabd207bfac200301a0254cdb40e66787f9cc4e3ff8380dfbd",
+          "bytes": 323501
+        },
+        {
+          "path": "restoration/candidate-end-metrics.txt",
+          "sha256": "0ebd4c7b85d90f00ccfc59b34cd22c9874ffd542e5c4f0aa6ec46084310596ea",
+          "bytes": 77574
+        },
+        {
+          "path": "restoration/candidate-end-status.json",
+          "sha256": "cba2ec7ab2cc1e68b41deb28bd6c80270a36868c31bdb9faea18950117cb2195",
+          "bytes": 2033
+        },
+        {
+          "path": "restoration/candidate-restored-status.json",
+          "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668",
+          "bytes": 1193
+        },
+        {
+          "path": "restoration/candidate-unload-preview.json",
+          "sha256": "801b13acd14f7d83235a80b2e69b85611e495ff3231923d549084e59cf8f873a",
+          "bytes": 736
+        },
+        {
+          "path": "restoration/candidate-unload-receipt.json",
+          "sha256": "8046bfe71441940f91a7271da50d64ae1a3ae8a594bd0db2e562aa5a636475e5",
+          "bytes": 540
+        },
+        {
+          "path": "restoration/direct-preflight-receipt.json",
+          "sha256": "b2b63c2d6a85b24b1f0124a43dca53727e16960beec3b355537ded112704898f",
+          "bytes": 2298
+        },
+        {
+          "path": "restoration/direct-preflight.json",
+          "sha256": "e4629017e1055694cc6e6d6d7e205a478719f049b795a422275766aa1ce72187",
+          "bytes": 3295
+        },
+        {
+          "path": "restoration/final-baseline-status.json",
+          "sha256": "e565753aa12803a3c8921af34a55598875d5ac619d9f7f131a5f4d1d7106f19a",
+          "bytes": 2134
+        },
+        {
+          "path": "restoration/final-candidate-status.json",
+          "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668",
+          "bytes": 1193
+        },
+        {
+          "path": "restoration/final-operator-hashes.json",
+          "sha256": "b22f21657191c4ab6b128254ce063c6f061873ac679f844a459e3f848ddb6b93",
+          "bytes": 2849
+        },
+        {
+          "path": "restoration/final-restoration-receipt.json",
+          "sha256": "d1b5fdae878251a9596fe31dd254374a364a34b0514e43636541c90631be5663",
+          "bytes": 4119
+        },
+        {
+          "path": "restoration/final-router-status.json",
+          "sha256": "9bf84ff6dabb90dbde5946dac30172b8c35b094cab12c38db47f58fc421815f2",
+          "bytes": 4888
+        },
+        {
+          "path": "restoration/pre-restore-hashes.json",
+          "sha256": "6497268ae1567d3cdc93072d49e7b13728c37761361922bc3ffee068fea86bfb",
+          "bytes": 2579
+        },
+        {
+          "path": "restoration/retained-restore-preview.json",
+          "sha256": "77e56a7e988187d120eb02d6f83a227eb98e4843b35015814a0c2d8296b3e035",
+          "bytes": 1183
+        },
+        {
+          "path": "restoration/retained-restore-receipt.json",
+          "sha256": "cc0cabef04cf1b12b1697935d77e956d4cbcc3da5e5f48fb781a817979b4793d",
+          "bytes": 1276
+        },
+        {
+          "path": "restoration/routed-preflight-receipt.json",
+          "sha256": "7d5c8822a3f6d8e3382f1995f6f32cd0df18a45edaac1c36bd60629b0ae0d774",
+          "bytes": 2200
+        },
+        {
+          "path": "restoration/routed-preflight.json",
+          "sha256": "b988cbda27a206b48a93b7a5207c5c1ab7619d7b5f58d0a1ff26060f0eb3b93d",
+          "bytes": 3090
+        },
+        {
+          "path": "restoration/router-readmit-preview.json",
+          "sha256": "530032ce4739aec7060b0424f3fd766231bc742e109280615d2f04821e88d468",
+          "bytes": 986
+        },
+        {
+          "path": "restoration/router-readmit-receipt.json",
+          "sha256": "8d68986306d46f30648f762872d2b7ccc9b3d9553fd810f33764c9482d6cf84b",
+          "bytes": 1557
+        },
+        {
+          "path": "summary.json",
+          "sha256": "ffafa6baeb6a7e792cf63aaffe264c33e4f769e6d1f48b51458869e95fde0984",
+          "bytes": 524604
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/after-metrics.json",
+          "sha256": "329ac2046beb2e03dc027efed9da6e65b32bf8b0a74a93078647f00e40416bab",
+          "bytes": 84421
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/after-slow.json",
+          "sha256": "13a7e8ba313128b821321f665865c5a2abd2092c782a1fce28b130c39ccb6dba",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/before-metrics.json",
+          "sha256": "275109070583b4008715d96b185d06b364519177aee8f006bb548d4353535319",
+          "bytes": 84422
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/before-slow.json",
+          "sha256": "0521cbf8b17164b2fbe8ad76a85c953b618567e81edc995b1bff3e1aaec80fdf",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/cell-summary.json",
+          "sha256": "ff74e3299776a8ba02080decda23e6e5a7a4c25db6c37a3e705d41aafde258ec",
+          "bytes": 2504
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/engine-metrics.jsonl.gz",
+          "sha256": "5b2150b1bc974e8497a7ce87b45bd755c8f008a9a968c6d63b79be91197924a5",
+          "bytes": 2518504
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/settle-metrics.jsonl.gz",
+          "sha256": "77d72bcf2663869fa2d8959860a3a17219b474a4c82f8009c7e0eac19f0c6f97",
+          "bytes": 6212
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c1/slow.jsonl.gz",
+          "sha256": "da2e19a02b43d48968754e7f190a613f21747aaa155926971667f6e3e69ef5fa",
+          "bytes": 10430
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4",
+          "bytes": 84419
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c",
+          "bytes": 84420
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56",
+          "bytes": 2505
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7",
+          "bytes": 2436556
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517",
+          "bytes": 6224
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0",
+          "bytes": 10029
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/after-metrics.json",
+          "sha256": "69a1054c4a30fdd95699b3c86cc0743d793d913a56c2f205b8cf92ac80eb3ce5",
+          "bytes": 84510
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/after-slow.json",
+          "sha256": "3c0a5fea2b54fe7c75355938888637d54c303f2666a93694b424ada62c11a51d",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/before-metrics.json",
+          "sha256": "f791d197e2c7349def98dfeeb1806f2543ef62f812d94c43cf45dd1bfa0c6535",
+          "bytes": 84419
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/before-slow.json",
+          "sha256": "8379d416258ee6c6bbfcf47a76bfebc4307ee28d7f0e871d45be40dc32c2680d",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/cell-summary.json",
+          "sha256": "149646d78867aa5f2d87c485d1b383c72a9e107ed2559264536a89337bf16061",
+          "bytes": 2505
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/engine-metrics.jsonl.gz",
+          "sha256": "3d65234cd078d4d36e90b25b151410b1358c08a3d8827e0cdf6baf8f3d4905c1",
+          "bytes": 2402925
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/settle-metrics.jsonl.gz",
+          "sha256": "6217cefdf5f863a6c98f6e1e6fd40e3926098a56eaf3074d2cf8600f4c46bea0",
+          "bytes": 6228
+        },
+        {
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c4/slow.jsonl.gz",
+          "sha256": "dd50f20db7baabfd82fb1fe63ce6aa1249c0b7f3d525e2646c199c070c12c056",
+          "bytes": 9862
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/after-metrics.json",
+          "sha256": "fb25361b3e448ab7f4ed7f516e1708a6dbddd304c92deccc7a175f82453b17d5",
+          "bytes": 84406
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/after-slow.json",
+          "sha256": "fc9fce9fa436f64e500f2a57bd5faab5ce017caaa9f7a1fb41b2dca0115a26e1",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/before-metrics.json",
+          "sha256": "e6fe52cb19e8a2ad6e0625cebc843e44801d31286252242fd7ffffb4a32af660",
+          "bytes": 84338
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/before-slow.json",
+          "sha256": "e7a7d4c34b787d8660f6cc9074d8e3a8004d6b1dd7ab3f67f9b1371cdcbafd5b",
+          "bytes": 5313
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/cell-summary.json",
+          "sha256": "4ba18abc09dc2d7e808f6638efcdd980f248819f15e67fa6d0fb5fd7e6c0fa68",
+          "bytes": 2318
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.chunks.json",
+          "sha256": "f36666b7082a30b6e0704cc530a68f1e2737b2488b1e997cd431adc49d008b02",
+          "bytes": 6465
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000001.jsonl.gz",
+          "sha256": "f4fc5ad84d3bccc10feb2dc76e7b13eac06a7439c83ca053b123c90df5fff685",
+          "bytes": 581903
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000002.jsonl.gz",
+          "sha256": "f7e8c6930504f5387388b8d62c47cd977c6e304dda10dade5df27ec8674e2fb8",
+          "bytes": 581895
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000003.jsonl.gz",
+          "sha256": "6af1ae55fddc1969dbcaad1d4974bf20e6236971465a41e103aa9c50d20444f6",
+          "bytes": 581693
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000004.jsonl.gz",
+          "sha256": "7deb27bd49498b90d6f91a7ae2da68f04d0a3ad506d762ebe6f06f04c9dfe3a4",
+          "bytes": 581593
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000005.jsonl.gz",
+          "sha256": "bcbf987a8eae5da4f2b6752163341615c867f63d26b5f2801cbcd3a34bf31540",
+          "bytes": 582334
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000006.jsonl.gz",
+          "sha256": "2c251a459aa2a04a94184e71b2d00f74bc03e804bd62d9721e7a1e0eed82cf74",
+          "bytes": 583257
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000007.jsonl.gz",
+          "sha256": "3fbf3847f9e7d962b211460d14fff81ff6dbf362d5bae5e1acbc259223cdf945",
+          "bytes": 583521
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000008.jsonl.gz",
+          "sha256": "fb8132d1288560ce96e93d0d1f9a4d25f066fa829e0ee796bd68b49c0fb6d530",
+          "bytes": 583574
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000009.jsonl.gz",
+          "sha256": "7962bbbdb8be0f109c274a6a5e0956f81dc72b34292dd75cfa0247f01b337f9e",
+          "bytes": 583618
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000010.jsonl.gz",
+          "sha256": "676976aff0d8fd425b18e6fa50c37cdbc80050a028663d5d561e633b1008d5dc",
+          "bytes": 583687
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000011.jsonl.gz",
+          "sha256": "d9eef9b1b30aae8528a79135bddb5e7e0afd1365039556c4c56b2e2544c9cf7b",
+          "bytes": 583973
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000012.jsonl.gz",
+          "sha256": "9689dce485242267ec99f50a23cecfa56ecb8324d4bef521182dd05b4fd9c377",
+          "bytes": 583745
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000013.jsonl.gz",
+          "sha256": "d8efc24174014684415a7d986ccbb7fba257a9abf66bbbc542c92a4dedd8fa45",
+          "bytes": 583668
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000014.jsonl.gz",
+          "sha256": "4619e3c7a65d98761bbb58630bc73f381032c9f237b77996371e36d37db33461",
+          "bytes": 584761
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000015.jsonl.gz",
+          "sha256": "1ebf4e5b1bf193f19579b7c03d91c8ba2b3d92695028fc8a81bb315919a2e3b3",
+          "bytes": 585635
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000016.jsonl.gz",
+          "sha256": "4efad89c6010ef6b1c7e9a99033b6dcfd203eacbe34447441f0e6f1fa1aa1a62",
+          "bytes": 585757
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000017.jsonl.gz",
+          "sha256": "baaab613f1308dd30171aee8846cae35f19422de362f431772fd8a1081edef5a",
+          "bytes": 585654
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000018.jsonl.gz",
+          "sha256": "14d1f8ca961175c05e657c12db5a3ae69c0dfecc9bd1598df1b2dc40d232007f",
+          "bytes": 585846
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000019.jsonl.gz",
+          "sha256": "bc7216954aee8203856ac717257bb19252c57508fd08e262941a43753fe8a722",
+          "bytes": 584636
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000020.jsonl.gz",
+          "sha256": "c19b5ef68553daee1b6d6f6f7e2c5affdd644f2b158d50d32f89feea5147a1bc",
+          "bytes": 584920
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000021.jsonl.gz",
+          "sha256": "9848facf5e779286fd2a929ad55c7051710a59df5ca290ae0afdbb0d141183d1",
+          "bytes": 585253
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000022.jsonl.gz",
+          "sha256": "f598a32506f86a0506b7ed3c9c753b6a2a59267a5616e9092e0145504a095a2a",
+          "bytes": 584771
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000023.jsonl.gz",
+          "sha256": "f0211997e342ec0892507ec098e2a3e14b0ceed75621b1c39880cd0bf677b580",
+          "bytes": 584760
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000024.jsonl.gz",
+          "sha256": "38bf8e1e72878abfef08032706bb52b3e99ba539c4477f1fa78b454d02736be0",
+          "bytes": 584973
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000025.jsonl.gz",
+          "sha256": "e685af8a010190ad3efc8cbbd8a264fd11a82890640c65329b90f20f7d753113",
+          "bytes": 142093
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "71005d533f780672d79576d3d34521e886ac7746b4f2c8acd3ed1aea82827e71",
+          "bytes": 12100
+        },
+        {
+          "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "6349d54d08e88780357922c9bd18f22fd9633991a2bb4ceb9b2a50dde2626993",
+          "bytes": 47167
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+          "sha256": "86eb3cea19a752395d55fcf2f6086187e1d7ecb86dad0a05dd6f77bdf9460866",
+          "bytes": 84263
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+          "sha256": "b3bb271643cd5a0e97cd91aa763433870ddbda0355f0e030caf6220179e6bca4",
+          "bytes": 5317
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+          "sha256": "b14c0b14d5132d98e1aa4c47d9330be60159045544d931329f3a5ffd3adfc4d0",
+          "bytes": 84051
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+          "sha256": "c7abfcd577858fc6f53f9dffe74b2307ac6ae29cc7499d49ed604207eae3eec7",
+          "bytes": 5312
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json",
+          "sha256": "bc692a538bc42dcd28d3fc34f142a2edecb32fece5a2f1bedeb20145fd8e08f7",
+          "bytes": 2485
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "c0dc61244a91d5d254c4c4fc83ae36438fd35a96e204bdb8e53d73d0b62d2274",
+          "bytes": 422976
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "30e5c5bed52862b510b4cded04a5ca5fdf9cc94bf63b0bb296f4938b694f0440",
+          "bytes": 5890
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "70d7c71f13e553cbc0ea96b70d2d8ef1f03d2fcae93a75d1c0081d0ced06e39f",
+          "bytes": 3396
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/after-metrics.json",
+          "sha256": "84aa0f1559cce007bf4e8abf52d60475d4acaa02f271a029280810eb5db2a982",
+          "bytes": 84272
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/after-slow.json",
+          "sha256": "cb70c2bd1aa2d488400aa518ab02353d6622207dfbf0f1cf4eb965e13ff85eb7",
+          "bytes": 5316
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/before-metrics.json",
+          "sha256": "2bf1e0869da6476f3a6e8d806d15314aadb8a24273327c76ccf45437d032f60f",
+          "bytes": 84263
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/before-slow.json",
+          "sha256": "c52baba3e26c3ccac731882527eacd5e30a37d7921b92320f355c19d19cca6af",
+          "bytes": 5313
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/cell-summary.json",
+          "sha256": "0c9e7b6f747e87a7e73a90988c0ad6cf19f78e1d9b0f2cf4a4741871dfc83525",
+          "bytes": 2485
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/engine-metrics.jsonl.gz",
+          "sha256": "aea093be91c043fe84f012ede094f9da681eb6ecb313ec7ec7942ecbe7eb220d",
+          "bytes": 289362
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/settle-metrics.jsonl.gz",
+          "sha256": "75284be9921c2c0f645142ac4d55fe7faa328a78c451781cc251c29735c25e14",
+          "bytes": 5926
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c2/slow.jsonl.gz",
+          "sha256": "183d491b89151df8a7440758f160257c4feb0f00b7f4fa2d8af837f24c9084f7",
+          "bytes": 2840
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/after-metrics.json",
+          "sha256": "dec30cd2960dfafffedf3c60cbd23eb864a26cd635e7069dc3ccf2dafb47faa6",
+          "bytes": 84275
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/after-slow.json",
+          "sha256": "540008404998bfb59e4562095feb1e835b82d1a1b27734e24f2617214ca888c8",
+          "bytes": 5317
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/before-metrics.json",
+          "sha256": "e135c63566ae45379808c94157901f4ef6a330f117973e996a70fe46a7528e60",
+          "bytes": 84272
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/before-slow.json",
+          "sha256": "fef891bd7a885b893e3d9958d14c230a469bbc4f62e3d3e740882a43ce58d93d",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/cell-summary.json",
+          "sha256": "682ec319317e4bc5f366b878794cf8a53f99c1fa9a5f369b08126536509cab87",
+          "bytes": 2484
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/engine-metrics.jsonl.gz",
+          "sha256": "3d8497f630986859415d0c506d354e433c357fff8c7ada85c1674354c64b4572",
+          "bytes": 239659
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/settle-metrics.jsonl.gz",
+          "sha256": "5e34ac1aeacadc6adc81e52e8da09faa6c5dddcdc3eb871a8b6ea87f11039884",
+          "bytes": 5971
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx10240-c4/slow.jsonl.gz",
+          "sha256": "ca63f3c4f94b74a19cc16184f55beedbc0e60c74e2ea0c99f9cf2493e8246ac7",
+          "bytes": 2549
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/after-metrics.json",
+          "sha256": "2a17ccf9db888405676e4c0a10150b16eca1c712142be6b85e1f7216813f876d",
+          "bytes": 84327
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/after-slow.json",
+          "sha256": "1d8470601e52e194c7c9ef50b872e832f84d1ed5e52175c8f35f9ad24973e9d6",
+          "bytes": 5316
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/before-metrics.json",
+          "sha256": "ae765573ab09b5eaa96dc03f92dbccee23696a7c8b4eb56e4b5dfbf09e70244b",
+          "bytes": 84316
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/before-slow.json",
+          "sha256": "b224afb760e3d203d651120258ee059b52c8957ebc69cf1929f6a784ab64464f",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/cell-summary.json",
+          "sha256": "aa9c895be243ef823e1fd89dba26e0e7381a9bb7f8890a7ed539feaf492aa73a",
+          "bytes": 2494
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "a95df11f3de31bca3198debfdf6edde2fdeff04ccc3c521049374b4d58e1e83c",
+          "bytes": 2693683
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/settle-metrics.jsonl.gz",
+          "sha256": "dc20dbe0eb6b4131e4bdfa1fa4e9a40b2ae2d18b4cf55bff1f37865f06db9a91",
+          "bytes": 6056
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c1/slow.jsonl.gz",
+          "sha256": "d98a425f7f075b5fb3113045728c92e91d97956ae7df0099aae6ff6c7e4f5603",
+          "bytes": 11293
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/after-metrics.json",
+          "sha256": "bd529d889639ddd837015e258e82d71866bcb4dc4565265e5d512af1248c704e",
+          "bytes": 84333
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/after-slow.json",
+          "sha256": "edae9e6abe8413980fa8cc6276c8257c289ab3a14ae20a166a26ce8bffa442bd",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/before-metrics.json",
+          "sha256": "1b171ee9a2c097d63f38694e6719f8c0a84ac59a550e1edbaed05b131c649749",
+          "bytes": 84327
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/before-slow.json",
+          "sha256": "6d373f4b69f9810f1cedb287f50dd26cf7f8f2c7088f212c58bd297d92593324",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/cell-summary.json",
+          "sha256": "2c5582201eeda16f4d6ef1f3c0863b4e8cbe3926773f5c4aa539306958d813fe",
+          "bytes": 2494
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/engine-metrics.jsonl.gz",
+          "sha256": "7eb5d484a1cc3cc800246d2fccf8a93fd4a610b5c2822c7ee4ef91fd70d0084f",
+          "bytes": 2557912
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/settle-metrics.jsonl.gz",
+          "sha256": "fb5ba1e6cd394d659d608acb95ee8ec84da684e3f7ff67e05c84b1b59a8f0d1a",
+          "bytes": 6094
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c2/slow.jsonl.gz",
+          "sha256": "556ee07f9dc9d6984d6982a513cfd6f608bc0bac6704cb3c844a71d4c69f9601",
+          "bytes": 10645
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/after-metrics.json",
+          "sha256": "45d95edc252508873d635f08c811fdbab84012eedca8a2c7b851d55215e2906d",
+          "bytes": 84338
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/after-slow.json",
+          "sha256": "1cbedd083b3967ad223cad84430a40c9c86bf3c5f4b58d8ea47f1403ebee2e7e",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/before-metrics.json",
+          "sha256": "3270c1daa1717b521e33915075a8be98f234502038718681ba1a5a029ee258e0",
+          "bytes": 84333
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/before-slow.json",
+          "sha256": "2556c1fe14c7e76db24817351afba38141bd358bf5f0d5c7dfeeadaf8599a783",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/cell-summary.json",
+          "sha256": "962519f1b150f8a3e28b6b516f059db1cc5d60dbcee73d0baf7ce1cca18be5a8",
+          "bytes": 2494
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/engine-metrics.jsonl.gz",
+          "sha256": "ca5ab08948f68dcb8d8fa52cdf771780068dfa179655fc3a5ca834cccfa43809",
+          "bytes": 2522056
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/settle-metrics.jsonl.gz",
+          "sha256": "32c0f7d831ad0367d89daf443752d905436766a01c3adb4ba16fb6884f480de9",
+          "bytes": 6138
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx163840-c4/slow.jsonl.gz",
+          "sha256": "23a05f057efb0f1f4553eb5b2934eadec7b9d20730a75872684e051f7b4e9b5f",
+          "bytes": 10475
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/after-metrics.json",
+          "sha256": "d1ce164edfc220d5c6be45ed3eb12ecdc3840d083e8fa6b829ebebce4ef6631c",
+          "bytes": 84288
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/after-slow.json",
+          "sha256": "1823a1a9a6b983a73bc8eb75d566fc1dbab1fc4abe896b61cdc0b03365b6f9ef",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/before-metrics.json",
+          "sha256": "0c5d429257b1dfd963248cb2692e02339529eb5b089a209c4e56a3af9e5214d6",
+          "bytes": 84275
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/before-slow.json",
+          "sha256": "5ec2889195e69b5213416d28c254203df33d4331a273e1403f3eb8e932205247",
+          "bytes": 5313
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/cell-summary.json",
+          "sha256": "ce3b46234eb4d69fef4a75b26a69103c633b7470e279998dc4aa59f13b570cd2",
+          "bytes": 2488
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/engine-metrics.jsonl.gz",
+          "sha256": "4c84f35cc8ee066d366ffee563322d69ab27e51b2ca06b8946849b383bf083b8",
+          "bytes": 857988
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/settle-metrics.jsonl.gz",
+          "sha256": "8f9378e69aeefba89803d1deb1e09099aa9bd2a2da904e595da64b1c56810114",
+          "bytes": 5991
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c1/slow.jsonl.gz",
+          "sha256": "e684ea8e146c2cd8dd18eedb604f00cd1e5fe8ec320076adc3365af7c14e441a",
+          "bytes": 4943
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/after-metrics.json",
+          "sha256": "e86fed3caa56f6817e61fa0035e8a2bcc2c2a58609b009147fbd44ace8a6b46e",
+          "bytes": 84270
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/after-slow.json",
+          "sha256": "fc0a95743bfc0ddc5ad73316a3751237d76491846da0e55bedcf842bb05976e3",
+          "bytes": 5316
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/before-metrics.json",
+          "sha256": "aeff2a52ad2aac9c88fc218f87966d2e86055ccd4c0e8cab4a8ca7b6891e2ee0",
+          "bytes": 84288
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/before-slow.json",
+          "sha256": "7c4d03bf0882eac06c0e0fba3e2b89d16d97ceb75d11dfaab64c9de6e83e41b5",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/cell-summary.json",
+          "sha256": "cc2f9a2e99a4afa9a8e34af1642d9d6701e7fd8b7d9c1095b1651e68972a55cd",
+          "bytes": 2487
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/engine-metrics.jsonl.gz",
+          "sha256": "11b18d99fbb31cc752600b8147fda4505b8255a4dac8dd7ffd20cdc73927d683",
+          "bytes": 775949
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/settle-metrics.jsonl.gz",
+          "sha256": "a0d7bdd2b4dba18c05bbb68906c4238be4efa08a7160d47738e8f8c1160ae21f",
+          "bytes": 6020
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c2/slow.jsonl.gz",
+          "sha256": "c7146fe9ae05b3f3b1dd429db2d41b9cf6bef560bf77a793d3357e5dd98a39ff",
+          "bytes": 4511
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "3c83376accfcc2c879eedf436432f3ba002b624f077c00fd2797bbc40e69201b",
+          "bytes": 84316
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/after-slow.json",
+          "sha256": "9e4a16d5dada1fbabf7e09554f7f7122f27cbfc7e6224427b702cb8d45dc5884",
+          "bytes": 5317
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "ba8a6e3474da06f1f2db81404822211380a3a2bec49f69dc7d530f44b8b9ca04",
+          "bytes": 84270
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/before-slow.json",
+          "sha256": "329204069c2dcac5861dab8575473bdf2ee7bbbfe0441d3379edfe6da377ff7e",
+          "bytes": 5314
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "1b4193360c1960cc414b4f4cb248adffe326498436989d65c3e13a04a6fb15c9",
+          "bytes": 2488
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "2e329a0b2222e0ea58f0d7eeee0c11b1acb121ac73d80b78d3591acc6bead770",
+          "bytes": 682471
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "91bb021d0f0fe43d1056178cca6ac48c38897112906a2eb429496e398945da10",
+          "bytes": 6045
+        },
+        {
+          "path": "telemetry/baseline/baseline-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "3d41f8e8ba2c9994657cb521f6c804bf53b146b3bb05722a21ac2f9928312616",
+          "bytes": 4151
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/after-metrics.json",
+          "sha256": "b83a6f14f67f712b24d70cce55073f22b2a0dcf664bf47cb5b4bda5fe85a5ae9",
+          "bytes": 84023
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/after-slow.json",
+          "sha256": "36a4cc5ccb39f96c4110497f27dcb23c29241de5e908256589fa6d16ef4abc7c",
+          "bytes": 5313
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/before-metrics.json",
+          "sha256": "929d66efbdeac8ace36076c7eef18970c4b165a3eb35534b4f4e0ad85ab6b6bd",
+          "bytes": 84018
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/before-slow.json",
+          "sha256": "aa66e1b07ae2abee269a9f074df5891fdb5035706dce9a234dc746ad9d54e973",
+          "bytes": 5307
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/cell-summary.json",
+          "sha256": "934aa1f642b3aa5a8984b0f1ebbecd78524d89d9b454dfcb4d04644291a7157b",
+          "bytes": 2479
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "fcaf9120373068f0cf702666d0e87910ba83aaed41782d76c66ef430beafeb27",
+          "bytes": 61169
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "ac2379ea2390cef1ded9a26c61563ba71d1da0546c03f18206d54f63ff261afe",
+          "bytes": 5840
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "b21cdf9a86c611f9dc0e2b2347b203f9e8efe38b2c18ce5177b4fa4e2a64ca19",
+          "bytes": 1829
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/after-metrics.json",
+          "sha256": "5d82dd76399e32e4ede24e1739476c8841cdc363ebc812b18cd2b5ad3c0ce865",
+          "bytes": 84064
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/after-slow.json",
+          "sha256": "fa18796c3d1662256f5e5d620a5b3c53f0b170670a3937590aeee875309abb67",
+          "bytes": 5312
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/before-metrics.json",
+          "sha256": "84075f3b106f113330098b394e72b1add15f334f7652cde932ec7a80696caae7",
+          "bytes": 84036
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/before-slow.json",
+          "sha256": "a93b560b61eb5813e77fa5790218f009c4f7c3e4446f64f2c07f79ce64e8cfe7",
+          "bytes": 5311
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/cell-summary.json",
+          "sha256": "3567f75e6e025ef13b6eeb371a10a92031bec984183497a087fbfdd0211bf489",
+          "bytes": 2485
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "a53f115e84df7ffda34e8c162f2bf9c30f59b8efbc68559f7ae414ab8f81c530",
+          "bytes": 318300
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/settle-metrics.jsonl.gz",
+          "sha256": "d57e93424983ce7dad2fb2e4411ca728a5197062f4e4b3a639d42166cf39eba2",
+          "bytes": 5875
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-ctx163840-c1/slow.jsonl.gz",
+          "sha256": "b16807c8c389a4d0a366955ec166fecc8db0f2682cdbf5e4e77d36093d1f2a51",
+          "bytes": 3008
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/after-metrics.json",
+          "sha256": "da2119421185966529bfe360368ae97cc63b15026e43870b2d58afb2ed97a7d4",
+          "bytes": 84422
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/after-slow.json",
+          "sha256": "b589bb02082cf1face3545d6a5eceadd04fd165c395bcdb1aee11cefb8f6f923",
+          "bytes": 5318
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/before-metrics.json",
+          "sha256": "5a5a2cceefe661916f4a52c30f04814f9d797dfcab648b34ef743de9e56459b8",
+          "bytes": 84423
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/before-slow.json",
+          "sha256": "c81713bb11b52cf040d589e0328de17a4a0c51b2ea936d4aa12e231336361119",
+          "bytes": 5310
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/cell-summary.json",
+          "sha256": "6eb76e499a6d69bea336462282f7afc1d6b9667baeb9dfb6f72158f09bf293f5",
+          "bytes": 2498
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/engine-metrics.jsonl.gz",
+          "sha256": "ca7d77effaec72b520b4863c97b4087ab92c18ef6037c9bdc947ad2841c7c75e",
+          "bytes": 617728
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/settle-metrics.jsonl.gz",
+          "sha256": "a525bc1c7033ff883d404dde33fef1c615781c7219051af728658724218c9024",
+          "bytes": 6215
+        },
+        {
+          "path": "telemetry/baseline/baseline-warmup-edge-ctx310272-c1/slow.jsonl.gz",
+          "sha256": "7bc838a65ff0990803a6474becfd109765e4008164d32c8afb801f4872513a94",
+          "bytes": 4093
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/after-metrics.json",
+          "sha256": "25e03151380be88a16659946df1f4b4339ae2f5ee4440b365f317aed2a93b145",
+          "bytes": 81297
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/after-slow.json",
+          "sha256": "a821090c7c57b70e009b7d78355f352caf8518599d9ebc3a8d83e3764dea5098",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/before-metrics.json",
+          "sha256": "04ce6b3176c9a7b5f3c627a8b521c53e4e88cfe3e69f91ee55053f9390b201b7",
+          "bytes": 81300
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/before-slow.json",
+          "sha256": "6eb062c27dcd16c6d5146c20ff1313a2f1c220157fc48526d2e709f54c0c2178",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/cell-summary.json",
+          "sha256": "15421cb6d5108bfe668edc32c91df4b8f3e4bbc940f90b9c709099c3dd9b7cb9",
+          "bytes": 2492
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/engine-metrics.jsonl.gz",
+          "sha256": "b49f2d8213f8c2e5368ce3d8411c97e6795f92ebfbe02931ad2c3ec784455323",
+          "bytes": 1837750
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/settle-metrics.jsonl.gz",
+          "sha256": "ba06b4e15d5cce6de7a5028a2f414fdce24023936b0b52c2bed07100b4c928da",
+          "bytes": 6866
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c1/slow.jsonl.gz",
+          "sha256": "d38e38fc9e52ac5b0637e8c8661f893579378e2b5847de310e94139d30fbe8c2",
+          "bytes": 7460
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee",
+          "bytes": 81309
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9",
+          "bytes": 5106
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996",
+          "bytes": 81297
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb",
+          "bytes": 2492
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f",
+          "bytes": 1837775
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35",
+          "bytes": 6871
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5",
+          "bytes": 7363
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/after-metrics.json",
+          "sha256": "6a7fd0b18a098a1f97db5b99cb38fd953d2e7bf4a9162270a3ee8bfcb64ee68c",
+          "bytes": 81324
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/after-slow.json",
+          "sha256": "4f99d3d335b14ff99956e60b7b3ac1948c6c59599b4107e340a9921fc239bbc8",
+          "bytes": 5106
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/before-metrics.json",
+          "sha256": "b9411828c98f7551a5997b4516bf9b94607a1cba1cc993f89a65c76b8c3080d9",
+          "bytes": 81309
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/before-slow.json",
+          "sha256": "28df4d4c9b7ed5c8ef1ae8243471fceec74aa56e24397114731eb6a7aa8b6353",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/cell-summary.json",
+          "sha256": "201a9b16bfd9ee066cc0212c4a5e3a7754cc01b6c2c0475b308d48345e525e4c",
+          "bytes": 2492
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/engine-metrics.jsonl.gz",
+          "sha256": "c47136dd6aa7506105f2073052426463d1d651d0dbb1923d46ceb18e04f8db90",
+          "bytes": 1845590
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/settle-metrics.jsonl.gz",
+          "sha256": "3a5a75e3dc32d7aef003eafbb2af3fd02a15b26a16f73ac2f0bfa85cfb304d1b",
+          "bytes": 6885
+        },
+        {
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c4/slow.jsonl.gz",
+          "sha256": "72ea6cd6ac44fe24faee8f87d63c728d0cb36091bef3637e65a3f87e8fcc2cf6",
+          "bytes": 7471
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/after-metrics.json",
+          "sha256": "74405a35397b14ba05e73fccd84cad47955c4dff16c33e4e05f034ec2fb3df21",
+          "bytes": 81160
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/after-slow.json",
+          "sha256": "662a52f49d5e5b66da71e1126dca0c09fcd7aebab087c2cb66b7a004c7a07a1b",
+          "bytes": 5108
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/before-metrics.json",
+          "sha256": "a8854bec726186d2e926425a4290da1dae25488f6ed67399cd1b6dcd2aacb5a8",
+          "bytes": 80958
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/before-slow.json",
+          "sha256": "06d7f21230b12e285a94ca5dc3cdb6a6c13fbdeda1b4af5bf31c235d640154ac",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/cell-summary.json",
+          "sha256": "d51384f9b2ebb0797630992db8ab64b51232628e9c3479d523f0f8f4cf0e69c9",
+          "bytes": 2474
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "87850a4b534f94398228b4acf7a2822fe35070d0f90682db36f330cfb1b1acfd",
+          "bytes": 236368
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "ed100ebd301cf0cd406dfa06f65402d74b47f9af9e2a6f58889e7f93aec712c3",
+          "bytes": 6619
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "cd06f570861af00013cae68a7791d097cbb00f01e05554224b068ad30df180b5",
+          "bytes": 2483
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/after-metrics.json",
+          "sha256": "d84ec464345a99de1fd3ece86c2ebf4f6e15a33060ad0514ae68b55b8c60f441",
+          "bytes": 81222
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/after-slow.json",
+          "sha256": "27026fe1b6c8da5d7f6a99f3846bd720741fc55ae7c9394d8bf4d59f2e7d469a",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/before-metrics.json",
+          "sha256": "5a8733438d53d8147b414ebc2b02cf8d48cac46a7e0f234a39a4289037d48516",
+          "bytes": 81160
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/before-slow.json",
+          "sha256": "042dfc5c7f7a6e7933eb2b7298c7830963c35332be0c99b4dc44210cc94fd687",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/cell-summary.json",
+          "sha256": "322bd87d8cdf990bece72e1ae728386a8e3f369c8b7196acd1cf4657f3f553b1",
+          "bytes": 2472
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/engine-metrics.jsonl.gz",
+          "sha256": "19fc768a0cb0d5c7a1d903b09ac2b12f2c11dccaa775e37be09153cfd05a9333",
+          "bytes": 232963
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/settle-metrics.jsonl.gz",
+          "sha256": "24bc1b6af8131626f223ffb06f11ef7d5474e7eda90845b61a172217000cdc30",
+          "bytes": 6712
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c2/slow.jsonl.gz",
+          "sha256": "bac195b0261aff2186ad022967466802563616d9b396182ad024f1bf0aa730a0",
+          "bytes": 2356
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/after-metrics.json",
+          "sha256": "3646f49e81279cc9776fce8f059ce2d63b81d32576718f88717c44c5d4235e42",
+          "bytes": 81229
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/after-slow.json",
+          "sha256": "f48fd94c1462b5181148d3e7414208bdec1add35bd85cf04a48cd3912410a9b5",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/before-metrics.json",
+          "sha256": "972a8b7ec48d17c4f85af5e829bf487e1e408afcd41eddd678e0f5e0927ceb9f",
+          "bytes": 81222
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/before-slow.json",
+          "sha256": "1f7422b31309c4c2f709eae10b11bb09726e62a3022d3014eace038217888729",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/cell-summary.json",
+          "sha256": "30d55db88022ac5be22c16218f38b4fc0d6d903d6d0d33903495d29cc669d9e1",
+          "bytes": 2472
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/engine-metrics.jsonl.gz",
+          "sha256": "e6f81cab82552432e137683e5cfe483770fd26b6cc546d7916a348ef2cfa03db",
+          "bytes": 188966
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/settle-metrics.jsonl.gz",
+          "sha256": "f7f5e4e883c3e446ef495e298e320ad053581dd80246a2c0864c493ae6632fa3",
+          "bytes": 6726
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx10240-c4/slow.jsonl.gz",
+          "sha256": "2acba893550f9450225c231589e729ef248e3bff77f9aca3360f5d12c7c78b51",
+          "bytes": 2265
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/after-metrics.json",
+          "sha256": "d1bf3aad93ff199f67322f959caf23006616390679466e9dae83d89aacdf0649",
+          "bytes": 81259
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/after-slow.json",
+          "sha256": "b3dad9eea09a119795e228c6ecd5bb4cd691b0fdd724297da1efcbd111446ee5",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/before-metrics.json",
+          "sha256": "aa00f5f9f8544de608a73539184386e98cfe4d2ab4cd02ebe18e0d02b6929bf3",
+          "bytes": 81257
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/before-slow.json",
+          "sha256": "776b26a626c0f9ee2e57807eae274bee7d88ec8976ae1c335efd5bf968a5a87e",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/cell-summary.json",
+          "sha256": "e758eafa335720ca4801f45c1e9a9b7b54d5da9339be95ee95ecf556cdf29e0f",
+          "bytes": 2480
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "940f9bcbcf3d000fb36126a774fbbedd03f199b78545ce73f93ac8ec261156d9",
+          "bytes": 1893552
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/settle-metrics.jsonl.gz",
+          "sha256": "2f656e8caed2b99995a242a8d3e33a9930e19061602599d874fde9abcc5d7ee4",
+          "bytes": 6787
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c1/slow.jsonl.gz",
+          "sha256": "484047bf2022f33e26d556c920601d353914a14b13584d1b8d5a3f6211e741c4",
+          "bytes": 7668
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/after-metrics.json",
+          "sha256": "afed4b0781110544378fbfa30054b01b70c73b47f492a9698caf904294ff43b3",
+          "bytes": 81260
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/after-slow.json",
+          "sha256": "b746462507a79e4717d3b452e0f685bf4c3ed576725ed7770fac7736781ecf4f",
+          "bytes": 5107
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/before-metrics.json",
+          "sha256": "25fd7f99f6df40c76f0aa877430698a21ef91b4c8d55943dee8aec0c639a85f0",
+          "bytes": 81272
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/before-slow.json",
+          "sha256": "96bef71c82a86472ac294a535b4d0827356f27f0fa0f8bb71dadd662878b3013",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/cell-summary.json",
+          "sha256": "d7d9556e949b02c9a38ac2354ef5160c4e56cf0d637b5e51ffae4206420261ab",
+          "bytes": 2481
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/engine-metrics.jsonl.gz",
+          "sha256": "7822c76f213174d24678cfc328f1f6178366a189240ac7811bcd129491557b6b",
+          "bytes": 1891808
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/settle-metrics.jsonl.gz",
+          "sha256": "02d1826e2a3bf8726af4835d7ac179fa85c925d1b14b2ed81b6f9294d5d28658",
+          "bytes": 6807
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c2/slow.jsonl.gz",
+          "sha256": "4eab25adf1309a5747f8541a9d2dde0a1b16c475f317ac0b9dba6bafba3637ac",
+          "bytes": 7597
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/after-metrics.json",
+          "sha256": "37f4776b0087061a61e0f414273b16fcaf1c22f0832ff639ccc7fa9c69a50f33",
+          "bytes": 81270
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/after-slow.json",
+          "sha256": "0a9b5b7cad8df499884364a3dd6d99d3b3537ae8012dd7ef6b7862fddc36cbee",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/before-metrics.json",
+          "sha256": "f5e207411d89c01fd9486fde0393c535a15975fec65b7b350ca22fa67796b730",
+          "bytes": 81260
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/before-slow.json",
+          "sha256": "8bfccd9cbc344f2edf1637157f3e83bd1df630a83d414a5b971469129874fadc",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/cell-summary.json",
+          "sha256": "ed1db2a5a83c6a846ad3ed3a4ead415ae784f8f15c2152fd495abaeadbac8723",
+          "bytes": 2481
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/engine-metrics.jsonl.gz",
+          "sha256": "bf57355707c0276be181f9a3cccb8deceda7a93327cc31836f416e6d85178143",
+          "bytes": 1891740
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/settle-metrics.jsonl.gz",
+          "sha256": "b441dc24d9ac7343ccef96c1e967ae56cd7690b42a73a4d459332d3fb8ef00d8",
+          "bytes": 6839
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx163840-c4/slow.jsonl.gz",
+          "sha256": "7a103170a6f71291c5193a26af7c3b4a2bb685781ffff6bd46eca7bbbf8d6b8b",
+          "bytes": 7662
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/after-metrics.json",
+          "sha256": "0272ea2dbd9054bd60fa8ef3e307dc8c033856439d4961e36a9be6e539f1a2a5",
+          "bytes": 81236
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/after-slow.json",
+          "sha256": "ada66d4555ffe923b678287401e883d8e976b08d761b1a6dbac2063410717a6a",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/before-metrics.json",
+          "sha256": "d5c7f5cf4cfc6ab946280832b71c7a79927810290fc8d692da782ecfcef8e7d0",
+          "bytes": 81229
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/before-slow.json",
+          "sha256": "4cd8c90d043502cec6ff802d3bdac37f4bfa6196c244937d1ce62b5180731a16",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/cell-summary.json",
+          "sha256": "b04f5ceea3dfeaa8b1b236add2b5c4866b68bd8d4c57be16878bfe28c8a32696",
+          "bytes": 2475
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/engine-metrics.jsonl.gz",
+          "sha256": "a7030493ddcbeb634e84a02a242f43cfdfe02afc870bf488ac332be17df02af9",
+          "bytes": 481408
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/settle-metrics.jsonl.gz",
+          "sha256": "00d850c0db07a2cfab8625a01c8c1198ba76cd10f4ed7bb70426ff7cb4fdf549",
+          "bytes": 6743
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c1/slow.jsonl.gz",
+          "sha256": "d3649c62a2dacc833090c8cca1cbb0cfc651120e119d647dd83a01695dd34718",
+          "bytes": 3289
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/after-metrics.json",
+          "sha256": "2ab7e965a1cfe719f338cdd5288c2a340600adfa68adbcf39b3585f152d3d416",
+          "bytes": 81233
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/after-slow.json",
+          "sha256": "213844b95488e12d9013927c672648cb03199139e3cd920c9dc257a493b17877",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/before-metrics.json",
+          "sha256": "bf262eda76ee7f5fa6cb0899b5b6b3af734847ff7b25b2de898301be2bc69f72",
+          "bytes": 81236
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/before-slow.json",
+          "sha256": "26ac8ba74af11ddaeade581c93b2b49daa3cb77e978b41a2342accc9cb34bdcc",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/cell-summary.json",
+          "sha256": "364a30aaa208ac950244dd628ebb3b5cbdf0f4a659f34f47877becc70a543ccb",
+          "bytes": 2474
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/engine-metrics.jsonl.gz",
+          "sha256": "7c357978ecb718b82d9507b9c253e3ac9f557f1a60267c66ba8d23afe92be417",
+          "bytes": 516017
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/settle-metrics.jsonl.gz",
+          "sha256": "6b9e4d895ceb486a2312067f2de135e9b9395538c0d15e8f21b1642bfe6d843c",
+          "bytes": 6761
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c2/slow.jsonl.gz",
+          "sha256": "85a53e2509b0f1975fa96e4eb34c034d583276bd7398e4ac7b9c6d5946318991",
+          "bytes": 3289
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c",
+          "bytes": 81270
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f",
+          "bytes": 81233
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043",
+          "bytes": 2474
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788",
+          "bytes": 550373
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6",
+          "bytes": 6784
+        },
+        {
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a",
+          "bytes": 3352
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/after-metrics.json",
+          "sha256": "84a72de2dfe4ba22bb6b8b526a0f577e142731973308dbee3b68a87e983b15c1",
+          "bytes": 80937
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/after-slow.json",
+          "sha256": "75ad2461757fc8808f1a4049d583c8ee4df5478d6c5b3c8268cf563e0a06dd3b",
+          "bytes": 5109
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/before-metrics.json",
+          "sha256": "32708e9e87bc07f6fe29f4741f9969f9d43c4f4bcef809923ce13e7f1d0b8ca1",
+          "bytes": 80882
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/before-slow.json",
+          "sha256": "dc43cd9dab3e03e9ee4502a130d06d17633b4928f1622c4e37011c7d5d821e38",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/cell-summary.json",
+          "sha256": "fe669f9ea8bbbc1ba3ea85054adf77d1f624abbcacc00626ebf0859bae2ecd7f",
+          "bytes": 2466
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "c91b2ea767f681b93ed96f367ff6e2cbb9827f2c4689465feb1e11337a28df03",
+          "bytes": 25335
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "74c7f2ae7e37c2691e2622d23cde3164e2b77674a54747e49141f41a0373d871",
+          "bytes": 6562
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "9aefcc653d096ce2b774c625ed42c2f2f1037f195ad00690d92cbdca64e216ea",
+          "bytes": 1500
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/after-metrics.json",
+          "sha256": "01384eeef145a2480c66963c23513b483792a0f8be9a29bfe4c857293cefe033",
+          "bytes": 80945
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/after-slow.json",
+          "sha256": "3a172ffd61cf2513eb76a1cb6a9dd0b18840cfd669654fd54e7aff4751e918d8",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/before-metrics.json",
+          "sha256": "913b030d2a18926b9629b99b1433e9ffb1c0c19e33c5a27648f5be8cfda1e825",
+          "bytes": 80937
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/before-slow.json",
+          "sha256": "129b6e30af90870bbd84ccbf49171a307c53f30a2853dc03447c7033a7b084d5",
+          "bytes": 5104
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/cell-summary.json",
+          "sha256": "29a7a4e0864bfddc232dc69e54c003f5891e7b4b97b88e9d1f9fda9f5eeec147",
+          "bytes": 2473
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "73011cb3538752476b3d7b8a94be9afc0069394a277f66917cb1e04550626980",
+          "bytes": 221869
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/settle-metrics.jsonl.gz",
+          "sha256": "609182de642a119d87ce6afaea84d9945f3506f435f4c626c82850e8374bfd6e",
+          "bytes": 6587
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-ctx163840-c1/slow.jsonl.gz",
+          "sha256": "f3a0a703e74ce27f3969b2194ed605b253572b75b3d64672dc7ecc46fcd2d3fe",
+          "bytes": 2378
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/after-metrics.json",
+          "sha256": "a936a8d627ff8b30f5bfdeab219f971f864b26c14adde8983198459c06c15684",
+          "bytes": 81287
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/after-slow.json",
+          "sha256": "f9f30801ac71aafc7566393d0fb4328b9440cccbec6db209ea0205e97b8e8b66",
+          "bytes": 5105
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/before-metrics.json",
+          "sha256": "1611533de45ec5af60f89c8ca133e7b6505f62e157e86fc899127be02ca6955f",
+          "bytes": 81287
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/before-slow.json",
+          "sha256": "7459307254976b88e3923a0c6fa556cfac0bd0bf6ec357a147884187d7342438",
+          "bytes": 5101
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/cell-summary.json",
+          "sha256": "9d864adbb3ca5ef6bd21b08581e616116bd543672664f2559325ce7d74d85717",
+          "bytes": 2485
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/engine-metrics.jsonl.gz",
+          "sha256": "237b8822518aeb12bd1f060cfe4eca8595d00daa9e138132abfd979857a61afe",
+          "bytes": 457669
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/settle-metrics.jsonl.gz",
+          "sha256": "ceb67c84157251295576fdcfea38d8a8a2d448f4efd3249315f0d063b89f79f3",
+          "bytes": 6868
+        },
+        {
+          "path": "telemetry/candidate/candidate-warmup-edge-ctx310272-c1/slow.jsonl.gz",
+          "sha256": "508afbedce990ac22551a076f094a7ffaa5cb50cab3b02932870ca7415839ab7",
+          "bytes": 3203
+        },
+        {
+          "path": "telemetry/collector.py",
+          "sha256": "12762d85f810d74c6bc65254ff2b761a00042f1fbeeaca10efbf73696e771286",
+          "bytes": 8050
+        },
+        {
+          "path": "telemetry/run_cell.py",
+          "sha256": "026c2498390f9f75af751e00a4cb012d9667980dbe14befa9abf85795ac6d952",
+          "bytes": 15716
+        },
+        {
+          "path": "telemetry/test-run-cell-receipt.json",
+          "sha256": "681c60ed4df113ecba9eb7c88b13fb6cf0cf4868b208ef9d876d5b69530555e2",
+          "bytes": 917
+        },
+        {
+          "path": "telemetry/test_run_cell.py",
+          "sha256": "b63960b1a2fc33ed5b155d22789393800541c508d305cbcab78f48d993890e73",
+          "bytes": 9742
+        }
+      ],
+      "reason": "Closed inventory of native observations, telemetry, derived summaries and reconstruction inputs; role overlap is not independent evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "analysis/historical-support/NEW/diagnostic-controlled-max/plans/source-binding.json.txt",
+          "sha256": "a09e9ef903fb1952f91018fdbdc6df34907effa4d2681dffb5f39c0d541c4441",
+          "bytes": 8373
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/projections/baseline-natural-ctx10240-c1.json.txt",
+          "sha256": "855cf26c980648a16eca71f4d403ab0514b38c2484e624a030fd7cd58de0c598",
+          "bytes": 22422
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/receipts/baseline-natural-ctx10240-c1.json.txt",
+          "sha256": "4e7fa54c22e63f69a3e46f175fb70af0e4fa245d37730d257266e5012578f13f",
+          "bytes": 1108
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json.txt",
+          "sha256": "ba7d835729b944c5b2bf6828f719b8d7ed083b8130e4e5648e47be75dcbd9e5e",
+          "bytes": 2683
+        },
+        {
+          "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json.txt",
+          "sha256": "750310a8b6878220522da13708cea675de10934c5d444cab31d220391529e6e6",
+          "bytes": 2308
+        },
+        {
+          "path": "analysis/historical-support/identity/candidate-source-verification.json.txt",
+          "sha256": "621a15d54943d9effa8e0cfe207582ecd9c50ace7a7aa81c20dae61624738d51",
+          "bytes": 2567
+        },
+        {
+          "path": "analysis/historical-support/identity/starting-file-hashes.json.txt",
+          "sha256": "717e6f4bc5de47c0dfccd31c5b5511be1529a939d3ef6331d11632bd20c25191",
+          "bytes": 2689
+        },
+        {
+          "path": "analysis/historical-support/plans/coverage-validation-receipt.json.txt",
+          "sha256": "9de5aa335d16727dfb8f075137a883f34636eb32534e26d64e5f6758e281ae23",
+          "bytes": 1980
+        },
+        {
+          "path": "analysis/historical-support/plans/partial-evidence-independent-review.json.txt",
+          "sha256": "7c00105c1bcf8f032eeaf836f88c9f3f3c0864c3f438a4da448f13cf3a36a72d",
+          "bytes": 4135
+        },
+        {
+          "path": "analysis/historical-support/plans/telemetry-independent-review.json.txt",
+          "sha256": "c68faf458fdf745123ab0f38cdc2bbd1f1a12185d225d4a82ecb7d5a41c5387b",
+          "bytes": 8728
+        },
+        {
+          "path": "analysis/historical-support/provenance.json",
+          "sha256": "53f7b8188edfd3d8bee666ce224b403b2d226de3079be1c6eecfff8038172ecb",
+          "bytes": 11153
+        },
+        {
+          "path": "analysis/historical-support/selfcheck-receipt.json",
+          "sha256": "c917ef2371d278722da506d1fe723ef2ad2d57540ff6903e6ba31fb06514b0fd",
+          "bytes": 856
+        },
+        {
+          "path": "analysis/historical-support/telemetry/collector-receipt.json.txt",
+          "sha256": "fcf190ce13c4a1b0f60a8e2223bfcccea3ac3cdda665265280872007c60fe0a5",
+          "bytes": 1328
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stdout.log",
+          "sha256": "3c083679c4c680533549132282fa2dcc95ee8152ecabdd7a783b2face0f16c86",
+          "bytes": 1273
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stdout.log",
+          "sha256": "51ac409b9037ff939bc7534bc37489038b1ffb985742adeca4657b4abc0d738b",
+          "bytes": 1275
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stdout.log",
+          "sha256": "a85ac6117ce6ca4c1464d8efbdf7bbdfcbe3a33b81c8371370aba1e121d9da26",
+          "bytes": 1271
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stdout.log",
+          "sha256": "52747120b94c595470e749ed7a31e9194baa1e717e28e5df4eff5f94d51853af",
+          "bytes": 1282
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-natural-ctx10240-c1.json",
+          "sha256": "6d7e30b6a8347e3c064a5f55f1c3abcb7077e02db112d742f6ff6fdefd6d4c91",
+          "bytes": 21722
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx10240-c1.json",
+          "sha256": "bad3c2d02f07f00c2715c8cefd63947b8a1f4b9507688ced6586e894c6cadd87",
+          "bytes": 13174
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx163840-c1.json",
+          "sha256": "3f503768b8cb3d942157849ae56d53be6ab02b1e0923a49bdc22154caa7e4c63",
+          "bytes": 13215
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/native/baseline/preflight.json",
+          "sha256": "ed6d2a509e9ac684c9bfad6114b7194fd6da234345408950850673e129c25fc1",
+          "bytes": 3273
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/relocation-manifest.json",
+          "sha256": "ef16fddf25a912d18c935f8888bf7a67c679f03c1b7aaabbcf52440d1646ad78",
+          "bytes": 12858
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+          "sha256": "65ef3b8e72cf7158b90052a3745ffbddd55c3534aa15e56d1895f3c7d4d95343",
+          "bytes": 84372
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+          "sha256": "9a1486bbb4a6b79fb45064a7b7b78691f84b5ac3200dfbcafa48c20ac076d723",
+          "bytes": 5318
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+          "sha256": "6a0b3734a0c622ed6961d011a8d931862f020e5f9db710b21af7a17171dc1d6a",
+          "bytes": 84366
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+          "sha256": "dabda19fd57bd855238dbfdf556177e8c97ddb1ca67b7f3d345baf833afe80f1",
+          "bytes": 5309
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "eb1f9f0180e8fa03f7e8cbf1e214f20de348c9b7cbf226713facce822ac2c20d",
+          "bytes": 378009
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl.gz",
+          "sha256": "be22cf923ed4b579d8b2d0cb2142dc5da2ddef36b1078645d56ad15004354823",
+          "bytes": 6065
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl.gz",
+          "sha256": "dd1edb874263b83290e4de6e0b26fb661a763a8ea2e2eb28fbfc3459b67f1e74",
+          "bytes": 3242
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-cgroup.json",
+          "sha256": "8b1831bdaf31fbbd8d1ba82f14d3e47dccd3f0ff274a9ef75af9c145235facfc",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-gpus.json",
+          "sha256": "d48b7e636bd9fd7d28898f6a58847581a628185ee6d998923024d41955f9764d",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-metrics.json",
+          "sha256": "5a65ed472197cb3bb15d354b84a4107cd3a6b4f0227f3c2e1c1f75a105c55a41",
+          "bytes": 84278
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-cgroup.json",
+          "sha256": "e0d9fc59eba1bd2f545c76a1541185a458a584e2e6a0ef3b7c850f798363da57",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-gpus.json",
+          "sha256": "8be7f43a0abddc3219317cc9c78a0c0ced171fea05cf5e2099dfb92564c80a1d",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-metrics.json",
+          "sha256": "96eeabb65bdb1687289cc6dd82bc2aaf7f4c3b7dc33d4478e1a543004cab61e0",
+          "bytes": 84281
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cell-summary.json",
+          "sha256": "8528f20af02f91e916d2f8cb78fdb1b8bf5117e284d8254c91a561fac97022f4",
+          "bytes": 1511
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cgroup.jsonl.gz",
+          "sha256": "f1dfa439518334b6aff39360f13079cd2b938367edced7ae932c4b60dc262944",
+          "bytes": 1053
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/engine-metrics.jsonl.gz",
+          "sha256": "5dc4f56548aadc197b5a47417d530345555ea65e5e7c5e7cbb17f6e46d6b2b2b",
+          "bytes": 51923
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/gpu.jsonl.gz",
+          "sha256": "423b3188f99240841a7df0f615e17197cccab8f32ef28cf83ea8ebaac21ee5ed",
+          "bytes": 446
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-cgroup.json",
+          "sha256": "a2f53d7af8b3559ac2503a2c92d90e04c3ca956100c4901efe0d352efa0aa36c",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-gpus.json",
+          "sha256": "ba94f4ad587357d67d1cc032acaaf488b0f35df7ef87bb847cfada2d7dce15df",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-metrics.json",
+          "sha256": "ee55d3bbfdf242dc24cd9e8c06c70bc380f2172f6426ca81feea8ca7394c2822",
+          "bytes": 84283
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-cgroup.json",
+          "sha256": "b40dc7c07f2375f77402cfa81c0ea902a43a34f0e87e8a9eae455fd4f23317e9",
+          "bytes": 2902
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-gpus.json",
+          "sha256": "bd73d05fa5877f6400e5123f487a916116bb6d47a3ea86bf5e50335c68fdba4a",
+          "bytes": 1093
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-metrics.json",
+          "sha256": "7e71c6f45046c9edb5d0943b5c9c298aae24abe7a3443419f181d3ef2f0f9bfc",
+          "bytes": 84277
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cell-summary.json",
+          "sha256": "2c16b96c70b0a3709f638f3e05a83f519f0a551a6edf5f2ed52eadf187f608a6",
+          "bytes": 1518
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cgroup.jsonl.gz",
+          "sha256": "b6ca14dd9fb69b07f2ccaaad9c02c1d37467f8b1e37a2888e122dc3d07ba17f6",
+          "bytes": 1521
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/engine-metrics.jsonl.gz",
+          "sha256": "d273eb17758c0ae8192530aa30da3ac32ca2c738f812ed0dd6aca913b0a4c66e",
+          "bytes": 304724
+        },
+        {
+          "path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/gpu.jsonl.gz",
+          "sha256": "59f8c5158fa5a4d033ad41879534c42c49448f7774beaa29ba847507f927234f",
+          "bytes": 700
+        },
+        {
+          "path": "plans/collection-recovery.json",
+          "sha256": "9a2af2e184f1e581006dd4c3535b2241b6dbea5951a20e4f6c6f7bfcfd0875bf",
+          "bytes": 1716
+        },
+        {
+          "path": "plans/controlled-diagnostic-adjudication.json",
+          "sha256": "1fc691188dc510d46136522022eb85f8a920f8b7735c8f900116d6128fdd018c",
+          "bytes": 1031
+        },
+        {
+          "path": "plans/original-controlled-stop-adjudication.json",
+          "sha256": "dbf4e6155665498a4b6f27ad7c1aa80cff7a427af19996a8ec8e4883975fe65a",
+          "bytes": 1239
+        },
+        {
+          "path": "plans/paired-controlled-diagnostic-adjudication.json",
+          "sha256": "1ce169b69b2e65f93c48dd3cd0ca95be81064b2dd60418eb8c3fb8174b7a0645",
+          "bytes": 2625
+        }
+      ],
+      "reason": "Original failures, paired diagnostics, invalid collector attempts and archived superseded records."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plans/final-restoration-independent-review.json",
+          "sha256": "f0a86dc3d142c38cf9697206523d0871ed2a65b01b8ab6ecd8a1836778fa45b2",
+          "bytes": 8599
+        },
+        {
+          "path": "restoration/baseline-restored-models.json",
+          "sha256": "259991754b50579c2184d6a14e4e54ccf83ec95e635b70fc51d9d25397229689",
+          "bytes": 785
+        },
+        {
+          "path": "restoration/baseline-restored-status.json",
+          "sha256": "15e40c17ee40c0db9b9f56a8265e00ae4768b0aef87f1df3c89d18f7891b949b",
+          "bytes": 2134
+        },
+        {
+          "path": "restoration/candidate-end-logs.json",
+          "sha256": "7749c888089ab8cabd207bfac200301a0254cdb40e66787f9cc4e3ff8380dfbd",
+          "bytes": 323501
+        },
+        {
+          "path": "restoration/candidate-end-metrics.txt",
+          "sha256": "0ebd4c7b85d90f00ccfc59b34cd22c9874ffd542e5c4f0aa6ec46084310596ea",
+          "bytes": 77574
+        },
+        {
+          "path": "restoration/candidate-end-status.json",
+          "sha256": "cba2ec7ab2cc1e68b41deb28bd6c80270a36868c31bdb9faea18950117cb2195",
+          "bytes": 2033
+        },
+        {
+          "path": "restoration/candidate-restored-status.json",
+          "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668",
+          "bytes": 1193
+        },
+        {
+          "path": "restoration/candidate-unload-preview.json",
+          "sha256": "801b13acd14f7d83235a80b2e69b85611e495ff3231923d549084e59cf8f873a",
+          "bytes": 736
+        },
+        {
+          "path": "restoration/candidate-unload-receipt.json",
+          "sha256": "8046bfe71441940f91a7271da50d64ae1a3ae8a594bd0db2e562aa5a636475e5",
+          "bytes": 540
+        },
+        {
+          "path": "restoration/direct-preflight-receipt.json",
+          "sha256": "b2b63c2d6a85b24b1f0124a43dca53727e16960beec3b355537ded112704898f",
+          "bytes": 2298
+        },
+        {
+          "path": "restoration/direct-preflight.json",
+          "sha256": "e4629017e1055694cc6e6d6d7e205a478719f049b795a422275766aa1ce72187",
+          "bytes": 3295
+        },
+        {
+          "path": "restoration/final-baseline-status.json",
+          "sha256": "e565753aa12803a3c8921af34a55598875d5ac619d9f7f131a5f4d1d7106f19a",
+          "bytes": 2134
+        },
+        {
+          "path": "restoration/final-candidate-status.json",
+          "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668",
+          "bytes": 1193
+        },
+        {
+          "path": "restoration/final-operator-hashes.json",
+          "sha256": "b22f21657191c4ab6b128254ce063c6f061873ac679f844a459e3f848ddb6b93",
+          "bytes": 2849
+        },
+        {
+          "path": "restoration/final-restoration-receipt.json",
+          "sha256": "d1b5fdae878251a9596fe31dd254374a364a34b0514e43636541c90631be5663",
+          "bytes": 4119
+        },
+        {
+          "path": "restoration/final-router-status.json",
+          "sha256": "9bf84ff6dabb90dbde5946dac30172b8c35b094cab12c38db47f58fc421815f2",
+          "bytes": 4888
+        },
+        {
+          "path": "restoration/pre-restore-hashes.json",
+          "sha256": "6497268ae1567d3cdc93072d49e7b13728c37761361922bc3ffee068fea86bfb",
+          "bytes": 2579
+        },
+        {
+          "path": "restoration/retained-restore-preview.json",
+          "sha256": "77e56a7e988187d120eb02d6f83a227eb98e4843b35015814a0c2d8296b3e035",
+          "bytes": 1183
+        },
+        {
+          "path": "restoration/retained-restore-receipt.json",
+          "sha256": "cc0cabef04cf1b12b1697935d77e956d4cbcc3da5e5f48fb781a817979b4793d",
+          "bytes": 1276
+        },
+        {
+          "path": "restoration/routed-preflight-receipt.json",
+          "sha256": "7d5c8822a3f6d8e3382f1995f6f32cd0df18a45edaac1c36bd60629b0ae0d774",
+          "bytes": 2200
+        },
+        {
+          "path": "restoration/routed-preflight.json",
+          "sha256": "b988cbda27a206b48a93b7a5207c5c1ab7619d7b5f58d0a1ff26060f0eb3b93d",
+          "bytes": 3090
+        },
+        {
+          "path": "restoration/router-readmit-preview.json",
+          "sha256": "530032ce4739aec7060b0424f3fd766231bc742e109280615d2f04821e88d468",
+          "bytes": 986
+        },
+        {
+          "path": "restoration/router-readmit-receipt.json",
+          "sha256": "8d68986306d46f30648f762872d2b7ccc9b3d9553fd810f33764c9482d6cf84b",
+          "bytes": 1557
+        }
+      ],
+      "reason": "Final managed candidate removal, exact incumbent restoration, direct/routed checks and state hashes."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "analysis/final-serving-comparison-evidence.json",
+          "sha256": "31125339e63804594d2f41703a7cc10ca8f9ac2a37d5f40b7dc4af547a7dbab1",
+          "bytes": 880513
+        },
+        {
+          "path": "summary.json",
+          "sha256": "ffafa6baeb6a7e792cf63aaffe264c33e4f769e6d1f48b51458869e95fde0984",
+          "bytes": 524604
+        }
+      ],
+      "reason": "No promotion; original matrix partial with narrower completed measurements."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "0eb1e408c480897f1b826d598f63e37fc84c9d2f5bd2fe8e9570dff4340b255c",
+          "bytes": 3317
+        },
+        {
+          "path": "analysis/final-closed/comparison-tables.md",
+          "sha256": "b8c7364809bcfb3da6043c063547ac2df5ce2cda561e53e791222db02cd47785",
+          "bytes": 7658
+        },
+        {
+          "path": "benchmark-matrix.svg",
+          "sha256": "ee9ea5bd9a49f3f71c8fce47cddaa12caf35087691160f5f9d1b4476404b21dd",
+          "bytes": 45736
+        },
+        {
+          "path": "summary.json",
+          "sha256": "ffafa6baeb6a7e792cf63aaffe264c33e4f769e6d1f48b51458869e95fde0984",
+          "bytes": 524604
+        }
+      ],
+      "reason": "Canonical reader-facing comparison and its limits; local prepared publication only."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "generated_from": "artifact-source.json"
+}
