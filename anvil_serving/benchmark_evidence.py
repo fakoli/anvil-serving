@@ -147,6 +147,25 @@ def _capacity_workload_identity(raw: Mapping[str, Any]) -> tuple[dict[str, str] 
     }, None
 
 
+def _unique_prefix_namespace(raw: Mapping[str, Any]) -> tuple[str | None, bool, str | None]:
+    """Keep the declared namespace distinct from absent legacy metadata."""
+    mode = raw.get("prompt_cache_mode")
+    if mode == "shared":
+        namespace = raw.get("unique_prefix_namespace")
+        if namespace is not None:
+            return None, True, "shared prompt_cache_mode requires null unique_prefix_namespace"
+        # Shared prompts have no unique prefix, so null and absence are equivalent.
+        return None, False, None
+    if "unique_prefix_namespace" not in raw:
+        return None, False, None
+    namespace = raw.get("unique_prefix_namespace")
+    if mode != "unique":
+        return None, True, "unique_prefix_namespace requires prompt_cache_mode shared or unique"
+    if namespace != "capacity-v1:seed-request-index":
+        return None, True, "unique prompt_cache_mode requires capacity-v1:seed-request-index"
+    return namespace, True, None
+
+
 def _immutable_sha256(value: object) -> str | None:
     text = _text(value)
     if text is None or len(text) != 64:
@@ -545,6 +564,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
     workload_identity, workload_identity_error = (
         _capacity_workload_identity(raw) if is_capacity else (None, None)
     )
+    unique_prefix_namespace, namespace_declared, namespace_error = (
+        _unique_prefix_namespace(raw) if is_capacity else (None, False, None)
+    )
     method = raw.get("method")
     method_sha256 = (
         hashlib.sha256(method.encode("utf-8")).hexdigest()
@@ -577,6 +599,8 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                 raw.get("cache_policy"), serve_flags.get("cache_policy")
             ),
             "capacity_workload_identity": workload_identity,
+            "unique_prefix_namespace": unique_prefix_namespace,
+            "unique_prefix_namespace_declared": namespace_declared,
         },
         "capacity": {
             "requests": _number(raw.get("requests")),
@@ -630,6 +654,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
     summary["validation_errors"] = [
         *numeric_shape_errors,
         *([workload_identity_error] if workload_identity_error else []),
+        *([namespace_error] if namespace_error else []),
         *_validate_summary(summary),
     ]
     return summary
@@ -799,6 +824,10 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "prompt_set_id": ("workload", "prompt_set_id"),
         "measurement_protocol": ("workload", "measurement_protocol"),
         "capacity_workload_identity": ("workload", "capacity_workload_identity"),
+        "unique_prefix_namespace": ("workload", "unique_prefix_namespace"),
+        "unique_prefix_namespace_declared": (
+            "workload", "unique_prefix_namespace_declared"
+        ),
         "gpu": ("provenance", "gpu"),
         "sampling_recorded": ("protocol", "sampling", "recorded"),
         "sampling_temperature_requested": (

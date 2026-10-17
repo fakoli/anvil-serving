@@ -251,6 +251,63 @@ def test_combine_requires_matching_workload_identity_and_keeps_legacy_inputs(tmp
         _module().combine([left, right])
 
 
+def test_combine_binds_declared_unique_prefix_namespace_without_seed_identity(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    namespace = "capacity-v1:seed-request-index"
+    _artifact(left, unique_prefix_namespace=namespace)
+    _artifact(right, unique_prefix_namespace=namespace)
+    combined = _module().combine([left, right])
+    assert combined["unique_prefix_namespace"] == namespace
+    assert combined["unique_prefix_namespace_identity"] == {
+        "status": "declared-matching", "declared": True, "value": namespace,
+    }
+
+    _artifact(right)
+    with pytest.raises(ValueError, match="unique_prefix_namespace declarations differ"):
+        _module().combine([left, right])
+
+    _artifact(left, prompt_cache_mode="shared", unique_prefix_namespace=None)
+    _artifact(right, prompt_cache_mode="shared", unique_prefix_namespace=None)
+    shared = _module().combine([left, right])
+    assert "unique_prefix_namespace" in shared
+    assert shared["unique_prefix_namespace"] is None
+
+    _artifact(right, prompt_cache_mode="shared")
+    mixed_shared = _module().combine([left, right])
+    assert mixed_shared["unique_prefix_namespace"] is None
+    assert mixed_shared["unique_prefix_namespace_identity"] == {
+        "status": "not-applicable", "declared": True,
+    }
+
+    _artifact(left)
+    _artifact(right)
+    legacy = _module().combine([left, right])
+    assert "unique_prefix_namespace" not in legacy
+    assert legacy["unique_prefix_namespace_identity"] == {
+        "status": "legacy-unknown", "declared": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("prompt_cache_mode", "namespace", "message"),
+    (
+        ("unique", "seed-7", "unique prompt_cache_mode requires"),
+        ("unique", None, "unique prompt_cache_mode requires"),
+        ("shared", "capacity-v1:seed-request-index", "shared prompt_cache_mode requires"),
+    ),
+)
+def test_combine_rejects_malformed_unique_prefix_namespace(
+    tmp_path, prompt_cache_mode, namespace, message
+):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left, prompt_cache_mode=prompt_cache_mode, unique_prefix_namespace=namespace)
+    _artifact(right, prompt_cache_mode=prompt_cache_mode, unique_prefix_namespace=namespace)
+    with pytest.raises(ValueError, match=message):
+        _module().combine([left, right])
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (

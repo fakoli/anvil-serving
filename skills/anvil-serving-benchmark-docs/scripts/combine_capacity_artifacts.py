@@ -48,6 +48,7 @@ _CONTROLLED_OUTPUT_FIELDS = frozenset({
     "policy", "requested_words", "observed_code_words", "observed_extra_words",
     "capture_complete", "exact_adherence", "passed",
 })
+_UNIQUE_PREFIX_NAMESPACE = "capacity-v1:seed-request-index"
 
 
 def _percentiles(values: list[float], quantiles: tuple[int, ...]) -> list[float]:
@@ -325,6 +326,22 @@ def _sampling_identity(artifacts: list[dict]) -> dict:
     return {"status": "declared-matching"}
 
 
+def _unique_prefix_namespace_identity(artifacts: list[dict]) -> dict:
+    """Require a uniform declared namespace without inventing one for legacy runs."""
+    declared = ["unique_prefix_namespace" in artifact for artifact in artifacts]
+    if artifacts[0]["prompt_cache_mode"] == "shared":
+        # Null and absence are equivalent: shared prompts have no unique prefix.
+        return {"status": "not-applicable", "declared": any(declared)}
+    if any(declared) and not all(declared):
+        raise ValueError("replica unique_prefix_namespace declarations differ")
+    if not any(declared):
+        return {"status": "legacy-unknown", "declared": False}
+    namespace = artifacts[0]["unique_prefix_namespace"]
+    if any(artifact["unique_prefix_namespace"] != namespace for artifact in artifacts[1:]):
+        raise ValueError("replica unique_prefix_namespace values differ")
+    return {"status": "declared-matching", "declared": True, "value": namespace}
+
+
 def _load(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -356,6 +373,17 @@ def _load(path: Path) -> dict:
         raise ValueError(f"{path}: context_seed must be an integer or null")
     if payload.get("prompt_cache_mode") not in ("shared", "unique"):
         raise ValueError(f"{path}: prompt_cache_mode must be shared or unique")
+    if "unique_prefix_namespace" in payload:
+        namespace = payload["unique_prefix_namespace"]
+        if payload["prompt_cache_mode"] == "shared":
+            if namespace is not None:
+                raise ValueError(
+                    f"{path}: shared prompt_cache_mode requires null unique_prefix_namespace"
+                )
+        elif namespace != _UNIQUE_PREFIX_NAMESPACE:
+            raise ValueError(
+                f"{path}: unique prompt_cache_mode requires {_UNIQUE_PREFIX_NAMESPACE!r}"
+            )
     if not isinstance(payload.get("request_canaries"), bool):
         raise ValueError(f"{path}: request_canaries must be boolean")
     if payload.get("controlled_output_policy") not in (None, "observe", "strict"):
@@ -803,6 +831,7 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
             if artifact.get(field) != first.get(field):
                 raise ValueError(f"{path}: {field} differs from the first artifact")
     shared_prefix = _shared_prefix_status(artifacts)
+    unique_prefix_namespace = _unique_prefix_namespace_identity(artifacts)
     run_identity = _run_identity_status(artifacts)
     timeline = _timeline(artifacts)
     identity = _identity_status(artifacts)
@@ -856,6 +885,7 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
         "max_tokens": first.get("max_tokens"),
         "response_words": first.get("response_words"),
         "prompt_cache_mode": first.get("prompt_cache_mode"),
+        "unique_prefix_namespace_identity": unique_prefix_namespace,
         "shared_prefix_tokens": shared_prefix["effective_tokens"],
         "shared_prefix_identity": shared_prefix,
         "request_canaries": first.get("request_canaries"),
@@ -875,6 +905,8 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
     }
     if "sampling" in first:
         aggregate["sampling"] = first["sampling"]
+    if unique_prefix_namespace["declared"]:
+        aggregate["unique_prefix_namespace"] = unique_prefix_namespace.get("value")
     return aggregate
 
 

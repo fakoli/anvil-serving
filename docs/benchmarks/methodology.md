@@ -259,6 +259,15 @@ synthetic summary does not establish daily task quality. Comparison and replica
 aggregation reject unlike identities and mixing an identified workload with a
 legacy unidentified one. Legacy-only comparisons retain their prior meaning.
 
+`unique_prefix_namespace` separately identifies how unique-cache prompt headers
+are constructed. The declared unique-cache scheme is
+`capacity-v1:seed-request-index`; shared-cache artifacts use null. The seed itself
+remains per-run provenance. Comparison and aggregation validate the namespace
+against cache mode, retain declared metadata, and reject mixing declared and
+legacy unidentified unique-cache populations. Shared-cache null and absence both
+mean no unique prefix. Historical absence is never filled in with a guessed
+unique scheme. Report catalogs keep the existing `unique_prefix_namespace` key.
+
 Successful timing rows also retain bounded finish reasons, terminal observation,
 capture limit and captured character count. Missing historical metadata stays
 unknown. These observations do not relax output/canary eligibility: a received
@@ -503,6 +512,7 @@ Then:
 The benchmark guide should summarize evidence, never silently upgrade its
 confidence. A one-pass calibration stays one-pass; an operator-observed result
 without a retained artifact stays incomplete; a failed load remains a failure.
+
 ## Natural-output observational baseline
 
 The 2026-10-16 GLM comparison uses variable natural output through a shared router. Completion tokens may include reasoning tokens, and 20 requests per cell do not establish stable p99 latency. See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md).

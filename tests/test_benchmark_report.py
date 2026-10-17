@@ -186,14 +186,16 @@ def test_output_workload_controls_are_bound(tmp_path, field):
         build_report(path, tmp_path)
 
 
-def test_unique_prefix_namespace_is_bound_when_present(tmp_path):
+def test_unique_prefix_namespace_is_validated_and_bound_when_present(tmp_path):
     path, catalog = fixture(tmp_path)
     artifact = tmp_path / "docs/raw.json"
     raw = json.loads(artifact.read_text())
     raw["unique_prefix_namespace"] = "capacity-v1:seed-request-index"
     artifact.write_text(json.dumps(raw))
 
-    with pytest.raises(ValueError, match="identity/workload mismatch: unique_prefix_namespace"):
+    with pytest.raises(
+        ValueError, match="identity/workload mismatch: unique_prefix_namespace"
+    ):
         build_report(path, tmp_path)
 
     catalog["entries"][0]["expected"]["unique_prefix_namespace"] = raw[
@@ -201,6 +203,43 @@ def test_unique_prefix_namespace_is_bound_when_present(tmp_path):
     ]
     path.write_text(json.dumps(catalog))
     assert build_report(path, tmp_path)["entries"]
+
+
+@pytest.mark.parametrize(
+    ("mode", "namespace", "error"),
+    [
+        ("unique", None, "unique prompt_cache_mode requires"),
+        ("unique", "seed-7", "unique prompt_cache_mode requires"),
+        ("shared", "capacity-v1:seed-request-index", "shared prompt_cache_mode requires"),
+        ("other", None, "unique_prefix_namespace requires"),
+    ],
+)
+def test_unique_prefix_namespace_rejects_malformed_or_unknown_values(
+    tmp_path, mode, namespace, error
+):
+    path, _ = fixture(tmp_path)
+    artifact = tmp_path / "docs/raw.json"
+    raw = json.loads(artifact.read_text())
+    raw["prompt_cache_mode"] = mode
+    raw["unique_prefix_namespace"] = namespace
+    artifact.write_text(json.dumps(raw))
+
+    with pytest.raises(ValueError, match=error):
+        build_report(path, tmp_path)
+
+
+def test_declared_shared_namespace_preserves_legacy_catalog_contract(tmp_path):
+    path, catalog = fixture(tmp_path)
+    artifact = tmp_path / "docs/raw.json"
+    raw = json.loads(artifact.read_text())
+    raw["prompt_cache_mode"] = "shared"
+    raw["unique_prefix_namespace"] = None
+    artifact.write_text(json.dumps(raw))
+    catalog["entries"][0]["expected"]["prompt_cache_mode"] = "shared"
+    path.write_text(json.dumps(catalog))
+
+    report = build_report(path, tmp_path)
+    assert report["entries"][0]["conditions"]["unique_prefix_namespace"] is None
 
 
 def test_sampling_controls_are_bound_validated_and_rendered(tmp_path):
