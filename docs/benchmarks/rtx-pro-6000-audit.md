@@ -7,6 +7,8 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-16-glm-natural-baseline.md` (dual-Max-Q natural-output timing and repeated cached SWE observations through a shared router; coding repeatability not established, no promotion);
+
 `docs/findings/2026-10-16-sglang-qwen-comparison.md` and `docs/findings/2026-10-16-sglang-qwen-comparison-evidence/README.md` (bounded dual-GPU SGLang, Qwen, and Nemotron scout evidence; no performance comparison or promotion);
 `docs/benchmarks/models/nemotron35-super-vl-120b.md` (measured-on: bounded direct TP2 scout, no qualification);
 
