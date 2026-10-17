@@ -90,6 +90,18 @@ def _usage_token_count(usage, key):
     return value
 
 
+def _nonnegative_integer(value):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _bounded_finish_reasons(value):
+    if not isinstance(value, list):
+        return None
+    return [reason[:128] for reason in value[:256] if isinstance(reason, str)]
+
+
 def result_timing(result, fallback_index=None):
     """Return one publication-safe request timing row.
 
@@ -168,6 +180,17 @@ def result_timing(result, fallback_index=None):
         "request_canary": result.get("request_canary"),
         "controlled_output": result.get("controlled_output"),
         "visible_content_truncated": bool(result.get("visible_content_truncated")),
+        "visible_content_captured_chars": _nonnegative_integer(
+            result.get("visible_content_captured_chars")
+        ),
+        "visible_content_capture_limit": _nonnegative_integer(
+            result.get("visible_content_capture_limit")
+        ),
+        "stream_terminal_observed": (
+            result.get("stream_terminal_observed")
+            if isinstance(result.get("stream_terminal_observed"), bool) else None
+        ),
+        "finish_reasons": _bounded_finish_reasons(result.get("finish_reasons")),
     }
     return row
 

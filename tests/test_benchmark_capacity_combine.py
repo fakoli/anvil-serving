@@ -226,6 +226,135 @@ def test_combine_rejects_mismatched_workloads(tmp_path):
         _module().combine([left, right])
 
 
+def test_combine_requires_matching_workload_identity_and_keeps_legacy_inputs(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    identity = {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-repeated-code",
+    }
+    _artifact(left, workload_identity=identity)
+    _artifact(right, workload_identity=identity)
+
+    combined = _module().combine([left, right])
+    assert combined["workload_identity"] == identity
+
+    _artifact(right)
+    with pytest.raises(ValueError, match="workload_identity differs"):
+        _module().combine([left, right])
+
+    _artifact(right, workload_identity={
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary",
+    })
+    with pytest.raises(ValueError, match="workload_identity conflicts"):
+        _module().combine([left, right])
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("stream_terminal_observed", "yes", "stream_terminal_observed"),
+        ("finish_reasons", ["x" * 129], "finish_reasons"),
+        ("finish_reasons", ["stop"] * 257, "finish_reasons"),
+        ("visible_content_captured_chars", True, "visible_content_captured_chars"),
+        ("visible_content_captured_chars", 9, "exceeds capture limit"),
+        ("visible_content", "raw response", "unsupported fields"),
+    ),
+)
+def test_combine_rejects_unbounded_or_body_timing_metadata(
+    tmp_path, field, value, message
+):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left)
+    _artifact(right)
+    payload = json.loads(right.read_text(encoding="utf-8"))
+    payload["request_timings"][0][field] = value
+    if field == "visible_content_captured_chars" and value == 9:
+        payload["request_timings"][0]["visible_content_capture_limit"] = 8
+    right.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        _module().combine([left, right])
+
+
+def test_combine_rejects_explicit_null_workload_identity(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left, workload_identity=None)
+    _artifact(right, workload_identity=None)
+
+    with pytest.raises(ValueError, match="workload_identity must declare"):
+        _module().combine([left, right])
+
+
+@pytest.mark.parametrize("response_words", ("missing", True))
+def test_combine_requires_explicit_integer_response_words_for_workload_identity(
+    tmp_path, response_words
+):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    identity = {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary",
+    }
+    _artifact(left, workload_identity=identity, response_words=0)
+    _artifact(right, workload_identity=identity, response_words=0)
+    for path in (left, right):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if response_words == "missing":
+            del payload["response_words"]
+        else:
+            payload["response_words"] = response_words
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="response_words"):
+        _module().combine([left, right])
+
+
+def test_combine_rejects_unknown_timing_data_and_retains_allowed_metadata(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left)
+    _artifact(right)
+    payload = json.loads(right.read_text(encoding="utf-8"))
+    row = payload["request_timings"][0]
+    row.update({
+        "finish_reasons": ["stop"],
+        "stream_terminal_observed": True,
+        "visible_content_captured_chars": 4,
+        "visible_content_capture_limit": 8192,
+        "raw_output": "must never be retained",
+    })
+    right.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsupported fields: raw_output"):
+        _module().combine([left, right])
+
+    row.pop("raw_output")
+    right.write_text(json.dumps(payload), encoding="utf-8")
+    combined = _module().combine([left, right])
+    retained = combined["request_timings"][1]
+    assert retained["finish_reasons"] == ["stop"]
+    assert retained["stream_terminal_observed"] is True
+    assert retained["visible_content_captured_chars"] == 4
+    assert retained["visible_content_capture_limit"] == 8192
+
+
+def test_combine_rejects_unknown_nested_control_data(tmp_path):
+    left = tmp_path / "left.json"
+    right = tmp_path / "right.json"
+    _artifact(left)
+    _artifact(right)
+    payload = json.loads(right.read_text(encoding="utf-8"))
+    payload["request_timings"][0]["controlled_output"]["raw_body"] = "not allowed"
+    right.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="controlled_output contains unsupported fields"):
+        _module().combine([left, right])
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     (

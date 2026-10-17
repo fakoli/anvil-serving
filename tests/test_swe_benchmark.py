@@ -327,6 +327,124 @@ def test_completed_run_requires_official_grader_and_keeps_instance_evidence(tmp_
     assert "not-recorded" not in serialized
 
 
+@pytest.mark.parametrize(
+    ("trajectory", "patch", "expected_exit", "expected_grading", "expected_tokens"),
+    [
+        (
+            {"info": {"exit_status": "Submitted"}},
+            "diff --git a/a b/a\n",
+            {"status": "Submitted", "kind": "submitted"},
+            "resolved",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"info": {"exit_status": "LimitsExceeded"}},
+            "",
+            {"status": "LimitsExceeded", "kind": "limits_exceeded", "limit_kind": "unknown"},
+            "unresolved",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"info": {"exit_status": "RepeatedFormatError"}, "messages": [
+                {"extra": {"response": {"choices": [{"finish_reason": "length"}],
+                                        "usage": {"prompt_tokens": 2, "completion_tokens": 3}}}},
+                {"extra": {"response": {"choices": [{"finish_reason": "length"}],
+                                        "usage": {"prompt_tokens": 5, "completion_tokens": 7}}}},
+                {"extra": {"response": {"choices": [{"finish_reason": "length"}],
+                                        "usage": {"prompt_tokens": 11, "completion_tokens": 13}}}},
+            ]},
+            "diff",
+            {"status": "RepeatedFormatError", "kind": "repeated_format_error", "format_cause": "output_cap"},
+            "ungraded",
+            {"prompt_tokens": 18, "completion_tokens": 23, "total_tokens": 41},
+        ),
+        (
+            {"info": {"exit_status": "RepeatedFormatError"}, "messages": [
+                {"extra": {"response": {"choices": [{"finish_reason": "tool_calls"}]}}},
+            ]},
+            None,
+            {"status": "RepeatedFormatError", "kind": "repeated_format_error", "format_cause": "unknown"},
+            "ungraded",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"info": {"exit_status": "RepeatedFormatError"}, "messages": [
+                {"extra": {"response": {"choices": [
+                    {"finish_reason": "length"},
+                    {"finish_reason": "length"},
+                    {"finish_reason": "length"},
+                ]}}},
+            ]},
+            None,
+            {"status": "RepeatedFormatError", "kind": "repeated_format_error", "format_cause": "unknown"},
+            "ungraded",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"info": {"exit_status": "RepeatedFormatError", "model_stats": {"api_calls": 1}}, "messages": [
+                {"extra": {"response": {"id": "one", "choices": [{"finish_reason": "length"}]}}},
+                {"extra": {"response": {"id": "one", "choices": [{"finish_reason": "length"}]}}},
+                {"extra": {"response": {"id": "one", "choices": [{"finish_reason": "length"}]}}},
+            ]},
+            None,
+            {"status": "RepeatedFormatError", "kind": "repeated_format_error", "format_cause": "unknown"},
+            "ungraded",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            None,
+            None,
+            {"status": None, "kind": "missing"},
+            "ungraded",
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+    ],
+)
+def test_swe_instance_diagnostics_are_additive_and_evidence_bound(
+    trajectory, patch, expected_exit, expected_grading, expected_tokens
+):
+    prediction = {} if patch is None else {"model_patch": patch}
+    diagnostics = swe._swe_diagnostics(trajectory, prediction)
+    assert diagnostics["exit"] == expected_exit
+    assert diagnostics["prediction"] == {
+        "present": isinstance(patch, str),
+        "nonempty": bool(patch),
+        "sha256": hashlib.sha256((patch or "").encode("utf-8")).hexdigest(),
+        "bytes": len((patch or "").encode("utf-8")),
+    }
+    instance = {"diagnostics": diagnostics, "grader": {"completed": expected_grading != "ungraded", "resolved": expected_grading == "resolved"}}
+    swe._set_grading_observation(instance)
+    assert instance["diagnostics"]["grading"]["status"] == expected_grading
+    assert swe._trajectory_metrics(trajectory) == expected_tokens
+
+
+@pytest.mark.parametrize(
+    ("trajectory", "expected"),
+    [
+        (
+            {"info": {"model_stats": {"api_calls": 2}}, "messages": [
+                {"extra": {"response": {"id": "one", "usage": {"prompt_tokens": 2, "completion_tokens": 3}}}},
+                {"extra": {"response": {"id": "two"}}},
+            ]},
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"messages": [
+                {"extra": {"response": {"id": "one", "usage": {"prompt_tokens": 2, "completion_tokens": 3}}}},
+                {"extra": {"response": {"id": "one", "usage": {"prompt_tokens": 5, "completion_tokens": 7}}}},
+            ]},
+            {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None},
+        ),
+        (
+            {"info": {"model_stats": {"api_calls": 2}}, "usage": {"prompt_tokens": 4, "completion_tokens": 5}},
+            {"prompt_tokens": 4, "completion_tokens": 5, "total_tokens": 9},
+        ),
+    ],
+)
+def test_trajectory_metrics_require_complete_unique_response_coverage(trajectory, expected):
+    assert swe._trajectory_metrics(trajectory) == expected
+
+
 @pytest.mark.parametrize("identities", [{}, {INSTANCE: "latest"}, {"other__case": "sha256:" + "a" * 64}])
 def test_paired_images_require_exact_selection_and_immutable_ids(tmp_path, identities):
     with pytest.raises(BenchmarkJobError, match="every selected instance"):
@@ -428,8 +546,8 @@ def test_limits_exceeded_with_trajectory_and_empty_patch_preserves_agent_failure
     assert result["state"] == "incomplete"
     assert result["official_grader_complete"] is graded
     assert result["summary"]["graded"] == int(graded)
-    assert result["instances"][0]["failure_class"] == "model_failure"
-    assert result["failure"] == {"class": "model_failure", "stage": "agent", "code": "swe_limits_exceeded"}
+    assert result["instances"][0]["failure_class"] == "budget_exhausted"
+    assert result["failure"] == {"class": "budget_exhausted", "stage": "agent", "code": "swe_limits_exceeded"}
 
 
 def test_agent_instance_failure_is_graded_but_remains_an_agent_failure(tmp_path):

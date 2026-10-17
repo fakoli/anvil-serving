@@ -94,6 +94,52 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
     assert evidence["identities"]["model"] == {"alias": "candidate"}
 
 
+def test_incomplete_swe_budget_exhaustion_retains_outer_resource_cause(monkeypatch, tmp_path):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        benchmark_worker,
+        "prepare_harness_assets",
+        lambda *_args, **_kwargs: {"assets": {}},
+    )
+    monkeypatch.setattr(
+        benchmark_worker,
+        "run_benchmark_preflight",
+        lambda *_args, **_kwargs: {
+            "schema": "anvil-serving.benchmark-preflight/v1",
+            "passed": True,
+            "observed": {"worker": {"id": "worker"}, "endpoint": {}},
+            "checks": [],
+        },
+    )
+    monkeypatch.setattr(
+        benchmark_worker,
+        "_run_suite",
+        lambda *_args, **_kwargs: {
+            "state": "incomplete",
+            "failure": {"class": "budget_exhausted", "code": "swe_limits_exceeded"},
+            "summary": {"attempted": 1, "completed": False},
+        },
+    )
+
+    record = execute_benchmark_job(store, "worker-run")
+    evidence = store.artifact("worker-run")["results"]["evidence"]
+
+    assert record["state"] == "failed"
+    assert record["failure"]["class"] == "resource_exhaustion"
+    assert record["failure"]["code"] == "budget_exhausted"
+    assert evidence["completeness"] == "failed"
+    assert evidence["failure"]["class"] == "resource_exhaustion"
+    assert evidence["failure"]["code"] == "budget_exhausted"
+    suite_stage = next(stage for stage in evidence["stages"] if stage["name"] == "swe")
+    suite_result = json.loads((tmp_path / "runs" / "campaign" / "worker-run" / suite_stage["evidence"][0]["path"]).read_text())
+    assert suite_result["state"] == "incomplete"
+    assert suite_result["failure"] == {"class": "budget_exhausted", "code": "swe_limits_exceeded"}
+
+
 def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeypatch, tmp_path):
     value = spec()
     value["parameters"] = {"thinking_mode": "bogus"}

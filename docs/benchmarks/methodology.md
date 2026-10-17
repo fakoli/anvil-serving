@@ -220,6 +220,57 @@ dataset, image, prediction, grader, and model reasoning-control identities
 remain bound in the artifact.
 See [the durable job workflow](context-agentic-swe.md).
 
+## Experiment purpose and failure attribution
+
+Keep product-budget evaluation, external benchmark reproduction, and failure
+diagnosis separate. A five-task regression scout is not a population estimate.
+The packaged scout's call/completion limits are deliberate operating budgets;
+an upstream harness default does not silently replace them. Compare the same
+selected tasks, harness revision, effective controls, retry policy and grader.
+Report first-attempt success separately from retry-inclusive success, including
+the extra time and tokens. Retain every attempt in the end-to-end denominator.
+
+New SWE results retain additive per-instance `diagnostics`: the upstream exit,
+prediction presence/byte count/hash, and official grading outcome. New
+`LimitsExceeded` exits use `budget_exhausted` while keeping the run incomplete
+and its gate failed. The enclosing cross-suite evidence uses its stable
+`resource_exhaustion` class and retains `budget_exhausted` as the code; the native
+SWE stage retains the more specific cause. The exit alone does not distinguish call, cost or time
+limits. Repeated format errors identify output-cap exhaustion only when retained
+single-choice responses support that diagnosis. An observed patch is not a
+submitted or correct patch; diagnostics never recover or submit one. Historical
+records keep their original failure classes and scores.
+
+The original `debug-loop` remains Oracle revision 8. To select the corrected
+contract in an agentic job, use `parameters.case_ids: ["debug-loop-v2"]` in the
+existing job specification with a profile that includes `debug-loop` (scout or
+deep). This is an explicit selection, not a new default. The v2 prompt and tool
+schema both disclose `scope="unit"`; its observations identify revision 9.
+Artifacts containing the new case retain `scenario_contracts`, including both
+revisions if both cases were selected. Scenario and expected revision must
+agree. The corrected contract is prospective; it does not rescore old failures.
+
+New capacity reports declare `workload_identity` with
+`prompt_contract_revision: "capacity-prompt-v1"` and either
+`synthetic-repeated-code` (positive `response_words`) or `synthetic-summary`
+(zero `response_words`). These identify existing prompts, not new benchmarks.
+`observe` does not change a repeated-word prompt into a natural workload, and a
+synthetic summary does not establish daily task quality. Comparison and replica
+aggregation reject unlike identities and mixing an identified workload with a
+legacy unidentified one. Legacy-only comparisons retain their prior meaning.
+
+Successful timing rows also retain bounded finish reasons, terminal observation,
+capture limit and captured character count. Missing historical metadata stays
+unknown. These observations do not relax output/canary eligibility: a received
+response is not necessarily a clean completion, and truncated capture cannot
+prove stream isolation. Strict finalist requirements remain unchanged. Natural
+task timing, exact instruction following and stream isolation need separately
+declared workloads before they can support separate conclusions.
+
+These contracts can be tested with synthetic traces and fake callers. Passing
+those tests establishes harness behavior, not corrected model accuracy,
+real-engine cancellation, production throughput or promotion readiness.
+
 ## Evaluation pipeline
 
 The [runtime stability workflow](runtime-stability.md) retains additive

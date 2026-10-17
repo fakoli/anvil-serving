@@ -39,6 +39,7 @@ SWE_SUBSET = "verified"
 SWE_SPLIT = "test"
 TASK_CONTAINER_NETWORK = "none"
 SWE_FAILURE_CLASSES = frozenset({
+    "budget_exhausted",
     "broken_harness",
     "image_failure",
     "test_failure",
@@ -511,31 +512,148 @@ def _extract_request_ids(value: Any) -> list[str]:
     return sorted(found)
 
 
+def _nonnegative_int(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _retained_response_records(trajectory: Any) -> list[Mapping[str, Any]] | None:
+    """Return one complete, unique retained response per assistant turn."""
+    if not isinstance(trajectory, Mapping) or not isinstance(trajectory.get("messages"), list):
+        return None
+    info = trajectory.get("info") if isinstance(trajectory.get("info"), Mapping) else {}
+    stats = info.get("model_stats") if isinstance(info.get("model_stats"), Mapping) else {}
+    api_calls = _nonnegative_int(stats.get("api_calls"))
+    responses: list[Mapping[str, Any]] = []
+    response_ids: set[str] = set()
+    for message in trajectory["messages"]:
+        if not isinstance(message, Mapping):
+            return None
+        extra = message.get("extra")
+        response = extra.get("response") if isinstance(extra, Mapping) else None
+        if not isinstance(response, Mapping):
+            if message.get("role") == "assistant":
+                return None
+            continue
+        if message.get("role") not in {None, "assistant"}:
+            return None
+        response_id = response.get("id")
+        if isinstance(response_id, str) and response_id:
+            if response_id in response_ids:
+                return None
+            response_ids.add(response_id)
+        responses.append(response)
+    if api_calls is not None and api_calls != len(responses):
+        return None
+    return responses
+
+
 def _trajectory_metrics(trajectory: Any) -> dict[str, Any]:
     if not isinstance(trajectory, Mapping):
         return {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
     info = trajectory.get("info") if isinstance(trajectory.get("info"), Mapping) else {}
-    candidates = [
+    def number(value: Mapping[str, Any], *names: str) -> int | None:
+        for name in names:
+            item = _nonnegative_int(value.get(name))
+            if item is not None:
+                return item
+        return None
+
+    def usage_metrics(value: Mapping[str, Any]) -> dict[str, int | None]:
+        prompt = number(value, "prompt_tokens", "input_tokens")
+        completion = number(value, "completion_tokens", "output_tokens")
+        total = number(value, "total_tokens")
+        if total is None and prompt is not None and completion is not None:
+            total = prompt + completion
+        return {"prompt_tokens": prompt, "completion_tokens": completion, "total_tokens": total}
+
+    for usage in (
         info.get("model_stats"),
         info.get("usage"),
         trajectory.get("model_stats"),
         trajectory.get("usage"),
-    ]
-    usage = next((dict(item) for item in candidates if isinstance(item, Mapping)), {})
+    ):
+        if not isinstance(usage, Mapping):
+            continue
+        observed = usage_metrics(usage)
+        if any(value is not None for value in observed.values()):
+            return observed
 
-    def number(*names: str) -> int | None:
-        for name in names:
-            value = usage.get(name)
-            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
-                return value
-        return None
+    # Per-response usage is an alternative to aggregate model stats, never added to it.
+    responses = _retained_response_records(trajectory)
+    if not responses or any(not isinstance(response.get("usage"), Mapping) for response in responses):
+        return {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
+    response_usages = [usage_metrics(response["usage"]) for response in responses]
 
-    prompt = number("prompt_tokens", "input_tokens")
-    completion = number("completion_tokens", "output_tokens")
-    total = number("total_tokens")
+    def summed(field: str) -> int | None:
+        values = [item[field] for item in response_usages]
+        return sum(values) if all(value is not None for value in values) else None
+
+    prompt = summed("prompt_tokens")
+    completion = summed("completion_tokens")
+    total = summed("total_tokens")
     if total is None and prompt is not None and completion is not None:
         total = prompt + completion
     return {"prompt_tokens": prompt, "completion_tokens": completion, "total_tokens": total}
+
+
+def _response_finish_reasons(trajectory: Any) -> list[str | None]:
+    responses = _retained_response_records(trajectory)
+    if responses is None:
+        return []
+    reasons = []
+    for response in responses:
+        choices = response.get("choices")
+        if isinstance(choices, list) and len(choices) == 1 and isinstance(choices[0], Mapping):
+            reason = choices[0].get("finish_reason")
+            reasons.append(reason if isinstance(reason, str) else None)
+        elif "choices" not in response and isinstance(response.get("finish_reason"), str):
+            reasons.append(response["finish_reason"])
+        else:
+            # A multi-choice or malformed response cannot establish one turn's
+            # finish reason for a serial format-error diagnosis.
+            reasons.append(None)
+    return reasons
+
+
+def _swe_diagnostics(trajectory: Any, prediction: Mapping[str, Any]) -> dict[str, Any]:
+    """Additive observations; they neither alter patches nor grading decisions."""
+    info = trajectory.get("info", {}) if isinstance(trajectory, Mapping) else {}
+    exit_status = info.get("exit_status") if isinstance(info.get("exit_status"), str) else None
+    patch = prediction.get("model_patch")
+    patch_bytes = patch.encode("utf-8") if isinstance(patch, str) else b""
+    exit_kind = {
+        "Submitted": "submitted",
+        "LimitsExceeded": "limits_exceeded",
+        "RepeatedFormatError": "repeated_format_error",
+    }.get(exit_status, "missing" if trajectory is None else "other")
+    observation = {
+        "exit": {"status": exit_status, "kind": exit_kind},
+        "prediction": {
+            "present": isinstance(patch, str),
+            "nonempty": bool(patch_bytes),
+            "sha256": hashlib.sha256(patch_bytes).hexdigest(),
+            "bytes": len(patch_bytes),
+        },
+        "grading": {"status": "ungraded"},
+    }
+    if exit_kind == "limits_exceeded":
+        # LimitsExceeded can mean call, cost, or wall-clock budget.  The stored
+        # status alone does not identify which configured budget was reached.
+        observation["exit"]["limit_kind"] = "unknown"
+    elif exit_kind == "repeated_format_error":
+        reasons = _response_finish_reasons(trajectory)
+        if len(reasons) >= 3 and reasons[-3:] == ["length", "length", "length"]:
+            observation["exit"]["format_cause"] = "output_cap"
+        else:
+            observation["exit"]["format_cause"] = "unknown"
+    return observation
+
+
+def _set_grading_observation(instance: dict[str, Any]) -> None:
+    grader = instance["grader"]
+    instance["diagnostics"]["grading"]["status"] = (
+        "ungraded" if not grader["completed"] else "resolved" if grader["resolved"] else "unresolved"
+    )
 
 
 def _write_predictions_jsonl(path: str, predictions: Mapping[str, Any], selected: list[str]) -> None:
@@ -716,10 +834,11 @@ def run_swe_benchmark(
             "prediction_sha256": hashlib.sha256(
                 str(prediction.get("model_patch") or "").encode("utf-8")
             ).hexdigest(),
+            "diagnostics": _swe_diagnostics(trajectory, prediction),
             "grader": {"name": "swe-bench", "revision": plan["harnesses"]["grader"]["revision"], "completed": False, "resolved": None},
             "failure_class": (
                 "broken_harness" if trajectory is None else
-                "model_failure" if info.get("exit_status") == "LimitsExceeded" else None
+                "budget_exhausted" if info.get("exit_status") == "LimitsExceeded" else None
             ),
         })
     result["summary"]["attempted"] = len(result["instances"])
@@ -736,10 +855,10 @@ def run_swe_benchmark(
             "stage": "agent",
             "code": "missing_swe_trajectory",
         }
-    elif any(instance["failure_class"] == "model_failure" for instance in result["instances"]):
-        agent_stage.update({"status": "failed", "failure_class": "model_failure"})
+    elif any(instance["failure_class"] == "budget_exhausted" for instance in result["instances"]):
+        agent_stage.update({"status": "failed", "failure_class": "budget_exhausted"})
         agent_failure = {
-            "class": "model_failure",
+            "class": "budget_exhausted",
             "stage": "agent",
             "code": "swe_limits_exceeded",
         }
@@ -804,6 +923,7 @@ def run_swe_benchmark(
             else None,
             "report_sha256": report_sha256,
         })
+        _set_grading_observation(instance)
     result["official_grader_complete"] = len(valid_completed_ids) == len(selected)
     result["summary"] = {
         "attempted": len(selected),

@@ -118,6 +118,35 @@ def _sampling_summary(raw: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _capacity_workload_identity(raw: Mapping[str, Any]) -> tuple[dict[str, str] | None, str | None]:
+    """Normalize the declared synthetic prompt identity without inferring legacy data."""
+    if "workload_identity" not in raw:
+        return None, None
+    identity = raw.get("workload_identity")
+    if not isinstance(identity, Mapping) or set(identity) != {
+        "prompt_contract_revision", "workload_kind",
+    }:
+        return None, "workload_identity must declare prompt_contract_revision and workload_kind"
+    revision = identity.get("prompt_contract_revision")
+    kind = identity.get("workload_kind")
+    if revision != "capacity-prompt-v1":
+        return None, "workload_identity has an unsupported prompt_contract_revision"
+    if not isinstance(kind, str):
+        return None, "workload_identity.workload_kind must be text"
+    response_words = raw.get("response_words")
+    if isinstance(response_words, bool) or not isinstance(response_words, int) or response_words < 0:
+        return None, "workload_identity requires a non-negative integer response_words"
+    expected_kind = (
+        "synthetic-repeated-code" if response_words else "synthetic-summary"
+    )
+    if kind != expected_kind:
+        return None, "workload_identity.workload_kind conflicts with response_words"
+    return {
+        "prompt_contract_revision": revision,
+        "workload_kind": kind,
+    }, None
+
+
 def _immutable_sha256(value: object) -> str | None:
     text = _text(value)
     if text is None or len(text) != 64:
@@ -513,6 +542,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
     ):
         warnings.append("one or more attempts exhausted the completion budget")
     is_capacity = kind == "capacity"
+    workload_identity, workload_identity_error = (
+        _capacity_workload_identity(raw) if is_capacity else (None, None)
+    )
     method = raw.get("method")
     method_sha256 = (
         hashlib.sha256(method.encode("utf-8")).hexdigest()
@@ -544,6 +576,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "cache_policy": _text(
                 raw.get("cache_policy"), serve_flags.get("cache_policy")
             ),
+            "capacity_workload_identity": workload_identity,
         },
         "capacity": {
             "requests": _number(raw.get("requests")),
@@ -594,7 +627,11 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         summary["protocol"]["thinking_mode"] = _text(
             serve_flags.get("thinking_mode"), summary["protocol"]["thinking_mode"]
         )
-    summary["validation_errors"] = [*numeric_shape_errors, *_validate_summary(summary)]
+    summary["validation_errors"] = [
+        *numeric_shape_errors,
+        *([workload_identity_error] if workload_identity_error else []),
+        *_validate_summary(summary),
+    ]
     return summary
 
 
@@ -761,6 +798,7 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "cache_policy": ("workload", "cache_policy"),
         "prompt_set_id": ("workload", "prompt_set_id"),
         "measurement_protocol": ("workload", "measurement_protocol"),
+        "capacity_workload_identity": ("workload", "capacity_workload_identity"),
         "gpu": ("provenance", "gpu"),
         "sampling_recorded": ("protocol", "sampling", "recorded"),
         "sampling_temperature_requested": (
