@@ -1065,6 +1065,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         caddy["origin_proxy"] = origin_proxy
 
     authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
+    if isinstance(raw["authelia"], dict) and "reset_link_lifespan_seconds" in raw["authelia"]:
+        authelia_fields.add("reset_link_lifespan_seconds")
     if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
         authelia_fields.add("webauthn")
     if isinstance(raw["authelia"], dict) and "additional_oidc_clients" in raw["authelia"]:
@@ -1079,6 +1081,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia_fields.add("smtp")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
+    if "reset_link_lifespan_seconds" in authelia_raw:
+        authelia["reset_link_lifespan_seconds"] = _positive(
+            authelia_raw["reset_link_lifespan_seconds"], "$.authelia.reset_link_lifespan_seconds", 86400
+        )
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
     if authelia_name != "anvil-connect-authelia":
         raise _error("$.authelia.service_name", "must equal anvil-connect-authelia")

@@ -286,6 +286,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "authentication_backend:", "  file:", f"    path: {_quote(auth['users_file'])}",
         "access_control:", "  default_policy: two_factor",
         "identity_validation:", "  reset_password:", "    jwt_secret: |-", f"      {{{{- fileContent {_template_quote(auth['identity_validation_secret_file'])} | nindent 6 }}}}",
+        *([f"    jwt_lifespan: '{auth['reset_link_lifespan_seconds']} seconds'"] if "reset_link_lifespan_seconds" in auth else []),
         *notifier,
         "session:", "  secret: |-", f"    {{{{- fileContent {_template_quote(auth['session_secret_file'])} | nindent 4 }}}}",
         "  cookies:", f"    - domain: {_quote(auth['host'])}", f"      authelia_url: {_quote('https://' + auth['host'])}",
