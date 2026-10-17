@@ -70,6 +70,8 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
     # their exact destinations and every other runtime/mount declaration.
     def normalized(rendered):
         result = deepcopy(rendered)
+        # The exact successor image is independently pinned by _current_successor.
+        result['services'][service]['image'] = '<acknowledged-router-image>'
         mounts = result['services'][service]['volumes']
         source = next(m['source'] for m in mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
         aliases = [m for m in mounts if m.get('type') == 'bind'
@@ -79,8 +81,7 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
             if mount.get('type') == 'bind' and mount.get('read_only') is True and mount['source'] == source:
                 mount['source'] = '<acknowledged-router-config>'
         return result
-    require(normalized(candidate) == normalized(old['rendered'])
-        and successor['image_id'] == stopped['image_id'])
+    require(normalized(candidate) == normalized(old['rendered']))
     mounts = selected['volumes']
     config = next(m for m in mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
     def read(argv):
@@ -135,5 +136,7 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
         and record['death']['stopped'] == stopped and digest(record['death']) == receipt['death_sha256']
         and record['death']['closure_generation'] == native['observation']['closure']['generation']
         and record['death']['closure_consumed'] is False)
+    lifecycle.require_router_offline(compose, service, container=container, _run=_run,
+        env_file=env_file, execution_env=execution_env)
     require(snapshot() == before)
     return receipt

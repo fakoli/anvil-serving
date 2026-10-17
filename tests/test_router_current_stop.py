@@ -52,10 +52,12 @@ usage_domain_id="fixture"
                 {'type':'bind','source':str(source),'target':'/fixture/consumer/router.toml','read_only':True},
                 {'type':'bind','source':str(storage),'target':'/fixture/state'}]}}}
     old, candidate = rendered(f['router_config']), rendered(candidate_config)
+    old['services']['router']['image'] = 'fixture:old'
     f['protected'](f['old'], old); f['protected'](f['new'], candidate)
     receipt['preview']['compose_sha256'] = hashlib.sha256(f['old'].read_bytes()).hexdigest()
     declared = receipt['authorization']['successor']
-    declared['image_id'] = stopped['image_id']
+    declared['image_id'] = 'sha256:' + '7'*64
+    assert declared['image_id'] != stopped['image_id']
     declared['compose_sha256'] = hashlib.sha256(f['new'].read_bytes()).hexdigest()
     declared['configuration_revision'] = hashlib.sha256(candidate_config.read_bytes()).hexdigest()
     receipt['preview']['successor'] = deepcopy(declared)
@@ -87,6 +89,10 @@ usage_domain_id="fixture"
         calls.append('native-read')
         return deepcopy(proof)
     monkeypatch.setattr(router_manage, '_offline_compose_run', native)
+    def candidate_offline(compose, service, *, container, **kwargs):
+        assert compose == str(f['new']) and (service, container) == ('router', 'anvil-router')
+        calls.append('candidate-offline')
+    monkeypatch.setattr(router_manage, 'require_router_offline', candidate_offline)
     monkeypatch.setattr(router_manage, '_managed_container_custody', lambda kind, *a, **k: calls.append(kind))
     return SimpleNamespace(path=receipt_path, receipt=receipt, stopped=stopped, old=old,
         candidate=candidate, config=candidate_config, compose=f['new'], proof=proof, calls=calls, run=run,
@@ -110,7 +116,7 @@ def test_changed_source_and_configuration_require_exact_receipt_and_preview_is_r
     assert bootstrap.completed_receipt(f.path, f.stopped) == f.receipt
     bootstrap.require_successor(str(f.path), str(f.compose), 'router', 'anvil-router', f.stopped, _run=f.run)
     assert invoke(f, dry_run=True) == 0
-    assert 'native-read' in f.calls and 'live' not in f.calls
+    assert 'native-read' in f.calls and 'candidate-offline' in f.calls and 'live' not in f.calls
     assert not any(isinstance(c, list) and 'up' in c for c in f.calls)
     assert invoke(f) == 0
     assert f.calls[-1] == 'live'
@@ -121,7 +127,7 @@ def test_changed_source_and_configuration_require_exact_receipt_and_preview_is_r
 
 
 @pytest.mark.parametrize('damage', ['ack', 'preview', 'death', 'stopped', 'image', 'compose', 'config',
-    'owner', 'writable', 'user', 'command', 'extra-alias', 'lineage', 'active', 'transferred', 'closure', 'receipt-race'])
+    'owner', 'writable', 'user', 'command', 'environment', 'entrypoint', 'extra-service', 'candidate-offline', 'extra-alias', 'lineage', 'active', 'transferred', 'closure', 'receipt-race'])
 def test_changed_authority_refuses_before_start(successor, monkeypatch, damage):
     f = successor
     if damage == 'ack': f.receipt['acknowledged_at'] = f.receipt['authorization']['expires_at']
@@ -146,6 +152,11 @@ def test_changed_authority_refuses_before_start(successor, monkeypatch, damage):
     elif damage == 'writable': f.candidate['services']['router']['volumes'][-1]['target'] = '/different'
     elif damage == 'user': f.candidate['services']['router']['user'] = '123:123'
     elif damage == 'command': f.candidate['services']['router']['command'] = ['unexpected']
+    elif damage == 'environment': f.candidate['services']['router']['environment'] = {'UNAPPROVED': 'value'}
+    elif damage == 'entrypoint': f.candidate['services']['router']['entrypoint'] = ['unexpected']
+    elif damage == 'extra-service': f.candidate['services']['unexpected'] = {}
+    elif damage == 'candidate-offline':
+        monkeypatch.setattr(router_manage, 'require_router_offline', lambda *a, **k: (_ for _ in ()).throw(ValueError('incompatible_candidate')))
     elif damage == 'extra-alias':
         for rendered in (f.old, f.candidate):
             mounts=rendered['services']['router']['volumes']
