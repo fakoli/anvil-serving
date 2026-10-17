@@ -574,7 +574,10 @@ class JobStore:
         stored = [dict(selected) for selected in (row, launch, child)]
         stored[0]["canonical_contract"] = hashlib.sha256(bytes(row["canonical_contract"])).hexdigest()
         custody_digest = hashlib.sha256(_json(stored, limit=1024 * 1024).encode("ascii")).hexdigest()
-        return {"job": self._row(row), "identities": identities, "custody_digest": custody_digest}
+        child_result_digest = (hashlib.sha256(child["result_json"].encode("ascii")).hexdigest()
+                               if child["result_json"] is not None else None)
+        return {"job": self._row(row), "identities": identities,
+                "custody_digest": custody_digest, "child_result_digest": child_result_digest}
 
     def cancellation_binding(self, job_id: str) -> dict:
         with self._connection() as db:
@@ -595,6 +598,7 @@ class JobStore:
             binding = self._cancellation_binding(db, job_id)
             job = binding["job"]
             if (binding["custody_digest"] != custody_digest
+                    or receipt.get("child_result_digest") != binding["child_result_digest"]
                     or (receipt.get("job_id"), receipt.get("intent_id"), receipt.get("contract_digest"))
                     != (job_id, job["intent_id"], job["contract_digest"])
                     or receipt.get("quiescent") is not True or receipt.get("state") != "cancelled"):

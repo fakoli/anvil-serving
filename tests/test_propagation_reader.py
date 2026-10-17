@@ -52,6 +52,18 @@ def test_reader_passes_only_fixed_typed_input_and_rechecks_pin(tmp_path):
         reader.preview(b"{}")
 
 
+def test_cancellation_reader_binds_fresh_custody_without_private_job_fields(tmp_path):
+    reader, _script = _reader(tmp_path, "import json,sys\nprint(json.dumps(json.load(sys.stdin)))\n")
+    job = {"job_id": "job-1", "operation_id": "operation-1", "contract_digest": "a" * 64,
+           "intent_id": "intent-1", "private_value": "must-not-escape"}
+    identities = [{"pid": 1, "start_ticks": "2", "boot_id": "old-boot"}]
+    custody = {"custody_digest": "b" * 64, "child_result_digest": "c" * 64}
+    result = reader.cancellation_evidence(b"{}", job, identities, custody)
+    assert set(result) == {"schema", "kind", "contract", "job", "identities", "custody"}
+    assert result["custody"] == custody and result["identities"] == identities
+    assert "private_value" not in result["job"]
+
+
 @pytest.mark.parametrize("source,budget,limit", [
     ("import time\ntime.sleep(3)\n", 1, 4096),
     ("print('x'*2048)\n", 2, 1024),

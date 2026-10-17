@@ -20,6 +20,39 @@ from tests.test_propagation_contracts import _matches_declared_schema
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="native execution owner is Linux")
 
 
+def test_child_result_changes_custody_with_identical_process_identities(tmp_path):
+    owner = ControlledOwner(tmp_path, count=1)
+    accepted = owner.accept()
+    job, _ = owner.jobs.submit({"intent_id": accepted["intent_id"],
+        "operation_id": _hash(["effect/v1", owner.contract.digest, "fleet", "apply"]),
+        "canonical_contract": owner.contract.canonical, "preview_digest": "a" * 64,
+        "profile_id": "profile-1", "profile_digest": "a" * 64,
+        "resources": ["catalog-000"], "deadline": owner.contract.value["deadline_at"]})
+    job_id = job["job_id"]
+    identities = [{"pid": pid, "start_ticks": str(pid), "boot_id": "old-boot"} for pid in (101, 102)]
+    token = owner.jobs.prepare_launch(job_id)
+    owner.jobs.register_launch(job_id, token, identities[0])
+    owner.jobs.begin_execution(job_id, token, identities[0])
+    planned = owner.jobs.prepare_profile_child(job_id, identities[0])
+    owner.jobs.register_profile_child(job_id, identities[1])
+    result = {"outcome": "cancelled", "native_effects": planned, "quiescent": False}
+    owner.jobs.record_result(job_id, identities[0], result)
+    before = owner.jobs.cancellation_binding(job_id)
+    assert before["child_result_digest"] is None
+    digest = owner.jobs.record_child_result(job_id, result)
+    after = owner.jobs.cancellation_binding(job_id)
+    assert after["identities"] == before["identities"] == identities
+    assert after["child_result_digest"] == digest == _hash(result)
+    assert after["custody_digest"] != before["custody_digest"]
+    receipt = {"job_id": job_id, "intent_id": accepted["intent_id"],
+               "contract_digest": owner.contract.digest, "quiescent": True, "state": "cancelled"}
+    for custody, child in ((before["custody_digest"], None), (after["custody_digest"], "e" * 64)):
+        with pytest.raises(PropagationJobError, match="settlement_conflict"):
+            owner.jobs.reconcile_cancelled(job_id, custody, {**receipt, "child_result_digest": child})
+    assert owner.jobs.cancellation_receipt(job_id, accepted["intent_id"], owner.contract.digest) is None
+    assert owner.jobs.lookup_internal(job_id)["state"] == "recovery_required"
+
+
 def test_original_job_empty_custody_recovery_and_delayed_writer(tmp_path, monkeypatch):
     owner = ControlledOwner(tmp_path, count=2)
     accepted = owner.accept()
@@ -76,8 +109,10 @@ def test_original_job_empty_custody_recovery_and_delayed_writer(tmp_path, monkey
             fences.append((target, path, fence, grant))
 
         calls = []
-        def evidence(raw, stored_job, custody):
-            assert raw == owner.contract.canonical and stored_job["job_id"] == job_id and custody == identities
+        def evidence(raw, stored_job, process_identities, custody):
+            assert raw == owner.contract.canonical and stored_job["job_id"] == job_id and process_identities == identities
+            fresh = owner.jobs.cancellation_binding(job_id)
+            assert custody == {key: fresh[key] for key in ("custody_digest", "child_result_digest")}
             calls.append(job_id)
             rows = [{**{key: target[key] for key in (
                 "target_id", "installation_id", "profile_id", "runtime_id", "expected_identity_digest")},

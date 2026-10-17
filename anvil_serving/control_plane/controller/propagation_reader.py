@@ -170,11 +170,11 @@ class FixedFleetReader:
                           "kind": "recovery", "profile_id": profile_id, "caller_id": caller_id})
 
     def cancellation_evidence(self, canonical_contract: bytes, job: Mapping[str, Any],
-                              identities: list[Mapping[str, Any]]) -> dict[str, Any]:
+                              identities: list[Mapping[str, Any]], custody: Mapping[str, Any]) -> dict[str, Any]:
         return self._run({"schema": "anvil-serving.propagation-reader/v1", "kind": "cancel",
                          "contract": json.loads(canonical_contract),
                          "job": {key: job[key] for key in ("job_id", "operation_id", "contract_digest", "intent_id")},
-                         "identities": identities})
+                         "identities": identities, "custody": dict(custody)})
 
     def reconcile(self, job: Mapping[str, Any], result: Mapping[str, Any]) -> str:
         value = self._run({"schema": "anvil-serving.propagation-reader/v1",

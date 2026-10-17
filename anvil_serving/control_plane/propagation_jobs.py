@@ -58,7 +58,7 @@ class PropagationProfile:
     resume_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     cancel_workflow: Callable[[str, str, str, str], Mapping[str, Any]] | None = None
     recovery_evidence: Callable[[str, str], Mapping[str, Any]] | None = None
-    cancellation_evidence: Callable[[bytes, Mapping[str, Any], list[Mapping[str, Any]]], Mapping[str, Any]] | None = None
+    cancellation_evidence: Callable[[bytes, Mapping[str, Any], list[Mapping[str, Any]], Mapping[str, Any]], Mapping[str, Any]] | None = None
     workflow_status: Callable[[str, str], Mapping[str, Any]] | None = None
     mode: str = "effects"
     preview_contract: bytes | None = None
@@ -265,7 +265,9 @@ class PropagationService:
                 raise PropagationJobError("intent_conflict")
             if any(_identity(identity["pid"]) == identity for identity in identities):
                 raise PropagationJobError("operation_in_progress")
-            observed = json.loads(_json(self.profile.cancellation_evidence(contract.canonical, job, identities)))
+            custody = {key: binding[key] for key in ("custody_digest", "child_result_digest")}
+            observed = json.loads(_json(self.profile.cancellation_evidence(
+                contract.canonical, job, identities, custody)))
             if len(_json(observed)) > contract_api.MAX_RECEIPT_BYTES or set(observed) != {"observed_at", "targets"}:
                 raise PropagationJobError("invalid_recovery_result")
             _fresh(observed["observed_at"], self.profile.now())
@@ -297,6 +299,7 @@ class PropagationService:
             receipt = {"intent_id": intent_id, "job_id": job_id, "contract_digest": contract.digest,
                        "state": "cancelled", "quiescent": True, "settled_at": _stamp(self.profile.now()),
                        "custody_digest": binding["custody_digest"], "identities": identities,
+                       "child_result_digest": binding["child_result_digest"],
                        "evidence": observed}
             receipt = self.jobs.reconcile_cancelled(job_id, binding["custody_digest"], receipt)
         return {key: receipt[key] for key in ("intent_id", "job_id", "contract_digest", "state", "quiescent", "settled_at")} | {"receipt_digest": _hash(receipt)}
