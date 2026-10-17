@@ -160,6 +160,21 @@ installed CLI only as a verified fallback.
    continuation when affected. A long-context needle or protocol preflight
    does not replace these client-shaped smokes. Any catalog/profile drift or
    missing declared fleet coverage blocks deployment closure.
+   If an interrupted propagation job holds the fleet resources, recover that
+   exact job through its owner before preparing a successor. Preserve its
+   original contract, process births, custody and child-result digests, and
+   workflow history. Expiry, a missing PID, or a reboot alone cannot prove that
+   persisted native work cannot replay. Require fresh, complete owner readback
+   of the exact terminal workflow and every affected native replay source;
+   settle through the supported recovery operation, never a database edit or
+   a legacy-writer bypass. Keep any maintenance reader restricted to observation
+   and recovery, verify authenticated operation exposure and admission denial,
+   and make a failed host preflight stop all fleet mutation. Bind the fresh
+   successor to the accepted activation and retained settlement evidence.
+   Track catalog convergence, new-session acceptance, existing-session
+   preservation, and scheduled reconciliation separately for every declared
+   installation; a fresh CLI smoke cannot stand in for Pi Web or an existing
+   session. Fix authorized blockers and rerun their failed gates before closure.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
