@@ -1683,6 +1683,7 @@ def _json_envelope(argv: Sequence[str], options: OutputOptions) -> int:
         "topology validate-router-config",
         "controller inspect", "controller logs",
         "router workloads", "fleet workloads",
+        "eval benchmark speed plan",
     }
     diagnostic_leaf = canonical in _DIAGNOSTIC_LEAVES
     workload_leaf = canonical in _WORKLOAD_LEAVES

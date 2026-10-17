@@ -85,6 +85,7 @@ nav:
           - RTX 5090: benchmarks/hardware/rtx-5090.md
           - Apple M4 Max: benchmarks/hardware/apple-m4-max.md
       - Methods:
+          - SPEED-Bench integration: benchmarks/speed-bench.md
           - Shadow Jev evidence pilot: benchmarks/jev-pilot.md
           - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
           - Methodology and evidence rules: benchmarks/methodology.md

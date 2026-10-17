@@ -347,6 +347,25 @@ def commands() -> CommandNode:
                 "Run or import benchmark evidence.",
                 children=(
                     _node(
+                        "speed",
+                        "Plan realistic SPEED-Bench workloads offline.",
+                        children=(
+                            _node(
+                                "plan",
+                                "Validate prepared JSONL and print a deterministic offline plan.",
+                                handler=_handler("anvil_serving.benchmarking.speed_bench", argv_prefix=("plan",)),
+                                options=(
+                                    _option("--manifest", summary="Prepared corpus manifest JSON.", value_name="PATH"),
+                                    _option("--categories", summary="Comma-separated config categories.", value_name="LIST"),
+                                    _option("--samples-per-category", summary="Rows per category (default: 8).", value_name="N"),
+                                    _option("--seed", summary="Deterministic selection seed (default: 42).", value_name="N"),
+                                ),
+                                docs_anchor="docs/benchmarks/speed-bench.md",
+                            ),
+                        ),
+                        docs_anchor="docs/benchmarks/speed-bench.md",
+                    ),
+                    _node(
                         "jev",
                         "Replay selected evidence through a shadow Jev pilot.",
                         handler=_handler("anvil_serving.benchmarking.jev_pilot", argv_prefix=()),

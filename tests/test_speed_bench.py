@@ -221,3 +221,62 @@ def test_plan_uses_no_network_or_write_opens(tmp_path, monkeypatch):
     monkeypatch.setattr(socket, "socket", lambda *a, **k: pytest.fail("network access"))
     speed.plan_speed_bench(path)
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+
+
+def test_public_cli_manifest_help_and_dispatch(tmp_path, capsys, monkeypatch):
+    from anvil_serving import cli
+    from anvil_serving.commands import manifest_data
+
+    path, _, _, _ = corpus(tmp_path)
+    record = next(r for r in manifest_data()["commands"] if r["path"] == "eval benchmark speed plan")
+    assert record["mutation_class"] == "read"
+    assert record["execution_policy"] == "offline"
+    assert record["remote_operation"] is None and record["transports"] == []
+    assert cli.main(["eval", "benchmark", "speed", "plan", "--help"]) == 0
+    assert "--manifest" in capsys.readouterr().out
+    monkeypatch.setattr(socket, "socket", lambda *a, **k: pytest.fail("network access"))
+    before = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    args = ["eval", "benchmark", "speed", "plan", "--manifest", str(path),
+            "--categories", "coding,reasoning", "--samples-per-category", "2", "--seed", "17"]
+    assert cli.main(args) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert len(plan["selected"]) == 4 and plan["execution_ready"] is False
+    assert plan == speed.plan_speed_bench(path, categories=["coding", "reasoning"], samples_per_category=2, seed=17)
+    assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
+    assert cli.main(args + ["--categories", "coding,coding"]) == 1
+    error = json.loads(capsys.readouterr().out)
+    assert error["error"]["code"] == "bad_speed_corpus" and "Synthetic" not in str(error)
+
+
+def test_public_json_result_and_typed_failure(tmp_path, capsys):
+    from anvil_serving import cli
+
+    path, _, _, _ = corpus(tmp_path)
+    args = ["--json", "eval", "benchmark", "speed", "plan", "--manifest", str(path)]
+    assert cli.main(args) == 0
+    output = capsys.readouterr().out
+    envelope = json.loads(output)
+    assert envelope["data"] == speed.plan_speed_bench(path)
+    assert envelope["command"] == "eval benchmark speed plan"
+    assert str(path) not in output
+    assert cli.main(args + ["--categories", "coding,coding"]) == 1
+    envelope = json.loads(capsys.readouterr().out)
+    assert envelope["error"]["code"] == "bad_speed_corpus"
+    assert envelope["data"] is None
+
+
+@pytest.mark.parametrize("json_mode", [False, True])
+@pytest.mark.parametrize("option", [None, "--seed", "--samples-per-category", "--unknown"])
+def test_public_errors_hide_private_operands(capsys, json_mode, option):
+    from anvil_serving import cli
+
+    private = "PRIVATE_OPERAND_" + "x" * 10000
+    args = (["--json"] if json_mode else []) + [
+        "eval", "benchmark", "speed", "plan", "--manifest", f"/private/{private}.json"]
+    if option:
+        args.extend([option, private])
+    assert cli.main(args) == (2 if option else 1)
+    captured = capsys.readouterr()
+    assert private not in captured.out + captured.err
+    assert len(captured.out + captured.err) < 2000
+    assert json.loads(captured.out)["error"]["code"] == ("usage_error" if option else "bad_speed_corpus")

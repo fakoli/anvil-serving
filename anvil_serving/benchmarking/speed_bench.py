@@ -6,6 +6,7 @@ It neither prepares the upstream Parquet distribution nor executes model request
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ import unicodedata
 from urllib.parse import urlsplit
 
 from .jobs import BenchmarkJobError
+from ..operator_output import CommandResult, OperatorError, UsageError
 
 CORPUS_SCHEMA = "anvil-serving.speed-corpus/v1"
 PLAN_SCHEMA = "anvil-serving.speed-plan/v1"
@@ -241,3 +243,32 @@ def plan_speed_bench(manifest_path: str | Path, *, categories: list[str] | None 
             "category_counts": counts, "row_count": len(seen), "selected": selected,
             "selected_turn_count": sum(r["turn_count"] for r in selected)}
     return {**plan, "plan_sha256": _digest(plan)}
+
+
+class _Parser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise UsageError("Invalid speed plan arguments; use focused help.")
+
+
+def main(argv: list[str] | None = None) -> CommandResult:
+    parser = _Parser(prog="anvil-serving eval benchmark speed")
+    commands = parser.add_subparsers(dest="command", required=True)
+    plan = commands.add_parser("plan", help="Validate prepared JSONL and print an offline plan.")
+    plan.add_argument("--manifest", required=True, type=Path)
+    plan.add_argument("--categories", help="Comma-separated config categories; defaults depend on config.")
+    plan.add_argument("--samples-per-category", type=int, default=8)
+    plan.add_argument("--seed", type=int, default=42)
+    try:
+        args = parser.parse_args(argv)
+        result = plan_speed_bench(args.manifest,
+                                  categories=args.categories.split(",") if args.categories is not None else None,
+                                  samples_per_category=args.samples_per_category, seed=args.seed)
+    except BenchmarkJobError as error:
+        failure = OperatorError(error.message, code=error.code)
+    except UsageError as error:
+        failure = error
+    else:
+        return CommandResult(data=result, human_stdout=json.dumps(
+            result, sort_keys=True, indent=2, ensure_ascii=True, allow_nan=False) + "\n")
+    return CommandResult(error=failure, human_stdout=json.dumps(
+        {"ok": False, "error": {"code": failure.code, "message": failure.message}}) + "\n")
