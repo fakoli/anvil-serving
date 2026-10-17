@@ -892,13 +892,24 @@ def _read_text_file(path: Path) -> str:
         raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
 
 
-def _openclaw_secret_env_name(openclaw: Mapping) -> str:
+def _openclaw_secret_env_name(openclaw: Mapping) -> str | None:
+    """Return an env name, or preserve a declared file reference without resolving it."""
     provider = (
         openclaw.get("models", {})
         .get("providers", {})
         .get("anvil")
     )
     api_key = provider.get("apiKey") if isinstance(provider, Mapping) else None
+    if (isinstance(api_key, Mapping) and set(api_key) == {"source", "provider", "id"}
+            and api_key.get("source") == "file"
+            and all(isinstance(api_key.get(key), str) and api_key[key] for key in ("provider", "id"))):
+        secrets = openclaw.get("secrets")
+        providers = secrets.get("providers") if isinstance(secrets, Mapping) else None
+        file_provider = providers.get(api_key["provider"]) if isinstance(providers, Mapping) else None
+        if (isinstance(file_provider, Mapping) and file_provider.get("source") == "file"
+                and file_provider.get("mode") == "singleValue" and api_key["id"] == "value"
+                and isinstance(file_provider.get("path"), str) and file_provider["path"]):
+            return None
     if isinstance(api_key, Mapping) and api_key.get("source") == "env":
         return _environment_reference(api_key.get("id"))
     if isinstance(api_key, str):
@@ -908,7 +919,7 @@ def _openclaw_secret_env_name(openclaw: Mapping) -> str:
         if reference.startswith("$"):
             return _environment_reference(reference[1:])
     raise ClientCatalogError(
-        "OpenClaw Anvil apiKey must remain an environment SecretRef"
+        "OpenClaw Anvil apiKey must remain an environment SecretRef or a declared file SecretRef"
     )
 
 
@@ -2694,27 +2705,28 @@ def _sync_clients(
         desired["openclaw"] = _json_bytes(
             _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve, exclude_aliases=openclaw_exclude_aliases, allow_aliases=openclaw_allow_aliases)
         )
-        paths["openclaw_env"] = paths["openclaw"].parent / ".env"
-        desired["openclaw_env"] = _render_openclaw_state_env(
-            read_text("openclaw_env", required=False),
-            name=openclaw_secret_env_name,
-            value=environ[api_key_env],
-        )
-        paths["openclaw_service_env"] = (
-            paths["openclaw"].parent
-            / "service-env"
-            / "ai.openclaw.gateway.env"
-        )
-        openclaw_service_tracking = paths["openclaw_service_env"].exists()
-        if openclaw_service_tracking:
-            openclaw_service_env_matches = (
-                _dotenv_assignment_value(
-                    read_text("openclaw_service_env", required=False),
-                    name=openclaw_secret_env_name,
-                    label="OpenClaw generated service env",
-                )
-                == environ[api_key_env]
+        if openclaw_secret_env_name is not None:
+            paths["openclaw_env"] = paths["openclaw"].parent / ".env"
+            desired["openclaw_env"] = _render_openclaw_state_env(
+                read_text("openclaw_env", required=False),
+                name=openclaw_secret_env_name,
+                value=environ[api_key_env],
             )
+            paths["openclaw_service_env"] = (
+                paths["openclaw"].parent
+                / "service-env"
+                / "ai.openclaw.gateway.env"
+            )
+            openclaw_service_tracking = paths["openclaw_service_env"].exists()
+            if openclaw_service_tracking:
+                openclaw_service_env_matches = (
+                    _dotenv_assignment_value(
+                        read_text("openclaw_service_env", required=False),
+                        name=openclaw_secret_env_name,
+                        label="OpenClaw generated service env",
+                    )
+                    == environ[api_key_env]
+                )
     if "hermes" in selected_clients:
         if hermes_profiles:
             if journal is not None:
