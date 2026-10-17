@@ -1,0 +1,111 @@
+{
+  "schema": "anvil-serving.promotion-evidence-summary/v1",
+  "date": "2026-10-17",
+  "decision": {
+    "label": "current",
+    "human_approved": true,
+    "live_primary": true,
+    "fleet_convergence": false,
+    "public_web_publication": false,
+    "operator_assessment": "best current fit for this deployment, explicitly selected by the operator on 2026-10-17",
+    "comparison_scope": "pinned NVIDIA FP4 r2 versus retained EXL3 r11; operational selection, not an exhaustive model-quality ranking"
+  },
+  "identity": {
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "served_name": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2"
+  },
+  "acceptance": {
+    "direct_protocol_checks": 9,
+    "routed_preflight": "8/8",
+    "eight_image_corpus": "18/18",
+    "coding_tool_continuation": "1/1 across five requests",
+    "fresh_capacity": "client C1/C2/C4; 12 scored requests; no observed OOM, preemption, or refusal; client C4 sampled maxima: engine active 2, queued 3, occupancy 4 (independent time maxima, not summed; not four simultaneous decodes)",
+    "primary_node_pi_tool_smoke": "passed; one fresh nonce/tool call; no session",
+    "companion_node_openclaw_gateway": "passed; one successful exec tool; exact nonce; primary alias; 327680 context; normal stop; no fallback",
+    "mac_openclaw_gateway": "passed after one retained headless exec policy failure; retry used one permitted read tool; exact nonce; primary alias; 327680 context; normal stop; no fallback",
+    "gateway_metric_limits": "native usage counters unavailable; no engine TTFT/decode exposed; wall-clock duration is not engine latency; existing 17-family capacity evidence remains authoritative",
+    "additional_pi": "five tested process combinations passed; one successful read each; exact nonce/provider/primary alias; stop and agent_settled; post-run executable hashes, not immutable at-launch PATH custody",
+    "additional_pi_accounting": "seven client turns: two lost captures excluded, two controlled replacements accepted, three additional combinations accepted; upstream HTTP count not inferred; Mac stale model-pattern warning retained",
+    "primary_hermes_profiles": "two fresh CLI turns passed; one terminal read each; exact nonce/normal stop; exact-session export binds approved router; configured provider anvil, runtime provider custom; native reported api_calls=2 each",
+    "native_cli_metric_limits": "native usage and client wall time retained; TTFT/prefill/decode/KV/engine concurrency unavailable in these functional captures; Hermes context/fallback/effective reasoning unavailable; existing 17-family performance evidence remains authoritative"
+  },
+  "fleet": {
+    "native_workflows": "recovery_required; failed progress; 13 targets; all_targets_verified=false; no retry",
+    "mini_and_mac_client_smokes": "bounded Gateway smokes passed; earlier evaluator credential failures were before dispatch; first Mac Gateway exec policy failure retained",
+    "remaining_client_acceptance": "Pi Web, existing conversations, running Hermes Gateway and native catalog/session propagation remain unaccepted; secondary Hermes profiles excluded from primary-model functional scope",
+    "native_custody": "fresh owner and pinned-source audit confirms missing terminal receipts; random native session identities cannot be reconstructed from retained job/target records through supported read-only lookup; no settlement or redispatch",
+    "open_webui_catalog": "passed; six approved aliases; three active accounts; managed preview/apply/scheduled/repeat passed; repeat changed=0; credentials unchanged; no model/router/WebUI restart"
+  },
+  "publication_readback": {
+    "status": "complete_with_native_discovery_limitation",
+    "grafana_comparison": "passed; 11 panels",
+    "prometheus_and_observer": "792 numeric campaign observations, 17 metric families, 396 per arm",
+    "workbench": "92 configured cards; 24 exact campaign cards, 12 per arm; pinned revision and engine fields match",
+    "apply_and_repeat": "canary and primary passed",
+    "native_discovery": "historical model label retained; targets and engine-capability checks failed under NativeWorkflows recovery_required; independent comparison metrics and evidence cards verified",
+    "public_pages_deployment": false
+  },
+  "source_summaries": [
+    {
+      "role": "direct acceptance",
+      "sha256": "a308de1470fefb7b8a9db72c4842412fe178142bee1b5d9393ec48cbc3d6094d"
+    },
+    {
+      "role": "routed acceptance",
+      "sha256": "0f85d7acf275e82f22d0db7e459ebb4f2fd15b3476c79c3ad6a54d4fe0d79818"
+    },
+    {
+      "role": "routed acceptance hash addendum",
+      "sha256": "ae7f99fb315c1b5003b64b419ad3e91c19bdc236ea32198326e0c04e5cad2fd0"
+    },
+    {
+      "role": "fresh capacity acceptance",
+      "sha256": "b81b64ab48458cbce2e638a85cc12cbd1cd525b7caf3d453ef6c77579e4ddd49"
+    },
+    {
+      "role": "Primary Node Pi tool smoke",
+      "sha256": "9e2a874a10fee91bda3570912e69df843913686d33292a5b55717f328b8211b2"
+    },
+    {
+      "role": "fleet client minimal attempts",
+      "sha256": "f246995190c6b1aae793564974fb7dd8267184bf9a2ac241daeb6f38228e777a"
+    },
+    {
+      "role": "publication live readback",
+      "sha256": "79157a1c8216ec752c4ca447479b0c41f8bcdaae941a6759df906d912b95748c"
+    },
+    {
+      "role": "bounded Gateway acceptance",
+      "sha256": "74811f9c9f9ad5134bb6aab128f7e14c9781f1a42d53d6ccd60b12d2dcf09153"
+    },
+    {
+      "role": "independent Gateway export verification",
+      "sha256": "75b663c537630e149d27c652c01f42b34ffbf71075e6ddd625cfea14c181475c"
+    },
+    {
+      "role": "native workflow custody audit",
+      "sha256": "6395ecdd36b22b6db05f550815cc633a8345925792a6b8218ded72888e24649c"
+    },
+    {
+      "role": "WebUI catalog live acceptance",
+      "sha256": "e39f3269225d3ebc1ea2c058a4eb954ebec0ad141886ae975cc20dffd7b81e3c"
+    },
+    {
+      "role": "additional Pi functional acceptance",
+      "sha256": "0057a5e81bb54504590fee2d2f3e12db6caa9820c1d8a84018e443f8e0d50ce2"
+    },
+    {
+      "role": "primary Hermes profile functional acceptance",
+      "sha256": "6a8d2e5ab48d5ff108efdf29c0fbc4b78857df64f8a216eeec605f51fbdbbf7f"
+    }
+  ],
+  "kv_accounting": {
+    "path": "kv-accounting.json",
+    "sha256": "fd333754afa453bdaee9961c9928914c8249b2129a5b5381f8431b7a6798cdb8",
+    "pool_total_gib": 14.25,
+    "status": "configured pool; measured block fractions; estimated occupied/unused GiB",
+    "fresh_c4_estimated_occupied_gib": 2.3172897196261677,
+    "fresh_c4_estimated_unused_pool_gib": 11.932710280373833
+  }
+}
