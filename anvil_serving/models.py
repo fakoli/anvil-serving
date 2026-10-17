@@ -40,6 +40,7 @@ from . import docker_images
 from . import guard
 from . import host as host_ops
 from . import model_cache_native
+from . import model_cache_volume
 from . import model_pull_native
 from . import paths
 from . import serve_recipes
@@ -1516,6 +1517,14 @@ def cache_remove_main(argv):
     ap.add_argument("--volume", default=None)
     ap.add_argument("--cache-dir", help="native Hugging Face cache root")
     ap.add_argument("--config-home", help="authoritative operator config home; required for native apply")
+    ap.add_argument("--discard-volume", action="store_true",
+                    help="remove one proven dedicated local cache volume; requires --volume")
+    ap.add_argument("--expected-volume-fingerprint",
+                    help="SHA-256 fingerprint from the dedicated-volume preview")
+    ap.add_argument("--writers-quiesced", action="store_true",
+                    help="attest that the resource owner stopped native cache writers")
+    ap.add_argument("--auxiliary-caches-reviewed", action="store_true",
+                    help="attest that the fingerprinted generated HF cache inventory was reviewed")
     ap.add_argument(
         "--non-model-root-view", action="append", default=[], metavar="CONTAINER_ID",
         help=("full container ID the caller declares as a non-model read-only root observation; "
@@ -1538,12 +1547,52 @@ def cache_remove_main(argv):
     if args.cache_dir and args.volume:
         print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
         return 2
-    if args.config_home and not args.cache_dir:
-        print("--config-home is only supported with native --cache-dir removal", file=sys.stderr)
+    if not args.discard_volume and (args.expected_volume_fingerprint or args.writers_quiesced or args.auxiliary_caches_reviewed):
+        print("dedicated-volume fingerprint and cache attestations require --discard-volume", file=sys.stderr)
         return 2
-    if args.non_model_root_view and not args.cache_dir:
-        print("--non-model-root-view is only supported with native --cache-dir removal", file=sys.stderr)
+    if args.config_home and not args.cache_dir and not args.discard_volume:
+        print("--config-home is only supported with native --cache-dir or --discard-volume removal", file=sys.stderr)
         return 2
+    if args.non_model_root_view and not args.cache_dir and not args.discard_volume:
+        print("--non-model-root-view is only supported with native --cache-dir or --discard-volume removal", file=sys.stderr)
+        return 2
+    if args.discard_volume:
+        if args.cache_dir:
+            print("--discard-volume is only supported with a named Docker --volume", file=sys.stderr)
+            return 2
+        if not args.volume:
+            print("--discard-volume requires an explicit named --volume", file=sys.stderr)
+            return 2
+        if not args.config_home:
+            print("--discard-volume requires --config-home", file=sys.stderr)
+            return 2
+        if args.image != DEFAULT_PULL_IMAGE:
+            print("--image is not used with --discard-volume", file=sys.stderr)
+            return 2
+        apply = not args.dry_run and (args.confirm or guard.confirmation_authorized())
+        if not args.dry_run and not apply:
+            print("dedicated volume removal requires --dry-run or --confirm", file=sys.stderr)
+            return 3
+        if apply and not args.expected_volume_fingerprint:
+            print("dedicated volume removal apply requires --expected-volume-fingerprint", file=sys.stderr)
+            return 2
+        if apply and not args.writers_quiesced:
+            print("dedicated volume removal apply requires --writers-quiesced", file=sys.stderr)
+            return 2
+        try:
+            result = model_cache_volume.remove(
+                args.repo_id, args.revision, args.volume, args.config_home,
+                expected_fingerprint=args.expected_volume_fingerprint,
+                writers_quiesced=args.writers_quiesced, confirm=apply,
+                auxiliary_caches_reviewed=args.auxiliary_caches_reviewed,
+                non_model_root_views=args.non_model_root_view,
+                dry_run=args.dry_run,
+            )
+        except model_cache_volume.ModelCacheVolumeError as exc:
+            print("dedicated volume removal failed: %s" % exc, file=sys.stderr)
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        return 0 if result.get("outcome") in {"preview", "removed"} else 1
     if args.cache_dir:
         if args.image != DEFAULT_PULL_IMAGE:
             print("--image is only supported with Docker cache removal", file=sys.stderr)

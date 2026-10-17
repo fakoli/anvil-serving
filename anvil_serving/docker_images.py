@@ -296,6 +296,39 @@ def _is_grafana_template_definition(field: str, document) -> bool:
 def _is_manifest_path(field: str, *, document=None) -> bool:
     if _is_grafana_template_definition(field, document):
         return False
+    if field == "context.topology" and isinstance(document, dict):
+        from .operator_output import CONTEXT_FIELDS
+
+        context = document.get("context")
+        if (set(document) == {"command", "context", "data", "error", "ok", "warnings"}
+                and isinstance(document["command"], str) and document["command"]
+                and type(document["ok"]) is bool and isinstance(document["warnings"], list)
+                and all(isinstance(warning, str) for warning in document["warnings"])
+                and (document["error"] is None or isinstance(document["error"], dict))
+                and isinstance(context, dict) and set(context) == set(CONTEXT_FIELDS)
+                and isinstance(context.get("topology"), str)
+                and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", context["topology"])):
+            # D013 execution context carries a topology ID, not a file path.
+            return False
+    if isinstance(document, dict):
+        parts = field.split(".")
+        if (len(parts) == 3 and parts[0] == "targets" and parts[1].isdigit() and parts[2] == "topology"
+                and type(document.get("schema_version")) is int and document["schema_version"] == 1
+                and isinstance(document.get("hosts"), list) and isinstance(document.get("gpu_assignments"), list)
+                and isinstance(document.get("targets"), list) and int(parts[1]) < len(document["targets"])):
+            target = document["targets"][int(parts[1])]
+            if isinstance(target, dict) and target.get("topology") in ("single", "tp2", "other", "unknown"):
+                # Fleet inventory's GPU topology enum is descriptive metadata.
+                return False
+        if (len(parts) == 6 and parts[0] == "scrape_configs" and parts[1].isdigit()
+                and parts[2] == "static_configs" and parts[3].isdigit() and parts[4:] == ["labels", "topology"]
+                and isinstance(document.get("scrape_configs"), list) and int(parts[1]) < len(document["scrape_configs"])):
+            scrape = document["scrape_configs"][int(parts[1])]
+            groups = scrape.get("static_configs") if isinstance(scrape, dict) else None
+            if isinstance(groups, list) and int(parts[3]) < len(groups) and isinstance(groups[int(parts[3])], dict):
+                labels = groups[int(parts[3])].get("labels")
+                if isinstance(labels, dict) and labels.get("topology") in ("single", "tp2", "other", "unknown"):
+                    return False
     return field.rsplit(".", 1)[-1].lower() in operator_config._DEPENDENCY_KEYS
 
 

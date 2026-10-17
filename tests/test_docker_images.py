@@ -380,6 +380,30 @@ def test_only_grafana_template_definition_queries_are_not_manifest_paths(tmp_pat
     ]
 
 
+def test_cli_context_topology_id_is_not_a_dependency_but_payload_paths_are():
+    from anvil_serving.operator_output import success_envelope
+
+    document = success_envelope("serves status", {"topology": "example-primary"},
+                                {"manifest": "recovered-configs/serves.toml"})
+    assert not docker_images._is_manifest_path("context.topology", document=document)
+    assert docker_images._is_manifest_path("data.manifest", document=document)
+    document["context"]["topology"] = "recovered-configs/topology.toml"
+    assert docker_images._is_manifest_path("context.topology", document=document)
+    assert docker_images._is_manifest_path("context.topology", document={"context": {"topology": "example-primary"}})
+
+
+def test_only_known_fleet_and_prometheus_topology_enums_are_metadata():
+    fleet = {"schema_version": 1, "hosts": [], "gpu_assignments": [], "targets": [{"topology": "tp2"}]}
+    prometheus = {"scrape_configs": [{"static_configs": [{"labels": {"topology": "unknown"}}]}]}
+    assert not docker_images._is_manifest_path("targets.0.topology", document=fleet)
+    assert not docker_images._is_manifest_path("scrape_configs.0.static_configs.0.labels.topology", document=prometheus)
+    fleet["targets"][0]["topology"] = "recovered-configs/topology.toml"
+    prometheus["scrape_configs"][0]["static_configs"][0]["labels"]["topology"] = "other.toml"
+    assert docker_images._is_manifest_path("targets.0.topology", document=fleet)
+    assert docker_images._is_manifest_path("scrape_configs.0.static_configs.0.labels.topology", document=prometheus)
+    assert docker_images._is_manifest_path("targets.0.topology", document={"targets": [{"topology": "tp2"}]})
+
+
 def test_live_yaml_dependency_alias_into_recovered_configs_blocks_image_removal(tmp_path):
     archive = tmp_path / "recovered-configs"
     archive.mkdir()
