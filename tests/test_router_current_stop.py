@@ -30,7 +30,7 @@ usage_domain_id="fixture"
 '''
     f['router_config'].write_text(raw)
     candidate_config = root / 'successor.toml'
-    candidate_config.write_text(raw + '\n# authorized successor configuration\n'); candidate_config.chmod(0o600)
+    candidate_config.write_text(raw); candidate_config.chmod(0o600)
     revision = hashlib.sha256(f['router_config'].read_bytes()).hexdigest()
     f['auth']['expected_configuration_revision'] = revision
     native = f['native']; native['record']['anchor']['configuration_revision'] = revision
@@ -90,7 +90,10 @@ usage_domain_id="fixture"
         return deepcopy(proof)
     monkeypatch.setattr(router_manage, '_offline_compose_run', native)
     def candidate_offline(compose, service, *, container, **kwargs):
-        assert compose == str(f['new']) and (service, container) == ('router', 'anvil-router')
+        assert (service, container) == ('router', 'anvil-router')
+        probe = json.loads(Path(compose).read_bytes())
+        expected = deepcopy(old); expected['services'][service]['image'] = candidate['services'][service]['image']
+        assert probe == expected and Path(compose).stat().st_mode & 0o777 == 0o600
         calls.append('candidate-offline')
     monkeypatch.setattr(router_manage, 'require_router_offline', candidate_offline)
     monkeypatch.setattr(router_manage, '_managed_container_custody', lambda kind, *a, **k: calls.append(kind))
@@ -104,7 +107,7 @@ def invoke(f, **kwargs):
                                _run=f.run, **kwargs)
 
 
-def test_changed_source_and_configuration_require_exact_receipt_and_preview_is_read_only(successor, monkeypatch):
+def test_changed_image_and_source_require_exact_receipt_and_preview_is_read_only(successor, monkeypatch):
     f = successor
     monkeypatch.setenv('UNAPPROVED_COMPOSE_OVERRIDE', 'must-not-propagate')
     original=f.run
@@ -126,8 +129,20 @@ def test_changed_source_and_configuration_require_exact_receipt_and_preview_is_r
     assert invoke(f, dry_run=True) == 0
 
 
+
+def test_same_image_configuration_change_retains_existing_path(successor):
+    f = successor
+    f.config.write_text(f.config.read_text()+'\n# authorized configuration change\n')
+    declared=f.receipt['authorization']['successor']; declared['image_id']=f.stopped['image_id']
+    declared['configuration_revision']=hashlib.sha256(f.config.read_bytes()).hexdigest()
+    f.receipt['preview']['successor']=deepcopy(declared)
+    f.receipt['authorization']['preview_sha256']=maintenance.digest(f.receipt['preview'])
+    f.protected(f.path, f.receipt)
+    assert invoke(f, dry_run=True) == 0
+    assert 'candidate-offline' not in f.calls
+
 @pytest.mark.parametrize('damage', ['ack', 'preview', 'death', 'stopped', 'image', 'compose', 'config',
-    'owner', 'writable', 'user', 'command', 'environment', 'entrypoint', 'extra-service', 'candidate-offline', 'extra-alias', 'lineage', 'active', 'transferred', 'closure', 'receipt-race'])
+    'owner', 'writable', 'user', 'command', 'environment', 'entrypoint', 'extra-service', 'candidate-offline', 'image-and-config', 'extra-alias', 'lineage', 'active', 'transferred', 'closure', 'receipt-race'])
 def test_changed_authority_refuses_before_start(successor, monkeypatch, damage):
     f = successor
     if damage == 'ack': f.receipt['acknowledged_at'] = f.receipt['authorization']['expires_at']
@@ -157,6 +172,11 @@ def test_changed_authority_refuses_before_start(successor, monkeypatch, damage):
     elif damage == 'extra-service': f.candidate['services']['unexpected'] = {}
     elif damage == 'candidate-offline':
         monkeypatch.setattr(router_manage, 'require_router_offline', lambda *a, **k: (_ for _ in ()).throw(ValueError('incompatible_candidate')))
+    elif damage == 'image-and-config':
+        f.config.write_text(f.config.read_text()+'\n# simultaneous config change\n')
+        declared=f.receipt['authorization']['successor']; declared['configuration_revision']=hashlib.sha256(f.config.read_bytes()).hexdigest()
+        f.receipt['preview']['successor']=deepcopy(declared)
+        f.receipt['authorization']['preview_sha256']=maintenance.digest(f.receipt['preview'])
     elif damage == 'extra-alias':
         for rendered in (f.old, f.candidate):
             mounts=rendered['services']['router']['volumes']

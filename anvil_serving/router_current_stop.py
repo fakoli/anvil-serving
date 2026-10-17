@@ -3,6 +3,7 @@ import hashlib
 from copy import deepcopy
 from pathlib import Path
 import time
+import tempfile
 import tomllib
 
 from . import router_manage as lifecycle
@@ -136,7 +137,18 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
         and record['death']['stopped'] == stopped and digest(record['death']) == receipt['death_sha256']
         and record['death']['closure_generation'] == native['observation']['closure']['generation']
         and record['death']['closure_consumed'] is False)
-    lifecycle.require_router_offline(compose, service, container=container, _run=_run,
-        env_file=env_file, execution_env=execution_env)
+    if auth['successor']['image_id'] != stopped['image_id']:
+        # An image update is bounded to unchanged config bytes. Probe the exact
+        # new image with the old bind sources so generic incumbent custody stays
+        # strict; the actual successor's source relocation is separately bound.
+        require(auth['successor']['configuration_revision'] == auth['expected_configuration_revision'])
+        probe = strict_json(read_private_auth_file(preview['compose_path'], max_bytes=2*1024**2))
+        probe['services'][service]['image'] = before[2]['services'][service]['image']
+        from .router.maintenance import _publish
+        with tempfile.TemporaryDirectory(prefix='anvil-router-successor-probe-') as directory:
+            probe_path = Path(directory) / 'compose.json'
+            _publish(probe_path, probe)
+            lifecycle.require_router_offline(str(probe_path), service, container=container, _run=_run,
+                env_file=env_file, execution_env=execution_env)
     require(snapshot() == before)
     return receipt
