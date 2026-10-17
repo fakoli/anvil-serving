@@ -221,8 +221,15 @@ request. Chat grants use the router's trimmed, case-insensitive aliases;
 embeddings and reranking use exact served-model names. Supported inference
 paths are `/v1/chat/completions`, `/v1/messages`, `/v1/responses`,
 `/v1/embeddings`, and `/v1/rerank`. `/v1/models` is granted automatically and
-returns only granted chat aliases. Other metadata, operator, admin, audio,
-media, MCP, and A2A endpoints are denied to device keys. Purpose models remain
+returns only granted chat aliases. The same discovery grant permits
+`GET /v1/models/capabilities` and `GET /v1/router/status` for authenticated client
+catalog reconciliation. Device capability rows contain only granted aliases and
+client limits, modalities, thinking and compatibility fields; tier, served-model
+and replica identities are omitted. Device status contains the package version,
+granted aliases and the opaque global configuration hash, whose meaning is
+unchanged. Ungranted `model=` queries are refused before lookup. All three reads
+retain account, expiry, revocation, rate and audit checks. Other metadata,
+operator, admin, audio, media, MCP, and A2A endpoints are denied to device keys. Purpose models remain
 available through their dedicated endpoints, as before; the chat catalog does
 not advertise them.
 

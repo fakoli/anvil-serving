@@ -62,6 +62,7 @@ from .audio import (
 )
 from .config import PURPOSE_EMBEDDING, PURPOSE_RERANK, normalize_model_alias
 from .front_door_runtime import ClientAdmission, DeliveryWorker
+from .model_metadata import device_model_capabilities, device_router_status
 from .request_control import RequestControl, RequestControlError, RequestDeadlineExceeded
 from .decision_log import safe_correlation, summarize_decisions
 from .dialects import Dialect
@@ -2207,8 +2208,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     if not callable(metadata_fn):
                         self._json(200, {"object": "list", "data": []})
                         return
+                    if self._anvil_device is not None and any(
+                            not self._anvil_device.allows_model(alias) for alias in query.get("model", [])):
+                        self._error(404, "model_not_found", "unknown configured model")
+                        return
                     try:
                         metadata = metadata_fn(query)
+                        if self._anvil_device is not None:
+                            metadata = device_model_capabilities(metadata, self._anvil_device)
                     except KeyError:
                         self._error(
                             404, "model_not_found", "unknown configured model"
@@ -2237,11 +2244,14 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     if not callable(status_fn):
                         self._error(404, "not_found", f"no route {route}")
                         return
-                    self._json(
-                        200,
-                        status_fn(),
-                        extra_headers={"Cache-Control": "no-store"},
-                    )
+                    status = status_fn()
+                    if self._anvil_device is not None:
+                        try:
+                            status = device_router_status(status, self._anvil_device)
+                        except ValueError:
+                            self._error(503, "metadata_unavailable", "router catalog metadata unavailable")
+                            return
+                    self._json(200, status, extra_headers={"Cache-Control": "no-store"})
                 elif route == ROUTER_STATS_ENDPOINT:
                     stats_fn = getattr(backend, "router_stats", None)
                     if stats_fn is None:

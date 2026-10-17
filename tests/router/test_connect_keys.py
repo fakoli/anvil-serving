@@ -303,3 +303,22 @@ def test_native_memory_key_retry_preserves_policy_and_refuses_other_owners(porta
     allowed.remove(actor)
     with pytest.raises(connect_keys.Denied):
         provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)
+
+
+def test_disabled_account_cannot_read_device_catalog(portal, monkeypatch):
+    p, allowed = portal
+    approve(p)
+    token = issue(p)["secret"]
+    with running(portal, monkeypatch) as (address, *_):
+        def get(path):
+            connection = http.client.HTTPConnection(*address, timeout=5)
+            try:
+                connection.request("GET", path, headers={"Authorization": "Bearer " + token})
+                response = connection.getresponse(); response.read()
+                return response.status
+            finally:
+                connection.close()
+        assert get("/v1/models") == 200
+        allowed.clear()
+        for path in ("/v1/models", "/v1/models/capabilities", "/v1/router/status"):
+            assert get(path) == 401

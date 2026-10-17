@@ -100,6 +100,47 @@ def request(connection, token, path=CHAT, body=None, method="POST", extra=None):
             completions.pop(marker, None)
 
 
+def test_device_catalog_sync_is_filtered_and_keeps_operator_routes_denied(store):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, ClientCatalogError
+    import copy
+    meta, token = issue(store)
+    with running(store) as (connection, backend):
+        capabilities = {"object": "list", "data": [
+            {"id": "private-tier", "model": "private-model", "aliases": ["llm.primary", "llm.private"],
+             "context_limit_tokens": 327680, "limits": {"max_output_tokens": 65536, "images_per_request": 8},
+             "modalities": ["text", "image"], "thinking": {"supported": True},
+             "compat": {"supportedReasoningEfforts": ["low", "high"], "secret": "hidden"},
+             "members": ["private-member"]},
+            {"aliases": ["llm.private"], "model": "private-only"}]}
+        queries = []
+        def metadata(query):
+            queries.append(query)
+            return capabilities
+        backend.model_capabilities = metadata
+        backend.router_status = lambda: {"config_sha256": "a" * 64, "package_version": "1.5.0",
+            "model_aliases": ["llm.primary", "llm.private"], "tier_counts": {"private": 2}}
+        base = f"http://{connection.host}:{connection.port}/v1"
+        catalog = fetch_client_catalog(base_url=base, environ={"ANVIL_ROUTER_TOKEN": token})
+        assert list(catalog["models"]) == ["llm.primary"]
+        assert catalog["config_sha256"] == "a" * 64
+        for path in ("/v1/models/capabilities", "/v1/router/status"):
+            status, _, body = request(connection, token, path, method="GET")
+            assert status == 200 and b"private" not in body and b"hidden" not in body
+        before = len(queries)
+        assert request(connection, token, "/v1/models/capabilities?model=llm.private", method="GET")[0] == 404
+        assert request(connection, token, "/v1/models/capabilities?model=unknown", method="GET")[0] == 404
+        assert len(queries) == before
+        for path in ("/v1/models/fingerprints", "/v1/models/capacity", "/v1/stats", "/v1/requests", "/metrics"):
+            assert request(connection, token, path, method="GET")[0] == 403
+        bad = copy.deepcopy(capabilities); bad["data"][0]["context_limit_tokens"] = False
+        backend.model_capabilities = lambda _: bad
+        with pytest.raises(ClientCatalogError):
+            fetch_client_catalog(base_url=base, environ={"ANVIL_ROUTER_TOKEN": token})
+        store.revoke(meta["key_id"])
+        assert request(connection, token, "/v1/router/status", method="GET")[0] == 401
+        assert backend.requests == []
+
+
 def test_catalog_grants_denials_and_master(store):
     meta, token = issue(store)
     with running(store) as (connection, backend):
@@ -247,7 +288,8 @@ def test_config_rejects_ambiguous_relative_key_store(tmp_path):
 
 
 @pytest.mark.parametrize("retired", ["revoked", "expired"])
-def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tmp_path, monkeypatch, retired):
+@pytest.mark.parametrize("path", [CHAT, "/v1/models/capabilities", "/v1/router/status"])
+def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tmp_path, monkeypatch, retired, path):
     from anvil_serving.control_plane.authorization import load_authorization_policy
     from anvil_serving.router import keys
 
@@ -264,7 +306,7 @@ def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tm
             connection.execute("UPDATE keys SET expires_at = 1")
         monkeypatch.setattr(keys.time, "time", lambda: 2)
     with running(store, authorization_policy=policy) as (connection, backend):
-        assert request(connection, token)[0] == 401
+        assert request(connection, token, path, method="POST" if path == CHAT else "GET")[0] == 401
         assert backend.requests == []
 
 

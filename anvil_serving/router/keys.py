@@ -45,6 +45,7 @@ _POST_PATHS = frozenset({
     "/v1/memory", "/v1/memory/mcp",
 })
 _MODELS_PATH = "/v1/models"
+_CATALOG_PATHS = frozenset({_MODELS_PATH, "/v1/models/capabilities", "/v1/router/status"})
 
 # POSIX close() releases every same-process SQLite lock on that inode. Share
 # verifier handles, not trust decisions, until all managed connections close.
@@ -144,7 +145,7 @@ class Principal:
             return False
         clean = path.split("?", 1)[0]
         if method.upper() == "GET":
-            return clean == _MODELS_PATH and _MODELS_PATH in self.paths
+            return clean in _CATALOG_PATHS and _MODELS_PATH in self.paths
         return method.upper() == "POST" and clean in self.paths and clean in _POST_PATHS
 
 
@@ -165,7 +166,7 @@ def _audit_method(value: str) -> str:
 
 def _audit_path(value: str) -> str:
     value = value.split("?", 1)[0]
-    return value if value in _POST_PATHS | {_MODELS_PATH} else "[other]"
+    return value if value in _POST_PATHS | _CATALOG_PATHS else "[other]"
 
 
 def _link_or_reparse(info: os.stat_result) -> bool:
