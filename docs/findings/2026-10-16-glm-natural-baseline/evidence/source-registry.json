@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "observed_at": "2026-10-17T00:00:00Z",
+  "sources": [
+    {
+      "id": "local-campaign-plan",
+      "url": null,
+      "published_or_observed": "2026-10-17",
+      "observed_at": "2026-10-17T00:00:00Z",
+      "age_class": "current-local",
+      "evidence_type": "local-measurement-plan",
+      "hardware_runtime_relevance": "exact routed incumbent configuration",
+      "decision_impact": "Defines the observational baseline; does not select or promote a model."
+    },
+    {
+      "id": "local-native-timing",
+      "url": null,
+      "published_or_observed": "2026-10-17",
+      "observed_at": "2026-10-17T00:00:00Z",
+      "age_class": "current-local",
+      "evidence_type": "local-capacity-observation",
+      "hardware_runtime_relevance": "Exact current routed incumbent; shared-router observation.",
+      "decision_impact": "Supplies latency baseline only after all cells complete."
+    }
+  ]
+}

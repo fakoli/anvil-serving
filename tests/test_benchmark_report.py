@@ -186,6 +186,23 @@ def test_output_workload_controls_are_bound(tmp_path, field):
         build_report(path, tmp_path)
 
 
+def test_unique_prefix_namespace_is_bound_when_present(tmp_path):
+    path, catalog = fixture(tmp_path)
+    artifact = tmp_path / "docs/raw.json"
+    raw = json.loads(artifact.read_text())
+    raw["unique_prefix_namespace"] = "capacity-v1:seed-request-index"
+    artifact.write_text(json.dumps(raw))
+
+    with pytest.raises(ValueError, match="identity/workload mismatch: unique_prefix_namespace"):
+        build_report(path, tmp_path)
+
+    catalog["entries"][0]["expected"]["unique_prefix_namespace"] = raw[
+        "unique_prefix_namespace"
+    ]
+    path.write_text(json.dumps(catalog))
+    assert build_report(path, tmp_path)["entries"]
+
+
 def test_sampling_controls_are_bound_validated_and_rendered(tmp_path):
     path, catalog = fixture(tmp_path)
     artifact = tmp_path / "docs/raw.json"

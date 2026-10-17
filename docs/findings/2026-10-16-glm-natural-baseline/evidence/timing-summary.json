@@ -1,0 +1,21 @@
+{
+  "schema": "natural-output-timing-summary/v1",
+  "status": "complete-with-one-retained-failure",
+  "pilot_excluded": true,
+  "matrix": {"planned_cells": 12, "artifacts": 12, "attempted": 240, "completed": 239, "failed": 1},
+  "scope": {"natural_output": true, "strict_word_gate": false, "request_canaries": false, "claims_excluded": ["stop-validated", "semantic-success", "stream-isolation", "stable-p99"]},
+  "cells": [
+    {"context_tokens": 8192, "concurrency": 1, "attempted": 60, "completed": 59, "failed": 1, "p50_median_min_max": {"e2e_ms": [4120.344, 3737.338, 4312.905], "ttfo_ms": [1314.795, 1296.546, 1317.340], "ttft_ms": [3569.950, 3084.162, 3657.941], "decode_tok_s": [68.221, 68.010, 76.849], "actual_prompt_tokens": [6072, 6072, 6073], "completion_tokens": [209, 190, 211]}},
+    {"context_tokens": 8192, "concurrency": 4, "attempted": 60, "completed": 60, "failed": 0, "p50_median_min_max": {"e2e_ms": [9114.819, 8885.956, 10173.091], "ttfo_ms": [1356.927, 1317.472, 4276.235], "ttft_ms": [7441.040, 6960.769, 8764.131], "decode_tok_s": [32.216, 32.099, 36.332], "actual_prompt_tokens": [6072, 6072, 6073], "completion_tokens": [218, 215, 235]}},
+    {"context_tokens": 32768, "concurrency": 1, "attempted": 60, "completed": 60, "failed": 0, "p50_median_min_max": {"e2e_ms": [8176.866, 7676.637, 8612.800], "ttfo_ms": [5140.620, 5065.331, 5143.103], "ttft_ms": [7358.748, 7045.820, 7795.516], "decode_tok_s": [68.117, 68.028, 76.916], "actual_prompt_tokens": [25285, 25284, 25285], "completion_tokens": [206, 204, 237]}},
+    {"context_tokens": 32768, "concurrency": 4, "attempted": 60, "completed": 60, "failed": 0, "p50_median_min_max": {"e2e_ms": [23523.790, 22222.373, 24696.241], "ttfo_ms": [11304.873, 5232.269, 12010.134], "ttft_ms": [20243.382, 19949.375, 21267.868], "decode_tok_s": [18.614, 13.422, 23.476], "actual_prompt_tokens": [25285, 25284, 25285], "completion_tokens": [227, 208, 238]}}
+  ],
+  "failure": {"file": "native/natural-ctx8192-c1-r2.json", "sha256": "5b7a25fb31d741494d9f6db7c6eb92e3c37033d2684143357d44eb06dc85f4e0", "request_index": 16, "class": "stream_validation_failed", "error": "stream completed without visible content", "elapsed_ms": 213753.305, "finish_reasons": ["length"], "prompt_tokens": 6078, "completion_tokens": 16384, "reasoning_chunks": 15397, "content_chunks": 0, "visible_content_truncated": false, "aggregate_throughput_eligible": false, "latency_distribution_scope": "19 completed requests only"},
+  "source_artifacts": [
+    ["native/natural-ctx8192-c1-r1.json", "d5c9c20dc5ebe8a63f22feabee5e29342fca39fbdf3e7d3088e74b9808613d5a"], ["native/natural-ctx8192-c1-r2.json", "5b7a25fb31d741494d9f6db7c6eb92e3c37033d2684143357d44eb06dc85f4e0"], ["native/natural-ctx8192-c1-r3.json", "205e76ccbe2ecad090b4a261b40120c2277595e7627a812590edb57bfe162679"],
+    ["native/natural-ctx8192-c4-r1.json", "c42bf383275026046e182458fea1e84abfaf1d9eebe54bf6709520414334e112"], ["native/natural-ctx8192-c4-r2.json", "8b47ceede0ce0aebeb35ba5bc9d3418cb642590efed891d84b3505831c6bba6e"], ["native/natural-ctx8192-c4-r3.json", "e11c94bb4ae2d7c992fecc90103a5f32e4e6db9808d7f3ad2c7d92bf2afce3a7"],
+    ["native/natural-ctx32768-c1-r1.json", "db3f3e7be8c46c77c7d315e1c1213d7bd5f9ad51093e9faee7e6e39ff6d7e0dd"], ["native/natural-ctx32768-c1-r2.json", "4446ec1d6bbe7c4cfbaee5fec6e163f7198cfd9126f6f64a4ccbe808ecd92bbd"], ["native/natural-ctx32768-c1-r3.json", "25419aac80021729a86a413041ec89c2a68c0e04de0bc1addcc702434914a6ac"],
+    ["native/natural-ctx32768-c4-r1.json", "799f10512ba236c7620babc3b39446a32479903fcd09de58f17b3aaa17ed10e9"], ["native/natural-ctx32768-c4-r2.json", "2f59cc5d65423ff6b4bcfc721015cf5eb046c11947a41ccafff9f888cab01136"], ["native/natural-ctx32768-c4-r3.json", "5b0d6f6f4c0a680a7d83f1da8082f0badb8a76d04be9d4f50d4667a1d93fd45c"]
+  ],
+  "notes": ["Each triplet is median, minimum, maximum of the three run-level p50 values.", "Per-run aggregate throughput is retained in native artifacts but is not summarized because natural output length varies.", "Output token counts may include reasoning tokens; reasoning chunks are not token counts.", "Run maximum E2E and elapsed duration are descriptive, not stable tail estimates."]
+}

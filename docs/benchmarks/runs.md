@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-16 GLM natural-output baseline
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | GLM-5.3-Flash r11 natural-output baseline | 12 natural timing cells plus two five-task coding repeats | 2x RTX PRO 6000 Blackwell Max-Q | 239/240 timing retained; R1 4/5 graded resolved; R2 0/2 graded resolved plus three step-limit failures | `no-promotion`; no pooled coding score and repeatability not established | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-16-glm-natural-baseline.md) |
+
 ## 2026-10-16 SGLang, Qwen, and Nemotron comparison
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |

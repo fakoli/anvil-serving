@@ -300,7 +300,7 @@ def _numeric_shape_errors(groups: Sequence[tuple[str, Mapping[str, Any], Sequenc
     errors: list[str] = []
     for prefix, values, fields in groups:
         for field in fields:
-            if field in values and _number(values.get(field)) is None:
+            if field in values and values.get(field) is not None and _number(values.get(field)) is None:
                 errors.append(f"{prefix}.{field} must be a finite number")
     return errors
 
