@@ -3428,6 +3428,15 @@
         },
         {
           "flags": [
+            "--auxiliary-caches-reviewed"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm review of the previewed generated auxiliary caches before volume disposal.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--non-model-root-view"
           ],
           "output_policy": null,

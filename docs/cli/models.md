@@ -499,9 +499,17 @@ is reported separately from the cache-size estimate.
 
 `--writers-quiesced` is the owner's assertion that independent writers have
 stopped; advisory locks cannot fence a writer that ignores them. The entire
-selected cache is discarded, including incomplete downloads. There is no
+selected cache is discarded after its supported contents are audited. There is no
 automatic rollback: recovery requires downloading the pinned revision again.
 Other model caches, images, containers, and build caches are preserved.
+
+Some dedicated caches also contain generated Hugging Face metadata, exact-model
+remote-code copies, empty kernel lookup records, or empty Xet staging metadata
+and bounded transfer logs. The
+preview inventories the supported auxiliary artifacts and binds them to its
+fingerprint. If present, apply additionally requires
+`--auxiliary-caches-reviewed` after reviewing that inventory. Unknown files,
+another model's remote code, and downloaded kernel payloads remain refused.
 
 ## Cache inventory
 

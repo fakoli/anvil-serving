@@ -10,6 +10,7 @@ import stat
 import subprocess
 import time
 import tomllib
+import urllib.parse
 from contextlib import contextmanager
 try:
     import fcntl
@@ -140,7 +141,7 @@ def _children(path, budget):
     return rows
 
 
-def _read_metadata(path, limit):
+def _read_metadata(path, limit, *, binary=False):
     """Read a bounded regular file without following a substituted leaf."""
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
@@ -151,7 +152,7 @@ def _read_metadata(path, limit):
             raw = stream.read(limit + 1)
             if len(raw) > limit or model_cache_native._binding(before) != model_cache_native._binding(os.fstat(stream.fileno())):
                 raise ModelCacheVolumeError("metadata changed during audit")
-        return raw.decode("utf-8")
+        return raw if binary else raw.decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
         raise ModelCacheVolumeError("cannot read bounded metadata") from exc
 
@@ -177,13 +178,190 @@ def _config_strings(document):
             pending.extend(((*field, str(index)), child) for index, child in enumerate(value))
 
 
-def _dir(path, label):
+def _agent_registry(raw):
+    """Validate the public Hub agent-detection registry, never account settings."""
     try:
-        info = path.lstat()
-    except OSError as exc:
-        raise ModelCacheVolumeError("cannot inspect %s" % label) from exc
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
-        raise ModelCacheVolumeError("%s is not a plain directory" % label)
+        value = json.loads(raw)
+    except (ValueError, RecursionError) as exc:
+        raise ModelCacheVolumeError("invalid public agent-harness registry") from exc
+    def env_name(name):
+        return isinstance(name, str) and re.fullmatch(r"[A-Z_][A-Z0-9_]{0,127}", name)
+    if (not isinstance(value, dict) or set(value) != {"standardEnvVars", "harnesses"}
+            or not isinstance(value["standardEnvVars"], list) or len(value["standardEnvVars"]) > 32
+            or not all(env_name(name) for name in value["standardEnvVars"])
+            or not isinstance(value["harnesses"], dict) or len(value["harnesses"]) > 256):
+        raise ModelCacheVolumeError("invalid public agent-harness registry schema")
+    for name, fields in value["harnesses"].items():
+        if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", name) or not isinstance(fields, dict)
+                or not set(fields) <= {"prettyLabel", "description", "docsUrl", "repoUrl", "envVars"}):
+            raise ModelCacheVolumeError("invalid public agent-harness registry entry")
+        for key, item in fields.items():
+            if key == "envVars":
+                if (not isinstance(item, dict) or len(item) > 32
+                        or any(not env_name(k) or not isinstance(v, str)
+                               or not re.fullmatch(r"\*|[A-Za-z0-9._/-]{1,128}", v) for k, v in item.items())):
+                    raise ModelCacheVolumeError("invalid public agent-harness environment patterns")
+            elif not isinstance(item, str) or len(item) > 4096 or any(ord(c) < 32 for c in item):
+                raise ModelCacheVolumeError("invalid public agent-harness description")
+            elif key in {"docsUrl", "repoUrl"}:
+                try:
+                    url = urllib.parse.urlsplit(item)
+                except ValueError as exc:
+                    raise ModelCacheVolumeError("invalid public agent-harness URL") from exc
+                if url.scheme != "https" or not url.netloc or url.username or url.password:
+                    raise ModelCacheVolumeError("invalid public agent-harness URL")
+
+
+def _auxiliary_cache(entries, snapshot, links, payloads, revision, budget):
+    """Recognize only bounded generated HF metadata observed in dedicated caches."""
+    inventory = []
+    total = 0
+    kernels = {}
+    by_path = {path: info for path, info in entries.values()}
+    module_prefix = "modules/transformers_modules/_" + revision
+    tree_prefix = "hub/" + snapshot.parent.parent.name + "/trees"
+    for relative, (path, info) in sorted(entries.items()):
+        if time.monotonic() > budget["deadline"]:
+            raise ModelCacheVolumeError("auxiliary cache audit timed out")
+        directory = stat.S_ISDIR(info.st_mode)
+        regular = stat.S_ISREG(info.st_mode)
+        kind = None
+        raw = None
+        limit = 1024 * 1024
+        if relative in {".check_for_update_done", ".check_for_skill_update_done"} and regular and info.st_size == 0:
+            kind = "hf-update-marker"
+        elif relative == "hub/blobs/.huggingface-shared-blobs" and regular:
+            raw = _read_metadata(path, 2, binary=True)
+            if raw != b"1\n":
+                raise ModelCacheVolumeError("unrecognized HF shared blob marker")
+            kind = "hf-shared-blob-marker"
+        elif relative == "hub/CACHEDIR.TAG" and regular:
+            raw = _read_metadata(path, 1024, binary=True)
+            expected = (b"Signature: 8a477f597d28d172789f06886806bc55\n"
+                        b"# This file is a cache directory tag created by huggingface_hub.\n"
+                        b"# For information about cache directory tags, see:\n#\thttps://bford.info/cachedir/\n")
+            if raw != expected:
+                raise ModelCacheVolumeError("unrecognized HF cache directory tag")
+            kind = "hf-cache-tag"
+        elif relative == ".agent_harnesses.json" and regular:
+            raw = _read_metadata(path, 64 * 1024, binary=True)
+            _agent_registry(raw)
+            kind = "public-agent-harness-registry"
+        elif relative == tree_prefix and directory:
+            kind = "selected-tree-directory"
+        elif relative == tree_prefix + "/" + revision + ".json" and regular:
+            raw = _read_metadata(path, limit, binary=True)
+            try:
+                tree = json.loads(raw)
+            except (ValueError, RecursionError) as exc:
+                raise ModelCacheVolumeError("invalid selected tree metadata") from exc
+            expected = {p.relative_to(snapshot).as_posix(): p for p in links}
+            if (not isinstance(tree, dict) or set(tree) != {"format_version", "files"}
+                    or type(tree["format_version"]) is not int or tree["format_version"] != 1
+                    or not isinstance(tree["files"], dict) or set(tree["files"]) != set(expected)):
+                raise ModelCacheVolumeError("tree metadata does not match exact selected snapshot")
+            for name, fields in tree["files"].items():
+                target = links[expected[name]]
+                if (not isinstance(fields, dict) or not {"size", "blob_id"} <= set(fields)
+                        or not set(fields) <= {"size", "blob_id", "lfs_sha256", "lfs_size", "xet_hash"}
+                        or type(fields["size"]) is not int or fields["size"] != payloads[target].st_size
+                        or not isinstance(fields["blob_id"], str) or not _REVISION.fullmatch(fields["blob_id"])):
+                    raise ModelCacheVolumeError("invalid selected tree file metadata")
+                has_lfs = "lfs_sha256" in fields
+                if (has_lfs != ("lfs_size" in fields)
+                        or (has_lfs and (not isinstance(fields["lfs_sha256"], str)
+                            or not re.fullmatch(r"[0-9a-f]{64}", fields["lfs_sha256"])
+                            or type(fields["lfs_size"]) is not int or fields["lfs_size"] != fields["size"]))
+                        or ("xet_hash" in fields and (not has_lfs or not isinstance(fields["xet_hash"], str)
+                            or not re.fullmatch(r"[0-9a-f]{64}", fields["xet_hash"])))):
+                    raise ModelCacheVolumeError("invalid selected tree download metadata")
+                digest = fields.get("xet_hash", fields.get("lfs_sha256", fields["blob_id"]))
+                if target.name != digest:
+                    raise ModelCacheVolumeError("selected tree hash differs from snapshot target")
+            kind = "selected-snapshot-tree-metadata"
+        elif relative.startswith("modules"):
+            if relative in {"modules", "modules/transformers_modules", module_prefix} and directory:
+                kind = "selected-module-directory"
+            elif relative in {"modules/__init__.py", "modules/transformers_modules/__init__.py", module_prefix + "/__init__.py"} and regular and info.st_size == 0:
+                kind = "empty-module-initializer"
+            elif relative.startswith(module_prefix + "/"):
+                tail = relative[len(module_prefix) + 1:].split("/")
+                if re.fullmatch(r"[0-9a-f]{16}", tail[0]):
+                    if directory and (len(tail) == 1 or (len(tail) == 2 and tail[1] == "__pycache__")):
+                        kind = "selected-module-directory"
+                    elif regular and len(tail) == 2 and tail[1] == "__init__.py" and info.st_size == 0:
+                        kind = "empty-module-initializer"
+                    elif regular and len(tail) == 2 and re.fullmatch(r"[A-Za-z_]\w*\.py", tail[1]):
+                        source = snapshot / tail[1]
+                        if source not in links:
+                            raise ModelCacheVolumeError("generated module is absent from selected snapshot")
+                        raw = _read_metadata(path, limit, binary=True)
+                        if raw != _read_metadata(links[source], limit, binary=True):
+                            raise ModelCacheVolumeError("generated module differs from selected snapshot")
+                        kind = "selected-snapshot-module-copy"
+                    elif regular and len(tail) == 3 and tail[1] == "__pycache__":
+                        match = re.fullmatch(r"([A-Za-z_]\w*)\.cpython-312\.pyc", tail[2])
+                        if match:
+                            source = path.parent.parent / (match.group(1) + ".py")
+                            if source not in by_path or not stat.S_ISREG(by_path[source].st_mode):
+                                raise ModelCacheVolumeError("bytecode lacks its selected module source")
+                            raw = _read_metadata(path, limit, binary=True)
+                            source_info = by_path[source]
+                            if (len(raw) < 16 or raw[:4] != b"\xcb\r\r\n" or raw[4:8] != bytes(4)
+                                    or int.from_bytes(raw[8:12], "little") != (int(source_info.st_mtime) & 0xffffffff)
+                                    or int.from_bytes(raw[12:16], "little") != source_info.st_size):
+                                raise ModelCacheVolumeError("bytecode header does not match selected module source")
+                            kind = "selected-module-bytecode"
+        elif relative.startswith("hub/kernels--"):
+            parts = relative.split("/")
+            encoded = parts[1].split("--")
+            if len(encoded) == 3 and _REPO.fullmatch("/".join(encoded[1:])):
+                repo = "/".join(encoded[1:])
+                item = kernels.setdefault(repo, {"repo_id": repo, "ref_revision": None, "miss_revisions": set()})
+                if directory and (len(parts) == 2 or (len(parts) == 3 and parts[2] in {"refs", ".no_exist"})):
+                    kind = "kernel-miss-directory"
+                elif regular and parts[2:] == ["refs", "main"]:
+                    ref = _read_metadata(path, 128).strip()
+                    if not _REVISION.fullmatch(ref):
+                        raise ModelCacheVolumeError("invalid kernel miss ref")
+                    item["ref_revision"] = ref
+                    kind = "kernel-miss-ref"
+                elif len(parts) >= 4 and parts[2] == ".no_exist" and _REVISION.fullmatch(parts[3]):
+                    if directory and len(parts) == 4:
+                        marker = entries.get(relative + "/kernel-status.toml")
+                        if marker is None or not stat.S_ISREG(marker[1].st_mode) or marker[1].st_size:
+                            raise ModelCacheVolumeError("kernel miss directory lacks its empty marker")
+                        kind = "kernel-miss-directory"
+                    elif regular and len(parts) == 5 and parts[4] == "kernel-status.toml" and info.st_size == 0:
+                        item["miss_revisions"].add(parts[3])
+                        kind = "empty-kernel-miss-marker"
+        elif relative.startswith("xet"):
+            parts = relative.split("/")
+            if directory and (parts == ["xet"] or parts == ["xet", "logs"]
+                              or (len(parts) in {2, 3} and re.fullmatch(r"https___[A-Za-z0-9_-]{1,96}", parts[1])
+                                  and (len(parts) == 2 or parts[2] == "staging"))):
+                kind = "xet-download-directory"
+            elif regular and len(parts) == 3 and parts[:2] == ["xet", "logs"] and re.fullmatch(r"xet_[0-9]{8}T[0-9]{9}\+[0-9]{4}_[0-9]+\.log", parts[2]):
+                kind = "xet-download-log"
+                limit = 8 * 1024 * 1024
+        if kind is None or not (directory or regular):
+            raise ModelCacheVolumeError("dedicated cache contains another repository, revision, or unknown data at: %s" % relative)
+        record = {"path": relative, "kind": kind, "bytes": info.st_size if regular else 0}
+        if regular:
+            total += info.st_size
+            if total > 32 * 1024 * 1024:
+                raise ModelCacheVolumeError("auxiliary cache exceeds total byte limit")
+            if raw is None:
+                raw = _read_metadata(path, limit, binary=True)
+            record["content_sha256"] = hashlib.sha256(raw).hexdigest()
+        inventory.append(record)
+    for item in kernels.values():
+        if item["ref_revision"] not in item["miss_revisions"]:
+            raise ModelCacheVolumeError("kernel miss ref lacks its exact empty marker")
+        item["miss_revisions"] = sorted(item["miss_revisions"])
+    return {"entries": inventory, "file_count": sum("content_sha256" in row for row in inventory),
+            "logical_bytes": total, "kernel_miss_caches": list(kernels.values()),
+            "module_revision": revision if any(row["kind"].startswith("selected-module") for row in inventory) else None}
 
 
 def _cache_identity(mountpoint, repo_id, revision):
@@ -217,10 +395,12 @@ def _cache_identity(mountpoint, repo_id, revision):
     if any(name not in entries or not stat.S_ISDIR(entries[name][1].st_mode) for name in required):
         raise ModelCacheVolumeError("dedicated cache lacks the exact selected revision")
     global_blobs = {}
+    local_blobs = {}
     aliases = {}
     links = {}
     companions = {}
     bindings = []
+    auxiliary_entries = {}
     digest = r"(?:[0-9a-f]{40}|[0-9a-f]{64})"
     for relative, (path, info) in sorted(entries.items()):
         parts = relative.split("/")
@@ -252,6 +432,9 @@ def _cache_identity(mountpoint, repo_id, revision):
             elif len(parts) == 4 and parts[2] == "blobs" and link and re.fullmatch(digest, parts[3]):
                 aliases[path] = Path(os.path.realpath(path))
                 accepted = True
+            elif len(parts) == 4 and parts[2] == "blobs" and regular and re.fullmatch(digest, parts[3]):
+                local_blobs[path] = info
+                accepted = True
             elif parts[2:4] == ["snapshots", revision] and len(parts) > 4:
                 accepted = directory or link
                 if link:
@@ -271,12 +454,15 @@ def _cache_identity(mountpoint, repo_id, revision):
                 # The descriptor fence separately binds all legacy lock metadata.
                 continue
         if not accepted:
-            raise ModelCacheVolumeError("dedicated cache contains another repository, revision, or unknown data")
+            auxiliary_entries[relative] = (path, info)
         bindings.append([relative, binding, os.readlink(path) if link else None])
     if not global_blobs or set(companions) != set(global_blobs):
         raise ModelCacheVolumeError("global blobs lack exact lock/reference companions")
-    if not links or set(links.values()) != set(global_blobs):
-        raise ModelCacheVolumeError("global blob store contains data not selected by the exact snapshot")
+    # HF can keep small files in the repository while sharing large blobs.
+    # Both stores must be consumed completely by this exact snapshot.
+    payloads = global_blobs | local_blobs
+    if not links or set(links.values()) != set(payloads):
+        raise ModelCacheVolumeError("blob stores contain data not selected by the exact snapshot or missing targets")
     if any(target not in global_blobs for target in aliases.values()):
         raise ModelCacheVolumeError("repository blob alias escapes global blob store")
     for path in aliases:
@@ -285,7 +471,7 @@ def _cache_identity(mountpoint, repo_id, revision):
             raise ModelCacheVolumeError("repository blob alias escapes the declared topology")
     for path in links:
         target = Path(os.path.abspath(path.parent / os.readlink(path)))
-        if target not in aliases and target not in global_blobs:
+        if target not in aliases and target not in payloads:
             raise ModelCacheVolumeError("snapshot link escapes the declared topology")
     for blob, metadata in companions.items():
         if set(metadata) != {".lock", ".refs"}:
@@ -294,10 +480,14 @@ def _cache_identity(mountpoint, repo_id, revision):
         expected = {path.relative_to(hub).as_posix() for path, target in aliases.items() if target == blob}
         if not references or len(references) != len(set(references)) or set(references) != expected:
             raise ModelCacheVolumeError("global blob references another repository or unknown alias")
-    fingerprint = hashlib.sha256(json.dumps(bindings, separators=(",", ":")).encode()).hexdigest()
+    auxiliary = _auxiliary_cache(auxiliary_entries, model / "snapshots" / revision, links, payloads, revision, budget)
+    fingerprint = hashlib.sha256(json.dumps([bindings, auxiliary], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {"repo_id": repo_id, "revision": revision, "snapshot_links": len(links),
-            "layout": "global-hub-blobs", "logical_bytes": sum(info.st_size for info in global_blobs.values()),
-            "fingerprint": fingerprint}
+            "layout": "global-hub-blobs", "logical_bytes": sum(info.st_size for info in payloads.values()),
+            "global_blob_count": len(global_blobs), "repository_blob_count": len(local_blobs),
+            "global_blob_bytes": sum(info.st_size for info in global_blobs.values()),
+            "repository_blob_bytes": sum(info.st_size for info in local_blobs.values()),
+            "fingerprint": fingerprint, "auxiliary_cache": auxiliary}
 
 
 def _container_refs(volume, mountpoint, *, non_model_root_views=(), runner):
@@ -368,6 +558,11 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
         for row in _children(current, budget):
             path = Path(row.path)
             info = path.lstat()
+            # The operator's conventional secret file is opaque. It cannot be
+            # a delegated manifest (unsupported suffix), and unresolved cache
+            # variables in actual manifests still block the audit below.
+            if current == home and row.name == ".env" and (stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)):
+                continue
             if stat.S_ISDIR(info.st_mode):
                 if row.name in docker_images._NON_OPERATIONAL_CONFIG_DIRS or (row.name == "recovered-configs" and current == home):
                     continue
@@ -415,10 +610,23 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
             if docker_images._is_manifest_path(field, document=document):
                 if "$" in value or not value:
                     raise ModelCacheVolumeError("operator configuration dependency is unresolved")
+                if re.fullmatch(r"(?:serve|promotion)\.[0-9]+\.(?:rollback_)?router_config", field):
+                    value = value.replace("{dir}", str(path.parent))
                 target = Path(os.path.expanduser(value))
                 if not target.is_absolute():
                     target = path.parent / target
                 target = Path(os.path.abspath(target))
+                if target.suffix.lower() not in _CONFIG_SUFFIXES:
+                    raise ModelCacheVolumeError("operator configuration dependency has unsupported format at %s:%s" %
+                                                (path.relative_to(home).as_posix(), field))
+                # An external spelling may be an operator-home compatibility
+                # alias. Only its canonical, already-audited file is accepted.
+                if target.is_relative_to(home):
+                    lexical_parts = target.relative_to(home).parts
+                    if (any(part in docker_images._NON_OPERATIONAL_CONFIG_DIRS for part in lexical_parts)
+                            or (lexical_parts and lexical_parts[0] == "recovered-configs")):
+                        raise ModelCacheVolumeError("operator configuration dependency references an excluded path")
+                target = Path(os.path.realpath(target))
                 try:
                     relative = target.relative_to(home)
                 except ValueError as exc:
@@ -426,8 +634,6 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
                 if (any(part in docker_images._NON_OPERATIONAL_CONFIG_DIRS for part in relative.parts)
                         or (relative.parts and relative.parts[0] == "recovered-configs")):
                     raise ModelCacheVolumeError("operator configuration dependency references an excluded path")
-                if target.suffix.lower() not in _CONFIG_SUFFIXES:
-                    raise ModelCacheVolumeError("operator configuration dependency has unsupported format")
                 dependencies.append(target)
     if any(path not in audited for path in dependencies):
         raise ModelCacheVolumeError("operator configuration dependency is missing or unaudited")
@@ -588,6 +794,7 @@ def inspect(repo_id, revision, volume, config_home, *, non_model_root_views=(), 
                 "native_fd_processes": native_fds}, "blocked_reasons": blocked,
                 "removable": not blocked, "recovery": "re-download the exact revision into a new dedicated cache volume",
                 "logical_reclaimable_bytes": cache["logical_bytes"],
+                "auxiliary_cache": cache["auxiliary_cache"],
                 "actual_free_space_delta": "measured separately after volume removal"}
     except OSError as exc:
         raise ModelCacheVolumeError("cache audit could not be completed") from exc
@@ -595,6 +802,7 @@ def inspect(repo_id, revision, volume, config_home, *, non_model_root_views=(), 
 
 
 def remove(repo_id, revision, volume, config_home, *, expected_fingerprint, writers_quiesced=False,
+           auxiliary_caches_reviewed=False,
            non_model_root_views=(), confirm=False, dry_run=False, runner=subprocess.run):
     """Preview or delete one twice-audited dedicated cache volume, without force."""
     first = inspect(repo_id, revision, volume, config_home, non_model_root_views=non_model_root_views, runner=runner)
@@ -609,6 +817,8 @@ def remove(repo_id, revision, volume, config_home, *, expected_fingerprint, writ
         raise ModelCacheVolumeError("apply requires the preview's --expected-volume-fingerprint")
     if expected_fingerprint != first["volume_fingerprint"]:
         result["outcome"] = "identity-drift"; return result
+    if first["auxiliary_cache"]["entries"] and not auxiliary_caches_reviewed:
+        raise ModelCacheVolumeError("apply requires --auxiliary-caches-reviewed for the fingerprinted auxiliary inventory")
     mountpoint = Path(first["volume"]["mountpoint"])
     space_anchor = mountpoint.parent.parent
     if space_anchor.stat().st_dev != mountpoint.stat().st_dev:

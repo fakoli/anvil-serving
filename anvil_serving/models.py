@@ -1523,6 +1523,8 @@ def cache_remove_main(argv):
                     help="SHA-256 fingerprint from the dedicated-volume preview")
     ap.add_argument("--writers-quiesced", action="store_true",
                     help="attest that the resource owner stopped native cache writers")
+    ap.add_argument("--auxiliary-caches-reviewed", action="store_true",
+                    help="attest that the fingerprinted generated HF cache inventory was reviewed")
     ap.add_argument(
         "--non-model-root-view", action="append", default=[], metavar="CONTAINER_ID",
         help=("full container ID the caller declares as a non-model read-only root observation; "
@@ -1545,8 +1547,8 @@ def cache_remove_main(argv):
     if args.cache_dir and args.volume:
         print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
         return 2
-    if not args.discard_volume and (args.expected_volume_fingerprint or args.writers_quiesced):
-        print("--expected-volume-fingerprint and --writers-quiesced require --discard-volume", file=sys.stderr)
+    if not args.discard_volume and (args.expected_volume_fingerprint or args.writers_quiesced or args.auxiliary_caches_reviewed):
+        print("dedicated-volume fingerprint and cache attestations require --discard-volume", file=sys.stderr)
         return 2
     if args.config_home and not args.cache_dir and not args.discard_volume:
         print("--config-home is only supported with native --cache-dir or --discard-volume removal", file=sys.stderr)
@@ -1582,6 +1584,7 @@ def cache_remove_main(argv):
                 args.repo_id, args.revision, args.volume, args.config_home,
                 expected_fingerprint=args.expected_volume_fingerprint,
                 writers_quiesced=args.writers_quiesced, confirm=apply,
+                auxiliary_caches_reviewed=args.auxiliary_caches_reviewed,
                 non_model_root_views=args.non_model_root_view,
                 dry_run=args.dry_run,
             )

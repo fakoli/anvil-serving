@@ -221,6 +221,10 @@ def commands() -> CommandNode:
                                 summary="Attest that external writers to the dedicated cache have stopped.",
                             ),
                             _option(
+                                "--auxiliary-caches-reviewed",
+                                summary="Confirm review of the previewed generated auxiliary caches before volume disposal.",
+                            ),
+                            _option(
                                 "--non-model-root-view",
                                 summary=("Declare an exact non-model read-only root-view container; "
                                          "repeat for each declaration; guarded cleanup validates mount and GPU fields."),
