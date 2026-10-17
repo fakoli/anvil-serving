@@ -118,5 +118,8 @@ class WorkflowControlClient:
     def cancel(self, workflow_id: str, intent_id: str, contract_digest: str, _caller_id: str):
         return self._call("cancel", workflow_id, intent_id, contract_digest)
 
+    def retirement(self, workflow_id: str, contract_digest: str):
+        return self._call("retirement", workflow_id, "intent-" + contract_digest, contract_digest)
+
     def resume(self, workflow_id: str, intent_id: str, contract_digest: str, _caller_id: str):
         return self._call("resume", workflow_id, intent_id, contract_digest)
