@@ -171,6 +171,14 @@ installed CLI only as a verified fallback.
    and recovery, verify authenticated operation exposure and admission denial,
    and make a failed host preflight stop all fleet mutation. Bind the fresh
    successor to the accepted activation and retained settlement evidence.
+   Before staging native profiles, validate both their file hashes and the
+   semantic identities recomputed by the pinned consumer. An inventory or fixture
+   change must update the profile identity, manifest identity, every owned
+   contract target and the complete content-hash chain. Require this check before
+   the first staging write; a valid outer hash does not prove consumer acceptance.
+   Keep a failed packet immutable and prepare a fresh successor. Qualify the
+   repaired client artifact separately when the accepted model/owner is retained;
+   do not patch an installed runtime or manufacture another model transition.
    Track catalog convergence, new-session acceptance, existing-session
    preservation, and scheduled reconciliation separately for every declared
    installation; a fresh CLI smoke cannot stand in for Pi Web or an existing
