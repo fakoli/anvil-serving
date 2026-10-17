@@ -28,6 +28,7 @@ def commands() -> CommandNode:
                 handler_attribute="pull_result",
                 argv_prefix=("pull",),
                 options=CONFIRM_OPTIONS + (
+                    _option("--native-stage", summary="Stage one public LFS file with Windows curl.exe, verify SHA256, then import into Docker.", value_name="DIR"),
                     _option("--cache-dir", summary="Native HF home or direct hub cache; no Docker.", value_name="PATH"),
                     _option("--hf-executable", summary="Use this installed native hf executable.", value_name="PATH"),
                     _option("--evidence-out", summary="Retain a native pull JSON receipt outside the hub cache.", value_name="FILE"),

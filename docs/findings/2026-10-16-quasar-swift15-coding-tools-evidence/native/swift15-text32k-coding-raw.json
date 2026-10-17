@@ -1,0 +1,1123 @@
+{
+  "context": {
+    "cap_tokens": 31488,
+    "max_model_len": 32768,
+    "targets": []
+  },
+  "evaluation_protocol": {
+    "budget_semantics": "visible_answer_tokens plus reasoning_headroom_tokens are sent as one max_tokens cap; the endpoint does not hard-partition the channels",
+    "minimum_comparable_repetitions": 3,
+    "minimum_pass_rate": 1.0,
+    "reasoning_headroom_tokens": 0,
+    "records_finish_reason": true,
+    "records_full_visible_answer": true,
+    "records_reasoning_channel_metadata": true,
+    "repetitions": 3,
+    "version": 3,
+    "visible_answer_tokens": 256
+  },
+  "failures": [],
+  "identity": {
+    "base_url": "http://127.0.0.1:30002/v1",
+    "candidate_id": "swift15-text32k",
+    "config_id": "ninfer-dflash2-k8v4-c4-requestc1-text32k",
+    "engine": "ninfer",
+    "gpu": "rtx-5090",
+    "model": "qwen38-swift15-ninfer-text32k-c4",
+    "started_at": "2026-10-17T02:51:21Z"
+  },
+  "intelligence": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "run_id": "fast-bakeoff-20261017T025121Z",
+  "sampling": {
+    "temperature": {
+      "effective_request": 0.6,
+      "requested": 0.6,
+      "sent": true
+    },
+    "top_p": {
+      "effective_request": 0.95,
+      "requested": 0.95,
+      "sent": true
+    }
+  },
+  "schema": "anvil-serving.fast-tier-bakeoff/v1",
+  "score_inputs": {
+    "e2e_p50_ms": null,
+    "intelligence_pass_rate": null,
+    "operational_fit_notes": [
+      "endpoint was already loaded; benchmark did not start or stop serves"
+    ],
+    "session_recall_passed": false,
+    "thinking_mode": "default",
+    "tool_call_passed": false,
+    "ttft_p50_ms": null,
+    "usable_context_tokens": null,
+    "voice_latency_ms": null
+  },
+  "selection": {
+    "context_targets": [
+      32768
+    ],
+    "endpoint_already_loaded": true,
+    "requests_per_context": 1,
+    "suites": []
+  },
+  "session": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "source_recipe": {
+    "ref": null,
+    "serve_command": null
+  },
+  "suites": {
+    "quasar-swift15-coding": {
+      "checks": [
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    merged = [list(sorted_intervals[0])]\n    for start, end in sorted_intervals[1:]:\n        if start <= merged[-1][1] + 1:\n            if end > merged[-1][1]:\n                merged[-1][1] = end\n        else:\n            merged.append([start, end])\n    return merged\n```",
+              "content_chars": 456,
+              "content_excerpt": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    merged = [l",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2633.9501999991626,
+              "reasoning_chars": 2340,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with:\n1. No imports\n2. No file reading, network access\n3. Only builtins and methods on local values\n4. Define exactly `def merge_intervals(intervals):`",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 617,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 748,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 617
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 885
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    result = [list(sorted_intervals[0])]\n    for current in sorted_intervals[1:]:\n        if current[0] <= result[-1][1] + 1:\n            result[-1][1] = max(result[-1][1], current[1])\n        else:\n            result.append([current[0], current[1]])\n    return result\n```",
+              "content_chars": 457,
+              "content_excerpt": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    result = [l",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2530.1992000004248,
+              "reasoning_chars": 2289,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose outside it. Let me carefully parse the requirements:\n\n1. ONLY one fenced Python code block, no prose outside\n2. Complete source, no impor",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 604,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 739,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 604
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 876
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    result = [list(sorted_intervals[0])]\n    for interval in sorted_intervals[1:]:\n        if interval[0] <= result[-1][1] + 1:\n            result[-1][1] = max(result[-1][1], interval[1])\n        else:\n            result.append(list(interval))\n    return result\n```",
+              "content_chars": 450,
+              "content_excerpt": "```python\n# CODING_FIXTURE: merge_intervals\ndef merge_intervals(intervals):\n    if not intervals:\n        return []\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n    result = [l",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2179.467100000693,
+              "reasoning_chars": 2050,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose outside it. Let me carefully follow all constraints:\n\n1. Only one fenced Python code block\n2. Complete source, no prose\n3. No imports, no",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 535,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 664,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 535
+                },
+                "prompt_tokens": 137,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 801
+              }
+            }
+          ],
+          "id": "merge_intervals",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    pos = {node: i for i, node in enumerate(nodes)}\n\n    for u, v in edges:\n        if u not in pos or v not in pos:\n            return None\n\n    unique_edges = set()\n    for u, v in edges:\n        unique_edges.add((u, v))\n\n    indeg = {node: 0 for node in nodes}\n    adj = {node: [] for node in nodes}\n    for u, v in unique_edges:\n        adj[u].append(v)\n        indeg[v] += 1\n\n    ready = [node for node in nodes if indeg[node] == 0]\n    result = []\n\n    while ready:\n        best = min(ready, key=lambda n: pos[n])\n        result.append(best)\n        ready.remove(best)\n        for neighbor in adj[best]:\n            indeg[neighbor] -= 1\n            if indeg[neighbor] == 0:\n                ready.append(neighbor)\n\n    if len(result) != len(nodes):\n        return None\n\n    return result\n```",
+              "content_chars": 875,
+              "content_excerpt": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    pos = {node: i for i, node in enumerate(nodes)}\n\n    for u, v in edges:\n        if u not in pos or v not in pos:\n    ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4729.791499999919,
+              "reasoning_chars": 4667,
+              "reasoning_excerpt": "Let me carefully parse the requirements:\n\n1. Write ONLY one fenced Python code block containing complete source and no prose.\n2. Do not import anything, read files, access the network, or call anythin",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 1265,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1527,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1265
+                },
+                "prompt_tokens": 161,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1688
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    node_set = set(nodes)\n\n    for before, after in edges:\n        if before not in node_set or after not in node_set:\n            return None\n\n    adj = {n: [] for n in nodes}\n    in_degree = {n: 0 for n in nodes}\n    seen_edges = set()\n    for before, after in edges:\n        if (before, after) not in seen_edges:\n            seen_edges.add((before, after))\n            adj[before].append(after)\n            in_degree[after] += 1\n\n    ready = set(n for n in nodes if in_degree[n] == 0)\n    result = []\n\n    for _ in range(len(nodes)):\n        chosen = None\n        for n in nodes:\n            if n in ready:\n                chosen = n\n                break\n        if chosen is None:\n            return None\n        ready.discard(chosen)\n        result.append(chosen)\n        for successor in adj[chosen]:\n            in_degree[successor] -= 1\n            if in_degree[successor] == 0:\n                ready.add(successor)\n\n    return result\n```",
+              "content_chars": 1026,
+              "content_excerpt": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    node_set = set(nodes)\n\n    for before, after in edges:\n        if before not in node_set or after not in node_set:\n  ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 4095.8010999984253,
+              "reasoning_chars": 3774,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully implement `stable_toposort(nodes, edges)`:\n\nRequirements:\n1. `nodes` is a list of distinct strings, `edges` is a list o",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 970,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1249,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 970
+                },
+                "prompt_tokens": 161,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1410
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    node_set = set(nodes)\n\n    for before, after in edges:\n        if before not in node_set or after not in node_set:\n            return None\n\n    adj = {n: [] for n in nodes}\n    in_degree = {n: 0 for n in nodes}\n    seen_edges = set()\n\n    for before, after in edges:\n        if (before, after) not in seen_edges:\n            seen_edges.add((before, after))\n            adj[before].append(after)\n            in_degree[after] += 1\n\n    result = []\n    ready = set(n for n in nodes if in_degree[n] == 0)\n\n    while len(result) < len(nodes):\n        chosen = None\n        for n in nodes:\n            if n in ready:\n                chosen = n\n                break\n        if chosen is None:\n            return None\n        result.append(chosen)\n        ready.remove(chosen)\n        for neighbor in adj[chosen]:\n            in_degree[neighbor] -= 1\n            if in_degree[neighbor] == 0:\n                ready.add(neighbor)\n\n    return result\n```",
+              "content_chars": 1026,
+              "content_excerpt": "```python\n# CODING_FIXTURE: stable_toposort\ndef stable_toposort(nodes, edges):\n    node_set = set(nodes)\n\n    for before, after in edges:\n        if before not in node_set or after not in node_set:\n  ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3809.5746000017243,
+              "reasoning_chars": 3735,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully implement `stable_toposort(nodes, edges)`:\n\nRequirements:\n1. `nodes` is a list of distinct strings\n2. `edges` is a list",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 952,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1229,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 952
+                },
+                "prompt_tokens": 161,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1390
+              }
+            }
+          ],
+          "id": "stable_toposort",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    if not isinstance(line, str):\n        return None\n\n    fields = []\n    current = []\n    i = 0\n    n = len(line)\n    in_quotes = False\n\n    while i < n:\n        ch = line[i]\n\n        if in_quotes:\n            if ch == '\"':\n                if i + 1 < n and line[i + 1] == '\"':\n                    current.append('\"')\n                    i += 2\n                    continue\n\n                in_quotes = False\n                i += 1\n                if i < n and line[i] != ',':\n                    return None\n                continue\n\n            current.append(ch)\n            i += 1\n        else:\n            if ch == ',':\n                fields.append(''.join(current))\n                current = []\n                i += 1\n            elif ch == '\"':\n                if current:\n                    return None\n                in_quotes = True\n                i += 1\n            else:\n                current.append(ch)\n                i += 1\n\n    if in_quotes:\n        return None\n\n    fields.append(''.join(current))\n    return fields\n```",
+              "content_chars": 1112,
+              "content_excerpt": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    if not isinstance(line, str):\n        return None\n\n    fields = []\n    current = []\n    i = 0\n    n = len(line)\n    in_quotes =",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 18196.580100000574,
+              "reasoning_chars": 15234,
+              "reasoning_excerpt": "We need to answer user's request: Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access network, call anything except ordinary bui",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 3879,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 4147,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 3879
+                },
+                "prompt_tokens": 153,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 4300
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    fields = []\n    i = 0\n    n = len(line)\n\n    while True:\n        if i < n and line[i] == '\"':\n            i += 1\n            value = \"\"\n            closed = False\n\n            while i < n:\n                ch = line[i]\n                if ch == '\"':\n                    if i + 1 < n and line[i + 1] == '\"':\n                        value += '\"'\n                        i += 2\n                    else:\n                        i += 1\n                        closed = True\n                        break\n                else:\n                    value += ch\n                    i += 1\n\n            if not closed:\n                return None\n\n            if i < n and line[i] != \",\":\n                return None\n\n            fields.append(value)\n\n            if i == n:\n                return fields\n\n            i += 1\n        else:\n            j = i\n            while j < n and line[j] != \",\":\n                if line[j] == '\"':\n                    return None\n                j += 1\n\n            fields.append(line[i:j])\n\n            if j == n:\n                return fields\n\n            i = j + 1\n```",
+              "content_chars": 1170,
+              "content_excerpt": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    fields = []\n    i = 0\n    n = len(line)\n\n    while True:\n        if i < n and line[i] == '\"':\n            i += 1\n            va",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 25280.574799999158,
+              "reasoning_chars": 20519,
+              "reasoning_excerpt": "We need answer user's request: Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access network, call anything except ordinary builti",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 5378,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 5655,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 5378
+                },
+                "prompt_tokens": 153,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 5808
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    fields = []\n    i = 0\n    n = len(line)\n\n    while True:\n        if i < n and line[i] == '\"':\n            i += 1\n            chars = []\n\n            while True:\n                if i >= n:\n                    return None\n\n                c = line[i]\n                if c == '\"':\n                    if i + 1 < n and line[i + 1] == '\"':\n                        chars.append('\"')\n                        i += 2\n                    else:\n                        i += 1\n                        if i < n and line[i] != ',':\n                            return None\n\n                        fields.append(''.join(chars))\n\n                        if i >= n:\n                            return fields\n\n                        i += 1\n                        break\n                else:\n                    chars.append(c)\n                    i += 1\n        else:\n            chars = []\n\n            while i < n and line[i] != ',':\n                if line[i] == '\"':\n                    return None\n                chars.append(line[i])\n                i += 1\n\n            fields.append(''.join(chars))\n\n            if i >= n:\n                return fields\n\n            i += 1\n```",
+              "content_chars": 1241,
+              "content_excerpt": "```python\n# CODING_FIXTURE: parse_csv_line\ndef parse_csv_line(line):\n    fields = []\n    i = 0\n    n = len(line)\n\n    while True:\n        if i < n and line[i] == '\"':\n            i += 1\n            ch",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 23993.93710000004,
+              "reasoning_chars": 19853,
+              "reasoning_excerpt": "We need answer user's request: Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access network, call anything except ordinary builti",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 5194,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 5471,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 5194
+                },
+                "prompt_tokens": 153,
+                "prompt_tokens_details": {
+                  "cached_tokens": 146
+                },
+                "total_tokens": 5624
+              }
+            }
+          ],
+          "id": "parse_csv_line",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    n = len(text)\n\n    for edit in edits:\n        if len(edit) != 3:\n            return None\n        start, end, replacement = edit\n        if not isinstance(start, int) or not isinstance(end, int):\n            return None\n        if not isinstance(replacement, str):\n            return None\n        if start < 0 or end > n or start > end:\n            return None\n\n    ordered = sorted(edits, key=lambda e: e[0])\n    for i in range(len(ordered) - 1):\n        if ordered[i + 1][0] < ordered[i][1]:\n            return None\n\n    parts = []\n    prev = 0\n    for start, end, replacement in ordered:\n        parts.append(text[prev:start])\n        parts.append(replacement)\n        prev = end\n    parts.append(text[prev:])\n    return ''.join(parts)\n```",
+              "content_chars": 815,
+              "content_excerpt": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    n = len(text)\n\n    for edit in edits:\n        if len(edit) != 3:\n            return None\n        start, end, replacement = edi",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 6055.348500000036,
+              "reasoning_chars": 5828,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully design the `apply_edits` function.\n\nRequirements:\n1. Define exactly `def apply_edits(text, edits):`\n2. Each edit is a t",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 1614,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1839,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1614
+                },
+                "prompt_tokens": 167,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2006
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    n = len(text)\n    validated = []\n    for edit in edits:\n        if not isinstance(edit, (tuple, list)) or len(edit) != 3:\n            return None\n        start, end, replacement = edit\n        if not isinstance(start, int) or not isinstance(end, int):\n            return None\n        if not isinstance(replacement, str):\n            return None\n        if start < 0 or end > n or start > end:\n            return None\n        validated.append((start, end, replacement))\n    validated.sort(key=lambda x: x[0])\n    for i in range(1, len(validated)):\n        if validated[i][0] < validated[i - 1][1]:\n            return None\n    parts = []\n    pos = 0\n    for start, end, replacement in validated:\n        parts.append(text[pos:start])\n        parts.append(replacement)\n        pos = end\n    parts.append(text[pos:])\n    return ''.join(parts)\n```",
+              "content_chars": 916,
+              "content_excerpt": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    n = len(text)\n    validated = []\n    for edit in edits:\n        if not isinstance(edit, (tuple, list)) or len(edit) != 3:\n    ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7235.089900001185,
+              "reasoning_chars": 7524,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully design the `apply_edits` function.\n\nRequirements:\n1. Define exactly `def apply_edits(text, edits):`\n2. Each edit is a t",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 2047,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2291,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 2047
+                },
+                "prompt_tokens": 167,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2458
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    if not isinstance(text, str):\n        return None\n\n    try:\n        text_length = len(text)\n        edit_iterator = iter(edits)\n    except TypeError:\n        return None\n\n    normalized = []\n    for edit in edit_iterator:\n        try:\n            start, end, replacement = edit\n        except (TypeError, ValueError):\n            return None\n\n        if isinstance(start, bool) or isinstance(end, bool):\n            return None\n        if not isinstance(start, int) or not isinstance(end, int):\n            return None\n        if not isinstance(replacement, str):\n            return None\n        if start < 0 or end < 0 or start > end or end > text_length:\n            return None\n\n        normalized.append((start, end, replacement))\n\n    normalized.sort()\n\n    parts = []\n    previous_end = 0\n    for start, end, replacement in normalized:\n        if start < previous_end:\n            return None\n        parts.append(text[previous_end:start])\n        parts.append(replacement)\n        previous_end = end\n\n    parts.append(text[previous_end:])\n    return ''.join(parts)\n```",
+              "content_chars": 1149,
+              "content_excerpt": "```python\n# CODING_FIXTURE: apply_edits\ndef apply_edits(text, edits):\n    if not isinstance(text, str):\n        return None\n\n    try:\n        text_length = len(text)\n        edit_iterator = iter(edits",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 48504.57060000008,
+              "reasoning_chars": 39089,
+              "reasoning_excerpt": "We need answer user's request. Need produce ONLY one fenced Python code block containing complete source and no prose. Need define exactly def apply_edits(text, edits):. Constraints: no imports, no fi",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 9878,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 10152,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 9878
+                },
+                "prompt_tokens": 167,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 10319
+              }
+            }
+          ],
+          "id": "apply_edits",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = path.split('/')\n    stack = []\n    for part in parts:\n        if part == '' or part == '.':\n            continue\n        if part == '..':\n            if stack:\n                stack.pop()\n        else:\n            stack.append(part)\n    if not stack:\n        return '/'\n    return '/' + '/'.join(stack)\n```",
+              "content_chars": 506,
+              "content_excerpt": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2898.979800000234,
+              "reasoning_chars": 2680,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with a function `normalize_posix_path(path)` that:\n\n1. Returns None if `path` is not a string or is not absolute (doesn't start with `/`)\n2. Collapses ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 819,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 949,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 819
+                },
+                "prompt_tokens": 147,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1096
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = path.split('/')\n    stack = []\n    for part in parts:\n        if part == '' or part == '.':\n            continue\n        if part == '..':\n            if stack:\n                stack.pop()\n        else:\n            stack.append(part)\n    if not stack:\n        return '/'\n    return '/' + '/'.join(stack)\n```",
+              "content_chars": 506,
+              "content_excerpt": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 2770.801399999982,
+              "reasoning_chars": 2685,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with a function `normalize_posix_path(path)` that:\n\n1. Takes a string `path` that is a POSIX absolute path beginning with `/`\n2. Returns its canonical ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 824,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 954,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 824
+                },
+                "prompt_tokens": 147,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1101
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = path.split('/')\n    stack = []\n    for part in parts:\n        if part == '' or part == '.':\n            continue\n        elif part == '..':\n            if stack:\n                stack.pop()\n        else:\n            stack.append(part)\n    if not stack:\n        return '/'\n    return '/' + '/'.join(stack)\n```",
+              "content_chars": 508,
+              "content_excerpt": "```python\n# CODING_FIXTURE: normalize_posix_path\ndef normalize_posix_path(path):\n    if not isinstance(path, str):\n        return None\n    if not path.startswith('/'):\n        return None\n    parts = ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 3374.400400000013,
+              "reasoning_chars": 3251,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully parse the requirements:\n\n1. Write ONLY one fenced Python code block containing complete source and no prose.\n2. Do not ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 1021,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1151,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1021
+                },
+                "prompt_tokens": 147,
+                "prompt_tokens_details": {
+                  "cached_tokens": 140
+                },
+                "total_tokens": 1298
+              }
+            }
+          ],
+          "id": "normalize_posix_path",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: lru_trace\n\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstance(operations, (list, tuple)):\n        return None\n    for op in operations:\n        if not isinstance(op, tuple) or len(op) != 3:\n            return None\n        if op[0] == 'put':\n            if not isinstance(op[1], str) or not isinstance(op[2], str):\n                return None\n        elif op[0] == 'get':\n            if not isinstance(op[1], str) or op[2] is not None:\n                return None\n        else:\n            return None\n\n    cache_map = {}\n    order = []\n    results = []\n\n    for op in operations:\n        op_type, key, value = op\n        if op_type == 'get':\n            if key in cache_map:\n                order.remove(key)\n                order.append(key)\n                results.append(cache_map[key])\n            else:\n                results.append(None)\n        elif op_type == 'put':\n            if key in cache_map:\n                cache_map[key] = value\n                order.remove(key)\n                order.append(key)\n            else:\n                cache_map[key] = value\n                order.append(key)\n                if len(order) > capacity:\n                    evicted = order.pop(0)\n                    del cache_map[evicted]\n\n    cache = [(k, cache_map[k]) for k in order]\n    return (results, cache)\n```",
+              "content_chars": 1454,
+              "content_excerpt": "```python\n# CODING_FIXTURE: lru_trace\n\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstanc",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5187.0803000001615,
+              "reasoning_chars": 5384,
+              "reasoning_excerpt": "The user wants a single fenced Python code block with no prose. Let me carefully implement the `lru_trace` function.\n\nRequirements:\n1. Define exactly `def lru_trace(capacity, operations):`\n2. `capacit",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 1377,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1740,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1377
+                },
+                "prompt_tokens": 210,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 1950
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: lru_trace\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstance(operations, (list, tuple)):\n        return None\n\n    cache = {}\n    order = []\n    results = []\n\n    for op in operations:\n        if not isinstance(op, (tuple, list)) or len(op) != 3:\n            return None\n\n        op_type = op[0]\n\n        if op_type == 'put':\n            key, value = op[1], op[2]\n            if not isinstance(key, str) or not isinstance(value, str):\n                return None\n            if key in cache:\n                order.remove(key)\n            cache[key] = value\n            order.append(key)\n            if len(cache) > capacity:\n                evict_key = order.pop(0)\n                del cache[evict_key]\n        elif op_type == 'get':\n            key = op[1]\n            if not isinstance(key, str) or op[2] is not None:\n                return None\n            if key in cache:\n                order.remove(key)\n                order.append(key)\n                results.append(cache[key])\n            else:\n                results.append(None)\n        else:\n            return None\n\n    cache_list = [(k, cache[k]) for k in order]\n    return (results, cache_list)\n```",
+              "content_chars": 1305,
+              "content_excerpt": "```python\n# CODING_FIXTURE: lru_trace\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstance",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7558.1951000003755,
+              "reasoning_chars": 8507,
+              "reasoning_excerpt": "Let me analyze the requirements carefully:\n\n1. Write ONLY one fenced Python code block with complete source and no prose.\n2. No imports, no file access, no network, no calls except ordinary builtins a",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 2191,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2522,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 2191
+                },
+                "prompt_tokens": 210,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2732
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: lru_trace\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstance(operations, (list, tuple)):\n        return None\n    for op in operations:\n        if not isinstance(op, tuple) or len(op) != 3:\n            return None\n        action = op[0]\n        if action == 'put':\n            if not isinstance(op[1], str) or not isinstance(op[2], str):\n                return None\n        elif action == 'get':\n            if not isinstance(op[1], str) or op[2] is not None:\n                return None\n        else:\n            return None\n    cache = []\n    results = []\n    for op in operations:\n        action = op[0]\n        if action == 'put':\n            key, value = op[1], op[2]\n            for i in range(len(cache)):\n                if cache[i][0] == key:\n                    cache.pop(i)\n                    break\n            cache.append((key, value))\n            if len(cache) > capacity:\n                cache.pop(0)\n        else:\n            key = op[1]\n            found = None\n            for i in range(len(cache)):\n                if cache[i][0] == key:\n                    found = cache[i][1]\n                    cache.pop(i)\n                    break\n            if found is not None:\n                cache.append((key, found))\n            results.append(found)\n    return (results, cache)\n```",
+              "content_chars": 1439,
+              "content_excerpt": "```python\n# CODING_FIXTURE: lru_trace\ndef lru_trace(capacity, operations):\n    if not isinstance(capacity, int) or isinstance(capacity, bool) or capacity < 0:\n        return None\n    if not isinstance",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 5657.7794999993785,
+              "reasoning_chars": 5901,
+              "reasoning_excerpt": "Let me analyze the requirements carefully:\n\n1. Define `def lru_trace(capacity, operations):`\n2. `capacity` is a nonnegative integer\n3. Operations are three-item tuples: `('put', key, value)` or `('get",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 1515,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 1880,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 1515
+                },
+                "prompt_tokens": 210,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2090
+              }
+            }
+          ],
+          "id": "lru_trace",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        },
+        {
+          "attempt_count": 3,
+          "attempts": [
+            {
+              "attempt": 1,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\ndef decode_uvarint(data):\n    # CODING_FIXTURE: decode_uvarint\n    if not data:\n        return None\n\n    value = 0\n    consumed = 0\n\n    for byte in data:\n        if consumed == 10:\n            return None\n\n        if type(byte) is not int:\n            return None\n\n        if byte < 0 or byte > 255:\n            return None\n\n        value = (value << 7) | (byte & 0x7F)\n        consumed += 1\n\n        if not (byte & 0x80):\n            if value > (1 << 64) - 1:\n                return None\n\n            if consumed > 1 and (byte & 0x7F) == 0:\n                return None\n\n            return (value, consumed)\n\n    return None\n```",
+              "content_chars": 639,
+              "content_excerpt": "```python\ndef decode_uvarint(data):\n    # CODING_FIXTURE: decode_uvarint\n    if not data:\n        return None\n\n    value = 0\n    consumed = 0\n\n    for byte in data:\n        if consumed == 10:\n        ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 21609.296599999652,
+              "reasoning_chars": 14764,
+              "reasoning_excerpt": "We need answer user's request: write ONLY one fenced Python code block containing complete source and no prose. No imports, no file/network, only builtins and local methods. Define exactly def decode_",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 4780,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 4977,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 4780
+                },
+                "prompt_tokens": 172,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 5149
+              }
+            },
+            {
+              "attempt": 2,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\ndef decode_uvarint(data):\n    # CODING_FIXTURE: decode_uvarint\n    if not data:\n        return None\n    value = 0\n    shift = 0\n    consumed = 0\n    for i, byte in enumerate(data):\n        if not isinstance(byte, int) or byte < 0 or byte > 255:\n            return None\n        consumed = i + 1\n        if consumed > 10:\n            return None\n        value |= (byte & 0x7F) << shift\n        shift += 7\n        if value > 0xFFFFFFFFFFFFFFFF:\n            return None\n        if (byte & 0x80) == 0:\n            if consumed > 1 and (byte & 0x7F) == 0:\n                return None\n            return (value, consumed)\n    return None\n```",
+              "content_chars": 643,
+              "content_excerpt": "```python\ndef decode_uvarint(data):\n    # CODING_FIXTURE: decode_uvarint\n    if not data:\n        return None\n    value = 0\n    shift = 0\n    consumed = 0\n    for i, byte in enumerate(data):\n        i",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 11869.690999999875,
+              "reasoning_chars": 8863,
+              "reasoning_excerpt": "Let me carefully think through the requirements for decoding a canonical unsigned 64-bit LEB128 value.\n\nLEB128 encoding:\n- Each byte contributes 7 bits of data\n- The high bit (bit 7) indicates if more",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 3234,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 3433,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 3234
+                },
+                "prompt_tokens": 172,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 3605
+              }
+            },
+            {
+              "attempt": 3,
+              "budget": {
+                "legacy_max_tokens_as_visible": false,
+                "max_completion_tokens": 12288,
+                "reasoning_headroom_tokens": 8192,
+                "visible_answer_tokens": 4096
+              },
+              "content": "```python\n# CODING_FIXTURE: decode_uvarint\n\ndef decode_uvarint(data):\n    if not data:\n        return None\n    value = 0\n    shift = 0\n    i = 0\n    while True:\n        if i >= 10:\n            return None\n        if i >= len(data):\n            return None\n        b = data[i]\n        if not isinstance(b, int) or b < 0 or b > 255:\n            return None\n        value |= (b & 0x7F) << shift\n        i += 1\n        if not (b & 0x80):\n            if (b & 0x7F) == 0 and i > 1:\n                return None\n            if value > (2 ** 64 - 1):\n                return None\n            return (value, i)\n        shift += 7\n```",
+              "content_chars": 622,
+              "content_excerpt": "```python\n# CODING_FIXTURE: decode_uvarint\n\ndef decode_uvarint(data):\n    if not data:\n        return None\n    value = 0\n    shift = 0\n    i = 0\n    while True:\n        if i >= 10:\n            return ",
+              "failure_class": null,
+              "finish_reason": "stop",
+              "latency_ms": 7779.243699998915,
+              "reasoning_chars": 6669,
+              "reasoning_excerpt": "Let me carefully analyze the requirements:\n\n1. Write ONLY one fenced Python code block with complete source, no prose.\n2. No imports, no file access, no network, no calls except ordinary builtins and ",
+              "reasoning_field": "reasoning_content",
+              "reasoning_tokens": 2080,
+              "status": "passed",
+              "text_checks": [
+                {
+                  "name": "marker",
+                  "passed": true
+                }
+              ],
+              "usage": {
+                "completion_tokens": 2288,
+                "completion_tokens_details": {
+                  "reasoning_tokens": 2080
+                },
+                "prompt_tokens": 172,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0
+                },
+                "total_tokens": 2460
+              }
+            }
+          ],
+          "id": "decode_uvarint",
+          "pass_count": 3,
+          "pass_rate": 1.0,
+          "required_pass_rate": 1.0,
+          "status": "passed",
+          "validator": "deterministic_text_checks"
+        }
+      ],
+      "date": "2026-10-16",
+      "evidence_use": "diagnostic",
+      "source": "fixture/suite.json",
+      "source_sha256": "3f7f061135313c81e9002f9971f682ee80d03ae485f566cfdb2fd17ea9b7c57a",
+      "status": "passed",
+      "validator_strength": "deterministic_marker",
+      "work_class": "bounded-pure-python-coding"
+    }
+  },
+  "thinking": {
+    "chat_template_kwargs": null,
+    "control_evidence": null,
+    "control_evidence_sha256": null,
+    "control_mechanism": "reasoning_effort",
+    "control_requested": "medium",
+    "control_status": "requested_unverified",
+    "mode": "default",
+    "reasoning_effort": "medium",
+    "unsupported": false
+  },
+  "timing": {
+    "chat": {
+      "completion_tokens_max": null,
+      "completion_tokens_mean": null,
+      "completion_tokens_mean_ci95_high": null,
+      "completion_tokens_mean_ci95_low": null,
+      "completion_tokens_min": null,
+      "completion_tokens_p25": null,
+      "completion_tokens_p50": null,
+      "completion_tokens_p75": null,
+      "completion_tokens_p90": null,
+      "completion_tokens_p95": null,
+      "completion_tokens_p99": null,
+      "completion_tokens_samples": 0,
+      "completion_tokens_stddev": null,
+      "content_chunks": 0,
+      "controlled_output_exact_adherence": 0,
+      "controlled_output_exact_adherence_rate": null,
+      "controlled_output_samples": 0,
+      "controlled_output_unobservable": 0,
+      "decode_tok_s_max": null,
+      "decode_tok_s_mean": null,
+      "decode_tok_s_mean_ci95_high": null,
+      "decode_tok_s_mean_ci95_low": null,
+      "decode_tok_s_min": null,
+      "decode_tok_s_p25": null,
+      "decode_tok_s_p50": null,
+      "decode_tok_s_p75": null,
+      "decode_tok_s_p90": null,
+      "decode_tok_s_p95": null,
+      "decode_tok_s_p99": null,
+      "decode_tok_s_samples": 0,
+      "decode_tok_s_stddev": null,
+      "e2e_max_ms": null,
+      "e2e_mean_ci95_high_ms": null,
+      "e2e_mean_ci95_low_ms": null,
+      "e2e_mean_ms": null,
+      "e2e_min_ms": null,
+      "e2e_p25_ms": null,
+      "e2e_p50_ms": null,
+      "e2e_p75_ms": null,
+      "e2e_p90_ms": null,
+      "e2e_p95_ms": null,
+      "e2e_p99_ms": null,
+      "e2e_samples": 0,
+      "e2e_stddev_ms": null,
+      "effective_prefill_tok_s_max": null,
+      "effective_prefill_tok_s_mean": null,
+      "effective_prefill_tok_s_mean_ci95_high": null,
+      "effective_prefill_tok_s_mean_ci95_low": null,
+      "effective_prefill_tok_s_min": null,
+      "effective_prefill_tok_s_p25": null,
+      "effective_prefill_tok_s_p50": null,
+      "effective_prefill_tok_s_p75": null,
+      "effective_prefill_tok_s_p90": null,
+      "effective_prefill_tok_s_p95": null,
+      "effective_prefill_tok_s_p99": null,
+      "effective_prefill_tok_s_samples": 0,
+      "effective_prefill_tok_s_stddev": null,
+      "generation_max_ms": null,
+      "generation_mean_ci95_high_ms": null,
+      "generation_mean_ci95_low_ms": null,
+      "generation_mean_ms": null,
+      "generation_min_ms": null,
+      "generation_p25_ms": null,
+      "generation_p50_ms": null,
+      "generation_p75_ms": null,
+      "generation_p90_ms": null,
+      "generation_p95_ms": null,
+      "generation_p99_ms": null,
+      "generation_samples": 0,
+      "generation_stddev_ms": null,
+      "mean_inter_token_latency_ms_max": null,
+      "mean_inter_token_latency_ms_mean": null,
+      "mean_inter_token_latency_ms_mean_ci95_high": null,
+      "mean_inter_token_latency_ms_mean_ci95_low": null,
+      "mean_inter_token_latency_ms_min": null,
+      "mean_inter_token_latency_ms_p25": null,
+      "mean_inter_token_latency_ms_p50": null,
+      "mean_inter_token_latency_ms_p75": null,
+      "mean_inter_token_latency_ms_p90": null,
+      "mean_inter_token_latency_ms_p95": null,
+      "mean_inter_token_latency_ms_p99": null,
+      "mean_inter_token_latency_ms_samples": 0,
+      "mean_inter_token_latency_ms_stddev": null,
+      "mean_time_per_output_token_max_ms": null,
+      "mean_time_per_output_token_mean_ci95_high_ms": null,
+      "mean_time_per_output_token_mean_ci95_low_ms": null,
+      "mean_time_per_output_token_mean_ms": null,
+      "mean_time_per_output_token_min_ms": null,
+      "mean_time_per_output_token_p25_ms": null,
+      "mean_time_per_output_token_p50_ms": null,
+      "mean_time_per_output_token_p75_ms": null,
+      "mean_time_per_output_token_p90_ms": null,
+      "mean_time_per_output_token_p95_ms": null,
+      "mean_time_per_output_token_p99_ms": null,
+      "mean_time_per_output_token_samples": 0,
+      "mean_time_per_output_token_stddev_ms": null,
+      "output_tokens": 0,
+      "prompt_token_samples": 0,
+      "prompt_tokens": null,
+      "prompt_tokens_max": null,
+      "prompt_tokens_mean": null,
+      "prompt_tokens_mean_ci95_high": null,
+      "prompt_tokens_mean_ci95_low": null,
+      "prompt_tokens_min": null,
+      "prompt_tokens_p25": null,
+      "prompt_tokens_p50": null,
+      "prompt_tokens_p75": null,
+      "prompt_tokens_p90": null,
+      "prompt_tokens_p95": null,
+      "prompt_tokens_p99": null,
+      "prompt_tokens_samples": 0,
+      "prompt_tokens_stddev": null,
+      "reasoning_chunks": 0,
+      "request_canary_passed": 0,
+      "request_canary_samples": 0,
+      "time_to_first_output_max_ms": null,
+      "time_to_first_output_mean_ci95_high_ms": null,
+      "time_to_first_output_mean_ci95_low_ms": null,
+      "time_to_first_output_mean_ms": null,
+      "time_to_first_output_min_ms": null,
+      "time_to_first_output_p25_ms": null,
+      "time_to_first_output_p50_ms": null,
+      "time_to_first_output_p75_ms": null,
+      "time_to_first_output_p90_ms": null,
+      "time_to_first_output_p95_ms": null,
+      "time_to_first_output_p99_ms": null,
+      "time_to_first_output_samples": 0,
+      "time_to_first_output_stddev_ms": null,
+      "tpot_max_ms": null,
+      "tpot_mean_ci95_high_ms": null,
+      "tpot_mean_ci95_low_ms": null,
+      "tpot_mean_ms": null,
+      "tpot_min_ms": null,
+      "tpot_p25_ms": null,
+      "tpot_p50_ms": null,
+      "tpot_p75_ms": null,
+      "tpot_p90_ms": null,
+      "tpot_p95_ms": null,
+      "tpot_p99_ms": null,
+      "tpot_samples": 0,
+      "tpot_stddev_ms": null,
+      "ttft_max_ms": null,
+      "ttft_mean_ci95_high_ms": null,
+      "ttft_mean_ci95_low_ms": null,
+      "ttft_mean_ms": null,
+      "ttft_min_ms": null,
+      "ttft_p25_ms": null,
+      "ttft_p50_ms": null,
+      "ttft_p75_ms": null,
+      "ttft_p90_ms": null,
+      "ttft_p95_ms": null,
+      "ttft_p99_ms": null,
+      "ttft_samples": 0,
+      "ttft_stddev_ms": null
+    },
+    "wall_ms": 217952.35259999934
+  },
+  "tool": {
+    "checks": [],
+    "status": "not_run"
+  },
+  "voice": {
+    "status": "not_run",
+    "stt_latency_ms": null,
+    "total_turn_latency_ms": null,
+    "tts_latency_ms": null
+  }
+}

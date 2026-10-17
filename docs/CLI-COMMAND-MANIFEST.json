@@ -945,6 +945,15 @@
         },
         {
           "flags": [
+            "--native-stage"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Stage one public LFS file with Windows curl.exe, verify SHA256, then import into Docker.",
+          "value_name": "DIR"
+        },
+        {
+          "flags": [
             "--cache-dir"
           ],
           "output_policy": null,

@@ -79,6 +79,15 @@ a model rejection, quality result, latency result, or performance comparison.
 The dated notes below preserve the reasoning behind each decision. The later
 measurement sections retain the full metrics, controls, and caveats.
 
+#### 2026-10-16 — QUASAR versus Swift15 completed matched coding/tools fixture
+
+An isolated RTX 5090 direct campaign pinned a Swift15 control and the QUASAR
+NInfer candidate to the same runtime image and final matched text-only 32K/C4
+controls. Swift15 passed preflight and an 18/18 tools scout; QUASAR passed
+preflight and completed 16/18 tools scenarios after retained transport failures.
+Native Windows SWE is unsupported and remains a separate gate. **Outcome:** bounded mixed
+functional comparison, no route change or promotion; see the [dated finding](../../findings/2026-10-16-quasar-swift15-coding-tools.md).
+
 #### 2026-08-14–15 — Official checkpoints, topology, and promotion
 
 The initial review covered official BF16 and FP8 qualification, the 1M-context
@@ -898,6 +907,7 @@ capability RTX 5090 incumbent.
 
 ## Dated run history
 
+- [2026-10-16 QUASAR versus Swift15 coding/tools campaign](../../findings/2026-10-16-quasar-swift15-coding-tools.md) — matched functional comparison, `no-promotion`
 - [2026-10-13 full qualification closure](../../findings/2026-10-13-full-qualification.md): Coder390 medium TP1 completed 3/5 and its INT8 control 2/5; another Coder390 run remained incomplete at 3 graded submissions. These are fixed-denominator diagnostics, not a primary selection or cross-model ranking. TP2 compatibility remains separate.
 
 - [2026-09-13–14 partial FP8 quality scout and rollback declaration](../../findings/2026-09-13-intelligence-context-scout.md)
