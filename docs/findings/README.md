@@ -1,6 +1,19 @@
 # Findings index
 
-**2026-10-17 GLM serving-performance comparison:** the [canonical finding](2026-10-17-glm53-serving-performance.md) retains 12 matched NVIDIA FP4 candidate/EXL3 r11-control pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, C1/C2/C4, and complete required plus supplemental measurement coverage. The original 42-cell matrix is `closed_partial` after one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate is not qualified or promoted; SWE, endurance, no-speculation, and MTP-off comparisons remain unmeasured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. The [earlier quality/context finding](2026-10-17-glm53-nvidia-fp4-ab.md) remains separate evidence, including its 316266-token successful context result and its timing-unmeasured scope.
+**2026-10-17 GLM NVIDIA FP4 primary promotion follow-up:** the
+[human-approved primary follow-up](2026-10-17-glm53-nvidia-fp4-promotion.md)
+records the selected pinned FP4 configuration behind `llm.primary`: direct
+acceptance passed its nine protocols, routed acceptance passed 8/8 plus image
+and coding/tool continuation checks, and fresh client C1/C2/C4 capacity acceptance
+recorded 12 scored requests without observed OOM, preemption, or refusal. The
+earlier controlled A/B remains the canonical numeric comparison; the retained
+EXL3 r11 service is the rollback target. Fleet propagation, real-client
+convergence, and public web publication remain separate gates; NativeWorkflows
+is `recovery_required` with failed progress and no retry. One fresh Primary Node Pi
+tool smoke passed; Companion Node and Mac minimal attempts failed locally before
+dispatch because their evaluator credential environment was unset.
+
+**2026-10-17 GLM serving-performance comparison:** the [canonical finding](2026-10-17-glm53-serving-performance.md) retains 12 matched NVIDIA FP4 candidate/EXL3 r11-control pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, C1/C2/C4, and complete required plus supplemental measurement coverage. The original 42-cell matrix is `closed_partial` after one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons remain unmeasured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. The [earlier quality/context finding](2026-10-17-glm53-nvidia-fp4-ab.md) remains separate evidence, including its 316266-token successful context result and its timing-unmeasured scope.
 
 **2026-10-16 SGLang, Qwen, and Nemotron comparison:** [closed campaign finding](2026-10-16-sglang-qwen-comparison.md) records original GLM baseline C1 0/4 performance-eligible, terminal SGLang SWE 0/5 resolved (2/5 graded), Qwen SWE 2/5 resolved (4/5 graded), and Nemotron preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 performance-eligible, and terminal SWE 2/5 resolved (4/5 graded). No candidate met the frozen replacement gates; final restoration evidence is retained separately. No promotion, throughput ranking, or graph is published.
 

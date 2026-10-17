@@ -170,3 +170,6 @@ passed 2/2. All 14 protected operator files were unchanged. The
 [restoration receipt](2026-10-17-glm53-serving-performance-evidence/restoration/final-restoration-receipt.json)
 binds these observations. No model was promoted; no reboot or fresh rebuild was
 tested. Documentation and safeguards in this change do not imply a fleet rollout.
+The later [human-approved FP4 primary promotion follow-up](2026-10-17-glm53-nvidia-fp4-promotion.md)
+records successor state without changing this historical comparison or its
+restoration closure.

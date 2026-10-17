@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-17 GLM NVIDIA FP4 primary promotion follow-up
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | nvidia/GLM-5.3-Flash-FP4-Local `76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`, TP2/327,680/C4/MTP3 | direct and authenticated routed acceptance; fresh single-arm client C1/C2/C4 capacity acceptance at approximately 31.6K actual prompts | 2x RTX PRO 6000 Blackwell Max-Q | direct 9 protocols; routed preflight 8/8, image 18/18, coding/tool continuation 1/1 across five requests; capacity 12 scored requests with no observed OOM, preemption, or refusal; one fresh Primary Node Pi tool smoke passed | human-approved `current` primary mapping; earlier A/B remains canonical. Client C4 sampled maxima were engine active 2, queued 3, occupancy 4 at separate times, not four simultaneous decodes. NativeWorkflows is `recovery_required` with failed progress and no retry; Companion Node/Mac attempts failed locally before dispatch because required evaluator credentials were unset. No SWE, endurance, p99, MTP-off, full-window simultaneous-capacity, fleet-convergence, or public-web claim. EXL3 r11 is retained rollback. | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md) |
+
 ## 2026-10-17 GLM serving-performance comparison
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |

@@ -1,6 +1,14 @@
 # RTX PRO 6000 benchmark view
 
-**2026-10-17 GLM serving-performance comparison:** on the dual RTX PRO 6000 Blackwell Max-Q pair, 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs produced 24 accepted cells and 84 requests per arm across four actual-input strata and C1/C2/C4. The retained canonical finding carries the full measured table and coverage, including per-device memory and runtime-KV observations; allocated KV tokens are not proof of simultaneous full-window capacity. The original 42-cell matrix closed partial with one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate is not qualified or promoted; SWE, endurance, no-speculation, and MTP-off comparisons were not measured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. [Finding](../../findings/2026-10-17-glm53-serving-performance.md).
+**2026-10-17 GLM NVIDIA FP4 primary promotion:** this dual-card configuration
+is now the human-approved `llm.primary` mapping after direct and routed
+acceptance plus fresh client C1/C2/C4 capacity acceptance. The retained EXL3 r11 is
+stopped as exact rollback. The follow-up records bounded functional/capacity
+acceptance only; NativeWorkflows is `recovery_required` with failed progress
+and no retry, while fleet-client convergence and public web publication remain
+pending. [Follow-up](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+
+**2026-10-17 GLM serving-performance comparison:** on the dual RTX PRO 6000 Blackwell Max-Q pair, 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs produced 24 accepted cells and 84 requests per arm across four actual-input strata and C1/C2/C4. The retained canonical finding carries the full measured table and coverage, including per-device memory and runtime-KV observations; allocated KV tokens are not proof of simultaneous full-window capacity. The original 42-cell matrix closed partial with one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons were not measured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. [Finding](../../findings/2026-10-17-glm53-serving-performance.md).
 
 **2026-10-16 SGLang, Qwen, and Nemotron comparison:** The original GLM baseline C1 and Nemotron C1 each had 0/4 performance-eligible requests. SGLang GLM and Qwen FP4 passed preflight/Oracle prerequisites but terminal SWE evidence was 0/5 resolved (2/5 graded) and 2/5 resolved (4/5 graded). Nemotron passed preflight 6/6, vision 18/18, and context 2/2, but Oracle was 48/54. No candidate entered C4 or a controlled throughput population; the exact GLM restoration remains the campaign boundary. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md).
 

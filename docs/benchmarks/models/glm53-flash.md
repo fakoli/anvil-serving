@@ -1,5 +1,18 @@
 # GLM-5.3-Flash
 
+**2026-10-17 NVIDIA FP4 primary promotion:** the human-approved primary mapping
+now uses `nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
+with TP2, 327,680 configured tokens, C4, and MTP3. Direct acceptance passed
+nine protocols; authenticated routed acceptance passed 8/8, images 18/18, and
+one five-request coding/tool continuation; fresh client C1/C2/C4 acceptance at
+approximately 31.6K actual prompts recorded 12 scored requests without observed
+OOM, preemption, or refusal. The controlled A/B remains the authoritative
+numeric comparison, and the stopped EXL3 r11 is retained as exact rollback.
+NativeWorkflows is `recovery_required` with failed progress and no retry; one
+fresh Primary Node Pi tool smoke passed, while Companion Node/Mac evaluator calls
+failed locally before dispatch because required credentials were unset. Client
+convergence and public web publication remain pending. [Follow-up](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+
 **2026-10-17 GLM serving-performance comparison:** a separate controlled serving campaign retained 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, and C1/C2/C4. All required and supplemental measurement coverage is retained in the [canonical finding](../../findings/2026-10-17-glm53-serving-performance.md), rather than repeated here. Its original 42-cell matrix closed partial after one visible-output-overrun failure and 17 stop-rule-blocked cells. The earlier NVIDIA FP4 quality/context campaign's timing-unmeasured limitation applies to that earlier quality evidence, not this later serving comparison; its 316266-token successful context result remains separate. No SWE, endurance, no-speculation, or MTP-off comparison ran, and no candidate qualified or was promoted. Exact r11 restoration passed direct and routed smokes and router readmission. Allocated KV tokens and configured 327680/C4 do not establish simultaneous full-window capacity.
 
 **2026-10-16 SGLang scout:** the original GLM baseline C1 record completed 0/4 performance-eligible requests, so it is not a performance control. The pinned SGLang GLM profile passed native preflight 6/6 and Oracle 54/54, but its terminal SWE artifact resolved 0/5 with 2/5 officially graded. It missed the frozen 4/5 floor; later gates were deliberately stopped. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md)
