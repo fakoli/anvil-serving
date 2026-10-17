@@ -333,6 +333,38 @@ def test_confirmed_removal_is_exact_and_post_verified(tmp_path):
     assert isinstance(result["actual_free_space_delta_bytes"], int)
 
 
+def test_generic_hf_fence_retains_native_writer_lock_through_removal(tmp_path, monkeypatch):
+    root = _cache(tmp_path)
+    docker = Docker(root)
+    home = _home(tmp_path)
+    preview = cache_volume.inspect(REPO, REVISION, VOLUME, home, runner=docker)
+    verified = []
+    original = cache_volume.model_cache_native._verify_hf_lock_fence
+
+    def verify(hub_fd, lock_root, lock_dirs, lock_files):
+        assert any(relative == ".locks/anvil-serving/native-pull.lock" for _fd, relative, _binding in lock_files)
+        original(hub_fd, lock_root, lock_dirs, lock_files)
+        verified.append(True)
+
+    monkeypatch.setattr(cache_volume.model_cache_native, "_verify_hf_lock_fence", verify)
+    attempted = []
+
+    def runner(argv, **kwargs):
+        if argv[1:3] == ["volume", "rm"]:
+            assert verified
+            with pytest.raises(cache_volume.model_pull_native.NativePullError, match="already in progress"):
+                with cache_volume.model_pull_native._writer(root / "hub", "other--repo"):
+                    pytest.fail("a competing native writer entered during volume removal")
+            attempted.append(True)
+        return docker(argv, **kwargs)
+
+    result = cache_volume.remove(REPO, REVISION, VOLUME, home,
+                                 expected_fingerprint=preview["volume_fingerprint"], writers_quiesced=True,
+                                 confirm=True, runner=runner)
+    assert result["outcome"] == "removed"
+    assert attempted == [True]
+
+
 def test_cache_fingerprint_detects_changed_global_blob(tmp_path):
     root = _cache(tmp_path); docker = Docker(root); home = _home(tmp_path)
     preview = cache_volume.inspect(REPO, REVISION, VOLUME, home, runner=docker)

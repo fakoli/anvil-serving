@@ -752,7 +752,10 @@ def _native_fences(mountpoint, repo_id, expected_root):
             raise ModelCacheVolumeError("Docker volume root is actively fenced") from exc
         hub_fd = model_cache_native._open_directory("hub", root_fd)
         locks.append(hub_fd)
-        # Retain the product writer lock, then fence it with every existing HF lock.
+        # Ensure the product writer lock exists, then release this descriptor:
+        # the HF fence below reacquires and retains native-pull.lock alongside
+        # every other legacy lock through yield/removal. A writer entering the
+        # handoff gap blocks that fence; finished changes face the second audit.
         with model_pull_native._writer(Path(mountpoint) / "hub", repo_id.replace("/", "--")):
             pass
         lock_fds, lock_root, lock_dirs, lock_files = model_cache_native._acquire_hf_lock_fence(hub_fd)
