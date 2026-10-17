@@ -6,7 +6,9 @@
     "human_approved": true,
     "live_primary": true,
     "fleet_convergence": false,
-    "public_web_publication": false
+    "public_web_publication": false,
+    "operator_assessment": "best current fit for this deployment, explicitly selected by the operator on 2026-10-17",
+    "comparison_scope": "pinned NVIDIA FP4 r2 versus retained EXL3 r11; operational selection, not an exhaustive model-quality ranking"
   },
   "identity": {
     "model": "nvidia/GLM-5.3-Flash-FP4-Local",
@@ -97,5 +99,13 @@
       "role": "primary Hermes profile functional acceptance",
       "sha256": "6a8d2e5ab48d5ff108efdf29c0fbc4b78857df64f8a216eeec605f51fbdbbf7f"
     }
-  ]
+  ],
+  "kv_accounting": {
+    "path": "kv-accounting.json",
+    "sha256": "fd333754afa453bdaee9961c9928914c8249b2129a5b5381f8431b7a6798cdb8",
+    "pool_total_gib": 14.25,
+    "status": "configured pool; measured block fractions; estimated occupied/unused GiB",
+    "fresh_c4_estimated_occupied_gib": 2.3172897196261677,
+    "fresh_c4_estimated_unused_pool_gib": 11.932710280373833
+  }
 }

@@ -1,17 +1,16 @@
 # GLM-5.3-Flash
 
-**2026-10-17 NVIDIA FP4 primary promotion:** the human-approved primary mapping
-now uses `nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
-with TP2, 327,680 configured tokens, C4, and MTP3. Direct acceptance passed
-nine protocols; authenticated routed acceptance passed 8/8, images 18/18, and
-one five-request coding/tool continuation; fresh client C1/C2/C4 acceptance at
-approximately 31.6K actual prompts recorded 12 scored requests without observed
-OOM, preemption, or refusal. The controlled A/B remains the authoritative
-numeric comparison, and the stopped EXL3 r11 is retained as exact rollback.
-NativeWorkflows is `recovery_required` with failed progress and no retry; one
-fresh Primary Node Pi tool smoke passed, while Companion Node/Mac evaluator calls
-failed locally before dispatch because required credentials were unset. Client
-convergence and public web publication remain pending. [Follow-up](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
+TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
+promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
+acceptance passed. Subsequent checks accepted five Pi process combinations,
+both primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway, and
+WebUI catalog reconciliation. The complete controlled A/B remains the numeric
+comparison: faster C1 prefill/decode, mixed concurrent latency, and narrow GPU
+headroom. Full fleet catalog/session propagation remains blocked by the older
+13-target NativeWorkflows custody gap; public web publication remains pending.
+[Promotion record and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
 
 **2026-10-17 GLM serving-performance comparison:** a separate controlled serving campaign retained 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, and C1/C2/C4. All required and supplemental measurement coverage is retained in the [canonical finding](../../findings/2026-10-17-glm53-serving-performance.md), rather than repeated here. Its original 42-cell matrix closed partial after one visible-output-overrun failure and 17 stop-rule-blocked cells. The earlier NVIDIA FP4 quality/context campaign's timing-unmeasured limitation applies to that earlier quality evidence, not this later serving comparison; its 316266-token successful context result remains separate. No SWE, endurance, no-speculation, or MTP-off comparison ran, and no candidate qualified or was promoted. Exact r11 restoration passed direct and routed smokes and router readmission. Allocated KV tokens and configured 327680/C4 do not establish simultaneous full-window capacity.
 
@@ -21,7 +20,7 @@ convergence and public web publication remain pending. [Follow-up](../../finding
 
 **2026-10-15 replacement evaluation:** no challenger cleared the completed frozen gates. Exact GLM was restored and retained as the baseline; this is continuity evidence, not a new GLM qualification. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
 
-**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
 
 **2026-10-06 uncensored GLM scout:** the separate `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6a` candidate is distinct from the base and CSF/QAD lanes. Its TP2/EP2/DCP1 no-spec recipe passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. It is `not-qualified`/`no-promotion`; no capacity, context, multimodal, or speed result is claimed. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete. See the [dated scout](../../findings/2026-10-06-mimo-qualification.md).
 
@@ -37,7 +36,7 @@ attribution and broader qualification remain open. See the
 retains bounded 201K and 310K direct observations, quality 12/12, agentic
 18/18, and absolute SWE 4/5. The SWE baseline pair is environment-ineligible,
 so it supports no causal score claim. An offered-C8 strict/canary diagnostic
-failed 1/16, so C8 stopped. r11 is selected and deployed after retained
+failed 1/16, so C8 stopped. r11 was selected and deployed at that time after retained
 direct/routed and native-client acceptance; independent reviews, dashboard
 receipt, successful Pages publication, and HTTP/browser readback are retained.
 DCP1's KV pool is 41.73% below retained DCP2,
@@ -65,7 +64,7 @@ graded false, and Sympy reached the 60-step limit ungraded. The native graded
 resolve rate is 2/4 = 0.5 and the campaign result is 2/5 attempts, below the
 4/5 floor. The prior 4/5 scout therefore does not establish a reliable floor.
 B1, B2, and A2 did not run, so there is no comparative speed result. The
-candidate is `rejected`/`no-promotion`; selected r11 DCP1 remains current.
+candidate was `rejected`/`no-promotion`; selected r11 DCP1 remained current at that campaign close.
 Its exact restoration completed with direct 25/25, routed 7/7, and a fresh Pi
 read-tool turn; routes and manifest hashes were unchanged.
 See the [active finding](../../findings/2026-10-05-xeon-model-qualification.md).
@@ -87,24 +86,24 @@ it cannot turn these acceptance gates into capacity or speed evidence.
 
 !!! info "Decision snapshot"
 
-    - **Product role:** current bounded text, tools, image, and OCR reference.
-    - **Selected or best-qualified configuration:** non-abliterated official-base GLM TR3 EXL3 4-bpw r11 DCP1,
-      batch 2,048/C4/0.97, FP8 DS-MLA KV, 327,680 configured tokens, APC,
-      and no speculation.
+    - **Product role:** selected primary for this deployment: text, tools, image, and OCR.
+    - **Selected or best-qualified configuration:** NVIDIA GLM-5.3-Flash FP4 r2,
+      TP2/DCP2, FP8 KV, batch 4,096, 327,680 configured tokens, C4, MTP3,
+      and host embeddings. The [recipe comparison](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)
+      retains model/image pins and reconstruction details.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** fresh October 13 fixed-five baseline 2/5; R19 accepted exact restoration with the thinking-off gap. Historical [r11 DCP1 qualification](../../findings/2026-09-23-glm-dcp1-qualification.md):
-      direct/routed preflight 28/28, 13 native-client paths, quality 12/12,
-      agentic 18/18, and absolute SWE 4/5. Its 825,268 KV pool is 41.73%
-      below DCP2, so four full 327K windows are unsupported.
-    - **Decision:** retain the official-base R11 with accepted October 13 restoration; no new challenger promotion;
-      exact r10 APC is the documented rollback. Active route and startup assignments are private.
-    - **Important limitation:** r11 is a bounded DCP1 mitigation, not a root-cause,
-      crash-rate, speed, C8, full-window, video, soak, or fresh-reboot claim.
-    - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
-      DCP2. Selected DCP1 is a mitigation; selection does not mean the cause is fixed.
-    - **Review dates:** full campaign and R19 restoration 2026-10-13; uncensored scout 2026-10-06;
-      r11 qualification and runtime investigation 2026-09-23 UTC;
-      APC qualification 2026-09-19 is historical performance lineage.
+    - **Evidence:** 12 matched serving pairs and 84 scored requests per arm;
+      all 17 required metric families. Fresh direct/routed/image/context and
+      12 scored C1/C2/C4 acceptance requests passed; bounded Pi, Hermes,
+      OpenClaw and WebUI checks are retained in the promotion record.
+    - **Decision:** human-approved `current`; operator's best current fit for
+      this deployment. Exact EXL3 r11 is retained as `rollback`.
+    - **Important limitation:** concurrent latency is mixed; sampled free GPU
+      memory reached 0.87 GiB. Strict controlled output failed both recipes.
+      No new SWE/endurance/MTP-off or four simultaneous full-window result.
+      The older native workflow still blocks full fleet convergence.
+    - **Review dates:** evidence cutoff and dossier review 2026-10-17;
+      historical R19/r11 and earlier quality evidence remain separately dated.
 
 ### Review narrative
 
@@ -262,6 +261,14 @@ No new promotion occurred. See the
 
 ## Immutable identity
 
+The current FP4 recipe pins
+`nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
+and `ghcr.io/local-inference-lab/vllm:release-10152026` image digest
+`sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29`.
+The served name is `glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2`.
+[Exact recipe comparison](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload).
+The identities below are historical lanes, including the retained EXL3 rollback.
+
 The rejected 2026-10-06 uncensored lane is separately pinned to
 `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6aa9117c73607d692978b22f091d80450c`.
 Its [public reconstruction](../../findings/artifacts/2026-10-06-mimo-qualification/configs/glm53-abliterated-qualification.toml)
@@ -316,6 +323,12 @@ separate permission is obtained.
 
 ## Tested hardware and topology
 
+The current FP4 comparison and promotion acceptance measured the same native
+Linux dual-card TP2 host. Host embeddings are enabled, so this is not strictly
+GPU-only residency. Measured GPU/cgroup/host memory and concurrency are retained
+in the [full comparison](../../findings/2026-10-17-glm53-serving-performance.md).
+The following dated topology descriptions do not redefine that current recipe.
+
 The 2026-09-08 native Linux comparison measures the same physical dual-PRO
 pair at TP2/393,216/C1. It preserves the exact SGLang image and checkpoint,
 adds `NCCL_P2P_DISABLE=1`, and retains the existing compatibility patches.
@@ -342,7 +355,9 @@ FP8 target KV, and the DFlash2 draft.
 
 | Recipe | Role | Context | Decision |
 |---|---|---:|---|
-| EXL3 r7 no-spec (public-safe configuration in [dated finding](../../findings/2026-09-13-intelligence-context-scout.md)) | selected text-only reference | 327,680 total / 65,536 output, C4 | `current`; bounded evidence |
+| NVIDIA FP4 r2 ([recipe and pins](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)) | selected primary; TP2/DCP2, FP8 KV, MTP3 | 327,680, C4 | `current`; human-approved |
+| EXL3 r11 DCP1 ([retained control](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)) | exact retained rollback; FP8 KV, APC, no speculation | 327,680, C4 | `rollback` |
+| EXL3 r7 no-spec (public-safe configuration in [dated finding](../../findings/2026-09-13-intelligence-context-scout.md)) | historical text-only reference | 327,680 total / 65,536 output, C4 | historical selection; bounded evidence |
 | [SGLang W4A16 adaptive MTP](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | historical 2026-09-02 text/image/OCR selection | 393,216 | `verified`, historical |
 | [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | historical rollback | 524,288 | `verified`, historical |
 | [SGLang W4A16 adaptive MTP, conservative](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml) | conservative fallback | 245,760 | `verified`, fallback |
@@ -353,7 +368,7 @@ FP8 target KV, and the DFlash2 draft.
 | [TR3 vision fixed K5](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml) | prior interactive profile and image rollback | 262,144 | historical `verified` |
 | [TR3 no spec](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-nospec-sm120-tp2-524k-wsl2-v2-no-owner-exchange-recipe.toml) | prior maximum-context/headroom lane | 524,288 | historical `verified` |
 
-The current EXL3 r7 no-spec lane admits C4 at 327,680 total tokens with a
+The historical EXL3 r7 no-spec lane admitted C4 at 327,680 total tokens with a
 65,536-token output reserve. It completed 9/9 post-promotion context cases at
 255,647–255,672 actual prompt tokens plus reserve; this does not establish
 concurrent full-window capacity. See the [dated finding](../../findings/2026-09-13-intelligence-context-scout.md).
@@ -385,6 +400,17 @@ graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### Current NVIDIA FP4 r2, 2026-10-17
+
+**Status:** `functional`, bounded `capacity`; human-approved `current`.
+**Measured:** the complete 17-family comparison and fresh direct/routed/image,
+near-limit, C1/C2/C4, and bounded native-client acceptance are retained.
+**Limits:** mixed concurrent latency, narrow GPU headroom, failed controlled
+output on both arms, and incomplete fleet/session propagation. Older SWE
+scores below do not transfer to this new configuration.
+**Evidence:** [promotion and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md),
+[comparison and native sources](../../findings/2026-10-17-glm53-serving-performance.md).
 
 ### Selected EXL3 r7 no-spec, 2026-09-14
 
@@ -466,6 +492,13 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
+As of 2026-10-17, human-approved NVIDIA FP4 r2 is the selected primary and
+EXL3 r11 is retained rollback. The operator considers it the best current fit
+for this deployment, supported by the bounded comparison and acceptance above.
+The existing native workflow remains `recovery_required`; full fleet catalog,
+existing-session, and public-web closure are separate incomplete gates.
+All selections in the following paragraphs are historical.
+
 The 2026-09-14 EXL3 r7 no-spec lane was the selected September 14 text-only reference.
 It does not establish an exhaustive intelligence winner, a general performance
 ranking, or full-window concurrent capacity. The 2026-09-08 migrated-stack
@@ -488,7 +521,14 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 ## Failures and gotchas
 
-- **Current EXL3 r7 limits (2026-09-14):** no exhaustive intelligence comparison,
+- **Current FP4 limits (2026-10-17):** strict controlled output failed on both
+  comparison arms; natural/edge timing populations remain separate. Concurrent
+  latency is mixed and sampled free VRAM reached 0.87 GiB. No MTP-off, new full
+  SWE/endurance, full-window C4, or fresh reboot result is retained. The
+  [promotion record](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+  retains client capture/policy failures and the native fleet recovery blocker.
+
+- **Historical EXL3 r7 limits (2026-09-14):** no exhaustive intelligence comparison,
   full-window concurrency soak, or fresh boot/reboot test is retained. The 38.908 tok/s
   C4 no-spec median is one matched population, not a general speed claim.
 
@@ -534,6 +574,12 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- **2026-10-17 — NVIDIA FP4 promotion and serving comparison:** selected primary
+  with exact EXL3 r11 retained rollback; 12 matched pairs/84 scored requests per
+  arm, fresh functional/capacity/native-client acceptance, KV accounting, and
+  remaining fleet blocker. [Promotion](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+  · [comparison](../../findings/2026-10-17-glm53-serving-performance.md).
 
 - **2026-10-13 — Full qualification closure:** The official-base GLM continuity baseline completed fixed-five at 2/5. C1/C4 controlled-output cells retained actual prompt means 25,280.5, 25,281.125, 106,520, and 216,194.67. Mixed TP2 no-spec/thinking-off diagnostics were incomplete at 1/5. The last-good non-abliterated official-base lineage is the restoration choice; `no-promotion`. [Finding](../../findings/2026-10-13-full-qualification.md)
 

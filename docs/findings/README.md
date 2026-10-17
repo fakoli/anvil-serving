@@ -1,17 +1,13 @@
 # Findings index
 
 **2026-10-17 GLM NVIDIA FP4 primary promotion follow-up:** the
-[human-approved primary follow-up](2026-10-17-glm53-nvidia-fp4-promotion.md)
-records the selected pinned FP4 configuration behind `llm.primary`: direct
-acceptance passed its nine protocols, routed acceptance passed 8/8 plus image
-and coding/tool continuation checks, and fresh client C1/C2/C4 capacity acceptance
-recorded 12 scored requests without observed OOM, preemption, or refusal. The
-earlier controlled A/B remains the canonical numeric comparison; the retained
-EXL3 r11 service is the rollback target. Fleet propagation, real-client
-convergence, and public web publication remain separate gates; NativeWorkflows
-is `recovery_required` with failed progress and no retry. One fresh Primary Node Pi
-tool smoke passed; Companion Node and Mac minimal attempts failed locally before
-dispatch because their evaluator credential environment was unset.
+[decision and evidence](2026-10-17-glm53-nvidia-fp4-promotion.md) record the
+operator's selected primary, the exact FP4 recipe, and its EXL3 r11 rollback.
+The record links the full 17-family serving comparison, derives KV occupancy
+at C4, and preserves fresh direct/routed/capacity, five Pi combinations, two
+primary Hermes CLI profiles, Companion Node/Mac OpenClaw, and WebUI acceptance.
+The older 13-target NativeWorkflows custody gap still blocks complete fleet
+catalog/session convergence; historical failures remain retained.
 
 **2026-10-17 GLM serving-performance comparison:** the [canonical finding](2026-10-17-glm53-serving-performance.md) retains 12 matched NVIDIA FP4 candidate/EXL3 r11-control pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, C1/C2/C4, and complete required plus supplemental measurement coverage. The original 42-cell matrix is `closed_partial` after one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons remain unmeasured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. The [earlier quality/context finding](2026-10-17-glm53-nvidia-fp4-ab.md) remains separate evidence, including its 316266-token successful context result and its timing-unmeasured scope.
 
@@ -76,9 +72,9 @@ Multiple STT/TTS and local LLM profiles were tested for English personal, noncom
 
 ## Policy
 
-Latest runtime decision: [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) — human-approved bounded APC configuration with fresh acceptance. The historical r9 campaign close and its exact rollback remain linked evidence.
+Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected current primary with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
 
-Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
+Historical 2026-09-11 bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
 Latest media bringup: [managed Anvil Media bringup](2026-09-15-media-bringup.md), 2026-09-15 — fixed image smoke and Wan v1/v2 functional diagnostics; Wan remains unavailable pending quality.
 

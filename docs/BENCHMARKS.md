@@ -1,18 +1,16 @@
 # Benchmark results
 
-**Current primary, 2026-10-17:** Human approval promoted the pinned NVIDIA
-GLM-5.3-Flash FP4 configuration behind `llm.primary`. Direct acceptance passed
-nine protocols; routed acceptance passed 8/8, eight-image corpus 18/18, and a
-five-request coding/tool continuation; fresh client C1/C2/C4 acceptance at
-approximately 31.6K actual prompts recorded 12 scored requests without
-observed OOM, preemption, or refusal. The controlled A/B remains the
-authoritative comparison; the stopped EXL3 r11 is retained as exact rollback.
-This does not establish SWE, endurance, p99, MTP-off behavior, full-window
-simultaneous capacity, fleet client convergence, or public web publication.
-NativeWorkflows is `recovery_required` with failed progress and no retry. One
-fresh Primary Node Pi tool smoke passed; Companion Node/Mac evaluator calls failed
-locally before dispatch because required credentials were unset.
-[Promotion follow-up](findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
+TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
+promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
+acceptance passed. Subsequent checks accepted five Pi process combinations,
+both primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway, and
+WebUI catalog reconciliation. The complete controlled A/B remains the numeric
+comparison: faster C1 prefill/decode, mixed concurrent latency, and narrow GPU
+headroom. Full fleet catalog/session propagation remains blocked by the older
+13-target NativeWorkflows custody gap; public web publication remains pending.
+[Promotion record and KV accounting](findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
 
 **2026-10-17 GLM serving-performance comparison:** the [closed controlled A/B finding](findings/2026-10-17-glm53-serving-performance.md) retains 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, and C1/C2/C4. All required measurement and supplemental coverage fields are retained in the canonical table. The original 42-cell matrix closed partial after one failed visible-output-overrun cell and 17 stop-rule-blocked cells; the two n=1 diagnostics reproduce visible output overrun. At its close, this did not qualify or promote the candidate, establish SWE or endurance behavior, or support an MTP-off comparison. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks; `promoted=false`.
 

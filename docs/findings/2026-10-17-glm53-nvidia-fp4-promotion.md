@@ -30,6 +30,53 @@ blocked cells. This follow-up does not duplicate those tables or convert its
 bounded results into a universal quality, SWE, p99, endurance, MTP-off, or
 full-window simultaneous-capacity claim.
 
+## Why this is the selected primary
+
+The operator selected this pinned FP4 recipe as the **best current fit for
+this deployment** on 2026-10-17. The measured comparison set is the FP4 r2
+recipe and retained EXL3 r11 on the same dual-card host. At approximately
+31.6K actual prompt tokens and C1, effective prefill p50 rose from 5,011 to
+9,002 tok/s, visible TTFT fell from 7.72 to 4.12 seconds, and decode p50 rose
+from 77.38 to 201.49 tok/s. Those cells contain eight scored requests per arm;
+the full natural/edge comparison retains 84 per arm across 12 matched pairs.
+These recipe-level gains, bounded functional/context acceptance, and fresh
+client checks support the operational selection.
+
+The tradeoffs remain part of the decision: C2 latency at the same prompt
+stratum was slightly worse, minimum sampled GPU free memory was only
+0.87 GiB, and the strict controlled-output workload failed on both recipes.
+No matched MTP-off arm or new full SWE/endurance comparison ran. The
+[authoritative tables](2026-10-17-glm53-serving-performance-evidence/analysis/final-closed/comparison-tables.md)
+retain prefill, first output, visible TTFT, decode, TPOT, E2E, throughput,
+input/output distributions, KV, memory, concurrency, failures, and p50/p95.
+
+## KV pool and concurrency four
+
+The recipe configures **7,650,410,496 KV bytes per GPU**, or **7.125 GiB per
+card and 14.25 GiB across both GPUs**. The engine reports 1,330,579 allocated
+token slots. The rounded startup log says 7.12 GiB per card; it is less precise
+than the configured byte count. Allocated token slots are a runtime pool size.
+
+| Evidence population | Actual prompt tokens, p50 | Client concurrency | Sampled peak KV occupancy | Estimated occupied / unused pool |
+| --- | ---: | ---: | ---: | ---: |
+| Fresh promotion acceptance | 31,600 | 4 | 16.26% | 2.32 / 11.93 GiB |
+| A/B natural, shortest stratum | 7,684 | 4 | 14.58% | 2.08 / 12.17 GiB |
+| A/B natural, medium stratum | 31,600 | 4 | 16.45% | 2.34 / 11.91 GiB |
+| A/B natural, long stratum | 134,357.5 | 4 | 21.12% | 3.01 / 11.24 GiB |
+| A/B capacity edge | 252,300.5 | 4 | 26.54% | 3.78 / 10.47 GiB |
+
+Occupancy percentages are sampled measurements. GiB values are estimates:
+configured pool bytes multiplied by the measured block-occupancy fraction.
+The [machine-readable KV accounting](2026-10-17-glm53-nvidia-fp4-promotion-evidence/kv-accounting.json)
+binds each row to its retained source and labels configured, measured, and
+estimated fields. The fresh acceptance and earlier A/B are separate populations.
+Unused preallocated KV is not free VRAM available to another model. Prefix
+sharing, block rounding, and MTP/cache-group accounting prevent treating these
+figures as four independent logical context allocations. Sampled engine active
+requests peaked at two in the fresh C4 check and medium/long/edge A/B cells,
+and three in the shortest A/B cell. Four simultaneous 327,680-token decodes
+remain unmeasured.
+
 ## Promotion evidence and boundary
 
 The promoted artifact is pinned to revision
@@ -123,6 +170,8 @@ Private operator receipts hold raw request captures, configuration identities,
 and full hashes. This finding links the sanitized local
 [promotion evidence summary](2026-10-17-glm53-nvidia-fp4-promotion-evidence/summary.json)
 and the existing public [authoritative comparison JSON](2026-10-17-glm53-serving-performance-evidence/analysis/final-closed/summary-table.json).
+The [promotion evidence index](2026-10-17-glm53-nvidia-fp4-promotion-evidence/README.md)
+maps these records to their measurement and publication boundaries.
 
 ## Evidence and limits
 
