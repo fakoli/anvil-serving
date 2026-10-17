@@ -203,14 +203,27 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Remove one exact Docker or guarded native-cache revision.",
+                        "Remove one exact Docker or guarded native-cache revision, or a dedicated cache volume.",
                         "anvil_serving.models",
                         role="model-catalog",
                         options=CONFIRM_OPTIONS + (
                             _option(
+                                "--discard-volume",
+                                summary="Discard an unreferenced Docker cache dedicated to the exact model revision.",
+                            ),
+                            _option(
+                                "--expected-volume-fingerprint",
+                                summary="Require the dedicated cache identity returned by preview.",
+                                value_name="SHA256",
+                            ),
+                            _option(
+                                "--writers-quiesced",
+                                summary="Attest that external writers to the dedicated cache have stopped.",
+                            ),
+                            _option(
                                 "--non-model-root-view",
                                 summary=("Declare an exact non-model read-only root-view container; "
-                                         "repeat for each declaration; native apply validates mount and GPU fields."),
+                                         "repeat for each declaration; guarded cleanup validates mount and GPU fields."),
                                 value_name="CONTAINER_ID",
                             ),
                         ),

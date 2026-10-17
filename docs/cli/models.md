@@ -463,12 +463,45 @@ stop external cache writers before applying the reviewed command.
 
 An operator can declare one or more exact 64-character container IDs as
 non-model read-only root observations with `--non-model-root-view CONTAINER_ID`.
-This assertion is only used during confirmed native apply. For each declared ID,
+Native revision removal uses this assertion during confirmed apply; dedicated
+volume removal also validates it during preview. For each declared ID,
 the current inventory must show an exact read-only bind from `/` to an absolute
 container destination and no GPU device requests. It permits only that one root
 observation; another overlapping mount, a mutable root view, an unknown ID, or
 a GPU request still blocks removal. The declaration records the caller's
 observation purpose and does not classify or otherwise exempt containers.
+
+### Discard a dedicated Docker model cache
+
+Use `--discard-volume` for a retired model whose global shared-blob cache belongs
+entirely to one repository revision:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --volume retired-model-cache --discard-volume --config-home /operator/home --dry-run
+```
+
+Review the returned volume fingerprint, stop external cache writers, then apply
+the same selection with that fingerprint:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --volume retired-model-cache --discard-volume --config-home /operator/home --expected-volume-fingerprint SHA256 --writers-quiesced --confirm
+```
+
+This CLI-only local POSIX operation requires filesystem access to Docker's cache
+storage. It accepts the dedicated `hub/models--OWNER--REPO` plus
+`hub/blobs/<prefix>/<hash>` layout; other layouts remain refused.
+It refuses another model or revision, unknown cache contents, nonlocal volume
+drivers/options, active or retained container references, current configuration
+references, held download locks, and identity drift. A confirmed operation holds
+cache locks, repeats the audits, removes only the named volume without force,
+and verifies both Docker and filesystem absence. The measured free-space delta
+is reported separately from the cache-size estimate.
+
+`--writers-quiesced` is the owner's assertion that independent writers have
+stopped; advisory locks cannot fence a writer that ignores them. The entire
+selected cache is discarded, including incomplete downloads. There is no
+automatic rollback: recovery requires downloading the pinned revision again.
+Other model caches, images, containers, and build caches are preserved.
 
 ## Cache inventory
 

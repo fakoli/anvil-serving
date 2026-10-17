@@ -3401,11 +3401,38 @@
         },
         {
           "flags": [
+            "--discard-volume"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Discard an unreferenced Docker cache dedicated to the exact model revision.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--expected-volume-fingerprint"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Require the dedicated cache identity returned by preview.",
+          "value_name": "SHA256"
+        },
+        {
+          "flags": [
+            "--writers-quiesced"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Attest that external writers to the dedicated cache have stopped.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--non-model-root-view"
           ],
           "output_policy": null,
           "requires_confirmation": false,
-          "summary": "Declare an exact non-model read-only root-view container; repeat for each declaration; native apply validates mount and GPU fields.",
+          "summary": "Declare an exact non-model read-only root-view container; repeat for each declaration; guarded cleanup validates mount and GPU fields.",
           "value_name": "CONTAINER_ID"
         }
       ],
@@ -3415,7 +3442,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-catalog",
-      "summary": "Remove one exact Docker or guarded native-cache revision.",
+      "summary": "Remove one exact Docker or guarded native-cache revision, or a dedicated cache volume.",
       "transports": [
         "local"
       ],
