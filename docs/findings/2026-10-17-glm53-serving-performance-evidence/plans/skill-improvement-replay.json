@@ -1,0 +1,19 @@
+{
+  "kind": "offline executable before-after replay",
+  "limit": "Confirms guard behavior for chosen profiles, not future agent compliance or numerical recomputation.",
+  "observed_at": "2026-10-17T10:33:34.617532+00:00",
+  "results": [
+    {
+      "after": "accepted",
+      "before": "accepted",
+      "case": "native stage evidence without performance coverage",
+      "scope": "smoke"
+    },
+    {
+      "after": "missing_metrics_coverage",
+      "before": "accepted",
+      "case": "native stage evidence without performance coverage",
+      "scope": "serving-comparison/v1"
+    }
+  ]
+}

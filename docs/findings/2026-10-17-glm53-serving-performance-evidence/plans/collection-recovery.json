@@ -1,0 +1,33 @@
+{
+  "changed_controls": [],
+  "configuration_hashes_unchanged": true,
+  "container_id": "container-id-redacted",
+  "excluded_native_attempts": [
+    "baseline-warmup-ctx10240-c1",
+    "baseline-warmup-ctx163840-c1",
+    "baseline-natural-ctx10240-c1",
+    "baseline-natural-ctx10240-c2"
+  ],
+  "fresh_counters": {
+    "vllm:generation_tokens_total": 0.0,
+    "vllm:prefix_cache_hits_total": 0.0,
+    "vllm:prefix_cache_queries_total": 0.0,
+    "vllm:prompt_tokens_total": 0.0,
+    "vllm:request_success_total": 0.0
+  },
+  "frozen_plan_sha256": "59e3680b252368ac8613d1a55eec0580f95006c66e36e62867956a7435e43532",
+  "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+  "independent_review": "trial_review accepted recovery conditioning; runner review pending",
+  "new_process_start": 1792236174.23,
+  "old_process_start": 1792226587.11,
+  "original_deadlines_retained": true,
+  "phase": "fresh-process-replay",
+  "planned_recovery": "managed keep-container stop; successful restore-retained preview; exact retained restore; fresh identity/process/cache counters; identical frozen baseline24rowreplay; candidatefreshloadwithsamewarmupprotocol",
+  "reason": "Two collector orchestration defects; preserve all first-phase attempts and replay full baseline after exact retained-container restart to avoid primed repeated C2.",
+  "recorded_at": "2026-10-17T11:15:40.325551+00:00",
+  "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+  "same_argv_seeds_recipe_source": true,
+  "schema": "collection-recovery/v1",
+  "status": "exact-retained-restart-verified",
+  "verified_at": "2026-10-17T11:25:31.594448+00:00"
+}

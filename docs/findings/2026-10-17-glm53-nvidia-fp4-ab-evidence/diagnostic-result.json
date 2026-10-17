@@ -1,0 +1,87 @@
+{
+  "schema": "anvil-serving.context-recurrence-diagnostic/v1",
+  "profile": "unchanged r2 MTP3",
+  "rows": [
+    {
+      "job": "r2-full",
+      "run_id": "glm53-fp4-diag-r2-full",
+      "completed_at": "2026-10-17T08:40:26.168887Z",
+      "total": 18,
+      "passed": 18,
+      "target_passed": true,
+      "target_visible_answer": "K557508437185",
+      "target_finish_reason": "stop",
+      "target_prompt_tokens": 316249,
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "calibration_ratio": 4.832231202547146,
+      "reconstructed_prompt_sha256": "a8d952496fe17525e8c404823f107e0c2f121775cba5ad7ae3624e8fc05d59bd",
+      "matches_original_reconstruction_and_usage": true,
+      "wire_prompt_hash_retained": false,
+      "request_history": "full ordered context suite after restart+smoke",
+      "source_sha256": "275b68eebd534e35c056d637b382a8a4825bb192fdcf71934ba9bd26f5008d9d"
+    },
+    {
+      "job": "r2-target1",
+      "run_id": "glm53-fp4-diag-r2-target1",
+      "completed_at": "2026-10-17T08:41:10.731074Z",
+      "total": 1,
+      "passed": 1,
+      "target_passed": true,
+      "target_visible_answer": "K557508437185",
+      "target_finish_reason": "stop",
+      "target_prompt_tokens": 316249,
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "calibration_ratio": 4.832231202547146,
+      "reconstructed_prompt_sha256": "a8d952496fe17525e8c404823f107e0c2f121775cba5ad7ae3624e8fc05d59bd",
+      "matches_original_reconstruction_and_usage": true,
+      "wire_prompt_hash_retained": false,
+      "request_history": "isolated repeat after earlier suite; warm cache history",
+      "source_sha256": "228cd1db739e4161ac1b57a43b6d8cf50cb36476dc8180f6e9c9417a275d3b63"
+    },
+    {
+      "job": "r2-target2",
+      "run_id": "glm53-fp4-diag-r2-target2",
+      "completed_at": "2026-10-17T08:41:21.307096Z",
+      "total": 1,
+      "passed": 1,
+      "target_passed": true,
+      "target_visible_answer": "K557508437185",
+      "target_finish_reason": "stop",
+      "target_prompt_tokens": 316249,
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "calibration_ratio": 4.832231202547146,
+      "reconstructed_prompt_sha256": "a8d952496fe17525e8c404823f107e0c2f121775cba5ad7ae3624e8fc05d59bd",
+      "matches_original_reconstruction_and_usage": true,
+      "wire_prompt_hash_retained": false,
+      "request_history": "isolated repeat after earlier suite; warm cache history",
+      "source_sha256": "111d2e1c89df4eb003b7e79f6b8c87a364f7040bef16492f9266a7331e9e7b2f"
+    }
+  ],
+  "new_target_failures": 0,
+  "mtp_off_condition_met": false,
+  "original_failure_preserved": true,
+  "promotion_authorized": false,
+  "original_target_observation": {
+    "artifact": "native/candidate/0-context.json",
+    "case_id": "native-needle-318464-0.900-r0",
+    "passed": false,
+    "prompt_tokens": 316249,
+    "finish_reason": "stop"
+  },
+  "mtp_off_arm": {
+    "status": "not-run",
+    "reason": "Predeclared recurrence condition was not met; all three new r2 target observations passed."
+  },
+  "conclusion": "The miss did not recur in three follow-ups using unchanged r2. No configuration repair or known runtime defect was established. Preserve the original failed gate; this diagnostic does not qualify or promote the candidate.",
+  "limitations": [
+    "Full replay and isolated repeats have different request/cache histories; these are three descriptive observations, not an estimated general failure probability.",
+    "Original wire prompt/hash was not retained. Calibration, reconstructed prompt SHA, answer SHA and observed token count match; this is not cryptographic proof of original transmitted bytes.",
+    "Sampling remained temperature1/top_p0.95; other possible causes such as attention/KV behavior remain unresolved.",
+    "No MTP-off, timing, sustained concurrency, repository-scale coding or promotion was performed."
+  ],
+  "public_native_artifacts": [
+    "native/diagnostic/r2-full-context.json",
+    "native/diagnostic/r2-target1-context.json",
+    "native/diagnostic/r2-target2-context.json"
+  ]
+}

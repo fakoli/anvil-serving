@@ -1,0 +1,109 @@
+{
+  "schema": "anvil-serving.benchmark-verification/v1",
+  "campaign_id": "2026-10-17-glm53-nvidia-fp4-ab",
+  "status": "passed with split suite coverage",
+  "observed_at": "2026-10-17T09:02:33.299986+00:00",
+  "repository_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+  "product_code_changed": false,
+  "focused_tests": [
+    {
+      "surface": "host containment and retained restoration",
+      "passed": 129,
+      "exit_code": 0,
+      "protected_receipt_sha256": "610e22a11ba5169ff6f6844f924a56dc88981dfdcf6d834f6942e459f2664bcc"
+    },
+    {
+      "surface": "stability harness offline regression",
+      "passed": 38,
+      "exit_code": 0,
+      "protected_log_sha256": "ed71c9fa590b9ddd86aeb019868743a6369632c3875c86bcbff78fbdbdf1d555"
+    }
+  ],
+  "full_repository_attempts": [
+    {
+      "attempt": 1,
+      "status": "environment failure",
+      "passed": 51,
+      "failed": 1,
+      "cause": "Pre-existing Git marker in temporary-directory ancestry triggered custody guard.",
+      "correction": "Use an isolated temporary root outside Git ancestry. Product code and guard unchanged.",
+      "protected_log_sha256": "aac87627cd13a807feed8c421837e0d421d87853c6c11c33a73232a1e261009c"
+    },
+    {
+      "attempt": 2,
+      "status": "environment failure",
+      "passed": 293,
+      "skipped": 2,
+      "failed": 1,
+      "cause": "Alternate temporary root exceeded Unix socket path length.",
+      "correction": "Use a shorter isolated temporary root. Product code unchanged.",
+      "protected_log_sha256": "c007fedf646be2addd2b6d446f8bccc912556fbba2e88f17bb295395b864eecb",
+      "protected_receipt_sha256": "94db47bd8a5960e75a8d579258be92e33da51b1e3f2de4d2fe4c7985142c3c7d"
+    },
+    {
+      "attempt": 3,
+      "status": "documentation audit failure",
+      "command": "python scripts/run_tests.py tests/ -x -q",
+      "temporary_root": "short isolated directory outside Git ancestry; protected path omitted",
+      "passed": 5330,
+      "skipped": 32,
+      "failed": 1,
+      "subtests_passed": 62,
+      "exit_code": 1,
+      "cause": "Two new hardware mentions lacked entries in the existing hardware evidence audit.",
+      "correction": "Add measured-on classification for the finding and external-prior classification for the research note. Independent review accepted.",
+      "protected_log_sha256": "79b68fdb5050b4d02697c23ab27d4da34baf8eaae96edaa84a1ae41cc9fe278b",
+      "protected_receipt_sha256": "dc17ab06c338cf024a044981fabb059014188c0d8989c771a864dab5378b2895",
+      "tracked_diff_sha256": "206b2e9cd93b80cb13dcf1710ad0e3e077e49134203397a8bb2d603db80ee495",
+      "source_unchanged_during_run": true
+    }
+  ],
+  "evidence_checks": {
+    "observed_at": "2026-10-17T09:03:12.317687+00:00",
+    "json_parse": "pass; duplicate keys also checked by finalizer",
+    "native_hashes_verified": 27,
+    "original_failure_preserved": true,
+    "privacy_scan": "pass; public product source URL allowed",
+    "local_markdown_links_verified": 29,
+    "diff_check": "pass"
+  },
+  "independent_review": {
+    "observed_at": "2026-10-17T08:54:13.086573+00:00",
+    "reviewer": "GPT-5.6 Sol; independent from evaluated model and evidence author",
+    "diagnostic_design": "accepted before replay dispatch",
+    "diagnostic_core": "accepted",
+    "publication_corrections": "accepted",
+    "final_restoration": "accepted",
+    "findings": [],
+    "scope_excluded": [
+      "active full repository test",
+      "aggregate closure metadata and final artifact manifest"
+    ],
+    "promotion_authorized": false,
+    "hardware_audit_correction": "accepted",
+    "split_verification_plan": "accepted; continuation passed and condition satisfied"
+  },
+  "limits": [
+    "Repository tests validate product tooling, not model quality.",
+    "Native original and diagnostic model observations remain separate.",
+    "Suite coverage is split across a documentation-only audit correction; there is no claim of one green exact-diff full-suite invocation.",
+    "Artifact-manifest hashes are produced by the repository finalizer after this record is frozen."
+  ],
+  "continuation": {
+    "status": "passed",
+    "scope": "Entire failing benchmark-doc file plus every later test file in the same collection order. Prior completed prefix retained. Only hardware audit documentation changed between executions; product code unchanged.",
+    "original_collected_nodes": 12249,
+    "selected_nodes": 6908,
+    "previously_completed_overlap_nodes": 21,
+    "protected_plan_sha256": "9712f70b30ae9b080d78600432425e9013a339d7428a824087ec0b0b67cf1b3d",
+    "caveat": "Split coverage across a documentation-only correction, not one green exact-diff full-suite run. Subtests are separate from collected-node arithmetic.",
+    "exit_code": 0,
+    "passed": 6865,
+    "skipped": 43,
+    "source_unchanged_during_run": true,
+    "tracked_diff_sha256": "974161ca8a2d07249ba4e8c70fa150cd1a23136a3f28830c0a83243fd8a6817e",
+    "protected_log_sha256": "c716df1aab79377b938f8b3f0827e4d6f2c20322b82337a44d0f459394451364",
+    "protected_receipt_sha256": "cfe2d5800aaa42f93bb083c9910987ece140efb764ed298c2e444203cd009918",
+    "union_covers_all_original_collected_nodes": true
+  }
+}

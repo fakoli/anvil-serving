@@ -1,0 +1,2437 @@
+"""Tests for `anvil-serving benchmark` — the request-replay throughput probe.
+
+Covers the two dogfooding bugs:
+  BUG 1: small-context serves 400 because sampled/rendered ctx ignores max_model_len.
+  BUG 2: thinking-by-default models report a FALSE 0 tok/s with no chat_template_kwargs.
+
+Pure / no network: we exercise the clamp + body-builder seams directly, and inject a
+fake urlopen for the /v1/models probe.
+"""
+import hashlib
+import io
+import json
+import math
+import random
+import subprocess
+import sys
+import types
+import urllib.request
+from pathlib import Path
+
+import pytest
+
+from anvil_serving import benchmark as bm
+from anvil_serving.benchmarking import artifacts as benchmark_artifacts
+from anvil_serving.benchmarking import evaluation as benchmark_evaluation
+from anvil_serving.benchmarking import recipes as benchmark_recipes
+from anvil_serving.benchmarking import requests as benchmark_requests
+from anvil_serving.benchmarking import runner as benchmark_runner
+from anvil_serving.benchmarking import specs as benchmark_specs
+
+
+def _est_tokens(text):
+    """Test-local mirror of the removed production est_tokens helper."""
+    return math.ceil(len(text) / benchmark_requests.CHARS_PER_TOKEN)
+
+
+# ---- BUG 1: context clamp keeps prompts under a small serve's max_model_len -------
+
+
+def test_control_evidence_retains_portable_relative_reference(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    evidence_path = Path("docs/control-proof.json")
+    evidence_path.parent.mkdir()
+    raw = json.dumps({
+        "schema": "anvil-serving.control-evidence/v1",
+        "status": "verified",
+        "control_mechanism": "reasoning_effort",
+        "source": "preflight",
+        "observed_at": "2026-08-01T00:00:00Z",
+    }).encode("utf-8")
+    evidence_path.write_bytes(raw)
+
+    reference, digest = benchmark_specs.load_control_evidence(
+        str(evidence_path),
+        status="verified",
+        mechanism="reasoning_effort",
+    )
+
+    assert reference == "docs/control-proof.json"
+    assert digest == hashlib.sha256(raw).hexdigest()
+
+def test_ctx_cap_leaves_headroom_below_max_model_len():
+    cap = benchmark_requests.ctx_cap(16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    assert cap == 16384 - 64 - benchmark_requests.DEFAULT_CTX_MARGIN
+    assert cap < 16384
+
+
+def test_ctx_cap_none_when_no_limit_known():
+    # 0 / None max_model_len -> no clamp -> legacy behavior preserved.
+    assert benchmark_requests.ctx_cap(0, 64) is None
+    assert benchmark_requests.ctx_cap(None, 64) is None
+
+
+def test_ctx_cap_rejects_a_window_without_prompt_headroom():
+    with pytest.raises(ValueError, match="must exceed"):
+        benchmark_requests.ctx_cap(1024, max_tokens=512, margin=512)
+
+
+def test_clamp_ctx_is_noop_without_cap():
+    # When no cap is in effect, the sampled/fixed ctx passes through unchanged.
+    assert benchmark_requests.clamp_ctx(262144, None) == 262144
+
+
+def test_sampled_and_fixed_ctx_never_exceed_max_model_len_minus_headroom():
+    max_model_len, max_tokens, margin = 16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN
+    cap = benchmark_requests.ctx_cap(max_model_len, max_tokens, margin)
+    headroom_limit = max_model_len - max_tokens - margin
+
+    rng = random.Random(0)
+    for _ in range(2000):
+        # mirror main(): sample the measured distribution, then clamp.
+        r = rng.random()
+        raw = next((v for p, v in benchmark_runner.SUBAGENT_CTX if r <= p), 262144)
+        ctx = benchmark_requests.clamp_ctx(raw, cap)
+        assert ctx <= headroom_limit
+        assert ctx < max_model_len
+
+    # a huge fixed --ctx-tokens is clamped too.
+    assert benchmark_requests.clamp_ctx(262144, cap) <= headroom_limit
+
+
+@pytest.mark.parametrize(
+    ("sample", "expected"),
+    [
+        (0.0, 16000),
+        (0.218, 16000),
+        (0.2180001, 32768),
+        (0.602, 32768),
+        (0.6020001, 65536),
+        (0.9950001, 262144),
+        (1.0, 262144),
+    ],
+)
+def test_context_sampler_uses_declared_cumulative_buckets(sample, expected):
+    assert benchmark_runner.sample_ctx(sample) == expected
+
+
+def test_make_prompt_unclamped_still_sizes_to_target():
+    # No cap known -> still sized to the TARGET (BUG 3: an uncapped prompt used to
+    # balloon ~2x past the target and 400 on serves that don't advertise max_model_len,
+    # e.g. the recorded llama.cpp context-row failure). Trailing instruction survives.
+    prompt = benchmark_requests.make_prompt("shared prefix", ctx_tokens=4000, uniq=7)
+    assert prompt.endswith("summarize the above in one line.")
+    assert "request 7" in prompt
+    assert abs(_est_tokens(prompt) - 4000) <= 400
+
+
+def test_make_prompt_sub_window_targets_scale_with_target():
+    """BUG 3: with a 262144 window, --context-targets 131072,262144 sent IDENTICAL
+    ~window-sized prompts (candidate-qwen36-27b-mtp-vllm-nvfp4-262k.bakeoff.json
+    records usage.prompt_tokens=261949 on BOTH rows) because filler was sized by a
+    word heuristic that under-counts ~2x and then truncated at the WINDOW cap, not
+    the per-target size. Each target must now produce its own prompt size."""
+    cap = benchmark_requests.ctx_cap(262144, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    shared = (benchmark_requests.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
+    prompts = {}
+    for target in (131072, 262144):
+        clamped = benchmark_requests.clamp_ctx(target, cap)
+        prompt = benchmark_requests.make_prompt(shared, clamped, target, max_prompt_tokens=cap)
+        # estimated size lands within 10% of the clamped per-target budget
+        assert abs(_est_tokens(prompt) - clamped) <= 0.10 * clamped
+        # the shared prefix must survive verbatim at the START (prefix-cache contract)
+        assert prompt.startswith(shared)
+        prompts[target] = prompt
+    assert len(prompts[131072]) < 0.6 * len(prompts[262144])
+
+
+def test_make_prompt_tiny_target_never_returns_whole_prefix():
+    # A target smaller than the tail line must not flip the truncation slice index
+    # negative (s[:-k] keeps everything BUT k chars — i.e. ~the whole 68k prefix).
+    shared = (benchmark_requests.FILLER % (0, 0)) * 1000
+    with pytest.raises(ValueError, match="too small"):
+        benchmark_requests.make_prompt(shared, 5, 0)
+
+
+def test_make_prompt_calibrated_chars_per_token_resizes():
+    # A calibrated (larger) chars/token rate must grow the char budget so the REAL
+    # token count lands on target instead of ~15% under the conservative default.
+    default = benchmark_requests.make_prompt("x", 4000, 0)
+    calibrated = benchmark_requests.make_prompt("x", 4000, 0, chars_per_token=3.5)
+    assert len(default) == pytest.approx(4000 * 3.0, abs=100)
+    assert len(calibrated) == pytest.approx(4000 * 3.5, abs=100)
+
+
+def test_make_prompt_supports_unique_canary_and_controlled_decode():
+    prompt = benchmark_requests.make_prompt(
+        "",
+        4000,
+        7,
+        marker="ANVIL_REQ_0_00007",
+        response_words=512,
+        unique_prefix=True,
+    )
+    assert prompt.startswith("# unique benchmark request ANVIL_REQ_0_00007")
+    assert "Begin with the exact marker ANVIL_REQ_0_00007" in prompt
+    assert "512 repetitions of the lowercase word code" in prompt
+    assert abs(_est_tokens(prompt) - 4000) <= 400
+
+
+def test_output_contract_requires_canary_at_byte_zero_and_rejects_foreign_marker():
+    expected = "ANVIL_REQ_0_00001"
+    good = benchmark_requests.output_contract_observation(
+        expected + " code code", expected_marker=expected, response_words=2
+    )
+    assert good["request_canary"]["passed"] is True
+    assert good["controlled_output"]["exact_adherence"] is True
+
+    late = benchmark_requests.output_contract_observation(
+        "prefix " + expected, expected_marker=expected
+    )
+    assert late["request_canary"]["marker_at_start"] is False
+    assert late["request_canary"]["passed"] is False
+
+    foreign = benchmark_requests.output_contract_observation(
+        expected + " ANVIL_REQ_9_00002", expected_marker=expected
+    )
+    assert foreign["request_canary"]["foreign_marker_count"] == 1
+    assert foreign["request_canary"]["passed"] is False
+
+
+def test_controlled_output_observe_is_compatible_but_strict_and_truncated_fail_closed():
+    observed = benchmark_requests.output_contract_observation(
+        "code code extra", response_words=2, controlled_output_policy="observe"
+    )["controlled_output"]
+    assert observed["exact_adherence"] is False
+    assert observed["passed"] is True
+
+    strict = benchmark_requests.output_contract_observation(
+        "code code extra", response_words=2, controlled_output_policy="strict"
+    )["controlled_output"]
+    assert strict["passed"] is False
+
+    truncated = benchmark_requests.output_contract_observation(
+        "code code", response_words=2, controlled_output_policy="strict",
+        visible_content_truncated=True,
+    )["controlled_output"]
+    assert truncated["exact_adherence"] is None
+    assert truncated["passed"] is False
+
+
+def test_default_16384_serve_does_not_overflow_window():
+    # End-to-end of the sizing path main() takes for a 16384-ctx serve.
+    cap = benchmark_requests.ctx_cap(16384, 64, benchmark_requests.DEFAULT_CTX_MARGIN)
+    shared = (benchmark_requests.FILLER % (0, 0)) * max(1, int(8000 * 0.75) // 6)
+    for ctx in (16000, 32768, 65536, 131072, 262144):
+        ctx = benchmark_requests.clamp_ctx(ctx, cap)
+        prompt = benchmark_requests.make_prompt(shared, ctx, 0, max_prompt_tokens=cap)
+        assert _est_tokens(prompt) <= cap < 16384
+
+
+def test_shared_prefix_matches_its_declared_estimated_size():
+    shared = benchmark_requests.make_shared_prefix(8000)
+    assert _est_tokens(shared) == 8000
+    assert len(shared) == 8000 * benchmark_requests.CHARS_PER_TOKEN
+
+
+# ---- BUG 2: --no-thinking injects enable_thinking:false into the request body ------
+
+def test_no_thinking_puts_enable_thinking_false_in_body():
+    ctk = {"enable_thinking": False}  # exactly what main() builds for --no-thinking
+    body = benchmark_requests.build_body("m", "hi", 64, chat_template_kwargs=ctk)
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_body_has_no_chat_template_kwargs_by_default():
+    body = benchmark_requests.build_body("m", "hi", 64)
+    assert "chat_template_kwargs" not in body
+    assert body["stream"] is True and body["max_tokens"] == 64
+    assert body["temperature"] == 0.0
+    assert "top_p" not in body
+
+
+def test_sampler_body_forwards_explicit_controls_only():
+    body = benchmark_requests.build_body("m", "hi", 64, temperature=1.0, top_p=0.95)
+    assert body["temperature"] == 1.0
+    assert body["top_p"] == 0.95
+
+
+def test_post_chat_sampler_controls_reach_openai_wire_body(monkeypatch):
+    seen = {}
+
+    class _Response:
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return b'{"choices": []}'
+
+    def fake_urlopen(request, timeout):
+        seen["body"] = json.loads(request.data)
+        seen["timeout"] = timeout
+        return _Response()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    benchmark_requests.post_chat(
+        "http://127.0.0.1:30000/v1", "model", None,
+        [{"role": "user", "content": "hi"}],
+        temperature=1.0, top_p=0.95,
+    )
+    assert seen == {
+        "body": {
+            "model": "model",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 128,
+            "temperature": 1.0,
+            "top_p": 0.95,
+            "stream": False,
+        },
+        "timeout": 120,
+    }
+
+
+def test_reasoning_effort_uses_top_level_openai_field():
+    body = benchmark_requests.build_body("m", "hi", 640, reasoning_effort="high")
+    assert body["reasoning_effort"] == "high"
+
+
+def test_max_reasoning_effort_is_forwarded_unchanged():
+    body = benchmark_requests.build_body("m", "hi", 640, reasoning_effort="max")
+    assert body["reasoning_effort"] == "max"
+    assert "chat_template_kwargs" not in body
+
+
+def test_deterministic_regex_check_tolerates_harmless_answer_spacing():
+    result = benchmark_specs.evaluate_text_checks(
+        "The answer is **FINAL = D**.",
+        [{"name": "answer", "matches_regex": r"\bFINAL\s*=\s*D\b"}],
+    )
+    assert result == [{"name": "answer", "passed": True}]
+
+
+def test_final_answer_regex_rejects_conflicting_later_marker():
+    check = {"name": "answer", "matches_regex": r"\bFINAL\s*=\s*B\b[*]*\s*$"}
+    assert benchmark_specs.evaluate_text_checks("FINAL=B is not correct; FINAL=C", [check]) == [
+        {"name": "answer", "passed": False}
+    ]
+
+
+def test_timeout_triage_accepts_retained_answer_and_requires_latency_fix():
+    prompt = next(
+        item for item in benchmark_runner.INTELLIGENCE_PROMPTS
+        if item["id"] == "parallel_timeout_triage"
+    )
+    retained_answer = benchmark_specs.evaluate_text_checks(
+        "The turn times out because total latency is ~3000 ms (>2500 ms), mainly "
+        "from the 1800 ms LLM; fix it by reducing LLM latency with a faster/cached "
+        "model or by streaming LLM output into TTS to overlap delays.",
+        prompt["checks"],
+    )
+    streaming_answer = benchmark_specs.evaluate_text_checks(
+        "The 3000 ms total exceeds the timeout; stream TTS while the LLM finishes.",
+        prompt["checks"],
+    )
+    irrelevant_latency_answer = benchmark_specs.evaluate_text_checks(
+        "The turn times out because total latency is ~3000 ms.",
+        prompt["checks"],
+    )
+
+    assert all(item["passed"] for item in retained_answer)
+    assert all(item["passed"] for item in streaming_answer)
+    assert not all(item["passed"] for item in irrelevant_latency_answer)
+
+
+def test_failure_class_distinguishes_visible_answer_budget_exhaustion():
+    observation = {
+        "content": "partial explanation without a final",
+        "finish_reason": "length",
+        "reasoning_chars": 0,
+        "reasoning_tokens": None,
+    }
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
+        "visible_answer_budget_exhausted"
+    )
+
+    observation["reasoning_chars"] = 400
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
+        "completion_budget_exhausted_after_visible_output"
+    )
+
+
+def test_response_observation_prefers_nonempty_reasoning_alias_and_ignores_whitespace_content():
+    observation = benchmark_requests.response_observation({
+        "choices": [{
+            "finish_reason": "length",
+            "message": {
+                "content": "  \n",
+                "reasoning": "",
+                "reasoning_content": "actual hidden reasoning",
+            },
+        }],
+    })
+    assert observation["reasoning_field"] == "reasoning_content"
+    assert observation["reasoning_chars"] == len("actual hidden reasoning")
+    assert benchmark_evaluation.failure_class(observation, checks_passed=False) == (
+        "reasoning_budget_exhausted"
+    )
+
+
+# ---- bonus: /v1/models auto-detect of max_model_len --------------------------------
+
+def _fake_urlopen(payload):
+    class _CM:
+        def __enter__(self):
+            return io.BytesIO(json.dumps(payload).encode())
+
+        def __exit__(self, *a):
+            return False
+
+    return lambda req, timeout=15: _CM()
+
+
+def test_detect_max_model_len_reads_model_card(monkeypatch):
+    payload = {"object": "list", "data": [{"id": "coder", "max_model_len": 16384}]}
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen(payload))
+    assert bm.detect_max_model_len("http://x/v1", "coder") == 16384
+
+
+def test_detect_max_model_len_returns_none_on_error(monkeypatch):
+    def boom(req, timeout=15):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    assert bm.detect_max_model_len("http://x/v1", "coder") is None
+
+
+def test_detected_context_without_headroom_is_a_clean_cli_error(monkeypatch, capsys):
+    monkeypatch.setattr(bm, "detect_max_model_len", lambda *args: 1000)
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:30000/v1",
+            "--model", "model",
+            "--requests", "1",
+        ])
+    assert exc.value.code == 2
+    assert "must exceed" in capsys.readouterr().err
+
+
+def test_stream_chat_prefers_usage_tokens_over_sse_chunk_count(monkeypatch):
+    payload = (
+        b'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":" world"}}]}\n\n'
+        b'data: {"choices":[],"usage":{"completion_tokens":7}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    class _Stream:
+        def __enter__(self):
+            return iter(payload.splitlines(keepends=True))
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    result = bm.stream_chat("http://127.0.0.1:30000/v1", "model", "prompt", None, 16)
+    assert result["out_toks"] == 7
+    assert result["content_chunks"] == 2
+    assert result["output_token_source"] == "usage"
+    assert result["visible_content"] == "hello world"
+    assert result["visible_content_captured_chars"] == len("hello world")
+    assert result["visible_content_truncated"] is False
+    assert result["stream_terminal_observed"] is True
+
+
+def test_stream_result_without_visible_content_is_not_a_completion():
+    with pytest.raises(ValueError, match="without visible content"):
+        benchmark_requests.validate_stream_result({"ttft": None, "e2e": 0.1})
+
+
+def test_stream_chat_records_reasoning_before_visible_content(monkeypatch):
+    payload = (
+        b'data: {"choices":[{"delta":{"reasoning_content":"think"}}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":"answer"}}]}\n\n'
+        b'data: {"choices":[],"usage":{"completion_tokens":3}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    class _Stream:
+        def __enter__(self):
+            return iter(payload.splitlines(keepends=True))
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *args, **kwargs: _Stream())
+    result = bm.stream_chat("http://127.0.0.1:30000/v1", "model", "prompt", None, 16)
+
+    assert result["reasoning_chunks"] == 1
+    assert result["content_chunks"] == 1
+    assert result["time_to_first_output"] is not None
+    assert result["time_to_first_output"] <= result["ttft"]
+
+
+def test_nearest_rank_percentile_matches_documented_method():
+    assert benchmark_runner.percentile([1, 2, 3, 4], 50) == 2
+    with pytest.raises(ValueError, match="0 through 100"):
+        benchmark_runner.percentile([1], 101)
+
+
+def test_mixed_token_sources_suppress_exact_output_throughput():
+    metrics = benchmark_runner.result_metrics([
+        {"ttft": 0.1, "e2e": 0.2, "out_toks": 7, "output_token_source": "usage"},
+        {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 2,
+            "content_chunks": 2,
+            "output_token_source": "content_chunks",
+        },
+    ])
+    assert metrics["output_tokens"] is None
+    assert metrics["content_chunks"] == 2
+
+
+def test_result_metrics_record_prefill_generation_decode_and_inter_token_latency():
+    metrics = benchmark_runner.result_metrics([
+        {
+            "request_index": 1,
+            "ttft": 0.1,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 9},
+        },
+        {
+            "request_index": 0,
+            "ttft": 0.2,
+            "e2e": 0.7,
+            "out_toks": 11,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 200, "completion_tokens": 11},
+        },
+    ])
+
+    assert metrics["generation_p50_ms"] == pytest.approx(400)
+    assert metrics["generation_p95_ms"] == pytest.approx(500)
+    assert metrics["generation_mean_ms"] == pytest.approx(450)
+    assert metrics["generation_stddev_ms"] == pytest.approx(100 / 2**0.5)
+    assert metrics["generation_mean_ci95_low_ms"] < 450
+    assert metrics["generation_mean_ci95_high_ms"] > 450
+    assert metrics["generation_p25_ms"] == pytest.approx(400)
+    assert metrics["generation_p75_ms"] == pytest.approx(500)
+    assert metrics["generation_p90_ms"] == pytest.approx(500)
+    assert metrics["generation_p99_ms"] == pytest.approx(500)
+    assert metrics["generation_min_ms"] == pytest.approx(400)
+    assert metrics["generation_max_ms"] == pytest.approx(500)
+    assert metrics["effective_prefill_tok_s_p50"] == pytest.approx(1000)
+    assert metrics["effective_prefill_tok_s_p95"] == pytest.approx(1000)
+    assert metrics["decode_tok_s_p50"] == pytest.approx(20)
+    assert metrics["decode_tok_s_p95"] == pytest.approx(20)
+    assert metrics["mean_inter_token_latency_ms_p50"] == pytest.approx(50)
+    assert metrics["mean_time_per_output_token_p50_ms"] == pytest.approx(50)
+    assert metrics["tpot_mean_ms"] == pytest.approx(50)
+    assert metrics["tpot_p25_ms"] == pytest.approx(50)
+    assert metrics["tpot_p50_ms"] == pytest.approx(50)
+    assert metrics["tpot_p75_ms"] == pytest.approx(50)
+    assert metrics["tpot_p90_ms"] == pytest.approx(50)
+    assert metrics["tpot_p95_ms"] == pytest.approx(50)
+    assert metrics["tpot_p99_ms"] == pytest.approx(50)
+    assert metrics["tpot_samples"] == 2
+    assert metrics["prompt_tokens"] == 300
+    assert metrics["prompt_token_samples"] == 2
+    assert metrics["completion_tokens_mean"] == pytest.approx(10)
+    assert metrics["completion_tokens_p99"] == 11
+    assert metrics["request_canary_samples"] == 0
+    assert metrics["request_canary_passed"] == 0
+    assert metrics["controlled_output_samples"] == 0
+    assert [row["request_index"] for row in benchmark_runner.result_timings([
+        {
+            "request_index": 1,
+            "ttft": 0.1,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100},
+        },
+        {
+            "request_index": 0,
+            "ttft": 0.2,
+            "e2e": 0.7,
+            "out_toks": 11,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 200},
+        },
+    ])] == [0, 1]
+
+
+def test_reasoning_timing_starts_decode_at_first_reasoning_output():
+    metrics = benchmark_runner.result_metrics([
+        {
+            "request_index": 0,
+            "time_to_first_output": 0.1,
+            "ttft": 0.4,
+            "e2e": 0.5,
+            "out_toks": 9,
+            "content_chunks": 2,
+            "reasoning_chunks": 6,
+            "output_token_source": "usage",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 9},
+        }
+    ])
+
+    assert metrics["time_to_first_output_p50_ms"] == pytest.approx(100)
+    assert metrics["ttft_p50_ms"] == pytest.approx(400)
+    assert metrics["generation_p50_ms"] == pytest.approx(400)
+    assert metrics["effective_prefill_tok_s_p50"] == pytest.approx(1000)
+    assert metrics["decode_tok_s_p50"] == pytest.approx(20)
+    assert metrics["reasoning_chunks"] == 6
+
+
+def test_atomic_json_rejects_non_finite_numbers_without_replacing_target(tmp_path):
+    target = tmp_path / "artifact.json"
+    target.write_text('{"previous": true}\n', encoding="utf-8")
+    with pytest.raises(ValueError):
+        benchmark_artifacts.atomic_write_json(target, {"metric": float("nan")})
+    assert target.read_text(encoding="utf-8") == '{"previous": true}\n'
+
+
+def test_benchmark_artifact_json_out_writes_summary_and_metrics(monkeypatch, tmp_path):
+    monkeypatch.setattr(bm, "stream_chat",
+                        lambda *a, **k: dict(
+                            ttft=0.1,
+                            e2e=0.2,
+                            out_toks=8,
+                            finish_reasons=["stop"],
+                            stream_terminal_observed=True,
+                            visible_content_captured_chars=11,
+                            visible_content_capture_limit=8192,
+                            usage={"prompt_tokens": 100, "prompt_tokens_details": {"cached_tokens": 40}},
+                        ))
+
+    out = tmp_path / "benchmark.json"
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30000/v1",
+        "--model", "local-heavy",
+        "--engine", "vllm",
+        "--gpu", "dark-heavy",
+        "--requests", "2",
+        "--concurrency", "2",
+        "--max-model-len", "131072",
+        "--json-out", str(out),
+    ])
+
+    assert rc in (0, None)
+    summary = json.loads(out.read_text(encoding="utf-8"))
+    assert summary["schema"] == "anvil-serving.benchmark/v1"
+    assert summary["measurement_protocol"] == "capacity-v3"
+    assert summary["model"] == "local-heavy"
+    assert summary["engine"] == "vllm"
+    assert summary["gpu"] == "dark-heavy"
+    assert summary["requests"] == 2
+    assert summary["completed"] == 2
+    assert summary["context_seed"] == 0
+    assert summary["shared_prefix_tokens"] == 8000
+    assert sum(summary["context_distribution"].values()) == 2
+    assert summary["metrics"]["ttft_p50_ms"] == 100.0
+    assert summary["metrics"]["generation_p50_ms"] == 100.0
+    assert summary["metrics"]["e2e_p50_ms"] == 200.0
+    assert summary["metrics"]["effective_prefill_tok_s_p50"] == 1000.0
+    assert summary["metrics"]["decode_tok_s_p50"] == pytest.approx(70.0)
+    assert summary["metrics"]["mean_inter_token_latency_ms_p50"] == pytest.approx(
+        100.0 / 7
+    )
+    assert summary["metrics"]["prompt_tokens"] == 200
+    assert summary["metrics"]["throughput_tok_s"] > 0
+    assert summary["metrics"]["throughput_performance_eligible"] is True
+    assert summary["metrics"]["output_tokens"] == 16
+    assert summary["metrics"]["output_token_sources"] == {"unknown": 2}
+    assert summary["metrics"]["prefix_cache_hit_avg"] == 0.4
+    assert [row["request_index"] for row in summary["request_timings"]] == [0, 1]
+    assert summary["timing_methodology"]["clock"] == "client time.perf_counter"
+    assert "not raw per-token ITL" in summary["timing_methodology"]["mean_inter_token_latency"]
+    assert summary["metric_population"]["p99_interpretation"] == "descriptive-nearest-rank-only"
+    assert summary["timestamp_precision"].startswith("nanosecond-unix-fields")
+    assert isinstance(summary["started_at_unix_ns"], int)
+    assert summary["wall_clock_ms"] > 0
+    assert summary["workload_identity"] == {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary",
+    }
+    assert summary["request_timings"][0]["stream_terminal_observed"] is True
+    assert summary["request_timings"][0]["finish_reasons"] == ["stop"]
+    assert summary["request_timings"][0]["visible_content_captured_chars"] == 11
+    assert summary["request_timings"][0]["visible_content_capture_limit"] == 8192
+
+
+def test_capacity_failure_retains_bounded_actionable_error(monkeypatch, tmp_path, capsys):
+    message = "stream ended without any visible or reasoning output"
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: (_ for _ in ()).throw(ValueError(message)),
+    )
+    out = tmp_path / "capacity-failure.json"
+
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:30000/v1",
+        "--model", "candidate",
+        "--engine", "vllm",
+        "--gpu", "dual-gpu",
+        "--requests", "1",
+        "--concurrency", "1",
+        "--ctx-tokens", "1024",
+        "--max-model-len", "8192",
+        "--output", str(out),
+    ]) == 1
+
+    artifact = json.loads(out.read_text(encoding="utf-8"))
+    failure = artifact["failures"][0]
+    assert failure["request_index"] == 0
+    assert failure["error_type"] == "ValueError"
+    assert failure["error_message"] == message
+    assert failure["error_message_truncated"] is False
+    assert failure["failure_class"] == "request_error"
+    assert failure["response_received"] is False
+    assert failure["performance_eligible"] is False
+    assert failure["elapsed_ms"] >= 0
+    assert "ValueError: %s" % message in capsys.readouterr().out
+    assert artifact["completed"] == 0
+    assert artifact["performance_eligible"] is False
+    assert artifact["metrics"]["throughput_tok_s"] is None
+    assert artifact["metrics"]["ttft_p50_ms"] is None
+
+
+def test_canary_failure_retains_sanitized_response_timing_not_response_body(
+    monkeypatch, tmp_path
+):
+    marker = "ANVIL_REQ_0_00000"
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 4,
+            "output_token_source": "usage",
+            "content_chunks": 1,
+            "reasoning_chunks": 0,
+            "visible_content": "prefix " + marker,
+            "visible_content_truncated": False,
+            "finish_reasons": ["stop"],
+            "stream_terminal_observed": True,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 4},
+        },
+    )
+    out = tmp_path / "canary-failure.json"
+    assert bm.main([
+        "capacity", "--base-url", "http://127.0.0.1:30000/v1",
+        "--model", "candidate", "--engine", "vllm", "--gpu", "dual-gpu",
+        "--requests", "1", "--concurrency", "1", "--ctx-tokens", "1024",
+        "--max-model-len", "8192", "--max-tokens", "16",
+        "--request-canaries", "--output", str(out),
+    ]) == 1
+
+    raw = out.read_text(encoding="utf-8")
+    artifact = json.loads(raw)
+    failure = artifact["failures"][0]
+    assert failure["failure_class"] == "request_canary_failed"
+    assert failure["response_received"] is True
+    assert failure["response_timing"]["ttft_ms"] == pytest.approx(100)
+    assert failure["response_metadata"]["usage"] == {
+        "completion_tokens": 4, "prompt_tokens": 100
+    }
+    assert failure["response_metadata"]["visible_content_captured_chars"] is None
+    assert failure["request_canary"]["marker_at_start"] is False
+    assert "prefix " not in raw
+    assert artifact["request_timings"] == []
+    assert artifact["metrics"]["throughput_tok_s"] is None
+
+
+def test_controlled_output_observe_records_nonadherence_while_strict_rejects(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *args, **kwargs: {
+            "ttft": 0.1, "e2e": 0.2, "out_toks": 3,
+            "output_token_source": "usage", "content_chunks": 1,
+            "visible_content": "code code extra", "visible_content_truncated": False,
+            "finish_reasons": ["stop"], "stream_terminal_observed": True,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 3},
+        },
+    )
+    common = [
+        "capacity", "--base-url", "http://127.0.0.1:30000/v1",
+        "--model", "candidate", "--engine", "vllm", "--gpu", "dual-gpu",
+        "--requests", "1", "--ctx-tokens", "1024", "--max-model-len", "8192",
+        "--response-words", "2",
+    ]
+    observed_path = tmp_path / "observed.json"
+    assert bm.main(common + ["--output", str(observed_path)]) == 0
+    observed = json.loads(observed_path.read_text(encoding="utf-8"))
+    assert observed["request_timings"][0]["controlled_output"]["exact_adherence"] is False
+    assert observed["metrics"]["controlled_output_exact_adherence"] == 0
+
+    strict_path = tmp_path / "strict.json"
+    assert bm.main(common + [
+        "--controlled-output-policy", "strict", "--output", str(strict_path)
+    ]) == 1
+    strict = json.loads(strict_path.read_text(encoding="utf-8"))
+    assert strict["failures"][0]["failure_class"] == "controlled_output_failed"
+    assert strict["failures"][0]["controlled_output"]["exact_adherence"] is False
+
+
+# ---- GENERATE: benchmarking a serve ALSO records its recipe (--recipe-out) ---------
+# Hermetic: capture_from_container / capture_hardware are injected as fakes, so no
+# real docker / GPU / network is touched. The emitted block is proven parseable.
+import argparse       # noqa: E402
+import tomllib        # noqa: E402
+
+
+def _recipe_args(**over):
+    base = dict(
+        model="local-heavy", recipe_model=None, recipe_status="verified",
+        recipe_from_container="heavy-serve", recipe_fit="benchmark-quality,quality",
+        recipe_out="-",
+    )
+    base.update(over)
+    return argparse.Namespace(**base)
+
+
+_STUB_SUMMARY = {
+    "run_id": "benchmark-20260703T000000Z",
+    "max_context_tokens": 131072,
+    "context_tokens": None,
+    "metrics": {"throughput_tok_s": 183.24, "ttft_p50_ms": 412.7},
+}
+
+_FAKE_CAP = {
+    "serve": {
+        "engine": "vllm",
+        "image": "vllm/vllm-openai:nightly",
+        "port":  30000,
+        "env": ["FLASHINFER_CUDA_ARCH_LIST=12.0f"],
+        "flags": ["--kv-cache-dtype fp8"],
+    },
+    "hardware": {"gpu_uuid": "GPU-REDACTED"},
+}
+
+
+def _fake_capture(name):
+    assert name == "heavy-serve"
+    return _FAKE_CAP
+
+
+def _fake_hardware(gpu_uuid=None):
+    assert gpu_uuid == "GPU-REDACTED"
+    return {"gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q", "vram_total_gb": 96}
+
+
+def test_build_recipe_assembles_measured_serve_and_fit():
+    r = benchmark_recipes.build_recipe(_recipe_args(), _STUB_SUMMARY,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    assert r["model"] == "local-heavy"  # defaults to --model
+    assert r["status"] == "verified"
+    assert r["hardware"] == {
+        "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
+        "vram_total_gb": 96,
+        "gpu_uuid": "GPU-REDACTED",
+    }
+    assert r["serve"]["image"] == "vllm/vllm-openai:nightly"
+    assert r["serve"]["context_tokens"] == 131072
+    assert r["measured"]["throughput_single_tok_s"] == 183.2  # rounded from THIS run
+    assert r["measured"]["context_tokens"] == 131072
+    assert r["fit"] == {"suited": ["benchmark-quality", "quality"]}
+
+
+def test_build_recipe_labels_concurrent_throughput_as_aggregate():
+    """At concurrency>1, throughput_tok_s is an AGGREGATE across streams — it must NOT
+    be recorded under the single-stream field the registry treats as its headline
+    (critic SHOULD-FIX: default benchmark concurrency is 20)."""
+    summary = dict(_STUB_SUMMARY, concurrency=20)
+    r = benchmark_recipes.build_recipe(_recipe_args(), summary,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    m = r["measured"]
+    assert "throughput_single_tok_s" not in m
+    assert m["throughput_aggregate_tok_s"] == 183.2
+    assert m["concurrency"] == 20
+
+
+def test_recipe_model_overrides_model_field():
+    r = benchmark_recipes.build_recipe(_recipe_args(recipe_model="openai/gpt-oss-120b"), _STUB_SUMMARY,
+                        capture=_fake_capture, hardware=_fake_hardware)
+    assert r["model"] == "openai/gpt-oss-120b"
+
+
+def test_emit_recipe_to_stdout_is_a_parseable_recipe_block(capsys):
+    benchmark_recipes.emit_recipe(_recipe_args(recipe_out="-"), _STUB_SUMMARY,
+                   capture=_fake_capture, hardware=_fake_hardware)
+    block = capsys.readouterr().out
+    assert block.startswith("[[recipe]]")
+    parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
+    assert parsed["model"] == "local-heavy"
+    assert parsed["measured"]["throughput_single_tok_s"] == 183.2
+    # the reconstructed docker run works off exactly this captured block.
+    cmd = benchmark_recipes.serve_recipes().reconstruct_docker_run(parsed)
+    assert "vllm/vllm-openai:nightly local-heavy --kv-cache-dtype fp8" in cmd
+
+
+def test_emit_recipe_appends_to_file(tmp_path):
+    reg = tmp_path / "serve-recipes.toml"
+    reg.write_text('schema = "v1"\n', encoding="utf-8")
+    benchmark_recipes.emit_recipe(_recipe_args(recipe_out=str(reg)), _STUB_SUMMARY,
+                   capture=_fake_capture, hardware=_fake_hardware)
+    data = tomllib.loads(reg.read_text(encoding="utf-8"))
+    assert data["recipe"][0]["model"] == "local-heavy"
+
+
+def test_main_recipe_out_end_to_end_is_hermetic(monkeypatch, capsys):
+    """`benchmark ... --recipe-out -` through main(): the benchmark itself is stubbed
+    (fake stream_chat, no /v1/models probe) and capture is faked -> ZERO network."""
+    from anvil_serving import serve_recipes as sr
+
+    monkeypatch.setattr(bm, "stream_chat",
+                        lambda *a, **k: dict(ttft=0.1, e2e=0.2, out_toks=64, usage=None))
+    monkeypatch.setattr(sr, "capture_from_container", _fake_capture)
+    monkeypatch.setattr(sr, "capture_hardware", _fake_hardware)
+
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "local-heavy",
+        "--requests", "2", "--concurrency", "2", "--max-model-len", "131072",
+        "--recipe-out", "-", "--recipe-from-container", "heavy-serve",
+        "--recipe-fit", "benchmark-quality",
+    ])
+    assert rc in (0, None)
+    out = capsys.readouterr().out
+    assert "[[recipe]]" in out
+    block = out[out.index("[[recipe]]"):]
+    parsed = tomllib.loads("schema='x'\n" + block)["recipe"][0]
+    assert parsed["model"] == "local-heavy"
+    assert parsed["fit"]["suited"] == ["benchmark-quality"]
+
+
+def test_main_incomplete_run_skips_verified_recipe(monkeypatch, tmp_path, capsys):
+    outcomes = iter([
+        RuntimeError("boom"),
+        dict(ttft=0.1, e2e=0.2, out_toks=64, usage=None),
+    ])
+
+    def fake_stream_chat(*args, **kwargs):
+        outcome = next(outcomes)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    recipe_path = tmp_path / "serve-recipes.toml"
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+
+    rc = bm.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "local-heavy",
+        "--requests", "2", "--concurrency", "1", "--max-model-len", "131072",
+        "--recipe-out", str(recipe_path),
+    ])
+
+    assert rc == 1
+    assert not recipe_path.exists()
+    captured = capsys.readouterr()
+    assert "skipping serve recipe" in captured.err
+
+
+# ---- Fast-tier bakeoff evidence mode -------------------------------------------
+
+def test_parse_context_targets_rejects_non_positive():
+    assert benchmark_specs.parse_context_targets("32768, 65536") == [32768, 65536]
+    with pytest.raises(ValueError):
+        benchmark_specs.parse_context_targets("0")
+
+
+def test_bakeoff_evidence_records_identity_context_score_and_failures(monkeypatch, tmp_path):
+    calls = {"n": 0}
+
+    def fake_stream_chat(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("second context failed")
+        return dict(ttft=0.05, e2e=0.20, out_toks=12, usage=None)
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "bakeoff.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31792/v1",
+        "--model", "qwen36-35b-a3b-nvfp4",
+        "--candidate-id", "qwen36-35b-a3b",
+        "--config-id", "vllm-nvfp4-32k",
+        "--context-targets", "1024,2048",
+        "--suite", "chat,context",
+        "--max-model-len", "4096",
+        "--evidence-out", str(out),
+        "--source-recipe", "configs/serve-recipes.toml#qwen36-35b-a3b",
+        "--serve-command", "anvil-serving serves up fast-qwen36-35b-a3b",
+    ])
+
+    assert rc == 1
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["schema"] == "anvil-serving.fast-tier-bakeoff/v1"
+    assert evidence["identity"] == {
+        "candidate_id": "qwen36-35b-a3b",
+        "config_id": "vllm-nvfp4-32k",
+        "model": "qwen36-35b-a3b-nvfp4",
+        "base_url": "http://127.0.0.1:31792/v1",
+        "started_at": evidence["identity"]["started_at"],
+    }
+    assert evidence["source_recipe"]["serve_command"].startswith("anvil-serving serves up")
+    assert [r["status"] for r in evidence["context"]["targets"]] == ["passed", "failed"]
+    assert evidence["score_inputs"]["usable_context_tokens"] == 1024
+    assert evidence["score_inputs"]["ttft_p50_ms"] == 50.0
+    assert evidence["failures"] == [{
+        "suite": "context",
+        "target_tokens": 2048,
+        "error": "second context failed",
+    }]
+
+
+def test_bakeoff_context_probe_includes_reasoning_headroom(monkeypatch, tmp_path):
+    completion_caps = []
+
+    def fake_stream_chat(_base, _model, _prompt, _key, max_tokens, **_kwargs):
+        completion_caps.append(max_tokens)
+        return dict(
+            time_to_first_output=0.01,
+            ttft=0.02,
+            e2e=0.03,
+            out_toks=3,
+            content_chunks=1,
+            reasoning_chunks=1,
+            output_token_source="usage",
+            usage={"prompt_tokens": 100, "completion_tokens": 3},
+        )
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "reasoning-bakeoff.json"
+
+    bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31792/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "reasoning-low",
+        "--context-targets", "1024",
+        "--suite", "chat,context",
+        "--max-model-len", "4096",
+        "--visible-answer-tokens", "128",
+        "--reasoning-headroom-tokens", "512",
+        "--evidence-out", str(out),
+    ])
+
+    assert completion_caps == [640]
+
+
+def test_bakeoff_context_rows_calibrate_from_usage_and_hit_targets(monkeypatch, tmp_path):
+    """The first context row's usage.prompt_tokens calibrates chars/token (here the
+    fake serve tokenizes at 3.5 chars/token), so the SECOND row is sized with the
+    real rate and its recorded prompt tokens land within 10% of its target —
+    instead of both rows sending the same window-sized prompt (BUG 3)."""
+    def fake_stream_chat(base, model, prompt, key, max_tokens, timeout=900,
+                         chat_template_kwargs=None):
+        return dict(ttft=0.05, e2e=0.2, out_toks=8,
+                    usage={"prompt_tokens": int(len(prompt) / 3.5)})
+
+    monkeypatch.setattr(bm, "stream_chat", fake_stream_chat)
+    out = tmp_path / "calibration.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31792/v1",
+        "--model", "qwen36-27b",
+        "--candidate-id", "qwen36-27b",
+        "--config-id", "vllm-nvfp4-262k",
+        "--context-targets", "32768,65536",
+        "--suite", "context",
+        "--max-model-len", "262144",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    rows = json.loads(out.read_text(encoding="utf-8"))["context"]["targets"]
+    assert rows[0]["chars_per_token"] == 3.0  # conservative default, first row
+    assert rows[1]["chars_per_token"] == pytest.approx(3.5, abs=0.05)  # calibrated
+    # two targets -> meaningfully different prompts; calibrated row hits its target
+    assert rows[0]["usage"]["prompt_tokens"] < 0.6 * rows[1]["usage"]["prompt_tokens"]
+    assert rows[1]["usage"]["prompt_tokens"] == pytest.approx(65536, rel=0.10)
+    # the recorded estimate uses the SAME calibrated rate the prompt was sized with —
+    # it is the failure diagnostic, so it must not drift once calibration advances
+    # (estimating with the fixed 3.0 constant would report ~76k here, 17% over).
+    assert rows[1]["estimated_prompt_tokens"] == pytest.approx(65536, rel=0.10)
+
+
+def test_bakeoff_tool_suite_records_tool_call(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.12,
+            "response": {
+                "choices": [{
+                    "finish_reason": "tool_calls",
+                    "message": {
+                        "tool_calls": [{
+                            "id": "call_1",
+                            "type": "function",
+                            "function": {"name": "record_weather_zip", "arguments": '{"zip": "98101"}'},
+                        }]
+                    }
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31793/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite", "tool",
+        "--eval-repetitions", "1",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["tool"]["status"] == "passed"
+    assert evidence["tool"]["checks"][0]["tool_call_count"] == 1
+    assert evidence["tool"]["checks"][0]["valid_tool_call_count"] == 1
+    assert evidence["tool"]["checks"][0]["arguments"] == {"zip": "98101"}
+    assert evidence["failures"] == []
+
+
+def test_bakeoff_tool_suite_rejects_plain_text_tool_claim(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.12,
+            "response": {
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": "I called record_weather_zip with 98101."}
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool-fail.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31793/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite", "tool",
+        "--eval-repetitions", "1",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 1
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["tool"]["status"] == "failed"
+    assert evidence["tool"]["checks"][0]["tool_call_count"] == 0
+    assert evidence["failures"] == [{
+        "suite": "tool",
+        "error": "response did not include tool_calls",
+        "failure_classes": ["deterministic_check_failed"],
+        "pass_rate": 0.0,
+    }]
+
+
+def test_bakeoff_session_intelligence_and_thinking_evidence(monkeypatch, tmp_path):
+    responses = iter([
+        "RIVER-918",
+        "--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n retries = 2\n",
+        "The three stages exceed the timeout budget, so use a faster LLM or reduce output.",
+    ])
+
+    def fake_post_chat(*args, **kwargs):
+        assert kwargs["chat_template_kwargs"] == {"enable_thinking": False}
+        return {
+            "latency_s": 0.10,
+            "response": {
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": next(responses)}
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "quality.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31794/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "llamacpp-q6-32k",
+        "--suite", "session,intelligence",
+        "--eval-repetitions", "1",
+        "--thinking-mode", "disabled",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["session"]["status"] == "passed"
+    assert evidence["intelligence"]["status"] == "passed"
+    assert evidence["score_inputs"]["session_recall_passed"] is True
+    assert evidence["score_inputs"]["intelligence_pass_rate"] == 1.0
+    assert evidence["thinking"]["mode"] == "disabled"
+    assert evidence["thinking"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert evidence["thinking"]["control_mechanism"] == "chat_template_kwargs"
+    assert evidence["thinking"]["control_status"] == "requested_unverified"
+    assert evidence["thinking"]["unsupported"] is False
+    assert evidence["failures"] == []
+
+
+def test_bakeoff_thinking_unsupported_is_recorded(tmp_path):
+    out = tmp_path / "thinking.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31795/v1",
+        "--model", "devstral-small-2-24b",
+        "--candidate-id", "devstral-small2",
+        "--config-id", "vllm-fp8-32k",
+        "--suite", "voice",
+        "--thinking-mode", "unsupported",
+        "--voice-latency-ms", "1234",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["thinking"]["mode"] == "unsupported"
+    assert evidence["thinking"]["chat_template_kwargs"] is None
+    assert evidence["thinking"]["control_status"] == "unsupported"
+    assert evidence["thinking"]["unsupported"] is True
+
+
+# ---- --suite-file: externally-authored eval specs through the check engine -------
+
+_SUITE_SPEC = {
+    "suite": "planning-regression",
+    "date": "2026-07-11",
+    "work_class": "planning",
+    "evals": [
+        {
+            "id": "diff_edit",
+            "prompt": "Return a unified diff changing timeout to 45.",
+            "max_tokens": 64,
+            "checks": [
+                {"name": "diff_shape", "contains_all": ["---", "+++"]},
+                {"name": "new_value", "contains": "+timeout = 45"},
+            ],
+        },
+        {
+            "id": "weather_tool",
+            "messages": [{"role": "user", "content": "Record zip 98101."}],
+            "tools": [{"type": "function", "function": {"name": "record_weather_zip"}}],
+            "expect_tool": {"name": "record_weather_zip", "required_args": {"zip": "98101"}},
+            "checks": [],
+        },
+    ],
+}
+
+
+def _write_spec(tmp_path, spec):
+    path = tmp_path / "suite.json"
+    path.write_text(json.dumps(spec), encoding="utf-8")
+    return str(path)
+
+
+def _suite_main_args(tmp_path, spec_path, out_name="suite-evidence.json"):
+    out = tmp_path / out_name
+    return out, [
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite", "tool",  # built-in suites still run alongside the external spec
+        "--eval-repetitions", "1",
+        "--suite-file", spec_path,
+        "--evidence-out", str(out),
+    ]
+
+
+def test_suite_file_runs_external_evals_into_evidence(monkeypatch, tmp_path):
+    seen = []
+
+    def fake_post_chat(base, model, key, messages, max_tokens=128, timeout=120,
+                       tools=None, chat_template_kwargs=None):
+        seen.append({"messages": messages, "max_tokens": max_tokens, "tools": tools})
+        if tools and tools[0]["function"]["name"] == "record_weather_zip":
+            message = {"tool_calls": [{
+                "id": "call_1", "type": "function",
+                "function": {"name": "record_weather_zip", "arguments": '{"zip": "98101"}'},
+            }]}
+        else:
+            message = {"content": "--- a/app.py\n+++ b/app.py\n@@\n-timeout = 30\n+timeout = 45\n"}
+        finish = "tool_calls" if tools else "stop"
+        return {"latency_s": 0.1, "response": {"choices": [{
+            "finish_reason": finish, "message": message,
+        }]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    spec_path = _write_spec(tmp_path, _SUITE_SPEC)
+    out, argv = _suite_main_args(tmp_path, spec_path)
+    rc = bm.main(argv)
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    section = evidence["suites"]["planning-regression"]
+    assert section["status"] == "passed"
+    assert section["work_class"] == "planning"
+    assert section["date"] == "2026-07-11"
+    assert section["source_sha256"] == hashlib.sha256(
+        (tmp_path / "suite.json").read_bytes()
+    ).hexdigest()
+    assert [c["status"] for c in section["checks"]] == ["passed", "passed"]
+    assert section["checks"][0]["text_checks"] == [
+        {"name": "diff_shape", "passed": True},
+        {"name": "new_value", "passed": True},
+    ]
+    assert section["checks"][1]["tool_call"]["valid"] is True
+    assert section["checks"][1]["tool_call"]["arguments"] == {"zip": "98101"}
+    assert evidence["failures"] == []
+    # per-eval validator labels reflect what actually graded the eval
+    assert section["checks"][0]["validator"] == "deterministic_text_checks"
+    assert section["checks"][1]["validator"] == "tool_call"
+    # built-in tool suite ran too (--suite tool) and the external evals forwarded
+    # their own max_tokens / tools / messages verbatim (external evals run LAST,
+    # after the selected built-in suites).
+    assert evidence["tool"]["status"] == "passed"
+    external = seen[-2:]
+    assert external[0]["max_tokens"] == 64
+    assert external[1]["max_tokens"] == 256  # spec default
+    assert external[1]["messages"] == [{"role": "user", "content": "Record zip 98101."}]
+    assert external[1]["tools"][0]["function"]["name"] == "record_weather_zip"
+
+
+def test_suite_file_failed_checks_land_in_failures(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        # plain text: fails the diff checks on eval 1 AND the expect_tool on eval 2
+        return {"latency_s": 0.1,
+                "response": {"choices": [{
+                    "finish_reason": "stop", "message": {"content": "no diff here"},
+                }]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, _SUITE_SPEC))
+    rc = bm.main(argv)
+
+    assert rc == 1  # artifact is retained, but the quality gate failed
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    section = evidence["suites"]["planning-regression"]
+    assert section["status"] == "failed"
+    assert [c["status"] for c in section["checks"]] == ["failed", "failed"]
+    assert "diff_shape" in section["checks"][0]["error"]
+    assert section["checks"][1]["tool_call"]["valid"] is False
+    suite_failures = [f for f in evidence["failures"] if f["suite"] == "planning-regression"]
+    assert [f["eval_id"] for f in suite_failures] == ["diff_edit", "weather_tool"]
+
+
+def test_suite_file_request_error_is_recorded_per_eval(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        raise RuntimeError("endpoint down")
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    spec = dict(_SUITE_SPEC, evals=[_SUITE_SPEC["evals"][0]])
+    out, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, spec))
+    rc = bm.main(argv)
+
+    assert rc == 1
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    check = evidence["suites"]["planning-regression"]["checks"][0]
+    assert check["status"] == "failed"
+    assert check["error"] == "endpoint down"
+
+
+def test_repaired_suite_classifies_reasoning_budget_exhaustion(monkeypatch, tmp_path):
+    spec = _one_eval(
+        visible_answer_tokens=128,
+        reasoning_headroom_tokens=512,
+    )
+
+    def fake_post_chat(*args, **kwargs):
+        assert kwargs["max_tokens"] == 640
+        assert kwargs["reasoning_effort"] == "high"
+        return {
+            "latency_s": 0.2,
+            "response": {
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": None, "reasoning": "thinking " * 40},
+                }],
+                "usage": {
+                    "completion_tokens": 640,
+                    "completion_tokens_details": {"reasoning_tokens": 640},
+                },
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "reasoning-exhaustion.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31805/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--reasoning-effort", "high",
+        "--eval-repetitions", "2",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 1
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    check = evidence["suites"]["s"]["checks"][0]
+    assert check["status"] == "failed"
+    assert check["pass_count"] == 0
+    assert len(check["attempts"]) == 2
+    for attempt in check["attempts"]:
+        assert attempt["content"] == ""
+        assert attempt["finish_reason"] == "length"
+        assert attempt["reasoning_field"] == "reasoning"
+        assert attempt["reasoning_tokens"] == 640
+        assert attempt["failure_class"] == "reasoning_budget_exhausted"
+        assert attempt["budget"] == {
+            "visible_answer_tokens": 128,
+            "reasoning_headroom_tokens": 512,
+            "max_completion_tokens": 640,
+                "legacy_max_tokens_as_visible": False,
+        }
+    assert evidence["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert evidence["thinking"]["reasoning_effort"] == "high"
+    assert evidence["evaluation_protocol"]["records_finish_reason"] is True
+    assert evidence["failures"][0]["failure_classes"] == ["reasoning_budget_exhausted"]
+
+
+def test_matching_marker_with_length_finish_is_not_a_quality_pass(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {"choices": [{
+                "finish_reason": "length",
+                "message": {"content": "x"},
+            }]},
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "length-marker.json"
+    rc = bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:31805/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "repaired-v3",
+        "--suite-file", _write_spec(tmp_path, _one_eval()),
+        "--output", str(out),
+    ])
+
+    assert rc == 1
+    attempt = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]["attempts"][0]
+    assert attempt["status"] == "failed"
+    assert attempt["failure_class"] == "visible_answer_budget_exhausted"
+
+
+def test_tool_eval_preserves_reasoning_budget_exhaustion_class(monkeypatch, tmp_path):
+    spec = _one_eval(
+        checks=[],
+        tools=[{"type": "function", "function": {"name": "record_result"}}],
+        expect_tool={"name": "record_result", "required_args": {}},
+        visible_answer_tokens=64,
+        reasoning_headroom_tokens=64,
+    )
+
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{
+                    "finish_reason": "length",
+                    "message": {"content": "   ", "reasoning_content": "still thinking"},
+                }],
+                "usage": {"completion_tokens": 128},
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "tool-reasoning-exhaustion.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31805/v1",
+        "--model", "reasoner",
+        "--candidate-id", "reasoner",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 1
+    attempt = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]["attempts"][0]
+    assert attempt["tool_call"]["valid"] is False
+    assert attempt["failure_class"] == "reasoning_budget_exhausted"
+
+
+def test_repaired_suite_repeats_and_retains_full_visible_answers(monkeypatch, tmp_path):
+    answers = iter(["x" + "a" * 300, "wrong", "x" + "b" * 300])
+
+    def fake_post_chat(*args, **kwargs):
+        return {
+            "latency_s": 0.1,
+            "response": {
+                "choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": next(answers)},
+                }]
+            },
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "repeated.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31805/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "repaired-v2",
+        "--suite-file", _write_spec(tmp_path, _one_eval()),
+        "--eval-repetitions", "3",
+        "--eval-min-pass-rate", "0.66",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    check = json.loads(out.read_text(encoding="utf-8"))["suites"]["s"]["checks"][0]
+    assert check["status"] == "passed"
+    assert check["pass_count"] == 2
+    assert check["pass_rate"] == pytest.approx(2 / 3)
+    assert len(check["attempts"][0]["content"]) == 301
+    assert len(check["attempts"][0]["content_excerpt"]) == 200
+    assert [attempt["finish_reason"] for attempt in check["attempts"]] == [
+        "stop", "stop", "stop"
+    ]
+
+
+@pytest.mark.parametrize("extra", [
+    ["--visible-answer-tokens", "0"],
+    ["--visible-answer-tokens", "65537"],
+    ["--reasoning-headroom-tokens", "-1"],
+    ["--reasoning-headroom-tokens", "65537"],
+    ["--visible-answer-tokens", "32769", "--reasoning-headroom-tokens", "32768"],
+    ["--eval-repetitions", "0"],
+    ["--eval-repetitions", "21"],
+    ["--eval-min-pass-rate", "0"],
+    ["--eval-min-pass-rate", "1.1"],
+    ["--reasoning-effort", "high", "--thinking-mode", "enabled"],
+    ["--reasoning-effort", "low", "--no-thinking"],
+])
+def test_repaired_eval_cli_rejects_invalid_or_conflicting_controls(extra):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--base-url", "http://127.0.0.1:31805/v1",
+            "--model", "candidate",
+            *extra,
+        ])
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("item,extra", [
+    ({"visible_answer_tokens": 65536}, ["--reasoning-headroom-tokens", "1"]),
+    ({"reasoning_headroom_tokens": 65536}, ["--visible-answer-tokens", "1"]),
+])
+def test_cli_rejects_resolved_item_budget_that_exceeds_cap(tmp_path, item, extra):
+    spec_path = _write_spec(tmp_path, _one_eval(**item))
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--bakeoff",
+            "--base-url", "http://127.0.0.1:31805/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", spec_path,
+            *extra,
+        ])
+    assert exc.value.code == 2
+
+
+def test_suite_file_requires_bakeoff(tmp_path):
+    spec_path = _write_spec(tmp_path, _SUITE_SPEC)
+    with pytest.raises(SystemExit) as exc:
+        bm.main(["--base-url", "http://127.0.0.1:31796/v1", "--model", "m",
+                 "--suite-file", spec_path])
+    assert exc.value.code == 2
+
+
+_OK_CHECKS = [{"name": "c", "contains": "x"}]  # valid filler so each case isolates ONE defect
+
+
+def _one_eval(**over):
+    base = {"id": "x", "prompt": "p", "checks": _OK_CHECKS}
+    base.update(over)
+    return {"suite": "s", "evals": [base]}
+
+
+@pytest.mark.parametrize("spec", [
+    [],                                                       # not an object
+    {"evals": [{"id": "x", "prompt": "p", "checks": _OK_CHECKS}]},  # missing suite name
+    {"suite": "s", "evals": []},                              # empty evals
+    {"suite": "s", "evals": [{"prompt": "p", "checks": _OK_CHECKS}]},  # missing id
+    {"suite": "s", "evals": [{"id": [], "prompt": "p", "checks": _OK_CHECKS}]},
+    {"suite": "s", "evals": _one_eval()["evals"] * 2},        # duplicate eval ids
+    _one_eval(prompt=None),                                   # no prompt/messages
+    _one_eval(prompt=""),                                     # empty prompt
+    _one_eval(prompt=None, messages=[]),                      # empty messages, no prompt
+    _one_eval(messages=["hi"]),                               # messages entries not objects
+    _one_eval(messages=[{}]),                                 # missing role/content
+    _one_eval(messages=[{"role": "user", "content": ""}]),    # empty content
+    _one_eval(max_tokens="64"),                               # max_tokens wrong type
+    _one_eval(max_tokens=0),                                  # max_tokens not positive
+    _one_eval(max_tokens=True),                               # bool is not an int here
+    _one_eval(max_tokens=64, visible_answer_tokens=32),       # ambiguous total vs allocation
+    _one_eval(visible_answer_tokens=0),                       # visible allocation not positive
+    _one_eval(visible_answer_tokens=True),                    # bool is not an int here
+    _one_eval(reasoning_headroom_tokens=-1),                  # headroom cannot be negative
+    _one_eval(reasoning_headroom_tokens=True),                # bool is not an int here
+    _one_eval(tools={"type": "function"}),                    # tools not a list
+    _one_eval(checks=None),                                   # asserts nothing
+    _one_eval(checks="contains"),                             # checks not a list
+    _one_eval(expect_tool={}, checks=[]),                     # tool w/o name
+    _one_eval(expect_tool={"name": 7}, checks=[]),            # tool name not a string
+    _one_eval(expect_tool={"name": "f", "required_args": ["zip"]}),   # args not an object
+    _one_eval(expect_tool={"name": "f", "required_args": {"zip": 98101}}),  # non-string value
+])
+def test_suite_file_rejects_malformed_specs(tmp_path, spec):
+    with pytest.raises(ValueError):
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+@pytest.mark.parametrize("check", [
+    "diff_shape",                                    # not an object
+    {},                                              # no name, no assertion
+    {"name": "diff_shape"},                          # name only -> would ALWAYS pass
+    {"name": "diff_shape", "contain_all": ["---"]},  # typo'd key -> would ALWAYS pass
+    {"name": "diff_shape", "contains": ""},          # empty needle -> would ALWAYS pass
+    {"name": "diff_shape", "contains": ["---"]},     # wrong type for contains
+    {"name": "diff_shape", "contains_all": []},      # empty list -> would ALWAYS pass
+    {"name": "diff_shape", "contains_all": "---"},   # wrong type (str iterates by char)
+    {"name": "diff_shape", "contains_all": ["---", 7]},          # non-string element
+    {"name": "diff_shape", "contains": "x", "contains_any": ["y"]},  # two assertion keys
+    {"name": "answer", "matches_regex": ""},              # empty regex is vacuous
+    {"name": "answer", "matches_regex": "["},             # invalid regex
+    {"name": "answer", "matches_regex": "(a+)+$"},        # catastrophic backtracking
+    {"name": "answer", "matches_regex": "a|aa"},          # unsafe alternation
+    {"name": "answer", "matches_regex": ".*FINAL"},       # wildcard repetition
+    {"name": "answer", "matches_regex": "x" * 513},       # unbounded pattern size
+    {"name": "", "contains": "x"},                   # empty name
+])
+def test_suite_file_rejects_vacuous_or_broken_checks(tmp_path, check):
+    """evaluate_text_checks defaults ok=True for unknown keys — safe for the trusted
+    in-repo prompts, a false-pass hole for external specs (a typo'd 'contain_all'
+    check would report passed on EMPTY model output and sail through the notebook's
+    no_failures hard gate). The loader must reject every such shape up front."""
+    with pytest.raises(ValueError):
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, _one_eval(checks=[check])))
+
+
+@pytest.mark.parametrize("overrides", [
+    {"max_tokens": 65537},
+    {"visible_answer_tokens": 65537},
+    {"reasoning_headroom_tokens": 65537},
+    {"visible_answer_tokens": 32769, "reasoning_headroom_tokens": 32768},
+])
+def test_suite_file_rejects_resource_exhausting_budgets(tmp_path, overrides):
+    with pytest.raises(ValueError):
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, _one_eval(**overrides)))
+
+
+def test_suite_file_rejects_too_many_evals(tmp_path):
+    spec = dict(_SUITE_SPEC, evals=[
+        dict(_SUITE_SPEC["evals"][0], id="eval-%d" % index)
+        for index in range(101)
+    ])
+    with pytest.raises(ValueError, match="more than 100"):
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+def test_suite_file_rejects_unexecuted_context_bucket(tmp_path):
+    with pytest.raises(ValueError, match="context_bucket cannot be executed faithfully"):
+        benchmark_specs.load_suite_spec(
+            _write_spec(tmp_path, _one_eval(context_bucket="64k"))
+        )
+
+
+@pytest.mark.parametrize("spec, message", [
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="exact_choice",
+        ),
+        "exact_choice requires",
+    ),
+    (
+        dict(
+            _one_eval(checks=[{
+                "name": "answer",
+                "matches_regex": "B",
+            }]),
+            evidence_use="ranking",
+            validator_strength="exact_choice",
+        ),
+        "anchored with",
+    ),
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="typed_structure",
+        ),
+        "typed_structure requires expect_tool",
+    ),
+    (
+        dict(
+            _one_eval(),
+            evidence_use="ranking",
+            validator_strength="independent_judge",
+        ),
+        "validator_strength must be",
+    ),
+])
+def test_ranking_suite_validator_strength_is_structurally_enforced(
+        tmp_path, spec, message):
+    with pytest.raises(ValueError, match=message):
+        benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
+
+
+@pytest.mark.parametrize("spec", [
+    dict(
+        _one_eval(checks=[{
+            "name": "answer",
+            "matches_regex": r"^\s*B\s*$",
+        }]),
+        evidence_use="ranking",
+        validator_strength="exact_choice",
+    ),
+    {
+        "suite": "s",
+        "evidence_use": "ranking",
+        "validator_strength": "typed_structure",
+        "evals": [{
+            "id": "tool",
+            "prompt": "Call choose with choice B.",
+            "tools": [{
+                "type": "function",
+                "function": {
+                    "name": "choose",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"choice": {"type": "string"}},
+                        "required": ["choice"],
+                    },
+                },
+            }],
+            "expect_tool": {
+                "name": "choose",
+                "required_args": {"choice": "B"},
+            },
+        }],
+    },
+])
+def test_ranking_suite_accepts_executable_strong_validators(tmp_path, spec):
+    loaded = benchmark_specs.load_suite_spec(_write_spec(tmp_path, spec))
+
+    assert loaded["evidence_use"] == "ranking"
+
+
+def test_cli_rejects_aggregate_quality_token_plan(tmp_path):
+    spec = dict(_SUITE_SPEC, evals=[
+        _one_eval(id="eval-%d" % index, max_tokens=65536)["evals"][0]
+        for index in range(31)
+    ])
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "--bakeoff",
+            "--base-url", "http://127.0.0.1:31805/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", _write_spec(tmp_path, spec),
+        ])
+    assert exc.value.code == 2
+
+
+def test_suite_file_without_suite_flag_runs_only_the_external_suite(monkeypatch, tmp_path):
+    """--suite-file alone must not fire the default chat/context probe: an unrelated
+    probe failure would pollute the external-suite evidence and trip the notebook
+    no_failures hard gate."""
+    def boom_stream_chat(*args, **kwargs):
+        raise AssertionError("built-in chat/context probe must not run")
+
+    def fake_post_chat(*args, **kwargs):
+        return {"latency_s": 0.1,
+                "response": {"choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": "+timeout = 45 --- +++"},
+                }]}}
+
+    monkeypatch.setattr(bm, "stream_chat", boom_stream_chat)
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    spec = dict(_SUITE_SPEC, evals=[_SUITE_SPEC["evals"][0]])
+    out = tmp_path / "only-external.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite-file", _write_spec(tmp_path, spec),
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["suites"]["planning-regression"]["status"] == "passed"
+    assert evidence["context"]["targets"] == []
+    assert evidence["tool"]["status"] == "not_run"
+    assert evidence["session"]["status"] == "not_run"
+    assert evidence["intelligence"]["status"] == "not_run"
+
+
+def test_suite_file_fixture_matches_session_evals_plugin_shape(monkeypatch, tmp_path):
+    """Pin compatibility with the session-evals plugin's documented suite.json shape
+    (fakoli-plugins plugins/session-evals scripts/eval_emit.py docstring): kebab-case
+    suite, all three check kinds, expect_tool with a null required_arg (null =
+    'present, non-empty string'), messages-based and prompt-based evals."""
+    fixture = str(
+        __import__("pathlib").Path(__file__).parent / "fixtures" / "session_evals" / "suite.json"
+    )
+    spec = benchmark_specs.load_suite_spec(fixture)
+    assert spec["suite"] == "merge-safety"
+
+    def fake_post_chat(base, model, key, messages, max_tokens=128, timeout=120,
+                       tools=None, chat_template_kwargs=None):
+        if tools:
+            message = {"tool_calls": [{
+                "id": "call_1", "type": "function",
+                "function": {"name": "record_weather_zip", "arguments": '{"zip": "10001"}'},
+            }]}
+        else:
+            message = {"content": "Run git fetch then rebase. --- +++ @@"}
+        finish = "tool_calls" if tools else "stop"
+        return {"latency_s": 0.1, "response": {"choices": [{
+            "finish_reason": finish, "message": message,
+        }]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "fixture-evidence.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "glm-4.7-flash",
+        "--candidate-id", "glm47-flash",
+        "--config-id", "sglang-32k",
+        "--suite-file", fixture,
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    section = json.loads(out.read_text(encoding="utf-8"))["suites"]["merge-safety"]
+    assert section["status"] == "passed"
+    assert [c["id"] for c in section["checks"]] == ["fetch_before_merge", "diff_review", "zip_tool"]
+    assert section["checks"][2]["attempt_count"] == 3
+    assert all(
+        attempt["tool_call"]["valid"] is True
+        for attempt in section["checks"][2]["attempts"]
+    )
+
+
+def test_suite_file_malformed_spec_exits_before_any_request(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("no request may be sent for a malformed spec")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    monkeypatch.setattr(bm, "stream_chat", boom)
+    _, argv = _suite_main_args(tmp_path, _write_spec(tmp_path, {"suite": "s", "evals": []}))
+    with pytest.raises(SystemExit) as exc:
+        bm.main(argv)
+    assert exc.value.code == 2
+
+
+def test_unknown_quality_suite_exits_before_any_request(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("unknown suite must fail before network access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    monkeypatch.setattr(bm, "stream_chat", boom)
+    out = tmp_path / "unknown.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite", "not-a-suite",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+    assert not out.exists()
+
+
+def test_quality_tool_and_session_default_to_three_retained_attempts(monkeypatch, tmp_path):
+    def fake_post_chat(*args, **kwargs):
+        if kwargs.get("tools"):
+            message = {"tool_calls": [{
+                "id": "call_1",
+                "type": "function",
+                "function": {
+                    "name": "record_weather_zip",
+                    "arguments": '{"zip": "98101"}',
+                },
+            }]}
+            finish = "tool_calls"
+        else:
+            message = {"content": "RIVER-918"}
+            finish = "stop"
+        return {
+            "latency_s": 0.1,
+            "response": {"choices": [{"finish_reason": finish, "message": message}]},
+        }
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "repeated-builtins.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "config",
+        "--suite", "tool,session",
+        "--output", str(out),
+    ]) == 0
+
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    for section in ("tool", "session"):
+        check = evidence[section]["checks"][0]
+        assert check["attempt_count"] == 3
+        assert check["pass_count"] == 3
+        assert len(check["attempts"]) == 3
+    assert evidence["session"]["checks"][0]["attempts"][0]["content"] == "RIVER-918"
+
+
+def test_canonical_dry_runs_do_not_probe_or_write(monkeypatch, tmp_path, capsys):
+    def boom(*args, **kwargs):
+        raise AssertionError("dry-run must not access the endpoint")
+
+    monkeypatch.setattr(bm, "detect_max_model_len", boom)
+    monkeypatch.setattr(bm, "post_chat", boom)
+    monkeypatch.setattr(bm, "stream_chat", boom)
+
+    quality_out = tmp_path / "quality.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "config",
+        "--suite", "tool",
+        "--output", str(quality_out),
+        "--dry-run",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["workload"] == "quality"
+    assert not quality_out.exists()
+
+    capacity_out = tmp_path / "capacity.json"
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--prompt-cache-mode", "unique",
+        "--shared-prefix-tokens", "999",
+        "--output", str(capacity_out),
+        "--dry-run",
+    ]) == 0
+    capacity_plan = json.loads(capsys.readouterr().out)
+    assert capacity_plan["workload"] == "capacity"
+    assert capacity_plan["capacity"]["shared_prefix_tokens"] == 0
+    assert not capacity_out.exists()
+
+
+def test_benchmark_rejects_invalid_output_before_live_work(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("invalid output must fail before endpoint access")
+
+    monkeypatch.setattr(bm, "detect_max_model_len", boom)
+    out = tmp_path / "missing" / "capacity.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+
+
+def test_notebook_metadata_is_validated_before_live_work(monkeypatch, tmp_path):
+    def boom(*args, **kwargs):
+        raise AssertionError("notebook validation must precede endpoint access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    suite = tmp_path / "ranking.json"
+    suite.write_text(json.dumps({
+        "suite": "ranking",
+        "evidence_use": "ranking",
+        "validator_strength": "exact_choice",
+        "evals": [{
+            "id": "choice",
+            "prompt": "Reply only A.",
+            "checks": [{"name": "exact", "matches_regex": "^A$"}],
+        }],
+    }), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", str(suite),
+            "--notebook", str(tmp_path / "notebook.json"),
+        ])
+    assert exc.value.code == 2
+
+
+def test_notebook_rejects_diagnostic_suite_before_live_work(
+    monkeypatch, tmp_path, capsys
+):
+    def boom(*args, **kwargs):
+        raise AssertionError("notebook eligibility must precede endpoint access")
+
+    monkeypatch.setattr(bm, "post_chat", boom)
+    suite = tmp_path / "diagnostic.json"
+    suite.write_text(json.dumps({
+        "suite": "diagnostic",
+        "evidence_use": "diagnostic",
+        "validator_strength": "deterministic_marker",
+        "evals": [{
+            "id": "marker",
+            "prompt": "Reply only A.",
+            "checks": [{"name": "marker", "contains": "A"}],
+        }],
+    }), encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--candidate-id", "candidate",
+            "--config-id", "config",
+            "--suite-file", str(suite),
+            "--notebook", str(tmp_path / "notebook.json"),
+            "--notebook-task", "heavy",
+            "--notebook-hardware", "gpu",
+        ])
+    assert exc.value.code == 2
+    assert "evidence_use=ranking" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("model,extra,expected", [
+    ("openai/gpt-oss-120b", ["--thinking-mode", "disabled"], "does not use Qwen"),
+    ("openai/gpt-oss-120b", ["--reasoning-effort", "minimal"], "low, medium, or high"),
+    ("deepseek-v4-flash-0731", ["--reasoning-effort", "medium"], "low, high, or max"),
+    ("Qwen/Qwen3.6-27B", ["--reasoning-effort", "high"], "chat-template thinking control"),
+    ("Qwen/Qwen3.8-27B", ["--reasoning-effort", "high"], "low, medium, or xhigh"),
+])
+def test_model_family_rejects_known_ignored_reasoning_controls(
+    model, extra, expected, capsys
+):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", model,
+            *extra,
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_gpt_oss_accepts_published_reasoning_effort(monkeypatch, capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "openai/gpt-oss-120b",
+        "--reasoning-effort", "low",
+        "--dry-run",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["workload"] == "capacity"
+
+
+def test_capacity_dry_plan_records_explicit_sampling(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--temperature", "1.0",
+        "--top-p", "0.95",
+        "--dry-run",
+    ]) == 0
+    sampling = json.loads(capsys.readouterr().out)["sampling"]
+    assert sampling == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+
+
+def test_capacity_force_nonempty_content_dry_plan_and_request_body(monkeypatch, tmp_path, capsys):
+    argv = [
+        "capacity",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--thinking-mode", "enabled",
+        "--force-nonempty-content",
+    ]
+    assert bm.main([*argv, "--dry-run"]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    expected = {"enable_thinking": True, "force_nonempty_content": True}
+    assert plan["thinking"]["chat_template_kwargs"] == expected
+    assert plan["thinking"]["force_nonempty_content"] is True
+
+    seen = []
+    monkeypatch.setattr(
+        bm,
+        "stream_chat",
+        lambda *_args, **kwargs: seen.append(kwargs) or {
+            "ttft": 0.1,
+            "e2e": 0.2,
+            "out_toks": 8,
+            "usage": {"prompt_tokens": 100, "completion_tokens": 8},
+        },
+    )
+    output = tmp_path / "capacity-force-content.json"
+    assert bm.main([
+        *argv,
+        "--requests", "1",
+        "--concurrency", "1",
+        "--ctx-tokens", "1024",
+        "--max-model-len", "8192",
+        "--output", str(output),
+    ]) == 0
+    assert seen == [{"timeout": 900.0, "chat_template_kwargs": expected}]
+    assert json.loads(output.read_text(encoding="utf-8"))["serve_flags"] == {
+        "shared_prefix_burst": False,
+        "no_thinking": False,
+        "thinking_mode": "enabled",
+        "reasoning_effort": None,
+        "chat_template_kwargs": expected,
+        "force_nonempty_content": True,
+    }
+
+
+@pytest.mark.parametrize("thinking_mode", ["default", "disabled"])
+def test_capacity_force_nonempty_content_requires_enabled_thinking(thinking_mode, capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--thinking-mode", thinking_mode,
+            "--force-nonempty-content",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert "requires --thinking-mode enabled" in capsys.readouterr().err
+
+
+def test_capacity_force_nonempty_content_rejects_no_thinking_conflict(capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            "--thinking-mode", "enabled",
+            "--no-thinking",
+            "--force-nonempty-content",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert "--no-thinking conflicts with an explicit thinking mode" in capsys.readouterr().err
+
+
+def test_shared_thinking_resolver_rejects_no_thinking_conflict():
+    with pytest.raises(ValueError, match="--no-thinking conflicts"):
+        benchmark_evaluation.resolve_thinking_settings(types.SimpleNamespace(
+            thinking_mode="enabled",
+            no_thinking=True,
+            force_nonempty_content=True,
+            reasoning_effort=None,
+        ))
+
+
+def test_shared_thinking_resolver_rejects_force_content_with_reasoning_effort():
+    with pytest.raises(ValueError, match="force-nonempty-content cannot be combined"):
+        benchmark_evaluation.resolve_thinking_settings(types.SimpleNamespace(
+            thinking_mode="enabled",
+            no_thinking=False,
+            force_nonempty_content=True,
+            reasoning_effort="high",
+        ))
+
+
+@pytest.mark.parametrize("sampling", [
+    {
+        "temperature": {"requested": "1.0", "effective_request": "1.0", "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    },
+    {
+        "temperature": {"requested": None, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": None, "effective_request": None, "sent": False},
+    },
+    {
+        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
+        "top_p": {"requested": True, "effective_request": True, "sent": True},
+    },
+])
+def test_sampling_normalizer_rejects_malformed_or_inconsistent_provenance(sampling):
+    with pytest.raises(ValueError):
+        benchmark_evaluation.normalize_sampling(sampling)
+
+
+@pytest.mark.parametrize("flag,value,expected", [
+    ("--temperature", "nan", "--temperature must be finite"),
+    ("--temperature", "-0.01", "--temperature must be finite"),
+    ("--temperature", "2.01", "--temperature must be finite"),
+    ("--top-p", "nan", "--top-p must be finite"),
+    ("--top-p", "0", "--top-p must be finite"),
+    ("--top-p", "1.01", "--top-p must be finite"),
+])
+def test_sampler_cli_rejects_invalid_values_before_endpoint_work(flag, value, expected, capsys):
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "capacity",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "candidate",
+            flag, value,
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_quality_sampler_forwards_explicit_controls_and_records_evidence(monkeypatch, tmp_path):
+    suite = tmp_path / "quality.json"
+    suite.write_text(json.dumps({
+        "suite": "sampling",
+        "evidence_use": "ranking",
+        "validator_strength": "exact_choice",
+        "evals": [{
+            "id": "choice",
+            "prompt": "Reply only FINAL=A.",
+            "checks": [{"name": "answer", "matches_regex": r"^FINAL=A$"}],
+        }],
+    }), encoding="utf-8")
+    seen = []
+
+    def fake_post_chat(*args, **kwargs):
+        seen.append(kwargs)
+        return {"latency_s": 0.01, "response": {"choices": [{
+            "finish_reason": "stop", "message": {"content": "FINAL=A"},
+        }]}}
+
+    monkeypatch.setattr(bm, "post_chat", fake_post_chat)
+    out = tmp_path / "quality-evidence.json"
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "candidate",
+        "--candidate-id", "candidate",
+        "--config-id", "sampling",
+        "--suite-file", str(suite),
+        "--temperature", "1.0",
+        "--top-p", "0.95",
+        "--eval-repetitions", "1",
+        "--output", str(out),
+    ]) == 0
+    assert seen == [{
+        "max_tokens": 256,
+        "timeout": 900.0,
+        "tools": None,
+        "chat_template_kwargs": None,
+        "temperature": 1.0,
+        "top_p": 0.95,
+    }]
+    assert json.loads(out.read_text(encoding="utf-8"))["sampling"] == {
+        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
+        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
+    }
+
+
+def test_deepseek_accepts_max_reasoning_effort(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "deepseek-v4-flash-0731",
+        "--reasoning-effort", "max",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["reasoning_effort"] == "max"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "max"
+
+
+def test_qwen38_accepts_xhigh_reasoning_effort(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31827/v1",
+        "--model", "qwen38-27b-bf16-262k",
+        "--reasoning-effort", "xhigh",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["reasoning_effort"] == "xhigh"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "xhigh"
+
+
+def test_qwen38_accepts_no_think_template_control(capsys):
+    assert bm.main([
+        "capacity",
+        "--base-url", "http://127.0.0.1:31827/v1",
+        "--model", "qwen38-27b-bf16-262k",
+        "--thinking-mode", "disabled",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["thinking"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert plan["thinking"]["control_mechanism"] == "chat_template_kwargs"
+
+
+def test_quality_dry_run_reports_exact_reasoning_control(capsys):
+    assert bm.main([
+        "quality",
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "deepseek-v4-flash-0731",
+        "--candidate-id", "deepseek-v4-flash-0731",
+        "--config-id", "tp2-w4a16",
+        "--suite", "intelligence",
+        "--reasoning-effort", "max",
+        "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["workload"] == "quality"
+    assert plan["thinking"]["reasoning_effort"] == "max"
+    assert plan["thinking"]["control_mechanism"] == "reasoning_effort"
+    assert plan["thinking"]["control_requested"] == "max"
+
+
+@pytest.mark.parametrize(
+    ("workload", "extra"),
+    [
+        ("quality", ["--seed", "42"]),
+        ("capacity", ["--eval-repetitions", "19"]),
+    ],
+)
+def test_canonical_workloads_reject_irrelevant_flags(workload, extra):
+    common = [
+        workload,
+        "--base-url", "http://127.0.0.1:31796/v1",
+        "--model", "model",
+        "--dry-run",
+    ]
+    if workload == "quality":
+        common += ["--candidate-id", "model", "--config-id", "config", "--suite", "voice",
+                   "--voice-latency-ms", "1"]
+    with pytest.raises(SystemExit) as exc:
+        bm.main(common + extra)
+    assert exc.value.code == 2
+
+
+def test_quality_rejects_unbounded_context_completion_cap():
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:31796/v1",
+            "--model", "model",
+            "--candidate-id", "model",
+            "--config-id", "config",
+            "--suite", "context",
+            "--max-tokens", "65537",
+            "--dry-run",
+        ])
+    assert exc.value.code == 2
+
+
+def test_bakeoff_voice_suite_records_supplied_metrics(tmp_path):
+    out = tmp_path / "voice.json"
+    rc = bm.main([
+        "--bakeoff",
+        "--base-url", "http://127.0.0.1:31795/v1",
+        "--model", "devstral-small-2-24b",
+        "--candidate-id", "devstral-small2",
+        "--config-id", "vllm-fp8-32k",
+        "--suite", "voice",
+        "--voice-latency-ms", "1234",
+        "--stt-latency-ms", "100",
+        "--tts-latency-ms", "300",
+        "--evidence-out", str(out),
+    ])
+
+    assert rc == 0
+    evidence = json.loads(out.read_text(encoding="utf-8"))
+    assert evidence["voice"] == {
+        "status": "recorded",
+        "stt_latency_ms": 100.0,
+        "tts_latency_ms": 300.0,
+        "total_turn_latency_ms": 1234.0,
+    }
+    assert evidence["score_inputs"]["voice_latency_ms"] == 1234.0
+    # schema-presence guard: the external-suites key exists even without --suite-file
+    assert evidence["suites"] == {}
+
+
+def test_quality_rejects_non_finite_voice_metrics_before_writing(tmp_path, capsys):
+    out = tmp_path / "voice.json"
+    with pytest.raises(SystemExit) as exc:
+        bm.main([
+            "quality",
+            "--base-url", "http://127.0.0.1:31795/v1",
+            "--model", "devstral-small-2-24b",
+            "--candidate-id", "devstral-small2",
+            "--config-id", "vllm-fp8-32k",
+            "--suite", "voice",
+            "--voice-latency-ms", "nan",
+            "--output", str(out),
+        ])
+    assert exc.value.code == 2
+    assert "finite, non-negative" in capsys.readouterr().err
+    assert not out.exists()
+
+
+def test_direct_script_help_remains_supported():
+    script = Path(bm.__file__)
+    result = subprocess.run(
+        [sys.executable, str(script), "capacity", "--help"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "Measure bounded endpoint latency" in result.stdout

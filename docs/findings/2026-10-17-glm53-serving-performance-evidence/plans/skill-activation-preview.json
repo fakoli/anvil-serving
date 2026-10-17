@@ -1,0 +1,21 @@
+{
+  "fresh_chat_discovery": "not tested",
+  "links": [
+    {
+      "link": "[PRIVATE_OPERATOR_ROOT]/.codex/skills/anvil-serving-benchmark-docs",
+      "new_target": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-benchmark-docs",
+      "previous_target": "[PRIVATE_OPERATOR_ROOT]/skills/anvil-serving-benchmark-docs",
+      "skill_sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1"
+    },
+    {
+      "link": "[PRIVATE_OPERATOR_ROOT]/.codex/skills/anvil-serving-llm-qualification",
+      "new_target": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving/skills/anvil-serving-llm-qualification",
+      "previous_target": "[PRIVATE_OPERATOR_ROOT]/skills/anvil-serving-llm-qualification",
+      "skill_sha256": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2"
+    }
+  ],
+  "preservation": "This worktree is attached to the chat and must remain while globally referenced.",
+  "rollback": "Atomically replace each symlink with its recorded previous_target after checking it still resolves to new_target.",
+  "source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+  "status": "preview-only"
+}

@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-17T12:11:43.031364+00:00",
+  "classification": "visible repeated-word overrun; strict output/canary full-capture contract failed at token cap",
+  "comparison_scope": "all named serving metrics on matched natural/edge cells; original controlled stratum stays incomplete, failures retained",
+  "diagnostic": {
+    "path": "NEW/diagnostic-controlled-max/native/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1.json",
+    "sha256": "e7f036430f30df625cf26ccbb962e050bdf67e6c6f17326548e9ee4b28deae42"
+  },
+  "independent_next": "original natural and capacity-edge matrix, unchanged configuration; candidate same-contract n1 diagnostic",
+  "not_supported": "reasoning-only starvation, OOM, physical-capacity failure, engine failure, or configuration fix",
+  "original_controlled_remaining": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy",
+  "unused_contingency": "thinking-disabled packet not dispatched; observed failure does not justify it as a fix"
+}

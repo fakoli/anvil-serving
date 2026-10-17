@@ -1,0 +1,20 @@
+{
+  "collector_sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+  "command": "python3 telemetry/test_run_cell.py -v",
+  "coverage": [
+    "in-process engine and slow samples",
+    "all GPU/host/cgroup slow probes",
+    "exact counters for success and all-failed v3 native",
+    "CLI failure response_metadata fields plus canary/control observations",
+    "collector fault and owned-CLI timeout",
+    "existing output, native binding, and frozen plan drift refusal",
+    "two-arm n=1 request-contract/input replay binding"
+  ],
+  "plan_sha256": "8d594ec0d5c5d431068ab41c26d3682b83205b9bef4b360ef1fef86a7e5f24da",
+  "runner_diff_sha256": "bc437177ec4ac067b36e52d54afc1688bd4bce65baf308037c8f4b5af8716374",
+  "runner_sha256": "3a310a117d567e99149b689665a9edd35df2056a141a757364d8de12f13c1df4",
+  "schema": "anvil-serving.diagnostic-offline-fixture-receipt/v1",
+  "source_binding_sha256": "ea6854cdb64bc322aab5ebf9b4847a3fca0e4e537d3975baf0f7ccf02e4f6641",
+  "status": "passed",
+  "tests": 7
+}

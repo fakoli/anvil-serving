@@ -5,6 +5,7 @@ import datetime as dt
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
 import sys
@@ -35,6 +36,17 @@ EVIDENCE_FAILURE_CLASSES = frozenset({
     "model_behavior",
     "grading",
     "cancellation",
+})
+SERVING_COMPARISON_PROFILE = "serving-comparison/v1"
+SERVING_METRIC_KEYS = frozenset({
+    "effective_prefill_tok_s", "time_to_first_output_ms", "ttft_ms",
+    "decode_tok_s", "tpot_ms", "e2e_ms", "throughput_tok_s",
+    "prompt_tokens", "completion_tokens", "kv_cache_bytes", "kv_cache_tokens",
+    "context_tokens", "concurrency", "gpu_memory", "host_memory", "oom_status",
+    "admission_status",
+})
+SERVING_METRIC_STATUSES = frozenset({
+    "measured", "configured", "estimated", "blocked", "not_collected",
 })
 REQUIRED_MEASURED_IDENTITIES = frozenset({
     "model",
@@ -257,6 +269,232 @@ def _validate_reference(value: Any, *, root: str | None, verify_files: bool) -> 
     return copy.deepcopy(value)
 
 
+def _valid_measurement(value: Any) -> bool:
+    """Accept only observed non-negative finite numeric values and distributions."""
+    if isinstance(value, bool) or value is None:
+        return False
+    if isinstance(value, int):
+        return value >= 0
+    return isinstance(value, float) and value >= 0 and math.isfinite(value)
+
+
+def _valid_distribution(value: Any, *, requests: int | None, complete: bool) -> bool:
+    return (isinstance(value, dict) and set(value) == {"samples", "p50", "p95"}
+            and isinstance(value["samples"], int) and not isinstance(value["samples"], bool)
+            and value["samples"] >= 1 and (requests is None or value["samples"] <= requests)
+            and (not complete or requests is None or value["samples"] == requests)
+            and _valid_measurement(value["p50"]) and _valid_measurement(value["p95"])
+            and value["p95"] >= value["p50"])
+
+
+def _valid_metric_observation(metric: str, record: dict[str, Any], planned: dict[str, Any] | None, *, complete: bool) -> bool:
+    value, observation = record.get("value"), record.get("observation")
+    if value is not None and not _valid_measurement(value):
+        return False
+    if observation is not None and not isinstance(observation, dict):
+        return False
+    timing = {"effective_prefill_tok_s", "time_to_first_output_ms", "ttft_ms", "decode_tok_s", "tpot_ms", "e2e_ms", "prompt_tokens", "completion_tokens"}
+    if metric in timing:
+        return _valid_distribution(observation, requests=planned.get("requests") if planned else None, complete=complete)
+    if metric == "concurrency":
+        return (isinstance(observation, dict) and set(observation) == {"requested", "client_max", "engine_max"}
+                and all(isinstance(observation[key], int) and not isinstance(observation[key], bool) and observation[key] >= 1 for key in observation)
+                and (planned is None or observation["requested"] == planned["concurrency"]))
+    if metric == "gpu_memory":
+        required = {"accounting", "peak_used_bytes", "min_free_bytes"}
+        return (isinstance(observation, dict) and set(observation) == required
+                and isinstance(observation["accounting"], str) and bool(observation["accounting"])
+                and all(_valid_measurement(observation[key]) for key in required - {"accounting"}))
+    if metric == "host_memory":
+        required = {"accounting", "cgroup_current_bytes", "cgroup_peak_bytes", "cgroup_limit_bytes", "host_available_bytes"}
+        return (isinstance(observation, dict) and set(observation) == required
+                and isinstance(observation["accounting"], str) and bool(observation["accounting"])
+                and all(_valid_measurement(observation[key]) for key in required - {"accounting"}))
+    if metric == "admission_status":
+        return (isinstance(observation, dict) and set(observation) == {"refused_requests", "preemptions", "ooms"}
+                and all(isinstance(item, int) and not isinstance(item, bool) and item >= 0 for item in observation.values()))
+    return _valid_measurement(value)
+
+
+def _validate_cell_measurement(value: Any, *, root: str | None, verify_files: bool, arm: dict[str, Any], cell: dict[str, Any], complete: bool) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    receipt = _validate_reference(value, root=root, verify_files=verify_files)
+    if not verify_files:
+        return receipt, None
+    try:
+        with open(real_path(receipt["path"], base=root), encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell measurement receipt is not JSON") from exc
+    if not isinstance(payload, dict) or payload.get("profile") != SERVING_COMPARISON_PROFILE:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell measurement receipt profile is invalid")
+    if payload.get("arm") != cell["arm"] or payload.get("identity") != arm or payload.get("cell") != cell:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell measurement receipt does not match frozen plan")
+    raw = _validate_reference(payload.get("raw"), root=root, verify_files=True)
+    try:
+        with open(real_path(raw["path"], base=root), encoding="utf-8") as handle:
+            native = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell native measurement is not JSON") from exc
+    if not isinstance(native, dict):
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell native measurement must be an object")
+    completed, failed = native.get("completed"), native.get("failed")
+    timings = native.get("request_timings")
+    workload = native.get("workload_identity")
+    population_valid = (
+        all(isinstance(count, int) and not isinstance(count, bool) and count >= 0
+            for count in (completed, failed))
+        and completed + failed == cell["requests"]
+        and isinstance(timings, list) and len(timings) == completed
+        and all(isinstance(row, dict) for row in timings)
+        and (not complete or failed == 0)
+    )
+    if (native.get("schema") != "anvil-serving.benchmark/v1" or not population_valid
+            or not isinstance(workload, dict) or workload.get("workload_kind") != cell["workload"]
+            or any(native.get(key) != expected for key, expected in (
+                ("model", arm["model"]), ("context_tokens", cell["context_tokens"]),
+                ("concurrency", cell["concurrency"]), ("requests", cell["requests"]),
+            ))):
+        raise BenchmarkArtifactError("bad_metrics_coverage", "cell native measurement does not match frozen plan")
+    return receipt, raw
+
+
+def _validate_serving_metrics_coverage(
+    value: Any, *, root: str | None, verify_files: bool
+) -> dict[str, Any]:
+    """Validate a frozen serving comparison matrix without inventing measurements."""
+    if not isinstance(value, dict) or value.get("profile") != SERVING_COMPARISON_PROFILE:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage profile is invalid")
+    status = value.get("status")
+    if status not in {"complete", "partial"}:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage status is invalid")
+    frozen_plan = _validate_reference(value.get("frozen_plan"), root=root, verify_files=verify_files)
+    plan_verified = False
+    plan_cells: dict[str, Any] | None = None
+    arms: dict[str, Any] | None = None
+    if verify_files:
+        try:
+            with open(real_path(frozen_plan["path"], base=root), encoding="utf-8") as handle:
+                plan = json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison plan is not JSON") from exc
+        if not isinstance(plan, dict):
+            raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison plan must be an object")
+        arms = plan.get("arms")
+        plan_cells = plan.get("required_cells") if isinstance(plan, dict) else None
+        source_files = plan.get("source_file_hashes") if isinstance(plan, dict) else None
+        if (plan.get("profile") != SERVING_COMPARISON_PROFILE or plan.get("frozen_before_requests") is not True
+                or not isinstance(plan.get("source_revision"), str) or not re.fullmatch(r"[0-9a-f]{40}(?:[0-9a-f]{24})?", plan["source_revision"])
+                or not isinstance(source_files, list) or not source_files
+                or not isinstance(arms, dict)
+                or len(arms) < 2 or not isinstance(plan_cells, dict) or not plan_cells):
+            raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison plan is incomplete")
+        for source_file in source_files:
+            _validate_reference(source_file, root=root, verify_files=True)
+        for arm in arms.values():
+            if not isinstance(arm, dict) or any(not isinstance(arm.get(key), str) or not arm[key]
+                                                for key in ("model", "revision", "image", "runtime", "hardware")):
+                raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison arm is incomplete")
+        represented_arms: set[str] = set()
+        arm_shapes: dict[str, list[tuple[str, int, int, int]]] = {}
+        for cell in plan_cells.values():
+            if (not isinstance(cell, dict) or set(cell) != {"arm", "workload", "context_tokens", "concurrency", "requests"}
+                    or not isinstance(cell.get("arm"), str) or cell["arm"] not in arms or not isinstance(cell["workload"], str) or not cell["workload"]
+                    or any(not isinstance(cell[key], int) or isinstance(cell[key], bool) or cell[key] < 1
+                           for key in ("context_tokens", "concurrency", "requests"))):
+                raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison cell is invalid")
+            represented_arms.add(cell["arm"])
+            arm_shapes.setdefault(cell["arm"], []).append((cell["workload"], cell["context_tokens"], cell["concurrency"], cell["requests"]))
+        if represented_arms != set(arms):
+            raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison plan omits an arm")
+        if len({tuple(sorted(shape)) for shape in arm_shapes.values()}) != 1:
+            raise BenchmarkArtifactError("bad_metrics_coverage", "frozen serving comparison matrix differs across arms")
+        plan_verified = True
+    required_cells = value.get("required_cells")
+    if (not isinstance(required_cells, list) or not required_cells
+            or any(not isinstance(cell, str) or not cell for cell in required_cells)
+            or len(set(required_cells)) != len(required_cells)):
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage requires unique required cells")
+    if plan_cells is not None and set(required_cells) != set(plan_cells):
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage does not match the frozen plan")
+    cells = value.get("cells")
+    if not isinstance(cells, dict) or any(cell not in required_cells for cell in cells):
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage cells are invalid")
+    gaps: list[str] = []
+    normalized_cells: dict[str, dict[str, Any]] = {}
+    for cell_id in required_cells:
+        cell = cells.get(cell_id)
+        if not isinstance(cell, dict) or set(cell) != {"metrics", "measurement"} or not isinstance(cell["metrics"], dict):
+            gaps.extend(f"{cell_id}.{metric}" for metric in sorted(SERVING_METRIC_KEYS))
+            continue
+        metrics = cell["metrics"]
+        has_measured = any(isinstance(record, dict) and record.get("status") == "measured"
+                           for record in metrics.values())
+        if cell["measurement"] is None and not has_measured:
+            measurement, raw_measurement = None, None
+        else:
+            measurement, raw_measurement = _validate_cell_measurement(
+                cell["measurement"], root=root, verify_files=verify_files,
+                arm=arms[plan_cells[cell_id]["arm"]] if arms and plan_cells else {},
+                cell=plan_cells[cell_id] if plan_cells else {}, complete=status == "complete",
+            )
+        if any(metric not in SERVING_METRIC_KEYS for metric in metrics):
+            raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage metric is unknown")
+        normalized_metrics: dict[str, dict[str, Any]] = {}
+        for metric in sorted(SERVING_METRIC_KEYS):
+            record = metrics.get(metric)
+            if record is None:
+                gaps.append(f"{cell_id}.{metric}")
+                continue
+            if not isinstance(record, dict) or set(record) - {"status", "value", "observation", "reason", "evidence"}:
+                raise BenchmarkArtifactError("bad_metrics_coverage", "serving metric record is invalid")
+            metric_status = record.get("status")
+            if metric_status not in SERVING_METRIC_STATUSES:
+                raise BenchmarkArtifactError("bad_metrics_coverage", "serving metric status is invalid")
+            has_value = _valid_metric_observation(metric, record, plan_cells.get(cell_id) if plan_cells else None, complete=status == "complete")
+            evidence = record.get("evidence")
+            if metric_status == "measured":
+                if not has_value or not isinstance(evidence, list) or not evidence:
+                    raise BenchmarkArtifactError("bad_metrics_coverage", "measured serving metric needs an observation and evidence")
+                normalized = copy.deepcopy(record)
+                normalized["evidence"] = [
+                    _validate_reference(item, root=root, verify_files=verify_files)
+                    for item in evidence
+                ]
+                if raw_measurement is not None and raw_measurement not in normalized["evidence"]:
+                    raise BenchmarkArtifactError("bad_metrics_coverage", "measured serving metric must reference its cell measurement")
+                normalized_metrics[metric] = normalized
+                continue
+            if not isinstance(record.get("reason"), str) or not record["reason"]:
+                raise BenchmarkArtifactError("bad_metrics_coverage", "unmeasured serving metric needs a reason")
+            if metric_status in {"configured", "estimated"}:
+                if not isinstance(evidence, list) or not evidence:
+                    raise BenchmarkArtifactError("bad_metrics_coverage", "configured or estimated serving metric needs evidence")
+                normalized = copy.deepcopy(record)
+                normalized["evidence"] = [
+                    _validate_reference(item, root=root, verify_files=verify_files)
+                    for item in evidence
+                ]
+                normalized_metrics[metric] = normalized
+            else:
+                normalized_metrics[metric] = copy.deepcopy(record)
+            gaps.append(f"{cell_id}.{metric}")
+        normalized_cells[cell_id] = {"measurement": measurement, "metrics": normalized_metrics}
+    if status == "complete" and gaps:
+        raise BenchmarkArtifactError("false_metrics_completion", "complete serving metrics coverage has missing or unmeasured metrics")
+    supplied_gaps = value.get("missing_required_metrics")
+    if supplied_gaps is not None and supplied_gaps != gaps:
+        raise BenchmarkArtifactError("bad_metrics_coverage", "serving metrics coverage gaps do not match the matrix")
+    return {
+        "profile": SERVING_COMPARISON_PROFILE,
+        "status": status,
+        "frozen_plan": frozen_plan,
+        "plan_verified": plan_verified,
+        "required_cells": list(required_cells),
+        "cells": normalized_cells,
+        "missing_required_metrics": gaps,
+    }
+
+
 def validate_cross_suite_evidence(
     value: Any,
     *,
@@ -277,7 +515,7 @@ def validate_cross_suite_evidence(
     if publishable and sanitize_publishable_evidence(evidence) != evidence:
         raise BenchmarkArtifactError("unsafe_publishable_evidence", "evidence contains secrets or private topology")
     if kind == "external_prior":
-        if "run" in evidence or "stages" in evidence or "identities" in evidence:
+        if "run" in evidence or "stages" in evidence or "identities" in evidence or "metrics_coverage" in evidence:
             raise BenchmarkArtifactError("prior_claims_measurement", "external priors cannot carry local run identities or stages")
         source = evidence.get("source")
         if not isinstance(source, dict) or not isinstance(source.get("url"), str) or not source["url"].startswith("https://"):
@@ -338,6 +576,17 @@ def validate_cross_suite_evidence(
             raise BenchmarkArtifactError("bad_failure_class", "benchmark failure taxonomy is invalid")
     elif completeness in {"failed", "cancelled"}:
         raise BenchmarkArtifactError("missing_failure", "failed and cancelled evidence require failure identity")
+    coverage = evidence.get("metrics_coverage")
+    if run["profile"] == SERVING_COMPARISON_PROFILE:
+        if coverage is None:
+            raise BenchmarkArtifactError("missing_metrics_coverage", "serving comparison evidence requires metrics coverage")
+        evidence["metrics_coverage"] = _validate_serving_metrics_coverage(
+            coverage, root=artifact_root, verify_files=verify_files
+        )
+    elif coverage is not None:
+        evidence["metrics_coverage"] = _validate_serving_metrics_coverage(
+            coverage, root=artifact_root, verify_files=verify_files
+        )
     return evidence
 
 
@@ -352,6 +601,7 @@ def build_measured_evidence(
     created_at: str | None = None,
     artifact_root: str | None = None,
     verify_files: bool = True,
+    metrics_coverage: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build and validate the common envelope for a locally measured run."""
     normalized_failure = copy.deepcopy(failure)
@@ -371,6 +621,8 @@ def build_measured_evidence(
         "failure": normalized_failure,
         "promotion": {"authorized": False, "message": PROMOTION_DISCLAIMER},
     }
+    if metrics_coverage is not None:
+        value["metrics_coverage"] = copy.deepcopy(metrics_coverage)
     return validate_cross_suite_evidence(
         value,
         artifact_root=artifact_root,

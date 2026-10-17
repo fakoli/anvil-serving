@@ -1,0 +1,498 @@
+"""Request construction, transport, and response normalization."""
+
+import json
+from itertools import islice
+import re
+import time
+import urllib.request
+
+from ..preflight import (
+    resolve_api_key as resolve_api_key,
+    response_observation as response_observation,
+)
+
+FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context\n"
+CHARS_PER_TOKEN = 3.0
+DEFAULT_CTX_MARGIN = 1024
+VISIBLE_CONTENT_CAPTURE_LIMIT = 8192
+CAPACITY_PROMPT_CONTRACT_REVISION = "capacity-prompt-v1"
+
+
+def capacity_workload_identity(response_words):
+    """Describe the synthetic capacity prompt without changing its contract."""
+    return {
+        "prompt_contract_revision": CAPACITY_PROMPT_CONTRACT_REVISION,
+        "workload_kind": (
+            "synthetic-repeated-code" if response_words else "synthetic-summary"
+        ),
+    }
+
+
+def ctx_cap(max_model_len, max_tokens, margin=DEFAULT_CTX_MARGIN):
+    """Return the usable prompt budget beneath the serve context limit."""
+    if not max_model_len:
+        return None
+    residual = int(max_model_len) - int(max_tokens) - int(margin)
+    if residual <= 0:
+        raise ValueError(
+            "max_model_len must exceed max_tokens plus the context margin"
+        )
+    return residual
+
+
+def clamp_ctx(ctx, cap):
+    """Clamp a sampled or fixed target to the usable prompt budget."""
+    return ctx if cap is None else min(ctx, cap)
+
+
+def _fill_lines(char_budget, *, offset=0):
+    """Repeat FILLER (offset by index) until the joined text reaches char_budget."""
+    lines = []
+    filled = 0
+    index = 0
+    while filled < char_budget:
+        line = FILLER % (offset + index, index)
+        lines.append(line)
+        filled += len(line)
+        index += 1
+    return "".join(lines)
+
+
+def make_prompt(
+    shared_prefix,
+    ctx_tokens,
+    uniq,
+    max_prompt_tokens=None,
+    chars_per_token=CHARS_PER_TOKEN,
+    *,
+    marker=None,
+    response_words=0,
+    unique_prefix=False,
+):
+    """Build a calibrated prompt without exceeding the requested token budget."""
+    budget = ctx_tokens if max_prompt_tokens is None else min(ctx_tokens, max_prompt_tokens)
+    marker_instruction = f" Begin with the exact marker {marker}, followed by one space." if marker else ""
+    if response_words:
+        tail = (
+            f"\n# request {uniq}:{marker_instruction} Then emit exactly "
+            f"{response_words} repetitions of the lowercase word code, separated "
+            "by single spaces. Do not add other text and do not stop early."
+        )
+    else:
+        tail = (
+            f"\n# request {uniq}:{marker_instruction} Summarize the above in one line."
+            if marker
+            else f"\n# request {uniq}: summarize the above in one line."
+        )
+    unique_header = ""
+    if unique_prefix:
+        unique_identifier = marker or (
+            uniq if unique_prefix is True else unique_prefix
+        )
+        unique_header = f"# unique benchmark request {unique_identifier}\n"
+    prefix = unique_header + shared_prefix
+    if int(budget * chars_per_token) <= len(tail):
+        raise ValueError("context target is too small for the benchmark prompt envelope")
+    if unique_prefix and int(budget * chars_per_token) < len(unique_header) + len(tail):
+        raise ValueError("context target is too small for the unique benchmark prefix")
+    char_budget = int(budget * chars_per_token) - len(prefix) - len(tail) - 1
+    if char_budget <= 0:
+        return prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
+    filler = _fill_lines(char_budget, offset=uniq)[:max(0, char_budget)]
+    return prefix + "\n" + filler + tail
+
+
+def make_shared_prefix(target_tokens, *, chars_per_token=CHARS_PER_TOKEN):
+    """Build a stable shared prefix within its declared estimated-token budget."""
+    if target_tokens <= 0:
+        return ""
+    char_budget = int(target_tokens * chars_per_token)
+    return _fill_lines(char_budget)[:char_budget]
+
+
+def output_contract_observation(
+    visible_content,
+    *,
+    expected_marker=None,
+    response_words=0,
+    controlled_output_policy="observe",
+    visible_content_truncated=False,
+):
+    """Return bounded canary and controlled-output observations.
+
+    This deliberately does not retain the response body.  A truncated capture
+    cannot prove that a foreign marker or trailing word was absent, so strict
+    checks fail closed while the default observation policy remains compatible
+    with historical ``--response-words`` runs.
+    """
+    content = visible_content if isinstance(visible_content, str) else ""
+    marker_observation = None
+    body = content
+    if expected_marker:
+        marker_at_start = content.startswith(expected_marker) and (
+            len(content) == len(expected_marker)
+            or content[len(expected_marker)].isspace()
+        )
+        observed_markers = re.findall(
+            r"ANVIL_REQ_-?[0-9]+_[0-9]{5}\b", content
+        )
+        foreign_marker_count = sum(
+            marker != expected_marker for marker in observed_markers
+        )
+        marker_observation = {
+            "marker": expected_marker,
+            "marker_at_start": marker_at_start,
+            "observed_marker_count": len(observed_markers),
+            "foreign_marker_count": foreign_marker_count,
+            "capture_complete": not visible_content_truncated,
+            "passed": (
+                marker_at_start
+                and foreign_marker_count == 0
+                and not visible_content_truncated
+            ),
+        }
+        if marker_at_start:
+            body = content[len(expected_marker):].lstrip()
+
+    controlled_observation = None
+    if response_words:
+        words = body.split()
+        observed_code_words = sum(word == "code" for word in words)
+        extra_words = len(words) - observed_code_words
+        exact = (
+            observed_code_words == response_words and extra_words == 0
+            if not visible_content_truncated
+            else None
+        )
+        controlled_observation = {
+            "policy": controlled_output_policy,
+            "requested_words": response_words,
+            "observed_code_words": observed_code_words,
+            "observed_extra_words": extra_words,
+            "capture_complete": not visible_content_truncated,
+            "exact_adherence": exact,
+            "passed": exact is True if controlled_output_policy == "strict" else True,
+        }
+
+    return {
+        "request_canary": marker_observation,
+        "controlled_output": controlled_observation,
+    }
+
+
+def build_body(model, prompt, max_tokens, chat_template_kwargs=None, reasoning_effort=None,
+               temperature=None, top_p=None):
+    body = {"model": model, "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.0 if temperature is None else temperature,
+            "stream": True,
+            "stream_options": {"include_usage": True}}
+    if chat_template_kwargs:
+        body["chat_template_kwargs"] = chat_template_kwargs
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
+    if top_p is not None:
+        body["top_p"] = top_p
+    return body
+
+
+def _choice_messages(response):
+    choices = response.get("choices") if isinstance(response, dict) else None
+    if not isinstance(choices, list):
+        return []
+    messages = []
+    for choice in choices:
+        if isinstance(choice, dict) and isinstance(choice.get("message"), dict):
+            messages.append(choice["message"])
+    return messages
+
+
+def validate_function_tool_call(message, expected_name, required_args):
+    """Return a schema/usefulness result for one OpenAI-compatible tool call."""
+    tool_calls = message.get("tool_calls") if isinstance(message, dict) else None
+    if not tool_calls:
+        return {
+            "valid": False,
+            "error": "response did not include tool_calls",
+            "arguments": None,
+        }
+
+    first = tool_calls[0] if isinstance(tool_calls[0], dict) else {}
+    function = first.get("function") if isinstance(first, dict) else {}
+    if not isinstance(function, dict):
+        return {"valid": False, "error": "tool_call missing function object", "arguments": None}
+    if function.get("name") != expected_name:
+        return {
+            "valid": False,
+            "error": "wrong function name: %r" % function.get("name"),
+            "arguments": None,
+        }
+
+    raw_args = function.get("arguments")
+    try:
+        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+    except Exception as exc:
+        return {"valid": False, "error": "arguments are not valid JSON: %s" % exc, "arguments": None}
+    if not isinstance(args, dict):
+        return {"valid": False, "error": "arguments are not a JSON object", "arguments": None}
+
+    for key, expected_value in required_args.items():
+        value = args.get(key)
+        if not isinstance(value, str) or not value.strip():
+            return {
+                "valid": False,
+                "error": "missing required string argument: %s" % key,
+                "arguments": args,
+            }
+        if expected_value is not None and value.strip() != expected_value:
+            return {
+                "valid": False,
+                "error": "wrong argument %s: %r" % (key, value),
+                "arguments": args,
+            }
+
+    return {"valid": True, "error": None, "arguments": args}
+
+
+def tool_argument_observations(messages):
+    """Retain bounded model-output diagnostics without changing tool grading.
+
+    Like visible-answer evidence, these values can contain generated user data;
+    public evidence must be sanitized before publication. Headers and request
+    credentials are never included. Capture at most four calls and 2048 argument
+    characters per call, preserving wire strings even when JSON parsing fails.
+    Inspect at most four messages and sixteen calls per message, including
+    malformed entries. Non-string argument values retain only their wire type.
+    """
+    observations = []
+    for message in islice(messages, 4):
+        if not isinstance(message, dict):
+            continue
+        calls = message.get("tool_calls")
+        if not isinstance(calls, list):
+            continue
+        for call in islice(calls, 16):
+            function = call.get("function") if isinstance(call, dict) else None
+            if not isinstance(function, dict):
+                continue
+            raw = function.get("arguments")
+            is_string = isinstance(raw, str)
+            name = function.get("name")
+            observations.append({
+                "name": name[:128] if isinstance(name, str) else None,
+                "arguments_wire_type": type(raw).__name__,
+                "arguments_excerpt": raw[:2048] if is_string else None,
+                "arguments_chars": len(raw) if is_string else None,
+                "arguments_truncated": len(raw) > 2048 if is_string else False,
+            })
+            if len(observations) == 4:
+                return observations
+    return observations
+
+
+def post_chat(base, model, key, messages, max_tokens=128, timeout=120,
+              tools=None, chat_template_kwargs=None, reasoning_effort=None,
+              temperature=None, top_p=None):
+    """Non-streaming OpenAI-compatible chat call for smoke/tool probes."""
+    url = base.rstrip("/") + "/chat/completions"
+    body = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.0 if temperature is None else temperature,
+        "stream": False,
+    }
+    if tools:
+        body["tools"] = tools
+        body["tool_choice"] = "auto"
+    if chat_template_kwargs:
+        body["chat_template_kwargs"] = chat_template_kwargs
+    if reasoning_effort is not None:
+        body["reasoning_effort"] = reasoning_effort
+    if top_p is not None:
+        body["top_p"] = top_p
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = "[REDACTED] + key
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    t0 = time.perf_counter()
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        data = json.loads(response.read())
+        request_id = None
+        response_headers = getattr(response, "headers", {})
+        for name in ("x-request-id", "request-id", "x-anvil-request-id"):
+            value = response_headers.get(name) if hasattr(response_headers, "get") else None
+            if value:
+                request_id = value[:512]
+                break
+    return {
+        "latency_s": time.perf_counter() - t0,
+        "response": data,
+        "request_id": request_id,
+    }
+
+
+def detect_max_model_len(base, model=None, key=None, timeout=15):
+    """Best-effort probe of ``<base>/models`` for the serve's context window."""
+    url = base.rstrip("/") + "/models"
+    headers = {}
+    if key:
+        headers["Authorization"] = "[REDACTED] + key
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read())
+    except Exception:
+        return None
+    entries = data.get("data") if isinstance(data, dict) else None
+    if not entries:
+        return None
+    chosen = None
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        if model and entry.get("id") == model:
+            chosen = entry
+            break
+        if chosen is None:
+            chosen = entry
+    if not isinstance(chosen, dict):
+        return None
+    for key_name in ("max_model_len", "max_context_length", "context_length"):
+        value = chosen.get(key_name)
+        if isinstance(value, int) and value > 0:
+            return value
+    return None
+
+
+def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
+                chat_template_kwargs=None, reasoning_effort=None, temperature=None,
+                top_p=None, observer=None, deadline_seconds=None):
+    url = base.rstrip("/") + "/chat/completions"
+    body = build_body(
+        model, prompt, max_tokens, chat_template_kwargs, reasoning_effort,
+        temperature, top_p,
+    )
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = "[REDACTED] + key
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    t0 = time.perf_counter()
+    time_to_first_output = None
+    ttft = None
+    content_chunks = 0
+    reasoning_chunks = 0
+    visible_content_parts = []
+    visible_content_chars = 0
+    visible_content_truncated = False
+    finish_reasons = []
+    done_event_observed = False
+    usage = None
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        if observer is not None:
+            observer("response", {
+                "request_id": next((response.headers.get(name) for name in
+                    ("x-request-id", "x-anvil-request-id", "request-id")
+                    if response.headers.get(name)), None),
+            })
+        lines = iter(lambda: response.readline(1024 * 1024 + 1), b"") if observer is not None else response
+        for raw in lines:
+            if observer is not None and len(raw) > 1024 * 1024:
+                raise ValueError("SSE line exceeds 1 MiB")
+            if deadline_seconds is not None and time.perf_counter() - t0 > deadline_seconds:
+                raise TimeoutError("stream exceeded its wall-clock deadline")
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                done_event_observed = True
+                break
+            try:
+                chunk = json.loads(data)
+            except Exception:
+                if observer is not None:
+                    observer("malformed", {})
+                continue
+            if observer is not None and (not isinstance(chunk, dict)
+                    or not isinstance(chunk.get("choices", []), list)):
+                raise ValueError("malformed SSE chunk")
+            if observer is not None and "id" in chunk:
+                if not isinstance(chunk["id"], str) or not 1 <= len(chunk["id"]) <= 512:
+                    raise ValueError("SSE id must be a nonempty string of at most 512 characters")
+                observer("stream_id", {"request_id": chunk["id"]})
+            if observer is not None and "error" in chunk:
+                observer("server_error", {"error": json.dumps(chunk["error"])[:1024]})
+                raise ValueError("upstream sent an SSE error")
+            if observer is not None and chunk.get("usage") is not None and not isinstance(chunk["usage"], dict):
+                raise ValueError("malformed SSE usage")
+            if chunk.get("usage"):
+                usage = chunk["usage"]
+            for choice in chunk.get("choices", []):
+                if observer is not None and (not isinstance(choice, dict)
+                        or not isinstance(choice.get("delta", {}), dict)):
+                    raise ValueError("malformed SSE choice or delta")
+                finish_reason = choice.get("finish_reason")
+                if finish_reason is not None:
+                    finish_reasons.append(str(finish_reason)[:128])
+                delta = choice.get("delta", {})
+                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                content = delta.get("content")
+                if observer is not None and any(v is not None and not isinstance(v, str) for v in
+                        (content, delta.get("reasoning_content"), delta.get("reasoning"))):
+                    raise ValueError("non-string SSE content or reasoning")
+                if observer is not None and len(finish_reasons) > 256:
+                    raise ValueError("too many finish reasons")
+                if reasoning:
+                    if time_to_first_output is None:
+                        time_to_first_output = time.perf_counter() - t0
+                    reasoning_chunks += 1
+                if observer is not None and (content or reasoning):
+                    observer("delta", {"content": content, "reasoning": reasoning})
+                if content:
+                    if time_to_first_output is None:
+                        time_to_first_output = time.perf_counter() - t0
+                    if ttft is None:
+                        ttft = time.perf_counter() - t0
+                    content_chunks += 1
+                    remaining = VISIBLE_CONTENT_CAPTURE_LIMIT - visible_content_chars
+                    if remaining > 0:
+                        kept = content[:remaining]
+                        visible_content_parts.append(kept)
+                        visible_content_chars += len(kept)
+                    if len(content) > max(remaining, 0):
+                        visible_content_truncated = True
+    e2e = time.perf_counter() - t0
+    completion_tokens = (
+        usage.get("completion_tokens") if isinstance(usage, dict) else None
+    )
+    has_usage_tokens = (
+        isinstance(completion_tokens, int)
+        and not isinstance(completion_tokens, bool)
+        and completion_tokens >= 0
+    )
+    return {
+        "time_to_first_output": time_to_first_output,
+        "ttft": ttft,
+        "e2e": e2e,
+        "out_toks": completion_tokens if has_usage_tokens else content_chunks,
+        "output_token_source": "usage" if has_usage_tokens else "content_chunks",
+        "content_chunks": content_chunks,
+        "reasoning_chunks": reasoning_chunks,
+        "visible_content": "".join(visible_content_parts),
+        "visible_content_captured_chars": visible_content_chars,
+        "visible_content_truncated": visible_content_truncated,
+        "visible_content_capture_limit": VISIBLE_CONTENT_CAPTURE_LIMIT,
+        "finish_reasons": finish_reasons,
+        "stream_terminal_observed": done_event_observed or bool(finish_reasons),
+        "usage": usage,
+    }
+
+
+def validate_stream_result(result):
+    """Require a completed capacity/context response to contain visible output."""
+    if not isinstance(result, dict) or result.get("ttft") is None:
+        raise ValueError("stream completed without visible content")
+    if "stream_terminal_observed" in result and not result["stream_terminal_observed"]:
+        raise ValueError("stream ended without a terminal event or finish reason")
+    return result

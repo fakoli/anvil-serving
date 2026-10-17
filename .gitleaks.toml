@@ -3,6 +3,31 @@ title = "anvil-serving secret scan"
 [extend]
 useDefault = true
 
+# Exact non-secret pair labels, each checked against both frozen arm cell IDs.
+[[allowlists]]
+description = "GLM comparison matrix pair identifiers"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/prompt-reconstruction-review\.json$''']
+regexes = [
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c1",?$''',
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c2",?$''',
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c4",?$''',
+  '''^\s*"pair_key": "warmup-ctx10240-c1",?$''',
+  '''^\s*"pair_key": "warmup-ctx163840-c1",?$''',
+  '''^\s*"pair_key": "warmup-edge-ctx310272-c1",?$''',
+]
+
 # Exact hashes in the frozen Apple voice evidence. Scope each exception to
 # its provenance field, value and source path; adjacent credentials still fail.
 [[allowlists]]

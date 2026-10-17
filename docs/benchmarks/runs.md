@@ -1,5 +1,17 @@
 # Benchmark run catalog
 
+## 2026-10-17 GLM NVIDIA FP4 primary promotion follow-up
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | nvidia/GLM-5.3-Flash-FP4-Local `76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`, TP2/327,680/C4/MTP3 | direct and authenticated routed acceptance; fresh single-arm client C1/C2/C4 capacity acceptance at approximately 31.6K actual prompts | 2x RTX PRO 6000 Blackwell Max-Q | direct 9 protocols; routed preflight 8/8, image 18/18, coding/tool continuation 1/1 across five requests; capacity 12 scored requests with no observed OOM, preemption, or refusal; five fresh Pi process combinations, two primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway and WebUI catalog checks passed | operator-selected best current fit; human-approved `current` primary mapping; earlier A/B remains canonical. Client C4 sampled maxima were engine active 2, queued 3, occupancy 4 at separate times, not four simultaneous decodes. NativeWorkflows is `recovery_required` with failed progress and no retry; Earlier evaluator credential and lost-capture failures remain retained; later bounded native checks passed. Pi Web, existing sessions, running Hermes Gateway and native catalog/session propagation remain unaccepted. No SWE, endurance, p99, MTP-off, full-window simultaneous-capacity, fleet-convergence, or public-web claim. EXL3 r11 is retained rollback. | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md) |
+
+## 2026-10-17 GLM serving-performance comparison
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | NVIDIA GLM-5.3-Flash-FP4-Local TP2/DCP2/MTP3 candidate; retained EXL3 r11 TP2/DCP1 no-spec control | 12 matched natural/edge pairs across four actual-input strata and C1/C2/C4 | 2x RTX PRO 6000 Blackwell Max-Q | 24 accepted cells; 84 requests per arm; all required and supplemental coverage retained | original 42-cell matrix `closed_partial` (one visible-output-overrun failure, 17 stop-rule-blocked); no SWE, endurance, no-speculation, or MTP-off comparison; no qualification or promotion. Exact r11 restoration passed direct/routed smokes and readmission. | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-17-glm53-serving-performance.md) |
+
 ## 2026-10-16 GLM natural-output baseline
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |

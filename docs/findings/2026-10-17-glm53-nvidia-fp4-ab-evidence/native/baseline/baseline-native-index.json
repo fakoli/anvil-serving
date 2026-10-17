@@ -1,0 +1,125 @@
+{
+  "schema": "glm53-fp4-ab-baseline-native-index/v1",
+  "scope": "Sanitized native baseline results only; includes failed and incomplete artifacts.",
+  "source_boundary": "Protected operator evidence; source names and hashes are transformation references only. Public files contain no protected path, host, IP, port, or GPU UUID.",
+  "transformation": "JSON-preserving sanitization; no result, status, schema, or failure was omitted or reclassified.",
+  "artifacts": [
+    {
+      "label": "smoke",
+      "published_path": "native/baseline/baseline-smoke.json",
+      "source_artifact": "baseline-smoke.json",
+      "source_sha256": "46a37d2e44929e33e0247603c91b803a583221bea9410884ac810dc9c8672fcb",
+      "published_sha256": "ad3e7ed0ad4c6cc27be70b33d9166d4fad31d8046650e65cd84089cbb0db762f",
+      "published_bytes": 3279,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "full-preflight-invalid-ocr",
+      "published_path": "native/baseline/baseline-full-preflight.json",
+      "source_artifact": "baseline-full-preflight.json",
+      "source_sha256": "cbf7eaf6f745dc24a998838871adf8e344b4494e6c3583aa8b5ab25c76356c03",
+      "published_sha256": "c0e7feec968f65b8e5bec927c952dd9def6ec959a48178a01131d4b57c9c058e",
+      "published_bytes": 26885,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "ocr-correction-r2",
+      "published_path": "native/baseline/baseline-ocr-preflight-r2.json",
+      "source_artifact": "baseline-ocr-preflight-r2.json",
+      "source_sha256": "0c29cad9422ee1ffcc5c8d5c69d952ed1aa0d4914b728ed7f8ba6f6719652392",
+      "published_sha256": "0d0fcd16956d1e63e4302b512a20aa72049fc1eeba434e80f3b1017a78942697",
+      "published_bytes": 2171,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "vision",
+      "published_path": "native/baseline/baseline-vision.json",
+      "source_artifact": "baseline-vision.json",
+      "source_sha256": "e4eec44c830287de9acfbb6db81d1875600755a6e176bc637184d44122b94969",
+      "published_sha256": "21d922c3731c15108b442f1f909064a04c43d97cd2813facecd7b7b64b69525c",
+      "published_bytes": 39584,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "agentic-terminal",
+      "published_path": "native/baseline/0-agentic.json",
+      "source_artifact": "0-agentic.json",
+      "source_sha256": "f0248d2402130abfff5bd940b9dfb3a103e40716bb1d36d974fde94a74e01f05",
+      "published_sha256": "f0248d2402130abfff5bd940b9dfb3a103e40716bb1d36d974fde94a74e01f05",
+      "published_bytes": 37139,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "context-terminal",
+      "published_path": "native/baseline/0-context.json",
+      "source_artifact": "0-context.json",
+      "source_sha256": "b58b13c084a27bf5960976a12ebcc44bc98cf84937a71c67a08d1769fcb8e1ec",
+      "published_sha256": "b58b13c084a27bf5960976a12ebcc44bc98cf84937a71c67a08d1769fcb8e1ec",
+      "published_bytes": 58053,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "stability-r1-failed",
+      "published_path": "native/baseline/baseline-stability-scout-r1.json",
+      "source_artifact": "baseline-stability-scout-r1.json",
+      "source_sha256": "23c9231967989c3b33c29d22b54aff5a4810e975e2270a72b3b0b0ce60a74ad6",
+      "published_sha256": "ef5da708f1e4d3d4a957806507eaf09044dfb10d143667e25830a91d2bbae6d6",
+      "published_bytes": 1667,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Redacted real container identifiers. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "stability-r2-incomplete",
+      "published_path": "native/baseline/baseline-stability-scout-r2.json",
+      "source_artifact": "baseline-stability-scout-r2.json",
+      "source_sha256": "b20af366c3a2fadce66fa76bfe81050c9fce337a261aaacbbe66cab4afa10b74",
+      "published_sha256": "c1ba68dd75454da514a5a67cf651870f7133b44ced0244c8b4d9d2fca0e0afec",
+      "published_bytes": 7508,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports; projected private numeric bound_port to synthetic 30000 while preserving its integer type. Redacted real container identifiers. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "stability-r3-completed-diagnostic",
+      "published_path": "native/baseline/baseline-stability-scout-r3.json",
+      "source_artifact": "baseline-stability-scout-r3.json",
+      "source_sha256": "029bfd5f9c9762894ccc9841bb286b023fcb2771b1f15500f765545289e4ed04",
+      "published_sha256": "224be1b4356fb55829a5e692a8bad834ab3fd290d3461d15a04d63c81b4099d0",
+      "published_bytes": 24041,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports; projected private numeric bound_port to synthetic 30000 while preserving its integer type. Redacted real container identifiers. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "natural-ctx8192-c1-r1",
+      "published_path": "native/baseline/baseline-natural-ctx8192-c1-r1.json",
+      "source_artifact": "baseline-natural-ctx8192-c1-r1.json",
+      "source_sha256": "dbc180cfacca5062697b806f40d6304dd8aee425c820437d4f9a562eda6f8b99",
+      "published_sha256": "306a95140e87e988847f60bb0de25c44b10069617150bca40047e22e946cb0b6",
+      "published_bytes": 19771,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "natural-ctx8192-c4-r1",
+      "published_path": "native/baseline/baseline-natural-ctx8192-c4-r1.json",
+      "source_artifact": "baseline-natural-ctx8192-c4-r1.json",
+      "source_sha256": "42bcdc6d5601b17d16080a0c580eefee95321b86232d94948d03709f8577d5aa",
+      "published_sha256": "d5f83454bdde2cfb880eca1298e4e471885c657b8c553e6ad9304d3cbcf7ee56",
+      "published_bytes": 19753,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "natural-ctx32768-c1-r1",
+      "published_path": "native/baseline/baseline-natural-ctx32768-c1-r1.json",
+      "source_artifact": "baseline-natural-ctx32768-c1-r1.json",
+      "source_sha256": "3f85145da10b4e16d09846b39cd22c8d25e17b902dd2404a8c32ae370963704d",
+      "published_sha256": "e33a52a178785b728e809d310232d34caf1489240bfcfbe04569529457393ae0",
+      "published_bytes": 19746,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "natural-ctx32768-c4-r1",
+      "published_path": "native/baseline/baseline-natural-ctx32768-c4-r1.json",
+      "source_artifact": "baseline-natural-ctx32768-c4-r1.json",
+      "source_sha256": "38f085c45bd98ff2f0ad6e6d8aba536c5fe67f10f135a0531880dd9557932fd4",
+      "published_sha256": "ffc4ed2611233bf7d9b485d3927288cc278f767911ea88cfb97ae5e476a021a0",
+      "published_bytes": 19764,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    }
+  ]
+}

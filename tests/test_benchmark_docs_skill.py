@@ -1,3 +1,4 @@
+import copy
 import csv
 import importlib.util
 import json
@@ -1090,3 +1091,185 @@ def test_finalizer_rejects_oversized_artifact_before_read(tmp_path, monkeypatch)
     monkeypatch.setattr(Path, "open", guarded_open)
     with pytest.raises(ValueError, match="violates size_policy"):
         _finalizer_module().finalize(source)
+
+
+def _serving_native_bundle(tmp_path: Path, *, status: str = "complete", complete: bool = True):
+    from anvil_serving.benchmarking.artifacts import (
+        SERVING_METRIC_KEYS,
+        build_measured_evidence,
+        evidence_file_reference,
+    )
+
+    stage = tmp_path / "stage.json"
+    stage.write_text(json.dumps({"stage": "retained"}), encoding="utf-8")
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps({
+        "profile": "serving-comparison/v1",
+        "frozen_before_requests": True,
+        "source_revision": "a" * 64,
+        "source_file_hashes": [evidence_file_reference(str(stage), root=str(tmp_path))],
+        "arms": {
+            name: {key: name for key in ("model", "revision", "image", "runtime", "hardware")}
+            for name in ("baseline", "candidate")
+        },
+        "required_cells": {
+            f"{arm}:short:c1": {
+                "arm": arm, "workload": "short", "context_tokens": 1,
+                "concurrency": 1, "requests": 1,
+            }
+            for arm in ("baseline", "candidate")
+        },
+    }), encoding="utf-8")
+    reference = evidence_file_reference(str(stage), root=str(tmp_path))
+    metrics = {
+        key: {"status": "measured", "value": 0, "evidence": [reference]}
+        for key in SERVING_METRIC_KEYS
+    }
+    for key in (
+        "effective_prefill_tok_s", "time_to_first_output_ms", "ttft_ms", "decode_tok_s",
+        "tpot_ms", "e2e_ms", "prompt_tokens", "completion_tokens",
+    ):
+        metrics[key]["observation"] = {"samples": 1, "p50": 0, "p95": 0}
+    metrics["throughput_tok_s"]["value"] = 0
+    metrics["concurrency"]["observation"] = {"requested": 1, "client_max": 1, "engine_max": 1}
+    metrics["gpu_memory"]["observation"] = {"accounting": "GPU allocator", "peak_used_bytes": 0, "min_free_bytes": 0}
+    metrics["host_memory"]["observation"] = {"accounting": "cgroup and host", "cgroup_current_bytes": 0, "cgroup_peak_bytes": 0, "cgroup_limit_bytes": 0, "host_available_bytes": 0}
+    metrics["admission_status"]["observation"] = {"refused_requests": 0, "preemptions": 0, "ooms": 0}
+    if status == "partial":
+        metrics["decode_tok_s"] = {"status": "not_collected", "reason": "retained failure"}
+    plan_data = json.loads(plan.read_text(encoding="utf-8"))
+    cells = {}
+    measurement_files = []
+    for arm in ("baseline", "candidate"):
+        cell_id = f"{arm}:short:c1"
+        raw = tmp_path / f"{arm}-raw.json"
+        raw.write_text(json.dumps({
+            "schema": "anvil-serving.benchmark/v1",
+            "model": arm,
+            "context_tokens": 1,
+            "concurrency": 1,
+            "requests": 1,
+            "completed": 1,
+            "failed": 0,
+            "request_timings": [{}],
+            "workload_identity": {"workload_kind": "short"},
+        }), encoding="utf-8")
+        receipt = tmp_path / f"{arm}-measurement.json"
+        receipt.write_text(json.dumps({
+            "profile": "serving-comparison/v1", "arm": arm,
+            "identity": plan_data["arms"][arm],
+            "cell": plan_data["required_cells"][cell_id],
+            "raw": evidence_file_reference(str(raw), root=str(tmp_path)),
+        }), encoding="utf-8")
+        raw_reference = evidence_file_reference(str(raw), root=str(tmp_path))
+        measurement_files.extend([raw.name, receipt.name])
+        cell_metrics = copy.deepcopy(metrics)
+        for metric in cell_metrics.values():
+            if metric["status"] == "measured":
+                metric["evidence"] = [raw_reference]
+        cells[cell_id] = {
+            "measurement": evidence_file_reference(str(receipt), root=str(tmp_path)),
+            "metrics": cell_metrics,
+        }
+    coverage = {
+        "profile": "serving-comparison/v1",
+        "status": status,
+        "frozen_plan": evidence_file_reference(str(plan), root=str(tmp_path)),
+        "required_cells": ["baseline:short:c1", "candidate:short:c1"],
+        "cells": cells,
+    }
+    native = build_measured_evidence(
+        run={"run_id": "run", "ownership_id": "campaign", "suite": "capacity", "profile": "serving-comparison/v1", "spec_sha256": "c" * 64},
+        identities={
+            "model": {"alias": "baseline"}, "served_model": {"id": "served"},
+            "runtime": {"name": "runtime", "revision": "r1"},
+            "image": {"digest": "sha256:" + "d" * 64},
+            "hardware": {"worker": "worker", "architecture": "x86_64"},
+            "topology": {"kind": "local"}, "context": {"configured_tokens": 1},
+            "concurrency": {"requests": 1},
+            "harnesses": {"capacity": "pinned"}, "dataset": {"name": "synthetic", "revision": "pinned"},
+        },
+        stages=[{"sequence": 0, "name": "capacity", "status": "completed" if complete else "failed", "evidence": [reference]}],
+        completeness="completed" if complete else "failed",
+        summary={"completed": complete},
+        failure=None if complete else {"class": "model_behavior", "message": "retained failure"},
+        artifact_root=str(tmp_path),
+        metrics_coverage=coverage,
+    )
+    native_path = tmp_path / "native.json"
+    native_path.write_text(json.dumps(native), encoding="utf-8")
+    summary = {
+        "schema": "anvil-serving.benchmark-decision-summary/v1",
+        "complete": complete,
+        "metrics_coverage": native["metrics_coverage"],
+        "comparison_evidence": evidence_file_reference(str(native_path), root=str(tmp_path)),
+    }
+    summary_path = tmp_path / "summary.json"
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    (tmp_path / "README.md").write_text("index\n", encoding="utf-8")
+    source = _manifest_source(files=["README.md"])
+    by_role = {role["role"]: role for role in source["artifact_roles"]}
+    by_role["raw-run-evidence"].update({"status": "retained", "files": ["stage.json", "plan.json", "native.json", *measurement_files], "reason": "retained native evidence"})
+    by_role["decision-summary"].update({"status": "retained", "files": ["summary.json"], "reason": "derived summary"})
+    return source, summary_path
+
+
+def test_finalizer_accepts_complete_serving_summary_bound_to_native_envelope(tmp_path: Path):
+    source, _ = _serving_native_bundle(tmp_path)
+    _, manifest = _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+    assert len(manifest["artifact_roles"]) == 10
+
+
+@pytest.mark.parametrize("mutation", (
+    lambda summary: summary.__setitem__("comparison_evidence", {"path": "native.json", "sha256": "0" * 64, "bytes": 0}),
+    lambda summary: summary.__setitem__("comparison_evidence", None),
+))
+def test_finalizer_rejects_tampered_or_absent_serving_comparison_reference(tmp_path: Path, mutation):
+    source, summary_path = _serving_native_bundle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    mutation(summary)
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    with pytest.raises(ValueError, match="comparison_evidence"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+
+
+def test_finalizer_rejects_complete_summary_when_native_coverage_is_partial(tmp_path: Path):
+    source, summary_path = _serving_native_bundle(tmp_path, status="partial")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["complete"] = True
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    with pytest.raises(ValueError, match="complete native metrics coverage"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+
+
+def test_finalizer_retains_incomplete_serving_bundle(tmp_path: Path):
+    source, _ = _serving_native_bundle(tmp_path, status="partial", complete=False)
+    _, manifest = _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+    assert next(role for role in manifest["artifact_roles"] if role["role"] == "decision-summary")["status"] == "retained"
+
+
+def test_finalizer_allows_incomplete_serving_draft_without_comparison_reference(tmp_path: Path):
+    source, summary_path = _serving_native_bundle(tmp_path, status="partial", complete=False)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary.pop("comparison_evidence")
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+
+
+def test_finalizer_rejects_complete_serving_summary_with_mutated_cell_metric(tmp_path: Path):
+    source, summary_path = _serving_native_bundle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["metrics_coverage"]["cells"]["baseline:short:c1"]["metrics"]["ttft_ms"]["observation"]["p50"] = 999999999
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    with pytest.raises(ValueError, match="exactly match validated native evidence"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))
+
+
+def test_finalizer_rejects_complete_serving_summary_that_drops_coverage(tmp_path: Path):
+    source, summary_path = _serving_native_bundle(tmp_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary.pop("metrics_coverage")
+    summary.pop("comparison_evidence")
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    with pytest.raises(ValueError, match="requires metrics_coverage"):
+        _finalizer_module().finalize(_write_finalizer_source(tmp_path, source))

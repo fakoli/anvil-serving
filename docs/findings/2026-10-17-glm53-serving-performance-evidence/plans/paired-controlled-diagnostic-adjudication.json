@@ -1,0 +1,64 @@
+{
+  "arms": [
+    {
+      "arm": "baseline",
+      "capture_truncated": true,
+      "captured_words": 1634,
+      "classification": "visible repetition overrun; strict full-capture validation failed",
+      "completion_tokens": 16384,
+      "finish_reasons": [
+        "length"
+      ],
+      "foreign_markers": 0,
+      "marker_at_start": true,
+      "native": {
+        "bytes": 13524,
+        "path": "NEW/diagnostic-controlled-max/native/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1.json",
+        "sha256": "e7f036430f30df625cf26ccbb962e050bdf67e6c6f17326548e9ee4b28deae42"
+      },
+      "performance_eligible": false,
+      "requested_words": 128,
+      "telemetry": {
+        "bytes": 2554,
+        "path": "NEW/diagnostic-controlled-max/telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/cell-summary.json",
+        "sha256": "339baa572937f4e22722b2153a68a61b9c60aafc979b7e77b72fada2c044256e"
+      }
+    },
+    {
+      "arm": "candidate",
+      "capture_truncated": true,
+      "captured_words": 1634,
+      "classification": "visible repetition overrun; strict full-capture validation failed",
+      "completion_tokens": 16384,
+      "finish_reasons": [
+        "length"
+      ],
+      "foreign_markers": 0,
+      "marker_at_start": true,
+      "native": {
+        "bytes": 13502,
+        "path": "NEW/diagnostic-controlled-max/native/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1.json",
+        "sha256": "622268060f934e5eacf2b4ec53ed9d3cd2bae1f11209a8adb08794da379debdf"
+      },
+      "performance_eligible": false,
+      "requested_words": 128,
+      "telemetry": {
+        "bytes": 2540,
+        "path": "NEW/diagnostic-controlled-max/telemetry/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1/cell-summary.json",
+        "sha256": "384bca66ef7cbdce8c0d1c627af0fd8250b31eb51edcc39c8a2e70c4d646d144"
+      }
+    }
+  ],
+  "at": "2026-10-17T12:49:14.636601+00:00",
+  "conclusion": "Both recipes overran the same 128-word request to the 16384-token cap. This rejects the repeated-word stratum as a dependable controlled workload under this request policy. No configuration fix established.",
+  "next": "continue unchanged original capacity-edge queue; independent natural-output workload with complete telemetry",
+  "not_supported": [
+    "reasoning-only starvation",
+    "OOM or physical-capacity failure",
+    "cross-request contamination",
+    "isolated MTP or quantization attribution"
+  ],
+  "original_matrix": "one original failed cell and17blocked; diagnostics are separate n1 outcomes",
+  "promoted": false,
+  "schema": "controlled-diagnostic-adjudication/v1"
+}

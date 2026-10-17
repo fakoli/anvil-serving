@@ -1,0 +1,35 @@
+{
+  "command": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/",
+    "-x",
+    "-q",
+    "--basetemp",
+    "/data/cache/t/anvil-serving-pytest-ckukxho5"
+  ],
+  "cwd": "[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving",
+  "exit_code": 0,
+  "finished_at": "2026-10-17T10:55:14.108575+00:00",
+  "interpreter": "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+  "pytest_args": [
+    "tests/",
+    "-x",
+    "-q"
+  ],
+  "run_id": "e535e1df-5cbe-47df-aabf-2cacda10086c",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": true,
+    "head": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+    "tracked_diff_sha256": "974161ca8a2d07249ba4e8c70fa150cd1a23136a3f28830c0a83243fd8a6817e"
+  },
+  "source_after": {
+    "dirty": true,
+    "head": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+    "tracked_diff_sha256": "974161ca8a2d07249ba4e8c70fa150cd1a23136a3f28830c0a83243fd8a6817e"
+  },
+  "started_at": "2026-10-17T10:43:39.019488+00:00",
+  "state": "passed"
+}

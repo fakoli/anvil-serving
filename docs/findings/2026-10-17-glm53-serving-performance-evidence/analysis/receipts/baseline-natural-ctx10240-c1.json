@@ -1,0 +1,23 @@
+{
+  "arm": "baseline",
+  "cell": {
+    "arm": "baseline",
+    "concurrency": 1,
+    "context_tokens": 10240,
+    "requests": 8,
+    "workload": "synthetic-summary"
+  },
+  "identity": {
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GB; TP2",
+    "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime": "vllm-exl3-v84"
+  },
+  "profile": "serving-comparison/v1",
+  "raw": {
+    "bytes": 21732,
+    "path": "native/baseline/baseline-natural-ctx10240-c1.json",
+    "sha256": "b5f06a2826ce86363c2f75bf7ff3e4823a2e8135d49a02e6a9af3d8d4df74cae"
+  }
+}

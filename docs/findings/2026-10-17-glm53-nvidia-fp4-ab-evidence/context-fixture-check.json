@@ -1,0 +1,80 @@
+{
+  "schema": "anvil-serving.context-failure-fixture-check/v1",
+  "status": "fixture_integrity_confirmed; application_quality_failure_remains",
+  "checked_at": "2026-10-17",
+  "failed_observation": {
+    "case_id": "native-needle-318464-0.900-r0",
+    "requested_tokens": 318464,
+    "observed_prompt_tokens": 316249,
+    "finish_reason": "stop",
+    "completed": true,
+    "passed": false,
+    "expected_answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+    "visible_answer": "The access marker for ORCHID is not present in the provided document."
+  },
+  "deterministic_reconstruction": {
+    "builder_inputs": {
+      "case_type": "native-needle",
+      "requested_tokens": 318464,
+      "position": 0.9,
+      "repetition": 0,
+      "seed": 17,
+      "counter": "max(1, ceil(chars / 4.832231202547146))",
+      "calibration": {
+        "method": "endpoint-usage-filler-ratio/v2",
+        "sample_chars": 39460,
+        "sample_prompt_tokens": 8166,
+        "chars_per_token": 4.832231202547146
+      }
+    },
+    "case_id": "native-needle-318464-0.900-r0",
+    "calibrated_prompt_tokens": 318456,
+    "prompt_characters": 1538850,
+    "prompt_sha256": "a8d952496fe17525e8c404823f107e0c2f121775cba5ad7ae3624e8fc05d59bd",
+    "filler_paragraphs": 19983,
+    "expected_answer": "K557508437185",
+    "needle": "The access marker for ORCHID is K557508437185.",
+    "needle_occurrences": 1,
+    "question_occurrences": 1,
+    "oracle": "normalized_exact/v1"
+  },
+  "conclusion": {
+    "fixture_construction": "The deterministic builder includes the expected answer exactly once at the requested 0.900 position and stays within the requested-token budget under the recorded calibration counter.",
+    "runtime_binding": "The terminal artifact records selection, calibration, observed usage, answer hash, and response but does not retain the submitted prompt or a submitted-prompt hash. The reconstruction is therefore source-derived evidence of what this deterministic runner constructs, not a cryptographic proof of the previously transmitted request bytes.",
+    "failure_interpretation": "The completed stop response denied the marker despite a valid deterministic fixture. This check supplies no basis to reclassify the recorded application-quality failure."
+  },
+  "supported_minimal_exact_case_selection": {
+    "status": "Historical status at initial failure check: not executed under initial stop rule. Subsequent user authorization enabled the completed diagnostic in diagnostic-result.json.",
+    "parameters_to_replace": {
+      "case_ids": [
+        "native-needle"
+      ],
+      "token_buckets": [
+        318464
+      ],
+      "positions": [
+        0.9
+      ],
+      "repetitions": 1
+    },
+    "controls_to_preserve": {
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+      "advertised_context": 327680,
+      "output_headroom_tokens": 9216,
+      "thinking_mode": "default",
+      "reasoning_effort": "max",
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "client_topology": "co-resident"
+    },
+    "runner_behavior": "The supported context suite always performs a fresh endpoint-usage calibration before building the selected case. A later retry preserves the selection and controls but cannot assert byte-identical prompt construction unless that new calibration yields the same ratio."
+  },
+  "provenance": {
+    "original_sha256": "3f0d29a13ffc80837a1108a5ce2577eb67b69d8b8e5350073fba66479b272978",
+    "source_revision": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+    "builder": "anvil_serving/benchmarking/context.py",
+    "runner": "anvil_serving/benchmarking/suite_runner.py",
+    "redaction": "Operator evidence paths omitted. Reconstructed prompt hash is not a transmitted-request receipt."
+  },
+  "subsequent_authorized_diagnostic": "diagnostic-result.json"
+}

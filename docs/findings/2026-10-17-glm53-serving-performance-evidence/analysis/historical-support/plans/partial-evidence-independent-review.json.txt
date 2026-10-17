@@ -1,0 +1,88 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: plans/partial-evidence-independent-review.json
+Original SHA256: 47e1403ed8d08b3d67007ae09bc2e900b4c253527755e8449c3d2086058549e9
+Original bytes: 3875
+
+{
+  "advisory_priors": [
+    "Sampled engine occupancy maxima are lower bounds.",
+    "Engine-reported startup memory values are rounded runtime observations, not checkpoint size or pure weight allocation.",
+    "Shape-valid product evidence does not validate private supplemental sufficiency."
+  ],
+  "artifacts": {
+    "findings_summary": {
+      "accepted": [
+        "The current artifact is explicitly partial and the product validator reports partial.",
+        "Required17 metrics and the private histogram, queue-reason, runtime-memory, and request-identity supplements are retained separately.",
+        "Histogram failure no longer invalidates independent admission evidence.",
+        "The v2 validation receipt binds the exact artifact, frozen plan, projector, and assembler bytes.",
+        "All 24 planned arm pairs, including 21 scored pairs and three excluded warmups, reconstruct to identical source-prompt hash vectors under the frozen request builder."
+      ],
+      "closure_conditions": [
+        "Before a full comparison claim, require all 42 frozen cells to have all required17 metrics measured, all campaign supplementals measured, and all 21 scored arm pairs to have measured matching native request-identity vectors.",
+        "Keep reconstructed source-prompt equality distinct from transmitted wire bytes and runtime chat-template serialization."
+      ],
+      "critical": [],
+      "high": [],
+      "medium": [],
+      "missing_tests": [
+        "Final two-arm complete-gate probe is deferred until all candidate observations exist."
+      ],
+      "residual_risk": "The product validator intentionally validates metrics_coverage only; the private supplemental completion rule still requires an exact final closure gate and independent review after both arms are present."
+    },
+    "prompt_reconstruction_review": {
+      "bytes": 39826,
+      "path": "plans/prompt-reconstruction-review.json",
+      "sha256": "502e07a8d0dd860ecccec8e4cb827f614b8993f58f5fdeae905dbdc871a8a08c"
+    },
+    "validation_receipt": {
+      "bytes": 1743,
+      "path": "plans/coverage-validation-receipt.json",
+      "sha256": "bf5c4df45d5c7faef473665cb10861e26680902b6c4d7cf0c5c1dec30d90c59f"
+    }
+  },
+  "gate_state": {
+    "collection": "accepted",
+    "final_comparison": "hold_until_both_arms_and_closure_guards",
+    "promotion": "not_requested"
+  },
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": "accept_continued_collection_hold_final_comparison",
+  "request": "Independent adversarial review of the frozen private serving-comparison projector, partial assembler, validation receipt, and prepared collection gate.",
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    {
+      "bytes": 32375,
+      "path": "analysis/project_cell.py",
+      "sha256": "3f9e95edc0c1669193f5abe62eab9497ef32aa91c16b17a2662c8409329488f7"
+    },
+    {
+      "bytes": 9485,
+      "path": "analysis/assemble_partial_coverage.py",
+      "sha256": "7c389d6d1fd9d28968d2a364e004da447c9476eaf075f274e2305229cdbb0f81"
+    },
+    {
+      "bytes": 344164,
+      "path": "analysis/partial-serving-comparison-evidence.json",
+      "sha256": "805d680e813584ec8ebae08b6175ad4d69eb428e11abf269c5e68df9b18d18e8"
+    },
+    {
+      "bytes": 1743,
+      "path": "plans/coverage-validation-receipt.json",
+      "sha256": "bf5c4df45d5c7faef473665cb10861e26680902b6c4d7cf0c5c1dec30d90c59f"
+    },
+    {
+      "bytes": 39826,
+      "path": "plans/prompt-reconstruction-review.json",
+      "sha256": "502e07a8d0dd860ecccec8e4cb827f614b8993f58f5fdeae905dbdc871a8a08c"
+    }
+  ],
+  "tools_used": [
+    "read-only source and evidence inspection",
+    "project_cell.py --self-test",
+    "assemble_partial_coverage.py --validate",
+    "independent deterministic source-prompt reconstruction",
+    "SHA-256 and byte-count verification of receipt references"
+  ]
+}

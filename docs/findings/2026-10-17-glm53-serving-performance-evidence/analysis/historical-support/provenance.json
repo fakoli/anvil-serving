@@ -1,0 +1,162 @@
+{
+  "classification": "references retained as source claims, not current graph bindings",
+  "observed_at": "2026-10-17T12:51:39.379895+00:00",
+  "records": [
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 8449,
+      "original_sha256": "ea6854cdb64bc322aab5ebf9b4847a3fca0e4e537d3975baf0f7ccf02e4f6641",
+      "original_source_relative_path": "NEW/diagnostic-controlled-max/plans/source-binding.json",
+      "reason": "Diagnostic source binding uses an absolute in-root plan path; preserve the recorded binding notation as an archival source claim.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 8373,
+        "path": "analysis/historical-support/NEW/diagnostic-controlled-max/plans/source-binding.json.txt",
+        "sha256": "a09e9ef903fb1952f91018fdbdc6df34907effa4d2681dffb5f39c0d541c4441"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 22117,
+      "original_sha256": "d4fab1104b219047d930d7c2cc2a7086cf320a3de6a0b50e4114c1a733c53033",
+      "original_source_relative_path": "excluded/phase1-collection-recovery/analysis/projections/baseline-natural-ctx10240-c1.json",
+      "reason": "Excluded phase1 projection retains original locations/hashes that differ from fresh replay files or were relocated.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 22422,
+        "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/projections/baseline-natural-ctx10240-c1.json.txt",
+        "sha256": "855cf26c980648a16eca71f4d403ab0514b38c2484e624a030fd7cd58de0c598"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 808,
+      "original_sha256": "366995fdba3e8ac17235ec0e96086680cf2c19ea2f75e3a2ac099b736308e60d",
+      "original_source_relative_path": "excluded/phase1-collection-recovery/analysis/receipts/baseline-natural-ctx10240-c1.json",
+      "reason": "Excluded phase1 receipt refers to the original native location/hash, now occupied by fresh replay evidence.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 1108,
+        "path": "analysis/historical-support/excluded/phase1-collection-recovery/analysis/receipts/baseline-natural-ctx10240-c1.json.txt",
+        "sha256": "4e7fa54c22e63f69a3e46f175fb70af0e4fa245d37730d257266e5012578f13f"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 2432,
+      "original_sha256": "3840ad3e2af0b70d9b8ad95c61b165314f2b5bf3c328252bafed86bab95b56eb",
+      "original_source_relative_path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json",
+      "reason": "Excluded phase1 summary records an absolute collector source binding; it is not a current accepted-cell receipt.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 2683,
+        "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json.txt",
+        "sha256": "ba7d835729b944c5b2bf6828f719b8d7ed083b8130e4e5648e47be75dcbd9e5e"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 2071,
+      "original_sha256": "b49f0d4a1fcafddeba4a7c653b0ee2a906b59a517f03432b7e7e2f85e1db766d",
+      "original_source_relative_path": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json",
+      "reason": "Excluded phase1 execution binding records an absolute collector source reference; preserve the original claim.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 2308,
+        "path": "analysis/historical-support/excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json.txt",
+        "sha256": "750310a8b6878220522da13708cea675de10934c5d444cab31d220391529e6e6"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 2211,
+      "original_sha256": "9abae0190acdae1fae23d8bbbff19beab92dc59633f58ded6021c091f8f774f5",
+      "original_source_relative_path": "identity/candidate-source-verification.json",
+      "reason": "Source verification uses absolute checkout paths; frozen campaign copies are retained separately as current graph evidence.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 2567,
+        "path": "analysis/historical-support/identity/candidate-source-verification.json.txt",
+        "sha256": "621a15d54943d9effa8e0cfe207582ecd9c50ace7a7aa81c20dae61624738d51"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 3141,
+      "original_sha256": "d008932ee171312a0b4a045dab8d51f81547c1c5d667b0d7cc74bb776e2e1d66",
+      "original_source_relative_path": "identity/starting-file-hashes.json",
+      "reason": "Original identity snapshot uses protected operator paths as JSON dictionary keys; archival text permits whole-text identity redaction without rewriting the original.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 2689,
+        "path": "analysis/historical-support/identity/starting-file-hashes.json.txt",
+        "sha256": "717e6f4bc5de47c0dfccd31c5b5511be1529a939d3ef6331d11632bd20c25191"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 1743,
+      "original_sha256": "bf5c4df45d5c7faef473665cb10861e26680902b6c4d7cf0c5c1dec30d90c59f",
+      "original_source_relative_path": "plans/coverage-validation-receipt.json",
+      "reason": "Historical validation receipt binds an earlier coverage assembler and coverage envelope, not the current final versions.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 1980,
+        "path": "analysis/historical-support/plans/coverage-validation-receipt.json.txt",
+        "sha256": "9de5aa335d16727dfb8f075137a883f34636eb32534e26d64e5f6758e281ae23"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 3875,
+      "original_sha256": "47e1403ed8d08b3d67007ae09bc2e900b4c253527755e8449c3d2086058549e9",
+      "original_source_relative_path": "plans/partial-evidence-independent-review.json",
+      "reason": "Historical review binds an earlier coverage assembler and partial envelope; preserve its original scope and hashes.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 4135,
+        "path": "analysis/historical-support/plans/partial-evidence-independent-review.json.txt",
+        "sha256": "7c00105c1bcf8f032eeaf836f88c9f3f3c0864c3f438a4da448f13cf3a36a72d"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 8475,
+      "original_sha256": "90579d701344d61811890c4ae0a9ec552e739632de56e9949d60fc559564f71e",
+      "original_source_relative_path": "plans/telemetry-independent-review.json",
+      "reason": "Historical telemetry review binds the original first-phase native and telemetry paths/hashes, later replaced by replay files.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 8728,
+        "path": "analysis/historical-support/plans/telemetry-independent-review.json.txt",
+        "sha256": "c68faf458fdf745123ab0f38cdc2bbd1f1a12185d225d4a82ecb7d5a41c5387b"
+      }
+    },
+    {
+      "classification": "opaque-archival-source-claims",
+      "limitation": "Embedded references are not traversed, rebound, or asserted as current required-reference evidence. Original schema and source claims remain archival.",
+      "original_bytes": 1120,
+      "original_sha256": "4bbd1cd60f884aa236a974972e89a235ae14396489feaae583bf682e53440313",
+      "original_source_relative_path": "telemetry/collector-receipt.json",
+      "reason": "Earlier collector receipt records a prior source hash and an absolute path; current collector identity is bound separately by accepted cell summaries.",
+      "sanitation_status": "private raw snapshot; the reviewed bundle helper applies public redaction during transformation",
+      "snapshot": {
+        "bytes": 1328,
+        "path": "analysis/historical-support/telemetry/collector-receipt.json.txt",
+        "sha256": "fcf190ce13c4a1b0f60a8e2223bfcccea3ac3cdda665265280872007c60fe0a5"
+      }
+    }
+  ],
+  "required_current_graph_use": false,
+  "schema": "opaque-archival-support-provenance/v1"
+}

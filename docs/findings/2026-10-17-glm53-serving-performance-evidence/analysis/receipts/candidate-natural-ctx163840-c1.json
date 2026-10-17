@@ -1,0 +1,23 @@
+{
+  "arm": "candidate",
+  "cell": {
+    "arm": "candidate",
+    "concurrency": 1,
+    "context_tokens": 163840,
+    "requests": 8,
+    "workload": "synthetic-summary"
+  },
+  "identity": {
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GB; TP2",
+    "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "runtime": "vllm-b12x-release-10152026"
+  },
+  "profile": "serving-comparison/v1",
+  "raw": {
+    "bytes": 21717,
+    "path": "native/candidate/candidate-natural-ctx163840-c1.json",
+    "sha256": "6c2564840ebbdbfd067f4869c3e1e0f7e205429681552d8270205544a8a75061"
+  }
+}

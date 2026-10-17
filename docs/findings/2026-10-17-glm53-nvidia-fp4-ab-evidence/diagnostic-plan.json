@@ -1,0 +1,49 @@
+{
+  "schema": "anvil-serving.controlled-ab-diagnostic-plan/v1",
+  "created_at": "2026-10-17T08:23:37.586923+00:00",
+  "authorization": "User explicitly requested retry/debug of candidate to assess configuration-related failure after first restoration.",
+  "original_result": "candidate r2 context17/18 remains failed and frozen",
+  "design": {
+    "r2": [
+      "original full18 context replay",
+      "fixed selected failure repeat1",
+      "fixed selected failure repeat2"
+    ],
+    "all_jobs_repetitions": 1,
+    "seed_note": "Builder seed17, repetition0; repetitions3 would change fixtures. Generation sampling remains temperature1/top_p.95 with no request seed.",
+    "r3_condition": "At least one of the3new r2 target observations fails",
+    "r3_runtime_delta": "remove only --speculative-config; separate recipe/container/served names and descriptive metadata; all other flags/env/image/model/cgroup/GPU order unchanged",
+    "r3_jobs": "same full18 plus2 targeted jobs",
+    "exact_fixture_required": [
+      "case_id",
+      "answer_sha256",
+      "calibration ratio4.832231202547146",
+      "reconstructed prompt SHA a8d952496fe17525e8c404823f107e0c2f121775cba5ad7ae3624e8fc05d59bd",
+      "observed_prompt_tokens316249"
+    ],
+    "wire_hash_limit": "Original runner does not retain submitted prompt/hash; matching reconstruction is not cryptographic wire-byte proof.",
+    "history": "Full suite and subsequent isolated warm repeats reported separately; no cache flush."
+  },
+  "bounds": {
+    "total_seconds": 10800,
+    "restoration_reserve_seconds": 4200,
+    "request_cutoff_seconds": 6600,
+    "per_job_seconds": 900,
+    "lifecycle_seconds": 3600
+  },
+  "stop": "Complete all3 precommitted jobs regardless of quality pass/fail; abort on timeout, incomplete count, transport/runtime/OOM/fatal error, identity drift or reserve boundary.",
+  "review": {
+    "reviewer": "independent-adversarial-reviewer",
+    "decision": "accept",
+    "conditions_applied": true
+  },
+  "excluded": [
+    "timing",
+    "SWE",
+    "promotion",
+    "unrelated tuning",
+    "host swap changes"
+  ],
+  "restoration": "Exact retained original r11 through previously verified managed restore-retained; direct and authenticated routed JSON after readmission",
+  "promoted": false
+}

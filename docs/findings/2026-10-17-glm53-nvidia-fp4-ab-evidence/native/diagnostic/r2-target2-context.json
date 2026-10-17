@@ -1,0 +1,144 @@
+{
+  "calibration": {
+    "chars_per_token": 4.832231202547146,
+    "method": "endpoint-usage-filler-ratio/v2",
+    "request_id": null,
+    "sample_chars": 39460,
+    "sample_prompt_tokens": 8166
+  },
+  "curve": {
+    "advertised_context": 327680,
+    "attempted_buckets": [
+      318464
+    ],
+    "buckets": [
+      {
+        "completed_count": 1,
+        "completion_rate": 1.0,
+        "engine_telemetry": {
+          "available": false,
+          "observations": []
+        },
+        "failures": {},
+        "latency_ms": {
+          "available": true,
+          "mean": 589.1058000270277,
+          "observations": [
+            589.1058000270277
+          ]
+        },
+        "meets_policy": true,
+        "pass_rate": 1.0,
+        "passed_count": 1,
+        "relative_drop_from_baseline": 0.0,
+        "requested_tokens": 318464,
+        "sample_count": 1,
+        "samples": [
+          {
+            "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+            "case_id": "native-needle-318464-0.900-r0",
+            "case_type": "native-needle",
+            "completed": true,
+            "distractor_count": 0,
+            "engine_telemetry": null,
+            "failure": null,
+            "finish_reason": "stop",
+            "latency_ms": 589.1058000270277,
+            "passed": true,
+            "position": 0.9,
+            "prompt_tokens": 316249,
+            "raw_reasoning": "The user is asking me to return only the access marker for ORCHID.\n\nLooking through the reference paragraphs, I need to find where ORCHID is mentioned. Let me scan through the text...\n\nI see at the very end:\n\"The access marker for ORCHID is K557508437185.\"\n\nThat's the access marker. The user wants me to return only that marker.\n\nSo the answer should be: K557508437185",
+            "raw_reasoning_field": "reasoning",
+            "raw_reasoning_truncated": false,
+            "requested_tokens": 318464,
+            "schema": "anvil-serving.context-observation/v1",
+            "target_count": 1,
+            "throughput_tps": 176.53874736121858,
+            "token_measurement": "usage",
+            "visible_answer": "K557508437185",
+            "visible_answer_truncated": false
+          }
+        ],
+        "throughput_tps": {
+          "available": true,
+          "mean": 176.53874736121858,
+          "observations": [
+            176.53874736121858
+          ]
+        }
+      }
+    ],
+    "effective_context": 318464,
+    "first_material_degradation": null,
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 318464,
+      "baseline_pass_rate": 1.0,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  },
+  "observations": [
+    {
+      "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+      "case_id": "native-needle-318464-0.900-r0",
+      "case_type": "native-needle",
+      "completed": true,
+      "distractor_count": 0,
+      "engine_telemetry": null,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 589.1058000270277,
+      "passed": true,
+      "position": 0.9,
+      "prompt_tokens": 316249,
+      "raw_reasoning": "The user is asking me to return only the access marker for ORCHID.\n\nLooking through the reference paragraphs, I need to find where ORCHID is mentioned. Let me scan through the text...\n\nI see at the very end:\n\"The access marker for ORCHID is K557508437185.\"\n\nThat's the access marker. The user wants me to return only that marker.\n\nSo the answer should be: K557508437185",
+      "raw_reasoning_field": "reasoning",
+      "raw_reasoning_truncated": false,
+      "requested_tokens": 318464,
+      "schema": "anvil-serving.context-observation/v1",
+      "target_count": 1,
+      "throughput_tps": 176.53874736121858,
+      "token_measurement": "usage",
+      "visible_answer": "K557508437185",
+      "visible_answer_truncated": false
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_ids": [],
+  "schema": "anvil-serving.context-suite-run/v1",
+  "selection": {
+    "case_ids": [
+      "native-needle"
+    ],
+    "output_headroom_tokens": 9216,
+    "positions": [
+      0.9
+    ],
+    "repetitions": 1,
+    "token_buckets": [
+      318464
+    ]
+  }
+}

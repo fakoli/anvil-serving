@@ -1,10 +1,24 @@
 # RTX PRO 6000 benchmark view
 
+**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
+TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
+promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
+acceptance passed. Subsequent checks accepted five Pi process combinations,
+both primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway, and
+WebUI catalog reconciliation. The complete controlled A/B remains the numeric
+comparison: faster C1 prefill/decode, mixed concurrent latency, and narrow GPU
+headroom. Full fleet catalog/session propagation remains blocked by the older
+13-target NativeWorkflows custody gap; public web publication remains pending.
+[Promotion record and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+
+**2026-10-17 GLM serving-performance comparison:** on the dual RTX PRO 6000 Blackwell Max-Q pair, 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs produced 24 accepted cells and 84 requests per arm across four actual-input strata and C1/C2/C4. The retained canonical finding carries the full measured table and coverage, including per-device memory and runtime-KV observations; allocated KV tokens are not proof of simultaneous full-window capacity. The original 42-cell matrix closed partial with one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons were not measured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. [Finding](../../findings/2026-10-17-glm53-serving-performance.md).
+
 **2026-10-16 SGLang, Qwen, and Nemotron comparison:** The original GLM baseline C1 and Nemotron C1 each had 0/4 performance-eligible requests. SGLang GLM and Qwen FP4 passed preflight/Oracle prerequisites but terminal SWE evidence was 0/5 resolved (2/5 graded) and 2/5 resolved (4/5 graded). Nemotron passed preflight 6/6, vision 18/18, and context 2/2, but Oracle was 48/54. No candidate entered C4 or a controlled throughput population; the exact GLM restoration remains the campaign boundary. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md).
 
 **2026-10-16 GLM v0.9.1 trial:** on the dual RTX PRO 6000 Blackwell Max-Q pair, the R2 candidate passed functional, Oracle, image, bounded-context, and sampled reserve checks, but resolved 3/5 pinned SWE cases below the four-case replacement gate. It is `rejected`/`no-promotion`; the original GLM was exactly restored. The fresh original control also resolved the same five cases at 3/5. Its 1725/1745 MiB sampled minima use the historical incumbent waiver and are not a challenger reserve pass. No capacity, stability, DFlash, throughput, causal, comparative-quality, or model-family claim is made. [Finding](../../findings/2026-10-16-glm-v091-trial.md).
 
-**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
 
 **2026-10-13 full qualification:** only TP1/TP2 measurements on the dual RTX PRO 6000 Blackwell Max-Q pair are included. The GLM baseline capacity cells retained actual prompt means of 25,280.5 (32K/C1), 25,281.125 (32K/C4), 106,520 (128K/C1), and 216,194.67 (256K/C1); their 3–8 request populations do not support a p99 claim. The baseline fixed-five result was 2/5. Terminal Ignis was 2/5 resolved, 2/5 graded, and three empty, with C8 6/13 preflight, serial C1 6/6, and 24 recovered SWE engine-full retry notices retained separately. No candidate was promoted. [Finding](../../findings/2026-10-13-full-qualification.md).
 
@@ -47,8 +61,8 @@ experimental mitigation; the exact baseline was restored. First-fault
 attribution and broader qualification remain open. See the
 [dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
 
-**2026-09-23 DCP1 r11:** the exact batch-2,048/C4/0.97 recipe is selected and
-deployed after retained direct/routed preflights and native-client acceptance.
+**2026-09-23 DCP1 r11:** the exact batch-2,048/C4/0.97 recipe was selected and
+deployed at that time after retained direct/routed preflights and native-client acceptance.
 Independent reviews, dashboard receipt, successful Pages publication, and
 HTTP/browser readback are retained. The 825,268-KV pool is 41.73% below retained
 DCP2's 1,416,244, so four full 327K windows are unsupported. It makes no
@@ -73,8 +87,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-05. **Evidence
-interpretation reviewed:** 2026-10-05.
+history. **Last locally measured:** 2026-10-17. **Evidence
+interpretation reviewed:** 2026-10-17.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

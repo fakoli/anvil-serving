@@ -1,0 +1,204 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: plans/telemetry-independent-review.json
+Original SHA256: 90579d701344d61811890c4ae0a9ec552e739632de56e9949d60fc559564f71e
+Original bytes: 8475
+
+{
+  "advisory_priors": [
+    "The initial candidate context miss remains independent quality evidence and cannot be erased by performance results.",
+    "A later collector error, identity mismatch, counter mismatch or restart invalidates the affected metric/cell and must remain visible."
+  ],
+  "artifacts": {
+    "findings_summary": {
+      "accepted_observations": {
+        "client_concurrency_observed_max": 1,
+        "engine_counter_deltas": {
+          "generation_tokens": 1722,
+          "prompt_tokens": 61456,
+          "successful_responses": 8
+        },
+        "engine_histograms": {
+          "decode_seconds_sum_delta": 22.216112824855372,
+          "generation_token_sum_delta": 1722,
+          "prefill_seconds_sum_delta": 11.655506604234688,
+          "prompt_token_sum_delta": 61456,
+          "queue_seconds_sum_delta": 0.00010292883962392807,
+          "request_count_delta": 8
+        },
+        "engine_sampling": {
+          "max_gap_seconds": 0.726390222,
+          "max_kv_usage_fraction": 0.03658536585365857,
+          "max_running": 1,
+          "max_running_plus_waiting": 1,
+          "max_waiting": 0,
+          "mean_cadence_seconds": 0.52838636275,
+          "samples": 65
+        },
+        "errors": "none; cgroup OOM/event counters remained zero",
+        "identity": "exact GPU set/order, recipe container/model/revision/image, served-model label and engine zero remained stable",
+        "native_population": {
+          "canaries_passed": 8,
+          "completed": 8,
+          "failed": 0,
+          "requests": 8,
+          "responses_received": 8
+        },
+        "slow_sampling": {
+          "cgroup_current_bytes_max": 53988147200,
+          "cgroup_current_bytes_min": 53985976320,
+          "cgroup_lifetime_peak_bytes": 54264590336,
+          "gpu_utilization_peak_percent": 100,
+          "host_mem_available_min_kib": 61256756,
+          "max_gap_seconds": 2.074682594,
+          "mean_cadence_seconds": 2.03300812225,
+          "samples": 17
+        }
+      },
+      "blockers": [],
+      "breakage_probes": [
+        {
+          "axis": "wrong engine/model series",
+          "classification": "refuted",
+          "result": "exact parsed labels and a single expected series required"
+        },
+        {
+          "axis": "counter reset or unrelated requests",
+          "classification": "refuted",
+          "result": "engine process start remained constant and native prompt/output/response totals matched exact deltas"
+        },
+        {
+          "axis": "missing resource telemetry",
+          "classification": "refuted",
+          "result": "timestamped per-GPU native values, host meminfo, cgroup identity/memory/events and engine occupancy were retained"
+        },
+        {
+          "axis": "state drift",
+          "classification": "refuted_for_first_cell",
+          "result": "before and after states were idle with one stable process and identity"
+        }
+      ],
+      "limitations": [
+        "This approval covers the collector and one baseline C1 cell; it does not independently review every later cell.",
+        "The two earlier warmups remain excluded and have incomplete GPU/host memory coverage.",
+        "GPU memory.total, memory.used and memory.free are separate native values; free is not inferred as total minus used.",
+        "Cgroup peak is a lifetime-since-container-start value. Within-cell sampled current-byte extrema are retained separately.",
+        "Engine concurrency is sampled running plus waiting and is a lower bound; client overlap does not prove KV residency.",
+        "KV bytes are not inferred where cache_config_info reports None. KV token allocation and sampled usage remain separate.",
+        "Projection is not accepted until model-label filtering, running-plus-waiting concurrency, and GPU/host projection are fixed and independently reviewed.",
+        "Candidate collection, final coverage, comparison claims, restoration and closure remain independently gated."
+      ],
+      "missing_tests": []
+    },
+    "hashes": [
+      {
+        "bytes": 8106,
+        "path": "telemetry/collector.py",
+        "sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e"
+      },
+      {
+        "bytes": 1120,
+        "path": "telemetry/collector-receipt.json",
+        "sha256": "4bbd1cd60f884aa236a974972e89a235ae14396489feaae583bf682e53440313"
+      },
+      {
+        "bytes": 21722,
+        "path": "native/baseline/baseline-natural-ctx10240-c1.json",
+        "sha256": "103b74c9e25ff0e184f3751e5a80927569420d0fdb125d7a4548f973d453bd11"
+      },
+      {
+        "bytes": 84366,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+        "sha256": "6a0b3734a0c622ed6961d011a8d931862f020e5f9db710b21af7a17171dc1d6a"
+      },
+      {
+        "bytes": 84372,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+        "sha256": "65ef3b8e72cf7158b90052a3745ffbddd55c3534aa15e56d1895f3c7d4d95343"
+      },
+      {
+        "bytes": 5483621,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl",
+        "sha256": "ffc3dbab7640e655a1b2803872fda47acf6cc35ecf0163288132e363456b4843"
+      },
+      {
+        "bytes": 84334,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl",
+        "sha256": "7e0a09b5d2010e3be09d9beb002034c90f3418b8176ad985888cf37a7d501d2e"
+      },
+      {
+        "bytes": 5601,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+        "sha256": "0ba6761e4ea5f7fcd768279b810c8f7e59a1fc83629b6ef3b6e37884aa832392"
+      },
+      {
+        "bytes": 84814,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl",
+        "sha256": "9514ccb61d7c4890d21a48e1345344aae7ce56906a4a367d70088f94014ef153"
+      },
+      {
+        "bytes": 5610,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+        "sha256": "f5f6494f04cdc29a352c3264475a33c9ef45f93b7cb97338545a38e710e84491"
+      },
+      {
+        "bytes": 2432,
+        "path": "telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json",
+        "sha256": "3840ad3e2af0b70d9b8ad95c61b165314f2b5bf3c328252bafed86bab95b56eb"
+      },
+      {
+        "bytes": 10864,
+        "path": "plans/comparison-plan.json",
+        "sha256": "0f02f75f15f527f00c58bf46f16dcc1b523df98af50e38b0045e728fa87c3ea0"
+      },
+      {
+        "bytes": 1320,
+        "path": "plans/frozen-plan-receipt.json",
+        "sha256": "87d3944e35e89960daeddf1a14917cd43f031560750b721b6d52501aee01fe5b"
+      },
+      {
+        "bytes": 1009,
+        "path": "plans/full-suite-receipt.json",
+        "sha256": "46d711f2508963af60c104e1df1372a318d12c6ec3e0e07e7eb07ad097e10a7b"
+      }
+    ]
+  },
+  "gate_state": {
+    "collector": "accepted",
+    "final_comparison": "hold_pending_campaign_completion_and_independent_review",
+    "first_scored_cell": "accepted",
+    "projection": "hold_pending_extractor_fix_and_review",
+    "promotion": "not_authorized",
+    "state": "pass_for_bulk_baseline_collection"
+  },
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": {
+    "decision": "accept",
+    "scope": "resume bulk baseline collection with the exact frozen collector and stop on any collector, identity, reconciliation, OOM, engine or deadline failure"
+  },
+  "request": {
+    "authorization": "existing user authorization covers bounded baseline and candidate performance collection; no promotion",
+    "operation": "independent telemetry collector and first scored cell acceptance",
+    "reviewed_at": "2026-10-17T11:10:49.766655+00:00",
+    "reviewer": {
+      "independent_from_evaluated_models": true,
+      "independent_from_implementer": true,
+      "model": "GPT-5.6 Sol"
+    },
+    "source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb"
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "telemetry/collector.py",
+    "baseline-natural-ctx10240-c1 native and telemetry artifacts",
+    "bulk baseline collection under the same frozen source, recipe, plan, and collector"
+  ],
+  "tools_used": [
+    "read-only source inspection",
+    "collector fixture self-test",
+    "read-only native and telemetry parsing",
+    "independent engine counter/histogram/cadence and memory extrema calculations",
+    "operation_contracts unavailable in this session",
+    "workflow_packet_validate unavailable in this session"
+  ]
+}

@@ -1,22 +1,33 @@
 # Benchmarks
 
+**Current primary recommendation, 2026-10-17:** the operator selected
+`nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
+The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;
+EXL3 r11 is retained as rollback. The matched two-recipe comparison measured
+faster C1 prefill and decode, with mixed concurrent latency and narrower GPU
+headroom. The [promotion record](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+explains the selection, client acceptance, KV accounting, and remaining fleet
+workflow blocker. The [full comparison](../findings/2026-10-17-glm53-serving-performance.md)
+retains every measured cell and failure; this preference does not establish
+an exhaustive quality ranking.
+
 **2026-10-15 replacement evaluation:** the completed [campaign finding](../findings/2026-10-15-replacement-evaluation.md) records no eligible challenger. DeepSeek V4.1 Flash remained bounded to diagnostic gates, and exact GLM was restored and retained. The finding is the detailed gate record; this does not add a new GLM qualification, route change, or performance ranking.
 
-**Current bounded recommendation, 2026-10-13:** The retained recommendation is the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../findings/2026-10-13-full-qualification.md).
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../findings/2026-10-13-full-qualification.md).
 
 **2026-10-13 full qualification:** [campaign closure](../findings/2026-10-13-full-qualification.md) retains separate GLM, Qwen, DeepSeek, MiMo, and Ignis evidence. The GLM baseline completed 2/5; terminal Ignis was incomplete at 2/5 resolved with three empty cases. No challenger cleared the complete 4/5 plus Django/Pylint requirement, so no challenger was promoted.
 
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
+**Historical 2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
 
 **2026-10-05 qualification decision:** [Qwen replacement and GLM CSF/QAD evidence](../findings/2026-10-05-xeon-model-qualification.md) rejects Qwen at 3/5 and GLM after fresh-reload A1 resolved 2/5 attempts (2/4 graded), below the 4/5 floor. GLM's earlier 4/5 scout, functional 25/25, Oracle 18/18, vision, and bounded context acceptance remain retained but do not establish a reliable quality floor, full-window capacity, or speed. B1/B2/A2 did not run. Exact r11 DCP1 restoration completed with direct 25/25, routed 7/7, and a fresh Pi read-tool turn; independent review follows closure.
 
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-10-15 replacement-evaluation closeout.**
+configuration and retained evidence. **Evidence reviewed: 2026-10-17 FP4 promotion and client acceptance.**
 
 ## Historical bounded APC reference — September 19
 

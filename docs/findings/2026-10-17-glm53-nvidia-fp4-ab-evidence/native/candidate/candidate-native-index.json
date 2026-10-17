@@ -1,0 +1,62 @@
+{
+  "schema": "glm53-fp4-ab-candidate-native-index/v1",
+  "scope": "Sanitized native candidate results only; includes the failing context result.",
+  "source_boundary": "Protected operator evidence; source names and hashes are transformation references only. Public files contain no protected path, host, IP, port, or GPU UUID.",
+  "transformation": "JSON-preserving sanitization; no result, status, schema, or failure was omitted or reclassified.",
+  "artifacts": [
+    {
+      "label": "smoke",
+      "published_path": "native/candidate/candidate-smoke.json",
+      "source_artifact": "candidate-smoke.json",
+      "source_sha256": "c12ec2e987e8039f96c6a800bf72dd60c42bda69456baa3e55714b3c0783f0be",
+      "published_sha256": "7fedeff6fbe3a83bf08777ccc91e29ce4d1aeb61acdf31fd4e6b45a032fd2618",
+      "published_bytes": 3671,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "text-image-preflight-r2",
+      "published_path": "native/candidate/candidate-text-image-preflight-r2.json",
+      "source_artifact": "candidate-text-image-preflight-r2.json",
+      "source_sha256": "19d9b463da20cbf3951cedc19c02295f25fc285de8b5c11482aaefbffbed745f",
+      "published_sha256": "569bdab3e3fc679c1f21c3bb1ae9fae524019ba8dd9064898c47085f0a7e2a5b",
+      "published_bytes": 30927,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "ocr-correction-r2",
+      "published_path": "native/candidate/candidate-ocr-preflight-r2.json",
+      "source_artifact": "candidate-ocr-preflight-r2.json",
+      "source_sha256": "9e5af1d5207e3c045cd4d0ff6642ba64635b0593d350d75705643063a0223a05",
+      "published_sha256": "d64d0eddc5e874f0196597cd8e95edd2048e192e108a32959a8786645191c7c0",
+      "published_bytes": 2328,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "vision",
+      "published_path": "native/candidate/candidate-vision.json",
+      "source_artifact": "candidate-vision.json",
+      "source_sha256": "b35b7bd83f0fcca9afcf6d2b9f73602c10b3fd190786df72e3c7ffbcaa817581",
+      "published_sha256": "cae515e94341a22887c07fe5e14125dea46853896cfee0899a1fac19711660d1",
+      "published_bytes": 44330,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "agentic-terminal",
+      "published_path": "native/candidate/0-agentic.json",
+      "source_artifact": "0-agentic.json",
+      "source_sha256": "dd4de9ec6dc64375a914b8620bb6a92aa7aa071acf58cf2f1dd889dc6a1bad0e",
+      "published_sha256": "dd4de9ec6dc64375a914b8620bb6a92aa7aa071acf58cf2f1dd889dc6a1bad0e",
+      "published_bytes": 37081,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    },
+    {
+      "label": "context-terminal-failed",
+      "published_path": "native/candidate/0-context.json",
+      "source_artifact": "0-context.json",
+      "source_sha256": "028dc36ff4117d9f412c7f714ff904303eade73a36246bd1fa7e7e5d1d8987de",
+      "published_sha256": "028dc36ff4117d9f412c7f714ff904303eade73a36246bd1fa7e7e5d1d8987de",
+      "published_bytes": 72408,
+      "transformation": "Parsed JSON; applied sanitize_publishable_evidence; redacted private absolute paths, hostnames, GPU UUIDs, and loopback ports. Source hash is retained only as a protected-source transformation reference, not as public runtime identity."
+    }
+  ]
+}

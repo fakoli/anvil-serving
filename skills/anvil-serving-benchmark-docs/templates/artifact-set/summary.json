@@ -22,5 +22,14 @@
     "promotion_authorized": false,
     "next_gate": "REPLACE_WITH_NEXT_GATE"
   },
-  "evidence": []
+  "evidence": [],
+  "metrics_coverage": {
+    "profile": "serving-comparison/v1",
+    "status": "partial",
+    "frozen_plan": null,
+    "required_cells": [],
+    "cells": {},
+    "missing_required_metrics": []
+  },
+  "comparison_evidence": null
 }

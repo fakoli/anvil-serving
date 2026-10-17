@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "python3",
+    "telemetry/test_run_cell.py"
+  ],
+  "checks": [
+    "in-flight engine and slow telemetry with all three slow probes",
+    "counter reconciliation",
+    "collector failure fail-closed termination",
+    "deadline termination and drain",
+    "existing output refusal",
+    "native binding rejection",
+    "frozen plan hash drift rejection"
+  ],
+  "exit_code": 0,
+  "finished_at": "2026-10-17T11:21:14.670827964Z",
+  "fixture_native": {
+    "path": "excluded/phase1-collection-recovery/native/baseline/baseline-natural-ctx10240-c1.json",
+    "sha256": "6d7e30b6a8347e3c064a5f55f1c3abcb7077e02db112d742f6ff6fdefd6d4c91"
+  },
+  "runner_sha256": "4da3e73183494c7b47b26b367ce3cc3d4c7818599f1cebb614d624d952aaeff2",
+  "schema": "telemetry-runner-fixture-receipt/v1",
+  "state": "passed",
+  "test_count": 5,
+  "test_sha256": "d275a1d584d85d88d86028f65685a4bd2e45ed72d446dee7dcec1b96cecaeccd"
+}

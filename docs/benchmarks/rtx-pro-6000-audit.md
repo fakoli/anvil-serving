@@ -288,3 +288,23 @@ qualification evidence).
 `docs/findings/2026-10-13-full-qualification-evidence/community-addendum.md`;
 `docs/findings/2026-10-13-full-qualification-evidence/source-guide.md`
 (`external-prior`: public hardware reports and recipe leads, with external measurements kept separate from this campaign).
+
+## 2026-10-17 GLM FP4 additions
+
+`docs/findings/2026-10-17-glm53-serving-performance.md`
+(measured-on: dual-RTX-PRO-6000 matched serving comparison with 24 accepted
+cells and 12 paired candidate/control populations; original controlled matrix
+remains partial, the candidate is not promoted);
+
+`docs/findings/2026-10-17-glm53-nvidia-fp4-ab.md`
+(measured-on: prior bounded candidate/control functional, context, diagnostic,
+and restoration evidence; its timing-unmeasured limitation is scoped to that
+quality campaign);
+
+`docs/findings/2026-10-17-glm53-nvidia-fp4-ab-evidence/diagnostic-research.md`
+(`external-prior`: pinned recipe and runtime fault-isolation research only;
+it records no additional local measurement).
+
+`docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/source/skills/anvil-serving-benchmark-docs/SKILL.md`
+(`topology-only`: frozen publication-methodology snapshot; its hardware examples
+do not constitute another measured run).

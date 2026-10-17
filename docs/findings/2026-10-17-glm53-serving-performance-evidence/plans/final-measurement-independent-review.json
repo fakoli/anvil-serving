@@ -1,0 +1,150 @@
+{
+  "advisory_priors": [
+    "Timing distributions are descriptive small samples, not inferential proof.",
+    "Engine and GPU maxima are sampled lower bounds.",
+    "Prompt equality is deterministic reconstruction/token identity, not transmitted bytes or runtime chat-template serialization.",
+    "The controlled-output stratum is failed/blocked and excluded from performance comparison."
+  ],
+  "artifacts": {
+    "breakage_probes": [
+      {
+        "axis": "unreadable_or_tampered_state",
+        "classification": "refuted",
+        "input_or_state": "Resolve final-to-partial, plan, prompt-review, and all 24 native/projection bindings by exact bytes and SHA-256; parse through the product benchmark artifact reader.",
+        "result": "All checked bindings resolved; the product reader accepted the incomplete closed-partial artifact with 306 missing metrics."
+      },
+      {
+        "axis": "malformed_or_boundary_input",
+        "classification": "refuted",
+        "input_or_state": "Check 42 unique dispositions, 24 unique accepted cells, 12 complete two-arm pairs, no duplicates, exact frozen plan fields, exact request populations, and controlled failure/block separation.",
+        "result": "Membership and populations are exact; no malformed, duplicate, or silently pending cell was found."
+      },
+      {
+        "axis": "resource_exhaustion_or_missing_bounds",
+        "classification": "refuted",
+        "input_or_state": "Check required metric/supplemental population, histogram counts, telemetry sample presence, request counts, OOM/preemption/refusal values, and small-sample labeling.",
+        "result": "All accepted cells have complete bounded populations; tables label n=8/n=4 as descriptive and make no p99 claim."
+      },
+      {
+        "axis": "state_drift_across_process_config_and_artifacts",
+        "classification": "refuted",
+        "input_or_state": "Compare each matched pair request identity, final clone against its bound partial source, row/native/projection identity, and chart/table values against current bound sources.",
+        "result": "No unexplained drift; final clone changes only the declared closeout fields and all matched identities agree."
+      }
+    ],
+    "finding_summary": {
+      "details": [
+        "Final artifact is valid benchmark evidence with completeness=incomplete, status=closed_partial, completed=false, promotion unauthorized.",
+        "The only changes from the bound partial source are the closeout block, terminal=false to true, explicit failed/blocked cells, pending18 to pending0, and in_progress to closed_partial; measurement content is unchanged.",
+        "Disposition is exact: 24 accepted, one retained original controlled failure, 17 controlled stop-rule blocks, zero pending.",
+        "The accepted subset contains every 17 required metric families and all four supplemental families as measured; the 306 missing metrics are exactly 18 controlled cells times 17 required metrics.",
+        "All 24 native populations completed with zero failed requests and timing populations equal the frozen request count; histogram counts, request identities, canaries, and telemetry samples are complete.",
+        "All 12 baseline/candidate pairs match exactly on seed, namespace, request indices, ordered prompt-token vectors, and canaries. Reconstruction remains explicitly distinguished from wire-byte proof.",
+        "Every summary row value recomputes from its hash-bound native/projection source, including actual-token statistics, latency, throughput, concurrency, KV, GPU, host, and cgroup fields.",
+        "comparison-tables.md reproduces the frozen renderer byte-for-byte from summary-table.json and its 24 projection inputs.",
+        "All 168 graph points equal their bound native metric values and native hashes. Manifest and graph-data membership match; nominal X labels and actual-token table caveat are explicit. Two renders are byte-identical."
+      ],
+      "result": "No blocking measurement finding.",
+      "severity": "none"
+    },
+    "references": {
+      "assembler": {
+        "bytes": 10978,
+        "path": "analysis/assemble_final_campaign.py",
+        "sha256": "5ae93de0a0d53e49274a1913556887da3c75e4c870db01578a04da5940869784"
+      },
+      "comparison_plan": {
+        "bytes": 10864,
+        "path": "plans/comparison-plan.json",
+        "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+      },
+      "comparison_tables": {
+        "bytes": 7658,
+        "path": "analysis/final-closed/comparison-tables.md",
+        "sha256": "b8c7364809bcfb3da6043c063547ac2df5ce2cda561e53e791222db02cd47785"
+      },
+      "figure_repeatability": {
+        "bytes": 372,
+        "path": "analysis/final-closed/figure-repeatability.json",
+        "sha256": "377fca1c15931b1091ddde2a33148a2ff4b135b0695d54c468f78039e40050d2"
+      },
+      "final_measurement": {
+        "bytes": 880513,
+        "path": "analysis/final-serving-comparison-evidence.json",
+        "sha256": "31125339e63804594d2f41703a7cc10ca8f9ac2a37d5f40b7dc4af547a7dbab1"
+      },
+      "graph_data": {
+        "bytes": 53848,
+        "path": "benchmark-graph-data.json",
+        "sha256": "066024de319ed636ab9e90d2a7ea925957241fcad9c4c07a62fd53fbc0bf7f73"
+      },
+      "graph_manifest": {
+        "bytes": 29754,
+        "path": "final-graph-manifest.json",
+        "sha256": "0bee34dee61f7702bcf10b9a08cf036920cd5681e4c94f13a404eb4ae8ebe9e2"
+      },
+      "graph_svg": {
+        "bytes": 45736,
+        "path": "benchmark-matrix.svg",
+        "sha256": "ee9ea5bd9a49f3f71c8fce47cddaa12caf35087691160f5f9d1b4476404b21dd"
+      },
+      "partial_source": {
+        "bytes": 880080,
+        "path": "analysis/partial-serving-comparison-evidence.json",
+        "sha256": "e91848450e0e430bd434757dc76de9b67a11cbd9007f1c8ad64173150415dbe3"
+      },
+      "prompt_reconstruction_review": {
+        "bytes": 39826,
+        "path": "plans/prompt-reconstruction-review.json",
+        "sha256": "614480d6affd73020efd82d2ad7a97dcac8122ebd6b399a50883215ed3e26819"
+      },
+      "renderer": {
+        "bytes": 3744,
+        "path": "analysis/render_comparison_tables.py",
+        "sha256": "a2c0fe6918f112058fe8e2b405dfdfc663bc094dfb32ca2ffe183815272fc189"
+      },
+      "run_plan": {
+        "bytes": 76940,
+        "path": "plans/run-plan.json",
+        "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f"
+      },
+      "summary_table": {
+        "bytes": 78455,
+        "path": "analysis/final-closed/summary-table.json",
+        "sha256": "49dd78af08fcf55cc54be795f85c7be41f2c78cfba1a81ea3221e9302746a2ab"
+      }
+    }
+  },
+  "gate_state": "measurement_accepted_restoration_and_bundle_pending",
+  "human_gate_required": true,
+  "human_gate_scope": "Promotion remains a separate human decision. Final campaign closeout also awaits exact incumbent restoration and final closed public bundle review.",
+  "missing_tests": [],
+  "promoted": false,
+  "recommendation": "accept",
+  "recommendation_scope": "Accept the terminal measurement evidence as a complete matched comparison of the natural-output and capacity-edge strata only. Keep the original 42-cell campaign classified closed_partial.",
+  "request": "Independent final measurement review for the closed-partial GLM-5.3 serving comparison.",
+  "residual_risk": "Restoration and final bundle are outside this receipt and remain pending. No result from the failed controlled-output diagnostic may be used as performance evidence.",
+  "reviewed_at": "2026-10-17T13:01:26.290467+00:00",
+  "reviewer": {
+    "implementer_model": "GPT-6 Astra",
+    "independent_from_evaluated_models": true,
+    "independent_from_implementer": true,
+    "model": "GPT-5.6 Sol",
+    "product_source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+    "role": "independent adversarial reviewer"
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "24 accepted natural-output and capacity-edge cells",
+    "12 exact matched baseline/candidate pairs",
+    "closed-partial 42-cell campaign disposition",
+    "native-bound tables and figures"
+  ],
+  "tools_used": [
+    "read-only JSON and source inspection",
+    "SHA-256 and byte verification",
+    "native/projection population checks",
+    "independent table and graph recomputation",
+    "product benchmark artifact parser"
+  ]
+}

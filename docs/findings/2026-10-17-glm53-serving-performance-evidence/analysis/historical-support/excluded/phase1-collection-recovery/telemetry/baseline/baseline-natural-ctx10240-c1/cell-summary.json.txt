@@ -1,0 +1,94 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json
+Original SHA256: 3840ad3e2af0b70d9b8ad95c61b165314f2b5bf3c328252bafed86bab95b56eb
+Original bytes: 2432
+
+{
+  "cell": "baseline-natural-ctx10240-c1",
+  "collector": {
+    "engine_interval_target_seconds": 0.5,
+    "invoked_functions": [
+      "engine_state",
+      "process_start",
+      "gpu_sample",
+      "host_memory",
+      "status_sample",
+      "exact_counter_delta"
+    ],
+    "path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/collector.py",
+    "settle_interval_seconds": 0.5,
+    "sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+    "slow_interval_target_seconds": 2.0
+  },
+  "collector_errors": [],
+  "counter_reconciliation": {
+    "deltas": {
+      "vllm:generation_tokens_total": 1722.0,
+      "vllm:prompt_tokens_total": 61456.0,
+      "vllm:request_success_total": 8.0
+    },
+    "samples": 1,
+    "status": "exact"
+  },
+  "end": {
+    "monotonic_ns": 601406154791041,
+    "unix_ns": 1792235346434570578
+  },
+  "engine_samples": 65,
+  "executed_benchmark_argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "benchmark",
+    "capacity",
+    "--base-url",
+    "http://127.0.0.1:31841/v1",
+    "--model",
+    "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "--engine",
+    "vllm-exl3-v84",
+    "--gpu",
+    "dual-rtx-pro-6000-maxq",
+    "--requests",
+    "8",
+    "--concurrency",
+    "1",
+    "--ctx-tokens",
+    "10240",
+    "--seed",
+    "482001",
+    "--max-tokens",
+    "16384",
+    "--prompt-cache-mode",
+    "unique",
+    "--request-canaries",
+    "--controlled-output-policy",
+    "observe",
+    "--max-model-len",
+    "327680",
+    "--reasoning-effort",
+    "max",
+    "--temperature",
+    "0.6",
+    "--top-p",
+    "0.95",
+    "--timeout",
+    "900",
+    "--response-words",
+    "0",
+    "--output",
+    "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/baseline/baseline-natural-ctx10240-c1.json",
+    "--confirm"
+  ],
+  "frozen_plan_row_sha256": "d4db638662bd4e3d3e42098c7443685374d2c6d63c39f19342e7469af10ac56a",
+  "metadata_updated_at_unix_ns": 1792235400190341582,
+  "native_output": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/baseline/baseline-natural-ctx10240-c1.json",
+  "outer_timeout": false,
+  "returncode": 0,
+  "slow_samples": 17,
+  "start": {
+    "monotonic_ns": 601371698614315,
+    "unix_ns": 1792235311978393167
+  }
+}

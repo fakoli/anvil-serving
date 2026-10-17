@@ -1,0 +1,1325 @@
+{
+  "arm": "candidate",
+  "cell_id": "candidate-capacity-edge-ctx310272-c2",
+  "configured_target_context_tokens": 310272,
+  "engine_phase_histogram_deltas": {
+    "request_decode": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 1.0,
+          "le": "0.8"
+        },
+        {
+          "count": 1.0,
+          "le": "1.0"
+        },
+        {
+          "count": 1.0,
+          "le": "1.5"
+        },
+        {
+          "count": 3.0,
+          "le": "2.0"
+        },
+        {
+          "count": 4.0,
+          "le": "2.5"
+        },
+        {
+          "count": 4.0,
+          "le": "5.0"
+        },
+        {
+          "count": 4.0,
+          "le": "10.0"
+        },
+        {
+          "count": 4.0,
+          "le": "15.0"
+        },
+        {
+          "count": 4.0,
+          "le": "20.0"
+        },
+        {
+          "count": 4.0,
+          "le": "30.0"
+        },
+        {
+          "count": 4.0,
+          "le": "40.0"
+        },
+        {
+          "count": 4.0,
+          "le": "50.0"
+        },
+        {
+          "count": 4.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 6.079428139841184
+    },
+    "request_prefill": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 0.0,
+          "le": "0.8"
+        },
+        {
+          "count": 0.0,
+          "le": "1.0"
+        },
+        {
+          "count": 0.0,
+          "le": "1.5"
+        },
+        {
+          "count": 0.0,
+          "le": "2.0"
+        },
+        {
+          "count": 0.0,
+          "le": "2.5"
+        },
+        {
+          "count": 0.0,
+          "le": "5.0"
+        },
+        {
+          "count": 0.0,
+          "le": "10.0"
+        },
+        {
+          "count": 0.0,
+          "le": "15.0"
+        },
+        {
+          "count": 0.0,
+          "le": "20.0"
+        },
+        {
+          "count": 0.0,
+          "le": "30.0"
+        },
+        {
+          "count": 4.0,
+          "le": "40.0"
+        },
+        {
+          "count": 4.0,
+          "le": "50.0"
+        },
+        {
+          "count": 4.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 142.55501031910535
+    },
+    "request_queue": {
+      "buckets": [
+        {
+          "count": 1.0,
+          "le": "0.3"
+        },
+        {
+          "count": 1.0,
+          "le": "0.5"
+        },
+        {
+          "count": 1.0,
+          "le": "0.8"
+        },
+        {
+          "count": 1.0,
+          "le": "1.0"
+        },
+        {
+          "count": 1.0,
+          "le": "1.5"
+        },
+        {
+          "count": 1.0,
+          "le": "2.0"
+        },
+        {
+          "count": 1.0,
+          "le": "2.5"
+        },
+        {
+          "count": 1.0,
+          "le": "5.0"
+        },
+        {
+          "count": 1.0,
+          "le": "10.0"
+        },
+        {
+          "count": 1.0,
+          "le": "15.0"
+        },
+        {
+          "count": 1.0,
+          "le": "20.0"
+        },
+        {
+          "count": 1.0,
+          "le": "30.0"
+        },
+        {
+          "count": 4.0,
+          "le": "40.0"
+        },
+        {
+          "count": 4.0,
+          "le": "50.0"
+        },
+        {
+          "count": 4.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 92.98401427792851
+    }
+  },
+  "engine_phase_histogram_evidence": [
+    {
+      "bytes": 81297,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+      "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+    },
+    {
+      "bytes": 81309,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+      "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+    }
+  ],
+  "engine_sampling": {
+    "active_max": 2,
+    "kv_usage_fraction_max": 0.2654205607476635,
+    "occupancy_definition": "sampled running plus waiting; active_max counts running only",
+    "occupancy_max": 2,
+    "queued_max": 1,
+    "sampled_lower_bound": true,
+    "samples": 280,
+    "waiting_by_reason_max": {
+      "capacity": 1.0,
+      "deferred": 0.0
+    }
+  },
+  "frozen_plan": {
+    "bytes": 10864,
+    "path": "plans/comparison-plan.json",
+    "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+  },
+  "kv_startup_observation": {
+    "accounting": "engine-reported KV reservation from fixed configuration",
+    "per_gpu_bytes_rounded": 7645041786,
+    "per_gpu_gib_rounded": 7.12,
+    "physical_total_bytes": 15290083572,
+    "precision": "startup log rounds to GiB",
+    "workers": 2
+  },
+  "measurement": {
+    "bytes": 785,
+    "path": "analysis/receipts/candidate-capacity-edge-ctx310272-c2.json",
+    "sha256": "bedd185bffd3ac54e68c26f087324df792d06bd3fb164252c1f57c86e3a74dbf"
+  },
+  "memory_sampling": {
+    "failure": {
+      "cgroup_events_delta": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "ooms": 0
+    },
+    "gpu": {
+      "accounting": "sampled nvidia-smi per-device; reported free preserved",
+      "max_utilization_percent": 100,
+      "min_free_bytes": 938475520,
+      "peak_used_bytes": 101132009472,
+      "samples_per_device": 72
+    },
+    "host": {
+      "accounting": "host MemAvailable plus cgroup status",
+      "cgroup_current_bytes": 43271200768,
+      "cgroup_lifetime_peak_bytes": 53049847808,
+      "cgroup_limit_bytes": 55834574848,
+      "cgroup_sampled_peak_bytes": 43273326592,
+      "host_available_bytes": 60468326400
+    }
+  },
+  "metrics": {
+    "admission_status": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "observation": {
+        "ooms": 0,
+        "preemptions": 0,
+        "refused_requests": 0
+      },
+      "status": "measured"
+    },
+    "completion_tokens": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 151.0,
+        "p95": 217.0,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "concurrency": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "observation": {
+        "client_max": 2,
+        "engine_max": 2,
+        "requested": 2
+      },
+      "status": "measured"
+    },
+    "context_tokens": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "status": "measured",
+      "value": 252302.0
+    },
+    "decode_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 94.76532376782224,
+        "p95": 229.02982571925804,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "e2e_ms": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 67943.82063299417,
+        "p95": 70028.0758269364,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "effective_prefill_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 3740.222271411361,
+        "p95": 7433.237073757332,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "gpu_memory": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "observation": {
+        "accounting": "sampled nvidia-smi per-device; reported free preserved",
+        "min_free_bytes": 938475520,
+        "peak_used_bytes": 101132009472
+      },
+      "status": "measured"
+    },
+    "host_memory": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "observation": {
+        "accounting": "host MemAvailable plus cgroup status",
+        "cgroup_current_bytes": 43271200768,
+        "cgroup_limit_bytes": 55834574848,
+        "cgroup_peak_bytes": 43273326592,
+        "host_available_bytes": 60468326400
+      },
+      "status": "measured"
+    },
+    "kv_cache_bytes": {
+      "evidence": [
+        {
+          "bytes": 71176,
+          "path": "logs/candidate-startup.log",
+          "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f"
+        },
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "status": "measured",
+      "value": 15290083572
+    },
+    "kv_cache_tokens": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "status": "measured",
+      "value": 1330579
+    },
+    "oom_status": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "status": "measured",
+      "value": 0
+    },
+    "prompt_tokens": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 252300.0,
+        "p95": 252302.0,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "throughput_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "status": "measured",
+      "value": 4.848355025625722
+    },
+    "time_to_first_output_ms": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 67288.88410003856,
+        "p95": 68499.70763700549,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "tpot_ms": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 9.369311435471495,
+        "p95": 10.763156267119125,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "ttft_ms": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "observation": {
+        "p50": 67694.48753609322,
+        "p95": 69290.97845591605,
+        "samples": 4
+      },
+      "status": "measured"
+    }
+  },
+  "native": {
+    "bytes": 16954,
+    "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+    "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+  },
+  "non_admission_failure_counts": {},
+  "notes": [
+    "engine_reported_full_context_concurrency_estimate=4.0606060606060606"
+  ],
+  "profile": "serving-comparison/v1",
+  "schema": "serving-cell-projection/v2",
+  "supplementals": {
+    "engine_phase_histograms": {
+      "evidence": [
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "request_decode": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 1.0,
+              "le": "0.8"
+            },
+            {
+              "count": 1.0,
+              "le": "1.0"
+            },
+            {
+              "count": 1.0,
+              "le": "1.5"
+            },
+            {
+              "count": 3.0,
+              "le": "2.0"
+            },
+            {
+              "count": 4.0,
+              "le": "2.5"
+            },
+            {
+              "count": 4.0,
+              "le": "5.0"
+            },
+            {
+              "count": 4.0,
+              "le": "10.0"
+            },
+            {
+              "count": 4.0,
+              "le": "15.0"
+            },
+            {
+              "count": 4.0,
+              "le": "20.0"
+            },
+            {
+              "count": 4.0,
+              "le": "30.0"
+            },
+            {
+              "count": 4.0,
+              "le": "40.0"
+            },
+            {
+              "count": 4.0,
+              "le": "50.0"
+            },
+            {
+              "count": 4.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 6.079428139841184
+        },
+        "request_prefill": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 0.0,
+              "le": "0.8"
+            },
+            {
+              "count": 0.0,
+              "le": "1.0"
+            },
+            {
+              "count": 0.0,
+              "le": "1.5"
+            },
+            {
+              "count": 0.0,
+              "le": "2.0"
+            },
+            {
+              "count": 0.0,
+              "le": "2.5"
+            },
+            {
+              "count": 0.0,
+              "le": "5.0"
+            },
+            {
+              "count": 0.0,
+              "le": "10.0"
+            },
+            {
+              "count": 0.0,
+              "le": "15.0"
+            },
+            {
+              "count": 0.0,
+              "le": "20.0"
+            },
+            {
+              "count": 0.0,
+              "le": "30.0"
+            },
+            {
+              "count": 4.0,
+              "le": "40.0"
+            },
+            {
+              "count": 4.0,
+              "le": "50.0"
+            },
+            {
+              "count": 4.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 142.55501031910535
+        },
+        "request_queue": {
+          "buckets": [
+            {
+              "count": 1.0,
+              "le": "0.3"
+            },
+            {
+              "count": 1.0,
+              "le": "0.5"
+            },
+            {
+              "count": 1.0,
+              "le": "0.8"
+            },
+            {
+              "count": 1.0,
+              "le": "1.0"
+            },
+            {
+              "count": 1.0,
+              "le": "1.5"
+            },
+            {
+              "count": 1.0,
+              "le": "2.0"
+            },
+            {
+              "count": 1.0,
+              "le": "2.5"
+            },
+            {
+              "count": 1.0,
+              "le": "5.0"
+            },
+            {
+              "count": 1.0,
+              "le": "10.0"
+            },
+            {
+              "count": 1.0,
+              "le": "15.0"
+            },
+            {
+              "count": 1.0,
+              "le": "20.0"
+            },
+            {
+              "count": 1.0,
+              "le": "30.0"
+            },
+            {
+              "count": 4.0,
+              "le": "40.0"
+            },
+            {
+              "count": 4.0,
+              "le": "50.0"
+            },
+            {
+              "count": 4.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 92.98401427792851
+        }
+      }
+    },
+    "queue_waiting_by_reason": {
+      "evidence": [
+        {
+          "bytes": 81309,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+        },
+        {
+          "bytes": 5106,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+        },
+        {
+          "bytes": 81297,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+        },
+        {
+          "bytes": 5104,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+        },
+        {
+          "bytes": 2492,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+        },
+        {
+          "bytes": 1837775,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+        },
+        {
+          "bytes": 6871,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+        },
+        {
+          "bytes": 7363,
+          "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "capacity": 1.0,
+        "deferred": 0.0
+      }
+    },
+    "request_identity": {
+      "evidence": [
+        {
+          "bytes": 16954,
+          "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+          "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "context_seed": 484032,
+        "namespace": "capacity-v1:seed-request-index",
+        "prompt_tokens_ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "request_canaries": [
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00000",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00001",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00002",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00003",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          }
+        ],
+        "request_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "wire_prompt_proof": "not retained; deterministic reconstruction is not transmitted-byte proof"
+      }
+    },
+    "runtime_model_load_memory": {
+      "evidence": [
+        {
+          "bytes": 71176,
+          "path": "logs/candidate-startup.log",
+          "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "accounting": "engine-reported rounded runtime model-load memory; not pure checkpoint weights",
+        "per_worker_gib_rounded": 82.73,
+        "physical_total_bytes": 177661322198,
+        "workers": 2
+      }
+    }
+  },
+  "telemetry": {
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json": {
+      "bytes": 81309,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-metrics.json",
+      "sha256": "c8b09a4d3c51077a66429bf8ea2a50e02a74c0299b95306e7e8131d16b18abee"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json": {
+      "bytes": 5106,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/after-slow.json",
+      "sha256": "36972fd6a375695ffc93d4f37b85bf70501fc116b0bc7a055af41389c76972d9"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json": {
+      "bytes": 81297,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-metrics.json",
+      "sha256": "b104806832ab114e797e8f98f3442b050a7eb680521142035540386e1d27c996"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json": {
+      "bytes": 5104,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/before-slow.json",
+      "sha256": "38fed49aa87b30101ffb8998b1b3512a27b9a127a8abb566c5aa50ea67e8fb3b"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json": {
+      "bytes": 2492,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/cell-summary.json",
+      "sha256": "501502f6025f2fc85f9b9516cca458a155f8055a1f0c953724a47f08ad370edb"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl": {
+      "bytes": 1837775,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+      "sha256": "5ded47bfe88a7c9459f6fe2ec30e099d019c37ec59ae58b90b5dc6ecd6075d1f"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl": {
+      "bytes": 6871,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+      "sha256": "031fa0355f21684eea579d3d835426ed42cd6d959dc88157d974833c41b5ec35"
+    },
+    "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl": {
+      "bytes": 7363,
+      "path": "telemetry/candidate/candidate-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+      "sha256": "12a3170892775b1526aae65aa3794bd52f2a1601358caec86620162a6d2a57c5"
+    }
+  },
+  "unavailable": []
+}

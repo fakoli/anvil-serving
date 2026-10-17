@@ -1,0 +1,107 @@
+{
+  "schema": "anvil-serving.kv-accounting-summary/v1",
+  "date": "2026-10-17",
+  "identity": {
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5"
+  },
+  "pool": {
+    "status": "configured",
+    "bytes_per_gpu": 7650410496,
+    "gpu_count": 2,
+    "total_bytes": 15300820992,
+    "total_gib": 14.25,
+    "runtime_reported_allocated_token_slots": 1330579,
+    "rounded_startup_gib_per_gpu": 7.12,
+    "configured_byte_source": {
+      "path": "../2026-10-17-glm53-serving-performance-evidence/plans/candidate-load-preview.json",
+      "sha256": "1fdbcdb063b5f04ea7dd8dd30cdab4f845e60a2cb62edec440592599083bcd31"
+    }
+  },
+  "derivation": "occupied_gib_estimate = configured total_bytes / 2**30 * sampled_peak_block_occupancy_fraction; unused_pool_gib_estimate = total_gib - occupied_gib_estimate",
+  "rows": [
+    {
+      "population": "fresh promotion acceptance",
+      "actual_prompt_tokens_p50": 31600,
+      "requested_client_concurrency": 4,
+      "sampled_engine_active_max": 2,
+      "sampled_peak_block_occupancy_fraction": 0.1626168224299065,
+      "occupancy_status": "measured",
+      "occupied_gib_estimate": 2.3172897196261677,
+      "unused_pool_gib_estimate": 11.932710280373833,
+      "gib_status": "estimated",
+      "source": {
+        "private_source_role": "fresh capacity acceptance",
+        "sha256": "b81b64ab48458cbce2e638a85cc12cbd1cd525b7caf3d453ef6c77579e4ddd49"
+      }
+    },
+    {
+      "population": "candidate-natural-ctx10240-c4",
+      "actual_prompt_tokens_p50": 7684.0,
+      "requested_client_concurrency": 4,
+      "sampled_engine_active_max": 3,
+      "sampled_peak_block_occupancy_fraction": 0.14579439252336446,
+      "occupancy_status": "measured",
+      "occupied_gib_estimate": 2.0775700934579433,
+      "unused_pool_gib_estimate": 12.172429906542057,
+      "gib_status": "estimated",
+      "source": {
+        "path": "../2026-10-17-glm53-serving-performance-evidence/analysis/projections/candidate-natural-ctx10240-c4.json",
+        "sha256": "e764611e3b574256298c503de6647ce646df0843757e855298153f76fa007cc8"
+      }
+    },
+    {
+      "population": "candidate-natural-ctx40960-c4",
+      "actual_prompt_tokens_p50": 31600.0,
+      "requested_client_concurrency": 4,
+      "sampled_engine_active_max": 2,
+      "sampled_peak_block_occupancy_fraction": 0.1644859813084112,
+      "occupancy_status": "measured",
+      "occupied_gib_estimate": 2.3439252336448595,
+      "unused_pool_gib_estimate": 11.906074766355141,
+      "gib_status": "estimated",
+      "source": {
+        "path": "../2026-10-17-glm53-serving-performance-evidence/analysis/projections/candidate-natural-ctx40960-c4.json",
+        "sha256": "c90ccb44d8822fa7716988b7206a7e0dd295f534344581d98a692b3d194621d1"
+      }
+    },
+    {
+      "population": "candidate-natural-ctx163840-c4",
+      "actual_prompt_tokens_p50": 134357.5,
+      "requested_client_concurrency": 4,
+      "sampled_engine_active_max": 2,
+      "sampled_peak_block_occupancy_fraction": 0.21121495327102802,
+      "occupancy_status": "measured",
+      "occupied_gib_estimate": 3.009813084112149,
+      "unused_pool_gib_estimate": 11.24018691588785,
+      "gib_status": "estimated",
+      "source": {
+        "path": "../2026-10-17-glm53-serving-performance-evidence/analysis/projections/candidate-natural-ctx163840-c4.json",
+        "sha256": "84c3f6d3bad04959bd42fb679bde21c98db934a5ac935d75803f4484b6990a0c"
+      }
+    },
+    {
+      "population": "candidate-capacity-edge-ctx310272-c4",
+      "actual_prompt_tokens_p50": 252300.5,
+      "requested_client_concurrency": 4,
+      "sampled_engine_active_max": 2,
+      "sampled_peak_block_occupancy_fraction": 0.2654205607476635,
+      "occupancy_status": "measured",
+      "occupied_gib_estimate": 3.782242990654205,
+      "unused_pool_gib_estimate": 10.467757009345794,
+      "gib_status": "estimated",
+      "source": {
+        "path": "../2026-10-17-glm53-serving-performance-evidence/analysis/projections/candidate-capacity-edge-ctx310272-c4.json",
+        "sha256": "5cf379419c7c6083089209bbedda93925961e19dc496d5f71f96be4b16a6b527"
+      }
+    }
+  ],
+  "limits": [
+    "Native vllm:kv_cache_usage_perc is KV block pool occupancy; percentages are measured sampled maxima.",
+    "GiB occupancy/unoccupied values are estimates multiplying the measured block fraction by the configured two-GPU pool; the metric does not split MTP/cache groups.",
+    "Pool usage may include shared/prefix blocks and block rounding; it is not a sum of live logical prompt tokens.",
+    "These C4 tests had four client requests; long-context cells sampled at most two active engine sequences. They do not establish four simultaneous full-window sequences.",
+    "Unused preallocated KV capacity is not free GPU memory for loading another model.",
+    "These are measured run peaks, not a current idle/usage snapshot."
+  ]
+}

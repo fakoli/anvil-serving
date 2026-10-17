@@ -1,0 +1,365 @@
+{
+  "arms": {
+    "baseline": {
+      "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GB; TP2",
+      "image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "runtime": "vllm-exl3-v84"
+    },
+    "candidate": {
+      "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GB; TP2",
+      "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+      "runtime": "vllm-b12x-release-10152026"
+    }
+  },
+  "frozen_at": "2026-10-17T10:55:51.522595+00:00",
+  "frozen_before_requests": true,
+  "profile": "serving-comparison/v1",
+  "required_cells": {
+    "baseline-capacity-edge-ctx310272-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "baseline-capacity-edge-ctx310272-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "baseline-capacity-edge-ctx310272-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "baseline-controlled-ctx10240-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx10240-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx10240-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx163840-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx163840-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx163840-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx40960-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx40960-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-controlled-ctx40960-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "baseline-natural-ctx10240-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx10240-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx10240-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx163840-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx163840-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx163840-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx40960-c1": {
+      "arm": "baseline",
+      "concurrency": 1,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx40960-c2": {
+      "arm": "baseline",
+      "concurrency": 2,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "baseline-natural-ctx40960-c4": {
+      "arm": "baseline",
+      "concurrency": 4,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-capacity-edge-ctx310272-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "candidate-capacity-edge-ctx310272-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "candidate-capacity-edge-ctx310272-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 310272,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "candidate-controlled-ctx10240-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx10240-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx10240-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 10240,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx163840-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx163840-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx163840-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 163840,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx40960-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx40960-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-controlled-ctx40960-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 40960,
+      "requests": 20,
+      "workload": "synthetic-repeated-code"
+    },
+    "candidate-natural-ctx10240-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx10240-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx10240-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 10240,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx163840-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx163840-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx163840-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 163840,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx40960-c1": {
+      "arm": "candidate",
+      "concurrency": 1,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx40960-c2": {
+      "arm": "candidate",
+      "concurrency": 2,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "candidate-natural-ctx40960-c4": {
+      "arm": "candidate",
+      "concurrency": 4,
+      "context_tokens": 40960,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    }
+  },
+  "source_file_hashes": [
+    {
+      "bytes": 51621,
+      "path": "plans/source/anvil_serving/benchmarking/cli.py",
+      "sha256": "7de809fdd33ce48d840b60eecc20620a0888e828dc3c5787fcb49e884bcbde12"
+    },
+    {
+      "bytes": 20550,
+      "path": "plans/source/anvil_serving/benchmarking/requests.py",
+      "sha256": "ef11795059446ea38abfbbefe86a8d6c64ab3b12ba86e40e28528ea9b229b0d9"
+    },
+    {
+      "bytes": 43255,
+      "path": "plans/source/anvil_serving/benchmarking/runner.py",
+      "sha256": "0def9fc2b4d1b9dc9eec2ab1c8864be6cca9ab6645fa3543dceada4d3240fd7e"
+    },
+    {
+      "bytes": 42554,
+      "path": "plans/source/anvil_serving/benchmarking/artifacts.py",
+      "sha256": "184acedc2dad969ee4540ea7ee19780ca501612e048ffcd5dd88d2adf8be7c9d"
+    },
+    {
+      "bytes": 54185,
+      "path": "plans/source/anvil_serving/benchmark_evidence.py",
+      "sha256": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a"
+    },
+    {
+      "bytes": 9244,
+      "path": "plans/source/skills/anvil-serving-llm-qualification/SKILL.md",
+      "sha256": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2"
+    },
+    {
+      "bytes": 5435,
+      "path": "plans/source/skills/anvil-serving-llm-qualification/references/evidence-contract.md",
+      "sha256": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e"
+    },
+    {
+      "bytes": 25394,
+      "path": "plans/source/skills/anvil-serving-benchmark-docs/SKILL.md",
+      "sha256": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1"
+    },
+    {
+      "bytes": 18915,
+      "path": "plans/source/skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
+      "sha256": "6526774c49e5d183cb4d32a15d86ea489b1b716bd158201be73620215c783ce1"
+    }
+  ],
+  "source_revision": "5e1f92fbe2624b2121f443c146db422dd36d62cb"
+}

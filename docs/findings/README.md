@@ -1,5 +1,16 @@
 # Findings index
 
+**2026-10-17 GLM NVIDIA FP4 primary promotion follow-up:** the
+[decision and evidence](2026-10-17-glm53-nvidia-fp4-promotion.md) record the
+operator's selected primary, the exact FP4 recipe, and its EXL3 r11 rollback.
+The record links the full 17-family serving comparison, derives KV occupancy
+at C4, and preserves fresh direct/routed/capacity, five Pi combinations, two
+primary Hermes CLI profiles, Companion Node/Mac OpenClaw, and WebUI acceptance.
+The older 13-target NativeWorkflows custody gap still blocks complete fleet
+catalog/session convergence; historical failures remain retained.
+
+**2026-10-17 GLM serving-performance comparison:** the [canonical finding](2026-10-17-glm53-serving-performance.md) retains 12 matched NVIDIA FP4 candidate/EXL3 r11-control pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, C1/C2/C4, and complete required plus supplemental measurement coverage. The original 42-cell matrix is `closed_partial` after one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons remain unmeasured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. The [earlier quality/context finding](2026-10-17-glm53-nvidia-fp4-ab.md) remains separate evidence, including its 316266-token successful context result and its timing-unmeasured scope.
+
 **2026-10-16 SGLang, Qwen, and Nemotron comparison:** [closed campaign finding](2026-10-16-sglang-qwen-comparison.md) records original GLM baseline C1 0/4 performance-eligible, terminal SGLang SWE 0/5 resolved (2/5 graded), Qwen SWE 2/5 resolved (4/5 graded), and Nemotron preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 performance-eligible, and terminal SWE 2/5 resolved (4/5 graded). No candidate met the frozen replacement gates; final restoration evidence is retained separately. No promotion, throughput ranking, or graph is published.
 
 **2026-10-16 GLM v0.9.1 trial:** [closed finding](2026-10-16-glm-v091-trial.md) records R2's 6/6 native preflight, 54/54 Oracle, 18/18 vision, bounded context, and sampled reserve pass, followed by a 3/5 SWE coding-gate failure. The fresh restored-original control also completed the matched SWE suite 3/5, with the same resolved cases but distinct retained grader details. Both are below the four-case gate. Exact restoration, zero OOM, candidate removal, and primary router readmission are verified. No promotion, performance, causal, or model-family claim is published.
@@ -61,9 +72,9 @@ Multiple STT/TTS and local LLM profiles were tested for English personal, noncom
 
 ## Policy
 
-Latest runtime decision: [GLM-5.3-Flash r10 APC promotion follow-up](2026-09-19-glm53-apc-promotion.md) — human-approved bounded APC configuration with fresh acceptance. The historical r9 campaign close and its exact rollback remain linked evidence.
+Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected current primary with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
 
-Latest bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
+Historical 2026-09-11 bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 
 Latest media bringup: [managed Anvil Media bringup](2026-09-15-media-bringup.md), 2026-09-15 — fixed image smoke and Wan v1/v2 functional diagnostics; Wan remains unavailable pending quality.
 

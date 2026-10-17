@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "logs",
+    "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "--container",
+    "intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec",
+    "--registry",
+    "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+    "--transport",
+    "local",
+    "--tail",
+    "250",
+    "--since",
+    "2026-10-17T11:43:00Z"
+  ],
+  "log": "logs/baseline-controlled-diagnostic.log",
+  "observed_at": "2026-10-17T11:47:08.842829+00:00",
+  "returncode": 0
+}

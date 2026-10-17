@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "status",
+    "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "--container",
+    "intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec",
+    "--registry",
+    "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+    "--transport",
+    "local",
+    "--json"
+  ],
+  "end": {
+    "monotonic_ns": 600791681618868,
+    "unix_ns": 1792234731961397659
+  },
+  "returncode": 0,
+  "start": {
+    "monotonic_ns": 600791545048564,
+    "unix_ns": 1792234731824828457
+  },
+  "stderr": "",
+  "stdout": "{\"command\":\"models recipes status brandonmusic/GLM-5.3-Flash-tr3-4bpw --container intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec --registry [PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml --transport local\",\"context\":{\"command\":\"models-recipes-status\",\"command_host\":\"Primary Node\",\"command_runtime\":\"primary-native\",\"controller_endpoint\":null,\"controller_endpoint_kind\":null,\"execution_host\":\"Primary Node\",\"execution_runtime\":\"primary-container-runtime\",\"gpu_role\":\"primary-compute-a\",\"gpu_uuid\":\"GPU-REDACTED\",\"overlay\":null,\"resource\":\"primary-model-operator\",\"resource_endpoint\":null,\"resource_endpoint_kind\":null,\"resource_host\":\"Primary Node\",\"resource_runtime\":\"primary-container-runtime\",\"target\":null,\"topology\":\"Primary Node-reference\",\"transport\":\"local\"},\"data\":\"{\\n  \\\"container\\\": \\\"intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec\\\",\\n  \\\"container_id\\\": \\\"container-id-redacted\\\",\\n  \\\"containment_error\\\": null,\\n  \\\"health\\\": null,\\n  \\\"host_memory\\\": {\\n    \\\"current_bytes\\\": 53974786048,\\n    \\\"effective_limit_bytes\\\": 55834574848,\\n    \\\"effective_swap_limit_bytes\\\": 1048576,\\n    \\\"events\\\": {\\n      \\\"high\\\": 0,\\n      \\\"low\\\": 0,\\n      \\\"max\\\": 0,\\n      \\\"oom\\\": 0,\\n      \\\"oom_group_kill\\\": 0,\\n      \\\"oom_kill\\\": 0\\n    },\\n    \\\"exit_code\\\": 0,\\n    \\\"limit_bytes\\\": 55834574848,\\n    \\\"oom_killed\\\": false,\\n    \\\"peak_bytes\\\": 54264590336,\\n    \\\"ram_plus_swap_limit_bytes\\\": 55835623424\\n  },\\n  \\\"image\\\": \\\"verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692\\\",\\n  \\\"image_id\\\": \\\"sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692\\\",\\n  \\\"model\\\": \\\"brandonmusic/GLM-5.3-Flash-tr3-4bpw\\\",\\n  \\\"revision\\\": \\\"a5fee929cf4888b1824323e33e8a19b60129e025\\\",\\n  \\\"running\\\": true,\\n  \\\"schema\\\": \\\"recipe-container-status/v1\\\",\\n  \\\"state\\\": \\\"running\\\"\\n}\\n\",\"error\":null,\"ok\":true,\"warnings\":[]}\n"
+}

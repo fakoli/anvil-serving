@@ -1,0 +1,27 @@
+{
+  "command": "models recipes status nvidia/GLM-5.3-Flash-FP4-Local --container glm53-nvidia-fp4-local-ab-r2 --registry [PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml --transport local",
+  "context": {
+    "command": "models-recipes-status",
+    "command_host": "Primary Node",
+    "command_runtime": "primary-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "Primary Node",
+    "execution_runtime": "primary-container-runtime",
+    "gpu_role": "primary-compute-a",
+    "gpu_uuid": "GPU-REDACTED",
+    "overlay": null,
+    "resource": "primary-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "Primary Node",
+    "resource_runtime": "primary-container-runtime",
+    "target": null,
+    "topology": "Primary Node-reference",
+    "transport": "local"
+  },
+  "data": "{\n  \"container\": \"glm53-nvidia-fp4-local-ab-r2\",\n  \"container_id\": \"container-id-redacted\",\n  \"containment_error\": null,\n  \"health\": null,\n  \"host_memory\": {\n    \"current_bytes\": 43292758016,\n    \"effective_limit_bytes\": 55834574848,\n    \"effective_swap_limit_bytes\": 0,\n    \"events\": {\n      \"high\": 0,\n      \"low\": 0,\n      \"max\": 0,\n      \"oom\": 0,\n      \"oom_group_kill\": 0,\n      \"oom_kill\": 0\n    },\n    \"exit_code\": 0,\n    \"limit_bytes\": 55834574848,\n    \"oom_killed\": false,\n    \"peak_bytes\": 53049847808,\n    \"ram_plus_swap_limit_bytes\": 55834574849\n  },\n  \"image\": \"ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29\",\n  \"image_id\": \"sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29\",\n  \"model\": \"nvidia/GLM-5.3-Flash-FP4-Local\",\n  \"revision\": \"76348ddb2be2e35e39ecfc00e75dc07703f4f3d5\",\n  \"running\": true,\n  \"schema\": \"recipe-container-status/v1\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

@@ -71,8 +71,24 @@ Budget one synthesis and keep local-only questions on retained local evidence.
 10. Declare and qualify the model-native reasoning and sampling policy intended
     for the role. Use thinking-disabled probes only when supported and relevant;
     they do not qualify a deployment that will use a different reasoning policy.
-11. Run capacity at declared context/concurrency points. Keep at least the
-   campaign’s output/reasoning headroom.
+11. Before requests for a serving comparison, retain the content-bound frozen
+    plan and matching `metrics_coverage` for its profile × workload × context ×
+    requested-concurrency matrix. Run capacity at the declared points with the campaign’s output/reasoning
+    headroom. Keep performance measurement, quality, and promotion independent:
+    preserve quality misses, stop unsafe infrastructure/resource failures, and
+    never call the comparison complete with required non-measured metrics.
+   Use a reviewed runner bound to the frozen plan, runner, and collector hashes
+   for scored cells. It must launch only the frozen argv and retain in-process
+   cadence for engine occupancy, numerical per-GPU memory, Linux host
+   `MemAvailable`, and managed cgroup memory/events. Require exact
+   serve/container/GPU identity on slow samples and model/engine/process identity
+   on every engine sample, then reconcile native request/token totals after drain.
+   `host gpus` inventory and before/after-only samples are not memory telemetry.
+   An offline orchestration fixture must enter that runner with fake process and
+   probe seams, prove all collectors sample while the child runs, and prove
+   collector failure, timeout, identity drift, and counter mismatch fail closed.
+   Missing required telemetry leaves the cell blocked/incomplete, never a full
+   comparison result.
 12. For images/video, run direct endpoint preflight and
     `eval benchmark multimodal` before router work. If direct `video_url` fails,
     retain the failure and pause routed video qualification while investigating

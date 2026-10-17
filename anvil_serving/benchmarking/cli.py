@@ -8,10 +8,12 @@ The runtime remains stdlib-only (urllib, threads, and atomic JSON writes).
 import argparse
 import json
 import math
+import os
 import random
 import re
 import statistics
 import sys
+import threading
 import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,6 +22,8 @@ from ..model_controls import REASONING_EFFORT_CHOICES, validate_reasoning_contro
 from .artifacts import (
     atomic_write_json as _atomic_write_json,
     console_safe as _console_safe,
+    evidence_file_reference,
+    sanitize_publishable_evidence,
     validate_write_target as _validate_write_target,
 )
 from .evaluation import (
@@ -252,7 +256,8 @@ def main(
                     help=help_for("minimum attempt pass rate (0..1; default %(default)s)", "quality"))
     capacity_output_flags = ("--json-out", "--output") if workload == "capacity" else ("--json-out",)
     ap.add_argument(*capacity_output_flags, dest="json_out", default=None,
-                    help=help_for("write the capacity artifact atomically", "capacity"))
+                    help=help_for("write the capacity artifact atomically and fsync each "
+                                  "per-request .journal.jsonl record", "capacity"))
     # --- GENERATE a serve recipe as a side effect of benchmarking a live serve ------
     # (READ them back with `anvil-serving models recipes list|show`.) All optional.
     ap.add_argument("--recipe-out", default=None,
@@ -348,8 +353,10 @@ def main(
         forbidden = sorted(supplied_flags & canonical_forbidden[workload])
         if forbidden:
             ap.error("%s does not accept %s" % (workload, ", ".join(forbidden)))
+    output_targets = {}
     for label, target in (
             ("JSON output", a.json_out),
+            ("capacity journal", a.json_out + ".journal.jsonl" if a.json_out else None),
             ("evidence output", a.evidence_out),
             ("recipe output", a.recipe_out),
             ("notebook", a.notebook)):
@@ -357,6 +364,13 @@ def main(
             _validate_write_target(target, label=label)
         except OSError as exc:
             ap.error(str(exc))
+        if label == "capacity journal" and target and os.path.lexists(os.path.expanduser(target)):
+            ap.error("capacity journal already exists; choose a new --output path")
+        if target and not (label == "recipe output" and target == "-"):
+            canonical = os.path.normcase(os.path.realpath(os.path.expanduser(target)))
+            if canonical in output_targets:
+                ap.error("%s and %s must use distinct paths" % (label, output_targets[canonical]))
+            output_targets[canonical] = label
     from ..eval import resolve_endpoint_target
     try:
         a.base_url, a.model, selected = resolve_endpoint_target(
@@ -663,8 +677,12 @@ def main(
         for _ in range(n)
     ]
     canaries = [f"ANVIL_REQ_{a.seed}_{i:05d}" for i in range(n)]
+    client_lock = threading.Lock()
+    client_active = 0
+    client_peak = 0
 
     def run_request(i):
+        nonlocal client_active, client_peak
         ctx = planned_contexts[i]
         request_started = time.perf_counter()
         result = None
@@ -743,10 +761,17 @@ def main(
                     else False
                 ),
             )
-            result = stream_request(
-                a.base_url, a.model, prompt, api_key, a.max_tokens,
-                timeout=a.timeout, **control_kwargs, **sampling_kwargs,
-            )
+            with client_lock:
+                client_active += 1
+                client_peak = max(client_peak, client_active)
+            try:
+                result = stream_request(
+                    a.base_url, a.model, prompt, api_key, a.max_tokens,
+                    timeout=a.timeout, **control_kwargs, **sampling_kwargs,
+                )
+            finally:
+                with client_lock:
+                    client_active -= 1
         except Exception as exc:
             return failed(exc, "request_error")
 
@@ -800,6 +825,59 @@ def main(
     t0 = time.perf_counter()
     results = []
     failures = []
+    journal_path = a.json_out + ".journal.jsonl" if a.json_out else None
+    journal = {
+        "schema": "anvil-serving.capacity-journal/v1",
+        "record_type": "header",
+        "status": "running",
+        "performance_eligible": False,
+        "completion_rule": (
+            "Only newline-terminated JSON records are durable evidence. Missing completion "
+            "or a truncated last line means incomplete; retain earlier complete records."
+        ),
+        "started_at_unix_ns": started_at_unix_ns,
+        "clock_domain_id": a.clock_domain_id,
+        "configuration_fingerprint": a.configuration_fingerprint,
+        "base_url": a.base_url,
+        "model": a.model,
+        "engine": a.engine,
+        "gpu": a.gpu,
+        "tier": a.tier,
+        "manifest": a.manifest,
+        "source_recipe": a.source_recipe,
+        "requests": n,
+        "concurrency": conc,
+        "planned_context_tokens": planned_contexts,
+        "context_seed": a.seed,
+        "max_context_tokens": max_model_len,
+        "max_tokens": a.max_tokens,
+        "timeout_seconds": a.timeout,
+        "response_words": a.response_words,
+        "prompt_cache_mode": a.prompt_cache_mode,
+        "shared_prefix_tokens": effective_shared_prefix_tokens,
+        "request_canaries": bool(a.request_canaries),
+        "controlled_output_policy": a.controlled_output_policy,
+        "workload_identity": capacity_workload_identity(a.response_words),
+        "thinking": thinking,
+        "reasoning_effort_requested": a.reasoning_effort,
+        "reasoning_effort": reasoning_effort,
+        "force_nonempty_content": bool(a.force_nonempty_content),
+        "sampling": sampling,
+    }
+
+    def write_journal(record, *, mode="a"):
+        if journal_path:
+            # Serialize before opening: a bad record cannot truncate retained evidence.
+            line = json.dumps(record, ensure_ascii=True, allow_nan=False) + "\n"
+            with open(os.path.expanduser(journal_path), mode, encoding="utf-8", newline="\n") as handle:
+                handle.write(line)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+    try:
+        write_journal(journal, mode="x")
+    except FileExistsError:
+        ap.error("capacity journal already exists; choose a new --output path")
     with ThreadPoolExecutor(max_workers=conc) as ex:
         # Each worker builds at most one prompt, so memory scales with
         # concurrency rather than request count.
@@ -828,10 +906,31 @@ def main(
                     "failure_class": "runner_error",
                 }
                 failures.append(failure)
+                outcome = {"failure": failure}
                 print(
                     "  req error: %s: %s"
                     % (failure["error_type"], failure["error_message"])
                 )
+            if journal_path:
+                if outcome.get("result") is not None:
+                    rows = _result_timings([outcome["result"]])
+                    record = {
+                        "request_index": futures[future],
+                        "performance_eligible": True,
+                        "response_timing": rows[0] if rows else None,
+                    }
+                else:
+                    record = dict(outcome["failure"])
+                    if api_key:
+                        record["error_message"] = record["error_message"].replace(
+                            api_key, "[REDACTED]"
+                        )
+                # Persistence errors must propagate, never become model failures.
+                write_journal({
+                    "record_type": "outcome",
+                    "recorded_at_unix_ns": time.time_ns(),
+                    "outcome": sanitize_publishable_evidence(record),
+                })
     wall = time.perf_counter() - t0
     finished_at_unix_ns = time.time_ns()
     finished_at = finished_at_unix_ns / 1_000_000_000
@@ -854,6 +953,7 @@ def main(
     }
     print("-"*60)
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
+    print(f"client overlap:   {client_peak} observed peak / {conc} requested")
     p99_note = (
         "tail estimate; N>=100" if len(results) >= 100
         else "descriptive only; N<100"
@@ -943,6 +1043,7 @@ def main(
         "failed": len(failures),
         "failures": sorted(failures, key=lambda item: item["request_index"]),
         "concurrency": conc,
+        "client_concurrency_observed_max": client_peak,
         "context_tokens": a.ctx_tokens or None,
         "context_seed": a.seed,
         "context_distribution": context_distribution,
@@ -990,6 +1091,11 @@ def main(
         },
         "sampling": sampling,
         "timing_methodology": {
+            "client_concurrency": (
+                "peak overlapping client stream_request calls, including failed attempts; "
+                "excludes prompt construction and response validation; does not prove "
+                "simultaneous engine execution or KV residency"
+            ),
             "clock": "client time.perf_counter",
             "artifact_timestamps": (
                 "time.time_ns Unix timestamps; independent artifacts may align them "
@@ -1062,6 +1168,19 @@ def main(
     print("-"*60)
     print("Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.")
     if a.json_out:
+        write_journal({
+            "record_type": "completion",
+            "status": "complete",
+            "finished_at_unix_ns": finished_at_unix_ns,
+            "completed": len(results),
+            "failed": len(failures),
+            "responses_received": summary["responses_received"],
+            "client_concurrency_observed_max": client_peak,
+            "performance_eligible": performance_eligible,
+        })
+        summary["request_journal"] = evidence_file_reference(
+            journal_path, root=os.path.dirname(os.path.abspath(os.path.expanduser(a.json_out)))
+        )
         _atomic_write_json(a.json_out, summary)
         print("wrote JSON summary: " + a.json_out)
     if len(results) != n:

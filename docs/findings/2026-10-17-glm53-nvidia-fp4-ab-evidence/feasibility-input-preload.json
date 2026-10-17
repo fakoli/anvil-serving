@@ -1,0 +1,34 @@
+{
+  "schema": "anvil-serving.recipe-feasibility-input/v1",
+  "campaign": "glm53-nvidia-fp4-local-tp2-327k-ab",
+  "requirements": {
+    "tokens": {
+      "prompt": {"value": 318464, "unit": "tokens", "status": "assumed", "source": "trial request budget", "observed_at": "2026-10-17"},
+      "output_reserve": {"value": 9216, "unit": "tokens", "status": "assumed", "source": "trial request budget", "observed_at": "2026-10-17"}
+    },
+    "concurrency": {"value": 1, "unit": "sequences", "status": "assumed", "source": "one-request long-context trial; C4 only at 8K/32K timing", "observed_at": "2026-10-17"},
+    "physical_vram_bytes": {"value": 205283917824, "unit": "bytes", "status": "measured", "source": "two 97,887 MiB GPUs", "observed_at": "2026-10-17"},
+    "vram_reserves": {
+      "co_resident": {"kind": "physical", "variable": {"value": 0, "unit": "bytes", "status": "assumed", "source": "exclusive TP2 candidate lane", "observed_at": "2026-10-17"}},
+      "effective_model_only_headroom": {"kind": "policy", "variable": {"value": 0, "unit": "bytes", "status": "assumed", "source": "campaign-owner provisional waiver to NVIDIA published 0.985 model-only policy", "observed_at": "2026-10-17", "notes": "The default 4 GiB per GPU reserve is waived only for model-only startup. This is not a safety, workload, stability, or qualification claim; startup and workload telemetry are mandatory."}}
+    }
+  },
+  "tracked_variables": {
+    "checkpoint_archive_bytes": {"value": 177519524972, "unit": "bytes", "status": "confirmed", "source": "Hugging Face pinned repository metadata", "observed_at": "2026-10-17", "notes": "Download payload, not resident VRAM."},
+    "published_approximate_vram_bytes": {"status": "unknown", "unit": "bytes", "notes": "NVIDIA's approximate 166 GiB statement does not partition allocation for this adapted configuration."},
+    "host_embedding_and_runtime_peak_bytes": {"status": "unknown", "unit": "bytes", "notes": "Host embedding and runtime allocation have no local measurement."},
+    "default_headroom_bytes": {"value": 8589934592, "unit": "bytes", "status": "assumed", "source": "campaign default of 4 GiB per GPU", "observed_at": "2026-10-17", "notes": "Superseded only for the provisional startup-only model-only policy encoded in vram_reserves."}
+  },
+  "candidates": [{
+    "id": "nvidia-glm53-fp4-local-tp2-dcp2-327k-mtp3-r1",
+    "runtime_context_limit_tokens": {"value": 327680, "unit": "tokens", "status": "assumed", "source": "exact trial recipe configuration", "observed_at": "2026-10-17"},
+    "measured_max_stable_context_tokens": {"status": "unknown", "unit": "tokens", "notes": "No local candidate run."},
+    "resident_components": {
+      "target_weights_and_non_kv_runtime": {"status": "unknown", "unit": "bytes", "notes": "Exact weights, workspace, graph, recurrent, vision and MTP residency are unmeasured."},
+      "configured_kv_budget": {"value": 15300820992, "unit": "bytes", "status": "confirmed", "source": "published profile requests 7,650,410,496 bytes per GPU", "observed_at": "2026-10-17"}
+    },
+    "per_sequence_components": {"state": {"status": "unknown", "unit": "bytes", "notes": "Per-sequence allocation is unmeasured."}},
+    "per_token_components": {"kv_and_speculation": {"status": "unknown", "unit": "bytes/token", "notes": "Token density and DCP2 residency are unmeasured."}},
+    "kv_token_multiplier": {"status": "unknown", "unit": "copies", "notes": "DCP2, prefix caching and MTP3 prevent a supported fixed multiplier."}
+  }]
+}

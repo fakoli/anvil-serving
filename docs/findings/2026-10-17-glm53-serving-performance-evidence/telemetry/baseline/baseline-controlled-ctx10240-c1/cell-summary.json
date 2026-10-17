@@ -1,0 +1,94 @@
+{
+  "aborted": "deadline",
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "benchmark",
+    "capacity",
+    "--base-url",
+    "http://127.0.0.1:31841/v1",
+    "--model",
+    "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "--engine",
+    "vllm-exl3-v84",
+    "--gpu",
+    "dual-rtx-pro-6000-maxq",
+    "--requests",
+    "20",
+    "--concurrency",
+    "1",
+    "--ctx-tokens",
+    "10240",
+    "--seed",
+    "483001",
+    "--max-tokens",
+    "16384",
+    "--prompt-cache-mode",
+    "unique",
+    "--request-canaries",
+    "--controlled-output-policy",
+    "strict",
+    "--max-model-len",
+    "327680",
+    "--reasoning-effort",
+    "max",
+    "--temperature",
+    "0.6",
+    "--top-p",
+    "0.95",
+    "--timeout",
+    "900",
+    "--response-words",
+    "128",
+    "--output",
+    "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/baseline/baseline-controlled-ctx10240-c1.json",
+    "--confirm"
+  ],
+  "cell": "baseline-controlled-ctx10240-c1",
+  "collector_errors": [],
+  "collector_sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+  "coverage_passed": false,
+  "end": {
+    "monotonic_ns": 604647628019320,
+    "unix_ns": 1792238587907798842
+  },
+  "frozen_plan_sha256": "59e3680b252368ac8613d1a55eec0580f95006c66e36e62867956a7435e43532",
+  "identity_receipt_sha256": "1a53a252c30abfd739ab27b0c7cfddef39999b273cae03e5e15725fb2caaad00",
+  "oom_event_deltas": {
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "process_finished": {
+    "monotonic_ns": 604646424232323,
+    "unix_ns": 1792238586704010906
+  },
+  "process_started": {
+    "monotonic_ns": 603446405633875,
+    "unix_ns": 1792237386685413748
+  },
+  "returncode": -15,
+  "runner_sha256": "4da3e73183494c7b47b26b367ce3cc3d4c7818599f1cebb614d624d952aaeff2",
+  "sample_counts": {
+    "engine": 2400,
+    "slow": 600
+  },
+  "sampling_window": {
+    "engine": {
+      "in_window_samples": 2400,
+      "max_gap_seconds": 0.510776112,
+      "target_interval_seconds": 0.5
+    },
+    "slow": {
+      "in_window_samples": 600,
+      "max_gap_seconds": 2.001037969,
+      "target_interval_seconds": 2
+    }
+  },
+  "start": {
+    "monotonic_ns": 603446405052619,
+    "unix_ns": 1792237386684831798
+  }
+}

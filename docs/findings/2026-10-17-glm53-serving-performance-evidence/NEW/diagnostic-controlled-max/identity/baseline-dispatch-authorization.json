@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-17T12:06:38.178216+00:00",
+  "authorization": "[REDACTED]",
+  "diagnostic_hashes": {
+    "plans/run-plan.json": "8d594ec0d5c5d431068ab41c26d3682b83205b9bef4b360ef1fef86a7e5f24da",
+    "telemetry/collector.py": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+    "telemetry/run_cell.py": "3a310a117d567e99149b689665a9edd35df2056a141a757364d8de12f13c1df4"
+  },
+  "identity_match_fields": [
+    "container",
+    "container_id",
+    "model",
+    "revision",
+    "image",
+    "image_id"
+  ],
+  "original_cell": "baseline-controlled-ctx10240-c1",
+  "original_status": "retained deadline failure; separate n1 diagnostic does not replace original",
+  "source_and_operator_hash_count": 23
+}
