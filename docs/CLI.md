@@ -221,6 +221,8 @@ required operands, choices, and defaults.
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval routed` | Run fail-closed router and real-client acceptance for one alias. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--expected-served-model`<br>`--expected-config-fingerprint`<br>`--expected-router-config-sha256`<br>`--min-context-tokens`<br>`--clients`<br>`--openclaw-provider`<br>`--hermes-provider`<br>`--hermes-expected-provider`<br>`--no-harness-sync`<br>`--openclaw-config`<br>`--pi-models`<br>`--pi-settings`<br>`--client-state-path`<br>`--client-backup-root`<br>`--timeout-seconds`<br>`--run-id`<br>`--output` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark speed` | Plan realistic SPEED-Bench workloads offline. | `read` / `bounded` | - |
+| `eval benchmark speed plan` | Validate prepared JSONL and print a deterministic offline plan. | `read` / `bounded` | `--manifest`<br>`--categories`<br>`--samples-per-category`<br>`--seed` |
 | `eval benchmark jev` | Replay selected evidence through a shadow Jev pilot. | `read` / `bounded` | `--config`<br>`--allow-export`<br>`--no-jev` |
 | `eval benchmark stability` | Replay bounded mixed-load scenarios and retain coverage and failure evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scenario`<br>`--output` |
 | `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--profile`<br>`--observed-context` |
