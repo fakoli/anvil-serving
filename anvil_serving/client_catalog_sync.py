@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -1288,17 +1289,24 @@ def _read_hermes_profile(
     timeout_seconds: int,
     run,
 ) -> dict:
-    result = {}
-    for key in HERMES_PROFILE_KEYS:
-        result[key] = _read_hermes_profile_key(
-            hermes_bin,
-            profile,
-            key,
-            timeout_seconds=timeout_seconds,
-            run=run,
-            required=key in {"model", "compression", "providers"},
-        )
-    return result
+    executor = ThreadPoolExecutor(max_workers=3)
+    try:
+        futures = {
+            key: executor.submit(
+                _read_hermes_profile_key,
+                hermes_bin,
+                profile,
+                key,
+                timeout_seconds=timeout_seconds,
+                run=run,
+                required=key in {"model", "compression", "providers"},
+            )
+            for key in HERMES_PROFILE_KEYS
+        }
+        return {key: future.result() for key, future in futures.items()}
+    finally:
+        # Keep scratch homes and owner fences alive until every running read exits.
+        executor.shutdown(wait=True, cancel_futures=True)
 
 
 def _hermes_ratio(value, *, label: str) -> float:  # noqa: ANN001

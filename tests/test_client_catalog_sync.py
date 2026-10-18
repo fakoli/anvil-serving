@@ -3,8 +3,11 @@ from __future__ import annotations
 import copy
 import json
 import os
+import subprocess
 import sys
+import threading
 import traceback
+from concurrent.futures import Future
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -264,6 +267,126 @@ class _HermesRunner:
         if command == ["config", "check"]:
             return self._completed(stdout="valid")
         raise AssertionError("unexpected Hermes command: %r" % argv)
+
+
+def test_hermes_profile_reads_overlap_with_three_workers_and_keep_key_order():
+    keys = client_catalog_sync.HERMES_PROFILE_KEYS
+    barrier = threading.Barrier(3, timeout=5)
+    vision_done = threading.Event()
+    lock = threading.Lock()
+    calls, completed, workers = [], [], set()
+    active = peak = 0
+
+    def run(argv, **kwargs):
+        nonlocal active, peak
+        key = argv[5]
+        assert argv == ["hermes", "-p", "work", "config", "get", key, "--json"]
+        assert kwargs == {"capture_output": True, "text": True, "timeout": 7}
+        with lock:
+            calls.append(key)
+            workers.add(threading.current_thread())
+            active += 1
+            peak = max(peak, active)
+        try:
+            barrier.wait()
+            if key == "model":
+                assert vision_done.wait(5)
+            with lock:
+                completed.append(key)
+            if key == "auxiliary.vision":
+                vision_done.set()
+            return _HermesRunner._completed(stdout=json.dumps({"key": key}))
+        finally:
+            with lock:
+                active -= 1
+
+    result = client_catalog_sync._read_hermes_profile(
+        "hermes", "work", timeout_seconds=7, run=run)
+    assert len(calls) == 6 and set(calls) == set(keys)
+    assert peak == 3 and active == 0
+    assert completed.index("auxiliary.vision") < completed.index("model")
+    assert tuple(result) == keys
+    assert result == {key: {"key": key} for key in keys}
+    assert all(not worker.is_alive() for worker in workers)
+
+
+@pytest.mark.parametrize("key", client_catalog_sync.HERMES_PROFILE_KEYS)
+@pytest.mark.parametrize("invalid_json", [False, True])
+def test_hermes_profile_preserves_required_optional_and_json_errors(key, invalid_json):
+    def run(argv, **_kwargs):
+        return _HermesRunner._completed(
+            returncode=int(argv[5] == key and not invalid_json),
+            stdout="invalid JSON" if argv[5] == key and invalid_json else '{"value": 1}')
+
+    if invalid_json or key in {"model", "compression", "providers"}:
+        message = "invalid JSON for " if invalid_json else "has no readable "
+        with pytest.raises(ClientCatalogError, match=message + key):
+            client_catalog_sync._read_hermes_profile(
+                "hermes", "work", timeout_seconds=7, run=run)
+    else:
+        result = client_catalog_sync._read_hermes_profile(
+            "hermes", "work", timeout_seconds=7, run=run)
+        assert result[key] is None
+        assert all(value == {"value": 1} for name, value in result.items() if name != key)
+
+
+@pytest.mark.parametrize("failure", ["required", "json", "timeout", "missing"])
+def test_hermes_profile_failure_cancels_pending_and_joins_running_reads(monkeypatch, failure):
+    started = threading.Barrier(3, timeout=5)
+    release = threading.Event()
+    cancelled = threading.Event()
+    workers, errors = set(), []
+    lock = threading.Lock()
+    cancel = Future.cancel
+
+    def observe_cancel(future):
+        result = cancel(future)
+        if result:
+            cancelled.set()
+        return result
+
+    monkeypatch.setattr(Future, "cancel", observe_cancel)
+
+    def run(argv, **kwargs):
+        key = argv[5]
+        with lock:
+            workers.add(threading.current_thread())
+        if key in client_catalog_sync.HERMES_PROFILE_KEYS[:3]:
+            started.wait()
+        if key == "model":
+            if failure == "timeout":
+                raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+            if failure == "missing":
+                raise FileNotFoundError("synthetic missing command")
+            return _HermesRunner._completed(
+                returncode=int(failure == "required"), stdout="invalid JSON")
+        assert release.wait(5)
+        return _HermesRunner._completed(stdout="null")
+
+    def read():
+        try:
+            client_catalog_sync._read_hermes_profile(
+                "hermes", "work", timeout_seconds=7, run=run)
+        except Exception as error:
+            errors.append(error)
+
+    reader = threading.Thread(target=read)
+    reader.start()
+    try:
+        assert cancelled.wait(5)
+        assert reader.is_alive() and not errors
+    finally:
+        release.set()
+        reader.join(5)
+    assert not reader.is_alive()
+    assert all(not worker.is_alive() for worker in workers)
+    assert len(errors) == 1 and isinstance(errors[0], ClientCatalogError)
+    expected = {"required": "has no readable model", "json": "invalid JSON for model",
+                "timeout": "command failed for work", "missing": "command failed for work"}
+    assert expected[failure] in str(errors[0])
+    if failure == "timeout":
+        assert isinstance(errors[0].__cause__, subprocess.TimeoutExpired)
+        assert errors[0].__cause__.timeout == 7
 
 
 class _HermesMediaRunner:
