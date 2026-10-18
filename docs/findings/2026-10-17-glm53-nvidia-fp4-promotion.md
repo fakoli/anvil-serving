@@ -202,5 +202,5 @@ intentionally omits endpoint addresses, host identities, container identifiers,
 paths, and credentials.
 
 This decision establishes the live primary mapping after the stated human gate.
-It does not establish fleet-wide client success, a public-site readback,
-external publication, a general quality ranking, or a safe maximum capacity.
+It does not establish fleet-wide client success, publication or readback of this
+new recovery follow-up, a general quality ranking, or a safe maximum capacity.
