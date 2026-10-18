@@ -1715,6 +1715,10 @@ def _migrate_offline(config_path, backup_out, *, journal_mode=None, _legacy_rece
                 busy, frames, copied = connection.execute('PRAGMA wal_checkpoint(FULL)').fetchone()
                 if busy or copied != frames:
                     raise KeyStoreError('credential checkpoint requires terminal readers')
+                # FULL copies frames without shrinking the physical capacity guard.
+                if (connection.execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone() != (0, 0, 0)
+                        or _secure_sidecars(store.path) != 0):
+                    raise KeyStoreError('credential WAL truncation requires terminal readers')
             result['journal_mode'] = 'wal'
             result['checkpoint_frames'] = frames
         return result
