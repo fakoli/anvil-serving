@@ -33,7 +33,7 @@
   "fleet": {
     "native_workflows": "original failed job cancelled and freshly quiescent through supported owner recovery; original history retained; no redispatch; corrected successor profiles staged on three hosts; complete workflow acceptance pending",
     "mini_and_mac_client_smokes": "bounded Gateway smokes passed; earlier evaluator credential failures were before dispatch; first Mac Gateway exec policy failure retained",
-    "remaining_client_acceptance": "Pi Web, existing conversations, running Hermes Gateway and full native propagation remain unaccepted; declared secondary transport times out before authentication; its acceptance is not replaced by a primary-model smoke",
+    "remaining_client_acceptance": "Pi Web, existing conversations, running Hermes Gateway and full native propagation remain unaccepted; operator confirmed the secondary host runtime is intentionally disabled; preserve that state and its acceptance gate until it is available again",
     "native_custody": "terminal workflow and native quiescence independently verified; exact custody, child result and cancellation receipt retained; supersedes the earlier missing-custody audit",
     "open_webui_catalog": "passed; six approved aliases; three active accounts; managed preview/apply/scheduled/repeat passed; repeat changed=0; credentials unchanged; no model/router/WebUI restart"
   },
@@ -147,7 +147,7 @@
     "fresh_c4_estimated_occupied_gib": 2.3172897196261677,
     "fresh_c4_estimated_unused_pool_gib": 11.932710280373833
   },
-  "updated_at": "2026-10-17T23:56:34Z",
+  "updated_at": "2026-10-18T00:09:00Z",
   "durability": {
     "native_runtime": "separately pinned repaired client wheel installed on three hosts; repeat changed=0 on each",
     "secret_references": "OpenClaw single-value file SecretRefs preserved as references; no credential conversion",

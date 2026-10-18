@@ -183,8 +183,10 @@ semantic profile identities to agree with the manifest and every owned contract
 target before the first staging mutation. The corrected profiles passed all
 three installed native loaders and static custody checks. The complete native
 workflow and its new/existing-session gates remain pending; the declared
-secondary probes timed out at SSH key exchange and HTTPS negotiation. Its
-root cause remains unproven, and primary results do not substitute for it.
+secondary probes timed out at SSH key exchange and HTTPS negotiation. The
+operator subsequently confirmed that host's model runtime is intentionally
+disabled. Leave it untouched and retain the secondary acceptance gate until it
+is available again; primary results do not substitute for it.
 
 Private operator receipts hold raw request captures, configuration identities,
 and full hashes. This finding links the sanitized local
