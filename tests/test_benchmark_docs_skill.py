@@ -1234,7 +1234,7 @@ def test_finalizer_rejects_tampered_or_absent_serving_comparison_reference(tmp_p
 
 
 def test_finalizer_rejects_complete_summary_when_native_coverage_is_partial(tmp_path: Path):
-    source, summary_path = _serving_native_bundle(tmp_path, status="partial")
+    source, summary_path = _serving_native_bundle(tmp_path, status="partial", complete=False)
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     summary["complete"] = True
     summary_path.write_text(json.dumps(summary), encoding="utf-8")

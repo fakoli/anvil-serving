@@ -261,8 +261,22 @@ def test_serving_comparison_requires_complete_coverage_but_quality_failure_is_in
     assert validate_cross_suite_evidence(value, artifact_root=str(tmp_path))["metrics_coverage"]["status"] == "complete"
 
 
+@pytest.mark.parametrize("measured_metrics", (False, True))
+def test_completed_serving_comparison_rejects_partial_coverage(tmp_path, measured_metrics):
+    value = measured(tmp_path)
+    value["run"]["profile"] = "serving-comparison/v1"
+    value["metrics_coverage"] = _serving_coverage(
+        tmp_path, status="partial", measured=measured_metrics,
+    )
+    with pytest.raises(BenchmarkArtifactError) as exc:
+        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
+    assert exc.value.code == "false_metrics_completion"
+
+
 def test_serving_metrics_coverage_retains_gaps_and_rejects_false_completion(tmp_path):
     value = measured(tmp_path)
+    value["completeness"] = "incomplete"
+    value["summary"] = {"completed": False, "status": "closed_partial"}
     value["run"]["profile"] = "serving-comparison/v1"
     value["metrics_coverage"] = _serving_coverage(tmp_path, status="partial", measured=False)
     checked = validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
@@ -413,6 +427,8 @@ def test_serving_evidence_cli_rejects_tampered_references(tmp_path, capsys):
 
 def test_partial_cell_preserves_failed_native_population(tmp_path):
     value = measured(tmp_path)
+    value["completeness"] = "incomplete"
+    value["summary"] = {"completed": False}
     value["run"]["profile"] = "serving-comparison/v1"
     coverage = _serving_coverage(tmp_path, status="partial", measured=False)
     cell = coverage["cells"]["baseline:c1"]
@@ -433,6 +449,8 @@ def test_partial_cell_preserves_failed_native_population(tmp_path):
 
 def test_unrun_cell_retains_blocked_reasons_without_measurement(tmp_path):
     value = measured(tmp_path)
+    value["completeness"] = "incomplete"
+    value["summary"] = {"completed": False}
     value["run"]["profile"] = "serving-comparison/v1"
     coverage = _serving_coverage(tmp_path, status="partial", measured=False)
     cell = coverage["cells"]["baseline:c1"]
