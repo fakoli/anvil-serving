@@ -534,8 +534,8 @@ def test_failed_native_result_requires_matching_owner_reconciliation(tmp_path: P
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
 def test_child_heartbeat_and_deadline_are_real_observations(tmp_path: Path):
-    script = "import json,sys,time; json.load(sys.stdin); time.sleep(3); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
-    store, job = _submitted(tmp_path, script, budget_seconds=2, heartbeat_seconds=1)
+    script = "import json,sys,time; json.load(sys.stdin); time.sleep(6); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
+    store, job = _submitted(tmp_path, script, budget_seconds=4, heartbeat_seconds=1)
     supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     supervisor.launch(job["job_id"])
     for _ in range(100):
@@ -543,8 +543,15 @@ def test_child_heartbeat_and_deadline_are_real_observations(tmp_path: Path):
             break
         time.sleep(0.01)
     initial = store.lookup_internal(job["job_id"])["heartbeat_at"]
-    time.sleep(1.1)
-    assert store.lookup_internal(job["job_id"])["heartbeat_at"] > initial
+    assert store.lookup_internal(job["job_id"])["state"] == "executing"
+    # Execution starts before child setup; wait for the persisted heartbeat,
+    # whose timestamp has whole-second precision, rather than scheduler timing.
+    deadline = time.monotonic() + 3
+    heartbeat = initial
+    while heartbeat <= initial and time.monotonic() < deadline:
+        time.sleep(0.02)
+        heartbeat = store.lookup_internal(job["job_id"])["heartbeat_at"]
+    assert heartbeat > initial
     assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
 
 
