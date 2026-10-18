@@ -106,18 +106,21 @@ The former EXL3 r11 service is stopped and retained as the exact managed
 rollback target; no blind recreation of an old unit is implied. The primary
 alias now selects the approved FP4 configuration. Fleet propagation, real
 client catalog convergence, and public Grafana, Workbench, or web publication
-have separate authority and evidence gates. The authoritative NativeWorkflows
-owner check is `recovery_required` with failed workflow progress, 13 targets,
-and `all_targets_verified=false`; no propagation retry or settlement was run.
+have separate authority and evidence gates. The initial NativeWorkflows
+owner check was `recovery_required` with failed workflow progress, 13 targets,
+and `all_targets_verified=false`. The exact original job was later cancelled
+and freshly verified quiescent through supported recovery; its original history
+was retained and it was not redispatched.
 Grafana readback confirmed the comparison dashboard's 11 panels. Prometheus and its observer
 each retained 792 numeric campaign observations across 17 metric families, 396
 per comparison arm. Workbench returned 92 configured cards, including 24 exact
 campaign cards (12 per arm) with pinned revision and engine fields. Canary and
 primary apply/repeat checks passed. Native Prometheus discovery still exposes
 its historical model label, and its target and engine-capability checks fail
-under the existing NativeWorkflows recovery state; the comparison metrics and
-evidence cards were verified independently. No public Pages deployment is
-authorized or recorded.
+pending native fleet reconciliation; the comparison metrics and
+evidence cards were verified independently. A later HTTP readback verified the served public finding, pinned model identity,
+KV accounting and retained quality caveat. Publication of this newer recovery
+follow-up remains bound to its repository deployment and separate readback.
 
 One fresh Primary Node Pi tool smoke has passed with the exact alias, provider, nonce,
 one tool call, normal completion, and no session. Subsequent real OpenClaw
@@ -150,13 +153,15 @@ the provider `anvil`; runtime exports name it `custom`. Their context, fallback,
 and effective reasoning fields remain unavailable. The two secondary profiles
 are outside this primary-model check. These results do not validate existing
 conversations, Pi Web, or the running Hermes Gateway. Full catalog and session
-propagation remains blocked by the native workflow's custody gap.
+propagation remains pending the corrected successor workflow and its declared
+secondary dependency; these primary-model smokes do not close those gates.
 
-A fresh owner and pinned-source audit confirmed that the older failed workflow
-has no terminal custody receipt. Its missing fixture records held random native
+An early owner and pinned-source audit found that the older failed workflow
+had no terminal custody receipt. Its missing fixture records held random native
 session identities that cannot be reconstructed from the job identifier. Empty
-fixture directories do not prove those sessions settled. Recovery still needs
-an authenticated owner barrier bound to the original job and targets.
+fixture directories do not prove those sessions settled. Supported recovery subsequently proved the authenticated original-job barrier,
+terminal workflow and complete native quiescence. Its cancellation, custody and
+child-result receipts remain retained; this did not approve a successor.
 
 Open WebUI catalog reconciliation passed for all six approved aliases and three
 active accounts. Its repaired infrastructure helper verifies the complete
@@ -165,6 +170,23 @@ credential. Managed preview, apply, scheduled execution, and repeat checks
 passed; repeat apply reported zero changes. The model, router, and WebUI
 container identities and start times were unchanged. This closes the separate
 WebUI catalog defect without settling the older fleet workflow.
+
+A later recovery checkpoint installed a separately pinned native client package
+on three hosts, preserving the accepted model, owner image, activation and
+catalog. It repairs catalog discovery with existing device grants and OpenClaw
+single-value file SecretRefs. All three repeat installations reported zero
+changes. A malformed preparation then failed the native loader because its
+canonical profile identities were stale after inventory and fixture changes.
+That failure occurred before writer cutover, catalog writes, owner replacement
+or admission. The failed packet is retained. Preparation and staging now require
+semantic profile identities to agree with the manifest and every owned contract
+target before the first staging mutation. The corrected profiles passed all
+three installed native loaders and static custody checks. The complete native
+workflow and its new/existing-session gates remain pending; the declared
+secondary probes timed out at SSH key exchange and HTTPS negotiation. The
+operator subsequently confirmed that host's model runtime is intentionally
+disabled. Leave it untouched and retain the secondary acceptance gate until it
+is available again; primary results do not substitute for it.
 
 Private operator receipts hold raw request captures, configuration identities,
 and full hashes. This finding links the sanitized local
@@ -182,5 +204,5 @@ intentionally omits endpoint addresses, host identities, container identifiers,
 paths, and credentials.
 
 This decision establishes the live primary mapping after the stated human gate.
-It does not establish fleet-wide client success, a public-site readback,
-external publication, a general quality ranking, or a safe maximum capacity.
+It does not establish fleet-wide client success, publication or readback of this
+new recovery follow-up, a general quality ranking, or a safe maximum capacity.

@@ -6,7 +6,7 @@
     "human_approved": true,
     "live_primary": true,
     "fleet_convergence": false,
-    "public_web_publication": false,
+    "public_web_publication": true,
     "operator_assessment": "best current fit for this deployment, explicitly selected by the operator on 2026-10-17",
     "comparison_scope": "pinned NVIDIA FP4 r2 versus retained EXL3 r11; operational selection, not an exhaustive model-quality ranking"
   },
@@ -31,10 +31,10 @@
     "native_cli_metric_limits": "native usage and client wall time retained; TTFT/prefill/decode/KV/engine concurrency unavailable in these functional captures; Hermes context/fallback/effective reasoning unavailable; existing 17-family performance evidence remains authoritative"
   },
   "fleet": {
-    "native_workflows": "recovery_required; failed progress; 13 targets; all_targets_verified=false; no retry",
+    "native_workflows": "original failed job cancelled and freshly quiescent through supported owner recovery; original history retained; no redispatch; corrected successor profiles staged on three hosts; complete workflow acceptance pending",
     "mini_and_mac_client_smokes": "bounded Gateway smokes passed; earlier evaluator credential failures were before dispatch; first Mac Gateway exec policy failure retained",
-    "remaining_client_acceptance": "Pi Web, existing conversations, running Hermes Gateway and native catalog/session propagation remain unaccepted; secondary Hermes profiles excluded from primary-model functional scope",
-    "native_custody": "fresh owner and pinned-source audit confirms missing terminal receipts; random native session identities cannot be reconstructed from retained job/target records through supported read-only lookup; no settlement or redispatch",
+    "remaining_client_acceptance": "Pi Web, existing conversations, running Hermes Gateway and full native propagation remain unaccepted; operator confirmed the secondary host runtime is intentionally disabled; preserve that state and its acceptance gate until it is available again",
+    "native_custody": "terminal workflow and native quiescence independently verified; exact custody, child result and cancellation receipt retained; supersedes the earlier missing-custody audit",
     "open_webui_catalog": "passed; six approved aliases; three active accounts; managed preview/apply/scheduled/repeat passed; repeat changed=0; credentials unchanged; no model/router/WebUI restart"
   },
   "publication_readback": {
@@ -43,8 +43,22 @@
     "prometheus_and_observer": "792 numeric campaign observations, 17 metric families, 396 per arm",
     "workbench": "92 configured cards; 24 exact campaign cards, 12 per arm; pinned revision and engine fields match",
     "apply_and_repeat": "canary and primary passed",
-    "native_discovery": "historical model label retained; targets and engine-capability checks failed under NativeWorkflows recovery_required; independent comparison metrics and evidence cards verified",
-    "public_pages_deployment": false
+    "native_discovery": "historical model label retained pending native fleet reconciliation; comparison metrics and evidence cards independently verified",
+    "public_pages_deployment": true,
+    "observation_scope": "original dashboard receipt plus dated served-primary-finding HTTP readback; new recovery source publication tracked separately",
+    "public_pages_readback": {
+      "observed_at": "2026-10-17T23:58:54.558155+00:00",
+      "url": "https://fakoli.github.io/anvil-serving/findings/2026-10-17-glm53-nvidia-fp4-promotion/",
+      "status": 200,
+      "sha256": "399eaca093f1cc79411207d379212d0592cc7b27e6ed2e3d90de1f75feca8f0b",
+      "checks": {
+        "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5": true,
+        "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2": true,
+        "14.25": true,
+        "strict controlled-output workload failed": true
+      },
+      "scope": "served primary finding before the latest recovery followup; no claim that pending source is published"
+    }
   },
   "source_summaries": [
     {
@@ -98,6 +112,31 @@
     {
       "role": "primary Hermes profile functional acceptance",
       "sha256": "6a8d2e5ab48d5ff108efdf29c0fbc4b78857df64f8a216eeec605f51fbdbbf7f"
+    },
+    {
+      "role": "initial promotion summary; historical fleet state",
+      "path": "initial-promotion-summary.json",
+      "sha256": "0d8ae7b60648bb2496c694d8a92ecc95b3c0a1dccfa96c61d1acd48584aa90ab"
+    },
+    {
+      "role": "original workflow supported settlement",
+      "sha256": "c4a6e2273039a96b0dba1705dd411aad710f91bf3e7040d51763f19a07f5c916"
+    },
+    {
+      "role": "repaired native runtime repeat",
+      "sha256": "6bcef2137547e80f8f3fa72a94dbc427a0c7ba307438e7589a9254d6b5778c59"
+    },
+    {
+      "role": "corrected native profile stage",
+      "sha256": "9bb3a547b26a2c26cef23fa31b58b07fe2e6b10cea33684eb7221e79f80e13cd"
+    },
+    {
+      "role": "independent source identity review",
+      "sha256": "ec3d24759adf5456c5c2f322ed453d344b80cd10f1f83dc5b8bafb7b99819a2f"
+    },
+    {
+      "role": "served primary finding HTTP readback",
+      "sha256": "733bc8607d449a1f355348db4712c92154e664ae1b18759322934a2fb403de30"
     }
   ],
   "kv_accounting": {
@@ -107,5 +146,15 @@
     "status": "configured pool; measured block fractions; estimated occupied/unused GiB",
     "fresh_c4_estimated_occupied_gib": 2.3172897196261677,
     "fresh_c4_estimated_unused_pool_gib": 11.932710280373833
+  },
+  "updated_at": "2026-10-18T00:09:00Z",
+  "durability": {
+    "native_runtime": "separately pinned repaired client wheel installed on three hosts; repeat changed=0 on each",
+    "secret_references": "OpenClaw single-value file SecretRefs preserved as references; no credential conversion",
+    "staging_failure": "stale canonical client identities rejected before writer cutover, catalog writes, owner replacement or admission; failed preparation retained",
+    "preparation_fix": "profile, manifest and owned contract target identities rederived; shared semantic check now runs before staging mutations",
+    "corrected_native_stage": "three installed native loaders accepted corrected profiles and static custody; protected stage receipt retained",
+    "model_owner": "accepted model, owner image, activation and catalog preserved",
+    "acceptance": "fleet acceptance remains pending; staging success does not replace new/existing-session or scheduled checks"
   }
 }

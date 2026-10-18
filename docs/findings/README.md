@@ -6,8 +6,9 @@ operator's selected primary, the exact FP4 recipe, and its EXL3 r11 rollback.
 The record links the full 17-family serving comparison, derives KV occupancy
 at C4, and preserves fresh direct/routed/capacity, five Pi combinations, two
 primary Hermes CLI profiles, Companion Node/Mac OpenClaw, and WebUI acceptance.
-The older 13-target NativeWorkflows custody gap still blocks complete fleet
-catalog/session convergence; historical failures remain retained.
+The original 13-target workflow is cancelled and verified quiescent; corrected
+native profiles passed staging. Full workflow/session acceptance and the
+declared secondary dependency remain pending, with historical failures retained.
 
 **2026-10-17 GLM serving-performance comparison:** the [canonical finding](2026-10-17-glm53-serving-performance.md) retains 12 matched NVIDIA FP4 candidate/EXL3 r11-control pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, C1/C2/C4, and complete required plus supplemental measurement coverage. The original 42-cell matrix is `closed_partial` after one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons remain unmeasured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. The [earlier quality/context finding](2026-10-17-glm53-nvidia-fp4-ab.md) remains separate evidence, including its 316266-token successful context result and its timing-unmeasured scope.
 
