@@ -583,6 +583,11 @@ def validate_cross_suite_evidence(
         evidence["metrics_coverage"] = _validate_serving_metrics_coverage(
             coverage, root=artifact_root, verify_files=verify_files
         )
+        if completeness == "completed" and evidence["metrics_coverage"]["status"] != "complete":
+            raise BenchmarkArtifactError(
+                "false_metrics_completion",
+                "completed serving comparison requires complete measured metrics coverage",
+            )
     elif coverage is not None:
         evidence["metrics_coverage"] = _validate_serving_metrics_coverage(
             coverage, root=artifact_root, verify_files=verify_files
