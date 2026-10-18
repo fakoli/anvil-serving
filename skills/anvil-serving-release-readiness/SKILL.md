@@ -176,6 +176,11 @@ installed CLI only as a verified fallback.
    change must update the profile identity, manifest identity, every owned
    contract target and the complete content-hash chain. Require this check before
    the first staging write; a valid outer hash does not prove consumer acceptance.
+   Before staging or replacing a workflow owner, require its exact pinned
+   artifact to parse the canonical contract and recompute its semantic effect
+   scope. Revision, generation, execution or target changes must rebuild that
+   scope and the contract-to-owner hash chain. Matching outer hashes and a
+   qualified reader image do not prove that the owner can bootstrap.
    Keep a failed packet immutable and prepare a fresh successor. Qualify the
    repaired client artifact separately when the accepted model/owner is retained;
    do not patch an installed runtime or manufacture another model transition.
