@@ -197,6 +197,16 @@ installed CLI only as a verified fallback.
    native selections through supported package-manager APIs, require repeat
    convergence, and qualify CLI, Gateway, bundled dashboard and standalone UI
    separately when declared. Keep authentication and native idle gates intact.
+   When a native upgrade changes persistent schemas, take and verify a stopped
+   predecessor backup before migration. Qualify schema/integrity separately
+   from plugin convergence, preserved provider selections and live client
+   acceptance. Never promise binary-only rollback across incompatible schemas.
+   Record the recovery boundary durably before the first migration command,
+   and consult it on retries after controller interruption. Once migration may
+   have started, use the qualified candidate recovery path; a failed command
+   does not prove that no state changed. Restored-clone checks must deny access
+   to production state, including absolute plugin install paths, and must not
+   claim broader preservation than their native checks establish.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
