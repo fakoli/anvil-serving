@@ -188,6 +188,15 @@ installed CLI only as a verified fallback.
    preservation, and scheduled reconciliation separately for every declared
    installation; a fresh CLI smoke cannot stand in for Pi Web or an existing
    session. Fix authorized blockers and rerun their failed gates before closure.
+   For client upgrades, inventory retained patches and verify each against the
+   pinned upstream package. Bind expected installer changes, such as deleted
+   completion markers, to exact source evidence; never ignore arbitrary drift.
+   Verify the dependency generation the native package manager actually selects,
+   including retained features/plugins, before and after a real client turn.
+   An unchanged base interpreter or version banner is insufficient. Preserve
+   native selections through supported package-manager APIs, require repeat
+   convergence, and qualify CLI, Gateway, bundled dashboard and standalone UI
+   separately when declared. Keep authentication and native idle gates intact.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
