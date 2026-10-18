@@ -304,6 +304,7 @@ def test_runtime_policy_and_capacity_refusal_preserve_latest_backup(tmp_path, mo
     keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
     metadata, token = store.create('newest after conversion', ['llm.primary'], ['/v1/chat/completions'])
     assert Path(str(store.path) + '-wal').stat().st_size > 32
+    ceiling = keys._MAX_WAL_BYTES
     monkeypatch.setattr(keys, '_MAX_WAL_BYTES', 32)
     with pytest.raises(keys.KeyStoreError): store.create('refused overflow', ['llm.primary'], ['/v1/chat/completions'])
     newest = tmp_path / 'newest.sqlite3'
@@ -312,6 +313,12 @@ def test_runtime_policy_and_capacity_refusal_preserve_latest_backup(tmp_path, mo
     # Explicit fenced maintenance remains possible while new writers refuse.
     result = keys._migrate_offline(str(config), str(tmp_path / 'maintenance.sqlite3'), journal_mode='WAL')
     assert result['checkpoint_frames'] >= 0
+    assert Path(str(store.path) + '-wal').stat().st_size == 0
+    principal = store.authenticate(token, snapshot=True)
+    assert store.admit(principal, '/v1/chat/completions', 'llm.primary').retry_after == 0
+    monkeypatch.setattr(keys, '_MAX_WAL_BYTES', ceiling)
+    store.record(metadata['key_id'], None, 'POST', '/v1/chat/completions', 200, 1)
+    assert store.authenticate(token).key_id == metadata['key_id']
     monkeypatch.setattr(sqlite3, 'sqlite_version_info', (3, 51, 2))
     def no_sql(*args, **kwargs): raise AssertionError('unsafe runtime must refuse before file SQL')
     monkeypatch.setattr(sqlite3, 'connect', no_sql)
