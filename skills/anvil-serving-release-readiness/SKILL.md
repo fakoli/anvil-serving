@@ -216,6 +216,8 @@ installed CLI only as a verified fallback.
    behavior; parsing YAML alone is insufficient. Keep native redaction enabled
    for metadata even when interactive CLI settings opt out;
    operational output and receipts must never expose credential values.
+   Project only declared catalog fields; whole provider documents can carry
+   opaque credentials in headers or unrelated settings despite native masking.
    Qualify metadata readers with
    an older supported profile in a disposable home and prove its complete tree
    remains unchanged. Trap filesystem writes, helper/network calls and secret

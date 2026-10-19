@@ -946,6 +946,12 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
 def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch):
     options, targets, bindings, fence = _native_three_client_batch(
         tmp_path, monkeypatch, include_hermes=True)
+    credentials = {'Cookie': 'synthetic-cookie-never-output', 'X-License': 'synthetic-license-never-output'}
+    for target in targets[3:]:
+        path = Path(target.hermes_config)
+        document = yaml.safe_load(path.read_bytes())
+        document['custom_providers'][-1]['extra_headers'] = credentials.copy()
+        path.write_text(yaml.safe_dump(document, sort_keys=False))
     for wrong in (replace(targets[3], hermes_profile="all"),
                   replace(targets[3], hermes_config=targets[4].hermes_config),
                   replace(targets[3], hermes_bin="hermes")):
@@ -974,9 +980,12 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
     assert "synthetic-secret-never-argv" not in json.dumps(applied)
     assert "synthetic-secret-never-argv" not in json.dumps(fence.journal())
+    assert all(secret not in json.dumps(applied) and secret not in json.dumps(fence.journal())
+               for secret in credentials.values())
     assert options["hermes_run"].sets == []
     assert all("synthetic-secret-never-argv" not in repr(argv)
                for argv in options["hermes_run"].arguments)
+    assert all(secret not in repr(options["hermes_run"].arguments) for secret in credentials.values())
     assert all(argv[3:5] != ["config", "set"] for argv in options["hermes_run"].arguments)
     assert options["hermes_run"].homes
     assert all(home is not None and Path(home).name.startswith("anvil-hermes-render-")
@@ -984,6 +993,8 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert Path(targets[3].hermes_config).read_bytes() != before["default"]
     assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
     assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
+    assert all(yaml.safe_load(Path(target.hermes_config).read_bytes())['custom_providers'][-1]['extra_headers'] == credentials
+               for target in targets[3:])
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
     assert set(fence.journal()["effects"]) == set(bindings)
 
