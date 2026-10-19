@@ -1046,7 +1046,7 @@ def test_snapshot_inspection_overlaps_targets_and_joins_before_unlock(tmp_path, 
 
     options, targets, bindings, fence = _native_three_client_batch(
         tmp_path, monkeypatch, include_hermes=True)
-    options.update(hermes_snapshot=True, read_only="inspect")
+    options.update(hermes_snapshot=True, hermes_run_thread_safe=True, read_only="inspect")
     options["hermes_run"].snapshot = True
     before = {path: path.read_bytes() if path.exists() else None for _, path in bindings.values()}
     first_wave, hermes_wave = threading.Barrier(3, timeout=5), threading.Barrier(2, timeout=5)
@@ -1097,12 +1097,13 @@ def test_snapshot_inspection_overlaps_targets_and_joins_before_unlock(tmp_path, 
     assert fence.journal() is None
 
 
-@pytest.mark.parametrize("mode", ["legacy", "opener", "preview", "apply"])
+@pytest.mark.parametrize("mode", ["legacy", "opener", "runner", "preview", "apply"])
 def test_catalog_compatibility_and_mutation_paths_stay_on_caller_thread(tmp_path, monkeypatch, mode):
     options, targets, _, _ = _native_three_client_batch(tmp_path, monkeypatch, include_hermes=True)
     options["hermes_snapshot"] = mode != "legacy"
+    options["hermes_run_thread_safe"] = mode != "runner"
     options["hermes_run"].snapshot = mode != "legacy"
-    if mode in {"legacy", "opener"}:
+    if mode in {"legacy", "opener", "runner"}:
         options["read_only"] = "inspect"
     if mode == "opener":
         options["opener"] = object()

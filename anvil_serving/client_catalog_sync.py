@@ -2450,6 +2450,7 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               canonical_contract: bytes, dry_run: bool = True,
                               opener=None, hermes_run=subprocess.run,
                               hermes_snapshot: bool = False,
+                              hermes_run_thread_safe: bool = False,
                               read_only: str | None = None,
                               completed_job: tuple[str, str] | None = None) -> list[dict]:
     """Reconcile distinct installations in one owner reservation.
@@ -2458,13 +2459,15 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
     supplies the fixed six-field snapshot protocol. Failure never downgrades
     that selected reader to separate queries. Its pre-apply inspection overlaps
     at most three independent targets, including their native config checks.
-    Held-file I/O, caller-owned transports and all mutation paths stay serial.
+    Held-file I/O and all mutation paths stay serial. Caller-owned transports
+    stay serial unless their native runner explicitly opts into thread safety.
     """
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
     if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
             or any(type(target) is not NativeCatalogTarget for target in targets)
             or type(dry_run) is not bool or type(hermes_snapshot) is not bool
+            or type(hermes_run_thread_safe) is not bool
             or fence.owner.resource_id != "client-catalog"
             or read_only not in {None, "inspect", "completed"}
             or read_only is not None and not dry_run
@@ -2510,7 +2513,8 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                                                      target_paths=paths))
     with context as journal:
         parallel = (read_only == "inspect" and hermes_snapshot
-                    and opener is None and len(targets) > 1)
+                    and opener is None and len(targets) > 1
+                    and (hermes_run is subprocess.run or hermes_run_thread_safe))
         if parallel:
             from threading import Lock
             from types import SimpleNamespace
