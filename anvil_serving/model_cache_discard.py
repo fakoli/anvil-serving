@@ -110,13 +110,15 @@ def inventory(root, *, native_unlink=False):
     top = {name.split('/')[0] for name in records}
     identities = set()
     if 'hub' in top:
-        if top - _HF_ENTRIES:
+        if records['hub']['kind'] != 'directory' or top - _HF_ENTRIES:
             raise Error("HF cache contains unknown root entries")
         layout = 'huggingface-home'
         repos = set()
         for name in records:
             parts = name.split('/')
-            if len(parts) >= 2 and parts[1].startswith('models--'):
+            if len(parts) >= 2 and parts[0] == 'hub' and parts[1].startswith('models--'):
+                if records['hub/' + parts[1]]['kind'] != 'directory':
+                    raise Error('HF model repository must be a directory')
                 encoded = parts[1].split('--')
                 if len(encoded) != 3 or not volume_ops._REPO.fullmatch('/'.join(encoded[1:])):
                     raise Error("invalid HF repository identity")
@@ -145,8 +147,10 @@ def inventory(root, *, native_unlink=False):
                            for name, row in records.items())):
             raise Error("native directory lacks a flat model signature")
         config = json.loads(read(root / 'config.json', 1024 * 1024))
-        if not isinstance(config, dict) or not isinstance(config.get('model_type'), str):
+        if (not isinstance(config, dict) or not isinstance(config.get('model_type'), str)
+                or not config['model_type'].strip()):
             raise Error("flat model config lacks model_type")
+        _safe_name(config['model_type'])
         source = root / '.source-revision'
         revisions = set()
         if source.exists():

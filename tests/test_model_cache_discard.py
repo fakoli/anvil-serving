@@ -255,3 +255,20 @@ def test_flat_weight_signature_requires_regular_file(tmp_path, kind):
         receipt.parent.mkdir(parents=True); receipt.write_text('a' * 40 + '\n')
     with pytest.raises(discard.Error, match='flat model signature'): discard.inventory(root)
     assert weight.exists()
+
+
+@pytest.mark.parametrize('kind', ['hub-file', 'repo-file', 'repo-outside-hub'])
+def test_hf_signature_requires_hub_and_repository_directories(tmp_path, kind):
+    root = tmp_path / 'hf'; root.mkdir()
+    if kind == 'hub-file': (root / 'hub').touch()
+    else: (root / 'hub').mkdir()
+    if kind == 'repo-file': (root / 'hub/models--org--model').touch()
+    else: (root / 'modules/models--org--model').mkdir(parents=True)
+    with pytest.raises(discard.Error): discard.inventory(root)
+    assert root.exists()
+
+
+@pytest.mark.parametrize('model_type', ['', '   ', 'model\nname'])
+def test_flat_signature_requires_nonempty_control_free_model_type(tmp_path, model_type):
+    root = flat(tmp_path); (root / 'config.json').write_text(json.dumps({'model_type':model_type}))
+    with pytest.raises(discard.Error): discard.inventory(root)
