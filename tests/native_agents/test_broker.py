@@ -200,6 +200,19 @@ def test_async_owner_receipt_settles_after_dialog_without_reposting(setup):
     assert seen==[rid]
 
 
+@pytest.mark.parametrize('terminal',['accepted','rejected','completed'])
+def test_terminal_receipt_survives_late_worker_updates(setup,terminal):
+    broker,_,_=setup
+    rid=str(uuid4())
+    broker.store.reserve(A,rid,'digest','one','session','prompt')
+    broker.store.update(A,rid,'dispatched')
+    broker.store.update(A,rid,terminal,'original_code')
+    for late in ('dispatched','unknown','accepted','rejected','completed'):
+        broker.store.update(A,rid,late,'late_code')
+        receipt=broker.store.operation(A,rid)
+        assert receipt['state']==terminal and receipt['code']=='original_code'
+
+
 def test_empty_session_rehydrates_after_owner_restart_without_prompt(setup):
     broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a)
     replacement=Owner(); owners["one"]=replacement

@@ -65,6 +65,8 @@ def _default_client_factory(
 ) -> PiClient:
     return PiRpcClient(
         argv, cwd=cwd, environment=environment, process_factory=_owned_process_factory,
+        # Native get_available_models includes the installed provider catalog.
+        max_record_bytes=4 * 1024 * 1024,
     )
 
 
@@ -976,7 +978,17 @@ def write_acceptance_receipt(path: Path, receipt: dict[str, object]) -> str:
         "max_output_tokens", "turn_completed", "tool_probe_passed", "history_probe_passed",
         "fallback_used", "physical_catalog_digest", "process_generation",
     }
+    schema = receipt.get("schema") if type(receipt) is dict else None
+    if schema == "native-session-acceptance/v2":
+        fields |= {"output_cap_mode", "endpoint_sha256"}
     if (type(receipt) is not dict or set(receipt) != fields
-            or receipt.get("schema") != "native-session-acceptance/v1"):
+            or schema not in {"native-session-acceptance/v1", "native-session-acceptance/v2"}):
+        raise PiAcceptanceError("invalid closed native acceptance receipt")
+    if schema == "native-session-acceptance/v2" and (
+            receipt["output_cap_mode"] != "managed_invocation"
+            or type(receipt["endpoint_sha256"]) is not str
+            or _DIGEST.fullmatch(receipt["endpoint_sha256"]) is None
+            or type(receipt["max_output_tokens"]) is not int
+            or not 0 < receipt["max_output_tokens"] <= 16_777_216):
         raise PiAcceptanceError("invalid closed native acceptance receipt")
     return _write_private_json(path, receipt)

@@ -38,7 +38,8 @@ def fixture_profile(tmp_path):
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
+@pytest.mark.parametrize('managed', [False, True])
+def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed):
     profile, contract = fixture_profile(tmp_path)
     calls, histories = [], {}
     def run(argv, timeout, environment):
@@ -48,6 +49,10 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
         assert '--model' not in argv and '--provider' not in argv
         assert environment['HERMES_HOME'] == str(tmp_path)
         assert environment['PATH'] == str(Path('/usr/bin').resolve())
+        cap = json.loads(argv[argv.index('--native-output-cap') + 1]) if managed else None
+        if managed:
+            assert argv.index('--native-output-cap') > argv.index('chat')
+            assert cap['max_tokens'] == 512 and cap['context_tokens'] == 8192
         prompt = argv[argv.index('-q') + 1]
         probe = Path(re.search(r'"([^"\n]+/probe-[a-f0-9]+)"', prompt)[1])
         marker = probe.read_text()
@@ -60,9 +65,11 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
         Path(argv[argv.index('--usage-file') + 1]).write_text(json.dumps(dict(
             session_id=native_id, provider='custom', model='llm.primary',
             completed=True, failed=False, api_calls=1, context_length=8192,
-            max_tokens=512, fallback_used=False)))
+            max_tokens=512, fallback_used=False,
+            **(dict(output_cap_mode='managed_invocation', endpoint_sha256=cap['endpoint_sha256']) if cap else {}))))
         return subprocess.CompletedProcess(argv, 0, response, '')
-    lifecycle = NativeFixtureLifecycle(profile, contract, run=run)
+    lifecycle = NativeFixtureLifecycle(profile, contract, run=run,
+        router_base_url='http://127.0.0.1:8000/v1' if managed else None)
     target = profile['targets'][0]
     validate_native_runtime(target)
     assert calls == []
@@ -81,6 +88,7 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
     assert receipts[1]['native_session_id'] != 'native-1'
     assert receipts[0]['continuity_kind'] == 'durable_resume'
     assert receipts[1]['continuity_kind'] == 'loaded_fixture'
+    assert {row['schema'] for row in receipts} == {'native-session-acceptance/v2' if managed else 'native-session-acceptance/v1'}
     assert all(Path(row['receipt_file']).stat().st_mode & 0o077 == 0 for row in target['native_sessions'])
     assert not list(tmp_path.glob('probe-*'))
     with pytest.raises(NativeAcceptanceError, match='already exists'):
@@ -218,6 +226,29 @@ def test_cleanup_failure_cannot_be_caught_as_pending_acceptance(tmp_path):
     assert not isinstance(caught.value, NativeAcceptanceError)
     assert attempts == ['failed', 'closed']
     assert set(lifecycle.prepared) == {'first', 'second'}
+
+
+@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
+@pytest.mark.parametrize('raise_error', [False, True])
+def test_native_failure_retains_private_check_vector_without_client_output(tmp_path, raise_error):
+    profile, contract = fixture_profile(tmp_path)
+    def run(argv, timeout, environment):
+        if raise_error:
+            raise ValueError('private client output must never be retained')
+        return subprocess.CompletedProcess(argv, 0, 'private client output must never be retained', '')
+    lifecycle = NativeFixtureLifecycle(profile, contract, run=run)
+    with pytest.raises((NativeAcceptanceError, ValueError)):
+        lifecycle.prepare()
+    files = list(tmp_path.glob('attempt-*.result.json'))
+    assert len(files) == 1 and files[0].stat().st_mode & 0o077 == 0
+    raw = files[0].read_text()
+    record = json.loads(raw)
+    assert record['state'] == 'failed' and record['contract_digest'] == contract.digest
+    assert record['error_type'] == ('ValueError' if raise_error else 'NativeAcceptanceError')
+    if not raise_error:
+        assert record['checks']['marker_exact'] is False
+    assert 'private client output' not in raw
+    assert not list(tmp_path.glob('probe-*'))
 
 
 def test_pi_evidence_failure_normalizes_only_after_verified_cleanup(tmp_path):

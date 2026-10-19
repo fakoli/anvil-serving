@@ -1759,6 +1759,22 @@ def test_pi_sync_preserves_user_input_limits_around_managed_image_limit(tmp_path
     }
 
 
+def test_openclaw_catalog_replaces_stale_template_reasoning_format(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    before = json.loads(openclaw_path.read_text())
+    before["models"]["providers"]["anvil"]["models"] = [{
+        "id": "llm.primary", "compat": {
+            "thinkingFormat": "qwen-chat-template", "supportsUsageInStreaming": True,
+        },
+    }]
+    openclaw_path.write_text(json.dumps(before))
+    _run(tmp_path, opener=_Opener(*_catalog()), confirm=True, dry_run=False)
+    rows = json.loads(openclaw_path.read_text())["models"]["providers"]["anvil"]["models"]
+    primary = next(row for row in rows if row["id"] == "llm.primary")
+    assert primary["compat"] == {"thinkingFormat": "openai", "supportsUsageInStreaming": True}
+    assert _run(tmp_path, opener=_Opener(*_catalog()))["changed"] == []
+
+
 def test_reasoning_effort_metadata_renders_openclaw_and_pi_maps(tmp_path):
     openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
     efforts = ["low", "medium", "xhigh"]

@@ -373,8 +373,9 @@ def evaluate_openclaw(
     if previous_marker is not None and session_id is None:
         raise ValueError("history probe requires a native session identity")
     model = f"{provider}/{alias}"
+    tool = "read" if configured_route else "exec"
     prompt = (
-        f"Use the exec tool exactly once to read the UTF-8 file at {json.dumps(probe_path)}. "
+        f"Use the {tool} tool exactly once to read the UTF-8 file at {json.dumps(probe_path)}. "
         "Then reply with exactly the file contents and nothing else."
     )
     prompt, expected_response = _resume_probe(prompt, marker, previous_marker)
@@ -430,7 +431,7 @@ def evaluate_openclaw(
         "command": {
             "provider": None if configured_route else provider,
             "model": None if configured_route else model, "thinking": "off",
-            "tool_probe": "exec/read-temporary-nonce",
+            "tool_probe": f"{tool}/read-temporary-nonce",
         },
         "observed": {
             "session_id": native_id,
@@ -458,11 +459,22 @@ def evaluate_hermes(
     executable: str = "hermes",
     session_id: str | None = None, configured_route: bool = False,
     previous_marker: str | None = None,
+    managed_output_cap: dict | None = None,
 ) -> dict[str, Any]:
     if session_id is not None and _native_session_id(session_id) is None:
         raise ValueError("invalid native session identity")
     if previous_marker is not None and session_id is None:
         raise ValueError("history probe requires a native session identity")
+    if managed_output_cap is not None and (
+            not configured_route or type(managed_output_cap) is not dict
+            or set(managed_output_cap) != {"model", "provider", "endpoint_sha256", "context_tokens", "max_tokens"}
+            or managed_output_cap.get("model") != alias
+            or managed_output_cap.get("provider") != expected_observed_provider
+            or type(managed_output_cap.get("endpoint_sha256")) is not str
+            or re.fullmatch(r"[a-f0-9]{64}", managed_output_cap["endpoint_sha256"]) is None
+            or any(type(managed_output_cap.get(k)) is not int for k in ("context_tokens", "max_tokens"))
+            or not 0 < managed_output_cap["max_tokens"] <= managed_output_cap["context_tokens"] <= 16_777_216):
+        raise ValueError("invalid managed Hermes output cap")
     usage_error = None
     usage: Mapping[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="anvil-routed-eval-") as temporary:
@@ -480,6 +492,8 @@ def evaluate_hermes(
         argv = (
             executable, *route_args, "--reasoning", "none", "--usage-file", usage_path,
             "--toolsets", "terminal", *turn_args,
+            *(("--native-output-cap", json.dumps(managed_output_cap, sort_keys=True, separators=(",", ":")))
+              if managed_output_cap is not None else ()),
         )
         process = _run_client(argv, timeout_seconds=timeout_seconds, runner=runner)
         try:
@@ -515,6 +529,13 @@ def evaluate_hermes(
         checks["session_identified"] = native_id is not None
     if session_id is not None:
         checks["session_preserved"] = native_id == session_id
+    if managed_output_cap is not None:
+        checks["managed_output_cap_exact"] = (
+            usage.get("output_cap_mode") == "managed_invocation"
+            and usage.get("endpoint_sha256") == managed_output_cap["endpoint_sha256"]
+            and type(usage.get("max_tokens")) is int
+            and usage["max_tokens"] == managed_output_cap["max_tokens"]
+            and usage.get("context_length") == managed_output_cap["context_tokens"])
     return {
         "client": "hermes", "passed": all(checks.values()), "checks": checks,
         "command": {
@@ -522,12 +543,15 @@ def evaluate_hermes(
             "expected_observed_provider": expected_observed_provider,
             "model": None if configured_route else alias, "reasoning": "none",
             "tool_probe": "terminal/read-temporary-nonce",
+            "managed_output_cap": managed_output_cap,
         },
         "observed": {
             "session_id": native_id,
             "provider": usage.get("provider"), "model": usage.get("model"),
             "context_tokens": usage.get("context_length"),
             "max_output_tokens": usage.get("max_tokens"),
+            "output_cap_mode": usage.get("output_cap_mode"),
+            "endpoint_sha256": usage.get("endpoint_sha256"),
             "fallback_used": usage.get("fallback_used"),
             "api_calls": usage.get("api_calls"), "input_tokens": usage.get("input_tokens"),
             "output_tokens": usage.get("output_tokens"),

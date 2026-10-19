@@ -4,6 +4,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import time
 
 try:
@@ -343,23 +345,32 @@ def test_wide_catalog_does_not_accumulate_scan_descriptors(tmp_path):
     root = tmp_path / "findings"
     for number in range(140):
         _write(root / f"directory-{number:03d}" / "artifact.json", model=str(number))
-    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    _soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     if hard < 64:
         pytest.skip("fixture requires a 64-descriptor limit")
-    source = _source(root)
-    try:
-        resource.setrlimit(resource.RLIMIT_NOFILE, (64, hard))
-        page = source.page(limit=100, authority_key="reader")
-        rows = [*page["items"]]
-        while page["next_cursor"]:
-            page = source.page(limit=100, cursor=page["next_cursor"], authority_key="reader")
-            rows.extend(page["items"])
-        assert len(rows) == 140
-        assert page["sources"][0]["partial"] is False
-        assert page["sources"][0]["truncated"] is False
-    finally:
-        resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
-        source.close()
+    # The budget belongs to this source, not unrelated handles retained by
+    # earlier tests in the parent pytest process. Keep the actual 64-FD limit.
+    script = """
+import resource,sys
+sys.path.insert(0,sys.argv[2])
+from anvil_serving.observability.dashboard.evidence_runs import EvidenceRuns
+resource.setrlimit(resource.RLIMIT_NOFILE,(64,resource.getrlimit(resource.RLIMIT_NOFILE)[1]))
+source=EvidenceRuns({'root':sys.argv[1],'owner_id':'evidence-owner','resource_id':'evaluation.evidence'})
+try:
+ page=source.page(limit=100,authority_key='reader');rows=list(page['items'])
+ while page['next_cursor']:
+  page=source.page(limit=100,cursor=page['next_cursor'],authority_key='reader');rows.extend(page['items'])
+ assert len(rows)==140
+ assert page['sources'][0]['partial'] is False
+ assert page['sources'][0]['truncated'] is False
+finally:
+ source.close()
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", script, str(root), str(Path(__file__).resolve().parents[2])],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr[-4000:]
 
 
 def _hung_worker(_path, _job):

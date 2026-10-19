@@ -168,8 +168,12 @@ class NativeFixtureLifecycle:
     and close in finally. Static preview uses validate_native_runtime alone.
     """
 
-    def __init__(self, profile, contract, *, run, pi=None, web=None, budget_seconds=540):
+    def __init__(self, profile, contract, *, run, pi=None, web=None, budget_seconds=540,
+                 router_base_url=None):
         self.profile, self.contract, self.run = profile, contract, run
+        from .routed_eval import _validate_base_url
+        self.managed_endpoint_digest = (hashlib.sha256(_validate_base_url(router_base_url).rstrip('/').encode()).hexdigest()
+            if router_base_url is not None else None)
         self.pi = pi or PiFixtureAcceptance()
         self.web = web or PiWebFixtureAcceptance()
         self.web_handles = set()
@@ -236,13 +240,26 @@ class NativeFixtureLifecycle:
             probe_path=str(probe), timeout_seconds=timeout, runner=runner,
             executable=target["native_runtime"]["executable"], configured_route=True,
             session_id=session_id, previous_marker=previous_marker)
+        attempt_path = root / ("attempt-" + secrets.token_hex(16) + ".json")
+        attempt = {"schema": "native-session-attempt/v1", "contract_digest": self.contract.digest,
+            "target_id": target["target_id"], "fixture_id": item["fixture_id"],
+            "started_at": _stamp(), "probe_sha256": hashlib.sha256(marker.encode()).hexdigest(),
+            "state": "started", "checks": {}, "error_type": None, "error_code": None}
         try:
+            _write_private_json(attempt_path.with_suffix('.started.json'), attempt)
             if target["client"] == "hermes":
-                result = evaluate_hermes(**arguments, expected_observed_provider=item["provider"])
+                cap = (dict(model=item["model_id"], provider=item["provider"],
+                    endpoint_sha256=self.managed_endpoint_digest, context_tokens=item["context_tokens"],
+                    max_tokens=item["max_output_tokens"]) if self.managed_endpoint_digest is not None else None)
+                result = evaluate_hermes(**arguments, expected_observed_provider=item["provider"],
+                                         managed_output_cap=cap)
             else:
                 result = evaluate_openclaw(**arguments, run_id="fixture-" + secrets.token_hex(16),
                     expected_context_tokens=item["context_tokens"])
             checks = result["checks"]
+            attempt.update(state="returned", checks={key: value for key, value in checks.items()
+                if type(key) is str and key.replace('_', '').isascii()
+                and key.replace('_', '').isalnum() and type(value) is bool})
             if target["client"] == "openclaw" and (
                     not all(checks.get(key) is True for key in (
                         "process_succeeded", "output_bounded", "json_valid", "status_ok", "session_identified"))
@@ -253,10 +270,20 @@ class NativeFixtureLifecycle:
             accepted = (result["passed"] if require_loaded or target["client"] != "openclaw"
                 else all(value for key, value in checks.items() if key != "context_exact"))
             if accepted is not True:
+                attempt["state"] = "failed"
                 raise NativeAcceptanceError("native fixture turn did not verify")
+            attempt["state"] = "accepted"
             return result["observed"], marker
+        except BaseException as exc:
+            attempt.update(state="failed", error_type=type(exc).__name__)
+            code = getattr(exc, "code", None)
+            if code in {"process_group_inspection_denied", "process_group_stop_unproven", "descendant_process_stopped"}:
+                attempt["error_code"] = code
+            raise
         finally:
             probe.unlink(missing_ok=True)
+            attempt["completed_at"] = _stamp()
+            _write_private_json(attempt_path.with_suffix('.result.json'), attempt)
 
     def prepare(self):
         if self.prepared:
@@ -312,7 +339,8 @@ class NativeFixtureLifecycle:
                         physical_catalogs[target["target_id"]], item["fixture_id"], native_id,
                         prepared_at, completed_at, item["kind"], item["provider"], item["model_id"],
                         item["context_tokens"], item["max_output_tokens"],
-                        handle.process_generation if handle is not None else None)
+                        handle.process_generation if handle is not None else None,
+                        self.managed_endpoint_digest if target["client"] == "hermes" else None)
                     self._timeout()
                     if target["target_id"] in self.web_handles:
                         receipt = (self.web.complete_existing(check, handle, timeout_seconds=self._timeout())
@@ -335,6 +363,9 @@ class NativeFixtureLifecycle:
                             "turn_completed": True, "tool_probe_passed": True, "history_probe_passed": existing,
                             "fallback_used": observed["fallback_used"], "physical_catalog_digest": check.physical_catalog_digest,
                             "process_generation": None}
+                        if check.managed_endpoint_digest is not None:
+                            receipt.update(schema="native-session-acceptance/v2",
+                                output_cap_mode=observed["output_cap_mode"], endpoint_sha256=observed["endpoint_sha256"])
                     write_acceptance_receipt(Path(item["receipt_file"]), receipt)
                     states[(target["target_id"], item["kind"])] = native_session_state(check, receipt, now=datetime.now(timezone.utc))
             return states
