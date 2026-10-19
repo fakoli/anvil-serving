@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Guarded `models cache discard` for an entirely retired native Linux model
+  directory or Docker volume, including incomplete downloads and shared-blob
+  layouts. Apply binds the reviewed inventory and operator configuration to an
+  exact fingerprint, audits consumers and locks twice, and reports uncertain
+  or partial outcomes without retrying deletion.
+
 - Public `/v1/models` discovery entries now advertise declared per-request
   media limits (`images_per_request`, `video_per_request`) so OpenAI-compatible
   clients can budget image payloads without authenticated capability calls or
@@ -27,6 +33,22 @@ All notable changes to this project are documented here. The format is based on
   existing Codex, Pi, Hermes, OpenClaw and Claude memory stores.
 - Explicit propagation-owner preview mode with pinned whole-fleet readback and
   capability discovery that omits and refuses every effect operation.
+
+### Fixed
+
+- Dedicated and whole-cache consumer checks now include native memory mappings, working
+  directories and executables as well as open file descriptors. Configuration
+  audits also recognize cache identities embedded in commands and arguments.
+- Legacy Docker cache reporting uses read-only mounts, disabled networking and
+  bounded subprocesses; cleanup previews cannot create a missing volume.
+
+### Changed
+
+- **BREAKING:** selective Docker `models cache remove --volume ... --confirm`
+  now refuses before invoking Docker. Its unguarded deletion helper was removed.
+  Use guarded native `--cache-dir` revision removal, dedicated
+  `--discard-volume`, or `models cache discard` on the storage owner. Docker
+  Desktop and remote daemons have no destructive helper fallback.
 
 ## [1.5.0] - 2026-09-26
 

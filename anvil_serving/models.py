@@ -367,6 +367,8 @@ import shutil
 import sys
 
 action, cache_text, repo_id, revision = sys.argv[1:5]
+if action not in {"report", "plan-remove"}:
+    raise SystemExit("legacy Docker cache helper is read-only")
 cache = Path(cache_text)
 owner, repo = repo_id.split("/", 1)
 root = cache / "hub" / ("models--" + owner + "--" + repo)
@@ -498,7 +500,7 @@ report = {
     "broken_symlink_count": len(broken),
 }
 
-if action in {"plan-remove", "remove"} and report["snapshot_exists"]:
+if action == "plan-remove" and report["snapshot_exists"]:
     snapshots = [
         item for item in (root / "snapshots").iterdir()
         if item.is_dir()
@@ -514,37 +516,6 @@ if action in {"plan-remove", "remove"} and report["snapshot_exists"]:
                 if blob.is_file() and blob not in remaining:
                     reclaimable += blob.stat().st_size
     report["reclaimable_bytes"] = reclaimable
-
-if action == "remove" and report["snapshot_exists"]:
-    shutil.rmtree(snapshot_path)
-    refs = root / "refs"
-    if refs.is_dir():
-        for ref in list(refs.rglob("*")):
-            if ref.is_file():
-                try:
-                    if ref.read_text(encoding="utf-8").strip() == snapshot:
-                        ref.unlink()
-                except (OSError, UnicodeError):
-                    pass
-    remaining_snapshots = [
-        item for item in (root / "snapshots").iterdir()
-        if item.is_dir()
-    ] if (root / "snapshots").is_dir() else []
-    if not remaining_snapshots:
-        shutil.rmtree(root)
-    else:
-        remaining = referenced_blobs()
-        blobs = root / "blobs"
-        if blobs.is_dir():
-            for blob in list(blobs.iterdir()):
-                if blob.is_file() and blob not in remaining:
-                    blob.unlink()
-    after = tree_bytes(root)
-    report.update({
-        "repo_bytes_after": after,
-        "reclaimed_bytes": max(0, before - after),
-        "snapshot_exists_after": bool(snapshot_path.exists()),
-    })
 
 print(json.dumps(report, sort_keys=True))
 """
@@ -1057,14 +1028,35 @@ def _volume_cache_report(
     image=DEFAULT_PULL_IMAGE,
     _run=subprocess.run,
 ):
+    if action not in {"report", "plan-remove"}:
+        raise ValueError("legacy Docker cache helper is read-only")
+    if not _DOCKER_VOLUME_RE.fullmatch(volume) or not image or image.startswith("-"):
+        raise ValueError("cache report requires a named Docker volume and image reference")
+    mount = "type=volume,source=%s,target=%s,readonly" % (volume, HF_CACHE_MOUNTPOINT)
+    if action == "plan-remove":
+        # Unlike acquisition preflight, cleanup preview must not create a cache.
+        # Bind the daemon's existing mountpoint: Docker refuses a missing bind
+        # source, including removal between inspection and helper creation.
+        inspected = model_cache_volume._run(["volume", "inspect", volume], runner=_run, timeout=30)
+        try:
+            rows = json.loads(inspected.stdout)
+            row, = rows
+            source = row["Mountpoint"]
+            if (row["Name"] != volume or not isinstance(source, str)
+                    or not source.startswith("/") or "," in source
+                    or any(ord(c) < 32 or ord(c) == 127 for c in source)):
+                raise ValueError("invalid volume mountpoint")
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ValueError("cache preview requires an existing daemon volume mountpoint") from exc
+        mount = "type=bind,source=%s,target=%s,readonly" % (source, HF_CACHE_MOUNTPOINT)
     interpreter_shim = (
         'if command -v python3 >/dev/null 2>&1; then exec python3 "$@"; '
         'elif command -v python >/dev/null 2>&1; then exec python "$@"; '
         'else echo "model cache image has no python interpreter" >&2; exit 127; fi'
     )
     argv = [
-        "docker", "run", "--rm",
-        "-v", "%s:%s" % (volume, HF_CACHE_MOUNTPOINT),
+        "docker", "run", "--rm", "--network", "none",
+        "--mount", mount,
         "--entrypoint", "sh",
         image,
         "-c", interpreter_shim,
@@ -1076,7 +1068,9 @@ def _volume_cache_report(
         revision or "",
     ]
     try:
-        result = _run(argv, capture_output=True, text=True)
+        result = _run(argv, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("named model cache inspection timed out") from exc
     except OSError as exc:
         raise ValueError("could not inspect named model cache volume: %s" % exc) from exc
     if result.returncode != 0:
@@ -1903,12 +1897,13 @@ def pull_main(argv, *, _result_sink=None):
 
 
 def cache_remove_main(argv):
-    """Remove one exact Docker or guarded native cache snapshot safely."""
+    """Preview Docker revisions; remove only through guarded native/volume paths."""
     ap = argparse.ArgumentParser(
         prog="anvil-serving models cache remove",
         description=(
             "Plan or remove one exact Hugging Face repository revision from a Docker "
-            "cache volume or guarded native cache. Native apply requires --cache-dir, "
+            "cache volume or guarded native cache. Docker revision apply is refused; "
+            "use guarded whole-cache discard on the daemon host. Native apply requires --cache-dir, "
             "--config-home, and confirmation. Unreferenced blobs are collected and "
             "the post-delete snapshot absence is verified."
         ),
@@ -2045,6 +2040,15 @@ def cache_remove_main(argv):
     if any(separator in volume for separator in ("/", "\\", ":")):
         print("--volume must be a named Docker volume", file=sys.stderr)
         return 2
+    if not args.dry_run and (args.confirm or guard.confirmation_authorized()):
+        print(
+            "legacy Docker revision removal is disabled: it cannot audit ownership or fence writers. "
+            "Use models cache remove --cache-dir PATH --config-home HOME for a directly accessible "
+            "native cache, or models cache discard --volume NAME --config-home HOME on the daemon host "
+            "when the entire cache is retired.",
+            file=sys.stderr,
+        )
+        return 2
     try:
         plan = _volume_cache_report(
             "plan-remove",
@@ -2066,35 +2070,9 @@ def cache_remove_main(argv):
     if not plan.get("snapshot_exists"):
         print("snapshot is already absent; nothing to remove")
         return 0
-    apply = not args.dry_run and (args.confirm or guard.confirmation_authorized())
-    if not apply:
-        print("DRY-RUN: no cache bytes removed")
-        print("apply requires the same command with --confirm")
-        return 0 if args.dry_run else 3
-    try:
-        result = _volume_cache_report(
-            "remove",
-            args.repo_id,
-            args.revision,
-            volume=volume,
-            image=args.image,
-        )
-    except ValueError as exc:
-        print("model cache removal failed: %s" % exc, file=sys.stderr)
-        return 1
-    if result.get("snapshot_exists_after"):
-        print("model cache removal failed: snapshot still exists", file=sys.stderr)
-        return 5
-    print(
-        "removed %s@%s; reclaimed %d bytes; %d repository bytes remain"
-        % (
-            args.repo_id,
-            args.revision,
-            int(result.get("reclaimed_bytes") or 0),
-            int(result.get("repo_bytes_after") or 0),
-        )
-    )
-    return 0
+    print("DRY-RUN: no cache bytes removed")
+    print("Docker revision previews are read-only; use guarded native removal or whole-cache discard")
+    return 0 if args.dry_run else 3
 
 
 def cache_inventory_main(argv):

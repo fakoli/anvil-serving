@@ -12,7 +12,7 @@ Nothing in this family promotes a model or changes routing.
 | Refresh the model catalog | `models sync` |
 | Download a pinned artifact | `models pull` |
 | Record and reuse known-good configurations | `models recipes …` |
-| Reclaim disk | `models cache prune`, `models cache remove` |
+| Reclaim disk | `models cache prune`, `models cache remove`, `models cache discard` |
 | Rank candidates from recorded evidence | `models score` |
 
 ## Catalog
@@ -94,12 +94,19 @@ anvil-serving models cache prune --dry-run
 anvil-serving models cache prune --execute --confirm
 ```
 
-`models cache remove` deletes one exact repository revision:
+`models cache remove` deletes one exact repository revision in a directly
+accessible native cache:
 
 ```bash
-anvil-serving models cache remove <repo-id> --revision <sha> --dry-run
-anvil-serving models cache remove <repo-id> --revision <sha> --confirm
+anvil-serving models cache remove <repo-id> --revision <sha> --cache-dir /srv/model-cache --dry-run
+anvil-serving models cache remove <repo-id> --revision <sha> --cache-dir /srv/model-cache --config-home /srv/operator --confirm
 ```
+
+Legacy selective Docker deletion is disabled; its preview is read-only.
+For an entirely retired Docker volume or flat model directory, use
+[`models cache discard`](cli/models.md#whole-cache-discard). It requires a
+reviewed preview fingerprint, complete authoritative configuration, quiescent
+writers, and confirmation on a POSIX owner with direct storage access.
 
 Deletion requires explicit current-host evidence that the artifact is dead everywhere it is
 referenced. A metadata-only hardware caveat is never sufficient, and widening the blast radius

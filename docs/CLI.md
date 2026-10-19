@@ -147,9 +147,10 @@ required operands, choices, and defaults.
 | `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
+| `models cache discard` | Preview or discard one entirely retired model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--cache-dir`<br>`--volume`<br>`--config-home`<br>`--expected-fingerprint`<br>`--non-model-root-view`<br>`--writers-quiesced`<br>`--inventory-reviewed` |
 | `models cache inventory` | Inspect Docker or native Hugging Face model-cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
-| `models cache remove` | Remove one exact Docker or guarded native-cache revision, or a dedicated cache volume. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--discard-volume`<br>`--expected-volume-fingerprint`<br>`--writers-quiesced`<br>`--auxiliary-caches-reviewed`<br>`--non-model-root-view` |
+| `models cache remove` | Preview Docker revisions or remove a guarded native-cache revision or dedicated volume. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--discard-volume`<br>`--expected-volume-fingerprint`<br>`--writers-quiesced`<br>`--auxiliary-caches-reviewed`<br>`--non-model-root-view` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
 | `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-deps` |
