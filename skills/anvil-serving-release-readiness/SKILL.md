@@ -214,9 +214,13 @@ installed CLI only as a verified fallback.
    cleanup evidence and every declared target. Batch queries must preserve the
    native resolver's defaults, profile selection, redaction and missing-key
    behavior; parsing YAML alone is insufficient. Qualify metadata readers with
-   an older supported profile in a disposable home and prove its bytes remain
-   unchanged. Ordinary CLI startup may migrate config or restart services; keep
-   that maintenance outside metadata queries and isolate the native oracle.
+   an older supported profile in a disposable home and prove its complete tree
+   remains unchanged. Trap filesystem writes, helper/network calls and secret
+   loader/recovery imports in the real pinned package. Bind explicit profile
+   resolution fail closed: an unreadable named profile must never read default.
+   CLI imports and config getters can create logs/backups or run recovery even
+   without calling main; keep those effects outside metadata queries and
+   isolate the native oracle.
    Do not increase fixed budgets
    or omit a target to turn a failed preview green. Requalify the consumer and
    prepare a fresh successor rather than modifying a failed immutable packet.
