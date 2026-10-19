@@ -335,6 +335,17 @@ def test_native_acceptance_separates_resume_from_loaded_limits():
                                 now=now)['state'] == 'pending'
     assert native_session_state(check, receipt,
         now=datetime(2026, 1, 1, 0, 7, 3, tzinfo=timezone.utc))['pending_reason'] == 'stale-observation'
+    # Managed Hermes caps describe this invocation, so both resumed and new
+    # turns must prove the actual bound endpoint and ceiling.
+    for selected, value in ((check, receipt), (resumed, resumed_receipt)):
+        managed = replace(selected, managed_endpoint_digest='6'*64)
+        actual = {**value, 'schema': 'native-session-acceptance/v2', 'check_digest': managed.digest,
+            'max_output_tokens': 512, 'output_cap_mode': 'managed_invocation', 'endpoint_sha256': '6'*64}
+        assert native_session_state(managed, actual, now=now)['state'] == 'accepted'
+        for key, bad in (('max_output_tokens', None), ('max_output_tokens', True),
+                         ('max_output_tokens', 513), ('endpoint_sha256', '7'*64),
+                         ('output_cap_mode', 'router_inherited'), ('schema', 'native-session-acceptance/v1')):
+            assert native_session_state(managed, {**actual, key:bad}, now=now)['state'] == 'pending'
 
 
 def test_native_same_process_requires_pinned_generation_and_rejects_untyped_fields():

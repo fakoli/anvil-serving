@@ -114,8 +114,8 @@ class Store:
         with self.lock:
             self.db.execute("BEGIN IMMEDIATE")
             try:
-                self.db.execute("UPDATE operations SET state=?,code=? WHERE principal=? AND id=?", (state, code, principal, request))
-                if state == "rejected":
+                changed = self.db.execute("UPDATE operations SET state=?,code=? WHERE principal=? AND id=? AND state NOT IN ('accepted','rejected','completed')", (state, code, principal, request)).rowcount
+                if changed and state == "rejected":
                     row = self.db.execute("SELECT workspace,session,kind FROM operations WHERE principal=? AND id=?",(principal,request)).fetchone()
                     if row and row[2] == "create":
                         self.db.execute("DELETE FROM sessions WHERE principal=? AND workspace=? AND id=?",(principal,row[0],row[1]))

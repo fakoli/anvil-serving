@@ -358,10 +358,15 @@ def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str
         "contextWindow": model["context_window"],
         "maxTokens": model["max_output_tokens"],
     })
+    # The gateway exposes the OpenAI reasoning contract regardless of its
+    # upstream. Retained model-specific template switches can disable parsing.
+    compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
+    if not pi:
+        compat["thinkingFormat"] = "openai"
     efforts = _supported_reasoning_efforts(model)
     if efforts:
-        compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
         compat["supportedReasoningEfforts"] = list(efforts)
+    if compat:
         result["compat"] = compat
     if pi:
         # ``inputLimits`` is a Pi model-config concept; OpenClaw rows keep

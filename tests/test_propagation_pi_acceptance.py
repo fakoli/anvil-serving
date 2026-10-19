@@ -24,6 +24,7 @@ from anvil_serving.propagation_pi_acceptance import (
     PiWebFixtureProfile,
     write_acceptance_receipt,
     write_fixture_record,
+    _default_client_factory,
     _owned_process_factory,
 )
 from anvil_serving.propagation_sessions import (
@@ -31,7 +32,7 @@ from anvil_serving.propagation_sessions import (
     native_session_state,
     pi_catalog_digest,
 )
-from anvil_serving.workbench_app.pi_rpc import PiCommandId, PiEvent, PiResponse
+from anvil_serving.workbench_app.pi_rpc import PiCommandId, PiEvent, PiResponse, PiProtocolError
 
 
 MODEL = {
@@ -42,6 +43,41 @@ MODEL = {
     "contextWindow": 8192,
     "maxTokens": 512,
 }
+
+
+@pytest.mark.skipif(os.name != "posix", reason="native Pi fixture process groups require POSIX")
+@pytest.mark.parametrize("payload_bytes", [300_000, 4 * 1024 * 1024])
+def test_native_catalog_rpc_accepts_large_records_with_a_finite_limit(tmp_path, payload_bytes):
+    program = (
+        "import json,sys\n"
+        "for line in sys.stdin:\n"
+        " request=json.loads(line)\n"
+        " print(json.dumps({'type':'response','id':request['id'],"
+        "'command':request['type'],'success':True,'data':{'models':["
+        "{'provider':'other','description':'x'*int(sys.argv[1])}]}}),flush=True)\n"
+    )
+    client = _default_client_factory(
+        (sys.executable, "-u", "-c", program, str(payload_bytes)), tmp_path, {},
+    )
+    client.start()
+    try:
+        command = client.send("get_available_models")
+        deadline = time.monotonic() + 5
+        response = None
+        if payload_bytes == 4 * 1024 * 1024:
+            with pytest.raises(PiProtocolError, match="exceeds configured limit"):
+                while time.monotonic() < deadline:
+                    client.poll()
+                    time.sleep(0.01)
+        else:
+            while response is None and time.monotonic() < deadline:
+                client.poll()
+                response = client.take_response(command)
+                time.sleep(0.01)
+            assert response is not None and response.ok
+            assert len(response.data['models'][0]['description']) == payload_bytes
+    finally:
+        client.close()
 
 
 class FakePi:

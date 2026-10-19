@@ -480,6 +480,9 @@ def test_configured_route_native_session_resume_uses_history_without_overrides(t
             prompt = argv[argv.index('-q' if client == 'hermes' else '--message') + 1]
             assert 'previous-secret-marker' not in prompt
             assert 'new file contents' in prompt
+            if client == 'openclaw':
+                assert 'Use the read tool exactly once' in prompt
+                assert 'exec tool' not in prompt
             expected = 'previous-secret-marker next-marker'
             if client == 'hermes':
                 assert '-z' not in argv and '--no-restore-cwd' in argv
