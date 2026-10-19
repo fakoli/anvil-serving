@@ -218,6 +218,9 @@ installed CLI only as a verified fallback.
    operational output and receipts must never expose credential values.
    Project only declared catalog fields; whole provider documents can carry
    opaque credentials in headers or unrelated settings despite native masking.
+   Exclude unrelated provider rows and reject unsafe retained identifiers.
+   Exercise the snapshot-enabled fenced consumer, including protected source
+   preservation and repeat convergence; legacy-reader tests cannot prove it.
    Qualify metadata readers with
    an older supported profile in a disposable home and prove its complete tree
    remains unchanged. Trap filesystem writes, helper/network calls and secret

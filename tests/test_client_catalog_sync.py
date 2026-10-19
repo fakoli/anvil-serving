@@ -185,7 +185,8 @@ class _Opener:
 
 
 class _HermesRunner:
-    def __init__(self, states):
+    def __init__(self, states, *, snapshot=False):
+        self.snapshot = snapshot
         self.states = states
         self.sets = []
         self.homes = []
@@ -209,7 +210,7 @@ class _HermesRunner:
                        for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))
             if not hasattr(self, "scratch_runners"):
                 self.scratch_runners = {}
-            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))
+            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states), snapshot=self.snapshot))
             profile = argv[2]
             path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
             runner.states[profile] = yaml.safe_load(path.read_bytes())
@@ -221,6 +222,29 @@ class _HermesRunner:
             return result
         profile = argv[2]
         command = argv[3:]
+        if command == ["config", "get", "--catalog-snapshot"]:
+            assert self.snapshot, "snapshot transport must be explicitly enabled"
+            state = self.states[profile]
+            # Independent fixture for the six-field projected producer contract.
+            def pick(row, names):
+                return {key: row[key] for key in names if key in row}
+            def provider(row, custom=False):
+                value = pick(row, ("name", "model") if custom else ("default_model", "context_length"))
+                if "models" in row:
+                    value["models"] = {name: pick(detail, ("context_length",)) for name, detail in row["models"].items()}
+                if not custom and "chat_template_kwargs" in row.get("extra_body", {}):
+                    value["extra_body"] = {"chat_template_kwargs": None}
+                return value
+            values = {key: pick(state[key], names) for key, names in (
+                ("model", ("provider", "default", "context_length", "max_tokens")),
+                ("compression", ("enabled", "threshold", "target_ratio")),
+                ("auxiliary.vision", ("provider", "model", "context_length")),
+                ("auxiliary.compression", ("context_length",))) if key in state}
+            values["providers"] = {"anvil": provider(state["providers"]["anvil"])}
+            values["custom_providers"] = [provider(row, True) for row in state["custom_providers"]
+                if row["name"].casefold().startswith("anvil")]
+            return self._completed(stdout=json.dumps({"schema": "hermes-catalog-snapshot/v1",
+                "values": values, "missing": [key for key in client_catalog_sync.HERMES_PROFILE_KEYS if key not in values]}))
         if command[:2] == ["config", "get"]:
             key = command[2]
             if key not in self.states[profile]:
@@ -943,14 +967,21 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
     assert openclaw["models"]["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
 
 
-def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch):
+@pytest.mark.parametrize("snapshot", [False, True])
+def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch, snapshot):
     options, targets, bindings, fence = _native_three_client_batch(
         tmp_path, monkeypatch, include_hermes=True)
+    options['hermes_snapshot'] = snapshot
+    options['hermes_run'].snapshot = snapshot
+    url_secret = 'https://user:synthetic-url-secret@example.test'
     credentials = {'Cookie': 'synthetic-cookie-never-output', 'X-License': 'synthetic-license-never-output'}
     for target in targets[3:]:
         path = Path(target.hermes_config)
         document = yaml.safe_load(path.read_bytes())
         document['custom_providers'][-1]['extra_headers'] = credentials.copy()
+        document['providers'][url_secret] = {'default_model': 'cloud-model'}
+        if target.hermes_profile == 'default':
+            document['custom_providers'][-1]['model'] = url_secret
         path.write_text(yaml.safe_dump(document, sort_keys=False))
     for wrong in (replace(targets[3], hermes_profile="all"),
                   replace(targets[3], hermes_config=targets[4].hermes_config),
@@ -978,6 +1009,11 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
         f"target-{index}" for index in range(1, 6)]
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
+    assert url_secret not in json.dumps(applied) and url_secret not in json.dumps(fence.journal())
+    assert url_secret not in repr(options['hermes_run'].arguments)
+    if snapshot:
+        reads = [argv[3:] for argv in options['hermes_run'].arguments if argv[3:5] == ['config', 'get']]
+        assert reads and all(command == ['config', 'get', '--catalog-snapshot'] for command in reads)
     assert "synthetic-secret-never-argv" not in json.dumps(applied)
     assert "synthetic-secret-never-argv" not in json.dumps(fence.journal())
     assert all(secret not in json.dumps(applied) and secret not in json.dumps(fence.journal())
@@ -995,6 +1031,9 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
     assert all(yaml.safe_load(Path(target.hermes_config).read_bytes())['custom_providers'][-1]['extra_headers'] == credentials
                for target in targets[3:])
+    assert all(url_secret in yaml.safe_load(Path(target.hermes_config).read_bytes())['providers']
+               for target in targets[3:])
+    assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())['custom_providers'][-1]['model'] == url_secret
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
     assert set(fence.journal()["effects"]) == set(bindings)
 
