@@ -219,3 +219,21 @@ def test_dispatched_removal_never_reports_retryable_refusal(tmp_path, monkeypatc
         assert result['actual_free_space_delta_bytes'] is None
     else:
         assert result['outcome'] == 'unknown' and result['removal_attempted']
+
+
+@pytest.mark.parametrize('escaped', [False, True])
+def test_same_filesystem_bind_mount_refused_before_inventory(tmp_path, monkeypatch, escaped):
+    root = flat(tmp_path)
+    target = root / ('mounted data' if escaped else 'mounted')
+    target.mkdir()
+    encoded = str(target).replace(' ', r'\040')
+    # Actual Linux mountinfo field order, with the same filesystem device.
+    mountinfo = f'42 21 8:1 /protected {encoded} rw,relatime - ext4 /dev/example rw\n'
+    real = volumes._read_metadata
+    def read(path, *args, **kwargs):
+        if str(path) == '/proc/self/mountinfo': return mountinfo
+        return real(path, *args, **kwargs)
+    monkeypatch.setattr(volumes, '_read_metadata', read)
+    monkeypatch.setattr(os.path, 'ismount', lambda _path: False)
+    with pytest.raises(discard.Error, match='mount boundary'): discard.inventory(root)
+    assert target.exists()

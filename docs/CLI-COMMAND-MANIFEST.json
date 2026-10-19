@@ -2974,11 +2974,12 @@
     {
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/models.md#whole-cache-discard",
-      "execution_host_os": [],
+      "execution_host_os": [
+        "linux"
+      ],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
-        "native",
-        "docker"
+        "native"
       ],
       "gpu_role_required": false,
       "handler": "anvil_serving.model_cache_discard:main",

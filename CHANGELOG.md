@@ -36,7 +36,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
-- Model-cache consumer checks now include native memory mappings, working
+- Dedicated and whole-cache consumer checks now include native memory mappings, working
   directories and executables as well as open file descriptors. Configuration
   audits also recognize cache identities embedded in commands and arguments.
 - Legacy Docker cache reporting uses read-only mounts, disabled networking and

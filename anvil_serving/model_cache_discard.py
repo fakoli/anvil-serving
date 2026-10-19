@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import time
@@ -29,12 +30,29 @@ def _safe_name(value):
         raise Error("cache path contains control characters")
 
 
+def _reject_mounts(root):
+    # ismount() does not reliably detect bind mounts on the same filesystem.
+    # Linux mountinfo is the authority for both those and ordinary mounts.
+    raw = volume_ops._read_metadata(Path('/proc/self/mountinfo'), 4 * 1024 * 1024)
+    lines = raw.splitlines()
+    if not lines or len(lines) > volume_ops._MAX_ENTRIES:
+        raise Error('mount audit is empty or exceeds its bound')
+    for line in lines:
+        fields = line.split()
+        if len(fields) < 10 or '-' not in fields[6:] or not fields[4].startswith('/'):
+            raise Error('mount audit contains an invalid record')
+        mount = re.sub(r'\\([0-7]{3})', lambda m: chr(int(m[1], 8)), fields[4])
+        if Path(mount).is_relative_to(root):
+            raise Error('cache contains a mount boundary')
+
+
 def inventory(root, *, native_unlink=False):
     """Bind a complete bounded tree, including partial downloads and orphan blobs."""
     root = volume_ops._plain_dir(root, "cache root")
     _safe_name(str(root))
     if root in (Path('/'), Path.home()) or os.path.ismount(root) or (root / '.git').exists() or (root / 'operator-topology.toml').exists():
         raise Error("refusing a home, checkout, operator home, or filesystem root")
+    _reject_mounts(root)
     before = root.stat()
     budget = {"entries": 0, "deadline": time.monotonic() + volume_ops._MAX_SECONDS}
     def read(path, limit, *, binary=False):
@@ -339,7 +357,7 @@ def discard(*, expected_fingerprint=None, writers_quiesced=False, inventory_revi
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog='anvil-serving models cache discard',
-        description='Preview or discard one entirely retired model cache. Local POSIX only; no force or selective pruning.')
+        description='Preview or discard one entirely retired model cache. Local Linux owner only; no force or selective pruning.')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--cache-dir')
     group.add_argument('--volume')

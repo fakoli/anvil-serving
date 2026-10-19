@@ -617,7 +617,9 @@ actions, rescan drift, and the irreversible/no-automatic-rollback boundary.
 `models cache discard` retires one entire native flat-model directory or local
 Docker Hugging Face volume, including incomplete downloads and global shared blobs.
 Use it only when every model and auxiliary asset in that root is retired.
-It is a local POSIX CLI operation; it has no destructive MCP wrapper.
+It runs on a native Linux storage owner and requires root access to `/proc`
+for complete process auditing. It has no destructive MCP wrapper. Docker
+Desktop and remote storage must be operated from an owner with that access.
 
 ```bash
 anvil-serving models cache discard --volume retired-model-cache --config-home /srv/operator --dry-run
@@ -630,7 +632,8 @@ model identity, and cache filesystem identity into the fingerprint. Apply repeat
 the audit under retained POSIX locks. Running or stopped containers, native file
 descriptors, memory mappings, working directories, executables, active locks,
 configured references, missing config dependencies,
-external links, special files, mount boundaries, and unreadable state
+external links, special files, mount boundaries (including same-filesystem bind
+mounts), and unreadable state
 block deletion. Historical declarations must be explicitly reconciled first.
 `--non-model-root-view ID` is only for an independently audited read-only root
 observer without GPU access; every declaration is validated again.

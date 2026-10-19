@@ -185,6 +185,8 @@ def commands() -> CommandNode:
                         "Preview or discard one entirely retired model cache.",
                         "anvil_serving.model_cache_discard",
                         role="model-catalog",
+                        execution_runtime_roles=("native",),
+                        execution_host_os=("linux",),
                         argv_prefix=(),
                         options=CONFIRM_OPTIONS + (
                             _option("--cache-dir", summary="Entire retired native model directory.", value_name="PATH"),
