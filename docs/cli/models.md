@@ -41,7 +41,8 @@ swap.
 | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
-| Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --dry-run` | Apply with `--confirm` after reviewing the snapshot and reclaimable blobs. |
+| Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --cache-dir /srv/model-cache --dry-run` | Apply with `--config-home /srv/operator --confirm` after reviewing the snapshot and reclaimable blobs. |
+| Retire an entire unused model cache | `models cache discard --volume retired-model-cache --config-home /srv/operator --dry-run` | Review the fingerprint and complete inventory, stop writers, then confirm discard. |
 | Reclaim cache space broadly | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
 
 ## Commands
@@ -63,6 +64,7 @@ swap.
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. |
 | `models cache inventory` | Record a read-only model-cache and Docker storage inventory. |
 | `models cache remove` | Plan or remove one exact cached repository revision. |
+| `models cache discard` | Audit and discard one entire retired model cache. |
 | `models cache prune` | Plan or prune model-cache storage. |
 
 ## Catalog sync
@@ -436,12 +438,12 @@ recipe or modify router policy.
 
 ## Cache remove
 
-Use the exact-removal verb when one known repository revision—not a policy
-selected set—is the target:
+Use the exact-removal verb for one known repository revision in a directly
+accessible native Hugging Face cache:
 
 ```bash
-anvil-serving models cache remove OWNER/REPO --revision COMMIT --dry-run
-anvil-serving models cache remove OWNER/REPO --revision COMMIT --confirm
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --cache-dir /srv/model-cache --dry-run
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --cache-dir /srv/model-cache --config-home /srv/operator --confirm
 ```
 
 The selector requires both an exact `OWNER/REPO` and revision. Preview reports
@@ -449,6 +451,19 @@ the matching snapshot and bytes that become unreferenced; apply removes only
 that snapshot, collects only blobs no remaining snapshot references, and
 verifies the target snapshot is absent. It does not approximate repository
 identity with a substring or wildcard.
+
+**Behavior change:** legacy Docker revision removal without `--cache-dir` or
+`--discard-volume` refuses `--confirm`, including dispatcher authorization,
+before contacting Docker. That helper cannot audit ownership or fence writers.
+Its `--dry-run` remains a bounded read-only preview of an existing volume; the
+helper has no deletion action. The preview binds the inspected daemon path
+read-only, so a missing volume cannot be created by cleanup preview. Artifact
+acquisition preflight retains its existing named-volume creation behavior.
+
+Use [whole-cache discard](#whole-cache-discard) when every asset in a cache is
+retired, or use native exact removal when the cache is directly accessible.
+Docker Desktop and remote-daemon deletion must run on an owner with direct
+access to the daemon's cache storage; there is no destructive helper fallback.
 
 Native Hugging Face caches take an explicit local cache root and only a
 40-character lowercase commit revision. Preview is filesystem-only:
@@ -510,7 +525,8 @@ storage. It accepts the dedicated `hub/models--OWNER--REPO` plus
 `hub/blobs/<prefix>/<hash>` layout; other layouts remain refused.
 It refuses another model or revision, unknown cache contents, nonlocal volume
 drivers/options, active or retained container references, current configuration
-references, held download locks, and identity drift. A confirmed operation holds
+references, open files, memory mappings, working directories, executables,
+held download locks, and identity drift. A confirmed operation holds
 cache locks, repeats the audits, removes only the named volume without force,
 and verifies both Docker and filesystem absence. The measured free-space delta
 is reported separately from the cache-size estimate.
@@ -595,3 +611,43 @@ actions, rescan drift, and the irreversible/no-automatic-rollback boundary.
 - [Model serves](serves.md)
 - [Evaluation & benchmarks](eval.md)
 - [Benchmarks](../BENCHMARKS.md)
+
+## Whole-cache discard
+
+`models cache discard` retires one entire native flat-model directory or local
+Docker Hugging Face volume, including incomplete downloads and global shared blobs.
+Use it only when every model and auxiliary asset in that root is retired.
+It is a local POSIX CLI operation; it has no destructive MCP wrapper.
+
+```bash
+anvil-serving models cache discard --volume retired-model-cache --config-home /srv/operator --dry-run
+anvil-serving models cache discard --volume retired-model-cache --config-home /srv/operator --expected-fingerprint SHA256 --writers-quiesced --inventory-reviewed --confirm
+```
+
+Use `--cache-dir /srv/models/retired-model` instead of `--volume` for a flat
+materialization. Preview inventories every entry and binds the operator config,
+model identity, and cache filesystem identity into the fingerprint. Apply repeats
+the audit under retained POSIX locks. Running or stopped containers, native file
+descriptors, memory mappings, working directories, executables, active locks,
+configured references, missing config dependencies,
+external links, special files, mount boundaries, and unreadable state
+block deletion. Historical declarations must be explicitly reconciled first.
+`--non-model-root-view ID` is only for an independently audited read-only root
+observer without GPU access; every declaration is validated again.
+
+The owner must keep external writers quiescent through apply. Docker removal is
+non-force; a failed removal request or postcheck returns `unknown` and must be
+inspected before any retry.
+Native removal uses no-follow directory descriptors; a failure after deletion
+starts returns `partial`. Removed downloads must be acquired again for recovery.
+
+Docker volumes reject hardlinked files. Native retirement may unlink one name
+of a regular file shared outside the selected root, preserving the other names
+and contents. It refuses duplicate inode names inside the root and shared locks;
+shared files are listed separately and excluded from estimated reclaimed bytes.
+
+`--config-home` must match the canonical home selected by `ANVIL_SERVING_HOME`
+and pass topology validation. The operator is responsible for selecting the
+complete authoritative home; an alternate environment override is not independent
+proof of ownership. Metadata audits check entry, size, and time bounds; a hung
+filesystem syscall remains an operating-system limitation.

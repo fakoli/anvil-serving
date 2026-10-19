@@ -94,6 +94,13 @@ jobs:
           tests/test_cli.py::test_cli_remote_config_export_maps_path_and_allows_bounded_large_response
           tests/test_cli.py::test_cli_remote_router_restart_dispatches_typed_operation
           tests/test_cli.py::test_cli_remote_router_dry_run_never_generates_mutation_idempotency
+      - name: Verify cache cleanup refuses unsupported mutation
+        run: >-
+          python -m pytest -q
+          tests/test_models.py::test_legacy_docker_revision_apply_never_dispatches_even_with_confirmation
+          tests/test_models.py::test_volume_report_timeout_is_bounded_and_not_retried
+          tests/test_models.py::test_whole_cache_discard_requires_posix_before_audit
+          tests/test_model_cache_discard.py
 
   connect-linux:
     name: Connect native contracts (Linux)

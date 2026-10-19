@@ -181,6 +181,25 @@ def commands() -> CommandNode:
                 "Manage model cache storage.",
                 children=(
                     _resource_node(
+                        "discard",
+                        "Preview or discard one entirely retired model cache.",
+                        "anvil_serving.model_cache_discard",
+                        role="model-catalog",
+                        argv_prefix=(),
+                        options=CONFIRM_OPTIONS + (
+                            _option("--cache-dir", summary="Entire retired native model directory.", value_name="PATH"),
+                            _option("--volume", summary="Entire retired local Docker cache volume.", value_name="NAME"),
+                            _option("--config-home", summary="Complete authoritative operator home.", value_name="PATH"),
+                            _option("--expected-fingerprint", summary="Fingerprint from the reviewed preview.", value_name="SHA256"),
+                            _option("--non-model-root-view", summary="Full ID of an audited read-only root observer.", value_name="ID"),
+                            _option("--writers-quiesced", summary="Attest that external cache writers are stopped."),
+                            _option("--inventory-reviewed", summary="Attest that every inventoried asset is retired."),
+                        ),
+                        mutation="mutate",
+                        forward_confirm_flag=True,
+                        docs_anchor="docs/cli/models.md#whole-cache-discard",
+                    ),
+                    _resource_node(
                         "inventory",
                         "Inspect Docker or native Hugging Face model-cache storage.",
                         "anvil_serving.models",
@@ -204,7 +223,7 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Remove one exact Docker or guarded native-cache revision, or a dedicated cache volume.",
+                        "Preview Docker revisions or remove a guarded native revision or dedicated volume.",
                         "anvil_serving.models",
                         role="model-catalog",
                         options=CONFIRM_OPTIONS + (

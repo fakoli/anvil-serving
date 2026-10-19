@@ -263,6 +263,7 @@ def test_volume_cache_report_accepts_python3_only_images():
 
     def run(argv, **_kwargs):
         seen["argv"] = argv
+        seen["options"] = _kwargs
         return types.SimpleNamespace(
             returncode=0,
             stdout='{"snapshot_exists": true, "repo_bytes": 10}\n',
@@ -281,6 +282,68 @@ def test_volume_cache_report_accepts_python3_only_images():
     assert ["--entrypoint", "sh"] == argv[argv.index("--entrypoint"):argv.index("--entrypoint") + 2]
     assert "command -v python3" in argv[argv.index("qualified-vllm:image") + 2]
     assert "anvil-cache-inspector" in argv
+    assert argv[argv.index("--network") + 1] == "none"
+    assert argv[argv.index("--mount") + 1].endswith(",readonly")
+    assert seen["options"]["timeout"] == 120
+
+
+def test_volume_cleanup_preview_binds_existing_volume_without_creation():
+    calls = []
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        if argv[1:3] == ["volume", "inspect"]:
+            return types.SimpleNamespace(returncode=0, stdout=json.dumps([
+                {"Name": "retired", "Mountpoint": "/srv/docker/volumes/retired/_data"}
+            ]), stderr="")
+        return types.SimpleNamespace(returncode=0, stdout='{"snapshot_exists": true}', stderr="")
+    models._volume_cache_report("plan-remove", "org/model", "abc", volume="retired", _run=run)
+    assert len(calls) == 2 and calls[0][1]["timeout"] == 30
+    assert calls[1][0][calls[1][0].index("--mount") + 1] == (
+        "type=bind,source=/srv/docker/volumes/retired/_data,target=/root/.cache/huggingface,readonly"
+    )
+
+
+@pytest.mark.parametrize("fault", ["missing", "timeout", "identity"])
+def test_volume_cleanup_preview_fails_closed_before_helper(fault):
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if fault == "timeout":
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        if fault == "missing":
+            return types.SimpleNamespace(returncode=1, stdout="", stderr="No such volume")
+        return types.SimpleNamespace(returncode=0, stdout='[{"Name":"other","Mountpoint":"/srv/cache"}]', stderr="")
+    with pytest.raises(ValueError):
+        models._volume_cache_report("plan-remove", "org/model", "abc", _run=run)
+    assert len(calls) == 1 and calls[0][1:3] == ["volume", "inspect"]
+
+
+def test_volume_report_timeout_is_bounded_and_not_retried():
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+    with pytest.raises(ValueError, match="timed out"):
+        models._volume_cache_report("report", "org/model", "abc", _run=run)
+    assert len(calls) == 1
+
+
+def test_legacy_docker_helper_refuses_destructive_actions_at_both_boundaries(tmp_path):
+    with pytest.raises(ValueError, match="read-only"):
+        models._volume_cache_report("remove", "org/model", "abc",
+                                  _run=lambda *_args, **_kwargs: pytest.fail("Docker must not run"))
+    cache, _root, _complete, _partial = _complete_partial_cache(tmp_path)
+    before = {str(p.relative_to(cache)): (p.lstat(), p.read_bytes() if p.is_file() else None)
+              for p in cache.rglob("*")}
+    result = subprocess.run([sys.executable, "-c", models._VOLUME_CACHE_HELPER,
+                             "remove", str(cache), "org/model", "revision"],
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0 and "read-only" in result.stderr
+    after = {str(p.relative_to(cache)): (p.lstat(), p.read_bytes() if p.is_file() else None)
+             for p in cache.rglob("*")}
+    # Ignore access times changed by our own content read.
+    assert before.keys() == after.keys()
+    assert all(before[k][0].st_ino == after[k][0].st_ino and before[k][1] == after[k][1] for k in before)
 
 
 def test_pull_space_preflight_fails_closed_before_download(monkeypatch):
@@ -422,7 +485,7 @@ def test_verify_pull_fails_closed_for_legacy_partial_report(monkeypatch):
         models.verify_pull("org/model", "revision")
 
 
-def test_cache_remove_exact_revision_dry_run_and_apply(monkeypatch, capsys):
+def test_cache_remove_docker_revision_preview_is_read_only(monkeypatch, capsys):
     calls = []
 
     def report(action, *args, **kwargs):
@@ -449,9 +512,32 @@ def test_cache_remove_exact_revision_dry_run_and_apply(monkeypatch, capsys):
 
     assert models.cache_remove_main(
         ["org/model", "--revision", "abc", "--confirm"]
-    ) == 0
-    assert calls == ["plan-remove", "plan-remove", "remove"]
-    assert "reclaimed 80 bytes" in capsys.readouterr().out
+    ) == 2
+    assert calls == ["plan-remove"]
+    assert "legacy Docker revision removal is disabled" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("surface", ["leaf-confirm", "dispatcher-confirm", "authorization"])
+def test_legacy_docker_revision_apply_never_dispatches_even_with_confirmation(monkeypatch, surface):
+    monkeypatch.setattr(models, "_volume_cache_report", lambda *_args, **_kwargs: pytest.fail("must not inspect or remove"))
+    monkeypatch.setattr(guard, "confirmation_authorized", lambda: surface == "authorization")
+    argv = ["org/model", "--revision", "a" * 40, "--volume", "retained-cache"]
+    if surface != "authorization": argv.append("--confirm")
+    if surface == "dispatcher-confirm":
+        assert cli.main(["models", "cache", "remove", *argv]) != 0
+    else:
+        assert models.cache_remove_main(argv) == 2
+
+
+def test_whole_cache_discard_requires_posix_before_audit(monkeypatch, capsys):
+    from anvil_serving import model_cache_discard
+    monkeypatch.setattr(model_cache_discard.volume_ops, "fcntl", None)
+    monkeypatch.setattr(model_cache_discard.volume_ops, "_config_home",
+                        lambda *_args: pytest.fail("unsupported platform must not audit state"))
+    assert model_cache_discard.main([
+        "--volume", "retired", "--config-home", "operator", "--confirm",
+    ]) == 1
+    assert json.loads(capsys.readouterr().out)["outcome"] == "refused"
 
 
 def test_cache_remove_rejects_unsafe_selector_before_docker(monkeypatch):

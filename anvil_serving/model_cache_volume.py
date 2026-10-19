@@ -546,13 +546,17 @@ def _container_refs(volume, mountpoint, *, non_model_root_views=(), runner):
     return refs
 
 
-def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
+def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner, model_identities=(), bindings=None):
     refs = []
     budget = {"entries": 0, "deadline": time.monotonic() + _MAX_SECONDS}
     pending = [home]
     documents = []
     dependencies = []
     audited = set()
+    identities = {value for value in (volume, repo_id, revision, str(mountpoint), *model_identities) if value}
+    identity_pattern = re.compile(r'(?<![A-Za-z0-9_.-])(?:' + '|'.join(
+        re.escape(value) for value in sorted(identities, key=len, reverse=True)
+    ) + r')(?![A-Za-z0-9_.-])')
     while pending:
         current = pending.pop()
         for row in _children(current, budget):
@@ -575,6 +579,9 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
         if time.monotonic() > budget["deadline"]:
             raise ModelCacheVolumeError("operator configuration audit timed out")
         raw = _read_metadata(path, docker_images.MAX_CONFIG_BYTES)
+        if bindings is not None:
+            bindings.append([path.relative_to(home).as_posix(), model_cache_native._binding(path.lstat()),
+                             hashlib.sha256(raw.encode()).hexdigest()])
         try:
             if path.suffix.lower() == ".toml":
                 document = tomllib.loads(raw)
@@ -592,7 +599,7 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
             raise ModelCacheVolumeError("operator configuration has an invalid root")
         audited.add(path)
         for field, value in _config_strings(document):
-            if value in {volume, repo_id, revision} or value.split(":", 1)[0] == volume:
+            if identity_pattern.search(value):
                 refs.append({"path": path.relative_to(home).as_posix(), "field": field})
             if _PATH_FIELD.search(field.lower()):
                 if "$" in value:
@@ -635,8 +642,9 @@ def _config_refs(home, *, volume, repo_id, revision, mountpoint, runner):
                         or (relative.parts and relative.parts[0] == "recovered-configs")):
                     raise ModelCacheVolumeError("operator configuration dependency references an excluded path")
                 dependencies.append(target)
-    if any(path not in audited for path in dependencies):
-        raise ModelCacheVolumeError("operator configuration dependency is missing or unaudited")
+    missing = sorted({str(path.relative_to(home)) for path in dependencies if path not in audited})
+    if missing:
+        raise ModelCacheVolumeError("operator configuration dependency is missing or unaudited: " + ", ".join(missing))
     return refs
 
 
@@ -661,6 +669,25 @@ def _native_fd_refs(mountpoint):
                         continue
                     if target == str(mountpoint) or target.startswith(str(mountpoint) + os.sep):
                         refs.append({"pid": process.name})
+            # An mmap can outlive its file descriptor. Open-FD checks alone
+            # would wrongly classify a still-mapped model as unused.
+            mappings = _read_metadata(Path(process.path) / "maps", 4 * 1024 * 1024)
+            for mapping in mappings.splitlines():
+                budget["entries"] += 1
+                if budget["entries"] > _MAX_ENTRIES or time.monotonic() > budget["deadline"]:
+                    raise ModelCacheVolumeError("native writer audit exceeds its bound")
+                fields = mapping.split(None, 5)
+                if len(fields) == 6:
+                    target = fields[5].removesuffix(" (deleted)")
+                    if target == str(mountpoint) or target.startswith(str(mountpoint) + os.sep):
+                        refs.append({"pid": process.name, "kind": "mapping"})
+            for name in ("cwd", "exe"):
+                try:
+                    target = os.readlink(Path(process.path) / name)
+                except FileNotFoundError:
+                    continue
+                if target == str(mountpoint) or target.startswith(str(mountpoint) + os.sep):
+                    refs.append({"pid": process.name, "kind": name})
         except FileNotFoundError:
             continue
         except OSError as exc:
