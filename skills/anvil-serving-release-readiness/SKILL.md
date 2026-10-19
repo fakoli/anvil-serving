@@ -213,7 +213,11 @@ installed CLI only as a verified fallback.
    Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
    cleanup evidence and every declared target. Batch queries must preserve the
    native resolver's defaults, profile selection, redaction and missing-key
-   behavior; parsing YAML alone is insufficient. Do not increase fixed budgets
+   behavior; parsing YAML alone is insufficient. Qualify metadata readers with
+   an older supported profile in a disposable home and prove its bytes remain
+   unchanged. Ordinary CLI startup may migrate config or restart services; keep
+   that maintenance outside metadata queries and isolate the native oracle.
+   Do not increase fixed budgets
    or omit a target to turn a failed preview green. Requalify the consumer and
    prepare a fresh successor rather than modifying a failed immutable packet.
 4. Reasoning/output: use the deployed default reasoning effort and enough
