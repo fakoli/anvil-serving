@@ -209,6 +209,11 @@ installed CLI only as a verified fallback.
    claim broader preservation than their native checks establish.
    For native catalog-reader changes, measure all retained profiles together
    through the exact installed host observer, then the complete owner readback.
+   Require two consecutive complete owner previews before cutover; a single
+   near-deadline pass cannot qualify an intermittent reader. Count native config
+   checks as well as metadata queries. Overlap only independently isolated
+   read-only work; serialize shared custody I/O and join every worker before
+   releasing its fence or scratch files. Keep mutation paths serialized.
    A per-profile concurrency test does not prove the aggregate readback budget.
    Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
    cleanup evidence and every declared target. Batch queries must preserve the

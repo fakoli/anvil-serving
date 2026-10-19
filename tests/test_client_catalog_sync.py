@@ -1040,6 +1040,85 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert set(fence.journal()["effects"]) == set(bindings)
 
 
+@pytest.mark.parametrize("failure", [False, True])
+def test_snapshot_inspection_overlaps_targets_and_joins_before_unlock(tmp_path, monkeypatch, failure):
+    from anvil_serving.propagation_fencing import _HeldFiles
+
+    options, targets, bindings, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    options.update(hermes_snapshot=True, read_only="inspect")
+    options["hermes_run"].snapshot = True
+    before = {path: path.read_bytes() if path.exists() else None for _, path in bindings.values()}
+    first_wave, hermes_wave = threading.Barrier(3, timeout=5), threading.Barrier(2, timeout=5)
+    lock = threading.Lock()
+    active = peak = io_active = 0
+    completed = []
+    original, original_read = client_catalog_sync._sync_clients, _HeldFiles.read
+
+    def read(files, path, **kwargs):
+        nonlocal io_active
+        with lock:
+            io_active += 1
+            assert io_active == 1, "held-directory I/O must remain serialized"
+        try:
+            return original_read(files, path, **kwargs)
+        finally:
+            with lock:
+                io_active -= 1
+
+    def reconcile(**kwargs):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        try:
+            (hermes_wave if kwargs["clients"] == "hermes" else first_wave).wait()
+            if failure and kwargs["clients"] == "hermes" and kwargs["hermes_profiles"] == "default":
+                raise ClientCatalogError("synthetic inspection refusal")
+            return original(**kwargs)
+        finally:
+            with lock:
+                completed.append(kwargs["state_path"])
+                active -= 1
+
+    monkeypatch.setattr(_HeldFiles, "read", read)
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", reconcile)
+    if failure:
+        with pytest.raises(ClientCatalogError, match="synthetic inspection refusal"):
+            sync_client_catalog_batch(**options)
+    else:
+        results = sync_client_catalog_batch(**options)
+        assert [row["target_id"] for row in results] == [target.target_id for target in targets]
+        assert "synthetic-secret-never-argv" not in json.dumps(results)
+    assert peak == 3 and active == io_active == 0
+    assert sorted(completed) == sorted(target.state_path for target in targets)
+    assert before == {path: path.read_bytes() if path.exists() else None for _, path in bindings.values()}
+    assert all(not Path(home).exists() for home in options["hermes_run"].homes)
+    assert fence.journal() is None
+
+
+@pytest.mark.parametrize("mode", ["legacy", "opener", "preview", "apply"])
+def test_catalog_compatibility_and_mutation_paths_stay_on_caller_thread(tmp_path, monkeypatch, mode):
+    options, targets, _, _ = _native_three_client_batch(tmp_path, monkeypatch, include_hermes=True)
+    options["hermes_snapshot"] = mode != "legacy"
+    options["hermes_run"].snapshot = mode != "legacy"
+    if mode in {"legacy", "opener"}:
+        options["read_only"] = "inspect"
+    if mode == "opener":
+        options["opener"] = object()
+    if mode == "apply":
+        options["dry_run"] = False
+    caller, original = threading.current_thread(), client_catalog_sync._sync_clients
+
+    def reconcile(**kwargs):
+        assert threading.current_thread() is caller
+        return original(**kwargs)
+
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", reconcile)
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == [
+        target.target_id for target in targets]
+
+
 def test_native_hermes_rejects_aliases_and_redacts_parser_errors(tmp_path, monkeypatch):
     options, targets, _, fence = _native_three_client_batch(
         tmp_path, monkeypatch, include_hermes=True)

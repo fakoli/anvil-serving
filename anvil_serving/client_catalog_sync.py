@@ -2456,7 +2456,9 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
 
     ``hermes_snapshot`` requires an explicitly qualified native launcher that
     supplies the fixed six-field snapshot protocol. Failure never downgrades
-    that selected reader to separate queries.
+    that selected reader to separate queries. Its pre-apply inspection overlaps
+    at most three independent targets, including their native config checks.
+    Held-file I/O, caller-owned transports and all mutation paths stay serial.
     """
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
@@ -2506,9 +2508,30 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
         context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
                    if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
                                                      target_paths=paths))
-    results = []
     with context as journal:
-        for target in targets:
+        parallel = (read_only == "inspect" and hermes_snapshot
+                    and opener is None and len(targets) > 1)
+        if parallel:
+            from threading import Lock
+            from types import SimpleNamespace
+
+            # Keep the held-directory cache on one serialized I/O path while
+            # independent scratch homes run their native checks concurrently.
+            source = journal
+            read_lock = Lock()
+
+            def read(path):
+                with read_lock:
+                    return source.read(path)
+
+            def mode(path):
+                with read_lock:
+                    return source.files.mode(path)
+
+            journal = SimpleNamespace(read=read, files=SimpleNamespace(mode=mode),
+                                      catalog_digest=source.catalog_digest)
+
+        def reconcile(target):
             result = _sync_clients(
                 base_url=base_url, clients=target.client,
                 openclaw_config=target.openclaw_config or DEFAULT_OPENCLAW_CONFIG,
@@ -2530,7 +2553,18 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                 hermes_snapshot=hermes_snapshot,
                 dry_run=dry_run, confirm=not dry_run, opener=opener,
                 journal=_ScopedCatalogJournal(journal, target.target_id))
-            results.append({"target_id": target.target_id, "result": result})
+            return {"target_id": target.target_id, "result": result}
+
+        if parallel:
+            executor = ThreadPoolExecutor(max_workers=3)
+            try:
+                results = list(executor.map(reconcile, targets))
+            finally:
+                # Every running native command must finish cleanup before the
+                # owner closes its held directories or releases the fence.
+                executor.shutdown(wait=True, cancel_futures=True)
+        else:
+            results = [reconcile(target) for target in targets]
     return results
 
 
