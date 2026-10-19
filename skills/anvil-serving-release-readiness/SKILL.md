@@ -207,6 +207,15 @@ installed CLI only as a verified fallback.
    does not prove that no state changed. Restored-clone checks must deny access
    to production state, including absolute plugin install paths, and must not
    claim broader preservation than their native checks establish.
+   For native catalog-reader changes, measure all retained profiles together
+   through the exact installed host observer, then the complete owner readback.
+   A per-profile concurrency test does not prove the aggregate readback budget.
+   Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
+   cleanup evidence and every declared target. Batch queries must preserve the
+   native resolver's defaults, profile selection, redaction and missing-key
+   behavior; parsing YAML alone is insufficient. Do not increase fixed budgets
+   or omit a target to turn a failed preview green. Requalify the consumer and
+   prepare a fresh successor rather than modifying a failed immutable packet.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
