@@ -237,3 +237,9 @@ def test_same_filesystem_bind_mount_refused_before_inventory(tmp_path, monkeypat
     monkeypatch.setattr(os.path, 'ismount', lambda _path: False)
     with pytest.raises(discard.Error, match='mount boundary'): discard.inventory(root)
     assert target.exists()
+
+
+@pytest.mark.parametrize('name', ['special_tokens_map.json', 'added_tokens.json', 'tokenizer.model', 'vocab.txt'])
+def test_standard_flat_tokenizer_assets_supported(tmp_path, name):
+    root = flat(tmp_path); (root / name).write_bytes(b'synthetic tokenizer metadata')
+    assert name in discard.inventory(root)['entries']

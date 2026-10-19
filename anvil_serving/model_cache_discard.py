@@ -161,7 +161,8 @@ def inventory(root, *, native_unlink=False):
         identities.update(revisions)
         known = {'.gitattributes', '.quantization-complete', '.source-revision', 'LICENSE', 'README.md',
                  'chat_template.jinja', 'config.json', 'generation_config.json', 'tokenizer.json',
-                 'tokenizer_config.json', 'processor_config.json', 'preprocessor_config.json',
+                 'tokenizer_config.json', 'special_tokens_map.json', 'added_tokens.json',
+                 'tokenizer.model', 'vocab.txt', 'processor_config.json', 'preprocessor_config.json',
                  'video_preprocessor_config.json', 'merges.txt', 'vocab.json', 'crc32.txt',
                  'safetensors-md5sum.txt', 'model.safetensors.index.json', 'model-sha256.json',
                  'quantization-manifest.json', 'reconstruction-metrics-experts.json',

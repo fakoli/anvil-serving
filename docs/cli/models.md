@@ -627,7 +627,9 @@ anvil-serving models cache discard --volume retired-model-cache --config-home /s
 ```
 
 Use `--cache-dir /srv/models/retired-model` instead of `--volume` for a flat
-materialization. Preview inventories every entry and binds the operator config,
+materialization with safetensors weights, one pinned source revision, and known
+model/tokenizer metadata. Unknown assets are deliberately refused; nested model
+assets require matching download receipts. Preview inventories every entry and binds the operator config,
 model identity, and cache filesystem identity into the fingerprint. Apply repeats
 the audit under retained POSIX locks. Running or stopped containers, native file
 descriptors, memory mappings, working directories, executables, active locks,
