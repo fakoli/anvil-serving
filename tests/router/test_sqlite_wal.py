@@ -287,6 +287,75 @@ def test_default_checkpoint_threshold_and_long_reader_preserve_latest_rows(tmp_p
 
 
 @native
+@pytest.mark.parametrize('held_reader', [False, True])
+def test_short_lived_writers_recycle_wal_after_reader_gap(tmp_path, held_reader):
+    from contextlib import nullcontext
+    store, config = configured(tmp_path)
+    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
+    with store._write() as connection:
+        connection.execute('CREATE TABLE synthetic_recycle(id INTEGER PRIMARY KEY, payload BLOB)')
+    wal = Path(str(store.path) + '-wal')
+    with store._connect() if held_reader else nullcontext() as reader:
+        if reader is not None:
+            reader.execute('BEGIN')
+            assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (0,)
+        for i in range(70):
+            with store._write() as writer:
+                writer.execute('INSERT INTO synthetic_recycle VALUES(?,?)', (i, b'x' * 65536))
+        if reader is not None:
+            assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (0,)
+            reader.execute('COMMIT')
+    for i in range(70, 140):
+        with store._write() as writer:
+            writer.execute('INSERT INTO synthetic_recycle VALUES(?,?)', (i, b'x' * 65536))
+        assert wal.stat().st_size <= keys._WAL_CHECKPOINT_BYTES + 128 * 1024
+    with store._connect() as reader:
+        assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (140,)
+        assert reader.execute('PRAGMA quick_check').fetchone() == ('ok',)
+        assert reader.getconfig(sqlite3.SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE) is True
+        assert reader.execute('PRAGMA synchronous').fetchone() == (2,)
+    metadata, token = store.create('still admitted', ['llm.primary'], ['/v1/chat/completions'])
+    assert store.admit(store.authenticate(token, snapshot=True), '/v1/chat/completions', 'llm.primary').retry_after == 0
+    store.record(metadata['key_id'], None, 'POST', '/v1/chat/completions', 200, 1)
+    snapshot = tmp_path / 'latest.sqlite3'
+    UsageStore(store).backup(snapshot)
+    assert keys.KeyStore(snapshot).authenticate(token).key_id == metadata['key_id']
+
+
+@native
+@pytest.mark.parametrize('removed', [False, True])
+def test_passive_checkpoint_revalidates_named_wal_policy(tmp_path, monkeypatch, removed):
+    store, config = configured(tmp_path)
+    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
+    store.create('retained', ['llm.primary'], ['/v1/chat/completions'])
+    marker = Path(str(store.path) + '.sqlite-policy')
+    original_policy = marker.read_bytes()
+    execute = keys._WriterConnection.execute
+    checkpoints = []
+    def changed(connection, sql, *args):
+        result = execute(connection, sql, *args)
+        if sql == 'PRAGMA wal_checkpoint(PASSIVE)':
+            checkpoints.append(sql)
+            if removed:
+                marker.unlink()
+            else:
+                marker.rename(tmp_path / 'original-policy')
+                marker.write_bytes(original_policy)
+                marker.chmod(0o600)
+        return result
+    monkeypatch.setattr(keys, '_WAL_CHECKPOINT_BYTES', 32)
+    monkeypatch.setattr(keys._WriterConnection, 'execute', changed)
+    try:
+        with pytest.raises(keys.KeyStoreError):
+            with store._write():
+                pytest.fail('changed named policy must refuse before writer access')
+        assert checkpoints == ['PRAGMA wal_checkpoint(PASSIVE)']
+    finally:
+        marker.write_bytes(original_policy)
+        marker.chmod(0o600)
+
+
+@native
 def test_existing_read_lease_blocks_conversion_without_pending_permission(tmp_path):
     store, config = configured(tmp_path)
     with store._connect() as reader:
