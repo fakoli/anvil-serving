@@ -38,6 +38,7 @@ _KEY_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _MAX_KEYS = 1024
 _MAX_AUDIT = 10_000
 _MAX_WAL_BYTES = 64 * 1024**2
+_WAL_CHECKPOINT_BYTES = 4 * 1024**2
 _SUPPORTED_VERSIONS = (1, 2, 3)
 _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
@@ -1124,6 +1125,19 @@ class KeyStore:
             _secure_sidecars(self.path, _proof=_proof)
             if _storage_policy(self.path, _proof=_proof) != policy:
                 raise KeyStoreError('credential storage policy changed')
+            if policy is not None and deadline is not None:
+                # Short-lived connections with NO_CKPT_ON_CLOSE can keep
+                # appending despite the default autocheckpoint setting. Recycle
+                # committed frames before the independent hard capacity veto.
+                if connection.execute('PRAGMA journal_size_limit=0').fetchone() != (0,):
+                    raise KeyStoreError('credential WAL retention policy differs')
+                if wal_bytes >= _WAL_CHECKPOINT_BYTES:
+                    connection.execute('PRAGMA wal_checkpoint(PASSIVE)').fetchone()
+                    remaining()  # Checkpoint time shares the original writer deadline.
+                    _secure_database(self.path, exists=True, _proof=_proof)
+                    _secure_sidecars(self.path, _proof=_proof)
+                    if _storage_policy(self.path, _proof=_proof) != policy:
+                        raise KeyStoreError('credential storage policy changed')
             yield connection
         finally:
             connection.close()

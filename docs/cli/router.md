@@ -989,6 +989,12 @@ WAL conversion binds a protected mode record to the actual database inode. A
 pending or unsupported policy refuses rather than being guessed or downgraded.
 Read leases exclude conversion; the native helper can read through only its
 own still-held exclusive gate. Default checkpoint behavior stays enabled.
+Owned WAL writers also attempt a nonblocking PASSIVE checkpoint at 4 MiB before
+starting their transaction. Short-lived no-close-checkpoint connections can
+otherwise accumulate frames despite the default autocheckpoint setting. SQLite's
+native journal size limit bounds retained space after the next safe WAL reset;
+no sidecar is manually removed. These operations share the original writer
+deadline and preserve FULL durability. Readers do not perform this maintenance.
 A held reader can defer checkpoint progress. The existing 64 MiB ceiling
 refuses new mutations while allowing a consistent newest backup and explicit
 offline checkpoint under custody. Backups are independent DELETE snapshots;
