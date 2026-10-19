@@ -982,7 +982,8 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
         document['providers'][url_secret] = {'default_model': 'cloud-model'}
         if target.hermes_profile == 'default':
             document['custom_providers'][-1]['model'] = url_secret
-        path.write_text(yaml.safe_dump(document, sort_keys=False))
+        # Catalog writes preserve values; YAML presentation may normalize.
+        path.write_bytes(yaml.safe_dump(document, sort_keys=False).replace('\n', '\r\n').encode())
     for wrong in (replace(targets[3], hermes_profile="all"),
                   replace(targets[3], hermes_config=targets[4].hermes_config),
                   replace(targets[3], hermes_bin="hermes")):
@@ -993,6 +994,7 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
             *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
     before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
               for target in targets[3:]}
+    assert all(b'\r\n' in raw for raw in before.values())
     Path(targets[3].hermes_config).write_bytes(b"model: {}\nmodel: {}\n")
     with pytest.raises(ClientCatalogError, match="duplicate keys"):
         sync_client_catalog_batch(**options)

@@ -228,7 +228,10 @@ installed CLI only as a verified fallback.
    resolution fail closed: an unreadable named profile must never read default.
    CLI imports and config getters can create logs/backups or run recovery even
    without calling main; keep those effects outside metadata queries and
-   isolate the native oracle.
+   isolate the native oracle. A native resolver that silently ignores an unreadable
+   or malformed administrator overlay cannot certify convergence: require strict
+   managed-config reads, a positive effective-overlay fixture and silent refusal
+   cases, with managed environment files unopened.
    Do not increase fixed budgets
    or omit a target to turn a failed preview green. Requalify the consumer and
    prepare a fresh successor rather than modifying a failed immutable packet.
