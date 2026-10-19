@@ -3677,7 +3677,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-catalog",
-      "summary": "Preview Docker revisions or remove a guarded native revision or dedicated volume.",
+      "summary": "Preview Docker revisions or remove a guarded native-cache revision or dedicated volume.",
       "transports": [
         "local"
       ],

@@ -225,7 +225,7 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Preview Docker revisions or remove a guarded native revision or dedicated volume.",
+                        "Preview Docker revisions or remove a guarded native-cache revision or dedicated volume.",
                         "anvil_serving.models",
                         role="model-catalog",
                         options=CONFIRM_OPTIONS + (
