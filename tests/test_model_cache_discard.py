@@ -243,3 +243,15 @@ def test_same_filesystem_bind_mount_refused_before_inventory(tmp_path, monkeypat
 def test_standard_flat_tokenizer_assets_supported(tmp_path, name):
     root = flat(tmp_path); (root / name).write_bytes(b'synthetic tokenizer metadata')
     assert name in discard.inventory(root)['entries']
+
+
+@pytest.mark.parametrize('kind', ['directory', 'symlink'])
+def test_flat_weight_signature_requires_regular_file(tmp_path, kind):
+    root = flat(tmp_path); weight = root / 'model.safetensors'; weight.unlink()
+    if kind == 'symlink': weight.symlink_to('config.json')
+    else:
+        weight.mkdir(); (weight / 'payload.json').write_text('{}')
+        receipt = root / '.cache/huggingface/download/model.safetensors/payload.json.metadata'
+        receipt.parent.mkdir(parents=True); receipt.write_text('a' * 40 + '\n')
+    with pytest.raises(discard.Error, match='flat model signature'): discard.inventory(root)
+    assert weight.exists()

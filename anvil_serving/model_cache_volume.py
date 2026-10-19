@@ -24,6 +24,7 @@ _REPO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION = re.compile(r"^[0-9a-f]{40}$")
 _VOLUME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _MAX_ENTRIES = 20_000
+_MAX_NATIVE_MAPPINGS = 1_000_000
 _MAX_SECONDS = 20
 _CONFIG_SUFFIXES = {".toml", ".json", ".yaml", ".yml"}
 _PATH_FIELD = re.compile(r"(?:^|[_.-])(?:caches?|volumes?|mounts?|paths?|dirs?|roots?|sources?|homes?)(?:$|[_.-])")
@@ -653,6 +654,7 @@ def _native_fd_refs(mountpoint):
         raise ModelCacheVolumeError("native writer audit requires root access to POSIX /proc")
     refs = []
     budget = {"entries": 0, "deadline": time.monotonic() + _MAX_SECONDS}
+    mapping_entries = 0
     for process in _children(Path("/proc"), budget):
         if not process.name.isdigit() or int(process.name) == os.getpid():
             continue
@@ -673,8 +675,11 @@ def _native_fd_refs(mountpoint):
             # would wrongly classify a still-mapped model as unused.
             mappings = _read_metadata(Path(process.path) / "maps", 4 * 1024 * 1024)
             for mapping in mappings.splitlines():
-                budget["entries"] += 1
-                if budget["entries"] > _MAX_ENTRIES or time.monotonic() > budget["deadline"]:
+                # CUDA and browser processes routinely have tens of thousands
+                # of mappings. Keep their separate bounded budget rather than
+                # exhausting the process/descriptor budget on the first owner.
+                mapping_entries += 1
+                if mapping_entries > _MAX_NATIVE_MAPPINGS or time.monotonic() > budget["deadline"]:
                     raise ModelCacheVolumeError("native writer audit exceeds its bound")
                 fields = mapping.split(None, 5)
                 if len(fields) == 6:

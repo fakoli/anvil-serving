@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
-- Guarded `models cache discard` for an entirely retired local POSIX model
+- Guarded `models cache discard` for an entirely retired native Linux model
   directory or Docker volume, including incomplete downloads and shared-blob
   layouts. Apply binds the reviewed inventory and operator configuration to an
   exact fingerprint, audits consumers and locks twice, and reports uncertain

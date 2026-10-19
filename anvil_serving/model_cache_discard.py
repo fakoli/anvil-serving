@@ -141,7 +141,8 @@ def inventory(root, *, native_unlink=False):
     else:
         layout = 'flat-model'
         if ('config.json' not in records or records['config.json']['kind'] != 'file'
-                or not any('/' not in name and name.endswith('.safetensors') for name in records)):
+                or not any('/' not in name and name.endswith('.safetensors') and row['kind'] == 'file'
+                           for name, row in records.items())):
             raise Error("native directory lacks a flat model signature")
         config = json.loads(read(root / 'config.json', 1024 * 1024))
         if not isinstance(config, dict) or not isinstance(config.get('model_type'), str):
