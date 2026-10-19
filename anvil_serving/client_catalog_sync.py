@@ -2450,19 +2450,24 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               canonical_contract: bytes, dry_run: bool = True,
                               opener=None, hermes_run=subprocess.run,
                               hermes_snapshot: bool = False,
+                              hermes_run_thread_safe: bool = False,
                               read_only: str | None = None,
                               completed_job: tuple[str, str] | None = None) -> list[dict]:
     """Reconcile distinct installations in one owner reservation.
 
     ``hermes_snapshot`` requires an explicitly qualified native launcher that
     supplies the fixed six-field snapshot protocol. Failure never downgrades
-    that selected reader to separate queries.
+    that selected reader to separate queries. Its pre-apply inspection overlaps
+    at most three independent targets, including their native config checks.
+    Held-file I/O and all mutation paths stay serial. Caller-owned transports
+    stay serial unless their native runner explicitly opts into thread safety.
     """
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
     if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
             or any(type(target) is not NativeCatalogTarget for target in targets)
             or type(dry_run) is not bool or type(hermes_snapshot) is not bool
+            or type(hermes_run_thread_safe) is not bool
             or fence.owner.resource_id != "client-catalog"
             or read_only not in {None, "inspect", "completed"}
             or read_only is not None and not dry_run
@@ -2506,9 +2511,31 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
         context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
                    if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
                                                      target_paths=paths))
-    results = []
     with context as journal:
-        for target in targets:
+        parallel = (read_only == "inspect" and hermes_snapshot
+                    and opener is None and len(targets) > 1
+                    and (hermes_run is subprocess.run or hermes_run_thread_safe))
+        if parallel:
+            from threading import Lock
+            from types import SimpleNamespace
+
+            # Keep the held-directory cache on one serialized I/O path while
+            # independent scratch homes run their native checks concurrently.
+            source = journal
+            read_lock = Lock()
+
+            def read(path):
+                with read_lock:
+                    return source.read(path)
+
+            def mode(path):
+                with read_lock:
+                    return source.files.mode(path)
+
+            journal = SimpleNamespace(read=read, files=SimpleNamespace(mode=mode),
+                                      catalog_digest=source.catalog_digest)
+
+        def reconcile(target):
             result = _sync_clients(
                 base_url=base_url, clients=target.client,
                 openclaw_config=target.openclaw_config or DEFAULT_OPENCLAW_CONFIG,
@@ -2530,7 +2557,18 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                 hermes_snapshot=hermes_snapshot,
                 dry_run=dry_run, confirm=not dry_run, opener=opener,
                 journal=_ScopedCatalogJournal(journal, target.target_id))
-            results.append({"target_id": target.target_id, "result": result})
+            return {"target_id": target.target_id, "result": result}
+
+        if parallel:
+            executor = ThreadPoolExecutor(max_workers=3)
+            try:
+                results = list(executor.map(reconcile, targets))
+            finally:
+                # Every running native command must finish cleanup before the
+                # owner closes its held directories or releases the fence.
+                executor.shutdown(wait=True, cancel_futures=True)
+        else:
+            results = [reconcile(target) for target in targets]
     return results
 
 
