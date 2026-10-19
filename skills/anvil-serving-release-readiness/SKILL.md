@@ -207,6 +207,34 @@ installed CLI only as a verified fallback.
    does not prove that no state changed. Restored-clone checks must deny access
    to production state, including absolute plugin install paths, and must not
    claim broader preservation than their native checks establish.
+   For native catalog-reader changes, measure all retained profiles together
+   through the exact installed host observer, then the complete owner readback.
+   A per-profile concurrency test does not prove the aggregate readback budget.
+   Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
+   cleanup evidence and every declared target. Batch queries must preserve the
+   native resolver's defaults, profile selection, redaction and missing-key
+   behavior; parsing YAML alone is insufficient. Keep native redaction enabled
+   for metadata even when interactive CLI settings opt out;
+   operational output and receipts must never expose credential values.
+   Project only declared catalog fields; whole provider documents can carry
+   opaque credentials in headers or unrelated settings despite native masking.
+   Exclude unrelated provider rows and reject unsafe retained identifiers.
+   Exercise the snapshot-enabled fenced consumer, including protected source
+   preservation and repeat convergence; legacy-reader tests cannot prove it.
+   Qualify metadata readers with
+   an older supported profile in a disposable home and prove its complete tree
+   remains unchanged. Trap filesystem writes, helper/network calls and secret
+   loader/recovery imports in the real pinned package. Bind explicit profile
+   resolution fail closed: an unreadable named profile must never read default.
+   CLI imports and config getters can create logs/backups or run recovery even
+   without calling main; keep those effects outside metadata queries and
+   isolate the native oracle. A native resolver that silently ignores an unreadable
+   or malformed administrator overlay cannot certify convergence: require strict
+   managed-config reads, a positive effective-overlay fixture and silent refusal
+   cases, with managed environment files unopened.
+   Do not increase fixed budgets
+   or omit a target to turn a failed preview green. Requalify the consumer and
+   prepare a fresh successor rather than modifying a failed immutable packet.
 4. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is

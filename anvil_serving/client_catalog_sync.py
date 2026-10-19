@@ -1288,7 +1288,36 @@ def _read_hermes_profile(
     *,
     timeout_seconds: int,
     run,
+    snapshot: bool = False,
 ) -> dict:
+    if snapshot:
+        completed = _run_hermes(hermes_bin, profile,
+            ["config", "get", "--catalog-snapshot"],
+            timeout_seconds=timeout_seconds, run=run)
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError("duplicate snapshot field")
+            return value
+        try:
+            if (completed.returncode or not isinstance(completed.stdout, str)
+                    or len(completed.stdout) > DEFAULT_MAX_RESPONSE_BYTES
+                    or len(completed.stdout.encode("utf-8")) > DEFAULT_MAX_RESPONSE_BYTES):
+                raise ValueError("snapshot unavailable")
+            value = json.loads(completed.stdout, object_pairs_hook=unique)
+            values, missing = value["values"], value["missing"]
+            if (set(value) != {"schema", "values", "missing"}
+                    or value["schema"] != "hermes-catalog-snapshot/v1"
+                    or not isinstance(values, dict) or not isinstance(missing, list)
+                    or any(not isinstance(key, str) for key in missing)
+                    or len(set(missing)) != len(missing)
+                    or set(values) & set(missing)
+                    or set(values) | set(missing) != set(HERMES_PROFILE_KEYS)
+                    or set(missing) & {"model", "compression", "providers"}):
+                raise ValueError("snapshot shape differs")
+        except (ValueError, TypeError, KeyError, UnicodeError):
+            raise ClientCatalogError("Hermes profile %s native snapshot failed" % profile) from None
+        return {key: values.get(key) for key in HERMES_PROFILE_KEYS}
     executor = ThreadPoolExecutor(max_workers=3)
     try:
         futures = {
@@ -1540,6 +1569,7 @@ def plan_hermes_profiles(
     hermes_profiles: str,
     timeout_seconds: int,
     run=subprocess.run,
+    snapshot: bool = False,
 ) -> tuple[list[dict], dict[str, Path]]:
     configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
     rows = []
@@ -1549,6 +1579,7 @@ def plan_hermes_profiles(
             profile,
             timeout_seconds=timeout_seconds,
             run=run,
+            snapshot=snapshot,
         )
         rows.append(render_hermes_profile_plan(catalog, current, profile=profile))
     return rows, configs
@@ -1607,7 +1638,7 @@ def _apply_hermes_profile_plans(
                 )
 
 
-def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
+def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run, snapshot=False):
     """Read and render Hermes only from journal bytes in a disposable home."""
     try:
         import yaml
@@ -1735,7 +1766,7 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
                 raise ClientCatalogError("Hermes scratch config failed validation")
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
             hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
-            run=scratch_run)
+            run=scratch_run, snapshot=snapshot)
         observed_fields = ("profile", "managed", "provider", "model", "context_window",
                            "max_output_tokens", "compression", "vision_model",
                            "vision_context_window")
@@ -2418,14 +2449,21 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               environ: Mapping[str, str], fence, grant,
                               canonical_contract: bytes, dry_run: bool = True,
                               opener=None, hermes_run=subprocess.run,
+                              hermes_snapshot: bool = False,
                               read_only: str | None = None,
                               completed_job: tuple[str, str] | None = None) -> list[dict]:
-    """Reconcile distinct installations in one owner reservation."""
+    """Reconcile distinct installations in one owner reservation.
+
+    ``hermes_snapshot`` requires an explicitly qualified native launcher that
+    supplies the fixed six-field snapshot protocol. Failure never downgrades
+    that selected reader to separate queries.
+    """
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
     if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
             or any(type(target) is not NativeCatalogTarget for target in targets)
-            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"
+            or type(dry_run) is not bool or type(hermes_snapshot) is not bool
+            or fence.owner.resource_id != "client-catalog"
             or read_only not in {None, "inspect", "completed"}
             or read_only is not None and not dry_run
             or read_only == "completed" and (type(completed_job) is not tuple
@@ -2489,6 +2527,7 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                     {target.hermes_profile: Path(target.hermes_config)}
                     if target.client == "hermes" else None),
                 hermes_run=hermes_run,
+                hermes_snapshot=hermes_snapshot,
                 dry_run=dry_run, confirm=not dry_run, opener=opener,
                 journal=_ScopedCatalogJournal(journal, target.target_id))
             results.append({"target_id": target.target_id, "result": result})
@@ -2640,6 +2679,7 @@ def _sync_clients(
     refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
+    hermes_snapshot: bool = False,
     journal=None,
     expected_hermes_configs=None,
 ) -> dict:
@@ -2746,7 +2786,7 @@ def _sync_clients(
                 originals = {profile: before_images["hermes:" + profile] for profile in pinned_configs}
                 hermes_rows, rendered = _render_fenced_hermes_profiles(
                     pinned_configs, originals, catalog, hermes_bin=hermes_bin,
-                    timeout_seconds=timeout_seconds, run=hermes_run)
+                    timeout_seconds=timeout_seconds, run=hermes_run, snapshot=hermes_snapshot)
                 if any(journal.read(path) != originals[profile] for profile, path in pinned_configs.items()):
                     raise ClientCatalogError("Hermes profile changed during preview")
                 if _discover_hermes_profile_configs(hermes_home, hermes_profiles) != pinned_configs:
