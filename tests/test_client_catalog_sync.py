@@ -972,6 +972,8 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
         f"target-{index}" for index in range(1, 6)]
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
+    assert "synthetic-secret-never-argv" not in json.dumps(applied)
+    assert "synthetic-secret-never-argv" not in json.dumps(fence.journal())
     assert options["hermes_run"].sets == []
     assert all("synthetic-secret-never-argv" not in repr(argv)
                for argv in options["hermes_run"].arguments)

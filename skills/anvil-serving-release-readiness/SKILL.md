@@ -213,7 +213,10 @@ installed CLI only as a verified fallback.
    Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
    cleanup evidence and every declared target. Batch queries must preserve the
    native resolver's defaults, profile selection, redaction and missing-key
-   behavior; parsing YAML alone is insufficient. Qualify metadata readers with
+   behavior; parsing YAML alone is insufficient. Keep native redaction enabled
+   for metadata even when interactive CLI settings opt out;
+   operational output and receipts must never expose credential values.
+   Qualify metadata readers with
    an older supported profile in a disposable home and prove its complete tree
    remains unchanged. Trap filesystem writes, helper/network calls and secret
    loader/recovery imports in the real pinned package. Bind explicit profile

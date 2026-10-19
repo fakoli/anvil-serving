@@ -20,5 +20,12 @@ retained profile together. Then require complete owner readback under its
 existing time budget, with every declared target retained. Keep failed packets
 immutable and bind the newly qualified reader to a fresh successor.
 
+Operational snapshots always enable native redaction, including when ordinary
+interactive CLI settings opt out. Fenced results and journals must omit credential
+values while preserving those values in the protected source documents. The
+legacy non-fenced apply path can still serialize a changed custom-provider list
+into command arguments; that existing privacy debt needs a separate repair.
+Snapshot qualification and fenced acceptance do not certify that legacy path.
+
 Deployment identities and raw timing evidence remain in the private operator
 repository; machine and account identities are omitted from this public record.
