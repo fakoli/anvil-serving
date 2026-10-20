@@ -601,3 +601,7 @@ finding and a stable [model dossier](../models/index.md).
 ## 2026-10-16 measured dual-GPU baseline
 
 The dated GLM baseline used a dual-GPU resident serve with shared host/router traffic; it was not an isolated hardware benchmark. See [the finding](../../findings/2026-10-16-glm-natural-baseline.md).
+
+## 2026-10-19 Ignis 0.7.2
+
+Measured on one RTX PRO6000 Blackwell Max-Q: bounded C1 and short C8 tool checks passed, but the five-task coding run remained incomplete and unsuccessful. The candidate was removed and the incumbent restored. This is not a hardware capacity or performance comparison. [Finding](../../findings/2026-10-19-ignis-072.md).

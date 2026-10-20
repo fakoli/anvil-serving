@@ -1,0 +1,12 @@
+{
+  "context131072": true,
+  "download_disabled": true,
+  "host_kv_zero": true,
+  "idle_unload_zero": true,
+  "lanes8": true,
+  "mtp3": true,
+  "partial_timeout_reply": true,
+  "request_timeout_2400": true,
+  "stream_timeout_2400": true,
+  "vision_disabled": true
+}

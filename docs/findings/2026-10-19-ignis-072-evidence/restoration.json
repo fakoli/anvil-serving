@@ -1,0 +1,69 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-19-ignis-072",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "raw/restoration-verification.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-10-20T03:22:30.364432+00:00",
+    "evidence": [
+      "raw/restoration-verification.json",
+      "raw/restore-direct-preflight.json",
+      "raw/restore-routed-preflight.json"
+    ]
+  },
+  "differences": [
+    "Incumbent container recreated; runtime identity and serving settings preserved.",
+    "Restore-only automatic cache verification disabled after managed pinned-inspector inventory; original operator registry unchanged."
+  ],
+  "post_run_checks": [
+    {
+      "name": "incumbent_runtime_identity",
+      "passed": true
+    },
+    {
+      "name": "restore-direct-preflight",
+      "passed": true
+    },
+    {
+      "name": "restore-routed-preflight",
+      "passed": true
+    },
+    {
+      "name": "router_custody",
+      "passed": true
+    },
+    {
+      "name": "router_config_hash",
+      "passed": true
+    },
+    {
+      "name": "serving_mode_unchanged",
+      "passed": true
+    },
+    {
+      "name": "candidate_containers_absent",
+      "passed": true
+    },
+    {
+      "name": "other_recipe_containers_unchanged",
+      "passed": true
+    },
+    {
+      "name": "route_admission_identity_restored",
+      "passed": true
+    },
+    {
+      "name": "memory_containment",
+      "passed": true
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

@@ -308,3 +308,7 @@ it records no additional local measurement).
 `docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/source/skills/anvil-serving-benchmark-docs/SKILL.md`
 (`topology-only`: frozen publication-methodology snapshot; its hardware examples
 do not constitute another measured run).
+
+## 2026-10-19 Ignis 0.7.2
+
+`docs/findings/2026-10-19-ignis-072.md` (`measured-on`: one RTX PRO6000 Blackwell Max-Q; bounded functional/deadline checks and incomplete coding qualification; no promotion or capacity claim).

@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-19 Ignis 0.7.2
+
+| Configuration | Hardware | Result | Decision | Evidence |
+|---|---|---|---|---|
+| Qwen3.8 Flash Next, Ignis0.7.2, 131K configured, MTP3, eight lanes | 1x RTX PRO6000 Blackwell Max-Q | C1 5/5; short C8 tools8/8; SWE incomplete: one graded unresolved, four empty ungraded | `no-promotion`; incumbent restored; no performance comparison | [Finding](../findings/2026-10-19-ignis-072.md) |
+
 ## 2026-10-17 GLM NVIDIA FP4 primary promotion follow-up
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |

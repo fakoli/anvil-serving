@@ -1,0 +1,171 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-19-ignis-072",
+    "capability": "focused text and tool qualification",
+    "repository_revision": "803e44e2809fa0f9ced0480083008e89a79838d7",
+    "dirty_state": "Serving and SWE ran from committed source803e44e2; documentation and public redactions were prepared afterward in this isolated worktree.",
+    "started_at": "2026-10-20T02:07:39.245254+00:00",
+    "completed_at": "2026-10-20T03:33:18.300614+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-job-spec/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.deadline-probe-fixture-result/v1",
+    "anvil-serving.deadline-probe-provenance/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.ignis-campaign-identity/v1",
+    "anvil-serving.ignis-qualification.swe-dependency-diagnosis/v1",
+    "anvil-serving.ignis-run-plan/v1",
+    "anvil-serving.ignis-workload-manifest/v1",
+    "anvil-serving.public-copy-provenance/v1",
+    "anvil-serving.public-redaction-provenance/v1",
+    "anvil-serving.restoration-comparison/v1",
+    "anvil-serving.swe-quality-advisory/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "SANITIZATION.md",
+        "publication-matrix.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "artifact-manifest-source.json",
+        "campaign-state.json",
+        "coverage-and-gaps.md",
+        "reproduction/deadline-failure-fixture.json",
+        "reproduction/deadline-probe-offline-result.json",
+        "reproduction/deadline-probe-plan.json",
+        "reproduction/deadline-probe.toml",
+        "reproduction/deadline-provenance.json",
+        "reproduction/deadline_probe.py",
+        "run-plan.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration/candidate-reproduction.toml",
+        "configuration/effective-config.json",
+        "identity/campaign-identity-and-workload.json",
+        "identity/model-hashes.json",
+        "identity/swe-workload.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw/cold-readiness.json",
+        "raw/context-r2-progress.json",
+        "raw/contract-disconnect.json",
+        "raw/contract-long-answer.json",
+        "raw/contract-metadata.json",
+        "raw/deadline-contract.json",
+        "raw/deadline-correlation.json",
+        "raw/deadline-original-hash-ledger.json",
+        "raw/deadline-server-logs.json",
+        "raw/deadline-server-status.json",
+        "raw/deadline-unload.json",
+        "raw/preflight-c1.json",
+        "raw/preflight-c8.json",
+        "raw/preflight-long-context-r2.json",
+        "raw/preflight-long-context.json",
+        "raw/primary-candidate-unload.json",
+        "raw/protected-original-and-public-copy-hashes.json",
+        "raw/quality.json",
+        "raw/swe-artifact-r2-receipt.json",
+        "raw/swe-dependency-diagnosis.json",
+        "raw/swe-final-server-logs.json",
+        "raw/swe-quality-review.json",
+        "raw/swe-r2/artifact.json",
+        "raw/swe-r2/django/report.json",
+        "raw/swe-r2/django/test_output.txt",
+        "raw/swe-r2/evidence/0-assets.json",
+        "raw/swe-r2/evidence/0-preflight.json",
+        "raw/swe-r2/evidence/2-swe.json",
+        "raw/swe-r2/original-hash-ledger.json",
+        "raw/swe-r2-request-events.jsonl",
+        "raw/swe-stage-initial.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "raw/restoration-verification.json",
+        "raw/restore-direct-preflight.json",
+        "raw/restore-routed-preflight.json",
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate social/public communication copy was requested; the finding and evidence packet are retained."
+    }
+  ]
+}

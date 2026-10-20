@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.public-copy-provenance/v1",
+  "scope": "Protected original hashes are provenance only. Public-copy hashes bind the redacted bytes in this packet.",
+  "artifacts": {
+    "swe-final-server-logs.json": {
+      "protected_original_sha256": "4b6e832bd2e70042806c0bc6e680473f65480a1cc9c61b3240aead40a2c7a6cb",
+      "public_copy": "raw/swe-final-server-logs.json",
+      "public_copy_sha256": "a2a95bc94448030d78d93da3cd02be643f84c70b8d187e1d8e6e86d2313d9877"
+    },
+    "restore-direct-preflight.json": {
+      "protected_original_sha256": "e18c68c71b74bc787447f98f5d2289ee31b854b4173b41aa55f90bf458093e07",
+      "public_copy": "raw/restore-direct-preflight.json",
+      "public_copy_sha256": "5c5478cc95bdbb0b32de1f89a143c73b506accb81c17bf972b12ed575eaa0fe6"
+    },
+    "restore-routed-preflight.json": {
+      "protected_original_sha256": "d8b26652ebb124a2eb81a82bf5c13fcb2ec17f6d75d5680cbedf6a7618ffcaa0",
+      "public_copy": "raw/restore-routed-preflight.json",
+      "public_copy_sha256": "d8b26652ebb124a2eb81a82bf5c13fcb2ec17f6d75d5680cbedf6a7618ffcaa0"
+    }
+  }
+}

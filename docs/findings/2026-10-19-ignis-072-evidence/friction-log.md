@@ -1,0 +1,8 @@
+# Campaign friction log
+
+| Stage | Earliest actionable evidence | Immediate disposition | Durable fix-forward artifact | Verification | Status |
+|---|---|---|---|---|---|
+| quality / SWE | `raw/swe-stage-initial.json`: unsupported pinned client dependency versions before model requests | Preserve the zero-request failure and stop the attempt. | Anvil Serving source fix `803e44e2` pins the adapter client contract during harness preparation. | Corrected run terminal evidence is retained: five attempted, one official grade unresolved, four empty ungraded 60-step `LimitsExceeded` submissions. | closed for dependency mismatch; qualification remains incomplete |
+| long context | `raw/preflight-long-context.json`: one original probe failure | Preserve original native artifact and rerun the bounded probe. | `raw/preflight-long-context-r2.json` | r2 recorded two passing probes. | closed for the bounded rerun; not a full-window result |
+| deadline | Production default is configured at 2,400 seconds; a 112.120-second capped generation did not cross the prior 120-second default. | Run an isolated scaled-deadline diagnostic after SWE. | `raw/deadline-contract.json`, `raw/deadline-correlation.json` | Two-second nonstream and stream partial replies plus recovery passed. | closed for scaled diagnostic; production 2,400-second expiry unexercised |
+| restoration | Candidate containers were unloaded before incumbent restoration. | Restore through the managed incumbent recipe. | `raw/restoration-verification.json`, direct/routed preflight receipts, `raw/restoration-verification.json` | Both direct and routed five-check preflights passed; candidate containers absent. | closed |

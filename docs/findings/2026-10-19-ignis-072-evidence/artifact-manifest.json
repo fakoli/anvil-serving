@@ -1,0 +1,400 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-19-ignis-072",
+    "capability": "focused text and tool qualification",
+    "repository_revision": "803e44e2809fa0f9ced0480083008e89a79838d7",
+    "dirty_state": "Serving and SWE ran from committed source803e44e2; documentation and public redactions were prepared afterward in this isolated worktree.",
+    "started_at": "2026-10-20T02:07:39.245254+00:00",
+    "completed_at": "2026-10-20T03:33:18.300614+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-job-spec/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.deadline-probe-fixture-result/v1",
+    "anvil-serving.deadline-probe-provenance/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.ignis-campaign-identity/v1",
+    "anvil-serving.ignis-qualification.swe-dependency-diagnosis/v1",
+    "anvil-serving.ignis-run-plan/v1",
+    "anvil-serving.ignis-workload-manifest/v1",
+    "anvil-serving.public-copy-provenance/v1",
+    "anvil-serving.public-redaction-provenance/v1",
+    "anvil-serving.restoration-comparison/v1",
+    "anvil-serving.swe-quality-advisory/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "7eafa66fb4171a91319267f9c0c76adb66e65961db4d43c2a536e03a460e9e68",
+          "bytes": 545
+        },
+        {
+          "path": "SANITIZATION.md",
+          "sha256": "1bca93e14de0b077a0cc72fdd04520ef759dd0395120e8c878d0af36304ca851",
+          "bytes": 1640
+        },
+        {
+          "path": "publication-matrix.md",
+          "sha256": "c3e80b36efff423c3862bb5faf4c1150fdb6279a4bb194879090a331794df75a",
+          "bytes": 590
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "3c9020997fdb0e81189f6f44357e38d9df95e1e0054e82f2c6a7afa5fa498eda",
+          "bytes": 1748
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "ff1e5cf9250039a47cb8475c38336e963a627432093f151d7c4fd5736749fb66",
+          "bytes": 1611
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "artifact-manifest-source.json",
+          "sha256": "bdbe5a9fe7a8cee909e853e3324c33a28ea718573531bc8de314fbae216b0241",
+          "bytes": 5351
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "78e89098073e8859f2ca6d769ea0eb633b7aece4022327074fc77b9b1d91e34b",
+          "bytes": 2928
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "ebc6837e25dcba6c89ecdc59dfbc94a6ba92b5dae76e5b6579e4aeff90b28cf6",
+          "bytes": 1738
+        },
+        {
+          "path": "reproduction/deadline-failure-fixture.json",
+          "sha256": "c6c90c15851e7f1e53edf517767005e86b641e6ac98d49dac69f4f15b5cb98f8",
+          "bytes": 107
+        },
+        {
+          "path": "reproduction/deadline-probe-offline-result.json",
+          "sha256": "aee865613894d1fe011bb0f3cb1e60f699460bb95f3eb4209e7b25e7d857e9e7",
+          "bytes": 359
+        },
+        {
+          "path": "reproduction/deadline-probe-plan.json",
+          "sha256": "a86486dba80eb87f74556689f3453867b5c03479a5f864f7b931e90476c8cca1",
+          "bytes": 1594
+        },
+        {
+          "path": "reproduction/deadline-probe.toml",
+          "sha256": "01b8cfcf6b5bbcffa6cf6bedf844882241cf39c9fb0d1ed7d2909967fbf96dbf",
+          "bytes": 2194
+        },
+        {
+          "path": "reproduction/deadline-provenance.json",
+          "sha256": "dfaef568cff8b5f91f1c8c998c3de69721cc81a5c04d499cd25293d60b2e27a5",
+          "bytes": 778
+        },
+        {
+          "path": "reproduction/deadline_probe.py",
+          "sha256": "0d877c50e9176b74dc351b800fd20656b278f39531fdafc91a2154911d078af1",
+          "bytes": 3470
+        },
+        {
+          "path": "run-plan.json",
+          "sha256": "44d69b99740a63aebdddfd4749a238d250c8217fdf98242e1eb4f8225739256a",
+          "bytes": 1617
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration/candidate-reproduction.toml",
+          "sha256": "ccc1fa3aa043127d173e938705adf3eee116eceb5dc6175b3911e1ca468d7cc8",
+          "bytes": 2131
+        },
+        {
+          "path": "configuration/effective-config.json",
+          "sha256": "6bc2c6c4e38f46dd21c186b34f4b227c33b721d53c38689899c57c52454a839a",
+          "bytes": 266
+        },
+        {
+          "path": "identity/campaign-identity-and-workload.json",
+          "sha256": "0d2e8b320f09821d41676911ffca105ca7c96fafeb1fdfb5fc63cfaa0c56592e",
+          "bytes": 1536
+        },
+        {
+          "path": "identity/model-hashes.json",
+          "sha256": "68cde02bcc5b195813f2f0f2b1262acc094045ade3f1ccd7c6cf221011bb1ea1",
+          "bytes": 384
+        },
+        {
+          "path": "identity/swe-workload.json",
+          "sha256": "77e0863a7e6daefe0c62ecd2aa1853c4171dfb1ab97612110d1b9c0d2cd253a5",
+          "bytes": 5526
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/cold-readiness.json",
+          "sha256": "816b156a175e7837d2a09127a41d359c0d8e6d452572caf6054b0c3e5cb6f357",
+          "bytes": 1753
+        },
+        {
+          "path": "raw/context-r2-progress.json",
+          "sha256": "e4d049741a39f068ec4863b14362ba70369d1cea074538976739a5039689a8db",
+          "bytes": 7381
+        },
+        {
+          "path": "raw/contract-disconnect.json",
+          "sha256": "090aba536969690b56c01452bd7a50c799d453eb1900a3a1c55e830116bbb50e",
+          "bytes": 11393
+        },
+        {
+          "path": "raw/contract-long-answer.json",
+          "sha256": "4630c0e54b927978002a75f824a0186c1146d3f7eb060976f78c5ed6697d4fa8",
+          "bytes": 78737
+        },
+        {
+          "path": "raw/contract-metadata.json",
+          "sha256": "a6912eba5181218293f6982c15f6c415c944e81f91ac8fc7e1f1be6400a4f64a",
+          "bytes": 6985
+        },
+        {
+          "path": "raw/deadline-contract.json",
+          "sha256": "176a20c9358d2285b0231d1c476d3d6adc1654440261e39abb857dc04abb8fb3",
+          "bytes": 59884
+        },
+        {
+          "path": "raw/deadline-correlation.json",
+          "sha256": "d27352ffd96f5d13c1fc09357e7ab254c28ed3b91be381246ba38ed60a494679",
+          "bytes": 2827
+        },
+        {
+          "path": "raw/deadline-original-hash-ledger.json",
+          "sha256": "119e8e45a8c6c7101b7635602713b55eb51db3a12337b643a11a98a93353219f",
+          "bytes": 1318
+        },
+        {
+          "path": "raw/deadline-server-logs.json",
+          "sha256": "cdda9cd5d976694dd9fabaaf5cb6b100c87fd1489f55d2f61e4b1a1769cd142f",
+          "bytes": 15230
+        },
+        {
+          "path": "raw/deadline-server-status.json",
+          "sha256": "13a428e8943a70f9839ac1d393e0760b4ea66867050551ae8c4dc80526537bac",
+          "bytes": 1721
+        },
+        {
+          "path": "raw/deadline-unload.json",
+          "sha256": "a07ed86d297373ff9f01bcd02694326611c4f4861b193fd04e35859b4ed08330",
+          "bytes": 781
+        },
+        {
+          "path": "raw/preflight-c1.json",
+          "sha256": "b081fb26b92a753e909cdf109a769de0faa0432e7d7ba12ee1ca756d89f9b327",
+          "bytes": 6417
+        },
+        {
+          "path": "raw/preflight-c8.json",
+          "sha256": "99dd412a442aa8213f01460440994642255f7a6fe80beaa402990901a6838a3c",
+          "bytes": 6791
+        },
+        {
+          "path": "raw/preflight-long-context-r2.json",
+          "sha256": "335f9e4d9b27c12e1a014d9a9e2d8c5a32f17eef68cf7902181cbc59bebf9309",
+          "bytes": 2922
+        },
+        {
+          "path": "raw/preflight-long-context.json",
+          "sha256": "6fa0cea489c252dd4387c1fc8e62a24cfd681b5d757fde69e9822937fd7a7ab9",
+          "bytes": 2868
+        },
+        {
+          "path": "raw/primary-candidate-unload.json",
+          "sha256": "13e866b0a333d85faac22248396304dcae017f44ae2acfd4de24e466e3378d8d",
+          "bytes": 775
+        },
+        {
+          "path": "raw/protected-original-and-public-copy-hashes.json",
+          "sha256": "dcbd41ecbd6bd3c907fe540f7468f51d6506997281d55bd53343639657486a92",
+          "bytes": 1099
+        },
+        {
+          "path": "raw/quality.json",
+          "sha256": "62e2f92fafd22e16b56ac51c769507ffa468491d1413be342fdda418cda50d99",
+          "bytes": 28045
+        },
+        {
+          "path": "raw/swe-artifact-r2-receipt.json",
+          "sha256": "17da85281ba37adbf3d83c265640fa65f7b5a7103d54e013e7da17a305bf3936",
+          "bytes": 4005
+        },
+        {
+          "path": "raw/swe-dependency-diagnosis.json",
+          "sha256": "13ce27771e0d0896cbd50a3d037d8ee94b04e2a5cccd1e6d3b1bbba70ed9407c",
+          "bytes": 2384
+        },
+        {
+          "path": "raw/swe-final-server-logs.json",
+          "sha256": "a2a95bc94448030d78d93da3cd02be643f84c70b8d187e1d8e6e86d2313d9877",
+          "bytes": 547681
+        },
+        {
+          "path": "raw/swe-quality-review.json",
+          "sha256": "dfa3151dd3cb03db2c4b16490d61d417bfb1c51bba29a11938640a273b183842",
+          "bytes": 10753
+        },
+        {
+          "path": "raw/swe-r2/artifact.json",
+          "sha256": "06f45aad988d76ac7b11fa0d8e2c3878b58136fc9c4277eb4abb251d4f12f562",
+          "bytes": 3024
+        },
+        {
+          "path": "raw/swe-r2/django/report.json",
+          "sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943",
+          "bytes": 3705
+        },
+        {
+          "path": "raw/swe-r2/django/test_output.txt",
+          "sha256": "6377f5390800ea20f7db95100f86ef3d80cc974c6afcfad8864432746c50e744",
+          "bytes": 19084
+        },
+        {
+          "path": "raw/swe-r2/evidence/0-assets.json",
+          "sha256": "12e70a7235f38ff5559847f50b786304b7d81473067fbc091c9c5638a456fcf7",
+          "bytes": 9891
+        },
+        {
+          "path": "raw/swe-r2/evidence/0-preflight.json",
+          "sha256": "792f7f31f75cd9d7237c788a59da5ce37937308f0fec5e835142b7a0fcd01639",
+          "bytes": 1971
+        },
+        {
+          "path": "raw/swe-r2/evidence/2-swe.json",
+          "sha256": "033fd7dc5a249ff8c19006a8ed8b358f7d6d80a0562e3829570ea06c22b53911",
+          "bytes": 660161
+        },
+        {
+          "path": "raw/swe-r2/original-hash-ledger.json",
+          "sha256": "f0c4bc498ed97eec4924f8415fc6ccac6f51dec89e333821125e6b6574519c8d",
+          "bytes": 848
+        },
+        {
+          "path": "raw/swe-r2-request-events.jsonl",
+          "sha256": "df7c35b401bb1402ee95ecba97fa1c0aa418ce9ae595e0d1282d923bdad8fab4",
+          "bytes": 448096
+        },
+        {
+          "path": "raw/swe-stage-initial.json",
+          "sha256": "5e834b5f76c9dae2a27b5e2edc439f60d84ed91d968b0d5137bf442396f02bbb",
+          "bytes": 9032
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "f555bbe6eaeb9b644da5c0dab8da905f5dceabdc311f7f6cbec75139820bb924",
+          "bytes": 1686
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/restoration-verification.json",
+          "sha256": "a2986433a6b7b994a718f27dca5f688f59ace3ad1b18adfa13ebc36a53dfedbf",
+          "bytes": 4553
+        },
+        {
+          "path": "raw/restore-direct-preflight.json",
+          "sha256": "5c5478cc95bdbb0b32de1f89a143c73b506accb81c17bf972b12ed575eaa0fe6",
+          "bytes": 7790
+        },
+        {
+          "path": "raw/restore-routed-preflight.json",
+          "sha256": "d8b26652ebb124a2eb81a82bf5c13fcb2ec17f6d75d5680cbedf6a7618ffcaa0",
+          "bytes": 7403
+        },
+        {
+          "path": "restoration.json",
+          "sha256": "1d0ecda44ca58bfb4b470f241eac93c38300d3c82cbf519f85e29d1cc2bd2230",
+          "bytes": 1607
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "391dd066f4f5566012591a464974723c31d14cb3a8f1af4428d5b3c808c58da8",
+          "bytes": 2517
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate social/public communication copy was requested; the finding and evidence packet are retained."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

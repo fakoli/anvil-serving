@@ -1,0 +1,27 @@
+{
+  "command": "eval benchmark swe artifact --run-id ignis-072-swe5-20261019-r2",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\"data\":{\"created_at\":\"2026-10-20T03:10:11.071613Z\",\"failure\":{\"class\":\"resource_exhaustion\",\"code\":\"budget_exhausted\",\"message\":\"benchmark suite did not complete\"},\"partial\":true,\"provenance\":{\"endpoint\":{\"base_url\":\"http://127.0.0.1:30000/v1\",\"model\":\"qwen3.8-flash-next\"},\"finished_at\":\"2026-10-20T03:10:11.071313Z\",\"started_at\":\"2026-10-20T02:32:45.186545Z\",\"submitted_at\":\"2026-10-20T02:32:18.703766Z\",\"worker\":{\"id\":\"local-benchmark\"}},\"results\":{\"evidence\":{\"completeness\":\"failed\",\"created_at\":\"2026-10-20T03:10:11.060770Z\",\"evidence_kind\":\"measured\",\"failure\":{\"class\":\"resource_exhaustion\",\"code\":\"budget_exhausted\",\"message\":\"benchmark suite did not complete\"},\"identities\":{\"concurrency\":{\"requests\":1,\"workers\":1},\"context\":{\"configured_tokens\":131072},\"dataset\":{\"name\":\"princeton-nlp/SWE-bench_Verified\",\"revision\":\"c104f840cc67f8b6eec6f759ebc8b2693d585d4a\",\"split\":\"test\"},\"hardware\":{\"gpu\":\"1x RTX PRO 6000 Blackwell Max-Q\",\"vram_mib_per_gpu\":97887},\"harnesses\":{\"mini-swe-agent\":{\"revision\":\"a83fcae82d2a08f0ee0c688f9d137b3566c097f8\"}},\"image\":{\"reference\":\"ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db\"},\"model\":{\"artifact_sha256\":\"12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864\",\"mtp_artifact\":\"qwen3_8_flash_next_mtp_3p0-v2.ninfer\",\"mtp_artifact_sha256\":\"432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2\",\"repository\":\"gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis\",\"revision\":\"f75e492c6d726537a4d4c85858bc91ee06a070ef\"},\"runtime\":{\"engine\":\"Ignis\",\"version\":\"0.7.2\"},\"served_model\":{\"configured_context\":131072,\"id\":\"qwen3.8-flash-next\"},\"topology\":{\"kind\":\"co-resident-benchmark-client\",\"worker_id\":\"local-benchmark\"}},\"promotion\":{\"authorized\":false,\"message\":\"Benchmark evidence does not authorize model promotion; promotion is a separate human decision.\"},\"run\":{\"ownership_id\":\"ignis-072-qualification-20261019\",\"profile\":\"scout\",\"run_id\":\"ignis-072-swe5-20261019-r2\",\"spec_sha256\":\"761ccce08e803bbf41797ddb528106d563e88c48dd504673180e9dc15b94964c\",\"suite\":\"swe\"},\"schema\":\"anvil-serving.benchmark-evidence/v1\",\"stages\":[{\"evidence\":[{\"bytes\":11034,\"path\":\"evidence/0-assets.json\",\"sha256\":\"d786edbc4889cdbee96e91ce8e23553d204b8f5cb150cfcffb946127b25128c2\"}],\"name\":\"asset_preparation\",\"sequence\":0,\"status\":\"completed\"},{\"evidence\":[{\"bytes\":1971,\"path\":\"evidence/0-preflight.json\",\"sha256\":\"b8de2fa74e259860f999be9cb639a790ca06e1e127e4d15edf4141da5e0e8306\"}],\"name\":\"preflight\",\"sequence\":1,\"status\":\"completed\"},{\"evidence\":[{\"bytes\":664868,\"path\":\"evidence/2-swe.json\",\"sha256\":\"51051dac9d8175229b995e06224093abb6cfd2b8f5f23d8638758efff5e83537\"}],\"name\":\"swe\",\"sequence\":2,\"status\":\"failed\"}],\"summary\":{\"attempted\":true,\"completed\":false}}},\"run\":{\"ownership_id\":\"ignis-072-qualification-20261019\",\"profile\":\"scout\",\"run_id\":\"ignis-072-swe5-20261019-r2\",\"spec_sha256\":\"761ccce08e803bbf41797ddb528106d563e88c48dd504673180e9dc15b94964c\",\"suite\":\"swe\"},\"schema\":\"anvil-serving.benchmark-result/v1\",\"status\":\"failed\"},\"ok\":true}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}
