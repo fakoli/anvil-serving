@@ -103,14 +103,14 @@ def responses_request(base, model, prompt, key=None, max_tokens=256,
 
 
 def chat_stream(base, model, messages, key=None, max_tokens=256, tools=None,
-                tool_choice=None, chat_template_kwargs=None, timeout=900):
+                tool_choice=None, chat_template_kwargs=None, timeout=900, temperature=0.0):
     """Read a bounded Chat Completions SSE stream and retain parsed events."""
     url = base.rstrip("/") + "/chat/completions"
     body = {
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": 0.0,
+        "temperature": temperature,
         "stream": True,
         "stream_options": {"include_usage": True},
     }
@@ -328,7 +328,7 @@ def _evidence_note(observation):
     )
 
 def t_needle(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
-             reasoning_effort=None, evidence=None, timeout=900):
+             reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
     secret = "ZEBRA-42917-QUARTZ"
     line = "The engineers continued routine checks while the telemetry stayed nominal. "
     words = int(ctx_tokens * 0.75)
@@ -341,7 +341,7 @@ def t_needle(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
         resp, dt = _request_with_evidence(
             evidence, "needle", key, chat, base, model, msgs, key,
             max_tokens=max_tokens, chat_template_kwargs=ctk,
-            reasoning_effort=reasoning_effort, timeout=timeout,
+            reasoning_effort=reasoning_effort, timeout=timeout, temperature=temperature,
         )
         obs = _capture(evidence, "needle", resp, dt)
         out = resp["choices"][0]["message"].get("content") or ""
@@ -392,7 +392,7 @@ def validate_tool_call(message, expected_name="get_weather", required_args=None)
     return True, f"valid tool_call {expected_name}({shown})"
 
 def t_tool_one(base, model, key, shared_prefix, ctk=None, max_tokens=256,
-               reasoning_effort=None, evidence=None, request_index=None, timeout=900):
+               reasoning_effort=None, evidence=None, request_index=None, timeout=900, temperature=0.0):
     msgs = [{"role": "system", "content": shared_prefix},
             {"role": "user", "content": "What's the weather in Oakland? Use the tool."}]
     try:
@@ -400,7 +400,7 @@ def t_tool_one(base, model, key, shared_prefix, ctk=None, max_tokens=256,
             evidence, "tools", key, chat, base, model, msgs, key,
             max_tokens=max_tokens, tools=TOOLS, tool_choice="auto",
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout, request_index=request_index,
+            timeout=timeout, temperature=temperature, request_index=request_index,
         )
         obs = _capture(evidence, "tools", resp, dt, request_index)
         m = resp["choices"][0]["message"]
@@ -411,13 +411,13 @@ def t_tool_one(base, model, key, shared_prefix, ctk=None, max_tokens=256,
         return False, f"error: {e}"
 
 def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
-                 reasoning_effort=None, evidence=None, timeout=900):
+                 reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
     # big stable shared prefix to exercise prefix cache + reproduce fan-out
     shared = ("You are a coding specialist agent. Follow the harness contract.\n" * 400)
     oks = []
     with ThreadPoolExecutor(max_workers=n) as ex:
         futs = [ex.submit(t_tool_one, base, model, key, shared, ctk, max_tokens,
-                          reasoning_effort, evidence, index, timeout) for index in range(n)]
+                          reasoning_effort, evidence, index, timeout, temperature) for index in range(n)]
         details = []
         for f in as_completed(futs):
             ok, d = f.result(); oks.append(ok); details.append(d)
@@ -426,7 +426,7 @@ def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
 
 
 def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
-                reasoning_effort=None, evidence=None, timeout=900):
+                reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
     """Require a valid tool call with at least 100K measured prompt tokens."""
     line = "Archived repository telemetry remained nominal during this interval. "
     words = int(ctx_tokens * 0.75)
@@ -448,7 +448,7 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
             tool_choice="auto",
             chat_template_kwargs=ctk,
             reasoning_effort=reasoning_effort,
-            timeout=timeout,
+            timeout=timeout, temperature=temperature,
         )
         observation = _capture(evidence, "long-tools", response, seconds)
         message = response["choices"][0]["message"]
@@ -477,7 +477,7 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
 
 
 def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
-                     evidence=None, timeout=900):
+                     evidence=None, timeout=900, temperature=0.0):
     """Require one valid tool call reconstructed from an SSE stream."""
     messages = [{
         "role": "user",
@@ -487,7 +487,7 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
         events, done, seconds = _request_with_evidence(
             evidence, "streaming-tools", key, chat_stream,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
-            tool_choice="auto", chat_template_kwargs=ctk, timeout=timeout,
+            tool_choice="auto", chat_template_kwargs=ctk, timeout=timeout, temperature=temperature,
         )
         calls = {}
         finish_reason = None
@@ -546,7 +546,7 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
 
 
 def t_tool_result(base, model, key, ctk=None, max_tokens=256,
-                  reasoning_effort=None, evidence=None, timeout=900):
+                  reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
     """Complete a tool-call, tool-result, final-answer exchange."""
     messages = [{
         "role": "user",
@@ -557,7 +557,7 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
             evidence, "tool-result-initial", key, chat,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
             tool_choice="auto", chat_template_kwargs=ctk,
-            reasoning_effort=reasoning_effort, timeout=timeout,
+            reasoning_effort=reasoning_effort, timeout=timeout, temperature=temperature,
         )
         first_obs = _capture(evidence, "tool-result-initial", first, first_seconds)
         assistant = first["choices"][0]["message"]
@@ -586,7 +586,7 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
             evidence, "tool-result-continuation", key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout,
+            timeout=timeout, temperature=temperature,
         )
         final_obs = _capture(
             evidence, "tool-result-continuation", final, final_seconds
@@ -609,13 +609,13 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
 
 
 def t_responses(base, model, key, ctk=None, max_tokens=256,
-                evidence=None, timeout=900):
+                evidence=None, timeout=900, temperature=0.0):
     """Require a visible completed answer from the stateless Responses subset."""
     try:
         response, seconds = _request_with_evidence(
             evidence, "responses", key, responses_request,
             base, model, "Reply with exactly READY", key,
-            max_tokens=max_tokens, chat_template_kwargs=ctk, timeout=timeout,
+            max_tokens=max_tokens, chat_template_kwargs=ctk, timeout=timeout, temperature=temperature,
         )
         text_parts = []
         reasoning = ""
@@ -660,13 +660,13 @@ def t_responses(base, model, key, ctk=None, max_tokens=256,
 
 
 def t_json(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
-           evidence=None, timeout=900):
+           evidence=None, timeout=900, temperature=0.0):
     msgs = [{"role": "user", "content": 'Return ONLY a JSON object: {"language":"python","ok":true}. No prose.'}]
     try:
         resp, dt = _request_with_evidence(
             evidence, "json", key, chat, base, model, msgs, key,
             max_tokens=max_tokens, chat_template_kwargs=ctk,
-            reasoning_effort=reasoning_effort, timeout=timeout,
+            reasoning_effort=reasoning_effort, timeout=timeout, temperature=temperature,
         )
         obs = _capture(evidence, "json", resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "").strip()
@@ -679,13 +679,13 @@ def t_json(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
         return False, f"error: {e}"
 
 def t_smoke(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
-            evidence=None, timeout=900):
+            evidence=None, timeout=900, temperature=0.0):
     msgs = [{"role": "user", "content": "Write a Python one-liner that returns the sum of a list `xs`."}]
     try:
         resp, dt = _request_with_evidence(
             evidence, "smoke", key, chat, base, model, msgs, key,
             max_tokens=max_tokens, chat_template_kwargs=ctk,
-            reasoning_effort=reasoning_effort, timeout=timeout,
+            reasoning_effort=reasoning_effort, timeout=timeout, temperature=temperature,
         )
         obs = _capture(evidence, "smoke", resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "")
@@ -698,7 +698,7 @@ def t_smoke(base, model, key, ctk=None, max_tokens=256, reasoning_effort=None,
 
 def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
                  check, ctk=None, max_tokens=256, reasoning_effort=None,
-                 evidence=None, timeout=900):
+                 evidence=None, timeout=900, temperature=0.0):
     prompts = {
         "image": (
             "Inspect this image. Describe what it shows and report the most "
@@ -718,7 +718,7 @@ def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
             evidence, check, key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout,
+            timeout=timeout, temperature=temperature,
         )
         obs = _capture(evidence, check, resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "")
@@ -745,7 +745,7 @@ def t_multimodal(base, model, key, data_url, image_identity, expectations, *,
 
 def t_video(base, model, key, data_url, video_identity, expectations, *,
             ctk=None, max_tokens=256, reasoning_effort=None, evidence=None,
-            timeout=900):
+            timeout=900, temperature=0.0):
     """Run one bounded OpenAI ``video_url`` correctness probe."""
     messages = [{"role": "user", "content": [
         {"type": "video_url", "video_url": {"url": data_url}},
@@ -759,7 +759,7 @@ def t_video(base, model, key, data_url, video_identity, expectations, *,
             evidence, "video", key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout,
+            timeout=timeout, temperature=temperature,
         )
         obs = _capture(evidence, "video", resp, dt)
         out = (resp["choices"][0]["message"].get("content") or "")
@@ -819,6 +819,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     recipe.add_argument("--registry", help="serve-recipe registry used with --recipe")
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
+    ap.add_argument("--temperature", type=float, default=0.0,
+                    help="sampling temperature, 0..2 (default: 0)")
     ap.add_argument("--needle-ctx", type=int, default=128000)
     ap.add_argument("--long-tool-ctx", type=int, default=131072,
                     help="nominal filler target for the >=100K prompt tool-call gate")
@@ -884,6 +886,8 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         ap.error("--long-tool-ctx must be from 100000 through 1000000")
     if not 1 <= a.tool_batch <= 128:
         ap.error("--tool-batch must be from 1 through 128")
+    if not 0 <= a.temperature <= 2:
+        ap.error("--temperature must be from 0 through 2")
     if not 0 < a.timeout <= 3600:
         ap.error("--timeout must be greater than 0 and at most 3600 seconds")
     try:
@@ -958,6 +962,7 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
             "checks": selected,
             "thinking": {"mode": a.thinking_mode, "chat_template_kwargs": ctk,
                          "reasoning_effort": a.reasoning_effort},
+            "sampling": {"temperature": a.temperature},
             "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                        "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                        "max_completion_tokens": max_tokens},
@@ -972,38 +977,39 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         }, indent=2, sort_keys=True, ensure_ascii=True))
         return 0
     available = {
-        "smoke": ("smoke (short coding)", lambda: t_smoke(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
-        "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
-        "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
-        "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout)),
+        "smoke": ("smoke (short coding)", lambda: t_smoke(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
+        "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
+        "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
+        "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
         "long-tools": (f"tool call after >=100K prompt (target {a.long_tool_ctx})", lambda: t_long_tool(
             a.base_url, a.model, api_key, a.long_tool_ctx, ctk, max_tokens,
-            a.reasoning_effort, evidence, a.timeout,
+            a.reasoning_effort, evidence, a.timeout, a.temperature,
         )),
         "streaming-tools": ("streaming tool call", lambda: t_streaming_tool(
-            a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
+            a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout, a.temperature,
         )),
         "tool-result": ("tool-result continuation", lambda: t_tool_result(
             a.base_url, a.model, api_key, ctk, max_tokens,
-            a.reasoning_effort, evidence, a.timeout,
+            a.reasoning_effort, evidence, a.timeout, a.temperature,
         )),
         "responses": ("Responses API subset", lambda: t_responses(
             a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
+            a.temperature,
         )),
         "image": ("general image understanding", lambda: t_multimodal(
             a.base_url, a.model, api_key, image_data, image_identity,
             a.image_expect, check="image", ctk=ctk, max_tokens=max_tokens,
-            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout, temperature=a.temperature,
         )),
         "ocr": ("verbatim image OCR", lambda: t_multimodal(
             a.base_url, a.model, api_key, image_data, image_identity,
             a.ocr_expect, check="ocr", ctk=ctk, max_tokens=max_tokens,
-            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout, temperature=a.temperature,
         )),
         "video": ("bounded video understanding", lambda: t_video(
             a.base_url, a.model, api_key, video_data, video_identity,
             a.video_expect, ctk=ctk, max_tokens=max_tokens,
-            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout,
+            reasoning_effort=a.reasoning_effort, evidence=evidence, timeout=a.timeout, temperature=a.temperature,
         )),
     }
     tests = [available[name] for name in selected]
@@ -1045,6 +1051,7 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "schema_version": "preflight/v2", "base_url": a.base_url, "model": a.model,
         "thinking": {"mode": a.thinking_mode, "chat_template_kwargs": ctk,
                      "reasoning_effort": a.reasoning_effort},
+        "sampling": {"temperature": a.temperature},
         "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                    "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                    "max_completion_tokens": max_tokens},

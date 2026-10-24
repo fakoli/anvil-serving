@@ -61,6 +61,21 @@ def commands() -> CommandNode:
                 "Manage recorded serve recipes.",
                 children=(
                     _resource_node(
+                        "trace-artifacts",
+                        "Inspect or export a stopped recipe's diagnostic traces.",
+                        "anvil_serving.recipe_trace",
+                        role="model-serve",
+                        execution_host_os=("linux",),
+                        argv_prefix=(),
+                        options=(
+                            _option("--container", summary="Exact recipe container name.", value_name="NAME"),
+                            _option("--retained-volume", summary="Read a declared trace volume only after all containers detach."),
+                            _option("--registry", summary="Exact recipe registry.", value_name="PATH"),
+                            _option("--output", summary="New export directory; omit for metadata inventory.", value_name="PATH"),
+                        ),
+                        docs_anchor="docs/cli/recipe-traces.md",
+                    ),
+                    _resource_node(
                         "list",
                         "List recorded serve recipes.",
                         "anvil_serving.models",

@@ -8,6 +8,12 @@ Run `eval preflight` before benchmarking a new serve or changed engine recipe.
 It checks the explicit endpoint and served-model identifier without changing
 the gateway's alias map.
 
+Use `--temperature 1` when the endpoint requires nonzero sampling. The default
+is 0; finite values from 0 through 2 are accepted. Every probe uses the selected
+value, and both the dry-run plan and result record it under `sampling`.
+The control-plane `preflight_probe` MCP tool accepts the same `temperature`
+range and forwards it to this command.
+
 With `--output`, failed request attempts remain in the `preflight/v2`
 `observations` list with `status: request_failed`, `passed: false`, elapsed
 `seconds`, `error_type`, and `error_message`. The shared operator redactor
