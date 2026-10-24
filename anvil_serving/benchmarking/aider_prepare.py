@@ -84,12 +84,64 @@ def _build_files(context):
 def _environment_digest(root):
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
-        if (path.name == "environment.json" or "__pycache__" in path.parts or
-                path.suffix == ".pyc" or not path.is_file()):
+        relative = path.relative_to(root)
+        if relative.as_posix() == "environment.json":
             continue
-        digest.update(path.relative_to(root).as_posix().encode())
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        if path.is_symlink():
+            # Venv interpreter links may name the base Python; other links must
+            # remain in this environment (including the usual lib64 -> lib).
+            interpreter = relative.parent == Path("bin") and re.fullmatch(r"python(?:3(?:\.12)?)?", relative.name)
+            if not path.resolve(strict=True).is_relative_to(root.resolve()) and not interpreter:
+                _fail("Aider Python environment contains an external link")
+            digest.update(canonical_json_bytes([relative.as_posix(), "symlink", os.readlink(path)]))
+        if path.is_file():
+            digest.update(canonical_json_bytes([relative.as_posix(), "file", path.stat().st_mode & 0o777]))
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+        elif not path.is_dir():
+            _fail("Aider Python environment contains a non-regular file")
     return digest.hexdigest()
+
+
+def _python_identity():
+    return {"schema": AIDER_PYTHON_ENVIRONMENT_SCHEMA, "source_version": SOURCE_VERSION_METADATA,
+            "python_minor": "3.12", "platform": platform.system().lower(),
+            "architecture": platform.machine().lower(),
+            "sources": {"aider": {"source": "https://github.com/Aider-AI/aider", "revision": AIDER_REVISION}}}
+
+
+def verify_aider_python_environment(environment, *, cache_root):
+    """Bind the receipt to actual executable bytes, without running cached code."""
+    if not isinstance(environment, dict):
+        _fail("Aider Python environment receipt is absent")
+    identity = _python_identity()
+    key = "aider-python-environments/" + _digest(identity)
+    packages = environment.get("resolved_packages")
+    if (environment.get("identity") != identity or any(environment.get(k) != v for k, v in identity.items())
+            or not isinstance(environment.get("python"), dict)
+            or not re.fullmatch(r"3\.12\.[0-9]+", str(environment.get("python", {}).get("version", "")))
+            or environment.get("schema") != AIDER_PYTHON_ENVIRONMENT_SCHEMA
+            or environment.get("cache_key") != key or environment.get("executable") != "bin/python"
+            or not isinstance(packages, list) or not packages or not all(isinstance(p, str) for p in packages)
+            or environment.get("resolved_packages_sha256") != _digest(packages)
+            or not re.fullmatch(r"[0-9a-f]{64}", str(environment.get("files_sha256", "")))):
+        _fail("Aider Python environment receipt identity changed")
+    root = Path(cache_root).resolve()
+    target = root / key
+    try:
+        if any(p.is_symlink() for p in (target, target.parent)):
+            _fail("Aider Python environment cache path is a symlink")
+        lock_path = target / "environment.json"
+        python = target / "bin/python"
+        if (not target.is_dir() or lock_path.is_symlink() or not lock_path.is_file()
+                or lock_path.stat().st_size > 1024**2 or not python.is_file()):
+            _fail("Aider Python environment has no valid receipt or interpreter")
+        lock = json.loads(lock_path.read_text())
+        recorded = {k: v for k, v in environment.items() if k not in {"cache_key", "executable", "reused"}}
+        if lock != recorded or environment["files_sha256"] != _environment_digest(target):
+            _fail("Aider Python environment bytes or receipt changed")
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise BenchmarkJobError("aider_preparation_mismatch", "Aider Python environment could not be verified") from exc
+    return str(python)
 
 
 def _digest(value):
@@ -174,11 +226,7 @@ def _checked(runner, command, logs, *, cwd=None, timeout=1800):
 
 
 def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
-    identity = {"schema": AIDER_PYTHON_ENVIRONMENT_SCHEMA,
-                "source_version": SOURCE_VERSION_METADATA,
-                "python_minor": "3.12", "platform": platform.system().lower(),
-                "architecture": platform.machine().lower(),
-                "sources": {"aider": {"source": assets["aider"]["source"], "revision": AIDER_REVISION}}}
+    identity = _python_identity()
     key = "aider-python-environments/" + _digest(identity)
     target = _cache_target(cache_root, key)
     lock_path = target / "environment.json"
@@ -188,8 +236,10 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
             lock = json.loads(lock_path.read_text())
         except (OSError, ValueError):
             _fail("cached Aider Python environment has no complete receipt")
-        version = _checked(runner, (python, "-I", "-c", "import platform; print(platform.python_version())"), logs)
-        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
+        python = verify_aider_python_environment(
+            {**lock, "cache_key": key, "executable": "bin/python", "reused": True}, cache_root=cache_root)
+        version = _checked(runner, (python, "-I", "-B", "-c", "import platform; print(platform.python_version())"), logs)
+        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
         if (lock.get("identity") != identity or lock.get("python", {}).get("version") != version or
                 not version.startswith("3.12.") or lock.get("resolved_packages") != inventory or
                 lock.get("resolved_packages_sha256") != _digest(inventory) or
@@ -210,7 +260,7 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
         _checked(runner, ("env", SCM_VERSION_ASSIGNMENT, python, "-I", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--no-input",
                           str(build_source) + "[dev]"), logs, cwd=str(target))
         version = _checked(runner, (python, "-I", "-c", "import platform; print(platform.python_version())"), logs)
-        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
+        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
         installed_version = _checked(runner, (python, "-I", "-c",
             "from importlib.metadata import version; print(version('aider-chat'))"), logs)
         if not version.startswith("3.12.") or not inventory or installed_version != AIDER_SOURCE_VERSION:

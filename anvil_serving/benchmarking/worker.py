@@ -222,8 +222,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     assets = None
     preflight = None
     try:
-        admission = validate_submission_spec(spec)
         profile = load_profile(spec["profile"])
+        admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
         if "budgets" in admission:
             stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
         if spec.get("parameters", {}).get("operation") == "regrade":

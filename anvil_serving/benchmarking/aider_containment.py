@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import uuid
 
@@ -18,7 +19,9 @@ from .jobs import BenchmarkJobError, resolve_owned_run_path
 
 MAX_OUTPUT_BYTES = 1024 * 1024
 _LABEL = "anvil.aider."
-_TMPFS = "rw,nosuid,nodev,noexec,size=1g"
+_TMPFS = "rw,nosuid,nodev,noexec,size=1g,nr_inodes=16384,mode=1777"
+_TASK_TMPFS = "rw,nosuid,nodev,size=4g,nr_inodes=65536,mode=1777"
+_COPY_INPUT = "cp -R -- /input/. /task/ || exit\n"
 _ENV_KEYS = {"PATH", "HOME", "LANG", "LC_ALL", "JAVA_HOME", "GOPATH", "CARGO_HOME",
              "RUSTUP_HOME", "GRADLE_USER_HOME", "PYTHONUNBUFFERED", "DEBIAN_FRONTEND", "NODE_PATH"}
 
@@ -118,7 +121,7 @@ def _isolated(observed, record):
     required = {"NetworkMode": "none", "ReadonlyRootfs": True, "Privileged": False,
                 "CapDrop": ["ALL"], "SecurityOpt": ["no-new-privileges:true"],
                 "Memory": 8 * 1024**3, "MemorySwap": 8 * 1024**3,
-                "NanoCpus": 4 * 10**9, "PidsLimit": 512, "Tmpfs": {"/tmp": _TMPFS},
+                "NanoCpus": 4 * 10**9, "PidsLimit": 512, "Tmpfs": {"/tmp": _TMPFS, "/task": _TASK_TMPFS},
                 "PidMode": "", "IpcMode": "private", "UTSMode": "", "CgroupnsMode": "private"}
     _require(all(host.get(key) == value for key, value in required.items()), "container isolation/resource drift")
     _require(host.get("RestartPolicy", {}).get("Name") == "no"
@@ -131,10 +134,10 @@ def _isolated(observed, record):
     _require(isinstance(mounts, list), "missing container mount inspection")
     binds = [m for m in mounts if m.get("Type") != "tmpfs"]
     _require(len(binds) == 1 and binds[0].get("Type") == "bind"
-             and binds[0].get("Source") == record["task_dir"] and binds[0].get("Destination") == "/task"
-             and binds[0].get("RW") is True and binds[0].get("Propagation") == "rprivate",
-             "container must have only its exact private task bind")
-    _require(all(m.get("Destination") == "/tmp" for m in mounts if m.get("Type") == "tmpfs"),
+             and binds[0].get("Source") == record["task_dir"] and binds[0].get("Destination") == "/input"
+             and binds[0].get("RW") is False and binds[0].get("Propagation") == "rprivate",
+             "container must have only its exact read-only input bind")
+    _require(all(m.get("Destination") in {"/tmp", "/task"} for m in mounts if m.get("Type") == "tmpfs"),
              "unexpected tmpfs mount")
     _require(observed.get("State", {}).get("Status") == "created", "container already started")
 
@@ -160,7 +163,7 @@ def _remove(record_path, record, runner):
 
 def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, image_id,
                        timeout=180, container_binary=None, runner=_default_runner):
-    """Execute upstream's command in its task bind; retain a recoverable receipt."""
+    """Copy read-only input into bounded scratch; never export candidate-written files."""
     _require(os.name == "posix", "Aider containers require a POSIX worker")
     _require(isinstance(timeout, (int, float)) and not isinstance(timeout, bool)
              and math.isfinite(timeout) and 0 < timeout <= 180, "invalid Aider test timeout")
@@ -180,15 +183,17 @@ def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, ima
     _require(not registry.is_relative_to(task) and not task.is_relative_to(registry),
              "task bind cannot expose container ownership records")
     for child in task.rglob("*"):
-        _require(not child.is_symlink(), "task symlink rejected")
+        info = child.lstat()
+        _require(stat.S_ISDIR(info.st_mode) or (stat.S_ISREG(info.st_mode) and info.st_nlink == 1),
+                 "task input must contain only directories and single-linked regular files")
     _require("," not in str(task), "task path cannot contain mount delimiters")
     if isinstance(command, str):
         _require(bool(command) and "\x00" not in command, "invalid test command")
-        command_args = ["-c", "{\n" + command + "\n} 2>&1"]
+        command_args = ["-c", "{\n" + _COPY_INPUT + command + "\n} 2>&1"]
     else:
         _require(isinstance(command, (list, tuple)) and bool(command)
                  and all(isinstance(v, str) and v and "\x00" not in v for v in command), "invalid test argv")
-        command_args = ["-c", 'exec "$@" 2>&1', "sh", *command]
+        command_args = ["-c", "{\n" + _COPY_INPUT + 'exec "$@"\n} 2>&1', "sh", *command]
     _require(sum(map(len, command_args)) <= 32768, "test command exceeded its bound")
     binary = container_binary or resolve_container_binary()
     _require(isinstance(binary, str) and bool(binary), "Docker is unavailable")
@@ -208,11 +213,11 @@ def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, ima
               "command": command, "command_args": command_args, "environment": environment, "state": "planned"}
     record_path = registry / (token + ".json")
     argv = ["create", "--name", record["name"], "--pull=never", "--network=none", "--read-only",
-            "--tmpfs", "/tmp:" + _TMPFS, "--memory=8g", "--memory-swap=8g", "--cpus=4", "--pids-limit=512",
+            "--tmpfs", "/tmp:" + _TMPFS, "--tmpfs", "/task:" + _TASK_TMPFS, "--memory=8g", "--memory-swap=8g", "--cpus=4", "--pids-limit=512",
             "--security-opt=no-new-privileges:true", "--cap-drop=ALL", "--user", record["user"],
             "--workdir=/task", "--restart=no", "--log-driver=none", "--no-healthcheck", "--ipc=private",
             "--cgroupns=private", "--entrypoint=/bin/sh", "--env=HOME=/tmp",
-            "--mount", f"type=bind,src={task},dst=/task,rw,bind-propagation=rprivate"]
+            "--mount", f"type=bind,src={task},dst=/input,readonly,bind-propagation=rprivate"]
     for key, value in _labels(record).items():
         argv.extend(("--label", key + "=" + value))
     argv.extend((image_id, *command_args))

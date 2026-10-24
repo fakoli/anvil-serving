@@ -60,7 +60,7 @@ def _source_root(cache, asset, revision):
 
 def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_root,
                         ownership_id, run_id, instance_ids=None, request_controls=None, timeout_s=None):
-    from .aider_prepare import AIDER_PYTHON_ENVIRONMENT_SCHEMA, validate_aider_environment
+    from .aider_prepare import validate_aider_environment, verify_aider_python_environment
 
     profile = validate_profile(profile)
     selected = validate_aider_parameters(profile, {"instance_ids": instance_ids})["selection"]["instance_ids"]
@@ -77,15 +77,7 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
     polyglot_root = _source_root(cache, assets["polyglot-benchmark"], POLYGLOT_REVISION)
     environment = validate_aider_environment(assets_manifest.get("aider_environment"), cache_root=cache, assets=assets)
     python_env = assets_manifest.get("python_environment", {})
-    if (python_env.get("schema") != AIDER_PYTHON_ENVIRONMENT_SCHEMA
-            or python_env.get("executable") != "bin/python"
-            or _digest(python_env.get("resolved_packages")) != python_env.get("resolved_packages_sha256")):
-        raise BenchmarkJobError("missing_harness_environment", "isolated Aider Python environment is invalid")
-    environment_root = real_path(os.path.join(cache, python_env["cache_key"]))
-    python = os.path.join(environment_root, "bin/python")
-    if (not path_is_within(environment_root, cache) or environment_root == cache
-            or not os.path.isfile(python)):
-        raise BenchmarkJobError("unsafe_cache_path", "isolated Aider Python environment escaped cache")
+    python = verify_aider_python_environment(python_env, cache_root=cache)
     available = {row["task_id"]: row for row in environment["selection"]}
     selected = selected or sorted(available)[:profile["suites"]["aider"]["instance_limit"]]
     if not selected or set(selected) - set(available):
@@ -140,6 +132,10 @@ def verify_plan(plan):
     if (not isinstance(plan, Mapping) or plan.get("schema") != AIDER_PLAN_SCHEMA
             or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
         raise BenchmarkJobError("bad_aider_plan", "Aider plan identity changed")
+    from .aider_prepare import verify_aider_python_environment
+    python = verify_aider_python_environment(plan.get("python_environment"), cache_root=plan["cache_root"])
+    if plan.get("command") != [python, "-m", "anvil_serving.benchmarking.aider_adapter", "--plan", plan["paths"]["plan"]]:
+        raise BenchmarkJobError("bad_aider_plan", "Aider command does not match its prepared interpreter")
     owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
     if owned != plan["run_path"] or plan["source_hashes"] != SOURCE_HASHES:
         raise BenchmarkJobError("bad_aider_plan", "Aider ownership or source identity changed")
@@ -218,6 +214,7 @@ def run_aider_benchmark(plan, *, command_runner=_budget_runner, environ=None):
               "quality": {"status": "unknown"}, "promotion": {"authorized": False}}
     atomic_write_json(paths["result"], result)
     started, stamp = time.monotonic(), utc_now()
+    verify_plan(plan)
     try:
         process = command_runner(plan["command"], paths["aider_root"], plan["timeout_s"], child_env)
         stage = _result_record(plan["command"], process, time.monotonic() - started, stamp)

@@ -13,6 +13,8 @@ _JOB_READ_OPTIONS = (
 
 def _benchmark_suite(name: str, summary: str) -> CommandNode:
     common_remote = {"fixed": (("suite", name),)}
+    # --dry-run is inherited from the suite's plan surface.
+    confirm_options = tuple(option for option in CONFIRM_OPTIONS if "--dry-run" not in option.flags)
     return _node(
         name,
         summary,
@@ -20,6 +22,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
             "anvil_serving.benchmarking.jobs_cli", argv_prefix=(name, "plan")
         ),
         options=(
+            _option("--dry-run", summary="Inspect the plan without requests or writes."),
             _option(
                 "--profile",
                 summary="Versioned benchmark profile.",
@@ -38,7 +41,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=CONFIRM_OPTIONS + (
+                options=confirm_options + (
                     _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                     _option("--offline", summary="Require exact assets to exist in cache."),
@@ -84,7 +87,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=CONFIRM_OPTIONS + (
+                options=confirm_options + (
                     _option("--spec", summary="Frozen SWE job specification JSON file.", value_name="PATH"),
                     _option(
                         "--worker",
@@ -104,7 +107,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 role="evaluation",
                 mutation="mutate",
                 options=_JOB_READ_OPTIONS
-                + CONFIRM_OPTIONS
+                + confirm_options
                 + (
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                 ),
@@ -146,7 +149,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=CONFIRM_OPTIONS + (
+                options=confirm_options + (
                     _option(
                         "--spec-json",
                         summary="Portable benchmark job specification JSON.",
@@ -200,7 +203,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=_JOB_READ_OPTIONS + CONFIRM_OPTIONS,
+                options=_JOB_READ_OPTIONS + confirm_options,
                 argv_prefix=(name, "cancel"),
                 remote_operation=_remote(
                     "benchmark_job_cancel",

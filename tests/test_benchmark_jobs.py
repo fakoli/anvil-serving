@@ -828,3 +828,20 @@ def test_benchmark_workload_snapshot_is_coherent_with_concurrent_writer(
 
     assert not reader.is_alive()
     assert captured[0].records[0].updated_at == before
+
+
+@pytest.mark.parametrize("digest", [None, "", "a" * 63, "A" * 64, "g" * 64, 123])
+def test_job_profile_pin_is_a_closed_sha256_field(digest):
+    with pytest.raises(jobs.BenchmarkJobError) as exc:
+        jobs.validate_job_spec(_spec(profile_sha256=digest))
+    assert exc.value.code == "bad_profile_digest"
+
+
+def test_optional_profile_pin_changes_digest_without_rewriting_legacy_records():
+    legacy = jobs.new_job_record(_spec())
+    original = jobs.canonical_json_bytes(legacy)
+    assert "profile_sha256" not in legacy["spec"]
+    assert jobs.canonical_json_bytes(jobs.validate_job_record(legacy)) == original
+    pinned = jobs.new_job_record(_spec(profile_sha256="a" * 64))
+    assert pinned["spec"]["profile_sha256"] == "a" * 64
+    assert pinned["spec_sha256"] != legacy["spec_sha256"]

@@ -16391,6 +16391,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -16542,6 +16551,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -16557,15 +16575,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -16769,6 +16778,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -16955,6 +16973,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -16979,15 +17006,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -17157,6 +17175,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -17347,6 +17374,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -17362,15 +17398,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -17563,6 +17590,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -17735,6 +17771,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -17945,6 +17990,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -17969,15 +18023,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -18137,6 +18182,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -18324,6 +18378,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -18475,6 +18538,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -18490,15 +18562,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -18702,6 +18765,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -18888,6 +18960,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -18912,15 +18993,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -19090,6 +19162,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -19280,6 +19361,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -19295,15 +19385,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -19496,6 +19577,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -19668,6 +19758,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -19878,6 +19977,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -19902,15 +20010,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -20070,6 +20169,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -20257,6 +20365,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -20408,6 +20525,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -20423,15 +20549,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -20635,6 +20752,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -20823,6 +20949,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -20838,15 +20973,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -21021,6 +21147,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -21045,15 +21180,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -21223,6 +21349,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -21413,6 +21548,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -21428,15 +21572,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -21629,6 +21764,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -21801,6 +21945,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -22011,6 +22164,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -22035,15 +22197,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -22203,6 +22356,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -22390,6 +22552,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -22541,6 +22712,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -22556,15 +22736,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -22768,6 +22939,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -22954,6 +23134,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -22978,15 +23167,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -23156,6 +23336,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -23346,6 +23535,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -23361,15 +23559,6 @@
           "requires_confirmation": false,
           "summary": "Observed model context capacity used to enforce output headroom.",
           "value_name": "TOKENS"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -23562,6 +23751,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -23734,6 +23932,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {
@@ -23944,6 +24151,15 @@
         },
         {
           "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
             "--profile"
           ],
           "output_policy": null,
@@ -23968,15 +24184,6 @@
           "requires_confirmation": false,
           "summary": "Portable benchmark run identifier.",
           "value_name": "ID"
-        },
-        {
-          "flags": [
-            "--dry-run"
-          ],
-          "output_policy": null,
-          "requires_confirmation": false,
-          "summary": "Preview without mutating state.",
-          "value_name": null
         },
         {
           "flags": [
@@ -24136,6 +24343,15 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
           "value_name": null
         },
         {

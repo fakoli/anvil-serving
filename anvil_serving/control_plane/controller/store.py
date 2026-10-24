@@ -870,8 +870,6 @@ class BenchmarkJobStore:
     def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
         """Create a queued job, or return the identical existing run."""
         normalized = validate_job_spec(spec)
-        digest = job_spec_sha256(normalized)
-        record = new_job_record(normalized)
         with self._lock, self._connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = connection.execute(
@@ -881,7 +879,10 @@ class BenchmarkJobStore:
             if row is not None:
                 existing = self._decode_record(row["record"])
                 connection.commit()
-                if row["spec_sha256"] != digest:
+                # An omitted pin on retry means the original admission, never a repin.
+                if "profile_sha256" not in normalized and "profile_sha256" in existing["spec"]:
+                    normalized["profile_sha256"] = existing["spec"]["profile_sha256"]
+                if row["spec_sha256"] != job_spec_sha256(normalized):
                     raise BenchmarkJobError(
                         "run_id_conflict",
                         "run_id already exists with a different immutable specification",
@@ -893,9 +894,11 @@ class BenchmarkJobStore:
             from ...benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES, V1_PROFILE_NAMES
             if normalized["suite"] not in SUITE_NAMES:
                 raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
-            if normalized["profile"] in PROFILE_NAMES - V1_PROFILE_NAMES:
-                from ...benchmarking.submission import validate_submission_spec
-                validate_submission_spec(normalized)
+            if normalized["profile"] in PROFILE_NAMES - V1_PROFILE_NAMES or "profile_sha256" in normalized:
+                from ...benchmarking.submission import bind_submission_spec
+                normalized = bind_submission_spec(normalized)
+            digest = job_spec_sha256(normalized)
+            record = new_job_record(normalized)
             connection.execute(
                 """
                 INSERT INTO benchmark_jobs (run_id, spec_sha256, state, revision, record)

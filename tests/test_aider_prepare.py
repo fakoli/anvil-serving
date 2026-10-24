@@ -54,6 +54,22 @@ def environment(rows):
     }
 
 
+def python_environment(cache):
+    identity = prep._python_identity()
+    key = "aider-python-environments/" + prep._digest(identity)
+    root = cache / key
+    (root / "bin").mkdir(parents=True)
+    (root / "bin/python").write_text("isolated interpreter fixture")
+    (root / "bin/python").chmod(0o755)
+    (root / "installed.py").write_text("original")
+    packages = ["aider-chat==" + prep.AIDER_SOURCE_VERSION]
+    lock = {**identity, "identity": identity, "python": {"version": "3.12.1"},
+            "resolved_packages": packages, "resolved_packages_sha256": prep._digest(packages),
+            "files_sha256": prep._environment_digest(root)}
+    (root / "environment.json").write_text(json.dumps(lock))
+    return {**lock, "cache_key": key, "executable": "bin/python", "reused": False}
+
+
 def test_six_language_receipt_rejects_missing_failed_or_different_image(tmp_path):
     rows = selection(tmp_path / "source")
     assert rows[-1]["solutions"] == ["solution.txt"]
@@ -136,24 +152,16 @@ def test_source_hash_mismatch_and_no_fallback(tmp_path, monkeypatch):
 
 
 def test_python_offline_reuse_checks_bytes_and_inventory(tmp_path):
-    identity = {"schema": prep.AIDER_PYTHON_ENVIRONMENT_SCHEMA, "source_version": prep.SOURCE_VERSION_METADATA, "python_minor": "3.12",
-                "platform": prep.platform.system().lower(), "architecture": prep.platform.machine().lower(),
-                "sources": {"aider": {"source": assets()["aider"]["source"], "revision": prep.AIDER_REVISION}}}
-    target = tmp_path / "aider-python-environments" / prep._digest(identity)
-    target.mkdir(parents=True)
-    (target / "installed.py").write_text("original")
-    lock = {"identity": identity, "python": {"version": "3.12.1"},
-            "resolved_packages": ["aider-chat==1"], "resolved_packages_sha256": prep._digest(["aider-chat==1"]),
-            "files_sha256": prep._environment_digest(target)}
-    (target / "environment.json").write_text(json.dumps(lock))
+    receipt = python_environment(tmp_path)
+    target = tmp_path / receipt["cache_key"]
     def runner(command, cwd, timeout):
-        output = "aider-chat==1" if "freeze" in command else "3.12.1"
+        output = "\n".join(receipt["resolved_packages"]) if "freeze" in command else "3.12.1"
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
     result = prep._python_environment(assets(), str(tmp_path), True, 1024, runner, [])
     assert result["reused"] is True
     (target / "installed.py").write_text("changed")
-    with pytest.raises(BenchmarkJobError, match="identity or inventory"):
-        prep._python_environment(assets(), str(tmp_path), True, 1024, runner, [])
+    with pytest.raises(BenchmarkJobError, match="bytes or receipt"):
+        prep._python_environment(assets(), str(tmp_path), True, 1024, lambda *_: pytest.fail("changed Python executed"), [])
 
 
 def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypatch):
@@ -250,3 +258,30 @@ def test_tracked_source_python_install_binds_scm_version(tmp_path, monkeypatch):
     assert result["identity"]["source_version"] == prep.SOURCE_VERSION_METADATA
     assert prep.AIDER_SOURCE_VERSION == "0.86.3.dev0+g" + prep.AIDER_REVISION
     assert prep.SOURCE_VERSION_METADATA["upstream_release"] is False
+
+
+@pytest.mark.parametrize("mutation", ["package", "bytecode", "lock", "cache-key", "external-directory", "interpreter-link"])
+def test_python_receipt_binds_actual_files_and_safe_paths(tmp_path, mutation):
+    receipt = python_environment(tmp_path / "cache")
+    root = tmp_path / "cache" / receipt["cache_key"]
+    assert prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path / "cache")) == str(root / "bin/python")
+    if mutation == "package":
+        (root / "installed.py").write_text("changed")
+    elif mutation == "bytecode":
+        (root / "__pycache__").mkdir()
+        (root / "__pycache__/installed.pyc").write_bytes(b"injected bytecode")
+    elif mutation == "lock":
+        lock = json.loads((root / "environment.json").read_text())
+        lock["files_sha256"] = "0" * 64
+        (root / "environment.json").write_text(json.dumps(lock))
+    elif mutation == "cache-key":
+        receipt["cache_key"] = "aider-python-environments/../other"
+    elif mutation == "external-directory":
+        (tmp_path / "outside").mkdir()
+        (root / "outside").symlink_to(tmp_path / "outside", target_is_directory=True)
+    else:
+        (tmp_path / "outside-python").write_text("different interpreter")
+        (root / "bin/python").unlink()
+        (root / "bin/python").symlink_to(tmp_path / "outside-python")
+    with pytest.raises(BenchmarkJobError):
+        prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path / "cache"))

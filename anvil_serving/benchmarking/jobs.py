@@ -62,6 +62,7 @@ _ALLOWED_SPEC_KEYS = frozenset({
     "ownership_id",
     "suite",
     "profile",
+    "profile_sha256",
     "endpoint",
     "worker",
     "submitted_at",
@@ -257,6 +258,11 @@ def validate_job_spec(value: Any) -> dict[str, Any]:
         "worker": _validate_worker(spec.get("worker")),
         "submitted_at": _validate_timestamp(spec.get("submitted_at"), field="submitted_at"),
     }
+    if "profile_sha256" in spec:
+        digest = spec["profile_sha256"]
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise BenchmarkJobError("bad_profile_digest", "profile_sha256 must be a lowercase SHA-256 digest")
+        normalized["profile_sha256"] = digest
     timeout_s = spec.get("timeout_s")
     if not isinstance(timeout_s, int) or isinstance(timeout_s, bool):
         raise BenchmarkJobError("bad_timeout", "timeout_s must be an integer")

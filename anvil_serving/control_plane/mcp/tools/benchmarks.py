@@ -255,6 +255,7 @@ def tool_benchmark_harness_status(args: dict) -> dict:
             run_root=store.run_root,
             ownership_id=_str_arg(args, "ownership_id", required=True),
             run_id=_str_arg(args, "run_id", required=True),
+            suite=_str_arg(args, "suite", required=True),
         )
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
@@ -650,7 +651,7 @@ FAMILY = ToolFamily(
             "handler": tool_benchmark_job_preflight,
         },
         "benchmark_job_submit": {
-            "description": "Submit one durable context, agentic, or SWE benchmark job.",
+            "description": "Submit one durable benchmark job for the selected suite.",
             "inputSchema": _schema(
                 {
                     "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},

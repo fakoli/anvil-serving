@@ -98,11 +98,11 @@ def test_process_timeout_retains_partial_output_and_sanitizes_client_environment
     assert (base / "original" / task / "solution.py").exists()
 
 
-def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch):
+def prepared_plan_inputs(tmp_path, monkeypatch):
     import hashlib
     from anvil_serving.benchmarking import aider_prepare as prep
     # Reuse preparation's fixture shape: the same public validator gates this plan.
-    from tests.test_aider_prepare import assets, environment, selection
+    from tests.test_aider_prepare import assets, environment, selection, python_environment
     cache = tmp_path / "cache"
     manifest_assets = assets()
     for asset in manifest_assets.values():
@@ -117,20 +117,25 @@ def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch)
         monkeypatch.setitem(aider.SOURCE_HASHES, relative, hashlib.sha256(path.read_bytes()).hexdigest())
     monkeypatch.setattr(prep, "SOURCE_HASHES", {**aider.SOURCE_HASHES, "benchmark/Dockerfile": "d" * 64})
     receipt = environment(rows)
-    packages = ["aider-chat==0.86.1"]
-    python = cache / "aider-python-environments/test/bin/python"
-    python.parent.mkdir(parents=True)
-    python.write_text("isolated interpreter fixture")
+    python_receipt = python_environment(cache)
+    python = cache / python_receipt["cache_key"] / "bin/python"
     profile = load_profile("pilot-v2")
     assets_manifest = {"schema": aider.HARNESS_ASSETS_SCHEMA, "suite": "aider",
         "profile_sha256": profile["content_sha256"], "assets": manifest_assets,
-        "aider_environment": receipt, "python_environment": {
-            "schema": prep.AIDER_PYTHON_ENVIRONMENT_SCHEMA, "cache_key": "aider-python-environments/test",
-            "executable": "bin/python", "resolved_packages": packages,
-            "resolved_packages_sha256": aider._digest(packages)}}
+        "aider_environment": receipt, "python_environment": python_receipt}
     run_root = tmp_path / "runs"
     run_root.mkdir()
     monkeypatch.setattr(aider, "resolve_container_binary", lambda: "/usr/bin/docker")
+    return profile, assets_manifest, dict(
+        endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
+        run_root=str(run_root), cache_root=str(cache), ownership_id="owner", run_id="run",
+        request_controls={"thinking_mode": "disabled"}), python, rows, receipt
+
+
+def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch):
+    profile, assets_manifest, kwargs, python, rows, receipt = prepared_plan_inputs(tmp_path, monkeypatch)
+    run_root = tmp_path / "runs"
+    cache = tmp_path / "cache"
     plan = aider.build_aider_run_plan(profile, assets_manifest,
         endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
         run_root=str(run_root), cache_root=str(cache), ownership_id="owner", run_id="run",
@@ -147,3 +152,37 @@ def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch)
             endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
             run_root=str(run_root), cache_root=str(cache), ownership_id="owner", run_id="run",
             instance_ids=["python/exercises/practice/unprepared"])
+
+
+@pytest.mark.parametrize("when", ["after-assets", "after-plan"])
+def test_prepared_python_drift_rejected_before_command_runner(tmp_path, monkeypatch, when):
+    profile, manifest, kwargs, python, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs) if when == "after-plan" else None
+    (python.parent.parent / "installed.py").write_text("altered imported dependency")
+    with pytest.raises(BenchmarkJobError, match="bytes or receipt"):
+        if plan is None:
+            aider.build_aider_run_plan(profile, manifest, **kwargs)
+        else:
+            aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("model command executed"))
+
+
+def test_python_drift_during_run_setup_rejected_before_command_runner(tmp_path, monkeypatch):
+    profile, manifest, kwargs, python, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
+    original_copy = aider.shutil.copytree
+    def copy_and_drift(*args, **kwargs):
+        result = original_copy(*args, **kwargs)
+        (python.parent.parent / "installed.py").write_text("changed after initial run gate")
+        return result
+    monkeypatch.setattr(aider.shutil, "copytree", copy_and_drift)
+    with pytest.raises(BenchmarkJobError, match="bytes or receipt"):
+        aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("model command executed"))
+
+
+def test_prepared_python_command_cannot_substitute_interpreter(tmp_path, monkeypatch):
+    profile, manifest, kwargs, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
+    plan["command"][0] = "/usr/bin/python3"
+    plan["plan_sha256"] = aider._digest({k:v for k,v in plan.items() if k != "plan_sha256"})
+    with pytest.raises(BenchmarkJobError, match="prepared interpreter"):
+        aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("substitute Python executed"))

@@ -2,6 +2,10 @@
 
 import json
 import os
+from pathlib import Path
+import shlex
+import socket
+import tempfile
 import subprocess
 
 import pytest
@@ -39,6 +43,11 @@ class Docker:
             assert "--cpus=4" in argv and "--pids-limit=512" in argv
             assert "--cap-drop=ALL" in argv and "--security-opt=no-new-privileges:true" in argv
             assert argv.count("--mount") == 1
+            assert argv.count("--tmpfs") == 2
+            assert "/task:rw,nosuid,nodev,size=4g,nr_inodes=65536,mode=1777" in argv
+            assert "/tmp:rw,nosuid,nodev,noexec,size=1g,nr_inodes=16384,mode=1777" in argv
+            assert argv[argv.index("--mount") + 1] == (
+                f"type=bind,src={record['task_dir']},dst=/input,readonly,bind-propagation=rprivate")
             assert [arg for arg in argv if arg.startswith("--env")] == ["--env=HOME=/tmp"]
             assert not any(arg.startswith(("--gpus", "--device", "--privileged")) for arg in argv)
             self.container = {
@@ -49,11 +58,11 @@ class Docker:
                 "HostConfig": {"NetworkMode": "none", "ReadonlyRootfs": True, "Privileged": False,
                                "CapDrop": ["ALL"], "SecurityOpt": ["no-new-privileges:true"],
                                "Memory": 8 * 1024**3, "MemorySwap": 8 * 1024**3, "NanoCpus": 4 * 10**9,
-                               "PidsLimit": 512, "Tmpfs": {"/tmp": containment._TMPFS}, "PidMode": "",
+                               "PidsLimit": 512, "Tmpfs": {"/tmp": containment._TMPFS, "/task": containment._TASK_TMPFS}, "PidMode": "",
                                "IpcMode": "private", "UTSMode": "", "CgroupnsMode": "private",
                                "RestartPolicy": {"Name": "no"}, "LogConfig": {"Type": "none"}, "Runtime": "runc"},
-                "Mounts": [{"Type": "bind", "Source": record["task_dir"], "Destination": "/task",
-                            "RW": True, "Propagation": "rprivate"}],
+                "Mounts": [{"Type": "bind", "Source": record["task_dir"], "Destination": "/input",
+                            "RW": False, "Propagation": "rprivate"}],
                 "State": {"Status": "created", "ExitCode": 0},
             }
             if self.drift:
@@ -98,7 +107,7 @@ def test_exact_isolation_and_upstream_completed_process(tmp_path):
     assert value["state"] == "removed" and value["returncode"] == 1
     assert value["user"] == f"{os.getuid()}:{os.getgid()}"
     create = next(call for call in docker.calls if call[1] == "create")
-    assert create[-2:] == ("-c", "{\npython -m unittest\n} 2>&1")
+    assert create[-2:] == ("-c", "{\n" + containment._COPY_INPUT + "python -m unittest\n} 2>&1")
     assert str(task) in create[create.index("--mount") + 1]
 
 
@@ -220,7 +229,7 @@ def test_sequence_command_and_image_home_override(tmp_path):
     docker.image["Config"]["Env"] = ["HOME=/root", "PATH=/usr/bin:/bin"]
     containment.run_contained_test(["python", "-m", "unittest"], runner=docker, **args)
     create = next(call for call in docker.calls if call[1] == "create")
-    assert create[-6:] == ("-c", 'exec "$@" 2>&1', "sh", "python", "-m", "unittest")
+    assert create[-6:] == ("-c", "{\n" + containment._COPY_INPUT + 'exec "$@"\n} 2>&1', "sh", "python", "-m", "unittest")
     record, = (run / "aider/containers").glob("*.json")
     assert json.loads(record.read_text())["environment"] == ["HOME=/tmp", "PATH=/usr/bin:/bin"]
 
@@ -276,3 +285,154 @@ def test_lost_create_absence_stays_recoverable_and_blocks_next_test(tmp_path):
     assert receipt["status"] == "incomplete" and receipt["removed"] == []
     with pytest.raises(BenchmarkJobError, match="cleanup is unresolved"):
         containment.run_contained_test("false", runner=docker, **args)
+
+
+@pytest.mark.parametrize("mount_options", [
+    "rw,nosuid,nodev,nr_inodes=65536,mode=1777",  # no byte quota
+    "rw,nosuid,nodev,size=4g,mode=1777",  # no inode quota
+    "rw,nosuid,nodev,size=0,nr_inodes=65536,mode=1777",
+    "rw,nosuid,nodev,size=4g,nr_inodes=0,mode=1777",
+])
+def test_missing_or_unbounded_scratch_quota_never_starts(tmp_path, mount_options):
+    run, _, args = setup(tmp_path)
+    docker = Docker(run, drift=lambda row: row["HostConfig"]["Tmpfs"].update({"/task": mount_options}))
+    with pytest.raises(BenchmarkJobError, match="resource drift"):
+        containment.run_contained_test("false", runner=docker, **args)
+    assert not any(call[1] == "start" for call in docker.calls)
+    assert docker.container is None
+
+
+@pytest.mark.parametrize("drift", [
+    lambda row: row["Mounts"][0].update(RW=True),
+    lambda row: row["Mounts"][0].update(Destination="/task"),
+    lambda row: row["HostConfig"]["Tmpfs"].pop("/task"),
+    lambda row: row["Mounts"].append({"Type": "tmpfs", "Destination": "/unbounded"}),
+])
+def test_writable_input_or_missing_scratch_never_starts(tmp_path, drift):
+    run, _, args = setup(tmp_path)
+    docker = Docker(run, drift=drift)
+    with pytest.raises(BenchmarkJobError):
+        containment.run_contained_test("false", runner=docker, **args)
+    assert not any(call[1] == "start" for call in docker.calls)
+    assert docker.container is None
+
+
+@pytest.mark.parametrize("kind", ["symlink", "hardlink", "fifo", "socket"])
+def test_non_regular_and_shared_input_never_reaches_docker(tmp_path, kind):
+    run, task, args = setup(tmp_path)
+    source = task / "solution.py"
+    source.write_text("pass\n")
+    candidate = task / "unexpected"
+    listener = None
+    try:
+        if kind == "symlink":
+            candidate.symlink_to(source)
+        elif kind == "hardlink":
+            os.link(source, candidate)
+        elif kind == "fifo":
+            os.mkfifo(candidate)
+        else:
+            listener = socket.socket(socket.AF_UNIX)
+            # AF_UNIX has a small path bound; a short path still lives in this task.
+            listener.bind(str(candidate))
+        docker = Docker(run)
+        with pytest.raises(BenchmarkJobError, match="single-linked regular files"):
+            containment.run_contained_test("false", runner=docker, **args)
+        assert not docker.calls
+    finally:
+        if listener is not None:
+            listener.close()
+
+
+@pytest.mark.parametrize("outcome", ["success", "exhaustion", "timeout"])
+def test_copied_scratch_tampering_never_exports_to_canonical_input(tmp_path, outcome):
+    """Run the actual startup copy and fixture attack locally, not a Docker quota proof."""
+    run, task, args = setup(tmp_path)
+    canonical = {".aider.chat.history.md": b"authoritative prompt and feedback\n",
+                 "solution.py": b"original candidate\n"}
+    for name, value in canonical.items():
+        (task / name).write_bytes(value)
+    docker = Docker(run)
+    scratch_path = None
+    def runner(argv, cwd, timeout):
+        nonlocal scratch_path
+        if argv[1] != "start":
+            return docker(argv, cwd, timeout)
+        with tempfile.TemporaryDirectory(dir=tmp_path, prefix="scratch-") as directory:
+            scratch_path = Path(directory)
+            shell_args = list(docker.container["Config"]["Cmd"])
+            shell_args[1] = shell_args[1].replace("/task/", shlex.quote(directory + "/"))
+            shell_args[1] = shell_args[1].replace("/input/.", shlex.quote(str(task) + "/."))
+            result = subprocess.run(["/bin/sh", *shell_args], cwd=directory, timeout=5,
+                                    capture_output=True, check=False)
+            assert (scratch_path / ".aider.chat.history.md").read_text() == "forged\n"
+            assert (scratch_path / ".anvil-runtime/cache").is_file()
+            assert {p.name: p.read_bytes() for p in task.iterdir()} == canonical
+            if outcome == "timeout":
+                raise subprocess.TimeoutExpired(argv, timeout)
+            docker.container["State"] = {"Status": "exited", "ExitCode": result.returncode}
+            return result
+    command = 'printf "forged\\n" > .aider.chat.history.md; mkdir .anvil-runtime; touch .anvil-runtime/cache'
+    if outcome == "exhaustion":
+        command += '; printf "No space left on device\\n" >&2; exit 1'
+    if outcome == "timeout":
+        with pytest.raises(subprocess.TimeoutExpired):
+            containment.run_contained_test(command, runner=runner, **args)
+    else:
+        result = containment.run_contained_test(command, runner=runner, **args)
+        assert result.returncode == (outcome == "exhaustion")
+        if outcome == "exhaustion":
+            assert "No space left on device" in result.stdout
+    assert docker.container is None and not scratch_path.exists()
+    assert {p.name: p.read_bytes() for p in task.iterdir()} == canonical
+    assert containment.cleanup_aider_containers(run_path=run, ownership_id="owner", run_id="run", runner=docker)["status"] == "completed"
+
+
+@pytest.mark.skipif(not os.environ.get("ANVIL_AIDER_CONTAINMENT_TEST_IMAGE"),
+                    reason="requires coordinator-reviewed immutable local image; no model calls")
+def test_live_managed_scratch_quotas_and_canonical_custody(tmp_path):
+    """Opt-in real kernel proof through the managed helper; no raw Docker lifecycle."""
+    run, task, args = setup(tmp_path)
+    canonical = b"canonical prompt, response and feedback\n"
+    (task / ".aider.chat.history.md").write_bytes(canonical)
+    image_id = os.environ["ANVIL_AIDER_CONTAINMENT_TEST_IMAGE"]
+    script = '''import errno, json, os, pathlib
+source = pathlib.Path('/input/.aider.chat.history.md')
+for action in (lambda: source.write_text('forged'), lambda: source.unlink()):
+    try:
+        action()
+    except OSError as exc:
+        assert exc.errno == errno.EROFS, repr(exc)
+    else:
+        raise AssertionError('canonical input was writable')
+pathlib.Path('.aider.chat.history.md').write_text('forged')
+pathlib.Path('.anvil-runtime').mkdir()
+pathlib.Path('.anvil-runtime/cache').write_bytes(b'temporary cache')
+space = os.statvfs('/task')
+assert space.f_blocks * space.f_frsize == 4 * 1024**3
+assert space.f_files == 65536
+with open('oversized', 'wb') as handle:
+    try:
+        os.posix_fallocate(handle.fileno(), 0, 4 * 1024**3 + 4096)
+    except OSError as exc:
+        assert exc.errno == errno.ENOSPC, repr(exc)
+    else:
+        raise AssertionError('byte quota did not reject oversized allocation')
+pathlib.Path('inodes').mkdir()
+count = 0
+try:
+    for count in range(65537):
+        pathlib.Path('inodes', str(count)).touch()
+except OSError as exc:
+    assert exc.errno == errno.ENOSPC, repr(exc)
+else:
+    raise AssertionError('inode quota did not reject excessive files')
+assert count < 65536
+print(json.dumps({'read_only_input': True, 'byte_quota': True, 'inode_quota': True}))
+'''
+    result = containment.run_contained_test(["python3", "-c", script], **{**args, "image_id": image_id})
+    assert result.returncode == 0, result.stdout
+    assert json.loads(result.stdout) == {"read_only_input": True, "byte_quota": True, "inode_quota": True}
+    assert {p.name: p.read_bytes() for p in task.iterdir()} == {".aider.chat.history.md": canonical}
+    record, = (run / "aider/containers").glob("*.json")
+    assert json.loads(record.read_text())["state"] == "removed"

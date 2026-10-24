@@ -124,3 +124,30 @@ def test_v2_context_admits_only_profile_matrix_subsets():
     value = _spec({"token_buckets": [8192], "positions": [0.5], "case_ids": ["native-needle"], "output_headroom_tokens": 512}, suite="context")
     value["profile"] = "pilot-v2"
     assert validate_submission_spec(value)["selection"]["token_buckets"] == [8192]
+
+
+def test_binding_preserves_v1_and_validates_caller_supplied_pin():
+    from anvil_serving.benchmarking.jobs import validate_job_spec
+    from anvil_serving.benchmarking.profiles import load_profile
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+
+    value = _spec({}, suite="context")
+    assert bind_submission_spec(value) == validate_job_spec(value)
+    value["profile"] = "pilot-v2"
+    bound = bind_submission_spec(value)
+    assert "profile_sha256" not in value
+    assert bound["profile_sha256"] == load_profile("pilot-v2")["content_sha256"]
+    assert bind_submission_spec(bound) == bound
+    for profile in ("smoke", "pilot-v2"):
+        with pytest.raises(BenchmarkJobError) as exc:
+            bind_submission_spec({**value, "profile": profile, "profile_sha256": "0" * 64})
+        assert exc.value.code == "profile_binding_mismatch"
+
+
+def test_execution_requires_v2_binding_but_preserves_legacy_admission():
+    value = _spec({}, suite="context")
+    assert validate_submission_spec(value, require_profile_binding=True) == validate_submission_spec(value)
+    value["profile"] = "pilot-v2"
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_submission_spec(value, require_profile_binding=True)
+    assert exc.value.code == "profile_binding_missing"

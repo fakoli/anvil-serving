@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .artifacts import REQUIRED_MEASURED_IDENTITIES
-from .jobs import BenchmarkJobError, validate_job_id
+from .jobs import BenchmarkJobError, validate_job_id, validate_job_spec
 from .profiles import SUITE_NAMES, load_profile, suite_budgets
 from .request_controls import resolve_job_request_controls
 from .suite_runner import (
@@ -109,7 +109,19 @@ def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
             )
 
 
-def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
+def bind_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
+    """Bind new v2 submissions to admitted profile content without changing v1."""
+    normalized = validate_job_spec(spec)
+    admission = validate_submission_spec(normalized)
+    if "profile_sha256" in admission:
+        normalized["profile_sha256"] = admission["profile_sha256"]
+    return normalized
+
+
+def validate_submission_spec(
+    spec: Mapping[str, Any], *, profile: Mapping[str, Any] | None = None,
+    require_profile_binding: bool = False,
+) -> dict[str, Any]:
     """Validate all suite selections before a job can be stored or executed.
 
     The returned summary is derived only from the immutable job specification and
@@ -119,7 +131,9 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     suite_name = spec["suite"]
     if suite_name not in SUITE_NAMES:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
-    profile = load_profile(spec["profile"])
+    profile = load_profile(spec["profile"]) if profile is None else profile
+    if "profile_sha256" in spec and spec["profile_sha256"] != profile["content_sha256"]:
+        raise BenchmarkJobError("profile_binding_mismatch", "installed profile differs from the admitted job profile")
     parameters = spec.get("parameters", {})
     if not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_parameters", "benchmark parameters must be an object")
@@ -131,6 +145,8 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     budgets = suite_budgets(profile, suite_name)
     binding = {}
     if budgets is not None:
+        if require_profile_binding and "profile_sha256" not in spec:
+            raise BenchmarkJobError("profile_binding_missing", "v2 execution requires an admitted profile digest")
         unknown = sorted(set(parameters) - _COMMON_PARAMETERS - _SUITE_PARAMETERS[suite_name])
         if unknown:
             raise BenchmarkJobError("suite_incompatible_parameter", "v2 parameters contain unsupported fields", {"parameters": unknown})

@@ -578,7 +578,7 @@ def prepare_harness_assets(
 
 
 def harness_asset_status(
-    *, run_root: str, ownership_id: str, run_id: str
+    *, run_root: str, ownership_id: str, run_id: str, suite: str | None = None
 ) -> dict[str, Any]:
     path = resolve_owned_run_path(
         run_root,
@@ -592,6 +592,8 @@ def harness_asset_status(
         return {"status": "absent", "run_id": run_id}
     if value.get("schema") != HARNESS_ASSETS_SCHEMA:
         raise BenchmarkJobError("bad_harness_manifest", "harness manifest schema is invalid")
+    if suite is not None and value.get("suite") != suite:
+        raise BenchmarkJobError("suite_mismatch", "prepared assets belong to a different suite")
     return {"status": "ready", "manifest": value}
 
 

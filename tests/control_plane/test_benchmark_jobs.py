@@ -1045,3 +1045,47 @@ def test_v2_context_matrix_widening_rejected_before_durable_creation(tmp_path):
         store.submit(_spec(profile="pilot-v2", parameters={"token_buckets": [1048576]}))
     assert exc.value.code == "profile_budget_exceeded"
     assert store.status("run-001") is None
+
+
+@pytest.mark.parametrize("suite", ["context", "agentic", "swe", "aider"])
+def test_v2_submission_persists_admission_pin_and_retries_original_without_lookup(monkeypatch, tmp_path, suite):
+    from anvil_serving.benchmarking import submission
+    from anvil_serving.benchmarking.profiles import load_profile
+
+    store = _store(tmp_path)
+    parameters = {"instance_ids": ["astropy__astropy-12907"]} if suite == "swe" else {}
+    value = _spec(profile="pilot-v2", suite=suite, parameters=parameters)
+    _, submitted = store.submit(value)
+    assert submitted["spec"]["profile_sha256"] == load_profile("pilot-v2")["content_sha256"]
+    assert submitted["spec_sha256"] == job_spec_sha256(submitted["spec"])
+    assert submitted["spec_sha256"] != job_spec_sha256(value)
+    monkeypatch.setattr(submission, "load_profile", lambda *_a: pytest.fail("retry must retain original admission"))
+    restarted = _store(tmp_path)
+    assert restarted.submit(value) == ("existing", submitted)
+    assert restarted.submit(submitted["spec"]) == ("existing", submitted)
+    for change in ({"profile_sha256": "0" * 64}, {"timeout_s": 601}):
+        with pytest.raises(BenchmarkJobError) as exc:
+            restarted.submit({**value, **change})
+        assert exc.value.code == "run_id_conflict"
+    assert restarted.status(value["run_id"]) == submitted
+
+
+def test_submission_does_not_silently_replace_caller_profile_pin(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="pilot-v2", suite="aider", parameters={}, profile_sha256="0" * 64)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "profile_binding_mismatch"
+    assert store.status(value["run_id"]) is None
+
+
+def test_legacy_submission_and_retry_leave_record_bytes_unchanged(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="smoke", parameters={})
+    _, record = store.submit(value)
+    assert record == new_job_record(value)
+    with closing(sqlite3.connect(store.path)) as connection:
+        original = connection.execute("SELECT record FROM benchmark_jobs").fetchone()[0]
+    assert store.submit(value) == ("existing", record)
+    with closing(sqlite3.connect(store.path)) as connection:
+        assert connection.execute("SELECT record FROM benchmark_jobs").fetchone()[0] == original

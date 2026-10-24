@@ -30,7 +30,7 @@ from .jobs import (
 from .preflight import run_benchmark_preflight
 from .profiles import PROFILE_NAMES, SUITE_NAMES, load_profile
 from .swe import validate_swe_selection
-from .submission import validate_submission_spec
+from .submission import bind_submission_spec, validate_submission_spec
 from .swe_images import (
     prepare_paired_images,
     validate_paired_image_ids,
@@ -290,7 +290,7 @@ def run(argv: list[str]) -> dict:
             min_free_bytes=args.min_free_bytes,
         )
     if args.action == "submit" and args.dry_run:
-        spec = _spec_json(args.spec_json, args.suite)
+        spec = bind_submission_spec(_spec_json(args.spec_json, args.suite))
         admission = validate_submission_spec(spec)
         return {
             "schema": "anvil-serving.benchmark-submit-preview/v1",
@@ -299,6 +299,7 @@ def run(argv: list[str]) -> dict:
             "ownership_id": spec["ownership_id"],
             "endpoint": spec["endpoint"],
             "worker": spec["worker"],
+            "spec": spec,
             "spec_sha256": job_spec_sha256(spec),
             "suite_admission": admission,
             "dry_run": True,
@@ -317,6 +318,7 @@ def run(argv: list[str]) -> dict:
                 run_root=store.run_root,
                 ownership_id=args.ownership_id,
                 run_id=args.run_id,
+                suite=args.suite,
             )
         if not (args.confirm or confirmation_authorized()):
             raise BenchmarkJobError(

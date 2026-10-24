@@ -785,3 +785,58 @@ def test_v2_worker_retains_budget_and_partial_result(monkeypatch, tmp_path):
     assert admission["budgets"] == load_profile("pilot-v2")["suites"]["context"]["budgets"]
     partial = json.loads((run / evidence["stages"][-1]["evidence"][0]["path"]).read_text())
     assert partial["observations"] == [{"request_id": "partial"}]
+
+
+def test_worker_rejects_replaced_valid_profile_before_preparation_or_traffic(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import profiles
+
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(profile="pilot-v2", suite="aider", parameters={})
+    _, submitted = store.submit(value)
+    changed = load_profile("pilot-v2")
+    changed["suites"]["aider"]["budgets"]["max_model_calls"] += 1
+    changed["content_sha256"] = profiles.profile_content_sha256(changed)
+    profiles.validate_profile(changed)
+    profile_root = tmp_path / "profiles"
+    profile_root.mkdir()
+    (profile_root / "pilot-v2.json").write_text(json.dumps(changed))
+    monkeypatch.setattr(profiles, "PROFILE_ROOT", profile_root)
+    for name in ("prepare_harness_assets", "run_benchmark_preflight", "_run_suite"):
+        monkeypatch.setattr(benchmark_worker, name, lambda *_a, **_kw: pytest.fail("profile drift crossed admission"))
+    monkeypatch.setattr(benchmark_worker, "_retain_stopped_aider", lambda *_a, **_kw: {"state": "absent"})
+
+    record = execute_benchmark_job(store, value["run_id"])
+
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == "profile_binding_mismatch"
+    assert record["spec"] == submitted["spec"]
+    assert record["spec_sha256"] == submitted["spec_sha256"]
+    assert record["spec"]["profile_sha256"] != changed["content_sha256"]
+    assert store.artifact(value["run_id"])["failure"]["code"] == "profile_binding_mismatch"
+    assert store.submit(value) == ("existing", record)
+
+
+def test_worker_uses_one_profile_snapshot_for_admission_and_preparation(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(profile="pilot-v2", parameters={})
+    _, submitted = store.submit(value)
+    profile = load_profile("pilot-v2")
+    calls = []
+
+    def load(name):
+        calls.append(name)
+        return profile
+
+    def prepare(actual, **_kwargs):
+        assert actual is profile
+        assert actual["content_sha256"] == submitted["spec"]["profile_sha256"]
+        raise BenchmarkJobError("test_stop", "stop after verified admission")
+
+    monkeypatch.setattr(benchmark_worker, "load_profile", load)
+    monkeypatch.setattr("anvil_serving.benchmarking.submission.load_profile", lambda *_a: pytest.fail("second profile load"))
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", prepare)
+    result = execute_benchmark_job(store, value["run_id"])
+    assert calls == ["pilot-v2"]
+    assert result["failure"]["code"] == "test_stop"

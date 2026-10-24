@@ -122,6 +122,13 @@ that created the environment.
 Profiles are content-addressed JSON under `configs/benchmarks/`. A result is
 interpretable only with its profile SHA-256 and adapter identities.
 
+New v2 jobs store the admitted `profile_sha256` in their durable specification.
+Submission previews return that bound specification. Workers reject missing or
+changed v2 profile pins before preparation or model traffic; older v1 jobs keep
+their original contract. Aider also verifies the prepared Python environment's
+actual bytes before planning and execution, so a stale receipt cannot authorize
+changed harness code.
+
 The shipped context profiles execute the deterministic native cases listed in
 their profile. RULER and MRCR records are supported as normalized evidence
 inputs, but they are not silently substituted for or claimed by these profiles;
@@ -227,13 +234,13 @@ in JSON:
 `reasoning_effort` is optional and may be `none`, `minimal`, `low`, `medium`,
 `high`, `max`, or `xhigh` when the selected model supports it. For model
 families that use chat-template thinking controls, set `thinking_mode` to
-`enabled` or `disabled` instead. Agentic and SWE jobs require these controls
+`enabled` or `disabled` instead. Agentic, SWE, and Aider jobs require these controls
 to be mutually exclusive. Context jobs can combine them when the selected
 model supports both, and accept `clear_thinking` only with enabled thinking.
-All three suites forward the selected controls and record them in evidence.
+All four suites forward the selected controls and record them in evidence.
 
 `parameters.temperature` and `parameters.top_p` are optional sampler controls
-for context, agentic, and SWE jobs. Temperature must be finite from 0 through
+for context, agentic, SWE, and Aider jobs. Temperature must be finite from 0 through
 2; top-p must be finite, greater than 0, and at most 1. Context and agentic
 jobs retain the existing omitted-control behavior: temperature 0.0 and no
 `top_p` request field; their request controls record the effective and sent
@@ -241,6 +248,8 @@ values. For SWE, sampler fields are added to the generated LiteLLM
 `model_kwargs` only when a sampler control is supplied. Legacy SWE artifacts
 without sampler evidence retain their exact legacy defaults as unknown; they
 must not be treated as temperature 0 or as comparable to a recorded sampler.
+Aider forwards supplied sampler controls through its pinned model client and
+records the effective request controls. Omitted controls retain upstream defaults.
 
 `case_limit` is useful for the first smoke only; omit it for the complete
 profile matrix. For SWE, replace the context parameters with
@@ -306,7 +315,7 @@ anvil-serving eval benchmark context cancel --run-id deepseek-context-smoke-001 
   --target host-role:benchmark-worker --transport controller --confirm
 ```
 
-Use the equivalent `agentic` or `swe` command family for the other suites.
+Use the equivalent `agentic`, `swe`, or `aider` command family for the other suites.
 
 ## Aider Polyglot
 
@@ -334,9 +343,14 @@ freezes its base digest, build inputs, resolved package inventory, and final
 image ID. Mutable package resolution during preparation means that a future
 rebuild is not promised to be byte-identical.
 
-Test containers have no network, credentials, GPU, or Docker socket. They use
-a read-only root filesystem, an owned task directory, temporary scratch space,
-8 GiB memory and memory-plus-swap limits, four CPUs, and at most 512 processes.
+Test containers have no external network, credentials, GPU, or host socket
+access. Container-local IPC is allowed for the pinned toolchains. They use
+a read-only root filesystem and a read-only source bind at `/input`; special
+files, including sockets, are rejected before mounting. Tests run on a copy in
+`/task`, a 4 GiB tmpfs limited to 65,536 inodes. `/tmp` has a separate 1 GiB,
+16,384-inode ceiling. Containers have 8 GiB memory and memory-plus-swap limits,
+four CPUs, and at most 512 processes. Scratch state is discarded with the
+container; nothing is copied back over the host-owned transcript or results.
 The adapter verifies these settings and container ownership before starting
 tests. Cancellation stops the owned worker, then verifies and removes its
 owned test containers. An unverified stop or container leaves cleanup deferred.
