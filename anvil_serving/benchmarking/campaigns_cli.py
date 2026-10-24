@@ -39,7 +39,7 @@ def run(argv):
         raise BenchmarkJobError("confirmation_required", f"campaign {args.action} requires --confirm")
     if args.action != "prepare" and not args.ownership_id:
         raise BenchmarkJobError("campaign_owner_required", "provide --ownership-id or configure ANVIL_BENCHMARK_OWNERSHIP_ID")
-    store = _store()
+    store = _store(read_only=args.action == "report")
     if args.action == "prepare":
         return campaigns.prepare_campaign(campaigns.read_campaign_spec(args.spec), store,
                                           cache_root=os.environ.get("ANVIL_BENCHMARK_CACHE_ROOT"), offline=args.offline)
@@ -50,7 +50,7 @@ def run(argv):
         return campaigns.cancel_campaign(manifest, store)
     from .campaign_report import report_campaign
     directory = campaigns.campaign_directory(store.run_root, args.ownership_id, args.campaign_id)
-    return report_campaign(manifest, store, state=campaigns._state(directory))
+    return report_campaign(manifest, store, state=campaigns._state(directory, manifest=manifest))
 
 
 def main(argv=None):

@@ -316,7 +316,8 @@ def campaign_fixture(tmp_path, *, repeats=1, suite="agentic"):
     return manifest, store
 
 
-def campaign_result(manifest, store, index, *, passed=True, state="completed", native=None, timing=None):
+def campaign_result(manifest, store, index, *, passed=True, state="completed", native=None, timing=None,
+                    activation=None, telemetry_coverage=None):
     from anvil_serving.benchmarking.artifacts import evidence_file_reference
     from anvil_serving.benchmarking.campaign_execution import bind_campaign_child
     from anvil_serving.benchmarking.jobs import job_spec_sha256
@@ -339,7 +340,9 @@ def campaign_result(manifest, store, index, *, passed=True, state="completed", n
         receipt = {"schema": "anvil-serving.campaign-execution/v1", "campaign": spec["campaign"],
                    "spec_sha256": job_spec_sha256(spec), "boot_id": "private-boot", "status": "closed",
                    "started_monotonic": timing[0], "closed_monotonic": timing[1], "clients_stopped": True,
-                   "drain": {"status": "verified"}, "telemetry_coverage": {}}
+                   "drain": {"status": "verified"}, "telemetry_coverage": telemetry_coverage or {}}
+        if activation is not None:
+            receipt["activation"] = activation
         (root / "campaign-execution.json").write_text(json.dumps(receipt))
         store.artifacts[run_id]["results"]["campaign_execution"] = evidence_file_reference(str(root / "campaign-execution.json"), root=str(root))
     return root
@@ -451,6 +454,18 @@ def test_campaign_performance_preserves_native_unknowns_without_synthetic_reques
     assert row["cache"] == {"requested": "cold", "proven": None}
 
 
+def test_campaign_performance_preserves_plan_valid_basic_cache_condition(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="performance")
+    for cell in manifest["cells"]:
+        cell["cache_condition"] = "basic"
+        cell["spec"]["parameters"] = {"request_count": 2, "cache_condition": "basic"}
+    native = {"schema": "anvil-serving.performance-run/v1", "summary": {"metrics": {
+        "request_count": {"status": "measured", "value": 2, "unit": "requests"}}}}
+    campaign_result(manifest, store, 0, native=native)
+    assert report_campaign(manifest, store)["cells"][0]["cache"] == {"requested": "basic", "proven": None}
+
+
 def test_campaign_aider_ungraded_placeholder_does_not_prove_attempt(tmp_path):
     from anvil_serving.benchmarking.campaign_report import report_campaign
     manifest, store = campaign_fixture(tmp_path, suite="aider")
@@ -473,6 +488,58 @@ def test_campaign_native_negative_oracle_score_survives_infrastructure_classific
     assert row["samples"]["failed"] == 1
 
 
+def test_campaign_completed_empty_native_population_is_explicitly_incomplete(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    campaign_result(manifest, store, 0, native={
+        "schema": "anvil-serving.agentic-suite-run/v1", "observations": []})
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["evidence_status"] == "empty_native_population"
+    assert row["samples"] == {"planned": 1, "submitted": 1, "attempted": 0,
+                              "scored": 0, "failed": 0, "cancelled": 0, "unfinished": 1}
+    assert row["measurement_complete"] is False
+
+
+def test_campaign_manual_closure_without_activation_is_unverified(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    campaign_result(manifest, store, 0, timing=(10, 20))
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["identity_status"] == "unverified"
+    assert row["measurement_complete"] is False
+    assert set(row) & {"identity_status"} == {"identity_status"}
+
+
+def test_campaign_report_projects_verified_release_activation_without_private_binding(tmp_path):
+    from anvil_serving.benchmarking.campaign_execution import _manifest_digest
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    manifest["budgets"] = {"drain_reserve_s": 10, "per_arm_s": 40, "total_s": 80}
+    for arm in manifest["arms"]:
+        arm["budget_s"] = 40
+    binding = {"generation": "a" * 64, "metrics_url": "http://127.0.0.1:9999/engine/" + "a" * 64 + "/metrics",
+               "container_id": "private-container", "started_at": "private-start", "served_model": "private-served"}
+    activation = {"status": "verified", **binding,
+                  "binding_sha256": hashlib.sha256(canonical_json_bytes(binding)).hexdigest()}
+    coverage = {key: {"status": "measured", "complete": True, "sample_count": 1,
+                      "started_monotonic": 9, "closed_monotonic": 21}
+                for key in ("engine", "gpu", "host", "cgroup")}
+    campaign_result(manifest, store, 0, timing=(10, 20), activation=activation, telemetry_coverage=coverage)
+    release = {"schema": "anvil-serving.campaign-release/v1", "manifest_sha256": _manifest_digest(manifest),
+               "batch_id": manifest["cells"][0]["batch_id"], "arm_id": manifest["cells"][0]["arm_id"],
+               "run_ids": [manifest["cells"][0]["spec"]["run_id"]], "boot_id": "private-boot",
+               "released_monotonic": 9, "traffic_deadline_monotonic": 39, "deadline_monotonic": 49,
+               "allowance_s": 40, "drain_reserve_s": 10, "activation": activation}
+    path = Path(store.run_root) / "owner" / manifest["campaign_id"] / "campaign/batches" / (release["batch_id"] + ".json")
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(release))
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["identity_status"] == "verified"
+    public = json.dumps(row)
+    assert all(value not in public for value in binding.values())
+
+
 def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_total(tmp_path):
     from anvil_serving.benchmarking.campaign_report import report_campaign
     from anvil_serving.benchmarking.jobs import canonical_json_bytes
@@ -481,6 +548,10 @@ def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_tot
     for arm in manifest["arms"]:
         arm["budget_s"] = 40
     manifest["manifest_sha256"] = hashlib.sha256(canonical_json_bytes({k: v for k, v in manifest.items() if k != "manifest_sha256"})).hexdigest()
+    activation_binding = {"generation": "a" * 64, "metrics_url": "http://127.0.0.1:9999/engine/" + "a" * 64 + "/metrics",
+                          "container_id": "private-container", "started_at": "private-start", "served_model": "private-served"}
+    activation = {"status": "verified", **activation_binding,
+                  "binding_sha256": hashlib.sha256(canonical_json_bytes(activation_binding)).hexdigest()}
     paths = [campaign_result(manifest, store, 0, timing=(10, 20)),
              campaign_result(manifest, store, 1, timing=(15, 25))]
     batches = Path(store.run_root) / "owner" / manifest["campaign_id"] / "campaign/batches"
@@ -491,7 +562,7 @@ def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_tot
             "manifest_sha256": manifest["manifest_sha256"], "batch_id": cell["batch_id"],
             "run_ids": [cell["spec"]["run_id"]], "boot_id": "private-boot", "released_monotonic": 9 + index * 5,
             "deadline_monotonic": 49 + index * 5, "traffic_deadline_monotonic": 39 + index * 5,
-            "drain_reserve_s": 10, "allowance_s": 40}))
+                "drain_reserve_s": 10, "allowance_s": 40, "activation": activation}))
     report = report_campaign(manifest, store)
     assert report["timing"]["active_wall_seconds"] == 16
     assert report["timing"]["child_active_wall_seconds"] == 15

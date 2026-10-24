@@ -202,6 +202,12 @@ def build_model_capabilities(
     return {"object": "list", "data": rows}
 
 
+def endpoint_identity_sha256(base_url: str, model: str, dialect: str = "openai") -> str:
+    """Bind an exact endpoint contract without publishing its connection address."""
+    payload = {"base_url": base_url.rstrip("/"), "model": model, "dialect": dialect}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def build_model_fingerprints(
     config: RouterConfig, availability: object, query: Mapping[str, list[str]]
 ) -> dict:
@@ -233,6 +239,13 @@ def build_model_fingerprints(
                 else None
             ),
             "fingerprint": {key: _safe_text(fingerprint.get(key)) for key in _FINGERPRINT_KEYS},
+            # A replica pool has no single endpoint to attest. Campaigns fail
+            # closed until they can bind every member independently.
+            "endpoint_sha256": (
+                endpoint_identity_sha256(reported.base_url, reported.model, reported.dialect)
+                if not tier.replicas and (tier.metadata_source != METADATA_UPSTREAM or effective is not None)
+                else None
+            ),
             "served_identity": {
                 "expected": _safe_text(readiness.expected_model),
                 "observed": _safe_text(readiness.observed_model),

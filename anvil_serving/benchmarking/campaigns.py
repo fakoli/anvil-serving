@@ -19,7 +19,9 @@ from .jobs import (BenchmarkJobError, TERMINAL_JOB_STATES, canonical_json_bytes,
 from .submission import bind_submission_spec, validate_submission_spec
 
 SCHEMA = "anvil-serving.benchmark-campaign/v1"
+STATE_SCHEMA = "anvil-serving.benchmark-campaign-state/v1"
 MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024
+CAMPAIGN_LOCK_TIMEOUT_S = 5.0
 
 
 def _digest(value):
@@ -45,9 +47,18 @@ def _seconds(value, field, maximum):
     return value
 
 
+def _bind_drain_model(policy, identity):
+    if not policy:
+        return
+    labels = policy.get("metric_labels")
+    if not isinstance(labels, dict) or len(labels) != 1 or set(labels) - {"model", "model_name"} or next(iter(labels.values()), None) != identity["served_model"]:
+        raise BenchmarkJobError("bad_campaign_drain", "drain metric labels must bind exactly the served model")
+
+
 def read_campaign_spec(path):
     try:
-        with open(path, "rb", opener=lambda name, flags: os.open(name, flags | getattr(os, "O_NONBLOCK", 0))) as handle:
+        with open(path, "rb", opener=lambda name, flags: os.open(
+                name, flags | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0))) as handle:
             if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
                 raise ValueError("not a regular file")
             raw = handle.read(MAX_CAMPAIGN_BYTES + 1)
@@ -83,7 +94,7 @@ def plan_campaign(value):
     if any(value not in ("required", "not_available") for value in telemetry.values()):
         raise BenchmarkJobError("bad_campaign", "telemetry requirements must be required or not_available")
     result["drain_policy"] = _object(result.get("drain_policy", {}),
-        {"metrics_url", "running_metric", "waiting_metric", "timeout_s", "poll_s", "auth_env", "metric_labels", "identity_contract", "generation"}, "drain_policy")
+        {"running_metric", "waiting_metric", "timeout_s", "poll_s", "metric_labels"}, "drain_policy")
     from .campaign_execution import validate_drain_policy
     validate_drain_policy(result["drain_policy"], reserve_s=budgets["drain_reserve_s"])
     arms = result.get("arms")
@@ -91,23 +102,33 @@ def plan_campaign(value):
         raise BenchmarkJobError("bad_campaign", "campaign requires one to sixteen explicit arms")
     arm_map = {}
     for arm in arms:
-        _object(arm, {"arm_id", "identity", "endpoint", "worker", "budget_s", "drain_policy"}, "arm")
+        _object(arm, {"arm_id", "identity", "activation", "endpoint", "worker", "budget_s", "drain_policy"}, "arm")
         arm_id = validate_job_id(arm.get("arm_id"), field="arm_id")
         if arm_id in arm_map:
             raise BenchmarkJobError("bad_campaign", "duplicate arm")
         identity = arm.get("identity")
-        required = {"model", "revision", "image", "runtime", "hardware", "recipe_selector", "recipe_sha256"}
-        if not isinstance(identity, dict) or set(identity) != required or any(not item for item in identity.values()):
+        required = {"model", "revision", "image", "runtime", "hardware", "recipe_selector", "recipe_sha256", "served_model"}
+        text_fields = required - {"hardware"}
+        if (not isinstance(identity, dict) or set(identity) != required
+                or any(not isinstance(identity[field], str) or not identity[field] for field in text_fields)
+                or not isinstance(identity["hardware"], list) or not identity["hardware"]
+                or any(not isinstance(item, str) or not re.fullmatch(r"GPU-[A-Za-z0-9-]{1,127}", item)
+                       for item in identity["hardware"])):
             raise BenchmarkJobError("bad_campaign", "arm identity requires explicit model, revision, image, runtime, hardware and recipe pins")
         arm["identity"] = _validate_json_value(identity, path="arm.identity")
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", identity["image"]):
+            raise BenchmarkJobError("bad_campaign", "image pin must be a Docker SHA-256 ID")
         if not isinstance(identity["recipe_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", identity["recipe_sha256"]):
             raise BenchmarkJobError("bad_campaign", "recipe pin must be SHA-256")
+        from .campaign_identity import validate_activation
+        validate_activation(arm)
         if "drain_policy" in arm:
             arm["drain_policy"] = _object(arm["drain_policy"],
-                {"metrics_url", "running_metric", "waiting_metric", "timeout_s", "poll_s", "auth_env", "metric_labels", "identity_contract", "generation"}, "arm drain_policy")
+                {"running_metric", "waiting_metric", "timeout_s", "poll_s", "metric_labels"}, "arm drain_policy")
         arm["budget_s"] = _seconds(arm.get("budget_s", budgets["per_arm_s"]), "arm budget", budgets["per_arm_s"])
         if "drain_policy" in arm:
             validate_drain_policy(arm["drain_policy"], reserve_s=budgets["drain_reserve_s"])
+        _bind_drain_model(arm.get("drain_policy", result["drain_policy"]), identity)
         arm_map[arm_id] = arm
     cells = result.get("cells")
     if not isinstance(cells, list) or not 1 <= len(cells) <= 4096:
@@ -181,33 +202,69 @@ def campaign_directory(run_root, ownership_id, campaign_id):
 
 
 @contextmanager
-def campaign_lock(directory):
-    """A short OS lock: process death releases it without stale-lock recovery."""
+def campaign_lock(directory, *, timeout_s=CAMPAIGN_LOCK_TIMEOUT_S):
+    """Take a bounded, regular-file OS lock; process death releases it."""
     directory = Path(directory)
+    if type(timeout_s) not in (int, float) or not math.isfinite(timeout_s) or timeout_s < 0:
+        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock timeout must be a non-negative finite number")
     directory.mkdir(parents=True, exist_ok=True)
-    with open(directory / ".lock", "a+b") as handle:
-        if os.name == "nt":
-            import msvcrt
-            handle.write(b"0")
-            handle.flush()
-            handle.seek(0)
-            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    flags = (os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+    try:
+        descriptor = os.open(directory / ".lock", flags, 0o600)
+    except OSError as exc:
+        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a readable regular file") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a regular file")
+        deadline = time.perf_counter() + timeout_s
+        acquired = False
+        while not acquired:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    os.write(descriptor, b"0")
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+            except OSError as exc:
+                if time.perf_counter() >= deadline:
+                    raise BenchmarkJobError("campaign_lock_timeout", "campaign lock acquisition exceeded its bounded deadline") from exc
+                time.sleep(min(0.05, max(0, deadline - time.perf_counter())))
         try:
             yield
         finally:
             if os.name == "nt":
-                handle.seek(0)
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
             else:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
 
 
-def _state(directory):
+def _new_state(manifest):
+    return {"schema": STATE_SCHEMA, "manifest_sha256": manifest["manifest_sha256"],
+            "cancel_requested": False, "batches": {}}
+
+
+def _state(directory, *, manifest):
     path = directory / "state.json"
-    return read_campaign_spec(path) if path.exists() else {"cancel_requested": False, "batches": {}}
+    try:
+        state = read_campaign_spec(path)
+    except BenchmarkJobError as exc:
+        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is unreadable or malformed") from exc
+    if (not isinstance(state, dict)
+            or set(state) != {"schema", "manifest_sha256", "cancel_requested", "batches"}
+            or state.get("schema") != STATE_SCHEMA
+            or state.get("manifest_sha256") != manifest.get("manifest_sha256")
+            or type(state.get("cancel_requested")) is not bool
+            or not isinstance(state.get("batches"), dict)):
+        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is not bound to this frozen manifest")
+    return state
 
 
 def _check_source(manifest):
@@ -246,6 +303,7 @@ def prepare_campaign(value, store, *, cache_root=None, offline=False):
             if existing["input_sha256"] != _digest(manifest):
                 raise BenchmarkJobError("campaign_drift", "campaign was already frozen with different input")
             _check_source(existing)
+            _state(directory, manifest=existing)
             for cell in existing["cells"]:
                 verify_prepared_child(cell["spec"], cell["prepared"], run_root=store.run_root)
             return existing
@@ -260,7 +318,7 @@ def prepare_campaign(value, store, *, cache_root=None, offline=False):
         _check_source(manifest)
         manifest["manifest_sha256"] = _digest(manifest)
         atomic_write_json(directory / "manifest.json", manifest)
-        atomic_write_json(directory / "state.json", {"cancel_requested": False, "batches": {}})
+        atomic_write_json(directory / "state.json", _new_state(manifest))
     return manifest
 
 
@@ -279,7 +337,7 @@ def cancel_campaign(manifest, store):
     from .worker import cancel_benchmark_job
     directory = campaign_directory(store.run_root, manifest["ownership_id"], manifest["campaign_id"])
     with campaign_lock(directory):
-        state = _state(directory)
+        state = _state(directory, manifest=manifest)
         state["cancel_requested"] = True
         atomic_write_json(directory / "state.json", state)
         records = [_owned_record(store, manifest, cell) for cell in manifest["cells"]]
@@ -306,7 +364,7 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
         if cells[0]["arm_id"] != arm_id:
             continue
         with campaign_lock(directory):
-            state = _state(directory)
+            state = _state(directory, manifest=manifest)
             if state["cancel_requested"]:
                 return {"state": "cancelled", "campaign_id": manifest["campaign_id"]}
             _check_source(manifest)
@@ -346,7 +404,7 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
         released = False
         while True:
             with campaign_lock(directory):
-                state = _state(directory)
+                state = _state(directory, manifest=manifest)
                 if state["cancel_requested"]:
                     return {"state": "cancelled", "campaign_id": manifest["campaign_id"]}
                 records = [_owned_record(store, manifest, cell) for cell in cells]

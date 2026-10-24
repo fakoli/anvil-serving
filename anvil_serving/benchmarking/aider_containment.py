@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shlex
 import stat
 import subprocess
 import uuid
@@ -20,8 +21,7 @@ from .jobs import BenchmarkJobError, resolve_owned_run_path
 MAX_OUTPUT_BYTES = 1024 * 1024
 _LABEL = "anvil.aider."
 _TMPFS = "rw,nosuid,nodev,noexec,size=1g,nr_inodes=16384,mode=1777"
-_TASK_TMPFS = "rw,nosuid,nodev,size=4g,nr_inodes=65536,mode=1777"
-_COPY_INPUT = "cp -R -- /input/. /task/ || exit\n"
+_TASK_TMPFS = "rw,exec,nosuid,nodev,size=4g,nr_inodes=65536,mode=1777"
 _ENV_KEYS = {"PATH", "HOME", "LANG", "LC_ALL", "JAVA_HOME", "GOPATH", "CARGO_HOME",
              "RUSTUP_HOME", "GRADLE_USER_HOME", "PYTHONUNBUFFERED", "DEBIAN_FRONTEND", "NODE_PATH"}
 
@@ -29,6 +29,12 @@ _ENV_KEYS = {"PATH", "HOME", "LANG", "LC_ALL", "JAVA_HOME", "GOPATH", "CARGO_HOM
 def _require(condition, message):
     if not condition:
         raise BenchmarkJobError("aider_containment_invalid", message)
+
+
+def _copy_input(task_name):
+    # CMake and other upstream runners derive exercise identity from the basename.
+    destination = shlex.quote("/task/" + task_name)
+    return f"mkdir -- {destination} && cp -R -- /input/. {destination}/ && cd -- {destination} || exit\n"
 
 
 def _default_runner(argv, cwd, timeout):
@@ -100,6 +106,18 @@ def _labels(record):
     return {_LABEL + key: record[key] for key in ("ownership_id", "run_id", "token")}
 
 
+def _environment(values):
+    _require(isinstance(values, list), "invalid container environment")
+    result = {}
+    for value in values:
+        _require(isinstance(value, str) and "=" in value, "invalid container environment")
+        key, item = value.split("=", 1)
+        _require(key in _ENV_KEYS and key not in result,
+                 "container environment contains unsupported or duplicate keys")
+        result[key] = item
+    return result
+
+
 def _owned(observed, record):
     identity = observed.get("Id", "")
     _require(isinstance(identity, str) and re.fullmatch(r"[0-9a-f]{64}", identity), "invalid container ID")
@@ -117,7 +135,8 @@ def _isolated(observed, record):
     host = observed.get("HostConfig", {})
     _require(config.get("User") == record["user"] and config.get("WorkingDir") == "/task"
              and config.get("Entrypoint") == ["/bin/sh"] and config.get("Cmd") == record["command_args"]
-             and config.get("Env") == record["environment"], "container execution configuration drift")
+             and _environment(config.get("Env")) == _environment(record["environment"]),
+             "container execution configuration drift")
     required = {"NetworkMode": "none", "ReadonlyRootfs": True, "Privileged": False,
                 "CapDrop": ["ALL"], "SecurityOpt": ["no-new-privileges:true"],
                 "Memory": 8 * 1024**3, "MemorySwap": 8 * 1024**3,
@@ -189,19 +208,18 @@ def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, ima
     _require("," not in str(task), "task path cannot contain mount delimiters")
     if isinstance(command, str):
         _require(bool(command) and "\x00" not in command, "invalid test command")
-        command_args = ["-c", "{\n" + _COPY_INPUT + command + "\n} 2>&1"]
+        command_args = ["-c", "{\n" + _copy_input(task.name) + command + "\n} 2>&1"]
     else:
         _require(isinstance(command, (list, tuple)) and bool(command)
                  and all(isinstance(v, str) and v and "\x00" not in v for v in command), "invalid test argv")
-        command_args = ["-c", "{\n" + _COPY_INPUT + 'exec "$@"\n} 2>&1', "sh", *command]
+        command_args = ["-c", "{\n" + _copy_input(task.name) + 'exec "$@"\n} 2>&1', "sh", *command]
     _require(sum(map(len, command_args)) <= 32768, "test command exceeded its bound")
     binary = container_binary or resolve_container_binary()
     _require(isinstance(binary, str) and bool(binary), "Docker is unavailable")
     image = _inspect(runner, binary, image_id, image=True)
     _require(image.get("Id") == image_id, "test image ID drift")
     environment = image.get("Config", {}).get("Env") or []
-    _require(isinstance(environment, list) and all(isinstance(v, str) and "=" in v
-             and v.split("=", 1)[0] in _ENV_KEYS for v in environment), "image environment is not credential-free")
+    _environment(environment)
     environment = ["HOME=/tmp" if v.startswith("HOME=") else v for v in environment]
     if "HOME=/tmp" not in environment:
         environment.append("HOME=/tmp")

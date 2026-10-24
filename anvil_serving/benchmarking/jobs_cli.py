@@ -40,10 +40,11 @@ from .swe_images import (
 from .worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 
 
-def _store() -> BenchmarkJobStore:
+def _store(*, read_only: bool = False) -> BenchmarkJobStore:
     path = os.environ.get("ANVIL_BENCHMARK_JOB_DB")
     run_root = os.environ.get("ANVIL_BENCHMARK_RUN_ROOT")
     kwargs = {"run_root": run_root} if run_root else {}
+    kwargs["read_only"] = read_only
     return BenchmarkJobStore(path, **kwargs) if path else BenchmarkJobStore(**kwargs)
 
 

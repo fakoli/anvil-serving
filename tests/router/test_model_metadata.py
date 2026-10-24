@@ -12,6 +12,7 @@ from anvil_serving.router.model_metadata import (
     build_model_capabilities,
     build_model_fingerprints,
     build_router_status,
+    endpoint_identity_sha256,
 )
 
 
@@ -174,6 +175,19 @@ def test_model_query_is_normalized_and_unknown_or_unsupported_queries_fail(build
         builder(config, _Availability(), {"model": ["missing"]})
     with pytest.raises(ValueError, match="unsupported"):
         builder(config, _Availability(), {"tier": ["primary-local"]})
+
+
+def test_endpoint_binding_changes_when_alias_target_changes_without_disclosing_it():
+    config = _config()
+    tier = config.tiers[0]
+    def binding(value):
+        return build_model_fingerprints(value, _Availability(), {"model": ["llm.primary"]})["data"][0]["endpoint_sha256"]
+    original = binding(config)
+    assert original == endpoint_identity_sha256(tier.base_url, tier.model, tier.dialect)
+    for change in ({"base_url": "http://127.0.0.1:30003/v1"}, {"model": "other-model"}, {"dialect": "anthropic"}):
+        assert binding(replace(config, tiers=(replace(tier, **change),))) != original
+    assert binding(replace(config, tiers=(replace(tier, base_url=tier.base_url + "/"),))) == original
+    assert binding(_replica_config()) is None
 
 
 def test_router_status_has_injected_clock_routes_counts_and_safe_stable_hash():

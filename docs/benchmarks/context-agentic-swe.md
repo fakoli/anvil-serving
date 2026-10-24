@@ -352,7 +352,14 @@ jobs. Each cell selects one explicit task and belongs to a frozen batch of
 one or four serial workers. Preparation binds the profile, product source,
 prepared inputs, model and recipe identities, controls, task order, repeats,
 requested cache condition, and telemetry requirements. Changes require a new
-campaign. Existing terminal children are retained; repeating a measurement
+campaign. Each arm also declares its served-model identity, immutable Docker
+image ID, explicit GPU device UUIDs, and managed activation inputs. Before
+release and again before traffic, the coordinator checks the pinned recipe
+against the running container and its current monitoring registration. Routed
+aliases must expose a matching `endpoint_sha256` from `/v1/models/fingerprints`;
+this binds the selected URL, model, and dialect without emitting the URL.
+It is a comparison binding, not an anonymization guarantee. Replica pools
+are unsupported for this initial campaign contract. Existing terminal children are retained; repeating a measurement
 requires a new explicit cell rather than retrying its run ID.
 
 The diagnostic pilot contains 12 tasks, C1 and C4 batches, two repeats, and
@@ -367,14 +374,19 @@ Active measurement is bounded to at most one hour per arm and two hours in
 total, with an explicit drain reserve. Preparation is separate. Overlapping
 children consume elapsed batch time rather than the sum of their durations.
 Missing closure or unverified server drain blocks further admission. Drain
-collectors declare either `generation-label/v1` (model and generation labels on
-both native gauges) or `generation-bound-observer/v1` (the exact frozen
-`/engine/<64-hex-generation>/metrics` URL and native model labels). The observer
-contract rejects superseded generations and bounds cached metrics to 35 seconds;
-execution waits 35 seconds after owned clients stop before accepting two zero
-running/waiting samples. Its timeout must exceed `35 + 2 * poll_s + 2` seconds,
-and the drain reserve must include that timeout plus six seconds for client
-termination; a 40-second timeout and 60-second reserve satisfy this contract.
+collectors use the keyless local `generation-bound-observer/v1` contract. The
+current verified activation supplies the generation for
+`/engine/<64-hex-generation>/metrics`; preparation never guesses a future
+generation. Native metric model labels must match the arm's served model.
+The observer rejects superseded generations and bounds cached metrics to 35
+seconds. Execution waits out that entire interval after owned clients stop,
+then requires a fresh zero running/waiting observation while the same activation
+is still current. This is one source observation; repeated reads of a cached
+sample do not count as independent observations. Its timeout must exceed the
+freshness interval and bounded metric read,
+and the drain reserve must include that timeout, six seconds for client
+termination, and two eight-second activation checks. A 40-second timeout and
+70-second reserve satisfy this contract.
 Missing identity, stale samples, insufficient reserve, or unknown drain remain
 incomplete evidence. A configured C4 batch does not prove four simultaneous model requests; reports
 keep observed overlap and unavailable telemetry separate.
@@ -424,7 +436,10 @@ Test containers have no external network, credentials, GPU, or host socket
 access. Container-local IPC is allowed for the pinned toolchains. They use
 a read-only root filesystem and a read-only source bind at `/input`; special
 files, including sockets, are rejected before mounting. Tests run on a copy in
-`/task`, a 4 GiB tmpfs limited to 65,536 inodes. `/tmp` has a separate 1 GiB,
+`/task/<exercise-name>`, preserving upstream directory-based test discovery.
+The task tmpfs permits executable compiler output and is limited to 4 GiB
+and 65,536 inodes; compiler temporary files use the same bounded area.
+`/tmp` remains non-executable with a separate 1 GiB,
 16,384-inode ceiling. Containers have 8 GiB memory and memory-plus-swap limits,
 four CPUs, and at most 512 processes. Scratch state is discarded with the
 container; nothing is copied back over the host-owned transcript or results.

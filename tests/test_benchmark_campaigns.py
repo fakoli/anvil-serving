@@ -1,6 +1,7 @@
 """Offline campaign scheduling and freeze regressions; no model traffic."""
 import copy
 import json
+import os
 import socket
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +14,7 @@ from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
 
 NOW = "2026-10-24T12:00:00Z"
+STATE_MANIFEST = {"manifest_sha256": "f" * 64}
 
 
 def specification(*, arms=1, concurrency=1, tasks=None, repeats=1):
@@ -26,8 +28,11 @@ def specification(*, arms=1, concurrency=1, tasks=None, repeats=1):
     for index in range(arms):
         arm = f"arm-{index}"
         result["arms"].append({"arm_id": arm, "identity": {"model": "model", "revision": "rev",
-            "image": "image@sha256:" + "a"*64, "runtime": "runtime", "hardware": "gpu",
-            "recipe_selector": "recipe", "recipe_sha256": "b"*64}, "endpoint": endpoint, "worker": local})
+            "image": "sha256:" + "a"*64, "runtime": "runtime", "hardware": ["GPU-a"],
+            "recipe_selector": "recipe", "recipe_sha256": "b"*64, "served_model": "served-model"},
+            "activation": {"registry_path": "/operator/recipes.toml", "monitoring_receipt_path": "/operator/active-recipe.json",
+                           "observer_base_url": "http://127.0.0.1:19100", "upstream_base_url": "http://127.0.0.1:8000/v1",
+                           "container": "fixture-container"}, "endpoint": endpoint, "worker": local})
         for repeat in range(1, repeats+1):
             for count in ([1,4] if concurrency == "both" else [concurrency]):
                 for number, (suite, task) in enumerate(tasks):
@@ -86,6 +91,16 @@ def test_rejects_ambiguous_or_unbounded_cells(change):
     with pytest.raises(BenchmarkJobError): campaigns.plan_campaign(value)
 
 
+@pytest.mark.parametrize("field, value", [
+    ("served_model", ""), ("image", "image@sha256:" + "a" * 64), ("hardware", ["gpu"]),
+])
+def test_rejects_unpinned_arm_identity(field, value):
+    campaign = specification()
+    campaign["arms"][0]["identity"][field] = value
+    with pytest.raises(BenchmarkJobError):
+        campaigns.plan_campaign(campaign)
+
+
 def test_prepare_freezes_input_and_rejects_drift(store, fake_execution, monkeypatch):
     value = specification()
     manifest = campaigns.prepare_campaign(value, store)
@@ -97,6 +112,28 @@ def test_prepare_freezes_input_and_rejects_drift(store, fake_execution, monkeypa
     with pytest.raises(BenchmarkJobError, match="source changed"):
         campaigns.run_campaign(manifest, store, arm_id="arm-0")
     assert store.status(manifest["cells"][0]["spec"]["run_id"]) is None
+
+
+@pytest.mark.parametrize("replacement", [None, [], {"schema": campaigns.STATE_SCHEMA,
+    "manifest_sha256": "0" * 64, "cancel_requested": False, "batches": {}}])
+def test_existing_campaign_requires_a_bound_state_receipt(store, fake_execution, replacement):
+    value = specification()
+    manifest = campaigns.prepare_campaign(value, store)
+    path = campaigns.campaign_directory(store.run_root, manifest["ownership_id"], manifest["campaign_id"]) / "state.json"
+    if replacement is None:
+        path.unlink()
+    else:
+        path.write_text(json.dumps(replacement))
+    with pytest.raises(BenchmarkJobError, match="state receipt"):
+        campaigns.prepare_campaign(value, store)
+    with pytest.raises(BenchmarkJobError, match="state receipt"):
+        campaigns.run_campaign(manifest, store, arm_id="arm-0")
+    target = path.with_name("state-target.json")
+    target.write_text(json.dumps(campaigns._new_state(manifest)))
+    path.unlink(missing_ok=True)
+    path.symlink_to(target)
+    with pytest.raises(BenchmarkJobError, match="state receipt"):
+        campaigns.run_campaign(manifest, store, arm_id="arm-0")
 
 
 def test_resume_existing_disposition_never_launches(store, fake_execution, monkeypatch):
@@ -158,14 +195,15 @@ def test_cancel_persists_intent_before_owned_cancellation(store, fake_execution,
 
 
 def test_os_lock_serializes_concurrent_state_writes(tmp_path):
+    campaigns.atomic_write_json(tmp_path / "state.json", campaigns._new_state(STATE_MANIFEST))
     def update(_):
         with campaigns.campaign_lock(tmp_path):
-            state = campaigns._state(tmp_path)
-            state["counter"] = state.get("counter", 0) + 1
+            state = campaigns._state(tmp_path, manifest=STATE_MANIFEST)
+            state["batches"]["counter"] = state["batches"].get("counter", 0) + 1
             campaigns.atomic_write_json(tmp_path / "state.json", state)
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(update, range(20)))
-    assert campaigns._state(tmp_path)["counter"] == 20
+    assert campaigns._state(tmp_path, manifest=STATE_MANIFEST)["batches"]["counter"] == 20
 
 
 def test_cli_plan_is_read_only_and_mutations_require_confirmation(tmp_path, monkeypatch):
@@ -191,16 +229,43 @@ def test_public_campaign_command_registration_and_help(capsys):
 def _increment_campaign_state(path):
     with campaigns.campaign_lock(path):
         directory = Path(path)
-        state = campaigns._state(directory)
-        state["counter"] = state.get("counter", 0) + 1
+        state = campaigns._state(directory, manifest=STATE_MANIFEST)
+        state["batches"]["counter"] = state["batches"].get("counter", 0) + 1
         campaigns.atomic_write_json(directory / "state.json", state)
 
 
 def test_campaign_lock_is_interprocess(tmp_path):
     from concurrent.futures import ProcessPoolExecutor
+    campaigns.atomic_write_json(tmp_path / "state.json", campaigns._new_state(STATE_MANIFEST))
     with ProcessPoolExecutor(max_workers=3) as pool:
         list(pool.map(_increment_campaign_state, [str(tmp_path)] * 12))
-    assert campaigns._state(tmp_path)["counter"] == 12
+    assert campaigns._state(tmp_path, manifest=STATE_MANIFEST)["batches"]["counter"] == 12
+
+
+def test_campaign_lock_rejects_symlink_nonregular_and_contention(tmp_path):
+    target = tmp_path / "target"
+    target.write_text("x")
+    (tmp_path / ".lock").symlink_to(target)
+    with pytest.raises(BenchmarkJobError, match="regular file"):
+        with campaigns.campaign_lock(tmp_path, timeout_s=0):
+            pass
+    (tmp_path / ".lock").unlink()
+    if hasattr(os, "mkfifo"):
+        os.mkfifo(tmp_path / ".lock")
+        with pytest.raises(BenchmarkJobError, match="regular file"):
+            with campaigns.campaign_lock(tmp_path, timeout_s=0):
+                pass
+        (tmp_path / ".lock").unlink()
+    descriptor = os.open(tmp_path / ".lock", os.O_RDWR | os.O_CREAT)
+    try:
+        import fcntl
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        with pytest.raises(BenchmarkJobError, match="bounded deadline"):
+            with campaigns.campaign_lock(tmp_path, timeout_s=0):
+                pass
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
 
 
 def test_concurrent_run_cancel_does_not_release_traffic(store, fake_execution, monkeypatch):

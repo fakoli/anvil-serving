@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 
 from .jobs import BenchmarkJobError, job_spec_sha256, resolve_owned_run_path
-from .campaign_execution import bind_campaign_child, reconcile_batch
+from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch
 
 SCHEMA = "anvil-serving.benchmark-campaign-report/v1"
 _HASHES = ("workload_sha256", "controls_sha256", "oracle_sha256", "cache_sha256")
@@ -88,6 +88,8 @@ def _samples(cell, native):
         rows = native.get("observations")
         if not isinstance(rows, list) or any(not isinstance(row, dict) or row.get("scenario_id") != emitted for row in rows):
             return None, "sample_identity_mismatch"
+        if not rows:
+            return [], "empty_native_population"
         samples = []
         for row in rows:
             passed = row.get("passed") if type(row.get("passed")) is bool else None
@@ -100,6 +102,8 @@ def _samples(cell, native):
         rows = native.get("instances")
         if not isinstance(rows, list) or any(not isinstance(row, dict) or row.get("instance_id") != task for row in rows):
             return None, "sample_identity_mismatch"
+        if not rows:
+            return [], "empty_native_population"
         return [{"attempted": True if type(row.get("resolved")) is bool or isinstance(row.get("native"), dict) else None,
                  "passed": row.get("resolved") if type(row.get("resolved")) is bool else None,
                  "failed": not row["resolved"] if type(row.get("resolved")) is bool else None,
@@ -150,6 +154,20 @@ def _coverage(receipt):
                 and start <= receipt["started_monotonic"] <= receipt["closed_monotonic"] <= end)
         result[key] = "measured" if full else "unknown"
     return result
+
+
+def _identity_status(manifest, cell, receipt, store):
+    """Project only verified attribution, never private activation coordinates."""
+    try:
+        release_path = Path(resolve_owned_run_path(
+            store.run_root, ownership_id=manifest["ownership_id"], run_id=manifest["campaign_id"],
+            relative="campaign/batches/" + cell["batch_id"] + ".json",
+        ))
+        release = _read_execution(release_path)
+        _validate_release(release, manifest, cell["batch_id"])
+        return "verified" if receipt and receipt.get("activation") == release["activation"] else "unverified"
+    except (OSError, ValueError, TypeError, KeyError, BenchmarkJobError):
+        return "unverified"
 
 
 def _timing(receipts):
@@ -280,8 +298,9 @@ def report_campaign(manifest, store, *, state=None):
                   "scored": scored, "failed": failed, "cancelled": remaining if status == "cancelled" else 0,
                   "unfinished": remaining if status != "cancelled" else 0}
         coverage = _coverage(receipt)
+        identity_status = _identity_status(manifest, cell, receipt, store)
         requested_cache = cell.get("cache_condition", spec.get("parameters", {}).get("cache_condition"))
-        if requested_cache not in {"cold", "warm", "unknown", "unique", "shared", "uncontrolled"}:
+        if requested_cache not in {"basic", "cold", "warm", "unknown", "unique", "shared", "uncontrolled"}:
             requested_cache = "unspecified"
         row = {"cell": f"cell-{index + 1}", "arm": arms[cell["arm_id"]], "task": tasks[task_key],
                "suite": spec["suite"] if spec["suite"] in {"agentic", "aider", "performance"} else "unsupported",
@@ -291,7 +310,9 @@ def report_campaign(manifest, store, *, state=None):
                "evidence_status": reason or "retained", "samples": counts,
                "outcomes": samples, "native_aggregate_metrics": metrics,
                "telemetry_coverage": coverage, "cache": {"requested": requested_cache, "proven": None},
-               "measurement_complete": status == "completed" and bool(native) and not reason and all(v == "measured" for v in coverage.values())
+               "identity_status": identity_status,
+               "measurement_complete": status == "completed" and bool(native) and not reason and planned is not None
+                   and attempted == planned and scored == planned and identity_status == "verified" and all(v == "measured" for v in coverage.values())
                    and bool(receipt) and receipt.get("status") == "closed" and receipt.get("clients_stopped") is True
                    and receipt.get("drain", {}).get("status") == "verified"
                    and _timing([receipt])["active_wall_seconds"] is not None

@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import math
 import os
 from pathlib import Path
 import re
 import select
+import sqlite3
 import stat
 import time
 from urllib.parse import urlsplit
@@ -143,6 +145,16 @@ def _cells(manifest, batch_id):
     return cells
 
 
+def _activation(arm, *, expected=None):
+    from .campaign_identity import verify_activation
+    observed = verify_activation(arm)
+    binding = {key: observed.get(key) for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')}
+    value = {'status': 'verified', **binding, 'binding_sha256': _digest(binding)}
+    if observed.get('binding_sha256') != value['binding_sha256'] or expected is not None and value != expected:
+        raise BenchmarkJobError('campaign_activation_mismatch', 'active serving identity changed during the campaign')
+    return value
+
+
 def _receipt(cell, manifest, root):
     value = _read(_path(cell['spec'], root, 'campaign-execution.json'))
     expected = bind_campaign_child(cell['spec'], manifest_sha256=_manifest_digest(manifest),
@@ -181,7 +193,7 @@ def reconcile_batch(manifest, batch_id, *, run_root, store=None):
         closed = store is not None and all(_anchored_closure(store, c, manifest, run_root) for c in cells)
     if closed:
         return {**result, 'status': 'closed', 'active_seconds': max(r['closed_monotonic'] for r in rows) - release['released_monotonic']}
-    active = release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic'] and all(r['status'] in {'active', 'ready', 'closed'} for r in rows)
+    active = release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic'] and all(r['status'] in {'active', 'draining', 'ready', 'closed'} for r in rows)
     return {**result, 'status': 'active' if active else 'blocked'}
 
 
@@ -189,7 +201,11 @@ def _validate_release(release, manifest, batch_id):
     cells = _cells(manifest, batch_id)
     arm = next(a for a in manifest['arms'] if a['arm_id'] == cells[0]['arm_id'])
     numbers = ('released_monotonic', 'traffic_deadline_monotonic', 'deadline_monotonic', 'allowance_s', 'drain_reserve_s')
-    if (release.get('manifest_sha256') != _manifest_digest(manifest)
+    activation = release.get('activation')
+    activation_invalid = (not isinstance(activation, dict) or set(activation) != {'status', 'generation', 'metrics_url', 'container_id', 'started_at', 'served_model', 'binding_sha256'}
+            or activation.get('status') != 'verified'
+            or activation.get('binding_sha256') != _digest({key: activation.get(key) for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')}))
+    if (activation_invalid or release.get('manifest_sha256') != _manifest_digest(manifest)
             or release.get('schema') != 'anvil-serving.campaign-release/v1'
             or release.get('batch_id') != batch_id or release.get('arm_id') != cells[0]['arm_id']
             or release.get('run_ids') != [c['spec']['run_id'] for c in cells]
@@ -212,7 +228,7 @@ def _anchored_closure(store, cell, manifest, root):
         artifact = store.artifact(expected['run_id'])
         root_path = _path(expected, root, 'campaign-execution.json').parent
         return artifact['results'].get('campaign_execution') == evidence_file_reference(str(root_path / 'campaign-execution.json'), root=str(root_path))
-    except (BenchmarkJobError, OSError, KeyError, TypeError):
+    except (BenchmarkJobError, OSError, KeyError, TypeError, sqlite3.Error):
         return False
 
 
@@ -262,12 +278,16 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None):
     allowance_s = min(allowance_s, _remaining_budget(manifest, batch_id, run_root=run_root, store=store))
     if allowance_s <= reserve:
         raise BenchmarkJobError('campaign_budget_exceeded', 'active campaign budget exhausted')
+    arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == cells[0]['arm_id'])
+    validate_drain_policy(arm.get('drain_policy', manifest.get('drain_policy', {})), reserve_s=reserve)
+    activation = _activation(arm)
     now = time.monotonic()
     value = {'schema': 'anvil-serving.campaign-release/v1', 'manifest_sha256': _manifest_digest(manifest),
         'batch_id': batch_id, 'arm_id': cells[0]['arm_id'], 'run_ids': [c['spec']['run_id'] for c in cells],
         'boot_id': _boot_id(), 'released_at': utc_now(), 'released_monotonic': now,
         'allowance_s': allowance_s, 'drain_reserve_s': reserve,
         'traffic_deadline_monotonic': now + allowance_s - reserve, 'deadline_monotonic': now + allowance_s}
+    value['activation'] = activation
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(str(path), value)
     return value
@@ -292,62 +312,50 @@ def _clients_stopped():
 
 
 
-def validate_drain_policy(policy, *, reserve_s=None):
+def validate_drain_policy(policy, *, reserve_s=None, resolved=False):
     if policy == {}:
         return policy
-    keys = {'metrics_url', 'running_metric', 'waiting_metric', 'timeout_s', 'poll_s',
-            'auth_env', 'metric_labels', 'identity_contract', 'generation'}
+    keys = {'running_metric', 'waiting_metric', 'timeout_s', 'poll_s', 'metric_labels'}
+    if resolved:
+        keys |= {'metrics_url', 'generation'}
     if not isinstance(policy, dict) or set(policy) - keys:
         raise BenchmarkJobError('bad_campaign_drain', 'invalid drain collector fields')
-    labels = policy.get('metric_labels')
     timeout, poll = policy.get('timeout_s'), policy.get('poll_s')
-    if not isinstance(policy.get('metrics_url'), str):
-        raise BenchmarkJobError('bad_campaign_drain', 'drain metrics URL must be a string')
-    try:
-        url = urlsplit(policy['metrics_url'])
-        url.port
-    except ValueError as exc:
-        raise BenchmarkJobError('bad_campaign_drain', 'invalid drain metrics URL') from exc
-    if (url.scheme not in {'http', 'https'} or not url.hostname or url.username or url.password
-            or url.query or url.fragment or url.hostname == 'localhost'
-            or not isinstance(labels, dict) or not labels or len(labels) > 32
-            or any(not isinstance(k, str) or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_]*', k)
-                   or not isinstance(v, str) or not v or len(v) > 512 for k, v in labels.items())
-            or not (labels.get('model') or labels.get('model_name'))
+    labels = policy.get('metric_labels')
+    if (not isinstance(labels, dict) or set(labels) not in ({'model'}, {'model_name'})
+            or not isinstance(next(iter(labels.values()), None), str) or not next(iter(labels.values()), None) or len(next(iter(labels.values()))) > 512
             or any(not isinstance(policy.get(k), str) or not re.fullmatch(r'[a-zA-Z_:][a-zA-Z0-9_:]*', policy[k])
                    for k in ('running_metric', 'waiting_metric'))
             or not _finite(timeout) or not 0 < timeout <= 3600
-            or not _finite(poll) or not .001 <= poll <= 10
-            or ('auth_env' in policy and (not isinstance(policy['auth_env'], str)
-                or not re.fullmatch(r'[A-Z_][A-Z0-9_]{0,127}', policy['auth_env'])))):
+            or not _finite(poll) or not .001 <= poll <= 10):
         raise BenchmarkJobError('bad_campaign_drain', 'drain requires bounded gauges, model labels, and an explicit endpoint')
-    contract = policy.get('identity_contract')
-    if contract == 'generation-bound-observer/v1':
-        generation = policy.get('generation')
-        if not isinstance(generation, str) or not re.fullmatch('[0-9a-f]{64}', generation) or url.path != '/engine/' + generation + '/metrics':
-            raise BenchmarkJobError('bad_campaign_drain', 'observer drain requires its exact generation-bound URL')
-        minimum = 35 + 2 * poll + 2  # expire cached sample, two bounded one-second reads
-    elif contract == 'generation-label/v1' and labels.get('generation'):
-        minimum = 2 * poll
-    else:
-        raise BenchmarkJobError('bad_campaign_drain', 'drain requires an explicit generation identity contract')
-    if timeout <= minimum or reserve_s is not None and reserve_s < timeout + 6:
-        raise BenchmarkJobError('bad_campaign_drain', 'drain timeout and reserve must include freshness, samples and six-second client termination')
+    minimum = 35 + poll + 1
+    if resolved:
+        try:
+            url = urlsplit(policy['metrics_url'])
+            ipaddress.ip_address(url.hostname or '')
+        except (ValueError, TypeError) as exc:
+            raise BenchmarkJobError('bad_campaign_drain', 'resolved observer URL is invalid') from exc
+        if (url.scheme != 'http' or not ipaddress.ip_address(url.hostname).is_loopback
+                or url.path != '/engine/' + policy.get('generation', '') + '/metrics'
+                or not re.fullmatch('[0-9a-f]{64}', policy.get('generation', ''))):
+            raise BenchmarkJobError('bad_campaign_drain', 'resolved observer URL is invalid')
+    if timeout <= minimum or reserve_s is not None and reserve_s < timeout + 22:
+        raise BenchmarkJobError('bad_campaign_drain', 'drain timeout and reserve must include freshness, samples, activation rechecks and client termination')
     return policy
 
 
 def observe_drain(policy, *, deadline):
-    """Require two independent bounded engine samples with all selected gauges zero."""
+    """Require one post-expiry observer sample with all selected gauges zero."""
     try:
-        validate_drain_policy(policy)
+        validate_drain_policy(policy, resolved=True)
     except BenchmarkJobError:
         return {'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'}
     if not policy:
         return {'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'}
-    samples = []
     stopped_at = time.monotonic()
     deadline = min(deadline, stopped_at + policy['timeout_s'])
-    freshness_wait = 35 if policy['identity_contract'] == 'generation-bound-observer/v1' else 0
+    freshness_wait = 35
     if deadline - stopped_at <= freshness_wait + policy['poll_s']:
         return {'status': 'unknown', 'reason': 'insufficient_fresh_drain_window'}
     if freshness_wait:
@@ -355,13 +363,7 @@ def observe_drain(policy, *, deadline):
     while time.monotonic() < deadline:
         try:
             from ..router.model_capacity import _default_metrics_read, _label_value
-            headers = {}
-            if policy.get('auth_env'):
-                token = os.environ.get(policy['auth_env'])
-                if not token:
-                    raise ValueError('metrics authorization unavailable')
-                headers['Authorization'] = 'Bearer ' + token
-            status, raw = _default_metrics_read(policy['metrics_url'], headers,
+            status, raw = _default_metrics_read(policy['metrics_url'], {},
                 timeout=min(1, max(.01, deadline-time.monotonic())), max_bytes=1024 * 1024)
             if status != 200 or len(raw) > 1024 * 1024:
                 raise ValueError('oversized metrics')
@@ -369,19 +371,18 @@ def observe_drain(policy, *, deadline):
             for key in ('running_metric', 'waiting_metric'):
                 pattern = re.compile(r'^' + re.escape(policy[key]) + r'(?:\{(?P<labels>[^\n]*)\})?\s+(?P<value>[^\s]+)(?:\s+[^\s]+)?$', re.M)
                 found = [float(m.group('value')) for m in pattern.finditer(raw.decode())
-                         if all(_label_value(m.group('labels') or '', label) == expected
-                                for label, expected in policy['metric_labels'].items())]
+                         if _label_value(m.group('labels') or '', next(iter(policy['metric_labels']))) == next(iter(policy['metric_labels'].values()))]
                 if not found or any(not math.isfinite(v) or v < 0 for v in found):
                     raise ValueError('missing or invalid engine gauge')
                 values[key] = sum(found)
-            samples.append({'observed_monotonic': time.monotonic(), **values})
-            if len(samples) >= 2 and all(s['running_metric'] == s['waiting_metric'] == 0 for s in samples[-2:]):
-                return {'status': 'verified', 'samples': samples[-2:], 'identity_contract': policy['identity_contract'],
+            sample = {'observed_monotonic': time.monotonic(), **values}
+            if sample['running_metric'] == sample['waiting_metric'] == 0:
+                return {'status': 'verified', 'sample': sample, 'identity_contract': 'generation-bound-observer/v1',
                         'collector_sha256': _digest(policy), 'freshness_wait_s': freshness_wait}
         except (OSError, ValueError):
-            samples = []
+            pass
         time.sleep(min(policy.get('poll_s', .1), max(0, deadline-time.monotonic())))
-    return {'status': 'unknown', 'reason': 'engine_drain_not_verified', 'samples': samples[-2:]}
+    return {'status': 'unknown', 'reason': 'engine_drain_not_verified'}
 
 
 def enter_campaign(store, spec):
@@ -404,10 +405,9 @@ def enter_campaign(store, spec):
         time.sleep(.05)
     release = _read(release_path)
     _validate_release(release, manifest, binding['batch_id'])
-    from .campaigns import campaign_lock
+    from .campaigns import _state, campaign_lock
     with campaign_lock(_directory(manifest, store.run_root)):
-        state_path = _directory(manifest, store.run_root) / 'state.json'
-        if state_path.exists() and _read(state_path).get('cancel_requested') is True:
+        if _state(_directory(manifest, store.run_root), manifest=manifest).get('cancel_requested') is True:
             raise BenchmarkJobError('campaign_cancelled', 'campaign cancellation was requested before traffic')
         if release['allowance_s'] > _remaining_budget(manifest, binding['batch_id'], run_root=store.run_root, store=store):
             raise BenchmarkJobError('campaign_budget_exceeded', 'release exceeds remaining verified campaign budget')
@@ -420,7 +420,10 @@ def enter_campaign(store, spec):
         raise BenchmarkJobError('campaign_release_invalid', 'release is expired or does not bind this worker')
     # Recheck after the barrier: setup-time verification alone leaves a drift window.
     verify_child(spec, run_root=store.run_root)
+    arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == binding['arm_id'])
+    _activation(arm, expected=release['activation'])
     value.update(status='active', started_at=utc_now(), started_monotonic=time.monotonic())
+    value['activation'] = release['activation']
     atomic_write_json(str(path), value)
     # A finite supervisor survives both coordinator loss and a worker crash. It uses
     # the existing custody-checked cancellation and partial-retention path.
@@ -444,7 +447,28 @@ def close_campaign(context, *, clients_stopped=None):
     clients = _clients_stopped() if clients_stopped is None else clients_stopped
     arm = next(a for a in context['manifest']['arms'] if a['arm_id'] == value['campaign']['arm_id'])
     policy = arm.get('drain_policy', context['manifest'].get('drain_policy'))
-    drain = observe_drain(policy, deadline=context['release']['deadline_monotonic']) if clients else {'status': 'unknown', 'reason': 'owned_clients_not_stopped'}
+    if not policy:
+        value.update(status='blocked', clients_stopped=clients,
+                     drain={'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'})
+        atomic_write_json(str(context['path']), value)
+        return value
+    if clients:
+        # Publish the end of traffic before the bounded identity recheck. The
+        # receipt remains bound to the release activation, and the watchdog can
+        # now reserve the release's drain interval for observation only.
+        value.update(status='draining', clients_stopped=True,
+                     drain={'status': 'pending', 'reason': 'awaiting_fresh_engine_drain'})
+        atomic_write_json(str(context['path']), value)
+    try:
+        activation = _activation(arm, expected=context['release']['activation'])
+        resolved = {**policy, 'metrics_url': activation['metrics_url'], 'generation': activation['generation']}
+        if next(iter(policy['metric_labels'].values())) != activation['served_model']:
+            raise BenchmarkJobError('bad_campaign_drain', 'drain model label differs from the active served model')
+        drain = observe_drain(resolved, deadline=context['release']['deadline_monotonic']) if clients else {'status': 'unknown', 'reason': 'owned_clients_not_stopped'}
+        if drain['status'] == 'verified':
+            _activation(arm, expected=context['release']['activation'])
+    except BenchmarkJobError:
+        drain = {'status': 'unknown', 'reason': 'campaign_activation_unverified'}
     closed = clients and drain['status'] == 'verified' and time.monotonic() <= context['release']['deadline_monotonic']
     value.update(status='closed' if closed else 'blocked', clients_stopped=clients, drain=drain)
     if closed:
@@ -488,13 +512,43 @@ def _watchdog(database, run_root, run_id):
         if (receipt['status'] in {'closed', 'blocked'} and receipt.get('clients_stopped') is True
                 and _anchored_closure(store, cell, manifest, run_root)):
             return
+        if (receipt.get('status') == 'draining' and receipt.get('clients_stopped') is True
+                and receipt.get('activation') == release.get('activation')):
+            deadline = release['deadline_monotonic']
         time.sleep(min(.1, max(0, deadline - time.monotonic())))
-    if store.status(run_id)['state'] in {'completed', 'failed', 'cancelled'}:
+    try:
+        terminal = store.status(run_id)
+    except (BenchmarkJobError, OSError, ValueError, sqlite3.Error):
+        # The worker receipt was verified before this supervisor acknowledged
+        # custody. A damaged database must not turn the finite deadline into an
+        # unbounded run.
         from .worker import _stop_owned_worker
+        termination = _stop_owned_worker(
+            str(_path(spec, run_root, 'worker.json')), run_id,
+            database=os.path.realpath(store.path), run_root=store.run_root,
+        )
+        # Keep the surviving campaign receipt honest when the durable job record
+        # cannot be closed. Failure to write this receipt is also fail-closed.
+        try:
+            receipt = _receipt(cell, manifest, run_root)
+            if receipt['status'] in {'ready', 'active'}:
+                receipt.update(status='blocked', clients_stopped=termination['stopped'],
+                    watchdog={'reason': 'job_state_unreadable_at_traffic_deadline', 'termination': termination})
+                atomic_write_json(str(_path(spec, run_root, 'campaign-execution.json')), receipt)
+        except (BenchmarkJobError, OSError, ValueError, KeyError):
+            pass
+        return
+    from .worker import _stop_owned_worker
+    stopped = False
+    if terminal is None or terminal['state'] not in {'completed', 'failed', 'cancelled'}:
+        try:
+            cancelled = cancel_benchmark_job(store, run_id)
+            stopped = cancelled.get('worker_terminated') is True
+        except (BenchmarkJobError, OSError, ValueError, sqlite3.Error):
+            pass
+    if not stopped:
         _stop_owned_worker(str(_path(spec, run_root, 'worker.json')), run_id,
                            database=os.path.realpath(store.path), run_root=store.run_root)
-    else:
-        cancel_benchmark_job(store, run_id)
 
 
 if __name__ == '__main__':

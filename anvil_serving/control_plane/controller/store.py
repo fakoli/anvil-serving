@@ -655,6 +655,7 @@ class BenchmarkJobStore:
         *,
         run_root: str = DEFAULT_BENCHMARK_RUN_ROOT,
         source_id: str | None = None,
+        read_only: bool = False,
         _snapshot_clock: Clock = time.monotonic,
     ) -> None:
         if not isinstance(path, str) or not path:
@@ -663,18 +664,37 @@ class BenchmarkJobStore:
             raise ValueError("benchmark run root must be a non-empty string")
         if not callable(_snapshot_clock):
             raise ValueError("benchmark snapshot clock must be callable")
+        if type(read_only) is not bool:
+            raise ValueError("benchmark read_only must be a boolean")
         if source_id is not None and (
             type(source_id) is not str or _BENCHMARK_OWNER_ID.fullmatch(source_id) is None
         ):
             raise ValueError("benchmark source_id must be a stable identifier")
         self.path = path
         self.run_root = os.path.realpath(os.path.abspath(os.path.expanduser(run_root)))
-        Path(self.run_root).mkdir(parents=True, exist_ok=True)
-        resolve_owned_run_path(
-            self.run_root,
-            ownership_id="validation",
-            run_id="validation",
-        )
+        self.read_only = read_only
+        if read_only:
+            try:
+                database = Path(self.path)
+                if not database.is_file():
+                    raise OSError("not a regular file")
+                resolve_owned_run_path(
+                    self.run_root,
+                    ownership_id="validation",
+                    run_id="validation",
+                )
+            except (OSError, BenchmarkJobError) as exc:
+                raise BenchmarkJobError(
+                    "benchmark_store_unavailable",
+                    "read-only benchmark store is unavailable",
+                ) from exc
+        else:
+            Path(self.run_root).mkdir(parents=True, exist_ok=True)
+            resolve_owned_run_path(
+                self.run_root,
+                ownership_id="validation",
+                run_id="validation",
+            )
         self._lock = threading.RLock()
         self._snapshot_clock = _snapshot_clock
         self.source_id = source_id
@@ -697,6 +717,7 @@ class BenchmarkJobStore:
     def list_runs(self, *, limit: int = _BENCHMARK_LIST_LIMIT,
                   cursor: str | None = None) -> dict[str, Any]:
         """List one stable, bounded page of safe benchmark owner records."""
+        self._require_writable()
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= _BENCHMARK_LIST_LIMIT:
             raise BenchmarkJobError("bad_list_limit", "benchmark list limit must be between 1 and 100")
         if cursor is not None and (
@@ -869,6 +890,7 @@ class BenchmarkJobStore:
 
     def submit(self, spec: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
         """Create a queued job, or return the identical existing run."""
+        self._require_writable()
         normalized = validate_job_spec(spec)
         with self._lock, self._connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -990,6 +1012,7 @@ class BenchmarkJobStore:
         failure: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Retain terminal cancellation evidence before any owned cleanup."""
+        self._require_writable()
         record = self._required(run_id)
         if record["state"] in {"completed", "failed", "cancelled"}:
             return record
@@ -1061,6 +1084,7 @@ class BenchmarkJobStore:
         run_id: str,
         mutation: Callable[[dict[str, Any]], dict[str, Any]],
     ) -> dict[str, Any]:
+        self._require_writable()
         run = validate_job_id(run_id)
         with self._lock, self._connection() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -1095,6 +1119,7 @@ class BenchmarkJobStore:
     def _write_artifact(
         self, record: Mapping[str, Any], artifact: Mapping[str, Any]
     ) -> dict[str, Any]:
+        self._require_writable()
         path = self._artifact_path(record)
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(path, artifact)
@@ -1113,13 +1138,40 @@ class BenchmarkJobStore:
                 "bad_job_record", "persisted benchmark job is invalid"
             ) from exc
 
+    def _require_writable(self) -> None:
+        if self.read_only:
+            raise BenchmarkJobError(
+                "benchmark_store_read_only",
+                "benchmark store is read-only",
+            )
+
     @contextmanager
     def _connection(self, *, timeout: float = 5.0) -> Iterator[sqlite3.Connection]:
         path = Path(self.path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(str(path), timeout=max(0.0, timeout), isolation_level=None)
+        if self.read_only:
+            try:
+                connection = sqlite3.connect(
+                    path.resolve().as_uri() + "?mode=ro",
+                    uri=True,
+                    timeout=max(0.0, timeout),
+                    isolation_level=None,
+                )
+            except (OSError, sqlite3.Error) as exc:
+                raise BenchmarkJobError(
+                    "benchmark_store_unavailable",
+                    "read-only benchmark store is unavailable",
+                ) from exc
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            connection = sqlite3.connect(str(path), timeout=max(0.0, timeout), isolation_level=None)
         try:
             connection.row_factory = sqlite3.Row
+            if self.read_only:
+                # SQLite may coordinate a live WAL reader, but query_only prevents
+                # product data, schema, and journal-mode writes.
+                connection.execute("PRAGMA query_only = ON")
+                yield connection
+                return
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute(
                 """

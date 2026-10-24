@@ -133,7 +133,9 @@ def test_oracle_uses_callback_and_exact_container_image_and_retains_failure(tmp_
     with pytest.raises(BenchmarkJobError, match="starter oracle"):
         prep._oracle({"aider": tmp_path, "polyglot-benchmark": source}, rows,
                      str(failed), "owner", "failed", image, "docker", None, [])
-    assert json.loads((failed / "aider/preparation/oracle.json").read_text())["status"] == "incomplete"
+    retained = json.loads((failed / "aider/preparation/oracle.json").read_text())
+    assert retained["status"] == "incomplete"
+    assert len(retained["results"]) == 6
 
 
 def test_source_hash_mismatch_and_no_fallback(tmp_path, monkeypatch):
@@ -225,6 +227,18 @@ def test_harness_preparation_carries_aider_receipts(tmp_path, monkeypatch):
     assert set(calls[0]["assets"]) == {"aider", "polyglot-benchmark"}
     assert result["aider_environment"]["image_id"] == "sha256:" + "1" * 64
     assert result["python_environment"]["schema"] == prep.AIDER_PYTHON_ENVIRONMENT_SCHEMA
+
+
+def test_containment_change_invalidates_preparation_identity(tmp_path, monkeypatch):
+    monkeypatch.setattr(prep, "__file__", str(tmp_path / "aider_prepare.py"))
+    (tmp_path / "aider_adapter.py").write_text("unchanged adapter")
+    policy = tmp_path / "aider_containment.py"
+    policy.write_text("old containment")
+    previous = prep._adapter_identity()
+    policy.write_text("new containment")
+    current = prep._adapter_identity()
+    assert previous["sha256"] == current["sha256"]
+    assert prep._digest(previous) != prep._digest(current)
 
 
 def test_image_inventory_verifies_contained_lint_version(tmp_path, monkeypatch):

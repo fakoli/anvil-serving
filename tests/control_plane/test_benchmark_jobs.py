@@ -82,6 +82,49 @@ def test_status_and_cursor_logs_survive_restart(tmp_path):
     assert page["next_cursor"] == 2
 
 
+def test_read_only_store_refuses_absent_state_and_does_not_create_files(tmp_path):
+    database = tmp_path / "state" / "jobs.sqlite3"
+    run_root = tmp_path / "runs"
+    with pytest.raises(BenchmarkJobError, match="read-only benchmark store is unavailable") as exc:
+        BenchmarkJobStore(str(database), run_root=str(run_root), read_only=True)
+    assert exc.value.code == "benchmark_store_unavailable"
+    assert not database.parent.exists()
+    assert not run_root.exists()
+
+
+def test_read_only_store_status_preserves_schema_and_data(tmp_path):
+    writable = _store(tmp_path)
+    writable.submit(_spec())
+    database = tmp_path / "jobs.sqlite3"
+    run_root = tmp_path / "runs"
+    with sqlite3.connect(database) as connection:
+        before_schema = connection.execute("PRAGMA schema_version").fetchone()[0]
+        before_record = connection.execute("SELECT record FROM benchmark_jobs WHERE run_id = 'run-001'").fetchone()[0]
+    reader = BenchmarkJobStore(str(database), run_root=str(run_root), read_only=True)
+    assert reader.status("run-001")["state"] == "queued"
+    with pytest.raises(BenchmarkJobError, match="benchmark store is read-only") as exc:
+        reader.submit(_spec("run-002"))
+    assert exc.value.code == "benchmark_store_read_only"
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA schema_version").fetchone()[0] == before_schema
+        assert connection.execute("SELECT record FROM benchmark_jobs WHERE run_id = 'run-001'").fetchone()[0] == before_record
+
+
+def test_read_only_store_reads_latest_committed_live_wal_row(tmp_path):
+    writable = _store(tmp_path)
+    writable.submit(_spec())
+    database = tmp_path / "jobs.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute(
+            "UPDATE benchmark_jobs SET state = 'running', record = json_set(record, '$.state', 'running')"
+        )
+        connection.commit()
+        assert database.with_name(database.name + "-wal").exists()
+        reader = BenchmarkJobStore(str(database), run_root=str(tmp_path / "runs"), read_only=True)
+        assert reader.status("run-001")["state"] == "running"
+
+
 def test_run_list_uses_a_stable_bounded_snapshot_and_hides_private_bindings(tmp_path):
     store = _store(tmp_path)
     store.submit(_spec("run-001"))

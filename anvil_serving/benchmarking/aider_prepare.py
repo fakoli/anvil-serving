@@ -45,6 +45,7 @@ IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
 
 def _adapter_identity():
     return {"sha256": hashlib.sha256(Path(__file__).with_name("aider_adapter.py").read_bytes()).hexdigest(),
+            "containment_sha256": hashlib.sha256(Path(__file__).with_name("aider_containment.py").read_bytes()).hexdigest(),
             "lint": LINT_CONTRACT}
 
 
@@ -295,11 +296,12 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
 _ENTRYPOINT = '''import os, pathlib, shutil, subprocess, sys
 root = pathlib.Path('/task/.anvil-runtime')
 root.mkdir(exist_ok=True)
+(root/'tmp').mkdir(exist_ok=True)
 for name in ('cargo', 'gradle', 'go'):
     src, dst = pathlib.Path('/opt/prepared-cache') / name, root / name
     if not dst.exists():
         shutil.copytree(src, dst)
-os.environ.update(CARGO_HOME=str(root/'cargo'), GRADLE_USER_HOME=str(root/'gradle'), GOPATH=str(root/'go'), GOCACHE='/tmp/go-cache', HOME='/tmp')
+os.environ.update(CARGO_HOME=str(root/'cargo'), GRADLE_USER_HOME=str(root/'gradle'), GOPATH=str(root/'go'), GOCACHE='/tmp/go-cache', TMPDIR=str(root/'tmp'), HOME='/tmp')
 try:
     result = subprocess.run(sys.argv[1:], check=False)
 finally:
@@ -400,6 +402,7 @@ def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, ru
     receipt = Path(run_path) / "aider/preparation/oracle.json"
     original = roots["polyglot-benchmark"]
     callback = load_test_callback(roots["aider"])
+    failures = []
     for row in rows:
         result = {"task_id": row["task_id"], "language": row["language"]}
         for mode in ("starter", "reference"):
@@ -424,8 +427,10 @@ def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, ru
             atomic_write_json(str(receipt), {"status": "incomplete", "image_id": image_id, "results": [*results, result]})
             code = result[mode + "_returncode"]
             if code is None or (mode == "reference" and code != 0) or (mode == "starter" and not 0 < code < 125):
-                _fail(f"{row['language']} {mode} oracle did not verify", "aider_oracle_failed")
+                failures.append(f"{row['language']} {mode}")
         results.append(result)
+    if failures:
+        _fail(", ".join(failures) + " oracle did not verify", "aider_oracle_failed")
     value = {"status": "passed", "image_id": image_id, "results": results}
     atomic_write_json(str(receipt), value)
     return value

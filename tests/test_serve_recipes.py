@@ -105,6 +105,18 @@ def test_format_recipe_round_trips_through_tomllib():
     assert parsed["recipe"] == [_RECIPE]  # exact round-trip, types preserved
 
 
+def test_discovered_container_retains_started_at_for_incarnation_binding():
+    row = {
+        "Id": "a" * 64, "Name": "/managed-model", "Image": "sha256:" + "b" * 64,
+        "Config": {"Labels": {sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+                               sr.RECIPE_MODEL_LABEL: "org/model"}},
+        "State": {"Status": "running", "Running": True, "StartedAt": "2026-10-24T00:00:00.000000000Z"},
+        "NetworkSettings": {"Ports": {}}, "HostConfig": {},
+    }
+    observed = sr._recipe_container_record(row, _run=lambda *args, **kwargs: SimpleNamespace(returncode=1))
+    assert observed["started_at"] == "2026-10-24T00:00:00.000000000Z"
+
+
 def test_recipe_workload_projection_reconciles_digests_without_leaking_native_values():
     digest, container_a, container_b = "a" * 64, "b" * 64, "c" * 64
     configured = sr.RecipeConfiguredObservation(

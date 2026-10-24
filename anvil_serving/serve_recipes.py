@@ -1072,6 +1072,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         return None
     state = row.get("State") or {}
     state_name = _bounded_container_value(state.get("Status"), maximum=32) or "unknown"
+    started_at = _bounded_container_value(state.get("StartedAt"), maximum=64)
     health = _bounded_container_value(
         (state.get("Health") or {}).get("Status"), maximum=32
     )
@@ -1093,6 +1094,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         "bound_ports": ports,
         "gpu_selection": _recipe_gpu_selection(row),
         "state": state_name,
+        "started_at": started_at,
         "running": bool(state.get("Running")),
         "health": health,
         "host_memory": host_memory,
