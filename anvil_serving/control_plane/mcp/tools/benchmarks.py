@@ -15,7 +15,7 @@ from ....benchmarking.harnesses import (
     harness_asset_status,
     prepare_harness_assets,
 )
-from ....benchmarking.profiles import load_profile
+from ....benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES, load_profile
 from ....benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
@@ -600,8 +600,8 @@ FAMILY = ToolFamily(
             "description": "Prepare exact external benchmark assets through the managed worker cache.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
-                    "profile": {"type": "string", "enum": ["smoke", "scout", "deep"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
+                    "profile": {"type": "string", "enum": sorted(PROFILE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "offline": {"type": "boolean"},
@@ -616,7 +616,7 @@ FAMILY = ToolFamily(
             "description": "Inspect one run's prepared external benchmark assets.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                 },
@@ -628,7 +628,7 @@ FAMILY = ToolFamily(
             "description": "Clean only a benchmark run's owned work directory.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
@@ -641,7 +641,7 @@ FAMILY = ToolFamily(
             "description": "Validate a benchmark endpoint and isolated worker without model lifecycle changes.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "requirements_json": {"type": "string", "maxLength": 262144},
                 },
@@ -653,7 +653,7 @@ FAMILY = ToolFamily(
             "description": "Submit one durable context, agentic, or SWE benchmark job.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "follow": {"type": "boolean"},
                     "detach": {"type": "boolean"},
@@ -667,7 +667,7 @@ FAMILY = ToolFamily(
             "description": "Read durable benchmark job status.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                 },
                 required=["suite", "run_id"],
@@ -688,7 +688,7 @@ FAMILY = ToolFamily(
             "description": "Read bounded cursor logs for a durable benchmark job.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "cursor": _bounded_integer_schema(0, 2147483647, 0),
                     "limit": _bounded_integer_schema(1, 1000, 100),
@@ -702,7 +702,7 @@ FAMILY = ToolFamily(
             "description": "Cancel a durable benchmark job after recording partial evidence.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
                 },
@@ -714,7 +714,7 @@ FAMILY = ToolFamily(
             "description": "Read a durable benchmark job artifact.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "path": {"type": "string", "maxLength": 512},
                 },

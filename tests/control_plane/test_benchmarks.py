@@ -44,3 +44,38 @@ def test_controller_preflight_rejects_suite_mismatch():
         assert getattr(exc, "code", None) == "suite_mismatch"
     else:
         raise AssertionError("suite mismatch was accepted")
+
+
+def test_profile_and_suite_schemas_share_the_closed_registry():
+    from anvil_serving.benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES
+
+    for tool in benchmarks.FAMILY.tools.values():
+        properties = tool["inputSchema"]["properties"]
+        if "suite" in properties:
+            assert set(properties["suite"]["enum"]) == SUITE_NAMES
+        if "profile" in properties:
+            assert set(properties["profile"]["enum"]) == PROFILE_NAMES
+
+
+def test_harness_prepare_accepts_v2_and_rejects_profile_paths(monkeypatch, tmp_path):
+    import pytest
+
+    from anvil_serving.control_plane.mcp.errors import ToolError
+
+    monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
+    monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+    prepared = []
+
+    def prepare(profile, **kwargs):
+        prepared.append(profile)
+        assert kwargs["suite"] == "context"
+        return {"profile": profile["name"]}
+
+    monkeypatch.setattr(benchmarks, "prepare_harness_assets", prepare)
+    args = {"suite": "context", "profile": "pilot-v2", "run_id": "pilot-001", "ownership_id": "campaign-001", "confirm": True}
+    assert benchmarks.tool_benchmark_harness_prepare(args)["data"] == {"profile": "pilot-v2"}
+    assert prepared[0]["suites"]["context"]["budgets"]["max_model_calls"] == 128
+    with pytest.raises(ToolError) as exc:
+        benchmarks.tool_benchmark_harness_prepare({**args, "profile": "/tmp/pilot-v2.json"})
+    assert exc.value.code == "profile_not_found"
+    assert len(prepared) == 1

@@ -139,7 +139,40 @@ changed content, or extra discoverable dataset file blocks execution.
 |---|---|---:|---|---:|---|
 | `smoke` | 8K, 32K | 3 × 1 | tool sequence and one recovery fixture | 1 | Wiring and short functional gate |
 | `scout` | 8K, 32K, 131K, 262K | 5 × 2 | 9 cases: planning, reasoning, structured output, sequential/parallel/dependent tools, recovery, debugging, and context recovery | 5 | Find likely failure regions before a deep run |
+| `pilot-v2` | 8K, 32K | 3 × 1 | same cases as smoke, with enforced budgets | 1 | Bounded contract pilot |
 | `deep` | 8K through 640K in seven buckets | 7 × 3 | the scout matrix plus long-session retention | 25 | Expensive degradation and repository campaign |
+
+`smoke`, `scout`, and `deep` retain their v1 bytes and behavior. Select
+`pilot-v2` explicitly to use the v2 budget contract:
+
+```bash
+anvil-serving eval benchmark context --profile pilot-v2 --dry-run
+```
+
+Each v2 suite binds five limits into the profile hash, admission evidence,
+and execution result:
+
+| Field | Meaning |
+|---|---|
+| `max_model_calls` | Total model transport attempts, including failed attempts and retries; context calibration also counts |
+| `max_completion_tokens` | Maximum requested completion tokens per attempt |
+| `deadline_s` | Suite execution allowance; job `timeout_s` can shorten it |
+| `max_retries` | Extra transport attempts per logical model request |
+| `min_free_disk_bytes` | Required free disk reserve, checked before preparation and execution; not a disk usage quota |
+
+The product of calls and per-attempt tokens is a theoretical ceiling, not
+observed usage. Missing token counts stay unknown. Native suites perform no
+retries; SWE observes retries at its pinned HTTP transport boundary. Exhausted
+budgets stop further model calls and retain an incomplete suite result; the
+worker records a failed job with the partial observations available.
+
+Native deadlines use a monotonic clock, limit each request timeout to the
+remaining allowance, and detect an overrun when the request returns. A socket
+timeout is not a hard wall-clock process deadline. SWE also uses its bounded
+external runner. Asset preparation is separate from suite execution. Unknown
+suite names are rejected before new durable submission or worker preparation;
+historical records remain readable. V2 jobs reject unsupported parameter keys
+and overrides that widen token, repetition, or deadline limits.
 
 SWE instance IDs are always explicit, ordered, unique, and equal in count to
 the selected profile's `instance_limit`. The adapter never silently replaces a

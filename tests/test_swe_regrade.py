@@ -36,7 +36,7 @@ def _record(run_id, owner="campaign", **parameters):
                      "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "candidate"}, "parameters": parameters}}
 
 
-def _retained(tmp_path, source):
+def _retained(tmp_path, source, *, v2=False, timeout_s=None):
     root = tmp_path / "campaign" / "source" / "evidence" / "swe-canonical"
     root.mkdir(parents=True)
     grader_root = tmp_path / "grader"
@@ -49,6 +49,13 @@ def _retained(tmp_path, source):
             "commands": {"grader": [sys.executable]},
             "harnesses": {"grader": {"revision": GRADER_REVISION},
                           "grader_containment": {"source_hashes": SOURCE_HASHES, "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest()}}}
+    if v2:
+        profile = swe_regrade.load_profile("pilot-v2")
+        source["spec"]["profile"] = "pilot-v2"
+        plan.update(schema=swe_regrade.SWE_PLAN_SCHEMA_V2, profile="pilot-v2",
+                    profile_sha256=profile["content_sha256"], budgets=profile["suites"]["swe"]["budgets"])
+    if timeout_s is not None:
+        plan["timeout_s"] = timeout_s
     plan["plan_sha256"] = hashlib.sha256(canonical_json_bytes(plan)).hexdigest()
     payloads = {"swe-plan.json": canonical_json_bytes(plan), "predictions.jsonl": b'{"instance_id":"astropy__astropy-12907","model_patch":"diff"}\n'}
     rows = []
@@ -65,14 +72,16 @@ def _retained(tmp_path, source):
     return root, Store(tmp_path, source)
 
 
-def _prepared_regrade(tmp_path, monkeypatch):
+def _prepared_regrade(tmp_path, monkeypatch, *, v2=False, timeout_s=None):
     source = {**_record("source"), "state": "completed"}
-    retained, store = _retained(tmp_path, source)
+    retained, store = _retained(tmp_path, source, v2=v2, timeout_s=timeout_s)
     monkeypatch.setattr(swe_regrade, "_verify_dataset_snapshot", lambda _: None)
     monkeypatch.setattr(swe_regrade, "_validate_assets", lambda *_: {"swe-bench": {"cache_key": "grader"}})
     monkeypatch.setattr(swe_regrade, "_python_environment", lambda *_args, **_kwargs: (sys.executable, {}))
     monkeypatch.setenv("ANVIL_BENCHMARK_CACHE_ROOT", str(tmp_path))
-    return swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source")), retained
+    target = _record("target", source_run_id="source")
+    target["spec"]["profile"] = source["spec"]["profile"]
+    return swe_regrade.prepare_swe_regrade(store, target), retained
 
 
 def test_prepare_regrade_rejects_other_owner_without_model_calls(tmp_path, monkeypatch):
@@ -202,3 +211,18 @@ def test_prepare_regrade_requires_terminal_manifest_anchor(tmp_path):
     with pytest.raises(BenchmarkJobError) as exc:
         swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source"))
     assert exc.value.code == "swe_canonical_evidence_mismatch"
+
+
+@pytest.mark.parametrize("v2", [False, True])
+def test_regrade_accepts_longer_source_suite_but_caps_grader_replay(tmp_path, monkeypatch, v2):
+    plan, retained = _prepared_regrade(tmp_path, monkeypatch, v2=v2, timeout_s=7200)
+    assert plan["timeout_s"] == 1800
+    assert plan["source_plan_sha256"] == json.loads((retained / "swe-plan.json").read_text())["plan_sha256"]
+    calls = []
+    def grader(argv, cwd, timeout, env):
+        calls.append((argv, timeout))
+        (Path(cwd) / "fake.target.json").write_text(json.dumps({"completed_ids": [INSTANCE], "resolved_ids": [INSTANCE], "error_ids": []}))
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+    assert swe_regrade.regrade_swe_predictions(plan, runner=grader)["state"] == "completed"
+    assert len(calls) == 1 and calls[0][1] == 1800
+    assert not any("swe_agent_adapter.py" in item for item in calls[0][0])

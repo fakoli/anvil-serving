@@ -20,6 +20,7 @@ from .swe import (
     SOURCE_HASHES,
     SWE_DATASET,
     SWE_PLAN_SCHEMA,
+    SWE_PLAN_SCHEMA_V2,
     _find_official_report,
     _read_json,
     _result_record,
@@ -28,7 +29,8 @@ from .swe import (
     _validate_assets,
     _verify_dataset_snapshot,
 )
-from .profiles import load_profile
+from .profiles import load_profile, suite_budgets
+from .limits import MAX_BENCHMARK_JOB_SECONDS
 from .swe_images import instance_image_tag
 from ..transports import _ProcessOutputOverflow, _ProcessPipeError, _run_bounded_process
 
@@ -52,7 +54,7 @@ def _fail(code: str, message: str) -> None:
 
 def _source_plan(path: Path) -> dict[str, Any]:
     value = _read_json(str(path), code="bad_retained_swe_plan")
-    if not isinstance(value, Mapping) or value.get("schema") != SWE_PLAN_SCHEMA:
+    if not isinstance(value, Mapping) or value.get("schema") not in {SWE_PLAN_SCHEMA, SWE_PLAN_SCHEMA_V2}:
         _fail("bad_retained_swe_plan", "retained SWE plan is invalid")
     expected = hashlib.sha256(canonical_json_bytes({k: v for k, v in value.items() if k != "plan_sha256"})).hexdigest()
     if value.get("plan_sha256") != expected:
@@ -160,6 +162,15 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
     assets_path = source_root / "assets.json"
     assets = _read_json(str(assets_path), code="missing_harness_asset")
     profile = load_profile(source_spec["profile"])
+    budgets = suite_budgets(profile, "swe")
+    if budgets is not None and (
+        plan.get("schema") != SWE_PLAN_SCHEMA_V2
+        or plan.get("profile_sha256") != profile["content_sha256"]
+        or plan.get("budgets") != budgets
+    ):
+        _fail("source_run_plan_mismatch", "retained SWE v2 profile or budgets changed")
+    if budgets is None and plan.get("schema") != SWE_PLAN_SCHEMA:
+        _fail("source_run_plan_mismatch", "retained SWE plan schema differs from its profile")
     validated_assets = _validate_assets(profile, assets)
     cache_root = os.environ.get("ANVIL_BENCHMARK_CACHE_ROOT", os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"))
     python, _ = _python_environment(assets, cache_root=cache_root)
@@ -174,7 +185,9 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
     source_timeout = plan.get("timeout_s", source_spec.get("timeout_s", 1800))
     target_timeout = spec.get("timeout_s", source_timeout)
     if (type(source_timeout) is not int or type(target_timeout) is not int
-            or not 1 <= source_timeout <= 1800 or not 1 <= target_timeout <= 1800):
+            or not 1 <= source_timeout <= MAX_BENCHMARK_JOB_SECONDS
+            or not 1 <= target_timeout <= MAX_BENCHMARK_JOB_SECONDS
+            or (budgets is not None and source_timeout > budgets["deadline_s"])):
         _fail("bad_swe_regrade_timeout", "retained SWE grader timeout is invalid")
     return {
         "schema": REVIEW_SCHEMA,
@@ -187,7 +200,7 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
         "paired_image_ids": plan.get("paired_image_ids"),
         "paired_image_path": str(retained / "paired-image-ids.json") if plan.get("paired_image_ids") is not None else None,
         "paired_image_sha256": files.get("paired-image-ids.json", {}).get("sha256"),
-        "timeout_s": min(source_timeout, target_timeout),
+        "timeout_s": min(source_timeout, target_timeout, 1800),
         "paths": {"run": target_root, "work": os.path.join(target_root, "work"),
                   "grader_work": os.path.join(target_root, "work", "official-grader"),
                   "result": os.path.join(target_root, "swe-regrade-result.json"),

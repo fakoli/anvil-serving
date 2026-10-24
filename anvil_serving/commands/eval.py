@@ -1,5 +1,6 @@
 """Command declarations for the eval family."""
 
+from ..benchmarking.profiles import PROFILE_NAMES
 from .family import command_family
 from .common import CONFIRM_OPTIONS
 from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
@@ -22,7 +23,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
             _option(
                 "--profile",
                 summary="Versioned benchmark profile.",
-                value_name="smoke|scout|deep",
+                value_name="|".join(sorted(PROFILE_NAMES)),
             ),
             _option(
                 "--observed-context",

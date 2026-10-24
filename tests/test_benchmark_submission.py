@@ -79,3 +79,39 @@ def test_cleanup_surface_checks_durable_owner_before_dispatch(monkeypatch, surfa
     assert not calls
     cleanup("owner")
     assert calls == ["source"]
+
+
+def test_unknown_suite_is_rejected_before_profile_lookup(monkeypatch):
+    monkeypatch.setattr("anvil_serving.benchmarking.submission.load_profile", lambda _name: pytest.fail("profile lookup"))
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_submission_spec(_spec({}, suite="unknown"))
+    assert exc.value.code == "unknown_suite"
+
+
+def test_v2_admission_binds_profile_and_budgets_without_changing_v1():
+    from anvil_serving.benchmarking.profiles import load_profile
+
+    value = _spec({}, suite="context")
+    original = validate_submission_spec(value)
+    assert "budgets" not in original
+    value["profile"] = "pilot-v2"
+    result = validate_submission_spec(value)
+    profile = load_profile("pilot-v2")
+    assert result["profile_sha256"] == profile["content_sha256"]
+    assert result["budgets"] == profile["suites"]["context"]["budgets"]
+    assert result["effective_deadline_s"] == 600
+
+
+@pytest.mark.parametrize("changes,code", [
+    ({"timeout_s": 1801}, "profile_budget_exceeded"),
+    ({"parameters": {"output_headroom_tokens": 2049}}, "profile_budget_exceeded"),
+    ({"parameters": {"repetitions": 2}}, "profile_budget_exceeded"),
+    ({"parameters": {"max_model_calls": 100000}}, "suite_incompatible_parameter"),
+    ({"parameters": {"budgets": {"max_model_calls": 100000}}}, "suite_incompatible_parameter"),
+])
+def test_v2_submission_cannot_widen_or_silently_override_budgets(changes, code):
+    value = _spec({}, suite="context")
+    value.update(profile="pilot-v2", **changes)
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_submission_spec(value)
+    assert exc.value.code == code

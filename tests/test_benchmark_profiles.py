@@ -79,3 +79,129 @@ def test_missing_scoring_and_unknown_suite_fail_closed():
     with pytest.raises(BenchmarkJobError) as exc:
         validate_profile(unknown)
     assert exc.value.code == "unknown_suite"
+
+
+def test_v1_contract_is_frozen_when_current_registry_grows(monkeypatch):
+    from anvil_serving.benchmarking import profiles
+
+    assert profiles.V1_PROFILE_NAMES == {"smoke", "scout", "deep"}
+    assert profiles.V1_SUITE_NAMES == {"context", "agentic", "swe"}
+    legacy = load_profile("smoke")
+    assert profiles.suite_budgets(legacy, "context") is None
+    monkeypatch.setattr(profiles, "PROFILE_NAMES", PROFILE_NAMES | {"future"})
+    monkeypatch.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {"future"})
+    assert validate_profile(legacy) == legacy
+    for field in ("name", "suites"):
+        changed = copy.deepcopy(legacy)
+        if field == "name":
+            changed[field] = "future"
+        else:
+            changed[field]["future"] = changed[field]["agentic"]
+        changed["content_sha256"] = profile_content_sha256(changed)
+        with pytest.raises(BenchmarkJobError):
+            validate_profile(changed)
+
+
+def test_v2_budget_identity_and_copy():
+    from anvil_serving.benchmarking.profiles import suite_budgets
+
+    profile = load_profile("pilot-v2")
+    budgets = suite_budgets(profile, "agentic")
+    assert budgets == profile["suites"]["agentic"]["budgets"]
+    budgets["max_model_calls"] += 1
+    assert budgets != suite_budgets(profile, "agentic")
+    profile["suites"]["agentic"]["budgets"] = budgets
+    with pytest.raises(BenchmarkJobError, match="content identity"):
+        validate_profile(profile)
+    profile["content_sha256"] = profile_content_sha256(profile)
+    assert validate_profile(profile)["suites"]["agentic"]["budgets"] == budgets
+
+
+@pytest.mark.parametrize("field", [
+    "max_model_calls", "max_completion_tokens", "deadline_s", "max_retries", "min_free_disk_bytes",
+])
+@pytest.mark.parametrize("value", [True, None, "1", 1.5, -1, float("inf"), float("nan"), 2**64])
+def test_v2_rejects_invalid_budget_values(field, value):
+    profile = load_profile("pilot-v2")
+    profile["suites"]["context"]["budgets"][field] = value
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_profile(profile)
+    assert exc.value.code == "bad_profile"
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "tokens", "deadline", "disk", "retries"])
+def test_v2_rejects_missing_extra_or_contradictory_budgets(change):
+    profile = load_profile("pilot-v2")
+    budgets = profile["suites"]["context"]["budgets"]
+    if change == "missing":
+        del budgets["max_retries"]
+    elif change == "extra":
+        budgets["max_total_tokens"] = 10000
+    elif change == "retries":
+        budgets.update(max_model_calls=1, max_retries=1)
+    else:
+        budgets[{"tokens": "max_completion_tokens", "deadline": "deadline_s", "disk": "min_free_disk_bytes"}[change]] += 1
+    profile["content_sha256"] = profile_content_sha256(profile)
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_profile(profile)
+    assert exc.value.code == "bad_profile"
+
+
+@pytest.mark.parametrize("name", ["smoke", "pilot-v2"])
+def test_profile_schema_and_name_cannot_be_reinterpreted(name):
+    from anvil_serving.benchmarking.profiles import BENCHMARK_PROFILE_SCHEMA, BENCHMARK_PROFILE_SCHEMA_V2
+
+    profile = load_profile(name)
+    profile["schema"] = BENCHMARK_PROFILE_SCHEMA if name == "pilot-v2" else BENCHMARK_PROFILE_SCHEMA_V2
+    profile["content_sha256"] = profile_content_sha256(profile)
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_profile(profile)
+    assert exc.value.code == "bad_profile"
+
+
+def test_v2_unknown_suite_and_profile_paths_are_closed():
+    from anvil_serving.benchmarking.profiles import suite_budgets
+
+    profile = load_profile("pilot-v2")
+    with pytest.raises(BenchmarkJobError) as exc:
+        suite_budgets(profile, "mystery")
+    assert exc.value.code == "unknown_suite"
+    profile["suites"]["mystery"] = profile["suites"]["agentic"]
+    profile["content_sha256"] = profile_content_sha256(profile)
+    with pytest.raises(BenchmarkJobError) as exc:
+        validate_profile(profile)
+    assert exc.value.code == "unknown_suite"
+    with pytest.raises(BenchmarkJobError) as exc:
+        load_profile("../../pilot-v2.json")
+    assert exc.value.code == "profile_not_found"
+
+
+def test_cli_plan_and_metadata_share_profile_registry():
+    from anvil_serving.benchmarking.jobs_cli import _parser, run
+    from anvil_serving.commands.eval import _benchmark_suite
+
+    node = _benchmark_suite("context", "Context")
+    option = next(option for option in node.options if option.flags == ("--profile",))
+    assert set(option.value_name.split("|")) == PROFILE_NAMES
+    for name in PROFILE_NAMES:
+        args = _parser().parse_args(["context", "plan", "--profile", name])
+        assert args.profile == name
+    plan = run(["context", "plan", "--profile", "pilot-v2", "--dry-run"])
+    profile = load_profile("pilot-v2")
+    assert plan["profile_sha256"] == profile["content_sha256"]
+    assert plan["configuration"]["budgets"] == profile["suites"]["context"]["budgets"]
+    with pytest.raises(SystemExit):
+        _parser().parse_args(["context", "plan", "--profile", "/tmp/profile.json"])
+
+
+@pytest.mark.parametrize("name, digest", [
+    ("smoke", "b43f6a199164c2cbb92bde24672beebd781f58851d2d1bb944fc3d4d24a8e360"),
+    ("scout", "59b8a4907019f2edf89548c4edcc99d276261d214a4791ceabaedc453e573cd2"),
+    ("deep", "79876126301c2215e72e942ba0e23bb8024be0418babe40fdfda40dfafc37757"),
+])
+def test_v1_profile_bytes_stay_frozen(name, digest):
+    import hashlib
+
+    root = Path(__file__).resolve().parents[1]
+    for directory in ("anvil_serving/_benchmark_profiles", "configs/benchmarks"):
+        assert hashlib.sha256((root / directory / f"{name}.json").read_bytes()).hexdigest() == digest

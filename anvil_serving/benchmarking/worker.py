@@ -24,7 +24,7 @@ from .artifacts import (
 from .harnesses import prepare_harness_assets
 from .jobs import BenchmarkJobError, resolve_owned_run_path, utc_now
 from .preflight import require_benchmark_preflight, run_benchmark_preflight
-from .profiles import load_profile
+from .profiles import load_profile, suite_budgets
 from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
@@ -71,7 +71,7 @@ def _identities(
     worker = preflight.get("observed", {}).get("worker", {}) if preflight else {}
     endpoint = preflight.get("observed", {}).get("endpoint", {}) if preflight else {}
     adapters = assets.get("assets", {}) if assets else {}
-    suite = profile["suites"][spec["suite"]]
+    suite = profile.get("suites", {}).get(spec["suite"], {})
     parameters = spec.get("parameters", {})
     topology_kind = (
         "co-resident-benchmark-client"
@@ -120,14 +120,14 @@ def _identities(
                     for key, value in profile["adapters"][name].items()
                     if key in {"source", "revision", "image"}
                 }
-                for name in suite["adapters"]
+                for name in suite.get("adapters", [])
             } or {"native": {"schema": f"anvil-serving.{spec['suite']}/v1"}},
         ),
         "dataset": declared_or(
             "dataset",
             {"name": "SWE-bench_Verified", "split": "test"}
             if spec["suite"] == "swe"
-            else {"name": "deterministic-native", "profile_sha256": profile["content_sha256"]},
+            else {"name": "deterministic-native", "profile_sha256": profile.get("content_sha256", "unavailable")},
         ),
     }
 
@@ -152,6 +152,8 @@ def _run_suite(
         return run_context_suite(profile, spec)
     if spec["suite"] == "agentic":
         return run_agentic_suite(profile, spec)
+    if spec["suite"] != "swe":
+        raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
     instance_ids = spec.get("parameters", {}).get("instance_ids")
     parameters = spec.get("parameters", {})
     cache_root = os.environ.get(
@@ -176,6 +178,7 @@ def _run_suite(
         paired_image_ids=parameters.get("paired_image_ids"),
         server_log=parameters.get("server_log"),
         prompt_contract=parameters.get("prompt_contract", "legacy/v1"),
+        **({"timeout_s": spec["timeout_s"]} if suite_budgets(profile, "swe") is not None else {}),
     )
     selector = plan.get("server_log")
     collector = server_log_collector(selector) if selector is not None else None
@@ -186,12 +189,15 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     """Claim and execute one job, retaining evidence at each completed stage."""
     record = store.claim(run_id)
     spec = record["spec"]
-    profile = load_profile(spec["profile"])
+    profile: dict[str, Any] = {}
     stages: list[dict[str, Any]] = []
     assets = None
     preflight = None
     try:
-        validate_submission_spec(spec)
+        admission = validate_submission_spec(spec)
+        profile = load_profile(spec["profile"])
+        if "budgets" in admission:
+            stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
         if spec.get("parameters", {}).get("operation") == "regrade":
             from .swe_regrade import prepare_swe_regrade, regrade_swe_predictions
 
@@ -200,7 +206,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             suite_result = regrade_swe_predictions(plan)
             suite_ref = _write_stage(store, record, "regrade", suite_result)
             completed = suite_result.get("state") == "completed"
-            stages.append(_stage(0, "regrade", "completed" if completed else "failed", suite_ref))
+            stages.append(_stage(len(stages), "regrade", "completed" if completed else "failed", suite_ref))
             if not completed:
                 failure = suite_result.get("failure") or {"class": "grader_failure", "message": "regrade incomplete"}
                 raise BenchmarkJobError(failure.get("class", "grader_failure"), failure.get("message", "regrade incomplete"))
@@ -212,6 +218,10 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             )
             return store.transition(run_id, "completed", results={"evidence": evidence})
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
+        if "budgets" in admission:
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            if shutil.disk_usage(run_path).free < admission["budgets"]["min_free_disk_bytes"]:
+                raise BenchmarkJobError("insufficient_disk", "free disk is below the profile reserve before asset preparation")
         store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
         assets = prepare_harness_assets(
             profile,
@@ -225,7 +235,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
             offline=bool(spec.get("parameters", {}).get("offline", False)),
         )
-        stages.append(_stage(0, "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
+        stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
 
@@ -241,7 +251,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         )
         preflight_ref = _write_stage(store, record, "preflight", preflight)
         preflight_status = "completed" if preflight["passed"] else "failed"
-        stages.append(_stage(1, "preflight", preflight_status, preflight_ref))
+        stages.append(_stage(len(stages), "preflight", preflight_status, preflight_ref))
         require_benchmark_preflight(preflight)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)

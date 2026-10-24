@@ -7,7 +7,7 @@ from typing import Any
 
 from .artifacts import REQUIRED_MEASURED_IDENTITIES
 from .jobs import BenchmarkJobError, validate_job_id
-from .profiles import load_profile
+from .profiles import SUITE_NAMES, load_profile, suite_budgets
 from .request_controls import resolve_job_request_controls
 from .suite_runner import (
     _agentic_selection,
@@ -113,24 +113,43 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     work, so submit previews and confirmed submissions share the same admission.
     """
     suite_name = spec["suite"]
+    if suite_name not in SUITE_NAMES:
+        raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
     profile = load_profile(spec["profile"])
     parameters = spec.get("parameters", {})
     if not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_parameters", "benchmark parameters must be an object")
     _validate_suite_parameters(suite_name, parameters)
     _validate_common_parameters(parameters)
+    if suite_name not in profile["suites"]:
+        raise BenchmarkJobError("unknown_suite", "benchmark suite is absent from the selected profile")
     suite = profile["suites"][suite_name]
+    budgets = suite_budgets(profile, suite_name)
+    binding = {}
+    if budgets is not None:
+        unknown = sorted(set(parameters) - _COMMON_PARAMETERS - _SUITE_PARAMETERS[suite_name])
+        if unknown:
+            raise BenchmarkJobError("suite_incompatible_parameter", "v2 parameters contain unsupported fields", {"parameters": unknown})
+        if spec["timeout_s"] > budgets["deadline_s"]:
+            raise BenchmarkJobError("profile_budget_exceeded", "job timeout exceeds the profile deadline")
+        binding = {"profile_sha256": profile["content_sha256"], "budgets": budgets,
+                   "effective_deadline_s": spec["timeout_s"]}
 
     if suite_name == "context":
         controls = _context_request_controls(parameters)
         selection = _context_selection(suite, parameters)
         _validate_case_limit(parameters, suite="context")
-        return {"profile": profile["name"], "request_controls": controls, "selection": selection}
+        if budgets is not None and (
+            selection["output_headroom_tokens"] > budgets["max_completion_tokens"]
+            or selection["repetitions"] > suite["repetitions"]
+        ):
+            raise BenchmarkJobError("profile_budget_exceeded", "context selection widens the profile budget")
+        return {"profile": profile["name"], "request_controls": controls, "selection": selection, **binding}
     if suite_name == "agentic":
         controls = resolve_job_request_controls(_controls(parameters))
         selection = _agentic_selection(suite, parameters)
         _validate_case_limit(parameters, suite="agentic")
-        return {"profile": profile["name"], "request_controls": controls, "selection": selection}
+        return {"profile": profile["name"], "request_controls": controls, "selection": selection, **binding}
     if suite_name == "swe":
         operation = parameters.get("operation", "run")
         if not isinstance(operation, str) or operation not in {"run", "regrade"}:
@@ -143,7 +162,7 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                 raise BenchmarkJobError(
                     "bad_regrade_parameters", "regrading uses the retained source plan without overrides"
                 )
-            return {"profile": profile["name"], "operation": operation, "source_run_id": source}
+            return {"profile": profile["name"], "operation": operation, "source_run_id": source, **binding}
         if "source_run_id" in parameters:
             raise BenchmarkJobError("bad_regrade_source", "source_run_id requires operation regrade")
         prompt_contract = parameters.get("prompt_contract", "legacy/v1")
@@ -160,6 +179,7 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         server_log = validate_server_log_selector(parameters["server_log"]) if "server_log" in parameters else None
         return {
             "profile": profile["name"],
+            **binding,
             "request_controls": controls,
             "parameters": {"server_log": server_log, "prompt_contract": prompt_contract},
             "selection": {

@@ -7,11 +7,13 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import time
 from typing import Any, Callable, Mapping, Sequence
 
+from ..transports import _ProcessOutputOverflow, _ProcessPipeError, _run_bounded_process
 from .artifacts import atomic_write_json, path_is_within, real_path
 from .harnesses import (
     HARNESS_ASSETS_SCHEMA,
@@ -22,17 +24,18 @@ from .harnesses import (
 )
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .request_controls import resolve_job_request_controls
-from .profiles import validate_profile
+from .profiles import suite_budgets, validate_profile
 from .swe_grader_adapter import GRADER_REVISION, LIMITS, SOURCE_HASHES
 from .swe_images import instance_image_tag, observe_paired_images, validate_paired_image_ids
 from .swe_logs import validate_server_log_selector
 from .swe_agent_adapter import (
-    MINI_REVISION, SOURCE_HASHES as AGENT_SOURCE_HASHES, read_attempt_evidence,
+    MINI_REVISION, SOURCE_HASHES as AGENT_SOURCE_HASHES, read_attempt_evidence, validate_budgets,
 )
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
 SWE_PLAN_SCHEMA = "anvil-serving.swe-plan/v1"
+SWE_PLAN_SCHEMA_V2 = "anvil-serving.swe-plan/v2"
 SWE_PROMPT_CONTRACTS = frozenset({"legacy/v1", "disclosed/v2"})
 SWE_DATASET = "princeton-nlp/SWE-bench_Verified"
 SWE_DATASET_REVISION = "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
@@ -58,6 +61,13 @@ SWECommandRunner = Callable[[Sequence[str], str, float, Mapping[str, str]], Any]
 
 
 def _prompt_disclosure(suite: Mapping[str, Any]) -> str:
+    if "budgets" in suite:
+        budget = suite["budgets"]
+        return (
+            f"The selected suite shares at most {budget['max_model_calls']} model transport attempts, including retries.\n"
+            f"Each model completion is capped at {budget['max_completion_tokens']} tokens.\n"
+            "Submit your final answer as a patch before the shared call budget is exhausted."
+        )
     return (
         f"You have at most {suite['max_steps']} model calls (one call per step).\n"
         f"Each model completion is capped at {suite['max_completion_tokens']} tokens.\n"
@@ -78,6 +88,15 @@ def _default_runner(
         timeout=timeout,
         check=False,
     )
+
+
+def _budget_runner(argv, cwd, timeout, env):
+    try:
+        return _run_bounded_process(argv, timeout=timeout, max_output_bytes=MAX_HARNESS_OUTPUT_BYTES,
+                                    cwd=cwd, env=dict(env), owned_process_group=True)
+    except (_ProcessOutputOverflow, _ProcessPipeError) as exc:
+        code = "swe_process_output_overflow" if isinstance(exc, _ProcessOutputOverflow) else "swe_process_boundary_failed"
+        raise BenchmarkJobError(code, "bounded SWE process did not complete safely") from exc
 
 
 def _bounded_text(value: Any) -> tuple[str, bool]:
@@ -318,7 +337,14 @@ def _mini_config(
                 sampling["top_p"]["effective_request"], ensure_ascii=True
             )
             sampling_lines += f"    top_p: {top_p}\n"
+    budget_comment = ""
+    completion_cap = suite["max_completion_tokens"]
+    if "budgets" in suite:
+        configured = validate_budgets(suite["budgets"])
+        completion_cap = configured["max_completion_tokens"]
+        budget_comment = "# suite_budgets: " + json.dumps(configured, sort_keys=True, separators=(",", ":")) + "\n"
     return (
+        f"{budget_comment}"
         "model:\n"
         f"  model_name: {model}\n"
         "  model_class: litellm\n"
@@ -330,7 +356,7 @@ def _mini_config(
         "    parallel_tool_calls: true\n"
         f"{sampling_lines}"
         f"{control_lines}"
-        f"    max_tokens: {suite['max_completion_tokens']}\n"
+        f"    max_tokens: {completion_cap}\n"
         "agent:\n"
         f"  step_limit: {suite['max_steps']}\n"
         "environment:\n"
@@ -367,10 +393,16 @@ def build_swe_run_plan(
     paired_image_ids: Mapping[str, str] | None = None,
     server_log: Mapping[str, Any] | None = None,
     prompt_contract: str = "legacy/v1",
+    timeout_s: float | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     require_swe_worker_platform()
     validated = validate_profile(profile)
+    budgets = suite_budgets(validated, "swe")
+    if budgets is not None:
+        budgets = validate_budgets(budgets)
+        if timeout_s is not None and (type(timeout_s) not in {int, float} or not 0 < timeout_s <= budgets["deadline_s"]):
+            raise BenchmarkJobError("bad_swe_budget", "SWE timeout must fit the admitted deadline")
     assets = _validate_assets(validated, assets_manifest)
     selected = validate_swe_selection(validated, instance_ids)
     paired_images = validate_paired_image_ids(paired_image_ids, selected)
@@ -436,6 +468,8 @@ def build_swe_run_plan(
     ]
     if prompt_contract == "disclosed/v2":
         mini_command[8:8] = ["--prompt-disclosure", _prompt_disclosure(suite)]
+    if budgets is not None:
+        mini_command[8:8] = ["--budgets", json.dumps(budgets, sort_keys=True, separators=(",", ":"))]
     grader_command = [
         python_executable,
         adapter_path, "--grader-root", grader_root,
@@ -454,7 +488,7 @@ def build_swe_run_plan(
         "--instance_ids", *selected,
     ]
     plan = {
-        "schema": SWE_PLAN_SCHEMA,
+        "schema": SWE_PLAN_SCHEMA if budgets is None else SWE_PLAN_SCHEMA_V2,
         "run_id": run_id,
         "ownership_id": ownership_id,
         "profile": validated["name"],
@@ -517,6 +551,9 @@ def build_swe_run_plan(
         ),
         "timeout_s": suite["timeout_s"],
     }
+    if budgets is not None:
+        plan["budgets"] = budgets
+        plan["timeout_s"] = min(suite["timeout_s"], budgets["deadline_s"], timeout_s or budgets["deadline_s"])
     plan["plan_sha256"] = hashlib.sha256(canonical_json_bytes(plan)).hexdigest()
     return plan
 
@@ -722,6 +759,7 @@ def _find_official_report(grader_work: str, run_id: str) -> str | None:
 
 def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
     return {
+        **({"budgets": plan["budgets"]} if "budgets" in plan else {}),
         "schema": SWE_RUN_SCHEMA,
         "created_at": utc_now(),
         "run_id": plan["run_id"],
@@ -764,13 +802,18 @@ def run_swe_benchmark(
 ) -> dict[str, Any]:
     """Run mini-SWE-agent, normalize predictions, then require the official grader."""
     require_swe_worker_platform()
-    if not isinstance(plan, Mapping) or plan.get("schema") != SWE_PLAN_SCHEMA:
+    if not isinstance(plan, Mapping) or plan.get("schema") not in {SWE_PLAN_SCHEMA, SWE_PLAN_SCHEMA_V2}:
         raise BenchmarkJobError("bad_swe_plan", "SWE run plan is invalid")
     expected_sha = hashlib.sha256(
         canonical_json_bytes({key: value for key, value in plan.items() if key != "plan_sha256"})
     ).hexdigest()
     if plan.get("plan_sha256") != expected_sha:
         raise BenchmarkJobError("swe_plan_digest_mismatch", "SWE run plan identity changed")
+    budgets = validate_budgets(plan.get("budgets")) if plan["schema"] == SWE_PLAN_SCHEMA_V2 else None
+    if budgets is not None and runner is _default_runner:
+        runner = _budget_runner
+    if budgets is not None and (type(plan["timeout_s"]) not in {int, float} or not 0 < plan["timeout_s"] <= budgets["deadline_s"]):
+        raise BenchmarkJobError("bad_swe_budget", "SWE timeout must fit the admitted deadline")
     _verify_dataset_snapshot(plan["dataset_snapshot"])
     paired_images = validate_paired_image_ids(plan.get("paired_image_ids"), plan["selection"]["instance_ids"])
     result = _base_result(plan)
@@ -779,6 +822,19 @@ def run_swe_benchmark(
     Path(paths["output"]).mkdir(parents=True, exist_ok=True)
     Path(paths["grader_work"]).mkdir(parents=True, exist_ok=True)
     Path(paths["mini_config_home"]).mkdir(parents=True, exist_ok=True)
+    suite_started = time.monotonic()
+
+    def budget_boundary(stage):
+        if budgets is None:
+            return plan["timeout_s"]
+        remaining = plan["timeout_s"] - (time.monotonic() - suite_started)
+        reason = ("deadline_s" if remaining <= 0 else "min_free_disk_bytes"
+                  if shutil.disk_usage(paths["work"]).free < budgets["min_free_disk_bytes"] else None)
+        if reason is not None:
+            result["failure"] = {"class": "budget_exhausted", "stage": stage, "code": reason}
+            atomic_write_json(paths["result"], result)
+            return None
+        return remaining
     atomic_write_json(paths["plan"], dict(plan))
     Path(paths["config"]).write_text(plan["config_text"], encoding="utf-8", newline="\n")
     child_env = dict(os.environ if environ is None else environ)
@@ -835,7 +891,10 @@ def run_swe_benchmark(
             }
     try:
         try:
-            agent_process = runner(plan["commands"]["agent"], paths["work"], plan["timeout_s"], child_env)
+            allowance = budget_boundary("agent")
+            if allowance is None:
+                return result
+            agent_process = runner(plan["commands"]["agent"], paths["work"], allowance, child_env)
         finally:
             agent_duration = time.monotonic() - agent_started
             agent_ended_at = utc_now()
@@ -857,9 +916,10 @@ def run_swe_benchmark(
             atomic_write_json(paths["result"], result)
     except subprocess.TimeoutExpired as exc:
         stage = _result_record(plan["commands"]["agent"], exc, agent_duration, agent_started_at, agent_ended_at)
-        stage.update({"name": "agent", "status": "failed", "failure_class": "timeout"})
+        failure = "timeout" if budgets is None else "budget_exhausted"
+        stage.update({"name": "agent", "status": "failed", "failure_class": failure})
         result["stages"].append(stage)
-        result["failure"] = {"class": "timeout", "stage": "agent"}
+        result["failure"] = {"class": failure, "stage": "agent", **({"code": "deadline_s"} if budgets is not None else {})}
         atomic_write_json(paths["result"], result)
         return result
     agent_stage = _result_record(
@@ -867,6 +927,23 @@ def run_swe_benchmark(
     )
     agent_stage.update({"name": "agent", "status": "completed"})
     result["stages"].append(agent_stage)
+    if budgets is not None:
+        observations = result.get("request_observations", {})
+        exhausted = next((event for event in observations.get("events", []) if event["event"] == "budget_exhausted"), None)
+        budget_evidence = observations.get("budget", {})
+        if exhausted is not None or budget_evidence.get("exhausted"):
+            agent_stage.update({"status": "failed", "failure_class": "budget_exhausted"})
+            result["failure"] = {"class": "budget_exhausted", "stage": "agent",
+                                 "code": exhausted["reason"] if exhausted else budget_evidence["reason"]}
+            atomic_write_json(paths["result"], result)
+            return result
+        if budget_boundary("agent") is None:
+            return result
+        if observations.get("status") != "complete" or budget_evidence.get("configured") != budgets:
+            agent_stage.update({"status": "failed", "failure_class": "broken_harness"})
+            result["failure"] = {"class": "broken_harness", "stage": "agent", "code": "missing_swe_budget_evidence"}
+            atomic_write_json(paths["result"], result)
+            return result
     if agent_stage["returncode"] != 0:
         failure = classify_swe_failure(
             stage="agent",
@@ -965,16 +1042,21 @@ def run_swe_benchmark(
     grader_started_at = utc_now()
     grader_started = time.monotonic()
     try:
+        allowance = budget_boundary("official_grader")
+        if allowance is None:
+            return result
         grader_process = runner(
-            plan["commands"]["grader"], paths["grader_work"], plan["timeout_s"], child_env
+            plan["commands"]["grader"], paths["grader_work"], allowance, child_env
         )
     except subprocess.TimeoutExpired as exc:
         stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started, grader_started_at)
-        stage.update({"name": "official_grader", "status": "failed", "failure_class": "timeout"})
+        failure = "timeout" if budgets is None else "budget_exhausted"
+        stage.update({"name": "official_grader", "status": "failed", "failure_class": failure})
         result["stages"].append(stage)
         result["failure"] = agent_failure or {
-            "class": "timeout",
+            "class": failure,
             "stage": "official_grader",
+            **({"code": "deadline_s"} if budgets is not None else {}),
         }
         atomic_write_json(paths["result"], result)
         return result
@@ -983,6 +1065,8 @@ def run_swe_benchmark(
     )
     grader_stage.update({"name": "official_grader", "status": "completed"})
     result["stages"].append(grader_stage)
+    if budget_boundary("official_grader") is None:
+        return result
     if not image_boundary("after_grader"):
         return result
     report_path = _find_official_report(paths["grader_work"], plan["run_id"])

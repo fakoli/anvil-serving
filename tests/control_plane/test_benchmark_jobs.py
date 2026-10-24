@@ -1012,3 +1012,28 @@ def test_standalone_benchmark_reader_bad_database_is_unavailable_without_mutatio
     assert result.error is WorkloadErrorCode.UNAVAILABLE
     assert path.read_bytes() == b"not-a-database"
     assert tuple(tmp_path.iterdir()) == (path,)
+
+
+def test_new_unknown_suite_rejected_but_historical_record_readable(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import profiles
+
+    store = _store(tmp_path)
+    value = _spec(suite="historical-suite")
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "unknown_suite"
+    assert store.status(value["run_id"]) is None
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
+        _, record = store.submit(value)
+    assert store.status(value["run_id"]) == record
+    assert store.submit(value) == ("existing", record)
+
+
+def test_new_v2_job_checks_budget_before_durable_creation(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="pilot-v2", parameters={}, timeout_s=1801)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "profile_budget_exceeded"
+    assert store.status(value["run_id"]) is None

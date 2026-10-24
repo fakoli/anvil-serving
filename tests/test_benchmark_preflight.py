@@ -241,3 +241,25 @@ def test_regrade_preflight_never_contacts_endpoint(monkeypatch, tmp_path, valid_
     assert artifact["passed"] is valid_source
     assert artifact["observed"]["endpoint"]["status"] == "not_contacted"
     assert artifact["side_effects"]["model_requests"] is False
+
+
+def test_v2_disk_reserve_cannot_be_lowered_by_preflight_override(tmp_path):
+    from types import SimpleNamespace
+    from anvil_serving.benchmarking.profiles import load_profile
+
+    value = _spec(suite="context", profile="pilot-v2")
+    expected = load_profile("pilot-v2")["suites"]["context"]["budgets"]
+    artifact = run_benchmark_preflight(value, run_root=str(tmp_path), requirements={"min_free_disk_bytes": 0},
+                                       disk_usage=lambda _path: SimpleNamespace(free=expected["min_free_disk_bytes"] - 1), opener=_opener())
+    assert artifact["passed"] is False
+    assert artifact["requirements"]["min_free_disk_bytes"] == expected["min_free_disk_bytes"]
+    assert artifact["budget_admission"]["budgets"] == expected
+    assert "insufficient_disk" in {check["code"] for check in artifact["checks"]}
+
+
+def test_unknown_suite_preflight_does_not_touch_endpoint_or_output(tmp_path):
+    run_root = tmp_path / "absent"
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_benchmark_preflight(_spec(suite="unknown"), run_root=str(run_root), opener=lambda *_a, **_kw: pytest.fail("endpoint"))
+    assert exc.value.code == "unknown_suite"
+    assert not run_root.exists()

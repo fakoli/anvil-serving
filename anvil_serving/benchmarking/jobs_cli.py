@@ -28,7 +28,7 @@ from .jobs import (
     validate_job_spec,
 )
 from .preflight import run_benchmark_preflight
-from .profiles import load_profile
+from .profiles import PROFILE_NAMES, SUITE_NAMES, load_profile
 from .swe import validate_swe_selection
 from .submission import validate_submission_spec
 from .swe_images import (
@@ -49,18 +49,18 @@ def _store() -> BenchmarkJobStore:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="anvil-serving eval benchmark")
     suites = parser.add_subparsers(dest="suite", required=True)
-    for suite in ("context", "agentic", "swe"):
+    for suite in sorted(SUITE_NAMES):
         suite_parser = suites.add_parser(suite)
         actions = suite_parser.add_subparsers(dest="action", required=True)
         plan = actions.add_parser("plan")
-        plan.add_argument("--profile", choices=("smoke", "scout", "deep"), required=True)
+        plan.add_argument("--profile", choices=sorted(PROFILE_NAMES), required=True)
         plan.add_argument("--observed-context", type=int)
         plan.add_argument("--dry-run", action="store_true")
         preflight = actions.add_parser("preflight")
         preflight.add_argument("--spec-json", required=True)
         preflight.add_argument("--requirements-json", default="{}")
         prepare = actions.add_parser("prepare")
-        prepare.add_argument("--profile", choices=("smoke", "scout", "deep"), required=True)
+        prepare.add_argument("--profile", choices=sorted(PROFILE_NAMES), required=True)
         prepare.add_argument("--run-id", required=True)
         prepare.add_argument("--ownership-id", required=True)
         prepare.add_argument("--offline", action="store_true")

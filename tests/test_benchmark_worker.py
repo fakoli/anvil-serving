@@ -733,3 +733,55 @@ def test_non_swe_cleanup_retains_native_output_without_swe_evidence(monkeypatch,
     assert not (run / "evidence" / "swe-canonical").exists()
     assert not (run / "work").exists()
     assert store.status("worker-run") == original
+
+
+def test_unknown_suite_cannot_fall_through_to_swe(monkeypatch):
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", lambda *_a, **_kw: pytest.fail("SWE fallback"))
+    value = spec()
+    value["suite"] = "unknown"
+    with pytest.raises(BenchmarkJobError) as exc:
+        benchmark_worker._run_suite(None, {"spec": value}, load_profile("smoke"), {})
+    assert exc.value.code == "unknown_suite"
+
+
+@pytest.mark.parametrize("change,code", [({"suite": "historical-suite"}, "unknown_suite"), ({"profile": "missing-profile"}, "profile_not_found")])
+def test_historical_unknown_contract_fails_with_durable_evidence(monkeypatch, tmp_path, change, code):
+    from anvil_serving.benchmarking import profiles
+
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(change)
+    # Model an older writer without changing the persisted record format.
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
+        store.submit(value)
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: pytest.fail("asset preparation"))
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == code
+    assert store.artifact("worker-run")["results"]["evidence"]["completeness"] == "failed"
+
+
+def test_v2_worker_retains_budget_and_partial_result(monkeypatch, tmp_path):
+    value = spec()
+    value["profile"] = "pilot-v2"
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: {"assets": {}})
+    monkeypatch.setattr(benchmark_worker, "run_benchmark_preflight", lambda *_a, **_kw: {"schema": "anvil-serving.benchmark-preflight/v1", "passed": True, "observed": {}, "checks": []})
+    monkeypatch.setattr(benchmark_worker, "_run_suite", lambda *_a, **_kw: {
+        "state": "incomplete", "passed": False,
+        "budget": {"model_calls": 2, "exhausted": True},
+        "observations": [{"request_id": "partial"}],
+        "failure": {"class": "budget_exhausted", "message": "call cap reached"},
+    })
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["class"] == "resource_exhaustion"
+    evidence = store.artifact("worker-run")["results"]["evidence"]
+    assert [s["sequence"] for s in evidence["stages"]] == list(range(4))
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    admission = json.loads((run / evidence["stages"][0]["evidence"][0]["path"]).read_text())
+    assert admission["budgets"] == load_profile("pilot-v2")["suites"]["context"]["budgets"]
+    partial = json.loads((run / evidence["stages"][-1]["evidence"][0]["path"]).read_text())
+    assert partial["observations"] == [{"request_id": "partial"}]
