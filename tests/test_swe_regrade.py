@@ -11,6 +11,7 @@ import pytest
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking import swe_regrade
 from anvil_serving.benchmarking.swe_grader_adapter import GRADER_REVISION, SOURCE_HASHES
+from anvil_serving import transports
 
 
 INSTANCE = "astropy__astropy-12907"
@@ -148,6 +149,25 @@ def test_regrade_retains_typed_bounded_runner_failure(tmp_path, monkeypatch):
     result = swe_regrade.regrade_swe_predictions(plan, runner=overflow)
     assert result["failure"] == {"class": "infrastructure_failure", "stage": "official_grader", "code": "grader_output_overflow"}
     assert Path(plan["paths"]["result"]).is_file()
+
+
+def test_regrade_default_runner_requires_owned_process_group(monkeypatch):
+    calls = []
+    monkeypatch.setattr(swe_regrade, "_run_bounded_process", lambda *a, **k: calls.append((a, k)))
+    swe_regrade._regrade_runner(["grader"], "/work", 12, {"PATH": "/bin"})
+    assert calls == [((["grader"],), {
+        "timeout": 12, "max_output_bytes": swe_regrade.MAX_REPLAY_OUTPUT_BYTES,
+        "cwd": "/work", "env": {"PATH": "/bin"}, "owned_process_group": True,
+    })]
+
+
+def test_regrade_retains_group_ownership_failure_without_launch(tmp_path, monkeypatch):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+    monkeypatch.setattr(transports.os, "getpgrp", lambda: -1, raising=False)
+    monkeypatch.setattr(transports.subprocess, "Popen", lambda *_a, **_k: pytest.fail("grader launched"))
+    result = swe_regrade.regrade_swe_predictions(plan)
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "_ProcessGroupError"
 
 
 def test_regrade_rejects_oversized_grader_report(tmp_path, monkeypatch):

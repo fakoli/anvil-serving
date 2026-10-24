@@ -19,10 +19,12 @@ import math
 import os
 from pathlib import Path
 import re
+import signal
 import socket
 import subprocess
 import tempfile
 import threading
+import time
 from types import MappingProxyType
 from typing import Any, Optional
 import urllib.error
@@ -116,6 +118,10 @@ class _ProcessOutputOverflow(Exception):
 
 
 class _ProcessPipeError(Exception):
+    pass
+
+
+class _ProcessGroupError(_ProcessPipeError):
     pass
 
 
@@ -1475,6 +1481,58 @@ def _verified_known_hosts_file(line: str):
                 raise _ProcessPipeError("verified known_hosts cleanup failed: %s" % exc) from None
 
 
+def _owned_group_members(owner: int, *, timeout: float) -> list[int]:
+    """Inspect live peers with bounded output; the completed ps is already reaped."""
+    try:
+        observed = _run_bounded_process(
+            ["ps", "-eo", "pid=,pgid=,stat="],
+            timeout=timeout,
+            max_output_bytes=1024 * 1024,
+            env={"PATH": os.defpath, "LC_ALL": "C"},
+        )
+        if observed.returncode != 0:
+            raise _ProcessGroupError("could not inspect owned process group")
+        members = []
+        for line in observed.stdout.decode("ascii").splitlines():
+            pid_text, group_text, state = line.split()
+            pid, group = int(pid_text), int(group_text)
+            if pid != owner and group == owner and not state.startswith("Z"):
+                try:
+                    if os.getpgid(pid) == owner:
+                        members.append(pid)
+                except ProcessLookupError:
+                    pass
+        return members
+    except (OSError, ValueError, subprocess.SubprocessError, _ProcessOutputOverflow, _ProcessPipeError) as exc:
+        raise _ProcessGroupError("could not inspect owned process group") from exc
+
+
+def _stop_owned_process_group(owner: int) -> None:
+    """Stop all inherited peers, retaining the live leader as the ownership anchor.
+
+    This is cleanup for a cooperative grader, not a sandbox against setsid/setpgid.
+    Zombies are terminated; only their parent can reap them.
+    """
+    deadline = time.monotonic() + 3.0
+    try:
+        while (remaining := deadline - time.monotonic()) > 0:
+            members = _owned_group_members(owner, timeout=min(remaining, 1.0))
+            if not members:
+                return
+            # Freeze before killing so a scanned parent cannot keep forking.
+            # Rescan to catch children created before their parent was frozen.
+            for sig in (signal.SIGSTOP, signal.SIGKILL):
+                for pid in members:
+                    try:
+                        if os.getpgid(pid) == owner:
+                            os.kill(pid, sig)
+                    except ProcessLookupError:
+                        pass
+        raise _ProcessGroupError("owned process group termination could not be verified")
+    except OSError as exc:
+        raise _ProcessGroupError("owned process group termination failed") from exc
+
+
 def _run_bounded_process(
     argv: Sequence[str],
     *,
@@ -1482,8 +1540,16 @@ def _run_bounded_process(
     max_output_bytes: int,
     cwd: str | os.PathLike[str] | None = None,
     env: Mapping[str, str] | None = None,
+    owned_process_group: bool = False,
 ) -> subprocess.CompletedProcess[bytes]:
-    """Capture bounded output while retaining the caller's process group."""
+    """Capture bounded output, optionally cleaning a dedicated worker's peers."""
+    owner = None
+    if owned_process_group:
+        owner = os.getpid()
+        if os.name != "posix" or os.getpgrp() != owner or os.getsid(0) != owner:
+            raise _ProcessGroupError("replay requires a dedicated worker process group and session")
+        if _owned_group_members(owner, timeout=1.0):
+            raise _ProcessGroupError("replay requires an otherwise empty worker process group")
     process = subprocess.Popen(
         list(argv),
         stdin=subprocess.DEVNULL,
@@ -1540,12 +1606,16 @@ def _run_bounded_process(
         process.wait()
         raise
     finally:
-        for reader in readers:
-            reader.join(timeout=_PIPE_CLOSE_SECONDS)
-        stuck_reader = any(reader.is_alive() for reader in readers)
-        if not stuck_reader:
-            process.stdout.close()
-            process.stderr.close()
+        try:
+            if owner is not None:
+                _stop_owned_process_group(owner)
+        finally:
+            for reader in readers:
+                reader.join(timeout=_PIPE_CLOSE_SECONDS)
+            stuck_reader = any(reader.is_alive() for reader in readers)
+            if not stuck_reader:
+                process.stdout.close()
+                process.stderr.close()
     if stuck_reader:
         raise _ProcessPipeError("SSH output pipes did not close after process termination")
     if overflow.is_set():

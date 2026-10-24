@@ -305,6 +305,8 @@ profile, and endpoint identity and these parameters:
 The source must be terminal, its terminal evidence must bind the canonical
 manifest, and its retained plan, predictions, and pinned grader must verify.
 Historical runs without that evidence cannot be regraded through this command.
+Replay currently requires the matching installed profile and adapter bytes and
+the original pinned grader cache location; drift fails closed before grading.
 Regrading accepts no request or selection overrides. It
 uses the existing submission, status, cancellation, and artifact commands,
 writes a new score under the new run, and leaves the original evidence

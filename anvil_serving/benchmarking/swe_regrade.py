@@ -41,7 +41,8 @@ _TERMINAL = frozenset({"completed", "failed", "cancelled"})
 
 def _regrade_runner(argv, cwd, timeout, env):
     return _run_bounded_process(
-        argv, timeout=timeout, max_output_bytes=MAX_REPLAY_OUTPUT_BYTES, cwd=cwd, env=env
+        argv, timeout=timeout, max_output_bytes=MAX_REPLAY_OUTPUT_BYTES, cwd=cwd, env=env,
+        owned_process_group=True,
     )
 
 
