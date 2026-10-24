@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -1000,6 +1001,48 @@ def _recipe_bound_ports(row: dict) -> list[int]:
     return sorted(ports)
 
 
+def _recipe_bound_endpoints(row: dict) -> list[dict[str, int | str]]:
+    """Return exact, inspect-reported TCP host bindings suitable for ownership checks."""
+    bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+    endpoints = set()
+    if not isinstance(bindings, dict):
+        return []
+    for container_binding, rows in bindings.items():
+        if not isinstance(container_binding, str) or not isinstance(rows, list):
+            continue
+        parts = container_binding.rsplit("/", 1)
+        if len(parts) != 2 or parts[1].lower() != "tcp":
+            continue
+        if not parts[0].isdecimal():
+            continue
+        container_port = int(parts[0])
+        if not 1 <= container_port <= 65535:
+            continue
+        for binding in rows:
+            if not isinstance(binding, dict):
+                continue
+            host_ip = binding.get("HostIp")
+            raw_host_port = binding.get("HostPort")
+            if not isinstance(host_ip, str) or isinstance(raw_host_port, bool):
+                continue
+            if isinstance(raw_host_port, int):
+                host_port = raw_host_port
+            elif isinstance(raw_host_port, str) and raw_host_port.isdecimal():
+                host_port = int(raw_host_port)
+            else:
+                continue
+            try:
+                normalized_ip = str(ipaddress.ip_address(host_ip))
+            except ValueError:
+                continue
+            if 1 <= host_port <= 65535:
+                endpoints.add((normalized_ip, host_port, container_port))
+    return [
+        {"host_ip": host_ip, "host_port": host_port, "container_port": container_port}
+        for host_ip, host_port, container_port in sorted(endpoints)
+    ]
+
+
 def _recipe_gpu_selection(row: dict) -> list[str]:
     selected = []
     requests = (row.get("HostConfig") or {}).get("DeviceRequests") or []
@@ -1080,6 +1123,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     if not isinstance(image_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest):
         image_digest = None
     ports = _recipe_bound_ports(row)
+    endpoints = _recipe_bound_endpoints(row)
     host_memory = recipe_memory.observation(row, _run=_run)
     return {
         "container": name,
@@ -1092,6 +1136,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         "served_identity": _recipe_served_identity(row, model),
         "bound_port": ports[0] if len(ports) == 1 else None,
         "bound_ports": ports,
+        "bound_endpoints": endpoints,
         "gpu_selection": _recipe_gpu_selection(row),
         "state": state_name,
         "started_at": started_at,

@@ -355,8 +355,11 @@ requested cache condition, and telemetry requirements. Changes require a new
 campaign. Each arm also declares its served-model identity, immutable Docker
 image ID, explicit GPU device UUIDs, and managed activation inputs. Before
 release and again before traffic, the coordinator checks the pinned recipe
-against the running container and its current monitoring registration. Routed
-aliases must expose a matching `endpoint_sha256` from `/v1/models/fingerprints`;
+against the running container and its current monitoring registration. Metadata
+URLs use literal IP addresses so DNS cannot outlive the
+activation deadline. The upstream IP and TCP port must match an explicit
+managed container binding; an unspecified or wildcard bind is insufficient.
+Routed aliases must expose a matching `endpoint_sha256` from `/v1/models/fingerprints`;
 this binds the selected URL, model, and dialect without emitting the URL.
 It is a comparison binding, not an anonymization guarantee. Replica pools
 are unsupported for this initial campaign contract. Existing terminal children are retained; repeating a measurement

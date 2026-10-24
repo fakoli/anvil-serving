@@ -1,5 +1,6 @@
 """Activation checks use real registry and managed Docker record parsing."""
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -35,7 +36,7 @@ def activation(tmp_path):
                       sr.RECIPE_DIGEST_LABEL: recipe_hash, sr.RECIPE_REGISTRY_DIGEST_LABEL: registry_hash},
                       "Cmd": ["--served-model-name", "served-model"]},
            "State": {"Status": "running", "Running": True, "StartedAt": "2026-10-24T00:00:00Z"},
-           "HostConfig": {"PortBindings": {"8000/tcp": [{"HostPort": "39100"}]},
+           "HostConfig": {"PortBindings": {"8000/tcp": [{"HostIp": "127.0.0.1", "HostPort": "39100"}]},
                           "DeviceRequests": [{"DeviceIDs": ["GPU-test-device"]}]}}
     receipt = {"schema": "recipe-monitoring/v1", "state": "active", "generation": "f" * 64,
                "container": "managed-model", "container_id": "d" * 64, "model": "served-model", "engine": "ignis",
@@ -88,12 +89,14 @@ def test_activation_rejects_live_identity_drift(activation, field):
         ci.verify_activation(value, runner=runner, fetch=direct_fetch)
 
 
-@pytest.mark.parametrize("change", ["container", "registry", "receipt"])
+@pytest.mark.parametrize("change", ["container", "registry", "receipt", "binding"])
 def test_activation_rechecks_ownership_after_endpoint_probe(activation, change):
     value, raw, runner = activation
     def fetch(url, headers):
         if change == "container":
             raw["State"]["StartedAt"] = "2026-10-24T01:00:00Z"
+        elif change == "binding":
+            raw["HostConfig"]["PortBindings"]["8000/tcp"][0]["HostIp"] = "127.0.0.2"
         elif change == "registry":
             path = Path(value["activation"]["registry_path"])
             path.write_bytes(path.read_bytes() + b"\n# changed\n")
@@ -169,3 +172,46 @@ def test_default_discovery_is_bounded_and_does_not_inherit_environment(activatio
     ci.verify_activation(value, fetch=direct_fetch)
     assert len(calls) == 4
     assert all(call["env"] == {"PATH": os.defpath} and call["max_output_bytes"] == 4 * 1024 * 1024 for call in calls)
+
+
+@pytest.mark.parametrize("host_ip", [None, "", "0.0.0.0", "127.0.0.2"])
+def test_activation_refuses_unproven_or_different_host_binding(activation, host_ip):
+    value, raw, runner = activation
+    raw["HostConfig"]["PortBindings"]["8000/tcp"][0]["HostIp"] = host_ip
+    def forbidden_fetch(*args):
+        pytest.fail("unowned endpoint must not receive metadata requests")
+    with pytest.raises(BenchmarkJobError, match="managed container binding"):
+        ci.verify_activation(value, runner=runner, fetch=forbidden_fetch)
+
+
+def test_same_port_on_other_local_address_cannot_impersonate_managed_endpoint(activation):
+    value, _, runner = activation
+    value["activation"]["upstream_base_url"] = "http://127.0.0.2:39100/v1"
+    value["endpoint"]["base_url"] = "http://127.0.0.1:30000/v1"
+    with pytest.raises(BenchmarkJobError, match="managed container binding"):
+        ci.verify_activation(value, runner=runner, fetch=lambda *_: pytest.fail("must reject before probe"))
+
+
+def test_metadata_endpoint_refuses_unbounded_dns_resolution(activation):
+    value, _, _ = activation
+    value["endpoint"]["base_url"] = "http://router.example.test/v1"
+    with pytest.raises(BenchmarkJobError, match="metadata endpoint must use a literal"):
+        ci.validate_activation(value)
+
+
+@pytest.mark.parametrize("result", [(200, b'{"data":[]}'), (302, b'{}'), (200, b' ' * 65537), TimeoutError(), http.client.IncompleteRead(b'')])
+def test_activation_uses_shared_absolute_deadline_reader(monkeypatch, result):
+    from anvil_serving.router import model_capacity
+    def bounded(url, headers, *, timeout, max_bytes):
+        assert url == "http://127.0.0.1:39100/v1/models"
+        assert headers == {"Accept": "application/json"}
+        assert timeout == 0.2 and max_bytes == 65536
+        if isinstance(result, Exception):
+            raise result
+        return result
+    monkeypatch.setattr(model_capacity, "_default_metrics_read", bounded)
+    if result == (200, b'{"data":[]}'):
+        assert ci._fetch_json("http://127.0.0.1:39100/v1/models", headers={"Accept": "application/json"}, timeout=0.2) == {"data": []}
+    else:
+        with pytest.raises(BenchmarkJobError, match="metadata is unavailable"):
+            ci._fetch_json("http://127.0.0.1:39100/v1/models", headers={"Accept": "application/json"}, timeout=0.2)

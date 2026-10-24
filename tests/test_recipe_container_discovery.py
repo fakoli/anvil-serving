@@ -122,8 +122,11 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
             "served_identity": "served-model",
             "bound_port": 39077,
             "bound_ports": [39077],
+            "bound_endpoints": [{"host_ip": "127.0.0.1", "host_port": 39077,
+                                 "container_port": 8000}],
             "gpu_selection": ["GPU-a", "GPU-b"],
             "state": "running",
+            "started_at": None,
             "running": True,
             "health": "healthy",
             "native_kv_offload": False,
@@ -138,7 +141,7 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
     assert "must-not-leak" not in encoded
     assert "HF_TOKEN" not in encoded
     assert "registry.invalid" not in encoded
-    assert "127.0.0.1" not in encoded
+    assert "127.0.0.1" in encoded
 
 
 def test_recipe_container_discovery_includes_exited_owned_container() -> None:

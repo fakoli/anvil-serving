@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ipaddress
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -12,8 +13,6 @@ import subprocess
 import time
 import tomllib
 from urllib.parse import urlencode, urlsplit
-import urllib.error
-import urllib.request
 
 from .jobs import BenchmarkJobError
 
@@ -56,6 +55,10 @@ def validate_activation(arm):
             _error("campaign activation paths must be absolute")
     _url(activation["observer_base_url"], loopback=True)
     _url(activation["upstream_base_url"], suffix="/v1")
+    try:
+        ipaddress.ip_address(urlsplit(arm["endpoint"]["base_url"]).hostname or "")
+    except (KeyError, TypeError, ValueError):
+        _error("campaign metadata endpoint must use a literal IP address")
     if not isinstance(activation["container"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", activation["container"]):
         _error("campaign activation container is invalid")
     return activation
@@ -112,20 +115,13 @@ def _fetch_json(url, *, headers, fetch=None, timeout=3):
         if fetch is not None:
             status, raw = fetch(url, headers)
         else:
-            request = urllib.request.Request(url, headers=headers, method="GET")
-            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
-            with opener.open(request, timeout=timeout) as response:
-                status, raw = response.status, response.read(65537)
+            from ..router.model_capacity import _default_metrics_read
+            status, raw = _default_metrics_read(url, headers, timeout=timeout, max_bytes=65536)
         if status != 200 or len(raw) > 65536:
             raise ValueError()
         return json.loads(raw)
-    except (OSError, ValueError, TypeError, json.JSONDecodeError, urllib.error.HTTPError) as exc:
+    except (OSError, ValueError, TypeError, http.client.HTTPException) as exc:
         raise BenchmarkJobError("campaign_activation_unavailable", "activation metadata is unavailable") from exc
-
-
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
 
 
 def verify_activation(arm, *, runner=None, fetch=None):
@@ -176,8 +172,12 @@ def verify_activation(arm, *, runner=None, fetch=None):
             or not container.get("bound_port") or sorted(container.get("gpu_selection") or []) != sorted(identity["hardware"])):
         _error("managed recipe does not match the frozen arm")
     upstream = _url(activation["upstream_base_url"], suffix="/v1")
-    if urlsplit(upstream).port != container["bound_port"]:
-        _error("activation upstream port differs from the managed container")
+    upstream_address = urlsplit(upstream)
+    matches = [binding for binding in container.get("bound_endpoints", [])
+               if binding["host_ip"] == str(ipaddress.ip_address(upstream_address.hostname))
+               and binding["host_port"] == upstream_address.port]
+    if upstream_address.port != container["bound_port"] or len(matches) != 1:
+        _error("activation upstream address differs from the managed container binding")
     _local_address(upstream)
     if upstream != endpoint["base_url"]:
         # Routed endpoints bind through the router fingerprint below.
@@ -226,7 +226,7 @@ def verify_activation(arm, *, runner=None, fetch=None):
             _error("direct endpoint does not serve the frozen model")
     try:
         after = discover()
-        stable = (*expected, "container_id", "started_at", "bound_port", "gpu_selection", "running")
+        stable = (*expected, "container_id", "started_at", "bound_port", "bound_endpoints", "gpu_selection", "running")
         if (any(after.get(k) != container.get(k) for k in stable)
                 or _load_registry(activation["registry_path"])[1] != registry_hash
                 or _read_json(activation["monitoring_receipt_path"]) != receipt):

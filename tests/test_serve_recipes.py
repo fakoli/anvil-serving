@@ -117,6 +117,31 @@ def test_discovered_container_retains_started_at_for_incarnation_binding():
     assert observed["started_at"] == "2026-10-24T00:00:00.000000000Z"
 
 
+def test_recipe_bound_endpoints_keep_only_valid_exact_tcp_bindings():
+    row = {
+        "HostConfig": {"PortBindings": {
+            "8000/tcp": [
+                {"HostIp": "127.000.000.001", "HostPort": "39100"},
+                {"HostIp": "2001:0db8::1", "HostPort": 39101},
+                {"HostIp": "127.0.0.1", "HostPort": "39100"},
+                {"HostIp": "", "HostPort": "39102"},
+                {"HostIp": "not-an-ip", "HostPort": "39103"},
+                {"HostIp": "127.0.0.1", "HostPort": "0"},
+                {"HostPort": "39104"},
+            ],
+            "8001/tcp": [{"HostIp": "127.0.0.2", "HostPort": "39100"}],
+            "8002/udp": [{"HostIp": "127.0.0.3", "HostPort": "39105"}],
+            "not-a-port/tcp": [{"HostIp": "127.0.0.4", "HostPort": "39106"}],
+        }}
+    }
+
+    assert sr._recipe_bound_endpoints(row) == [
+        {"host_ip": "127.0.0.1", "host_port": 39100, "container_port": 8000},
+        {"host_ip": "127.0.0.2", "host_port": 39100, "container_port": 8001},
+        {"host_ip": "2001:db8::1", "host_port": 39101, "container_port": 8000},
+    ]
+
+
 def test_recipe_workload_projection_reconciles_digests_without_leaking_native_values():
     digest, container_a, container_b = "a" * 64, "b" * 64, "c" * 64
     configured = sr.RecipeConfiguredObservation(
