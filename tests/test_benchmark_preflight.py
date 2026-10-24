@@ -216,3 +216,28 @@ def test_harness_lock_is_verified(tmp_path):
         opener=_opener(),
     )
     assert "harness_lock_mismatch" in {item["code"] for item in artifact["checks"]}
+
+
+@pytest.mark.parametrize("valid_source", [True, False])
+def test_regrade_preflight_never_contacts_endpoint(monkeypatch, tmp_path, valid_source):
+    from anvil_serving.benchmarking import swe_regrade
+
+    store = object()
+
+    def prepare(observed_store, record):
+        assert observed_store is store
+        assert record["spec"]["parameters"]["source_run_id"] == "source-run"
+        if not valid_source:
+            raise BenchmarkJobError("retained_digest_mismatch", "retained source changed")
+        return {}
+
+    monkeypatch.setattr(swe_regrade, "prepare_swe_regrade", prepare)
+    artifact = run_benchmark_preflight(
+        _spec(profile="smoke", parameters={"operation": "regrade", "source_run_id": "source-run"}),
+        run_root=str(tmp_path),
+        job_store=store,
+        opener=lambda *_a, **_kw: pytest.fail("regrading must not contact the model endpoint"),
+    )
+    assert artifact["passed"] is valid_source
+    assert artifact["observed"]["endpoint"]["status"] == "not_contacted"
+    assert artifact["side_effects"]["model_requests"] is False

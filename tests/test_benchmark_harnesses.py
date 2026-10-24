@@ -173,7 +173,7 @@ def test_concurrent_swe_environment_publishers_reuse_the_valid_winner(
     assert all(result["python_environment"]["resolved_packages"] for result in results)
 
 
-def test_cleanup_removes_only_owned_work_and_preserves_cache_and_evidence(tmp_path):
+def test_standalone_cleanup_requires_durable_lifecycle(tmp_path):
     run_root = tmp_path / "runs"
     work = run_root / "campaign" / "run" / "work"
     work.mkdir(parents=True)
@@ -184,11 +184,10 @@ def test_cleanup_removes_only_owned_work_and_preserves_cache_and_evidence(tmp_pa
     cache.mkdir()
     (cache / "shared").write_text("keep", encoding="utf-8")
 
-    result = cleanup_harness_work(
-        run_root=str(run_root), ownership_id="campaign", run_id="run"
-    )
-    assert result == {"cleaned": True, "scope": "owned-work", "shared_cache_cleaned": False}
-    assert not work.exists()
+    with pytest.raises(BenchmarkJobError) as exc:
+        cleanup_harness_work(run_root=str(run_root), ownership_id="campaign", run_id="run")
+    assert exc.value.code == "cleanup_lifecycle_required"
+    assert work.exists()
     assert evidence.exists()
     assert (cache / "shared").exists()
 

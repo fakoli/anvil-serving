@@ -29,6 +29,7 @@ from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
 from .swe_logs import server_log_collector
+from .retention import retain_swe_artifacts
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -174,6 +175,7 @@ def _run_suite(
         },
         paired_image_ids=parameters.get("paired_image_ids"),
         server_log=parameters.get("server_log"),
+        prompt_contract=parameters.get("prompt_contract", "legacy/v1"),
     )
     selector = plan.get("server_log")
     collector = server_log_collector(selector) if selector is not None else None
@@ -190,6 +192,25 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     preflight = None
     try:
         validate_submission_spec(spec)
+        if spec.get("parameters", {}).get("operation") == "regrade":
+            from .swe_regrade import prepare_swe_regrade, regrade_swe_predictions
+
+            store.append_log(run_id, level="info", message="preparing retained SWE regrade")
+            plan = prepare_swe_regrade(store, record)
+            suite_result = regrade_swe_predictions(plan)
+            suite_ref = _write_stage(store, record, "regrade", suite_result)
+            completed = suite_result.get("state") == "completed"
+            stages.append(_stage(0, "regrade", "completed" if completed else "failed", suite_ref))
+            if not completed:
+                failure = suite_result.get("failure") or {"class": "grader_failure", "message": "regrade incomplete"}
+                raise BenchmarkJobError(failure.get("class", "grader_failure"), failure.get("message", "regrade incomplete"))
+            evidence = build_measured_evidence(
+                run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+                identities=_identities(spec, profile, None, None), stages=stages,
+                completeness="completed", summary=dict(suite_result.get("summary") or {"completed": True}),
+                created_at=utc_now(), artifact_root=resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]),
+            )
+            return store.transition(run_id, "completed", results={"evidence": evidence})
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
         store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
         assets = prepare_harness_assets(
@@ -229,9 +250,20 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         suite_result = _run_suite(store, record, profile, assets)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
+        if spec["suite"] == "swe":
+            run_path = resolve_owned_run_path(
+                store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
+            )
+            work_path = os.path.join(run_path, "work")
+            if os.path.isdir(work_path):
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                if retention["state"] == "failed":
+                    raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be retained")
+                retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
-        stages.append(_stage(2, spec["suite"], "completed" if suite_complete else "failed", suite_ref))
+        stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
         if not suite_complete:
             failure = suite_result.get("failure") or {"class": "harness", "message": "suite incomplete"}
             raise BenchmarkJobError(
@@ -267,6 +299,14 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return current
         code = exc.code if isinstance(exc, BenchmarkJobError) else type(exc).__name__
         message = exc.message if isinstance(exc, BenchmarkJobError) else str(exc)
+        if spec["suite"] == "swe":
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
+            work_path = os.path.join(run_path, "work")
+            if os.path.isdir(work_path) and not any(stage["name"] == "swe_canonical_retention" for stage in stages):
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                if retention["state"] != "failed":
+                    retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                    stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -354,10 +394,6 @@ def launch_benchmark_job(
         "launched_at": utc_now(),
     })
     return {"launched": True, "pid": int(process.pid), "run_id": run_id}
-
-
-_MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
-_MAX_PARTIAL_OUTPUT_FILES = 512
 
 
 def _process_start_identity(pid: int) -> str | None:
@@ -466,59 +502,61 @@ def _process_group_running(group_id: int) -> bool:
     return False
 
 
-def _retain_native_partial_outputs(
-    *, run_path: str, work_path: str
-) -> dict[str, Any]:
-    """Copy only bounded regular mini-SWE output into retained evidence."""
+_MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
+_MAX_PARTIAL_OUTPUT_FILES = 512
+
+
+def _retain_native_partial_outputs(*, run_path: str, work_path: str) -> dict[str, Any]:
+    """Preserve the legacy non-SWE cancellation artifact contract."""
     source = os.path.join(work_path, "mini-output")
     if not os.path.exists(source):
         return {"state": "absent", "source": "work/mini-output", "files": [], "bytes": 0}
     if not os.path.isdir(source) or os.path.islink(source):
         return {"state": "failed", "reason": "native_output_is_not_a_directory"}
-    evidence_dir = os.path.join(run_path, "evidence")
-    destination = os.path.join(evidence_dir, "native-partial")
+    evidence_dir, destination = os.path.join(run_path, "evidence"), os.path.join(run_path, "evidence", "native-partial")
     Path(evidence_dir).mkdir(parents=True, exist_ok=True)
     if os.path.exists(destination):
         return {"state": "failed", "reason": "native_output_destination_exists"}
-    staging = tempfile.mkdtemp(prefix=".native-partial-", dir=evidence_dir)
-    files: list[dict[str, Any]] = []
-    total = 0
+    staging, files, total = tempfile.mkdtemp(prefix=".native-partial-", dir=evidence_dir), [], 0
     try:
         for current, directories, names in os.walk(source, followlinks=False):
-            directories.sort()
-            names.sort()
+            directories.sort(); names.sort()
             if any(os.path.islink(os.path.join(current, name)) for name in directories):
                 return {"state": "failed", "reason": "native_output_contains_symlink"}
             for name in names:
                 original = os.path.join(current, name)
-                relative = os.path.relpath(original, source)
                 if os.path.islink(original) or not os.path.isfile(original):
                     return {"state": "failed", "reason": "native_output_contains_nonregular_file"}
                 size = os.path.getsize(original)
                 if len(files) >= _MAX_PARTIAL_OUTPUT_FILES or total + size > _MAX_PARTIAL_OUTPUT_BYTES:
                     return {"state": "failed", "reason": "native_output_exceeds_retention_bound"}
-                copied = os.path.join(staging, relative)
-                Path(copied).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(original, copied)
-                files.append({"path": relative.replace("\\", "/"), **evidence_file_reference(copied, root=staging)})
+                copied = os.path.join(staging, os.path.relpath(original, source))
+                Path(copied).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(original, copied)
+                files.append({"path": os.path.relpath(copied, staging).replace("\\", "/"), **evidence_file_reference(copied, root=staging)})
                 total += size
         os.replace(staging, destination)
         return {"state": "retained", "source": "work/mini-output", "files": files, "bytes": total}
     finally:
-        if os.path.isdir(staging):
-            shutil.rmtree(staging, ignore_errors=True)
+        if os.path.isdir(staging): shutil.rmtree(staging, ignore_errors=True)
 
 
 def _cancellation_evidence(
     record: Mapping[str, Any], *, run_path: str, retention: Mapping[str, Any], termination: Mapping[str, Any]
 ) -> dict[str, Any]:
     spec = record["spec"]
-    manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
+    if spec["suite"] != "swe":
+        manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
+        Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(manifest_path, {"schema": "anvil-serving.native-partial-output/v1", "retention": retention, "termination": termination})
+        status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "absent" else "failed"
+        failure_code = "cancelled" if retention["state"] in {"retained", "absent"} else "partial_artifact_retention_failed"
+        return build_measured_evidence(run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]}, identities={key: {"status": "unavailable", "reason": "cancellation before collection"} for key in ("model", "served_model", "runtime", "image", "hardware", "topology", "context", "concurrency", "harnesses", "dataset")}, stages=[_stage(0, "native_partial_outputs", status, evidence_file_reference(manifest_path, root=run_path))], completeness="cancelled", summary={"completed": False, "native_partial_output": dict(retention)}, failure={"class": "cancellation", "code": failure_code, "message": "benchmark cancellation retained native partial output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because native output retention failed"}, created_at=utc_now(), artifact_root=run_path)
+    manifest_path = os.path.join(run_path, "evidence", "cancellation-swe-canonical.json")
     Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(manifest_path, {"schema": "anvil-serving.native-partial-output/v1", "retention": retention, "termination": termination})
-    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "absent" else "failed"
-    failure_code = "cancelled" if retention["state"] in {"retained", "absent"} else "partial_artifact_retention_failed"
-    failure_message = "benchmark cancellation retained native partial output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because native output retention failed"
+    atomic_write_json(manifest_path, {"schema": "anvil-serving.swe-canonical-cancellation/v1", "retention": retention, "termination": termination})
+    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "incomplete" else "failed"
+    failure_code = "cancelled" if retention["state"] in {"retained", "incomplete"} else "partial_artifact_retention_failed"
+    failure_message = "benchmark cancellation retained canonical SWE output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because canonical SWE retention failed"
     identities = {
         "model": {"alias": spec["endpoint"]["model"]},
         "served_model": {"id": spec["endpoint"]["model"], "status": "unavailable"},
@@ -534,9 +572,9 @@ def _cancellation_evidence(
     return build_measured_evidence(
         run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
         identities=identities,
-        stages=[_stage(0, "native_partial_outputs", status, evidence_file_reference(manifest_path, root=run_path))],
+        stages=[_stage(0, "swe_canonical_retention", status, evidence_file_reference(manifest_path, root=run_path))],
         completeness="cancelled",
-        summary={"completed": False, "native_partial_output": dict(retention)},
+        summary={"completed": False, "swe_canonical_retention": dict(retention)},
         failure={"class": "cancellation", "code": failure_code, "message": failure_message},
         created_at=utc_now(),
         artifact_root=run_path,
@@ -569,11 +607,16 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id, relative="work"
     )
     try:
-        retention = (
-            _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
-            if termination["stopped"]
-            else {"state": "failed", "reason": "worker_termination_unverified"}
-        )
+        if termination["stopped"]:
+            if record["spec"]["suite"] == "swe":
+                receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
+                Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
+                atomic_write_json(receipt_path, {"schema": "anvil-serving.worker-stop-receipt/v1", "run_id": run_id, "termination": termination})
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+            else:
+                retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+        else:
+            retention = {"state": "failed", "reason": "worker_termination_unverified"}
         evidence = _cancellation_evidence(
             record, run_path=run_path, retention=retention, termination=termination
         )
@@ -589,7 +632,8 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         results = {"cancellation": {"retention": retention, "termination": termination}}
 
     def cleanup(work_path: str) -> None:
-        if termination["stopped"] and retention["state"] in {"retained", "absent"} and os.path.isdir(work_path):
+        allowed = {"retained", "incomplete"} if record["spec"]["suite"] == "swe" else {"retained", "absent"}
+        if termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
     cancelled = store.cancel(run_id, cleanup=cleanup, results=results, failure=failure)
@@ -599,9 +643,63 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     cancelled["worker_terminated"] = termination["stopped"]
     cancelled["cleanup_deferred"] = artifact_retention_failed or not (
-        termination["stopped"] and retention["state"] in {"retained", "absent"}
+        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] == "swe" else {"retained", "absent"})
     )
     return cancelled
+
+
+def _worker_group_stopped(worker_path: str, *, run_id: str, database: str, run_root: str) -> bool:
+    """Verify a stored worker identity has no surviving process group."""
+    try:
+        worker = json.loads(Path(worker_path).read_text(encoding="utf-8"))
+        pid = worker["pid"]
+    except (KeyError, OSError, ValueError, TypeError):
+        return False
+    if (not isinstance(pid, int) or pid <= 1 or worker.get("run_id") != run_id
+            or worker.get("db") != database or worker.get("run_root") != run_root
+            or not isinstance(worker.get("process_start"), str) or not worker["process_start"]
+            or worker.get("process_group_id") != pid or worker.get("session_id") != pid):
+        return False
+    arguments = _process_arguments(pid)
+    if arguments is not None:
+        return False  # A live or reused PID is never cleanup proof.
+    try:
+        os.getpgid(pid)
+        return False
+    except ProcessLookupError:
+        try:
+            return not _process_group_running(pid)
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+
+def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
+    """Retain then remove one terminal run's disposable work after owner proof."""
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+    if record["state"] not in {"completed", "failed", "cancelled"}:
+        raise BenchmarkJobError("cleanup_not_terminal", "benchmark cleanup requires a terminal job")
+    spec = record["spec"]
+    run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+    worker_path = os.path.join(run_path, "worker.json")
+    if record["state"] == "cancelled":
+        try:
+            receipt = json.loads(Path(os.path.join(run_path, "evidence", "worker-stop-receipt.json")).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise BenchmarkJobError("cleanup_stop_unverified", "cancelled job has no verified worker stop receipt") from None
+        if receipt.get("run_id") != run_id or not receipt.get("termination", {}).get("stopped"):
+            raise BenchmarkJobError("cleanup_stop_unverified", "cancelled job worker stop receipt is invalid")
+    if not _worker_group_stopped(worker_path, run_id=run_id, database=os.path.realpath(store.path), run_root=store.run_root):
+        raise BenchmarkJobError("cleanup_worker_unverified", "owned benchmark worker group is not proven stopped")
+    work_path = os.path.join(run_path, "work")
+    retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+    if retention["state"] == "failed":
+        raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be retained")
+    existed = os.path.isdir(work_path)
+    if existed:
+        shutil.rmtree(work_path)
+    return {"cleaned": existed, "scope": "owned-work", "retention": retention}
 
 
 def _parser() -> argparse.ArgumentParser:

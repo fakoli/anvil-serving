@@ -33,6 +33,7 @@ from .swe_agent_adapter import (
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
 SWE_PLAN_SCHEMA = "anvil-serving.swe-plan/v1"
+SWE_PROMPT_CONTRACTS = frozenset({"legacy/v1", "disclosed/v2"})
 SWE_DATASET = "princeton-nlp/SWE-bench_Verified"
 SWE_DATASET_REVISION = "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
 # Git LFS content identity in this exact dataset revision, not a mutable hub head.
@@ -54,6 +55,14 @@ SWE_FAILURE_CLASSES = frozenset({
 _INSTANCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*__[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _REQUEST_ID_KEYS = frozenset({"request_id", "x-request-id", "x_request_id"})
 SWECommandRunner = Callable[[Sequence[str], str, float, Mapping[str, str]], Any]
+
+
+def _prompt_disclosure(suite: Mapping[str, Any]) -> str:
+    return (
+        f"You have at most {suite['max_steps']} model calls (one call per step).\n"
+        f"Each model completion is capped at {suite['max_completion_tokens']} tokens.\n"
+        "Submit your final answer as a patch before the call budget is exhausted."
+    )
 
 
 def _default_runner(
@@ -272,6 +281,7 @@ def _mini_config(
     request_controls: Mapping[str, Any],
     container_executable: str,
     paired_images: bool = False,
+    prompt_contract: str = "legacy/v1",
 ) -> str:
     # This is intentionally a small YAML overlay. It contains endpoint identity only;
     # mini-SWE-agent's model client runs in the host process. Its Docker environment
@@ -356,6 +366,7 @@ def build_swe_run_plan(
     request_controls: Mapping[str, Any] | None = None,
     paired_image_ids: Mapping[str, str] | None = None,
     server_log: Mapping[str, Any] | None = None,
+    prompt_contract: str = "legacy/v1",
 ) -> dict[str, Any]:
     """Build a deterministic two-stage execution plan without running a model."""
     require_swe_worker_platform()
@@ -365,6 +376,8 @@ def build_swe_run_plan(
     paired_images = validate_paired_image_ids(paired_image_ids, selected)
     target = _endpoint(endpoint)
     controls = _validate_request_controls(request_controls)
+    if prompt_contract not in SWE_PROMPT_CONTRACTS:
+        raise BenchmarkJobError("bad_swe_prompt_contract", "SWE prompt contract is unsupported")
     log_target = validate_server_log_selector(server_log) if server_log is not None else None
     Path(run_root).mkdir(parents=True, exist_ok=True)
     run_path = resolve_owned_run_path(run_root, ownership_id=ownership_id, run_id=run_id)
@@ -421,6 +434,8 @@ def build_swe_run_plan(
         ),
         "--config", config_path,
     ]
+    if prompt_contract == "disclosed/v2":
+        mini_command[8:8] = ["--prompt-disclosure", _prompt_disclosure(suite)]
     grader_command = [
         python_executable,
         adapter_path, "--grader-root", grader_root,
@@ -458,6 +473,7 @@ def build_swe_run_plan(
         "paired_image_ids": paired_images,
         "container_executable": container_executable,
         "request_controls": controls,
+        "prompt_contract": prompt_contract,
         "server_log": log_target,
         "harnesses": {
             "agent": {"name": "mini-swe-agent", "revision": assets["mini-swe-agent"]["revision"]},
@@ -492,10 +508,12 @@ def build_swe_run_plan(
             "result": os.path.join(run_path, "swe-result.json"),
             "image_policy": image_policy_path,
             "request_events": request_events_path,
+            "plan": os.path.join(work, "swe-plan.json"),
         },
         "commands": {"agent": mini_command, "grader": grader_command},
         "config_text": _mini_config(
-            target, suite, controls, container_executable, paired_images=paired_images is not None
+            target, suite, controls, container_executable, paired_images=paired_images is not None,
+            prompt_contract=prompt_contract,
         ),
         "timeout_s": suite["timeout_s"],
     }
@@ -721,6 +739,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
         "paired_image_ids": plan.get("paired_image_ids"),
         "image_observations": [],
         "request_controls": plan["request_controls"],
+        "prompt_contract": plan.get("prompt_contract", "legacy/v1"),
         "harnesses": plan["harnesses"],
         "state": "incomplete",
         "official_grader_complete": False,
@@ -760,6 +779,7 @@ def run_swe_benchmark(
     Path(paths["output"]).mkdir(parents=True, exist_ok=True)
     Path(paths["grader_work"]).mkdir(parents=True, exist_ok=True)
     Path(paths["mini_config_home"]).mkdir(parents=True, exist_ok=True)
+    atomic_write_json(paths["plan"], dict(plan))
     Path(paths["config"]).write_text(plan["config_text"], encoding="utf-8", newline="\n")
     child_env = dict(os.environ if environ is None else environ)
     auth_env = plan["endpoint"].get("auth_env")

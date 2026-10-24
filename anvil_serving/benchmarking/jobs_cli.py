@@ -16,7 +16,6 @@ import uuid
 from ..guard import confirmation_authorized
 from ..control_plane.controller.store import BenchmarkJobStore, DEFAULT_BENCHMARK_RUN_ROOT
 from .harnesses import (
-    cleanup_harness_work,
     harness_asset_status,
     prepare_harness_assets,
     resolve_container_binary,
@@ -37,7 +36,7 @@ from .swe_images import (
     validate_paired_image_ids,
     validate_paired_image_repo_digests,
 )
-from .worker import cancel_benchmark_job, launch_benchmark_job
+from .worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 
 
 def _store() -> BenchmarkJobStore:
@@ -322,11 +321,14 @@ def run(argv: list[str]) -> dict:
                 "confirmation_required", f"harness {args.action} requires --confirm"
             )
         if args.action == "cleanup":
-            return cleanup_harness_work(
-                run_root=store.run_root,
-                ownership_id=args.ownership_id,
-                run_id=args.run_id,
-            )
+            record = store.status(args.run_id)
+            if record is None:
+                raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+            if record["spec"]["suite"] != args.suite:
+                raise BenchmarkJobError("suite_mismatch", "run belongs to a different suite")
+            if record["spec"]["ownership_id"] != args.ownership_id:
+                raise BenchmarkJobError("ownership_mismatch", "run belongs to a different owner")
+            return cleanup_benchmark_job(store, args.run_id)
         cache_root = os.environ.get(
             "ANVIL_BENCHMARK_CACHE_ROOT",
             os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
@@ -347,6 +349,7 @@ def run(argv: list[str]) -> dict:
             run_root=store.run_root,
             requirements=_json_object(args.requirements_json, field="requirements-json"),
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+            job_store=store,
         )
     if args.action == "submit":
         disposition, job = store.submit(submitted_spec)

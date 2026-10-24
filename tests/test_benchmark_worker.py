@@ -20,7 +20,7 @@ from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
 from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
-from anvil_serving.benchmarking.worker import cancel_benchmark_job, execute_benchmark_job, launch_benchmark_job
+from anvil_serving.benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
 
@@ -440,6 +440,33 @@ def test_cancellation_store_artifact_failure_is_terminal_and_preserves_work(monk
     assert cancelled["cleanup_deferred"] is True
     assert cancelled["failure"]["code"] == "cancellation_artifact_unavailable"
     assert (run_path / "work").exists()
+
+
+def test_cleanup_terminal_job_requires_stopped_owned_worker_and_retains(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    store.claim("worker-run")
+    store.transition("worker-run", "completed", results={"evidence": {}})
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    (work / "predictions.jsonl").write_text('{"instance_id":"case"}\n', encoding="utf-8")
+    database = os.path.realpath(store.path)
+    (run_path / "worker.json").write_text(json.dumps({
+        "run_id": "worker-run", "pid": 12345, "db": database,
+        "run_root": store.run_root, "process_start": "started",
+        "process_group_id": 12345, "session_id": 12345,
+    }), encoding="utf-8")
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: None)
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: (_ for _ in ()).throw(ProcessLookupError()))
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
+
+    cleaned = cleanup_benchmark_job(store, "worker-run")
+
+    assert cleaned["cleaned"] is True
+    assert cleaned["retention"]["state"] == "incomplete"
+    assert not work.exists()
+    assert (run_path / "evidence" / "swe-canonical" / "predictions.jsonl").exists()
 
 
 class EndpointHandler(BaseHTTPRequestHandler):

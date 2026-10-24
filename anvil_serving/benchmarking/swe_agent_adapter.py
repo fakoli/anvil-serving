@@ -464,7 +464,28 @@ def terminal_outcome(exc):
     return "completed" if isinstance(exc, SystemExit) and exc.code in (None, 0) else "failed"
 
 
-def run_agent(root, argv, *, adapter_sha256, events, run_module=runpy.run_module):
+def prompt_contract_config(config_paths, disclosure, output_path):
+    """Append a disclosure to the pinned SWE prompt without replacing its instructions."""
+    import yaml  # Available in the pinned mini-SWE environment.
+
+    if not isinstance(disclosure, str) or not disclosure.strip():
+        raise RuntimeError("SWE prompt disclosure is invalid")
+    for candidate in config_paths:
+        try:
+            value = yaml.safe_load(Path(candidate).read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            continue
+        template = value.get("agent", {}).get("system_template") if isinstance(value, dict) else None
+        if isinstance(template, str) and template:
+            Path(output_path).write_text(
+                yaml.safe_dump({"agent": {"system_template": template.rstrip() + "\n\n" + disclosure.strip() + "\n"}},
+                               sort_keys=False), encoding="utf-8"
+            )
+            return str(output_path)
+    raise RuntimeError("pinned SWE prompt template is unavailable")
+
+
+def run_agent(root, argv, *, adapter_sha256, events, prompt_disclosure=None, run_module=runpy.run_module):
     own_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if own_hash != adapter_sha256:
         raise RuntimeError("SWE agent observation adapter changed after planning")
@@ -493,7 +514,12 @@ def run_agent(root, argv, *, adapter_sha256, events, run_module=runpy.run_module
                                     openai_base=openai._base_client.BaseClient)
         original_argv = sys.argv
         try:
-            sys.argv = ["minisweagent.run.benchmarks.swebench", *argv]
+            agent_argv = list(argv)
+            if prompt_disclosure is not None:
+                config_paths = [agent_argv[index + 1] for index, value in enumerate(agent_argv[:-1]) if value == "--config"]
+                disclosure_path = Path(config_paths[-1]).with_name("swe-prompt-contract.yaml")
+                agent_argv.extend(["--config", prompt_contract_config(config_paths, prompt_disclosure, disclosure_path)])
+            sys.argv = ["minisweagent.run.benchmarks.swebench", *agent_argv]
             result = run_module("minisweagent.run.benchmarks.swebench", run_name="__main__")
             recorder.close(outcome="completed")
             return result
@@ -515,11 +541,13 @@ def main():
     parser.add_argument("--mini-root", required=True)
     parser.add_argument("--adapter-sha256", required=True)
     parser.add_argument("--events", required=True)
+    parser.add_argument("--prompt-disclosure")
     parser.add_argument("agent_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if not args.agent_args or args.agent_args[0] != "--":
         parser.error("mini-SWE arguments must follow --")
-    run_agent(args.mini_root, args.agent_args[1:], adapter_sha256=args.adapter_sha256, events=args.events)
+    run_agent(args.mini_root, args.agent_args[1:], adapter_sha256=args.adapter_sha256,
+              events=args.events, prompt_disclosure=args.prompt_disclosure)
 
 
 if __name__ == "__main__":

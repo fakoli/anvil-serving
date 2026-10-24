@@ -12,12 +12,11 @@ from ....benchmarking.submission import validate_submission_spec
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
-    cleanup_harness_work,
     harness_asset_status,
     prepare_harness_assets,
 )
 from ....benchmarking.profiles import load_profile
-from ....benchmarking.worker import cancel_benchmark_job, launch_benchmark_job
+from ....benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -143,6 +142,7 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
             run_root=store.run_root,
             requirements=requirements,
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+            job_store=store,
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_json", "benchmark preflight JSON is invalid") from None
@@ -266,11 +266,11 @@ def tool_benchmark_harness_cleanup(args: dict) -> dict:
         raise ToolError("confirmation_required", "harness cleanup requires confirmation")
     store = _benchmark_job_store()
     try:
-        result = cleanup_harness_work(
-            run_root=store.run_root,
-            ownership_id=_str_arg(args, "ownership_id", required=True),
-            run_id=_str_arg(args, "run_id", required=True),
-        )
+        run_id = _str_arg(args, "run_id", required=True)
+        record = _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+        if record["spec"]["ownership_id"] != _str_arg(args, "ownership_id", required=True):
+            raise BenchmarkJobError("ownership_mismatch", "run belongs to a different owner")
+        result = cleanup_benchmark_job(store, run_id)
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
     return _ok(result)

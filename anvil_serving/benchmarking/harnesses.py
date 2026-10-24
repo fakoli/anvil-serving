@@ -585,16 +585,8 @@ def harness_asset_status(
 
 
 def cleanup_harness_work(*, run_root: str, ownership_id: str, run_id: str) -> dict[str, Any]:
-    """Remove only the run-owned work directory; shared caches and evidence survive."""
-    work = resolve_owned_run_path(
-        run_root, ownership_id=ownership_id, run_id=run_id, relative="work"
+    """Reject path-only cleanup: durable job lifecycle evidence is required."""
+    raise BenchmarkJobError(
+        "cleanup_lifecycle_required",
+        "harness cleanup requires the durable benchmark job lifecycle",
     )
-    run_path = resolve_owned_run_path(
-        run_root, ownership_id=ownership_id, run_id=run_id
-    )
-    if not path_is_within(work, run_path) or work == run_path:
-        raise BenchmarkJobError("unsafe_harness_cleanup", "harness cleanup target is unsafe")
-    existed = os.path.isdir(work)
-    if existed:
-        shutil.rmtree(work)
-    return {"cleaned": existed, "scope": "owned-work", "shared_cache_cleaned": False}

@@ -271,6 +271,45 @@ anvil-serving eval benchmark context cancel --run-id deepseek-context-smoke-001 
 
 Use the equivalent `agentic` or `swe` command family for the other suites.
 
+## Retained SWE evidence and regrading
+
+SWE runs preserve their exact plan, generated configuration, predictions,
+trajectories, paired image identities, and official grader output under
+`evidence/swe-canonical/`. Its manifest records relative paths, sizes, hashes,
+and missing inputs. Retention is bounded to 512 regular files and 64 MiB;
+unsafe or oversized evidence leaves the work directory in place. Retained
+destinations are immutable. A missing prediction or grader report remains
+incomplete evidence even when the available files were retained successfully.
+
+Explicit cleanup requires a terminal durable job and verified absence of its
+owned worker process group. Queued, active, and unverified jobs cannot be
+cleaned. Cancellation uses the same evidence retention after its existing
+identity-checked worker stop. Shared caches and historical results remain
+available.
+
+New SWE jobs may select `parameters.prompt_contract: "disclosed/v2"` to put
+the configured step budget, completion-token cap, and patch submission
+requirement in the agent's instructions. Omission selects `legacy/v1` and
+preserves the historical generated configuration. Compare results only with
+their recorded prompt contract; disclosure changes the evaluated workload.
+
+To grade an existing run again, submit a new SWE job with the same owner,
+profile, and endpoint identity and these parameters:
+
+```json
+{"operation": "regrade", "source_run_id": "original-swe-run"}
+```
+
+The source must be terminal, its terminal evidence must bind the canonical
+manifest, and its retained plan, predictions, and pinned grader must verify.
+Historical runs without that evidence cannot be regraded through this command.
+Regrading accepts no request or selection overrides. It
+uses the existing submission, status, cancellation, and artifact commands,
+writes a new score under the new run, and leaves the original evidence
+unchanged. The endpoint fields remain provenance in the job specification;
+regrade preflight and execution make no endpoint or agent calls and do not
+load model credentials into the grader.
+
 ## What each artifact means
 
 Context artifacts distinguish:

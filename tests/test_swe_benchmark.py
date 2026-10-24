@@ -9,12 +9,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking import swe
 from anvil_serving.benchmarking import harnesses
+from anvil_serving.benchmarking import swe_agent_adapter as adapter
 from anvil_serving.benchmarking.swe import (
     SWE_DATASET,
     build_swe_run_plan,
@@ -77,7 +79,7 @@ def manifest(profile):
     }
 
 
-def plan(tmp_path, *, request_controls=None, paired_image_ids=None):
+def plan(tmp_path, *, request_controls=None, paired_image_ids=None, prompt_contract="legacy/v1"):
     profile = load_profile("smoke")
     environment = manifest(profile)["python_environment"]
     executable = (
@@ -103,6 +105,7 @@ def plan(tmp_path, *, request_controls=None, paired_image_ids=None):
         run_id="smoke-one",
         request_controls=request_controls,
         paired_image_ids=paired_image_ids,
+        prompt_contract=prompt_contract,
     )
 
 
@@ -183,6 +186,29 @@ def test_plan_forwards_and_records_reasoning_effort(tmp_path):
     }
     assert '    extra_body:\n      reasoning_effort: "xhigh"\n' in value["config_text"]
     assert '\n    reasoning_effort: "xhigh"\n' not in value["config_text"]
+
+
+def test_prompt_contract_preserves_legacy_bytes_and_discloses_v2_limits(tmp_path):
+    legacy = plan(tmp_path)
+    repeated = plan(tmp_path / "again", prompt_contract="legacy/v1")
+    disclosed = plan(tmp_path / "v2", prompt_contract="disclosed/v2")
+    assert legacy["prompt_contract"] == "legacy/v1"
+    assert legacy["config_text"] == repeated["config_text"]
+    assert "You have at most 5 model calls" not in legacy["config_text"]
+    assert disclosed["prompt_contract"] == "disclosed/v2"
+    suite = load_profile("smoke")["suites"]["swe"]
+    assert yaml.safe_load(disclosed["config_text"])["agent"]["step_limit"] == suite["max_steps"]
+    disclosure = disclosed["commands"]["agent"][disclosed["commands"]["agent"].index("--prompt-disclosure") + 1]
+    assert f"You have at most {suite['max_steps']} model calls (one call per step)." in disclosure
+    assert f"Each model completion is capped at {suite['max_completion_tokens']} tokens." in disclosure
+    assert "Submit your final answer as a patch" in disclosure
+
+    pinned = tmp_path / "pinned-swebench.yaml"
+    pinned.write_text("agent:\n  system_template: |\n    Full shell and patch submission instructions.\n")
+    generated = adapter.prompt_contract_config([str(pinned)], disclosure, tmp_path / "v2.yaml")
+    rendered = yaml.safe_load(Path(generated).read_text())["agent"]["system_template"]
+    assert "Full shell and patch submission instructions." in rendered
+    assert disclosure in rendered
 
 
 @pytest.mark.parametrize("force_nonempty_content", [True, False])
