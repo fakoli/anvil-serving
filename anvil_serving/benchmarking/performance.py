@@ -105,6 +105,7 @@ def _adapter_command(python, plan_path):
 def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters, run_root,
                                cache_root, ownership_id, run_id, timeout_s=None):
     from .performance_prepare import verify_performance_environment
+    from .performance_adapter import instrumentation
 
     profile = validate_profile(profile)
     params = validate_performance_parameters(profile, parameters)
@@ -139,8 +140,7 @@ def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters
         "ownership_id": ownership_id, "run_id": run_id, "paths": paths,
         "profile": profile["name"], "profile_sha256": profile["content_sha256"],
         "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest(),
-        "instrumentation": {"lil_unconditional_warmup_disabled": runner == "lil",
-                            "native_stream_parser": True, "http_attempt_guard": True},
+        "instrumentation": instrumentation(runner),
         "command": _adapter_command(python, paths["plan"])}
     plan["plan_sha256"] = _digest(plan)
     verify_plan(plan)
@@ -298,6 +298,8 @@ def _adapter_evidence(plan):
     lines = raw.splitlines(keepends=True)
     events = [json.loads(line) for line in lines]
     budget = terminal["budget"]
+    if not isinstance(budget, Mapping) or any(not isinstance(row, Mapping) for row in events):
+        raise ValueError("invalid adapter observations")
     if (not events or events[0].get("event") != "performance_adapter_ready"
             or events[0].get("adapter_sha256") != plan["adapter_sha256"]
             or events[-1].get("event") != "adapter_finished" or events[-1].get("status") != "complete"
@@ -310,6 +312,22 @@ def _adapter_evidence(plan):
             or terminal.get("adapter_sha256") != plan["adapter_sha256"]
             or not terminal.get("events_complete") or budget.get("configured") != plan["budgets"]):
         raise ValueError("incomplete adapter observations")
+    admitted = [row.get("model_call") for row in events if row.get("event") == "performance_transport_started"]
+    observed = [row for row in events if row.get("event") == "performance_stream_finished"]
+    validation = terminal.get("stream_validation", {})
+    if not isinstance(validation, Mapping):
+        raise ValueError("invalid stream observations")
+    counts = {"admitted": len(admitted), "observed": len(observed),
+              **{outcome: sum(row.get("outcome") == outcome for row in observed)
+                 for outcome in ("valid", "protocol_failure", "cancelled")},
+              "usage_observed": sum(row.get("usage_observed") is True for row in observed)}
+    complete = (bool(admitted) and all(type(call) is int for call in admitted)
+                and all(type(row.get("model_call")) is int for row in observed) and sorted(admitted) == list(range(1, len(admitted) + 1))
+                and sorted(row.get("model_call", 0) for row in observed) == sorted(admitted)
+                and all(row.get("outcome") == "valid" and row.get("terminal_observed") is True for row in observed))
+    if (any(type(validation.get(key)) is not int or validation[key] != value for key, value in counts.items())
+            or validation.get("complete") is not complete):
+        raise ValueError("inconsistent stream observations")
     return terminal
 
 
@@ -362,10 +380,14 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
     try:
         terminal = _adapter_evidence(plan)
         result["budget"] = terminal["budget"]
+        result["stream_validation"] = terminal["stream_validation"]
         result["instrumentation"] = terminal.get("instrumentation")
         result["request_observations"] = evidence_file_reference(paths["request_events"], root=plan["run_path"])
         if terminal["budget"].get("exhausted"):
             result["failure"] = {"class": "budget_exhausted", "code": terminal["budget"].get("reason")}
+        elif not terminal["stream_validation"]["complete"]:
+            result["failure"] = {"class": "cancelled" if terminal["stream_validation"]["cancelled"] else "protocol_failure",
+                                 "code": "incomplete_performance_streams"}
         elif terminal.get("outcome") != "completed":
             result["failure"] = result["failure"] or {"class": "broken_harness", "code": "incomplete_performance_observations"}
     except (OSError, ValueError, TypeError, KeyError):
@@ -373,6 +395,12 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
     try:
         native = _read_json(paths["native_output"], plan["run_path"])
         result["summary"] = normalize_performance_metrics(plan, native)
+        if result.get("stream_validation", {}).get("usage_observed") != plan["parameters"]["request_count"]:
+            for name in ("input_sequence_length", "output_sequence_length", "output_token_throughput",
+                         "output_token_throughput_per_user", "inter_token_latency"):
+                metric = result["summary"]["metrics"][name]
+                result["summary"]["metrics"][name] = _metric(None, metric["unit"], metric["source"],
+                    reason="server token usage was not observed for every admitted request")
         result["native_reference"] = evidence_file_reference(paths["native_output"], root=plan["run_path"])
         if not result["summary"]["native_complete"]:
             result["failure"] = result["failure"] or {"class": "broken_harness", "code": "native_performance_incomplete"}
@@ -380,19 +408,14 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
         result["failure"] = result["failure"] or {"class": "broken_harness", "code": "missing_native_performance_results"}
     if result["failure"] is None:
         result["state"] = "completed"
-    atomic_write_json(paths["result"], result)
-    result["retention"] = retain_performance_artifacts(run_path=plan["run_path"])
-    if result["retention"]["state"] != "retained":
-        result["state"] = "incomplete"
-        result["failure"] = result["failure"] or {"class": "infrastructure_failure", "code": "performance_retention_incomplete"}
+    _finalize_performance_result(plan, result)
     if interrupted is not None:
         raise interrupted
     return result
 
 
-def retain_performance_artifacts(*, run_path):
-    """Inventory canonical native outputs in place; reject mutation of a previous snapshot."""
-    root = Path(run_path).resolve()
+def _performance_inventory(root):
+    """Inspect stopped-writer evidence before freezing the canonical result."""
     base = root / "performance"
     result = {"schema": "anvil-serving.performance-retention/v1", "state": "incomplete", "artifacts": [], "missing": []}
     required = {"plan.json", "result.json", "process.json", "requests.jsonl", "adapter-result.json"}
@@ -432,13 +455,62 @@ def retain_performance_artifacts(*, run_path):
         if not any(path.startswith("native/") for path in found):
             result["missing"].append("native output")
         result["state"] = "incomplete" if result["missing"] else "retained"
-        manifest = base / "retention.json"
-        if manifest.exists() or manifest.is_symlink():
-            if _read_json(str(manifest), str(root), limit=1024 * 1024) != result:
-                raise ValueError("previously retained performance evidence changed")
-        else:
-            atomic_write_json(str(manifest), result)
-        result["manifest_reference"] = evidence_file_reference(str(manifest), root=str(root))
     except (OSError, ValueError, TypeError, KeyError):
         result["state"] = "failed"
     return result
+
+
+def _seal_performance_inventory(root, inventory):
+    manifest = root / "performance" / "retention.json"
+    if manifest.exists() or manifest.is_symlink():
+        if _read_json(str(manifest), str(root), limit=1024 * 1024) != inventory:
+            raise ValueError("previously retained performance evidence changed")
+    else:
+        atomic_write_json(str(manifest), inventory)
+
+
+def _finalize_performance_result(plan, result):
+    root = Path(plan["run_path"])
+    manifest = root / "performance" / "retention.json"
+    if manifest.exists() or manifest.is_symlink():
+        raise BenchmarkJobError("performance_retention_exists", "cannot finalize previously sealed performance evidence")
+    inventory = _performance_inventory(root)
+    if "result.json" in inventory["missing"]:
+        inventory["missing"].remove("result.json")
+        inventory["state"] = "incomplete" if inventory["missing"] else "retained"
+
+    def write_result():
+        # A compact status avoids a hash cycle: the separate manifest hashes this final file.
+        result["retention"] = {key: inventory[key] for key in ("state", "missing")}
+        if inventory["state"] != "retained":
+            result["state"] = "incomplete"
+            result["failure"] = result["failure"] or {"class": "infrastructure_failure", "code": "performance_retention_incomplete"}
+        atomic_write_json(plan["paths"]["result"], result)
+
+    write_result()
+    if inventory["state"] == "failed":
+        return
+    try:
+        # All native writers have stopped. Only our result changed since inventory.
+        rows = [row for row in inventory["artifacts"] if row["path"] != "performance/result.json"]
+        size, digest = _file_digest(plan["paths"]["result"],
+            max_bytes=MAX_SWE_RETAINED_BYTES - sum(row["bytes"] for row in rows))
+        rows.append({"path": "performance/result.json", "bytes": size, "sha256": digest})
+        inventory["artifacts"] = sorted(rows, key=lambda row: row["path"])
+        _seal_performance_inventory(root, inventory)
+    except (OSError, ValueError, TypeError, KeyError):
+        inventory["state"] = "failed"
+        write_result()
+
+
+def retain_performance_artifacts(*, run_path):
+    """Inventory canonical native outputs in place; reject mutation of a previous snapshot."""
+    root = Path(run_path).resolve()
+    inventory = _performance_inventory(root)
+    if inventory["state"] == "failed" or not (root / "performance").exists():
+        return inventory
+    try:
+        _seal_performance_inventory(root, inventory)
+        return {**inventory, "manifest_reference": evidence_file_reference(str(root / "performance" / "retention.json"), root=str(root))}
+    except (OSError, ValueError, TypeError, KeyError):
+        return {**inventory, "state": "failed"}

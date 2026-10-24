@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import asyncio
 from contextlib import contextmanager
 import hashlib
 import importlib.util
@@ -36,7 +37,15 @@ SOURCE_HASHES = {
     },
 }
 MAX_PROBE_ATTEMPTS = 32
+MAX_SSE_EVENT_BYTES = 65536
 PROBE_PATHS = ("/v1/models", "/get_server_info", "/version", "/metrics")
+
+
+def instrumentation(runner):
+    return {"lil_unconditional_warmup_disabled": runner == "lil",
+            "native_stream_parser": True, "http_attempt_guard": True,
+            "receive_stream_observer": True, "receive_observer_overhead_included": True,
+            "max_sse_event_bytes": MAX_SSE_EVENT_BYTES}
 
 
 def validate_supported_parameters(parameters):
@@ -76,11 +85,11 @@ class AttemptLedger:
         self.path.touch(mode=0o600, exist_ok=False)
         with self.state_path.open("x") as file:
             json.dump({"model_calls": 0, "http_calls": 0, "probes": {},
+                "streams": {"valid": 0, "protocol_failure": 0, "cancelled": 0, "usage_observed": 0},
                 "reason": None, "event_count": 0, "byte_count": 0}, file)
         self.inference_limit = min(self.configured["max_model_calls"], plan["parameters"]["request_count"])
         self.record("performance_adapter_ready", adapter_sha256=plan["adapter_sha256"],
-                    instrumentation={"lil_unconditional_warmup_disabled": plan["runner"] == "lil",
-                                     "native_stream_parser": True, "http_attempt_guard": True})
+                    instrumentation=instrumentation(plan["runner"]))
 
     @contextmanager
     def transaction(self):
@@ -145,19 +154,143 @@ class AttemptLedger:
             self._record(state, "performance_transport_started" if inference else "performance_probe_started",
                          model_call=state["model_calls"], http_call=state["http_calls"],
                          method="POST" if inference else "GET", path=path, pid=os.getpid())
-            return remaining
+            return remaining, state["model_calls"] if inference else None
+
+    def stream_finished(self, model_call, outcome, **fields):
+        with self.transaction() as state:
+            self._record(state, "performance_stream_finished", model_call=model_call,
+                         outcome=outcome, **fields)
+            state["streams"][outcome] += 1
+            state["streams"]["usage_observed"] += int(fields["usage_observed"])
 
     def snapshot(self):
         with self.transaction() as state:
+            streams = state["streams"]
+            observed = sum(streams[key] for key in ("valid", "protocol_failure", "cancelled"))
             return {"configured": self.configured, "exhausted": state["reason"] is not None,
                     "reason": state["reason"], "model_calls": state["model_calls"],
                     "http_calls": state["http_calls"], "probe_calls": sum(state["probes"].values()),
-                    "token_usage_verified": False}
+                    "token_usage_verified": False,
+                    "stream_validation": {**streams, "admitted": state["model_calls"],
+                        "observed": observed,
+                        "complete": 0 < observed == streams["valid"] == state["model_calls"]}}
 
     def close(self, outcome):
         with self.transaction() as state:
             self._record(state, "adapter_finished", status="complete", outcome=outcome,
                          event_count=state["event_count"], byte_count=state["byte_count"])
+
+
+class StreamProtocolError(ValueError):
+    """Fixed, payload-free error for a rejected native response stream."""
+
+
+class SSEObserver:
+    """Bounded wire validity only; native parsers still own all metric calculation.
+
+    Observe before yielding each unchanged chunk. This receive-side work is part
+    of the measured timing. Keep at most one 64 KiB event, never a whole response.
+    """
+
+    def __init__(self, ledger, model_call):
+        self.ledger, self.model_call = ledger, model_call
+        self.line = bytearray()
+        self.data = []
+        self.event_bytes = 0
+        self.terminal = self.usage = self.finished = False
+        self.reason = None
+
+    def reject(self, reason):
+        self.reason = self.reason or reason
+        self.finish()
+        raise StreamProtocolError("performance stream protocol failure: " + self.reason)
+
+    def headers(self, status, content_type):
+        if status != 200 or content_type.split(";", 1)[0].strip().lower() != "text/event-stream":
+            self.reject("response_status_or_content_type")
+
+    def feed(self, chunk):
+        start = 0
+        while start < len(chunk):
+            newline = chunk.find(b"\n", start)
+            end = len(chunk) if newline < 0 else newline + 1
+            size = end - start
+            if self.event_bytes + size > MAX_SSE_EVENT_BYTES:
+                self.reject("event_too_large")
+            self.event_bytes += size
+            self.line.extend(chunk[start:end])
+            start = end
+            if newline < 0:
+                break
+            raw = bytes(self.line[:-1])
+            self.line.clear()
+            if raw.endswith(b"\r"):
+                raw = raw[:-1]
+            try:
+                line = raw.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                self.reject("invalid_utf8")
+            if "\r" in line or "\x00" in line:
+                self.reject("invalid_framing")
+            if not line:
+                self._event()
+                self.event_bytes = 0
+            elif line.startswith(":"):
+                continue
+            else:
+                field, separator, value = line.partition(":")
+                if not separator or field not in {"data", "event", "id", "retry"}:
+                    self.reject("invalid_framing")
+                value = value.removeprefix(" ")
+                if field == "data":
+                    self.data.append(value)
+                elif field == "event" and value == "error":
+                    self.reject("error_event")
+
+    def _event(self):
+        if not self.data:
+            return
+        data = "\n".join(self.data)
+        self.data.clear()
+        if self.terminal:
+            self.reject("data_after_terminal")
+        if data == "[DONE]":
+            self.terminal = True
+            return
+        def invalid_constant(value):
+            raise ValueError("non-JSON constant")
+        try:
+            value = json.loads(data, parse_constant=invalid_constant)
+        except (ValueError, RecursionError):
+            self.reject("invalid_json")
+        if not isinstance(value, dict):
+            self.reject("invalid_json_object")
+        if "error" in value:
+            self.reject("error_event")
+        usage = value.get("usage")
+        if isinstance(usage, dict) and all(type(usage.get(key)) is int and usage[key] >= 0
+                for key in ("prompt_tokens", "completion_tokens")):
+            self.usage = True
+
+    def terminal_pending(self):
+        # LIL stops on the DONE line, before a separately delivered blank line.
+        return not self.finished and not self.terminal and (
+            self.data == ["[DONE]"] or self.line == b"data: [DONE]\r")
+
+    def finish(self, *, cancelled=False, error=False):
+        if self.finished:
+            return
+        if self.reason:
+            outcome = "protocol_failure"
+        elif cancelled:
+            outcome, self.reason = "cancelled", "cancelled"
+        elif error or self.event_bytes or not self.terminal:
+            outcome, self.reason = "protocol_failure", "transport_error" if error else "truncated_stream"
+        else:
+            outcome = "valid"
+        self.ledger.stream_finished(self.model_call, outcome, reason=self.reason,
+            terminal_observed=self.terminal, usage_observed=self.usage)
+        self.finished = True
 
 
 class TransportPolicy:
@@ -204,25 +337,126 @@ class TransportPolicy:
 def install_httpx_guards(httpx, policy):
     originals = httpx.Client.send, httpx.AsyncClient.send
 
+    class SyncStream(httpx.SyncByteStream):
+        def __init__(self, stream, observer):
+            self.stream, self.observer = stream, observer
+            self.iterator = iter(stream)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            try:
+                chunk = next(self.iterator)
+                self.observer.feed(chunk)
+                return chunk
+            except StopIteration:
+                self.observer.finish()
+                raise
+            except BaseException as exc:
+                self.observer.finish(cancelled=isinstance(exc, KeyboardInterrupt), error=True)
+                raise
+
+        def close(self):
+            try:
+                while self.observer.terminal_pending():
+                    try:
+                        next(self)
+                    except StopIteration:
+                        break
+            finally:
+                self.stream.close()
+                self.observer.finish()
+
+    class AsyncStream(httpx.AsyncByteStream):
+        def __init__(self, stream, observer):
+            self.stream, self.observer = stream, observer
+            self.iterator = stream.__aiter__()
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            try:
+                chunk = await anext(self.iterator)
+                self.observer.feed(chunk)
+                return chunk
+            except StopAsyncIteration:
+                self.observer.finish()
+                raise
+            except BaseException as exc:
+                self.observer.finish(cancelled=isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt)),
+                                     error=True)
+                raise
+
+        async def aclose(self):
+            try:
+                while self.observer.terminal_pending():
+                    try:
+                        await asyncio.wait_for(anext(self), max(0, policy.ledger.deadline - time.monotonic()))
+                    except StopAsyncIteration:
+                        break
+            finally:
+                await self.stream.aclose()
+                task = asyncio.current_task()
+                self.observer.finish(cancelled=bool(task and task.cancelling()))
+
     def prepare(client, request, args, kwargs):
         if args or getattr(client, "_trust_env", False):
             policy.ledger.reject("ambient_http_transport")
-        remaining = policy.check(request.method, str(request.url), request.headers,
-                                 request.content or None)
+        remaining, model_call = policy.check(request.method, str(request.url), request.headers,
+                                             request.content or None)
         kwargs["follow_redirects"] = False
         kwargs["auth"] = None  # Do not permit an auth flow to resend outside this seam.
         request.extensions["timeout"] = {
             name: min(value, remaining) if isinstance(value, (int, float)) and value > 0 else remaining
             for name, value in {"connect": None, "read": None, "write": None, "pool": None,
                                 **request.extensions.get("timeout", {})}.items()}
+        return SSEObserver(policy.ledger, model_call) if model_call is not None else None
+
+    def observe(response, observer, stream_class):
+        observer.headers(response.status_code, response.headers.get("content-type", ""))
+        if response.is_stream_consumed:
+            observer.feed(response.content)
+            observer.finish()
+        else:
+            response.stream = stream_class(response.stream, observer)
 
     def send(client, request, *args, **kwargs):
-        prepare(client, request, args, kwargs)
-        return originals[0](client, request, **kwargs)
+        observer = prepare(client, request, args, kwargs)
+        if observer is None:
+            return originals[0](client, request, **kwargs)
+        stream = kwargs.get("stream", False)
+        response = None
+        try:
+            response = originals[0](client, request, **{**kwargs, "stream": True})
+            observe(response, observer, SyncStream)
+            if not stream:
+                response.read()
+            return response
+        except BaseException as exc:
+            observer.finish(cancelled=isinstance(exc, KeyboardInterrupt), error=True)
+            if response is not None:
+                response.close()
+            raise
 
     async def async_send(client, request, *args, **kwargs):
-        prepare(client, request, args, kwargs)
-        return await originals[1](client, request, **kwargs)
+        observer = prepare(client, request, args, kwargs)
+        if observer is None:
+            return await originals[1](client, request, **kwargs)
+        stream = kwargs.get("stream", False)
+        response = None
+        try:
+            response = await originals[1](client, request, **{**kwargs, "stream": True})
+            observe(response, observer, AsyncStream)
+            if not stream:
+                await response.aread()
+            return response
+        except BaseException as exc:
+            observer.finish(cancelled=isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt)), error=True)
+            if response is not None:
+                await response.aclose()
+            raise
 
     # Native clients default trust_env=True. Set it at construction, before proxy discovery.
     constructors = httpx.Client.__init__, httpx.AsyncClient.__init__
@@ -243,17 +477,61 @@ def install_httpx_guards(httpx, policy):
 
 def install_aiohttp_guard(aiohttp, policy):
     original = aiohttp.ClientSession._request
+
+    class Content:
+        def __init__(self, content, observer):
+            self.content, self.observer = content, observer
+
+        def __getattr__(self, name):
+            return getattr(self.content, name)
+
+        async def iter_any(self):
+            # Exact pinned AIPerf receive seam. No chunk regrouping or decoding here.
+            try:
+                async for chunk in self.content.iter_any():
+                    self.observer.feed(chunk)
+                    yield chunk
+            except BaseException as exc:
+                self.observer.finish(cancelled=isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt)),
+                                     error=not isinstance(exc, GeneratorExit))
+                raise
+            else:
+                self.observer.finish()
+
     async def request(session, method, url, **kwargs):
         if session.trust_env or kwargs.get("proxy") or kwargs.get("auth"):
             policy.ledger.reject("ambient_http_transport")
         headers = dict(session.headers)
         headers.update(kwargs.get("headers") or {})
-        remaining = policy.check(method, str(url), headers, kwargs.get("data", kwargs.get("json")))
+        remaining, model_call = policy.check(method, str(url), headers, kwargs.get("data", kwargs.get("json")))
         kwargs["allow_redirects"] = False
         timeout = kwargs.get("timeout", session.timeout)
         total = getattr(timeout, "total", None)
         kwargs["timeout"] = aiohttp.ClientTimeout(total=min(total, remaining) if total else remaining)
-        return await original(session, method, url, **kwargs)
+        observer = SSEObserver(policy.ledger, model_call)
+        response = None
+        try:
+            response = await original(session, method, url, **kwargs)
+            observer.headers(response.status, response.headers.get("content-type", ""))
+            response.content = Content(response.content, observer)
+            original_release, original_close = response.release, response.close
+            def release():
+                try:
+                    return original_release()
+                finally:
+                    observer.finish()
+            def close():
+                try:
+                    return original_close()
+                finally:
+                    observer.finish()
+            response.release, response.close = release, close
+            return response
+        except BaseException as exc:
+            observer.finish(cancelled=isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt)), error=True)
+            if response is not None:
+                response.close()
+            raise
     aiohttp.ClientSession._request = request
     return lambda: setattr(aiohttp.ClientSession, "_request", original)
 
@@ -399,15 +677,22 @@ def run_plan(plan):
         if finished:
             return
         snapshot = ledger.snapshot()
-        if snapshot["exhausted"]:
+        streams = snapshot["stream_validation"]
+        if status == "cancelled" or streams["cancelled"]:
+            status = "cancelled"
+        elif snapshot["exhausted"]:
             status = "budget_exhausted"
+        elif streams["protocol_failure"] or (streams["admitted"] and not streams["complete"]):
+            status = "protocol_failure"
+        elif status == "completed" and not streams["complete"]:
+            status = "protocol_failure"
         ledger.close(status)
         atomic_write_json(plan["paths"]["adapter_result"], {
             "schema": "anvil-serving.performance-adapter-result/v1", "outcome": status,
             "plan_sha256": plan["plan_sha256"], "adapter_sha256": plan["adapter_sha256"],
             "budget": snapshot, "events_complete": True, "token_usage_verified": False,
-            "instrumentation": {"lil_unconditional_warmup_disabled": plan["runner"] == "lil",
-                                "native_stream_parser": True, "http_attempt_guard": True}})
+            "stream_validation": streams,
+            "instrumentation": instrumentation(plan["runner"])})
         finished = True
     try:
         policy = TransportPolicy(plan, ledger, token)
@@ -419,8 +704,11 @@ def run_plan(plan):
     except BudgetStopped:
         outcome = "budget_exhausted" if ledger.snapshot()["exhausted"] else "boundary_rejected"
         raise
-    except (KeyboardInterrupt, SystemExit):
-        outcome = "interrupted"
+    except KeyboardInterrupt:
+        outcome = "cancelled"
+        raise
+    except SystemExit as exc:
+        outcome = "completed" if exc.code in (0, None) else "failed"
         raise
     finally:
         finish(outcome)

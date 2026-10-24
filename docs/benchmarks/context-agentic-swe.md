@@ -394,7 +394,12 @@ The pilot caps transport attempts at 128, completion requests at 4,096 tokens,
 and execution at 1,800 seconds, with no retries. The guard observes actual
 HTTP sends across native workers, including failed attempts, and denies changed
 aliases, destinations, redirects, and administrative requests. Its validation
-and ledger add pre-dispatch overhead; timings describe this managed harness.
+and ledger add pre-dispatch overhead. A bounded response observer checks SSE
+validity and explicit completion while forwarding unchanged bytes to the native
+parser, with a 64 KiB limit per event. That receive-side work is included in
+observed timings; measurements describe this managed harness. Missing usage
+remains an unknown metric, while
+malformed or truncated streams cannot make a completed-run assertion.
 The adapter neither resets nor proves server cache state. It omits the exact
 source-verified unconditional LIL warmup block, which otherwise sends a request
 even when native warmup options are zero. This instrumentation difference is

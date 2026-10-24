@@ -39,6 +39,56 @@ def payload():
             "messages": [{"role": "user", "content": "fixture"}]}
 
 
+@pytest.mark.parametrize("wire,reason", [
+    (b'data: {broken}\n\n', "invalid_json"),
+    (b'data: {"n": NaN}\n\n', "invalid_json"),
+    (b'data: []\n\n', "invalid_json_object"),
+    (b'data: {"error": {}}\n\n', "error_event"),
+    (b'event: error\n\n', "error_event"),
+    (b'data: "\xff"\n\n', "invalid_utf8"),
+    (b'not SSE\n\n', "invalid_framing"),
+    (b'data: {}\rdata: {}\n\n', "invalid_framing"),
+    (b'data: ' + b'x' * adapter.MAX_SSE_EVENT_BYTES, "event_too_large"),
+    (b'data: {}\n\n', "truncated_stream"),
+    (b'data: [DONE]\n', "truncated_stream"),
+    (b'data: [DONE]\n\ndata: {}\n\n', "data_after_terminal"),
+])
+def test_sse_observer_rejects_wire_defects_without_retaining_payload(tmp_path, wire, reason):
+    policy = policy_at(tmp_path, calls=1)
+    _, model_call = policy.check("POST", policy.inference_url,
+        {"Authorization": "Bearer test-only-token"}, payload())
+    observer = adapter.SSEObserver(policy.ledger, model_call)
+    try:
+        observer.feed(wire)
+    except adapter.StreamProtocolError:
+        pass
+    observer.finish()
+    observer.finish()  # Close and iterator unwind cannot duplicate an observation.
+    event = json.loads(policy.ledger.path.read_text().splitlines()[-1])
+    assert event["outcome"] == "protocol_failure" and event["reason"] == reason
+    assert policy.ledger.snapshot()["stream_validation"]["observed"] == 1
+    assert len(observer.line) <= adapter.MAX_SSE_EVENT_BYTES
+
+
+def test_httpx_sync_preserves_chunks_and_observes_split_crlf(tmp_path):
+    httpx = pytest.importorskip("httpx")
+    policy = policy_at(tmp_path, calls=1)
+    chunks = [b'data: {"choices": []}\r', b'\n\r\n', b'data: [DONE]\r\n', b'\r', b'\n']
+    class Stream(httpx.SyncByteStream):
+        def __iter__(self):
+            return iter(chunks)
+    restore = adapter.install_httpx_guards(httpx, policy)
+    try:
+        with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(
+                200, stream=Stream(), headers={"content-type": "text/event-stream"})),
+                headers={"Authorization": "Bearer test-only-token"}) as client:
+            with client.stream("POST", policy.inference_url, json=payload()) as response:
+                assert list(response.iter_raw()) == chunks
+    finally:
+        restore()
+    assert policy.ledger.snapshot()["stream_validation"]["complete"] is True
+
+
 def test_native_arguments_have_no_secret_or_optional_traffic(tmp_path):
     for runner in ("lil", "aiperf"):
         plan = plan_at(tmp_path, runner)
@@ -95,7 +145,8 @@ def test_httpx_sync_failure_attempt_and_redirect_are_bounded(tmp_path):
                           headers={"Authorization": "Bearer test-only-token"}) as client:
             with pytest.raises(httpx.ConnectError):
                 client.post(policy.inference_url, json=payload())
-            assert client.post(policy.inference_url, json=payload()).status_code == 307
+            with pytest.raises(adapter.StreamProtocolError, match="response_status_or_content_type"):
+                client.post(policy.inference_url, json=payload())
             with pytest.raises(BudgetStopped):
                 client.post(policy.inference_url, json=payload())
     finally:
@@ -125,6 +176,20 @@ def test_probe_cap_is_separate_and_admin_requests_fail_closed(tmp_path):
 def test_aiohttp_guard_preserves_native_response_and_fork_budget(tmp_path):
     aiohttp = pytest.importorskip("aiohttp")
     policy = policy_at(tmp_path, "aiperf", calls=1)
+    chunks = [b'data: {"choices": []}\r', b'\n\r', b'\ndata: [DONE]\r\n\r', b'\n']
+    class Content:
+        async def iter_any(self):
+            for chunk in chunks:
+                yield chunk
+    class Response:
+        status = 200
+        headers = {"content-type": "text/event-stream"}
+        def __init__(self):
+            self.content = Content()
+        def release(self):
+            pass
+        def close(self):
+            pass
     class Session:
         trust_env = False
         headers = {"Authorization": "Bearer test-only-token"}
@@ -132,13 +197,16 @@ def test_aiohttp_guard_preserves_native_response_and_fork_budget(tmp_path):
         async def _request(self, method, url, **kwargs):
             assert kwargs["allow_redirects"] is False
             assert kwargs["timeout"].total <= 20
-            return b"data: native bytes are untouched\n\n"
+            return Response()
     module = SimpleNamespace(ClientSession=Session, ClientTimeout=aiohttp.ClientTimeout)
     restore = adapter.install_aiohttp_guard(module, policy)
     async def send():
-        return await Session()._request("POST", policy.inference_url, data=json.dumps(payload()).encode())
+        response = await Session()._request("POST", policy.inference_url, data=json.dumps(payload()).encode())
+        result = [chunk async for chunk in response.content.iter_any()]
+        response.release()
+        return result
     def child():
-        assert asyncio.run(send()) == b"data: native bytes are untouched\n\n"
+        assert asyncio.run(send()) == chunks
     try:
         process = multiprocessing.get_context("fork").Process(target=child)
         process.start()
@@ -149,9 +217,10 @@ def test_aiohttp_guard_preserves_native_response_and_fork_budget(tmp_path):
     finally:
         restore()
     assert policy.ledger.snapshot()["model_calls"] == 1
+    assert policy.ledger.snapshot()["stream_validation"]["complete"] is True
 
 
-@pytest.mark.parametrize("case", ["reasoning_bundled", "missing_usage", "malformed", "disconnect", "cancellation"])
+@pytest.mark.parametrize("case", ["reasoning_bundled", "missing_usage", "malformed", "disconnect", "cancellation", "crlf"])
 def test_guarded_native_lil_stream_parser(tmp_path, case):
     httpx = pytest.importorskip("httpx")
     pytest.importorskip("rich")
@@ -165,7 +234,8 @@ def test_guarded_native_lil_stream_parser(tmp_path, case):
     policy = policy_at(tmp_path, calls=1)
     cancel = asyncio.Event()
     def event(value):
-        return ("data: " + json.dumps(value) + "\n\n").encode()
+        separator = "\r\n" if case == "crlf" else "\n"
+        return ("data: " + json.dumps(value) + separator * 2).encode()
     reasoning = event({"id": "fixture", "choices": [{"delta": {"reasoning_content": "reason"}}]})
     content = event({"choices": [{"delta": {"content": "two words"}}]})
     usage = event({"choices": [], "usage": {"prompt_tokens": 4, "completion_tokens": 7}})
@@ -176,15 +246,18 @@ def test_guarded_native_lil_stream_parser(tmp_path, case):
                 raise httpx.ReadError("fixture disconnect")
             if case == "cancellation":
                 cancel.set()
+                raise asyncio.CancelledError()
             if case == "malformed":
                 yield b"data: {broken json\n\n"
             if case != "missing_usage":
                 yield usage
-            yield b"data: [DONE]\n\n"
+            terminal = b"data: [DONE]\r\n\r\n" if case == "crlf" else b"data: [DONE]\n\n"
+            for byte in terminal:
+                yield bytes([byte])  # Split both CRLF pairs across transport chunks.
     async def run():
         samples, chunks = [], [0]
         async with httpx.AsyncClient(transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, stream=Stream())),
+                lambda request: httpx.Response(200, stream=Stream(), headers={"content-type": "text/event-stream"})),
                 headers={"Authorization": "Bearer test-only-token"}) as client:
             result = await native["stream_one_request"](client, policy.inference_url, payload(),
                 0, cancel, chunks, shared_request_samples=samples,
@@ -197,19 +270,25 @@ def test_guarded_native_lil_stream_parser(tmp_path, case):
         restore()
     assert policy.ledger.snapshot()["model_calls"] == 1
     assert chunks == [2]
-    if case in {"reasoning_bundled", "malformed"}:
+    streams = policy.ledger.snapshot()["stream_validation"]
+    expected = "cancelled" if case == "cancellation" else (
+        "protocol_failure" if case in {"malformed", "disconnect"} else "valid")
+    assert streams[expected] == streams["observed"] == 1
+    assert streams["complete"] is (expected == "valid")
+    if case in {"reasoning_bundled", "crlf"}:
         assert samples[0].output_tokens == 7
         assert samples[0].ttft >= 0
     elif case == "missing_usage":
         assert samples[0].output_tokens == 2  # Native chunk fallback must not be labelled token usage.
-    elif case == "disconnect":
+    elif case in {"disconnect", "malformed"}:
         assert result.error
     else:
         assert cancel.is_set()
 
 
 @pytest.mark.parametrize("runner", ["lil", "aiperf"])
-@pytest.mark.parametrize("case", ["reasoning_bundled", "missing_usage", "malformed", "disconnect", "cancellation"])
+@pytest.mark.parametrize("case", ["reasoning_bundled", "missing_usage", "malformed", "disconnect", "cancellation",
+                                 "crlf", "oversize", "unterminated"])
 def test_prepared_native_process_fake_sse(tmp_path, runner, case):
     """Opt-in real pinned native process probe; its only endpoint is a local fixture."""
     import hashlib
@@ -252,7 +331,8 @@ def test_prepared_native_process_fake_sse(tmp_path, runner, case):
             self.send_header("Connection", "close")
             self.end_headers()
             def event(value):
-                return ("data: " + json.dumps(value) + "\n\n").encode()
+                separator = "\r\n" if case == "crlf" else "\n"
+                return ("data: " + json.dumps(value) + separator * 2).encode()
             try:
                 self.wfile.write(event({"id": "fixture", "object": "chat.completion.chunk",
                     "choices": [{"index": 0, "delta": {"reasoning_content": "reason"}}]}) +
@@ -267,10 +347,18 @@ def test_prepared_native_process_fake_sse(tmp_path, runner, case):
                     return
                 if case == "malformed":
                     self.wfile.write(b"data: {broken json\n\n")
+                if case == "oversize":
+                    self.wfile.write(b"data: " + b"x" * adapter.MAX_SSE_EVENT_BYTES + b"\n\n")
                 if case != "missing_usage":
                     self.wfile.write(event({"id": "fixture", "object": "chat.completion.chunk", "choices": [],
                         "usage": {"prompt_tokens": 4, "completion_tokens": 7, "total_tokens": 11}}))
-                self.wfile.write(b"data: [DONE]\n\n")
+                if case == "crlf":
+                    for chunk in (b"data: [DONE]\r", b"\n\r", b"\n"):
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+                        time.sleep(0.01)
+                else:
+                    self.wfile.write(b"data: [DONE]\n" if case == "unterminated" else b"data: [DONE]\n\n")
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
@@ -327,12 +415,27 @@ def test_prepared_native_process_fake_sse(tmp_path, runner, case):
         assert len({row["pid"] for row in attempts}) == 1
         assert attempts[0]["pid"] != process.pid
         assert any(row["event"] == "performance_worker_start_method" and row["start_method"] == "fork" for row in events)
-    if case == "reasoning_bundled":
+    report_path = Path(plan["paths"]["adapter_result"])
+    if case == "cancellation":
+        if report_path.exists():
+            terminal = json.loads(report_path.read_text())
+            assert terminal["outcome"] == "cancelled", output[-3000:]
+            assert terminal["stream_validation"]["complete"] is False
+        else:
+            assert not any(row["event"] == "adapter_finished" for row in events)
+    elif case in {"reasoning_bundled", "missing_usage", "crlf"}:
         assert process.returncode == 0, output[-3000:]
-        terminal = json.loads(Path(plan["paths"]["adapter_result"]).read_text())
+        terminal = json.loads(report_path.read_text())
         assert terminal["outcome"] == "completed"
+        assert terminal["stream_validation"]["valid"] == 1
+        assert terminal["stream_validation"]["usage_observed"] == int(case != "missing_usage")
+        assert terminal["token_usage_verified"] is False
         assert Path(plan["paths"]["native_output"]).is_file(), output[-3000:]
-    # Error/interrupt cases retain whatever native outputs exist; absence is not a passing native run.
+    else:
+        terminal = json.loads(report_path.read_text())
+        assert terminal["outcome"] == "protocol_failure", output[-3000:]
+        assert terminal["stream_validation"]["protocol_failure"] == 1
+        assert terminal["stream_validation"]["complete"] is False
 
     for artifact in tmp_path.rglob("*"):
         if artifact.is_file() and not artifact.is_symlink():

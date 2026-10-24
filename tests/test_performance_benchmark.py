@@ -186,12 +186,19 @@ def test_resigned_interpreter_substitution_and_plan_digest_fail_pretraffic(tmp_p
 
 def write_adapter_evidence(plan):
     events = [{"seq": 1, "event": "performance_adapter_ready", "adapter_sha256": plan["adapter_sha256"]},
-              {"seq": 2, "event": "performance_transport_started"}, {"seq": 3, "event": "performance_transport_started"}]
+              {"seq": 2, "event": "performance_transport_started", "model_call": 1},
+              {"seq": 3, "event": "performance_transport_started", "model_call": 2},
+              {"seq": 4, "event": "performance_stream_finished", "model_call": 1, "outcome": "valid",
+               "terminal_observed": True, "usage_observed": True},
+              {"seq": 5, "event": "performance_stream_finished", "model_call": 2, "outcome": "valid",
+               "terminal_observed": True, "usage_observed": True}]
     raw = b"".join((json.dumps(row) + "\n").encode() for row in events)
-    final = {"seq": 4, "event": "adapter_finished", "status": "complete", "event_count": 3, "byte_count": len(raw)}
+    final = {"seq": len(events) + 1, "event": "adapter_finished", "status": "complete", "event_count": len(events), "byte_count": len(raw)}
     Path(plan["paths"]["request_events"]).write_bytes(raw + (json.dumps(final) + "\n").encode())
     terminal = {"outcome": "completed", "plan_sha256": plan["plan_sha256"], "adapter_sha256": plan["adapter_sha256"],
-        "events_complete": True, "budget": {"configured": plan["budgets"], "model_calls": 2, "exhausted": False, "reason": None}}
+        "events_complete": True,
+        "stream_validation": {"admitted": 2, "observed": 2, "valid": 2, "protocol_failure": 0,
+                              "cancelled": 0, "complete": True, "usage_observed": 2}, "budget": {"configured": plan["budgets"], "model_calls": 2, "exhausted": False, "reason": None}}
     Path(plan["paths"]["adapter_result"]).write_text(json.dumps(terminal))
 
 
@@ -220,6 +227,7 @@ def test_execution_isolates_environment_and_retains_partial_native_outputs(tmp_p
         result = json.loads(Path(plan["paths"]["result"]).read_text())
     else:
         result = invoke()
+    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
     assert result["state"] == ("completed" if mode == "success" else "incomplete")
     retained = perf.retain_performance_artifacts(run_path=plan["run_path"])
     assert retained["state"] == ("retained" if mode == "success" else "incomplete")
@@ -282,7 +290,8 @@ def test_native_symlink_and_oversized_document_are_rejected(tmp_path):
 
 
 @pytest.mark.parametrize("runner_name", ["lil", "aiperf"])
-def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name):
+@pytest.mark.parametrize("wire", ["valid", "malformed", "truncated", "oversized", "missing-usage", "crlf"])
+def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name, wire):
     """Opt-in complete public plan/runner probe against an owned fixture, never a model."""
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     import threading
@@ -311,14 +320,25 @@ def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name):
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Connection", "close")
             self.end_headers()
-            for delta in ({"reasoning_content": "reason"}, {"content": "two words"}):
-                self.wfile.write(("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk",
-                    "choices": [{"index": 0, "delta": delta}]}) + "\n\n").encode())
-                self.wfile.flush()
-            self.wfile.write(("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk", "choices": [],
-                "usage": {"prompt_tokens": 4, "completion_tokens": 7, "total_tokens": 11}}) + "\n\n").encode())
-            self.wfile.write(b"data: [DONE]\n\n")
-            self.wfile.flush()
+            separator = "\r\n\r\n" if wire == "crlf" else "\n\n"
+            frames = [("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk",
+                "choices": [{"index": 0, "delta": delta}]}) + separator).encode()
+                for delta in ({"reasoning_content": "reason"}, {"content": "two words"})]
+            if wire == "malformed":
+                frames.append(b"data: {broken json\n\n")
+            if wire == "oversized":
+                frames.append(b"data: " + b"x" * 65537 + b"\n\n")
+            if wire not in {"missing-usage", "truncated"}:
+                frames.append(("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk", "choices": [],
+                    "usage": {"prompt_tokens": 4, "completion_tokens": 7, "total_tokens": 11}}) + separator).encode())
+            if wire != "truncated":
+                frames.append(("data: [DONE]" + separator).encode())
+            try:
+                for frame in frames:
+                    self.wfile.write(frame)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
             self.close_connection = True
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -337,15 +357,163 @@ def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name):
     finally:
         server.shutdown()
         server.server_close()
-    assert result["state"] == "completed", result
-    assert result["retention"]["state"] == "retained"
-    assert result["summary"]["native_complete"] is True
+    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
+    valid = wire in {"valid", "missing-usage", "crlf"}
+    assert result["state"] == ("completed" if valid else "incomplete"), result
+    assert result["stream_validation"]["complete"] is valid
+    if valid:
+        assert result["retention"]["state"] == "retained"
+        assert result["summary"]["native_complete"] is True
+    else:
+        assert result["failure"]["class"] == "protocol_failure"
     assert result["instrumentation"] == plan["instrumentation"]
     assert result["budget"]["model_calls"] == 1
     calls = [row for row in seen if row[0] == "POST"]
     assert len(calls) == 1 and calls[0][1] == "/v1/chat/completions"
     assert calls[0][3]["model"] == "llm.primary"
     assert all(row[2] is None for row in seen), "no-auth endpoint unexpectedly received credentials"
-    if runner_name == "aiperf":
+    if runner_name == "aiperf" and valid:
         assert result["summary"]["metrics"]["error_request_count"]["value"] is None
-    assert perf.retain_performance_artifacts(run_path=plan["run_path"]) == result["retention"]
+    if wire == "missing-usage":
+        for name in ("input_sequence_length", "output_sequence_length", "output_token_throughput",
+                     "output_token_throughput_per_user", "inter_token_latency"):
+            assert result["summary"]["metrics"][name]["status"] == "unknown"
+    retained = perf.retain_performance_artifacts(run_path=plan["run_path"])
+    assert {key: retained[key] for key in ("state", "missing")} == result["retention"]
+    result_row = next(row for row in retained["artifacts"] if row["path"] == "performance/result.json")
+    assert result_row["sha256"] == hashlib.sha256(Path(plan["paths"]["result"]).read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize("defect", ["files", "directories", "bytes", "symlink", "missing", "seal"])
+def test_full_run_retention_failure_persists_same_terminal_result(tmp_path, monkeypatch, defect):
+    profile, manifest, kwargs, _ = prepared_plan(tmp_path, monkeypatch)
+    plan = perf.build_performance_run_plan(profile, manifest, **kwargs)
+
+    def runner(command, cwd, timeout, env):
+        Path(plan["paths"]["native_output"]).write_text(json.dumps(aiperf_native()))
+        write_adapter_evidence(plan)
+        if defect == "files":
+            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_FILES", 1)
+        elif defect == "directories":
+            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_DIRECTORIES", 1)
+        elif defect == "bytes":
+            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_BYTES", 1)
+        elif defect == "symlink":
+            (Path(plan["paths"]["output"]) / "link").symlink_to(tmp_path / "outside")
+        elif defect == "missing":
+            Path(plan["paths"]["plan"]).unlink()
+        else:
+            write = perf.atomic_write_json
+            def fail_seal(path, value):
+                if str(path).endswith("retention.json"):
+                    raise OSError("fixture seal unavailable")
+                return write(path, value)
+            monkeypatch.setattr(perf, "atomic_write_json", fail_seal)
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    result = perf.run_performance_benchmark(plan, command_runner=runner, environ={"TEST_KEY": "fixture-value"})
+    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "performance_retention_incomplete"
+    assert result["retention"]["state"] == ("incomplete" if defect == "missing" else "failed")
+    if defect == "missing":
+        retained = perf.retain_performance_artifacts(run_path=plan["run_path"])
+        assert retained["state"] == "incomplete" and retained["missing"] == ["plan.json"]
+        row = next(row for row in retained["artifacts"] if row["path"] == "performance/result.json")
+        assert row["sha256"] == hashlib.sha256(Path(plan["paths"]["result"]).read_bytes()).hexdigest()
+    else:
+        assert not (Path(plan["paths"]["performance"]) / "retention.json").exists()
+
+
+@pytest.mark.parametrize("defect", [None, "missing", "symlink"])
+def test_durable_worker_publishes_canonical_performance_outcome(tmp_path, monkeypatch, defect):
+    from anvil_serving.benchmarking import worker
+    from anvil_serving.benchmarking.preflight import BENCHMARK_PREFLIGHT_SCHEMA
+    from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
+    from anvil_serving.control_plane.controller.store import BenchmarkJobStore
+
+    profile, manifest, kwargs, _ = prepared_plan(tmp_path, monkeypatch)
+    spec = {"schema": JOB_SPEC_SCHEMA, "run_id": kwargs["run_id"], "ownership_id": kwargs["ownership_id"],
+            "suite": "performance", "profile": profile["name"], "timeout_s": 60,
+            "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
+            "worker": {"id": "fixture-worker"}, "submitted_at": "2026-10-24T12:00:00Z",
+            "parameters": kwargs["parameters"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=kwargs["run_root"])
+    store.submit(spec)
+    monkeypatch.setenv("ANVIL_BENCHMARK_CACHE_ROOT", kwargs["cache_root"])
+    monkeypatch.setattr(worker, "prepare_harness_assets", lambda *args, **kwargs: manifest)
+    monkeypatch.setattr(worker, "run_benchmark_preflight", lambda *args, **kwargs: {"schema": BENCHMARK_PREFLIGHT_SCHEMA, "passed": True})
+    observed = {}
+    run = perf.run_performance_benchmark
+
+    def execute(plan):
+        def native(command, cwd, timeout, env):
+            Path(plan["paths"]["native_output"]).write_text(json.dumps(aiperf_native()))
+            write_adapter_evidence(plan)
+            if defect == "missing":
+                Path(plan["paths"]["plan"]).unlink()
+            elif defect == "symlink":
+                (Path(plan["paths"]["output"]) / "unsafe").symlink_to(tmp_path / "outside")
+            return subprocess.CompletedProcess(command, 0, b"", b"")
+        observed["result"] = run(plan, command_runner=native)
+        observed["path"] = plan["paths"]["result"]
+        return observed["result"]
+
+    monkeypatch.setattr(perf, "run_performance_benchmark", execute)
+    completed = worker.execute_benchmark_job(store, spec["run_id"])
+    assert "path" in observed, completed
+    canonical = json.loads(Path(observed["path"]).read_text())
+    assert canonical == observed["result"]
+    assert canonical["state"] == ("incomplete" if defect else "completed")
+    assert completed["state"] == ("failed" if defect else "completed")
+    assert store.status(spec["run_id"])["state"] == completed["state"]
+    assert store.artifact(spec["run_id"])["results"]["evidence"]["completeness"] == completed["state"]
+
+
+@pytest.mark.parametrize("defect", ["missing", "duplicate", "terminal", "report"])
+def test_parent_refuses_inconsistent_stream_observations(tmp_path, monkeypatch, defect):
+    profile, manifest, kwargs, _ = prepared_plan(tmp_path, monkeypatch)
+    plan = perf.build_performance_run_plan(profile, manifest, **kwargs)
+
+    def native(command, cwd, timeout, env):
+        Path(plan["paths"]["native_output"]).write_text(json.dumps(aiperf_native()))
+        write_adapter_evidence(plan)
+        events_path = Path(plan["paths"]["request_events"])
+        events = [json.loads(line) for line in events_path.read_text().splitlines()][:-1]
+        if defect == "missing":
+            events.pop()
+        elif defect == "duplicate":
+            events[-1]["model_call"] = 1
+        elif defect == "terminal":
+            events[-1]["terminal_observed"] = False
+        else:
+            terminal_path = Path(plan["paths"]["adapter_result"])
+            terminal = json.loads(terminal_path.read_text())
+            terminal["stream_validation"]["valid"] = 1
+            terminal_path.write_text(json.dumps(terminal))
+        raw = b"".join((json.dumps(row) + "\n").encode() for row in events)
+        final = {"seq": len(events) + 1, "event": "adapter_finished", "status": "complete",
+                 "event_count": len(events), "byte_count": len(raw)}
+        events_path.write_bytes(raw + (json.dumps(final) + "\n").encode())
+        return subprocess.CompletedProcess(command, 0, b"", b"")
+
+    result = perf.run_performance_benchmark(plan, command_runner=native, environ={"TEST_KEY": "fixture-value"})
+    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "missing_performance_observations"
+
+
+def test_finalization_never_rewrites_previously_sealed_result(tmp_path):
+    base = tmp_path / "performance"
+    base.mkdir()
+    result_path = base / "result.json"
+    result_path.write_text('{"state":"incomplete"}')
+    retained = perf.retain_performance_artifacts(run_path=str(tmp_path))
+    result_bytes = result_path.read_bytes()
+    manifest_bytes = (base / "retention.json").read_bytes()
+    with pytest.raises(BenchmarkJobError, match="previously sealed"):
+        perf._finalize_performance_result({"run_path": str(tmp_path), "paths": {"result": str(result_path)}},
+                                          {"state": "completed", "failure": None})
+    assert result_path.read_bytes() == result_bytes
+    assert (base / "retention.json").read_bytes() == manifest_bytes
+    assert perf.retain_performance_artifacts(run_path=str(tmp_path)) == retained
