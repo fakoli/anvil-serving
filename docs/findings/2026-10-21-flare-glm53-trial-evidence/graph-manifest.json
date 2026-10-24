@@ -1,0 +1,490 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM Flare whole-recipe scout",
+  "subtitle": "Different checkpoints; variable output; n8/cell; C4 warm after C1. No promotion.",
+  "output": "graphs/matrix.svg",
+  "data_output": "graphs/graph-data.json",
+  "metric_semantics": {
+    "tpot": "Per-request aggregate proxy; not raw token interval distribution.",
+    "prefill": "Includes queueing, scheduling, prefill and first-token work.",
+    "throughput": "Variable output lengths; descriptive scout only."
+  },
+  "charts": [
+    {
+      "title": "Decode: C1 near-zero hits",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output: C1 near-zero hits",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First any output: C1 near-zero hits",
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Visible TTFT: C1 near-zero hits",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "TPOT proxy: C1 near-zero hits",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms/token",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End to end: C1 near-zero hits",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effective prefill: C1 near-zero hits",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c1.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decode: C4 warm",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output: C4 warm",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First any output: C4 warm",
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Visible TTFT: C4 warm",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "TPOT proxy: C4 warm",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms/token",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End to end: C4 warm",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effective prefill: C4 warm",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/flare-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/flare-natural-ctx32768-c4.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

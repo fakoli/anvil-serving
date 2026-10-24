@@ -1,0 +1,95 @@
+{
+  "at": 1792660392.7019022,
+  "frozen_before_decode_requests": true,
+  "cells": [
+    {
+      "name": "decode-c1-warm",
+      "concurrency": 1,
+      "capture": false,
+      "warmup": true
+    },
+    {
+      "name": "decode-c1-r1-off",
+      "concurrency": 1,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c1-r1-on",
+      "concurrency": 1,
+      "capture": true,
+      "warmup": false
+    },
+    {
+      "name": "decode-c1-r2-on",
+      "concurrency": 1,
+      "capture": true,
+      "warmup": false
+    },
+    {
+      "name": "decode-c1-r2-off",
+      "concurrency": 1,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c1-r3-off",
+      "concurrency": 1,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c1-r3-on",
+      "concurrency": 1,
+      "capture": true,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-warm",
+      "concurrency": 4,
+      "capture": false,
+      "warmup": true
+    },
+    {
+      "name": "decode-c4-r1-off",
+      "concurrency": 4,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-r1-on",
+      "concurrency": 4,
+      "capture": true,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-r2-on",
+      "concurrency": 4,
+      "capture": true,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-r2-off",
+      "concurrency": 4,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-r3-off",
+      "concurrency": 4,
+      "capture": false,
+      "warmup": false
+    },
+    {
+      "name": "decode-c4-r3-on",
+      "concurrency": 4,
+      "capture": true,
+      "warmup": false
+    }
+  ],
+  "repetitions": 3,
+  "duration_ms": 1000,
+  "output_tokens": 1024,
+  "prompt_tokens": 7037,
+  "purpose": "observer-cost diagnostics; no engine ranking; require all prompt reused for paired timing"
+}

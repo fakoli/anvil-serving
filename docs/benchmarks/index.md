@@ -29,6 +29,14 @@ Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
 configuration and retained evidence. **Evidence reviewed: 2026-10-17 FP4 promotion and client acceptance.**
 
+## Engine testing
+
+The [engine-testing reports](engine-testing.md) collect the closed Flare
+diagnostics and the 0.7.2 Ignis qualification. They are bounded local evidence:
+the incumbent remains selected, no Flare result is promoted, and Ignis coding
+qualification is incomplete. Use the reports for their exact evidence and
+failure boundaries, not as live deployment status.
+
 ## Historical bounded APC reference — September 19
 
 <div class="bench-recipe" markdown="1">

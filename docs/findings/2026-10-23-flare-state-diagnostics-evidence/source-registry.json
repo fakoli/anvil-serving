@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-23-flare-state-diagnostics",
+  "sources": [],
+  "local_evidence": [
+    {
+      "id": "prior-cache-fix",
+      "path": "../2026-10-22-flare-cache-fix",
+      "evidence_type": "prior local diagnostic",
+      "decision_impact": "sets retained numerical and protected-performance holds"
+    },
+    {
+      "id": "trace-review",
+      "path": "review/final-trace-causal-review.md",
+      "evidence_type": "independent local review",
+      "decision_impact": "accepts bounded trace diagnostics while holding causal, numerical, performance, tuning, and promotion claims"
+    },
+    {
+      "id": "prior-cache-fix-configuration",
+      "path": "../2026-10-22-flare-cache-fix/README.md",
+      "evidence_type": "prior local configuration/source evidence",
+      "decision_impact": "the current diagnostic reuses its source/image/row-share identities without copying its corpus"
+    }
+  ]
+}

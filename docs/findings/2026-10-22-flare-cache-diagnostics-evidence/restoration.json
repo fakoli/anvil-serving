@@ -1,0 +1,106 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-22-flare-cache-diagnostics",
+  "status": "verified",
+  "verified": true,
+  "mutation_required": true,
+  "first_window": {
+    "at": 1792663175.5461924,
+    "first_window_restored": true,
+    "direct_passed": true,
+    "routed_passed": true,
+    "monitoring_checks_passed": 20,
+    "route_config_unchanged": {
+      "OPERATOR_PATH_72fc2a9c500f/restore-original-recipe.toml": true,
+      "OPERATOR_PATH_c06ed5b080af/router.toml": true,
+      "OPERATOR_PATH_645ea4fbd90f/operator-topology.toml": true,
+      "OPERATOR_PATH_74a5523f4cc1/recipe-monitoring.json": true
+    },
+    "incumbent_container_id": "container-17",
+    "incumbent_reconstructed": true,
+    "reason": "recipe unload removed original container; exact recipe reload rebuilt autotune state",
+    "promoted": false,
+    "evidence": [
+      "restore1-direct-preflight.json",
+      "restore1-routed-preflight.json",
+      "restore1-monitoring.json",
+      "restore1-final-router.json",
+      "restore1-candidate-status.json"
+    ]
+  },
+  "second_window": {
+    "at": 1792664932.586517,
+    "initial_quiesce_unix": 1792663221.8374703,
+    "restored_and_readmitted_at_unix": 1792664932.586517,
+    "elapsed_minutes": 28.512484113375347,
+    "within_90_minutes": true,
+    "exact_retained_container_restored": true,
+    "note": "Conservative endpoint: all post-restore checks complete; router readmitted earlier. Outer CLI wrapper timed out, then exact runtime health, monitor-sync and direct/routed checks completed."
+  },
+  "checks": {
+    "same_retained_incumbent": true,
+    "candidate_absent": true,
+    "primary_ready_admitting": true,
+    "direct_preflight_passed": true,
+    "routed_preflight_passed": true,
+    "monitoring_passed": true,
+    "protected_hashes_unchanged": true,
+    "power_limits_unchanged": true,
+    "containment_passed": true,
+    "gpu_processes_incumbent_only": true
+  },
+  "differences": [
+    "First window reconstructed the exact incumbent recipe/image into a new container; second window retained and restored that same container.",
+    "New process incarnations; no routing/provider/power/promotion change."
+  ],
+  "sources": [
+    {
+      "path": "counter-arm/final-incumbent.json",
+      "sha256": "55df764e9973b41d26fdb61076b220de5342dd02940aca4f1414785a87c31907"
+    },
+    {
+      "path": "counter-arm/final-candidate-status.json",
+      "sha256": "c696d06437fc9c16e92eba6f5ecdb53df08d7213ed6159482f4ed5e1e8a99b9a"
+    },
+    {
+      "path": "counter-arm/final-router.json",
+      "sha256": "f8ba58a27556add5a313785c3f5e11d856c140e5e50441999ee50b2a74cc16f6"
+    },
+    {
+      "path": "counter-arm/final-direct-preflight.json",
+      "sha256": "37af59f0647def369cbe9c02bfd8e8299b3925281127776ce47b760a2d395bdd"
+    },
+    {
+      "path": "counter-arm/final-routed-preflight.json",
+      "sha256": "e6c7f154a1758f6eee4f98f3514dc7fadfcecc9e753c0ea4d8c059b49ca08410"
+    },
+    {
+      "path": "counter-arm/final-monitoring-r2.json",
+      "sha256": "be5d49b53b9085cf1b7f2c71d2fa71c4489fc1a4c66aa09f1f80f708147f2abd"
+    },
+    {
+      "path": "counter-arm/final-protected-hashes.json",
+      "sha256": "2b8d3683f8f5b60cf23926542e195a2c22f7b679690c1acd9f91f72c9bcd8f5c"
+    },
+    {
+      "path": "counter-arm/final-gpus.json",
+      "sha256": "2b1ef431026ff6eebcb07e6fd95bbc38f867cf18da32d8c4112618337ec95a6f"
+    },
+    {
+      "path": "counter-arm/final-gpu-processes.json",
+      "sha256": "9a8c10997227e6f8568a99a63bab6dd423a19a152b910340b9755b2ee9aaba8a"
+    },
+    {
+      "path": "counter-arm/final-native.prom",
+      "sha256": "5fd8381c90e954e1f2fef3d3719bb4735ccb83aa2a76d371e8df8901b68d61de"
+    },
+    {
+      "path": "counter-arm/outage-end.json",
+      "sha256": "0a8c389ecd959797b4b2ddd5034bddac558b94d6ff889f0e65bd116e19a88c67"
+    },
+    {
+      "path": "counter-arm/incumbent-before.json",
+      "sha256": "c6e7d8b9c59559f7ad1e0e149d4f147555e6e66c16f4581bae798660b252a3c6"
+    }
+  ]
+}

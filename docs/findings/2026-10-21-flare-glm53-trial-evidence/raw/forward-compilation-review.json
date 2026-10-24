@@ -1,0 +1,12 @@
+{
+  "reviewer": "independent Sol reviewer",
+  "source": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "progress": "forward progress increments only after completed future; zero is not by itself stalled",
+  "workers": "8 total;4/rank;Inductor compile_threads1",
+  "cache": "completed artifacts temp+atomic replace;key excludes compile_threads;r3 stopped before this stage",
+  "bounds": "no per-forward watchdog;external trial deadline remains authoritative",
+  "evidence": [
+    "ignition/preparation/aot.py:392-398,498-510,651-655,712-744,814-840",
+    "ignition/preparation/compile_pool.py:35-42,55-80,91-97"
+  ]
+}

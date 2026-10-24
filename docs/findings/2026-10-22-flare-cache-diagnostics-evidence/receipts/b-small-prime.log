@@ -1,0 +1,12 @@
+{"sequence": 0, "index": 40, "host_reuse": 7693.0, "gpu_reuse": 9.0, "visible": true}
+{"sequence": 1, "index": 41, "host_reuse": 7694.0, "gpu_reuse": 9.0, "visible": true}
+{"sequence": 2, "index": 42, "host_reuse": 7695.0, "gpu_reuse": 9.0, "visible": true}
+{"sequence": 3, "index": 43, "host_reuse": 0.0, "gpu_reuse": 7703.0, "visible": true}
+{"sequence": 4, "index": 44, "host_reuse": 0.0, "gpu_reuse": 7703.0, "visible": true}
+{"sequence": 5, "index": 45, "host_reuse": 0.0, "gpu_reuse": 7703.0, "visible": true}
+{"sequence": 6, "index": 46, "host_reuse": 0.0, "gpu_reuse": 7703.0, "visible": true}
+{"sequence": 7, "index": 47, "host_reuse": 0.0, "gpu_reuse": 7704.0, "visible": true}
+{"sequence": 8, "index": 48, "host_reuse": 0.0, "gpu_reuse": 7704.0, "visible": true}
+{"sequence": 9, "index": 49, "host_reuse": 0.0, "gpu_reuse": 7705.0, "visible": true}
+{"sequence": 10, "index": 50, "host_reuse": 0.0, "gpu_reuse": 7705.0, "visible": true}
+{"sequence": 11, "index": 51, "host_reuse": 0.0, "gpu_reuse": 7706.0, "visible": true}

@@ -1,0 +1,24 @@
+{
+  "purpose": "stronger controlled-output diagnostic; not finalist speed evidence",
+  "passed": 0,
+  "attempted": 12,
+  "failure_classes": {
+    "controlled_output_failed": 11,
+    "request_canary_failed": 1
+  },
+  "observed_word_counts": [
+    168,
+    157,
+    163,
+    192,
+    135,
+    163,
+    169,
+    1634,
+    181,
+    183,
+    137,
+    198
+  ],
+  "canary_failures": 1
+}

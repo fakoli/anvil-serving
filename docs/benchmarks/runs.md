@@ -1,5 +1,13 @@
 # Benchmark run catalog
 
+## 2026-10-21–23 Flare engine investigations
+
+| Date | Scope | Decision | Evidence |
+| --- | --- | --- | --- |
+| 2026-10-21 | Initial candidate scout and configuration optimization | `no-promotion`; different checkpoints and incomplete replacement gates prevent an engine-only ranking | [Scout](../findings/2026-10-21-flare-glm53-trial.md) · [optimization](../findings/2026-10-21-flare-glm53-optimization.md) |
+| 2026-10-21–22 | Inference and cache-row diagnostics | `no-promotion`; retained counters and replay observations are diagnostic, not a performance qualification | [Inference](../findings/2026-10-21-flare-inference-diagnostics.md) · [cache](../findings/2026-10-22-flare-cache-diagnostics.md) |
+| 2026-10-22–23 | Allocation, protected-regression, and upstream compatibility controls | `no-promotion`; numerical/protected gates remain held and the incumbent was restored | [Allocation](../findings/2026-10-22-flare-cache-fix.md) · [state](../findings/2026-10-23-flare-state-diagnostics.md) · [refresh](../findings/2026-10-23-flare-upstream-refresh.md) |
+
 ## 2026-10-19 Ignis 0.7.2
 
 | Configuration | Hardware | Result | Decision | Evidence |

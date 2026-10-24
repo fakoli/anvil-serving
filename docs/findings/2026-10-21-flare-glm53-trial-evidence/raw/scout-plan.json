@@ -1,0 +1,93 @@
+{
+  "schema": "flare-trial-scout-plan/v1",
+  "recorded_at": "2026-10-21T08:33:12.763297+00:00",
+  "scope": "bounded compatibility and performance scout; incomplete serving comparison",
+  "prior_requests": "Incumbent preflight and strict C1/C4 samples already recorded; not retroactively frozen",
+  "candidate_requests_started": false,
+  "deadline_file": "gpu-attempt-start.json",
+  "candidate_registry_sha256": "a95d6d4dadcc89c9bce73c7c273b332e7b7b3b181a023dc71d6bbe1ff9a3575e",
+  "functional": [
+    "smoke",
+    "json",
+    "needle8192",
+    "toolsC4",
+    "streaming-tools",
+    "tool-result",
+    "responses"
+  ],
+  "sampling": {
+    "temperature": 1,
+    "top_p": 0.95
+  },
+  "capacity": {
+    "contexts": [
+      8192,
+      32768
+    ],
+    "concurrency": [
+      1,
+      4
+    ],
+    "requests": 4,
+    "response_words": 128,
+    "max_tokens": 2048,
+    "controlled_output_policy": "strict",
+    "prompt_cache_mode": "unique",
+    "request_canaries": true
+  },
+  "metric_families": [
+    "TTFT",
+    "TTFO when exposed",
+    "decode",
+    "TPOT",
+    "E2E",
+    "aggregate output throughput",
+    "input/output tokens",
+    "GPU/host/cgroup memory",
+    "runtime KV slots",
+    "OOM",
+    "observed occupancy"
+  ],
+  "limits": [
+    "small scout population; p99 descriptive only",
+    "different checkpoint from incumbent",
+    "MTP3 only is not speculation speedup proof",
+    "failure of infrastructure/identity/containment blocks further requests",
+    "protocol misses retain failure and block qualification; safe diagnostics may continue within deadline",
+    "no promotion"
+  ],
+  "natural_diagnostic": {
+    "predeclared_at": "2026-10-21T08:42:36.875446+00:00",
+    "contexts": [
+      10240,
+      32768
+    ],
+    "concurrency": [
+      1,
+      4
+    ],
+    "requests": 8,
+    "response_words": 0,
+    "max_tokens": 2048,
+    "controlled_output_policy": "observe",
+    "temperature": 1,
+    "top_p": 0.95,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "reason": "Historical incumbent performance used natural completions; keep this separate from failed exact-word contract. Rerun incumbent same cells after restoration for matched sampling. Natural output lengths may differ, so report distributions and no controlled-decode claim."
+  },
+  "preparation": "r4 continues retained r3 kernel caches;8 compile workers; same model/runtime/topology/memory cap",
+  "source": {
+    "commit": "80ad7e5c5de49221ba1e75fa133ef358af3e72e3",
+    "dirty": true,
+    "files": {
+      "anvil_serving/preflight.py": "3b2d993631b4dc27fa5cfb14e14f55ebff3c69ca8a07a27c5a1991ac42981411",
+      "anvil_serving/models.py": "74f1ebde56ee6f9ecab036e43cd22777792a41ff7ea2ffa52a07e24ad9134675",
+      "anvil_serving/serve_recipes.py": "b33956567a2c19f1a99f3d8b6d8f4208f1da6110e6c78da0d6d167e54a0e9462",
+      "anvil_serving/benchmarking/runner.py": "0def9fc2b4d1b9dc9eec2ab1c8864be6cca9ab6645fa3543dceada4d3240fd7e",
+      "anvil_serving/benchmarking/requests.py": "3de134738d29210b2cf3bbedc221d11bb4ba396a7cded14ed5314e1e5590012d"
+    },
+    "launcher": "python -m anvil_serving.cli",
+    "version": "1.5.0"
+  }
+}

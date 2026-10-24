@@ -1,0 +1,9 @@
+{
+  "resident_bytes": 9374826496,
+  "resident_GiB": 8.730987548828125,
+  "resident_GB": 9.374826496,
+  "configured_bytes": 34359738368,
+  "configured_GiB": 32,
+  "resident_fraction": 0.2728433609008789,
+  "correction": "Earlier commentary called9.37GB decimal GiB; correct binary value is8.73GiB."
+}

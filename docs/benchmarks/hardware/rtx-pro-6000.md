@@ -1,5 +1,10 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-21–23 Flare engine investigations:** the dual-card TP2 reports are
+bounded diagnostic evidence, not a hardware ranking or a promotion. The
+[engine-testing index](../engine-testing.md) links every retained finding and
+its restoration boundary.
+
 **Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and

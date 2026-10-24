@@ -1,0 +1,79 @@
+{
+  "run": "cap16-fixed2-host32-mixed-prefill.json",
+  "purpose": "delivery continuity diagnostic; failed counting quality is retained",
+  "cases": [
+    {
+      "lines": 0,
+      "checks": {
+        "stream_completed": true,
+        "token_timestamps": true,
+        "usage_matches_ids": true,
+        "complete_visible_numbers_in_order": false
+      },
+      "native_token_gap_p50_ms": 0.002165,
+      "native_token_gap_p99_ms": 15.082332,
+      "native_token_gap_max_ms": 15.273351,
+      "overlap": null,
+      "prefill_elapsed_s": null,
+      "prefill_prompt_tokens": null,
+      "prefill_reused_tokens": null,
+      "prefill_standard_cached_tokens": null,
+      "visible_chars": 0,
+      "generated_tokens": 4096
+    },
+    {
+      "lines": 2048,
+      "checks": {
+        "stream_completed": true,
+        "token_timestamps": true,
+        "usage_matches_ids": true,
+        "complete_visible_numbers_in_order": false,
+        "decode_progress_during_prefill": true,
+        "decode_client_spans_prefill": true,
+        "prefill_sizes_ordered": true
+      },
+      "native_token_gap_p50_ms": 0.00228,
+      "native_token_gap_p99_ms": 13.029924,
+      "native_token_gap_max_ms": 500.150791,
+      "overlap": {
+        "token_events_inside_prefill": 555,
+        "tokens_delivered_inside_prefill": 555,
+        "maximum_client_receive_gap_ms": 500.254041,
+        "timing_scope": "client receipt window; native timestamp origin is not client monotonic origin"
+      },
+      "prefill_elapsed_s": 6.613189556,
+      "prefill_prompt_tokens": 32565,
+      "prefill_reused_tokens": 9,
+      "prefill_standard_cached_tokens": 9,
+      "visible_chars": 0,
+      "generated_tokens": 4096
+    },
+    {
+      "lines": 6144,
+      "checks": {
+        "stream_completed": true,
+        "token_timestamps": true,
+        "usage_matches_ids": true,
+        "complete_visible_numbers_in_order": false,
+        "decode_progress_during_prefill": true,
+        "decode_client_spans_prefill": true,
+        "prefill_sizes_ordered": true
+      },
+      "native_token_gap_p50_ms": 0.00214,
+      "native_token_gap_p99_ms": 13.230763,
+      "native_token_gap_max_ms": 440.715964,
+      "overlap": {
+        "token_events_inside_prefill": 1494,
+        "tokens_delivered_inside_prefill": 1494,
+        "maximum_client_receive_gap_ms": 440.806413,
+        "timing_scope": "client receipt window; native timestamp origin is not client monotonic origin"
+      },
+      "prefill_elapsed_s": 18.013589245,
+      "prefill_prompt_tokens": 101606,
+      "prefill_reused_tokens": 9,
+      "prefill_standard_cached_tokens": 9,
+      "visible_chars": 357,
+      "generated_tokens": 4096
+    }
+  ]
+}

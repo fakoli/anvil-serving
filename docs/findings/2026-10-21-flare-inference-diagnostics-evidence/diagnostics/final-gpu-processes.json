@@ -1,0 +1,16 @@
+[
+  {
+    "pid": 2879496,
+    "process": "VLLM::Worker_TP1_DCP1",
+    "gpu_uuid": "synthetic-id-14c581c315ea",
+    "memory_mib": "96438",
+    "cgroup": "0::/system.slice/docker-container-2.scope\n"
+  },
+  {
+    "pid": 2878697,
+    "process": "VLLM::Worker_TP0_DCP0",
+    "gpu_uuid": "synthetic-id-d013185ea964",
+    "memory_mib": "96438",
+    "cgroup": "0::/system.slice/docker-container-2.scope\n"
+  }
+]

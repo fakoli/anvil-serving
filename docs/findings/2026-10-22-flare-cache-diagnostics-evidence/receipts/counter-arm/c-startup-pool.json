@@ -1,0 +1,18 @@
+{
+  "at": 1792663415.579672,
+  "pool": {
+    "flare_host_cache_memory_page_pressure_total": 0.0,
+    "flare_host_cache_memory_row_pressure_total": 0.0,
+    "flare_host_cache_memory_evicted_records_total": 0.0,
+    "flare_host_cache_memory_compacted_rows_total": 0.0,
+    "flare_host_cache_memory_no_evictable_total": 0.0,
+    "flare_host_cache_memory_oversized_total": 0.0,
+    "flare_host_cache_memory_records": 0.0,
+    "flare_host_cache_memory_bytes": 0.0,
+    "flare_host_cache_memory_pages": 7314.0,
+    "flare_host_cache_memory_free_pages": 7314.0,
+    "flare_host_cache_memory_rows": 52.0,
+    "flare_host_cache_memory_free_rows": 52.0
+  },
+  "completed": 0.0
+}

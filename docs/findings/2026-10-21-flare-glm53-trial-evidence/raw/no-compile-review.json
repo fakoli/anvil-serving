@@ -1,0 +1,28 @@
+{
+  "source": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "reviewer": "independent Sol reviewer",
+  "supported": true,
+  "classification": "development-only alternate; not optimized performance comparison",
+  "preserves": [
+    "checkpoint",
+    "TP2",
+    "C4 plan",
+    "MTP plan"
+  ],
+  "still_requires": [
+    "kernel tuning",
+    "graph memory measurement",
+    "KV allocation",
+    "raw-forward CUDA graph capture",
+    "package export",
+    "native load"
+  ],
+  "known_limit": "upstream docs report TP2 no-compile GLM batched MTP failures",
+  "decision": "do not switch merely to obtain non-equivalent speed numbers;continue optimized r4 within original deadline",
+  "references": [
+    "docs/core-design.md:918-921",
+    "docs/performance-work.md:66-77",
+    "docs/glm-batched-speculation-defect.md:283",
+    "ignition/cli/runtime.py:27-38"
+  ]
+}

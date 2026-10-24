@@ -1,0 +1,8 @@
+{
+  "reviewer": "/root/flare_trial_review",
+  "state": "conditional_accept",
+  "observed_failure": "reasoning budget exhausted, no visible content, complete stream",
+  "policy": "continue original frozen diagnostic matrix only; failed concurrency arm not ranked",
+  "promoted": false,
+  "recorded_at_ns": 1792646122346048654
+}

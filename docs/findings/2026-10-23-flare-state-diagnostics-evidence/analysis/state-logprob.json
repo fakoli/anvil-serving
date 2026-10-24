@@ -1,0 +1,294 @@
+{
+  "diagnostic_only": true,
+  "native_state_oracle": {
+    "claim_limitations": [
+      "does not establish uncached numerical correctness",
+      "does not establish sampler/RNG equivalence or full-logit equality",
+      "does not establish host-store/DMA behavior, cache-policy performance, serving-cache capacity, or repair the historical exact-128 token-ID failure"
+    ],
+    "compile_validation": {
+      "gpu_execution_in_compile_validation": false,
+      "initial_compile_only_passes": 3,
+      "repair_compile_only_passes": 2,
+      "total_compile_only_passes": 5
+    },
+    "config": {
+      "adaptive_verification": false,
+      "endpoints": [
+        512,
+        513,
+        7708
+      ],
+      "max_concurrency": 4,
+      "mtp_draft_tokens": 2,
+      "page_tokens": 512,
+      "ranks": [
+        0,
+        1
+      ]
+    },
+    "endpoints": [
+      {
+        "active_requests": 0,
+        "canonical_snapshot_equal_all": true,
+        "drained": true,
+        "endpoint": 512,
+        "guarded_spans_per_rank": [
+          51
+        ],
+        "host_offload_exercised": false,
+        "poison_verified_all": true,
+        "process_returncode": 0,
+        "rank_checks": 2,
+        "sampling_exercised": false,
+        "snapshot_bytes_per_rank": [
+          81464576
+        ],
+        "source_guards_unchanged_all": true
+      },
+      {
+        "active_requests": 0,
+        "canonical_snapshot_equal_all": true,
+        "drained": true,
+        "endpoint": 513,
+        "guarded_spans_per_rank": [
+          75
+        ],
+        "host_offload_exercised": false,
+        "poison_verified_all": true,
+        "process_returncode": 0,
+        "rank_checks": 2,
+        "sampling_exercised": false,
+        "snapshot_bytes_per_rank": [
+          81464576
+        ],
+        "source_guards_unchanged_all": true
+      },
+      {
+        "active_requests": 0,
+        "canonical_snapshot_equal_all": true,
+        "drained": true,
+        "endpoint": 7708,
+        "guarded_spans_per_rank": [
+          411
+        ],
+        "host_offload_exercised": false,
+        "poison_verified_all": true,
+        "process_returncode": 0,
+        "rank_checks": 2,
+        "sampling_exercised": false,
+        "snapshot_bytes_per_rank": [
+          81464576
+        ],
+        "source_guards_unchanged_all": true
+      }
+    ],
+    "geometry_limits": [
+      "reduced four-snapshot/1024-page diagnostic geometry",
+      "exercised endpoint-specific state only",
+      "no host offload or sampling in native test"
+    ]
+  },
+  "performance_eligible": false,
+  "promoted": false,
+  "recommend_candidate": false,
+  "schema": "flare-state-logprob-summary/v1",
+  "source_artifacts": [
+    {
+      "path": "state/window-1/closeout.json",
+      "sha256": "727e47fdddcb2e472e152b472f823f6a8e963a8a6b7792c1a2ea42283fea3e30"
+    },
+    {
+      "path": "state/window-2/window.json",
+      "sha256": "a1a8814d098d11f8cef43c2c718bf91c19a1e99caf215074e87cccd2c329b701"
+    },
+    {
+      "path": "state/window-2/closeout.json",
+      "sha256": "6e7cb96db638413ba099a75bb961b1a0e5cc381069d97d242acf4d8a148cfedb"
+    },
+    {
+      "path": "state/window-2/512-summary.json",
+      "sha256": "5b8409eef72aacf7777aed440afbbf9763638147710d7eb8f00c3b4690ee761b"
+    },
+    {
+      "path": "state/window-2/513-summary.json",
+      "sha256": "b1a61e243381e98c2682220701a90b49e8d930048eea7632de6e749db2e129a1"
+    },
+    {
+      "path": "state/window-2/7708-summary.json",
+      "sha256": "48f50c9017acdc3c9dea2a0f2fd654b715ab2718a6cb4342a50e81fa1cf801e0"
+    },
+    {
+      "path": "state/window-2/before-bindings.json",
+      "sha256": "4c72cf745cb84bb6057249fbcbeca29a4e671e8e858f11d394df7217d22bd56f"
+    },
+    {
+      "path": "state/window-2/after-native-bindings.json",
+      "sha256": "4c72cf745cb84bb6057249fbcbeca29a4e671e8e858f11d394df7217d22bd56f"
+    },
+    {
+      "path": "state/window-2/after-all-bindings.json",
+      "sha256": "4c72cf745cb84bb6057249fbcbeca29a4e671e8e858f11d394df7217d22bd56f"
+    },
+    {
+      "path": "state/window-2/logprob-serving/warmup/http/summary.json",
+      "sha256": "96112560cf8f90e90e84a3f0691c91fb886e1a2aa96e47e3b48f155632239898"
+    },
+    {
+      "path": "state/window-2/logprob-serving/observations/summary.json",
+      "sha256": "eae805b7e04c055333c817efd33dba3097893a19c66a15c394353d3160ccff3f"
+    },
+    {
+      "path": "state/window-2/logprob-serving/observations/results.json",
+      "sha256": "dfcba3fc1c9051ae0261dc2b9cbcb9e676974da00d350b567b8f0ed5a6611f99"
+    },
+    {
+      "path": "state/window-2/logprob-serving/observations/40-comparison.json",
+      "sha256": "16544dca543036cc2d6faf2f4021196cb8a1101c7571341b6ba4a2c55118823f"
+    },
+    {
+      "path": "state/window-2/logprob-serving/observations/51-comparison.json",
+      "sha256": "bd1dc3ae1f3bccfd5a1ba71fc6dff2b7b15cdbac75f3bd9a1eba98841e16a7fc"
+    },
+    {
+      "path": "review/oracle-gates.md",
+      "sha256": "9d8de1fdb3feb6c56773e321dfc14a5fcf63e30883070f7cdd05a93db6fe6007"
+    },
+    {
+      "path": "review/state-implementation-review.md",
+      "sha256": "551ef19f52e113182a529a61e79a99a1d624d44ee01a8aa170a9ed179f4a6cf8"
+    },
+    {
+      "path": "validation/logprob-harness.json",
+      "sha256": "e7d2a519787db4a0b1ce75bab4b55b55d07ed74a4635fca6e8c19a96672a8deb"
+    },
+    {
+      "path": "review/state-results-review.md",
+      "sha256": "33cfff4383f5fc0b07e9657100f7c04e75afe83e522fcb41af6811644288d0e6"
+    }
+  ],
+  "top20_observations": {
+    "claim_limitations": [
+      "top-20 evidence is not a full-vocabulary logits oracle",
+      "historical exact-128 ID gate remains uncleared",
+      "no teacher-forced independent reference or KL/relative-L2 result",
+      "case 51 has a speculative batch-shape distribution confounder, so its top-20 difference cannot be attributed solely to restored state, cache, MTP acceptance, or a specific kernel"
+    ],
+    "comparison_rule": "compare top-20 values only while paired output histories are identical; stop at the first output-token-ID divergence",
+    "comparisons": {
+      "40": {
+        "compared_positions": 8,
+        "first_output_token_id_divergence": null,
+        "first_response_token_count": 8,
+        "maximum_common_abs_logprob_delta": 0.0,
+        "minimum_top20_overlap": 20,
+        "output_token_ids_equal": true,
+        "repeat_response_token_count": 8,
+        "same_history_and_sample_positions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "top20_exact_positions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "top20_nonexact_positions": []
+      },
+      "51": {
+        "compared_positions": 8,
+        "first_output_token_id_divergence": null,
+        "first_response_token_count": 8,
+        "maximum_common_abs_logprob_delta": 0.5002956390380859,
+        "minimum_top20_overlap": 18,
+        "output_token_ids_equal": true,
+        "repeat_response_token_count": 8,
+        "same_history_and_sample_positions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "top20_exact_positions": [
+          0,
+          1,
+          2
+        ],
+        "top20_nonexact_positions": [
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
+    },
+    "http_observations": 4,
+    "speculative_shape_confounder": {
+      "case_40": {
+        "first_and_repeat_nonzero_batch_labels": [
+          1
+        ]
+      },
+      "case_51": {
+        "aggregate_delta_per_observation": {
+          "accepted_drafts": 4,
+          "emitted_tokens": 7,
+          "offered_drafts": 5,
+          "rounds": 3
+        },
+        "attribution_limit": "counter deltas do not identify whether scheduler probes or request execution produced each shape and do not isolate cache state, MTP acceptance, or a kernel",
+        "first_nonzero_batch_labels": [
+          1,
+          2,
+          4
+        ],
+        "repeat_nonzero_batch_labels": [
+          1
+        ]
+      }
+    },
+    "warmup": {
+      "attempted": 3,
+      "completed": 3,
+      "expected": 3,
+      "missing": 0,
+      "performance_eligible": false,
+      "semantic_quality": "not_evaluated"
+    }
+  },
+  "windows": {
+    "window_1": {
+      "closed": true,
+      "native_endpoint_failure": "RuntimeError: native state oracle failed at endpoint 512",
+      "performance_eligible": false,
+      "promoted": false,
+      "repair_count": 2,
+      "restored": true
+    },
+    "window_2": {
+      "bindings_unchanged_before_after_native_after_all": true,
+      "closed": true,
+      "experiment_error": null,
+      "generation_count": 1,
+      "performance_eligible": false,
+      "promoted": false,
+      "restored": true
+    }
+  }
+}

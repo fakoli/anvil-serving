@@ -47,7 +47,8 @@
       "files": [
         "README.md",
         "SANITIZATION.md",
-        "publication-matrix.md"
+        "publication-matrix.md",
+        "publication-transformations.json"
       ],
       "reason": ""
     },

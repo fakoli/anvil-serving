@@ -4,7 +4,10 @@ Fixture mode is offline-only and verifies graceful handling of a malformed
 completion response. Live mode requires explicit endpoint, model, and output.
 It performs no lifecycle action.
 """
-import argparse, hashlib, json, time
+import argparse
+import hashlib
+import json
+import time
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen

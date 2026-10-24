@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "artifact": "cap16-p2048-fixed2-host32-strict16-n100-ctx10240-c4-cold.json",
+      "completed": 100,
+      "failed": 0,
+      "canaries": 100,
+      "strict_adherence": 100,
+      "cache_hit": 0.0011211701278701436,
+      "mean_output": 220.2,
+      "p50_visible_ttft_ms": 6659.299143007956,
+      "p50_e2e_ms": 6983.884738059714,
+      "p99_e2e_ms": 10580.136903910898
+    },
+    {
+      "artifact": "cap16-p2048-fixed2-host32-high-strict16-n100-ctx10240-c4-cold.json",
+      "completed": 100,
+      "failed": 0,
+      "canaries": 100,
+      "strict_adherence": 100,
+      "cache_hit": 0.0011211701278701436,
+      "mean_output": 60.16,
+      "p50_visible_ttft_ms": 4302.156051038764,
+      "p50_e2e_ms": 4753.194689983502,
+      "p99_e2e_ms": 6811.215810012072
+    }
+  ],
+  "scope": "Distinct prompts with no API seed sent, Flare default0. Both were actually near-zero reuse. High is a shorter-reasoning policy, not engine acceleration. p99 single tail order statistic; no stable SLO."
+}

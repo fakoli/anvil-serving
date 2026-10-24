@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-21T09:36:00.514499+00:00",
+  "checks": {
+    "container_id": true,
+    "image_digest": true,
+    "model": true,
+    "revision": true,
+    "served_identity": true,
+    "recipe_digest": true,
+    "gpu_selection": true,
+    "running": true,
+    "containment": true,
+    "no_oom": true,
+    "candidate_absent": true,
+    "protected_manifests": true,
+    "direct_preflight": true,
+    "routed_preflight": true,
+    "router_admitting": true
+  },
+  "verified": true,
+  "promoted": false,
+  "evidence": [
+    "incumbent-before-interruption.json",
+    "incumbent-final-status.json",
+    "candidate-final-absence.json",
+    "protected-manifest-verification.json",
+    "restored-incumbent-preflight.json",
+    "restored-routed-preflight.json",
+    "router-restored-status.json"
+  ],
+  "absence_check": "Managed selector returned exact no-discovered-container result after successful managed unload."
+}

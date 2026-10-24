@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-21T14:12:53.977591+00:00",
+  "Low": {
+    "initial_protocol": "6/7; synthetic needle refusal",
+    "diagnostic_needle_replays": "3/3 passed with identical output/reasoning length; original miss remains",
+    "performance_matrix": "not run after failed initial gate",
+    "quality_status": "not accepted"
+  },
+  "High": {
+    "protocol": "7/7",
+    "strict16_and_natural_matrix": "in progress"
+  },
+  "default_Max": {
+    "p2048_protocol": "7/7",
+    "agentic": "17/18 debug-loop tool arguments failed",
+    "context": "18/18; actual64251..317248 input tokens"
+  },
+  "sampler_clarification": {
+    "api_seed": "not supplied by Anvil capacity/native suites",
+    "live_engine_default_seed": 0,
+    "evidence": "cap16-p2048-models-1412.json",
+    "source": "helios/src/server/request.rs:276-277,381-391",
+    "interpretation": "Do not treat repeats as independent random-seed draws. Request/cache/scheduling shape changes may still change trajectories. Explicit mixed-load fixture seed1234 is separate."
+  },
+  "C4_context_policy": "Use previously passing default-Max; Low variant remains unrun.",
+  "high": {
+    "preflight": "7/7",
+    "strict16": "12/12",
+    "natural_capacity": "96/96",
+    "agentic": "18/18",
+    "context": "18/18",
+    "actual_context_ceiling": 317248,
+    "limits": "One population per suite; shorter reasoning/output is policy change, not engine acceleration."
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "checks": [
+    {
+      "code": null,
+      "detail": "co-resident benchmark client explicitly declared",
+      "name": "worker_isolation",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "platform=linux architecture=x86_64",
+      "name": "worker_compatibility",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "free_bytes=1797647540224",
+      "name": "free_disk",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "available",
+      "name": "container_capability",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "writable",
+      "name": "owned_output",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "all locked assets present",
+      "name": "harness_assets",
+      "passed": true
+    },
+    {
+      "code": null,
+      "detail": "requested model is served",
+      "name": "endpoint_identity",
+      "passed": true
+    }
+  ],
+  "created_at": "2026-10-21T11:16:39.132936Z",
+  "observed": {
+    "endpoint": {
+      "authentication": "none",
+      "base_url": "http://127.0.0.1:39126/v1",
+      "configured_context": 327680,
+      "requested_model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "served_models": [
+        "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2"
+      ]
+    },
+    "worker": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 1797647540224,
+      "harness_assets": [],
+      "id": "primary-node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    }
+  },
+  "passed": true,
+  "requirements": {
+    "architectures": [],
+    "container_required": false,
+    "harness_assets": [],
+    "harness_locks": {},
+    "min_free_disk_bytes": 5368709120,
+    "model_host_id": "primary-node",
+    "platforms": []
+  },
+  "run_id": "flare-opt-incumbent-oracle8-t1-r1",
+  "schema": "anvil-serving.benchmark-preflight/v1",
+  "side_effects": {
+    "model_lifecycle": false,
+    "route_mutation": false
+  },
+  "unsupported_telemetry": []
+}

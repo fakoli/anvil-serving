@@ -145,3 +145,48 @@ regexes = [
   '''^65c6e7eaba7c681149fd0150c98cdc126120df2980bcaedafaa24e60adb93648$''',
   '''^f2ceb712ed0de1dd723ebc54f93e22374f403512d405472b82ebd95f12ca2393$''',
 ]
+
+# Exact non-secret source fingerprint, verified against the pinned build context.
+[[allowlists]]
+description = "Flare token span source fingerprint in diagnostic build manifest"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-21-flare-inference-diagnostics-evidence/configuration/image-source-manifest\.json$''']
+regexes = ['''530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79''']
+
+# Exact source-file digests from the closed Flare cache diagnostics.
+
+[[allowlists]]
+description = "Verified Flare diagnostic source fingerprint 1"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-diagnostics-evidence/receipts/cache-counter-source(-r2)?\.json$''']
+regexes = ['''^\s*"helios/src/server/token_spans\.rs": "530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79",?$''']
+
+[[allowlists]]
+description = "Verified Flare diagnostic source fingerprint 2"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-diagnostics-evidence/receipts/(counter-arm/)?frozen-inputs(-draft|-r2-superseded)?\.json$''']
+regexes = ['''^\s*"OPERATOR_PATH_9cf57ef8d6dd/recipe_secrets\.py": "2b6799329fc3f95f3df860ee557b9b0df6c297e46ef1ea59816f7a909367e204",?$''']
+
+# Independently verified publication false positives; exact path and content only.
+
+[[allowlists]]
+description = "Flare cache-fix exact source fingerprint"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-fix-evidence/build-source-manifest(-v2)?\.json$''']
+regexes = ['''^token_spans\.rs": "530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79"$''']
+
+[[allowlists]]
+description = "Flare cache-fix exact warmup review prose"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-fix-evidence/review/decode-warmup-audit-review\.md$''']
+regexes = ['''^token each, approximately8k/16k/29k $''']

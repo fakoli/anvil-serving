@@ -1,0 +1,252 @@
+{
+  "at": 1792663460.9264076,
+  "query": "{__name__=~\"flare_host_cache_memory_(pages|free_pages|rows|free_rows|page_pressure_total|row_pressure_total|evicted_records_total|compacted_rows_total|no_evictable_total|oversized_total)\",registration_generation=\"e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6\"}",
+  "response": {
+    "status": "success",
+    "data": {
+      "resultType": "vector",
+      "result": [
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_page_pressure_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_row_pressure_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_evicted_records_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_compacted_rows_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_no_evictable_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_oversized_total",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "0"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_pages",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "7314"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_free_pages",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "7135"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_rows",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "52"
+          ]
+        },
+        {
+          "metric": {
+            "__name__": "flare_host_cache_memory_free_rows",
+            "availability": "always_on",
+            "engine": "flare",
+            "exporter": "engine",
+            "host": "primary-node",
+            "instance": "100.64.0.62:19100",
+            "job": "inference-engines",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+            "os": "linux",
+            "registration_generation": "e8e06e154fe5ed66927e71adce14f244745a5296e9441ecb186a760c3d35dce6",
+            "service": "glm53-primary",
+            "target_id": "primary-node.engine",
+            "topology": "tp2",
+            "workload": "agent"
+          },
+          "value": [
+            1792663460.925,
+            "16"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-10-21T13:00:43.891598+00:00",
+  "state": "blocked_not_submitted",
+  "selected": 5,
+  "attempted": 0,
+  "graded": 0,
+  "resolved": null,
+  "reason": "SWE requested job timeout not forwarded; detached task containers not covered by managed cancel",
+  "effective_profile_stage_timeout_s": 21600,
+  "requested_job_timeout_s": 3300,
+  "source_repair_ticket": ".tickets/2026-10-21-swe-deadline-and-container-custody.md",
+  "promoted": false
+}

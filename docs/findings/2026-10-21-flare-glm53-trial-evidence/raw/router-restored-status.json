@@ -1,0 +1,18 @@
+{
+  "tiers": [
+    {
+      "tier_id": "primary-local",
+      "state": "admitting",
+      "reason": "admitting",
+      "active_requests": 0,
+      "draining": false,
+      "ready": true,
+      "readiness_state": "ready",
+      "readiness_reason": "identity_passed",
+      "expected_model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "observed_model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "observed_context_limit": null,
+      "metadata_source": "configured"
+    }
+  ]
+}

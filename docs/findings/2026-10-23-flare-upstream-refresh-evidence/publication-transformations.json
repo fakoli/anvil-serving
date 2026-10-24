@@ -1,0 +1,40 @@
+{
+  "schema": "publication-transformations/v1",
+  "date": "2026-10-24",
+  "scope": "Publication copies only. Original experiment evidence is unchanged.",
+  "transformations": [
+    "Replace private observer and machine labels and runtime hostnames with generic labels.",
+    "Normalize Python import formatting where present; no executable behavior changes.",
+    "Update public provenance hashes; retain previous bindings."
+  ],
+  "files": [
+    {
+      "path": "archives/review.tar.gz!review/post-driver-observability-verification.json",
+      "before_sha256": "7e84c1555de3731d2fd1741cd12dc085edca92604f007e2c22c89b4bad17decc",
+      "after_sha256": "0a50ee97886d3d820ee2aacedd17025cdeba06de32bd3f512c32b99ca5fc3f35",
+      "before_bytes": 22916,
+      "after_bytes": 22923
+    },
+    {
+      "path": "archives/review.tar.gz",
+      "before_sha256": "8a6fb0472500f96280680f0ee9274747ed6b6941c4d7db91bdde3eea896d384f",
+      "after_sha256": "bc1a4406d08ba601eed88c4494fb4f378012c8db5bed21c9b186d072182c9ee8",
+      "before_bytes": 66160,
+      "after_bytes": 66162
+    },
+    {
+      "path": "report.md",
+      "before_sha256": "876e13c4cc8cfbc60e5ad23871734ff4b341fa557755531f49e896017b1cc587",
+      "after_sha256": "6eae567a50e6841f6ee6a72e29a5579933559977c565370cb11d03b3d6fa4611",
+      "before_bytes": 10581,
+      "after_bytes": 10588
+    },
+    {
+      "path": "provenance.json",
+      "before_sha256": "26a0b0aefe63eb8ed1a9ad056820c960119492d2872b9ede73decb2586b73441",
+      "after_sha256": "ba12f142efedb3e9ca59583648657c268e6826296191f65573d17885bf6df8bc",
+      "before_bytes": 1071854,
+      "after_bytes": 1072313
+    }
+  ]
+}

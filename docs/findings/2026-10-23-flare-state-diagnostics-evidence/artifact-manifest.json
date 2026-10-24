@@ -1,0 +1,272 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-23-flare-state-diagnostics",
+    "capability": "Flare cache-state diagnostic",
+    "repository_revision": "47581ccac82660953a5b59cb04b2750d64edc97d",
+    "dirty_state": "private source state retained in raw provenance",
+    "started_at": "2026-10-23T05:39:53Z",
+    "completed_at": "2026-10-23T08:00:00Z",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "flare-state-diagnostics-trace-summary/v1",
+    "anvil-serving.benchmark-decision-summary/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e277636f6549dcfa9a009d95a527ad6cd658cd383924dcc3e9724a8a9d0b7db6",
+          "bytes": 1042
+        },
+        {
+          "path": "report.md",
+          "sha256": "e2f250abf9205706442202d524ae90e84fcb5b7bc7acf82fd9cd1aaa89dbe5d5",
+          "bytes": 7876
+        },
+        {
+          "path": "provenance.json",
+          "sha256": "fbb04b9cbb1bb39f181a2f8cb9c392ce5635c5af2954cf908a84644f3633178c",
+          "bytes": 1071289
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "8455fcceee11b6687bdbc6b36ce0bf888d4c87e991c60ae9d2a88b08c4c4e147",
+          "bytes": 968
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "600b9265cdccc436e3b63890fb9ffb5cadcf4ab3d82dc4da793bf85d4e83352a",
+          "bytes": 1093
+        },
+        {
+          "path": "plan.json",
+          "sha256": "04ccf667210ce160f1cad5c1072468ba4b9bbdc3954ea1aa1e5745301fa9406e",
+          "bytes": 2902
+        },
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "02f1a4b07849063256b883c69269ebd0148d43ad61723c0f09595d7ee6c530f4",
+          "bytes": 111677
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "04ccf667210ce160f1cad5c1072468ba4b9bbdc3954ea1aa1e5745301fa9406e",
+          "bytes": 2902
+        },
+        {
+          "path": "progress.json",
+          "sha256": "6055fd60d45e04648812b614a4b82d28382921326f3cebd71d1dbc1c89eca94a",
+          "bytes": 5102
+        },
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "02f1a4b07849063256b883c69269ebd0148d43ad61723c0f09595d7ee6c530f4",
+          "bytes": 111677
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/trace-reconcile-alignment.txt",
+          "sha256": "1bdeac8fe9afb1c124a082461da34caaeb90d8bb20e181386ed13ef70f84dd56",
+          "bytes": 23026
+        },
+        {
+          "path": "archives/formal.tar.gz",
+          "sha256": "89cc1565521038135ef06034526a86ecdf2086d11bd6ee5a034fd4db1603d895",
+          "bytes": 6631143
+        },
+        {
+          "path": "archives/state.tar.gz",
+          "sha256": "9d24fba6fc5e6fa52fba40fdf16e33e841270e6770e2126acd53797482a52bad",
+          "bytes": 156035
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "f6429fcb1baa2ce789e824a944a51564ce225513f8e783376d16727875914905",
+          "bytes": 77930
+        },
+        {
+          "path": "archives/source.tar.gz",
+          "sha256": "f24f3e01121ed180f95651cd79b2b3a2f6225a9e75deaa922a67c6999056e9fc",
+          "bytes": 148425
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "archives/formal.tar.gz",
+          "sha256": "89cc1565521038135ef06034526a86ecdf2086d11bd6ee5a034fd4db1603d895",
+          "bytes": 6631143
+        },
+        {
+          "path": "archives/state.tar.gz",
+          "sha256": "9d24fba6fc5e6fa52fba40fdf16e33e841270e6770e2126acd53797482a52bad",
+          "bytes": 156035
+        },
+        {
+          "path": "archives/analysis.tar.gz",
+          "sha256": "5f979d5d81ac4ab34fd27ca68d8ce9697790a441d980a5a03180ce7ca112e791",
+          "bytes": 73365
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "4caddbc4f6b4898668c9365c931b6460dee79a46d0151ef619ec04816ee22460",
+          "bytes": 1945
+        },
+        {
+          "path": "raw/trace-reconcile-alignment.txt",
+          "sha256": "1bdeac8fe9afb1c124a082461da34caaeb90d8bb20e181386ed13ef70f84dd56",
+          "bytes": 23026
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "f6429fcb1baa2ce789e824a944a51564ce225513f8e783376d16727875914905",
+          "bytes": 77930
+        },
+        {
+          "path": "archives/source.tar.gz",
+          "sha256": "f24f3e01121ed180f95651cd79b2b3a2f6225a9e75deaa922a67c6999056e9fc",
+          "bytes": 148425
+        },
+        {
+          "path": "archives/reviews.tar.gz",
+          "sha256": "08ecb53a23fa3b8b2534cdd37dec7066fb13998ed76fa570da9a792fff4be2e5",
+          "bytes": 39706
+        },
+        {
+          "path": "archives/validation.tar.gz",
+          "sha256": "3527432edc7eb11c9dd5663b424b24048b0d56420a4313a0b012b0b5b12d9775",
+          "bytes": 11591
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "62226c926580b8c4fff9e5fb19fc7b972b28b3ed916cb8089a6677ec69ce22ba",
+          "bytes": 1101
+        },
+        {
+          "path": "raw/trace-reconcile-alignment.txt",
+          "sha256": "1bdeac8fe9afb1c124a082461da34caaeb90d8bb20e181386ed13ef70f84dd56",
+          "bytes": 23026
+        },
+        {
+          "path": "archives/state.tar.gz",
+          "sha256": "9d24fba6fc5e6fa52fba40fdf16e33e841270e6770e2126acd53797482a52bad",
+          "bytes": 156035
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "f6429fcb1baa2ce789e824a944a51564ce225513f8e783376d16727875914905",
+          "bytes": 77930
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "7e21c55b7a2b0b39fa1a22093a172cc684250462dea4e9cf378f52223913dd6f",
+          "bytes": 3582
+        },
+        {
+          "path": "analysis/trace-paired-1/trace-paired-1-summary.json",
+          "sha256": "842d113ec911c531b71dd9f3d98f726a5ae3a063671b286833844d6a8588a572",
+          "bytes": 9122
+        },
+        {
+          "path": "analysis/state-logprob.json",
+          "sha256": "08d853cefb117bc44aad18cf74750d2419bda84cc58176df5a3c76f9e12ab44b",
+          "bytes": 8834
+        },
+        {
+          "path": "analysis/protected-abba-2.json",
+          "sha256": "1d06bb4295c8046d510862828a64c35e516ae47281d2d3d0760aac1f6c466a09",
+          "bytes": 3121379
+        },
+        {
+          "path": "archives/analysis.tar.gz",
+          "sha256": "5f979d5d81ac4ab34fd27ca68d8ce9697790a441d980a5a03180ce7ca112e791",
+          "bytes": 73365
+        },
+        {
+          "path": "archives/reviews.tar.gz",
+          "sha256": "08ecb53a23fa3b8b2534cdd37dec7066fb13998ed76fa570da9a792fff4be2e5",
+          "bytes": 39706
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "report.md",
+          "sha256": "e2f250abf9205706442202d524ae90e84fcb5b7bc7acf82fd9cd1aaa89dbe5d5",
+          "bytes": 7876
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": "No public artifact size policy was verified before finalization.",
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -7,6 +7,36 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/benchmarks/engine-testing.md`
+(navigation and interpretation of the dated Flare/Ignis measurements below;
+no additional hardware test, current deployment claim or promotion);
+
+`docs/findings/2026-10-23-flare-upstream-refresh.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/reconstruction.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/report.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/compatibility-pr-draft.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/issue-draft.md`
+(current-upstream compatibility baseline on dual Max-Q TP2; descriptive replay and warm controls, driver boundary, no 75% arm or promotion).
+
+`docs/findings/2026-10-23-flare-state-diagnostics.md`
+(dual-Max-Q TP2 canonical state, protected latency, and separate scheduler-trace diagnostics; bounded state checks accepted, numerical and latency gates remain held; no promotion).
+
+`docs/findings/2026-10-22-flare-cache-fix.md`
+(dual-Max-Q TP2 cache-row allocation diagnostic; fixed-work replay support remains diagnostic, with numerical failure, protected regressions, and decode-C4 mismatches retained; no promotion).
+
+`docs/findings/2026-10-22-flare-cache-diagnostics.md`
+(dual-Max-Q cache replay and allocator-counter diagnostics; no performance ranking or promotion).
+
+`docs/findings/2026-10-21-flare-inference-diagnostics.md`
+(dual-Max-Q four-arm diagnostic wave, bounded scheduler trace and retained incumbent C4 failures; no overall ranking or promotion).
+
+`docs/findings/2026-10-21-flare-glm53-optimization.md` (bounded dual-Max-Q optimization and incumbent controls; no promotion).
+`docs/findings/2026-10-21-flare-glm53-optimization-evidence/diagnostics/optimization-plan.md` (plan for the same measured hardware; unrun options remain plans).
+
+`docs/findings/2026-10-21-flare-glm53-trial.md`;
+`docs/findings/2026-10-21-flare-glm53-trial-evidence/README.md`
+(bounded dual-Max-Q Flare/incumbent natural-output scout, strict failures, warm package reuse and exact restoration; no promotion or engine-only comparison).
+
 `docs/findings/2026-10-16-glm-natural-baseline.md` (dual-Max-Q natural-output timing and repeated cached SWE observations through a shared router; coding repeatability not established, no promotion);
 
 `docs/findings/2026-10-16-sglang-qwen-comparison.md` and `docs/findings/2026-10-16-sglang-qwen-comparison-evidence/README.md` (bounded dual-GPU SGLang, Qwen, and Nemotron scout evidence; no performance comparison or promotion);

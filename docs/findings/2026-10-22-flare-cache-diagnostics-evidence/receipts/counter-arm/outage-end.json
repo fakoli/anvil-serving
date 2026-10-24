@@ -1,0 +1,9 @@
+{
+  "at": 1792664932.586517,
+  "initial_quiesce_unix": 1792663221.8374703,
+  "restored_and_readmitted_at_unix": 1792664932.586517,
+  "elapsed_minutes": 28.512484113375347,
+  "within_90_minutes": true,
+  "exact_retained_container_restored": true,
+  "note": "Conservative endpoint: all post-restore checks complete; router readmitted earlier. Outer CLI wrapper timed out, then exact runtime health, monitor-sync and direct/routed checks completed."
+}

@@ -57,6 +57,11 @@
           "path": "publication-matrix.md",
           "sha256": "c3e80b36efff423c3862bb5faf4c1150fdb6279a4bb194879090a331794df75a",
           "bytes": 590
+        },
+        {
+          "path": "publication-transformations.json",
+          "sha256": "15ddd3883eff9976fd2451da1374894a01e01a57b1c3bd6539e033fb9232e7bf",
+          "bytes": 744
         }
       ],
       "reason": ""
@@ -91,8 +96,8 @@
       "files": [
         {
           "path": "artifact-manifest-source.json",
-          "sha256": "bdbe5a9fe7a8cee909e853e3324c33a28ea718573531bc8de314fbae216b0241",
-          "bytes": 5351
+          "sha256": "2849a724bae35da2e74863846f1bb0ad90c872ccbbdf479a61ee19a8ac377fb3",
+          "bytes": 5395
         },
         {
           "path": "campaign-state.json",
@@ -131,8 +136,8 @@
         },
         {
           "path": "reproduction/deadline_probe.py",
-          "sha256": "0d877c50e9176b74dc351b800fd20656b278f39531fdafc91a2154911d078af1",
-          "bytes": 3470
+          "sha256": "b49ef26a075aa7e538055900a4a44988219e56a9be36853c514b05f2093b0a23",
+          "bytes": 3488
         },
         {
           "path": "run-plan.json",
