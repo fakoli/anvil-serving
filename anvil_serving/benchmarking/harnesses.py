@@ -63,9 +63,14 @@ def _default_runner(argv: Sequence[str], cwd: str | None, timeout: float):
     )
 
 
-def _bounded_text(value: Any) -> tuple[str, bool]:
+def _bounded_text(value: Any, *, keep_tail: bool = False) -> tuple[str, bool]:
     raw = value if isinstance(value, bytes) else str(value or "").encode("utf-8")
     truncated = len(raw) > MAX_HARNESS_OUTPUT_BYTES
+    if truncated and keep_tail:
+        marker = b"\n...[middle output omitted]...\n"
+        head = (MAX_HARNESS_OUTPUT_BYTES - len(marker)) // 2
+        tail = MAX_HARNESS_OUTPUT_BYTES - len(marker) - head
+        raw = raw[:head] + marker + raw[-tail:]
     return raw[:MAX_HARNESS_OUTPUT_BYTES].decode("utf-8", "replace"), truncated
 
 
@@ -80,7 +85,7 @@ def _run(
         result = runner(tuple(argv), cwd, timeout)
     except subprocess.TimeoutExpired as exc:
         stdout, stdout_truncated = _bounded_text(exc.stdout)
-        stderr, stderr_truncated = _bounded_text(exc.stderr)
+        stderr, stderr_truncated = _bounded_text(exc.stderr, keep_tail=True)
         raise BenchmarkJobError(
             "harness_timeout",
             "managed harness command timed out",
@@ -92,7 +97,7 @@ def _run(
             },
         ) from exc
     stdout, stdout_truncated = _bounded_text(getattr(result, "stdout", b""))
-    stderr, stderr_truncated = _bounded_text(getattr(result, "stderr", b""))
+    stderr, stderr_truncated = _bounded_text(getattr(result, "stderr", b""), keep_tail=True)
     return {
         "command": list(argv),
         "returncode": int(getattr(result, "returncode", 1)),

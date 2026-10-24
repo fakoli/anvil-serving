@@ -167,7 +167,7 @@ def test_python_offline_reuse_checks_bytes_and_inventory(tmp_path):
 def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypatch):
     source = tmp_path / "source"
     (source / "benchmark").mkdir(parents=True)
-    (source / "benchmark/Dockerfile").write_text("FROM buildpack-deps:jammy\nCOPY . /aider\nRUN uv pip install --system --no-cache-dir -e /aider[dev]\n")
+    (source / "benchmark/Dockerfile").write_text("FROM buildpack-deps:jammy\nRUN npm install \\\n    jest \\\n    babel-jest@29.6.4\nCOPY . /aider\nRUN uv pip install --system --no-cache-dir -e /aider[dev]\n")
     monkeypatch.setattr(prep, "_copy_source", lambda root, target, runner: prep.shutil.copytree(root, target))
     polyglot = tmp_path / "polyglot"
     rows = selection(polyglot)
@@ -181,7 +181,9 @@ def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypat
         output = ""
         if command[1:3] == ("image", "inspect"):
             output = json.dumps([{"RepoDigests": [digest]}] if command[-1] == "buildpack-deps:jammy" else [{"Id": image, "Size": 1024}])
-        if command[1] == "build":
+        if command[1:3] == ("buildx", "build") and "--help" in command:
+            output = "--resource"
+        elif command[1:3] == ("buildx", "build"):
             Path(command[command.index("--iidfile") + 1]).write_text(image)
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
     observed, inputs = prep._build_image({"aider": source, "polyglot-benchmark": polyglot},
@@ -194,9 +196,16 @@ def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypat
     recipe = (target / "build/Dockerfile").read_text()
     assert "RUN " + prep.SCM_VERSION_ASSIGNMENT + " uv pip install" in recipe
     assert "ENV " + prep.SCM_VERSION_VARIABLE not in recipe
+    assert "    jest@29.7.0 " in recipe and "    jest " not in recipe
+    assert "babel-jest@29.6.4" in recipe
+    assert inputs["dependency_pins"] == [prep.JEST_DEPENDENCY_PIN]
+    assert json.loads((target / "build/anvil-dependency-pins.json").read_text()) == [prep.JEST_DEPENDENCY_PIN]
     assert json.loads((target / "build/anvil-adapter-identity.json").read_text()) == prep._adapter_identity()
     assert "anvil-adapter-identity.json" in inputs["files"]
-    assert any(command[1] == "build" and "--pull=false" in command for command in calls)
+    build = next(command for command in calls if "--iidfile" in command)
+    assert "--pull=false" in build and "cpu-quota=400000" in build
+    assert "memory=8192m" in build and "memory-swap=8192m" in build
+    assert inputs["build_limits"]["cpus"] == 4
 
 
 def test_harness_preparation_carries_aider_receipts(tmp_path, monkeypatch):
@@ -230,6 +239,7 @@ def test_image_inventory_verifies_contained_lint_version(tmp_path, monkeypatch):
     assert result.startswith("Aider contained lint: 7.3.0 ") and "flake8==7.3.0" in result
     assert calls[0][0] == ["python3", "/aider/anvil-entrypoint.py", "python3", "-I", "-m", "flake8", "--version"]
     assert all(kwargs["image_id"] == image for _, kwargs in calls)
+    assert "p['node_modules/jest'].version!=='29.7.0'" in calls[1][0][-1]
     monkeypatch.setattr(aider_containment, "run_contained_test", lambda command, **kwargs:
                         subprocess.CompletedProcess(command, 0, stdout="7.2.0 wrong version"))
     with pytest.raises(BenchmarkJobError, match="flake8 dependency"):
@@ -260,6 +270,31 @@ def test_tracked_source_python_install_binds_scm_version(tmp_path, monkeypatch):
     assert prep.SOURCE_VERSION_METADATA["upstream_release"] is False
 
 
+@pytest.mark.parametrize("link_kind", ["tracked", "outside", "untracked", "directory", "loop"])
+def test_source_copy_materializes_only_links_to_tracked_regular_files(tmp_path, link_kind):
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "tracked.md").write_text("pinned documentation")
+    (source / "untracked.md").write_text("untracked")
+    outside = tmp_path / "outside.md"
+    outside.write_text("outside")
+    targets = {"tracked": "tracked.md", "outside": str(outside),
+               "untracked": "untracked.md", "directory": ".", "loop": "link.md"}
+    (source / "link.md").symlink_to(targets[link_kind])
+
+    def runner(command, cwd, timeout):
+        return subprocess.CompletedProcess(command, 0, stdout="link.md\0tracked.md\0", stderr="")
+
+    target = tmp_path / "copy"
+    if link_kind == "tracked":
+        prep._copy_source(source, target, runner)
+        assert (target / "link.md").read_text() == "pinned documentation"
+        assert not (target / "link.md").is_symlink()
+    else:
+        with pytest.raises(BenchmarkJobError, match="unsupported Aider source"):
+            prep._copy_source(source, target, runner)
+
+
 @pytest.mark.parametrize("mutation", ["package", "bytecode", "lock", "cache-key", "external-directory", "interpreter-link"])
 def test_python_receipt_binds_actual_files_and_safe_paths(tmp_path, mutation):
     receipt = python_environment(tmp_path / "cache")
@@ -285,3 +320,24 @@ def test_python_receipt_binds_actual_files_and_safe_paths(tmp_path, mutation):
         (root / "bin/python").symlink_to(tmp_path / "outside-python")
     with pytest.raises(BenchmarkJobError):
         prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path / "cache"))
+
+
+@pytest.mark.parametrize("timeout", [False, True])
+def test_preparation_failure_keeps_bounded_stderr_head_and_terminal_error(timeout):
+    from anvil_serving.benchmarking import harnesses
+    stderr = b"BUILD START\n" + b"progress\n" * 20000 + b"TypeError: toThrowError is not a function\n"
+    stdout = b"inventory\n" * 10000
+    def runner(command, cwd, seconds):
+        if timeout:
+            raise subprocess.TimeoutExpired(command, seconds, output=stdout, stderr=stderr)
+        return subprocess.CompletedProcess(command, 1, stdout=stdout, stderr=stderr)
+    logs = []
+    with pytest.raises(BenchmarkJobError) as caught:
+        prep._checked(runner, ("docker", "buildx", "build"), logs)
+    result = caught.value.details if timeout else logs[0]
+    assert result["output_truncated"] is True
+    assert result["stderr"].startswith("BUILD START\n")
+    assert result["stderr"].endswith("TypeError: toThrowError is not a function\n")
+    assert "middle output omitted" in result["stderr"]
+    assert len(result["stderr"].encode()) == harnesses.MAX_HARNESS_OUTPUT_BYTES
+    assert result["stdout"] == stdout[:harnesses.MAX_HARNESS_OUTPUT_BYTES].decode()

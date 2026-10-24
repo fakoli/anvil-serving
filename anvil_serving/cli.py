@@ -101,6 +101,7 @@ _WORKLOAD_FILTER_OPTIONS = {
     "--limit": "limit",
 }
 _HANDLER_PROGS = {
+    "anvil_serving.benchmarking.campaigns_cli": "anvil-serving eval benchmark campaign",
     "anvil_serving.benchmarking.jobs_cli": "anvil-serving eval benchmark",
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",

@@ -24,6 +24,7 @@ from .artifacts import (
     normalize_evidence_failure_class,
 )
 from .harnesses import prepare_harness_assets
+from .campaign_execution import campaign_result_reference
 from .jobs import BenchmarkJobError, resolve_owned_run_path, utc_now
 from .preflight import require_benchmark_preflight, run_benchmark_preflight
 from .profiles import load_profile, suite_budgets
@@ -245,9 +246,13 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     stages: list[dict[str, Any]] = []
     assets = None
     preflight = None
+    campaign_context = None
+    campaign_closure = None
     try:
         profile = load_profile(spec["profile"])
         admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
+        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance"}:
+            raise BenchmarkJobError("unsupported_campaign_suite", "campaign cannot execute this suite")
         if "budgets" in admission:
             stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
         if spec.get("parameters", {}).get("operation") == "regrade":
@@ -268,25 +273,30 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 completeness="completed", summary=dict(suite_result.get("summary") or {"completed": True}),
                 created_at=utc_now(), artifact_root=resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]),
             )
-            return store.transition(run_id, "completed", results={"evidence": evidence})
+            return store.transition(run_id, "completed", results={"evidence": evidence, **campaign_result_reference(store, spec)})
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
         if "budgets" in admission:
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
             if shutil.disk_usage(run_path).free < admission["budgets"]["min_free_disk_bytes"]:
                 raise BenchmarkJobError("insufficient_disk", "free disk is below the profile reserve before asset preparation")
-        store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
-        assets = prepare_harness_assets(
-            profile,
-            suite=spec["suite"],
-            run_root=store.run_root,
-            ownership_id=spec["ownership_id"],
-            run_id=spec["run_id"],
-            cache_root=os.environ.get(
-                "ANVIL_BENCHMARK_CACHE_ROOT",
-                os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
-            ),
-            offline=bool(spec.get("parameters", {}).get("offline", False)),
-        )
+        if "campaign" in spec:
+            from .campaign_execution import enter_campaign
+            campaign_context = enter_campaign(store, spec)
+            assets = campaign_context["payload"]["assets"]
+        else:
+            store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
+            assets = prepare_harness_assets(
+                profile,
+                suite=spec["suite"],
+                run_root=store.run_root,
+                ownership_id=spec["ownership_id"],
+                run_id=spec["run_id"],
+                cache_root=os.environ.get(
+                    "ANVIL_BENCHMARK_CACHE_ROOT",
+                    os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
+                ),
+                offline=bool(spec.get("parameters", {}).get("offline", False)),
+            )
         stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
@@ -309,7 +319,20 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return store.status(run_id)
 
         store.append_log(run_id, level="info", message=f"executing {spec['suite']} suite")
-        suite_result = _run_suite(store, record, profile, assets)
+        if campaign_context and spec["suite"] in {"aider", "performance"}:
+            from .campaign_execution import verify_child
+            _, prepared = verify_child(spec, run_root=store.run_root)
+            if spec["suite"] == "aider":
+                from .aider import run_aider_benchmark
+                suite_result = run_aider_benchmark(prepared["plan"])
+            else:
+                from .performance import run_performance_benchmark
+                suite_result = run_performance_benchmark(prepared["plan"])
+        else:
+            suite_result = _run_suite(store, record, profile, assets)
+        if campaign_context:
+            from .campaign_execution import close_campaign
+            campaign_closure = close_campaign(campaign_context)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
         if spec["suite"] in {"aider", "performance"}:
@@ -336,6 +359,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
         stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
+        if campaign_closure and campaign_closure["status"] != "closed":
+            raise BenchmarkJobError("campaign_closure_unknown", "owned clients or engine drain could not be verified")
         if not suite_complete:
             failure = suite_result.get("failure") or {"class": "harness", "message": "suite incomplete"}
             raise BenchmarkJobError(
@@ -364,8 +389,11 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="info", message="benchmark completed; evidence retained")
-        return store.transition(run_id, "completed", results={"evidence": evidence})
+        return store.transition(run_id, "completed", results={"evidence": evidence, **campaign_result_reference(store, spec)})
     except Exception as exc:
+        if campaign_context and campaign_context["receipt"]["status"] == "active":
+            from .campaign_execution import close_campaign
+            close_campaign(campaign_context)
         current = store.status(run_id)
         if current is not None and current["state"] in {"cancelled", "cancelling"}:
             return current
@@ -420,7 +448,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             run_id,
             "failed",
             failure={"class": failure_class, "code": code, "message": message[:1024]},
-            results={"evidence": evidence},
+            results={"evidence": evidence, **campaign_result_reference(store, spec)},
         )
 
 
@@ -797,11 +825,14 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
                 retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
         else:
             retention = {"state": "failed", "reason": "worker_termination_unverified"}
+        if "campaign" in record["spec"]:
+            from .campaign_execution import close_cancelled_campaign
+            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and retention["state"] != "failed")
         evidence = _cancellation_evidence(
             record, run_path=run_path, retention=retention, termination=termination
         )
         failure = evidence["failure"]
-        results = {"evidence": evidence}
+        results = {"evidence": evidence, **campaign_result_reference(store, record["spec"])}
     except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {"state": "failed", "reason": "cancellation_artifact_unavailable"}
         failure = {

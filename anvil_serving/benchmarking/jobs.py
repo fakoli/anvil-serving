@@ -69,6 +69,7 @@ _ALLOWED_SPEC_KEYS = frozenset({
     "submitted_at",
     "timeout_s",
     "parameters",
+    "campaign",
 })
 _ALLOWED_ENDPOINT_KEYS = frozenset({"base_url", "model", "auth_env"})
 _ALLOWED_WORKER_KEYS = frozenset({"id"})
@@ -303,6 +304,16 @@ def validate_job_spec(value: Any) -> dict[str, Any]:
         if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
             raise BenchmarkJobError("bad_profile_digest", "profile_sha256 must be a lowercase SHA-256 digest")
         normalized["profile_sha256"] = digest
+    if "campaign" in spec:
+        binding = _validate_closed_mapping(spec["campaign"], field="campaign", allowed=frozenset({
+            "campaign_id", "cell_id", "arm_id", "batch_id", "manifest_sha256"}))
+        if set(binding) != {"campaign_id", "cell_id", "arm_id", "batch_id", "manifest_sha256"}:
+            raise BenchmarkJobError("bad_campaign_binding", "campaign binding requires all identity fields")
+        digest = binding["manifest_sha256"]
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise BenchmarkJobError("bad_campaign_binding", "campaign manifest digest must be SHA-256")
+        normalized["campaign"] = {key: (_validate_id(value, field="campaign." + key)
+            if key != "manifest_sha256" else value) for key, value in binding.items()}
     timeout_s = spec.get("timeout_s")
     if not isinstance(timeout_s, int) or isinstance(timeout_s, bool):
         raise BenchmarkJobError("bad_timeout", "timeout_s must be an integer")

@@ -90,13 +90,17 @@
     },
     "agentic": {
       "cases": [
+        "structured-edit",
         "tool-sequence",
-        "tool-recovery"
+        "parallel-tools",
+        "dependent-result",
+        "tool-recovery",
+        "debug-loop-v2"
       ],
       "repetitions": 1,
-      "timeout_s": 1800,
-      "max_steps": 12,
-      "max_completion_tokens": 4096,
+      "timeout_s": 600,
+      "max_steps": 24,
+      "max_completion_tokens": 8192,
       "scoring": {
         "pass_rate_floor": 0.8
       },
@@ -106,8 +110,8 @@
       "adapters": [],
       "budgets": {
         "max_model_calls": 24,
-        "max_completion_tokens": 4096,
-        "deadline_s": 1800,
+        "max_completion_tokens": 8192,
+        "deadline_s": 600,
         "max_retries": 0,
         "min_free_disk_bytes": 1073741824
       }
@@ -197,5 +201,5 @@
       }
     }
   },
-  "content_sha256": "e25ad695431c63be28006b44922554500cb8d2ba3183cc161ee7d6c3a5130062"
+  "content_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf"
 }

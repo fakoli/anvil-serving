@@ -36,6 +36,10 @@ SOURCE_HASHES = {
 }
 LANGUAGES = ("cpp", "go", "java", "javascript", "python", "rust")
 LINT_CONTRACT = {"command_prefix": ["python3", "-I", "-m", "flake8"], "version": "7.3.0"}
+JEST_VERSION = "29.7.0"
+JEST_DEPENDENCY_PIN = {"package": "jest", "version": JEST_VERSION,
+                       "upstream_recipe": "unversioned jest", "task_requirement": "^29.7.0",
+                       "reason": "preserve the pinned task's toThrowError oracle contract"}
 IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
 
 
@@ -54,14 +58,23 @@ def _copy_source(root, target, runner):
     listing = harnesses._run(runner, ("git", "ls-files", "-z"), cwd=str(root))
     if listing["returncode"] or listing["output_truncated"]:
         _fail("pinned Aider source inventory could not be read")
-    for name in filter(None, listing["stdout"].split("\0")):
+    names = set(filter(None, listing["stdout"].split("\0")))
+    resolved_root = root.resolve()
+    for name in sorted(names):
         source = root / name
-        if (source.is_symlink() or not source.resolve().is_relative_to(root.resolve()) or
-                Path(name).is_absolute() or ".." in Path(name).parts):
+        if Path(name).is_absolute() or ".." in Path(name).parts:
+            _fail("unsupported Aider source link or path")
+        try:
+            resolved = source.resolve(strict=True)
+            relative = resolved.relative_to(resolved_root).as_posix()
+        except (OSError, ValueError, RuntimeError):
+            _fail("unsupported Aider source link or path")
+        if not resolved.is_file() or relative not in names:
             _fail("unsupported Aider source link or path")
         destination = target / name
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, destination)
+        # Materialize pinned in-tree links; build contexts remain link-free.
+        shutil.copy2(resolved, destination)
 
 
 def _cache_target(cache_root, key):
@@ -315,6 +328,8 @@ for row in rows:
 
 
 def _build_image(roots, rows, target, container, max_bytes, runner, logs):
+    from ..image_build import build_plan
+
     context = target / "build"
     _copy_source(roots["aider"], context, runner)
     for row in rows:
@@ -337,6 +352,11 @@ def _build_image(roots, rows, target, container, max_bytes, runner, logs):
         _fail("unexpected pinned Aider installation command")
     recipe = original.replace("FROM buildpack-deps:jammy", "FROM " + digests[0], 1)
     recipe = recipe.replace(install, "RUN " + SCM_VERSION_ASSIGNMENT + install[3:], 1)
+    jest_line = "    jest " + chr(92) + "\n"
+    if recipe.count(jest_line) != 1:
+        _fail("unexpected pinned Aider Jest installation command")
+    recipe = recipe.replace(jest_line, "    jest@" + JEST_VERSION + " " + chr(92) + "\n", 1)
+    atomic_write_json(str(context / "anvil-dependency-pins.json"), [JEST_DEPENDENCY_PIN])
     recipe += '''\nRUN mv /root/.cargo /opt/cargo && mv /root/.rustup /opt/rustup && chmod -R a+rX /opt/cargo /opt/rustup
 ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/prepared-cache/cargo GRADLE_USER_HOME=/opt/prepared-cache/gradle GOPATH=/opt/prepared-cache/go
 ENV PATH=/opt/cargo/bin:${PATH}
@@ -348,14 +368,29 @@ WORKDIR /task
     files = _build_files(context)
     if harnesses._directory_bytes(str(context)) > max_bytes:
         _fail("Aider build context exceeded the disk bound")
+    build_config = target / "image-build.toml"
+    build_config.write_text(
+        'schema = "anvil-serving.image-builds/v1"\n[builds.aider]\n'
+        'context = "build"\ndockerfile = "Dockerfile"\n'
+        f'image = "anvil-benchmark-aider:{target.name}"\n'
+        'cpus = 4\nmemory_mib = 8192\ntimeout_seconds = 3600\n'
+        f'platform = "linux/{"arm64" if platform.machine().lower() in {"arm64", "aarch64"} else "amd64"}"\n'
+    )
+    plan = build_plan("aider", build_config)
+    help_text = _checked(runner, (container, "buildx", "build", "--help"), logs)
+    if "--resource" not in help_text:
+        _fail("Docker Buildx lacks bounded build resources; no build started")
     image_file = target / "image-id"
-    _checked(runner, (container, "build", "--pull=false", "--iidfile", str(image_file), str(context)), logs, timeout=3600)
+    command = (container, *plan["argv"][1:-1], "--pull=false", "--iidfile", str(image_file), str(context))
+    _checked(runner, command, logs, timeout=plan["timeout_seconds"])
     image_id = image_file.read_text().strip()
     info = json.loads(_checked(runner, (container, "image", "inspect", image_id), logs))[0]
     if not IMAGE_ID.fullmatch(image_id) or info.get("Id") != image_id or not 0 < info.get("Size", 0) <= max_bytes:
         _fail("Aider image identity or disk bound failed")
     return image_id, {"base_digest": digests[0], "files": files, "sha256": _digest(files),
-                      "image_size_bytes": info["Size"], "rebuild_bit_reproducible": False}
+                      "image_size_bytes": info["Size"], "rebuild_bit_reproducible": False,
+                      "dependency_pins": [JEST_DEPENDENCY_PIN],
+                      "build_limits": {key: plan[key] for key in ("cpus", "memory_mib", "timeout_seconds", "platform")}}
 
 
 def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, runner, logs):
@@ -412,6 +447,7 @@ def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner
                f"assert version('aider-chat') == '{AIDER_SOURCE_VERSION}'; "
                "print(version('aider-chat'))\"; "
                "node --version; node -e \"const p=require('/npm-install/package-lock.json').packages; "
+               f"if(p['node_modules/jest'].version!=='{JEST_VERSION}') throw Error('Jest version mismatch'); "
                "console.log(JSON.stringify(p))\"; "
                "go version; /opt/cargo/bin/rustc --version; java -version 2>&1"]
     result = run_contained_test(command, task_dir=task, run_path=run_path,

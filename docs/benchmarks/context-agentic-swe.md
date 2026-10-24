@@ -154,7 +154,7 @@ changed content, or extra discoverable dataset file blocks execution.
 |---|---|---:|---|---:|---|
 | `smoke` | 8K, 32K | 3 × 1 | tool sequence and one recovery fixture | 1 | Wiring and short functional gate |
 | `scout` | 8K, 32K, 131K, 262K | 5 × 2 | 9 cases: planning, reasoning, structured output, sequential/parallel/dependent tools, recovery, debugging, and context recovery | 5 | Find likely failure regions before a deep run |
-| `pilot-v2` | 8K, 32K | 3 × 1 | same cases as smoke, with enforced budgets | 1 | Bounded contract pilot |
+| `pilot-v2` | 8K, 32K | 3 × 1 | structured edit, sequential/parallel/dependent tools, recovery, and debug-loop-v2 | 1 | Bounded contract pilot |
 | `deep` | 8K through 640K in seven buckets | 7 × 3 | the scout matrix plus long-session retention | 25 | Expensive degradation and repository campaign |
 
 `smoke`, `scout`, and `deep` retain their v1 bytes and behavior. Select
@@ -334,6 +334,59 @@ anvil-serving eval benchmark context cancel --run-id deepseek-context-smoke-001 
 
 Use the equivalent `agentic`, `swe`, `aider`, or `performance` command family for the other suites.
 
+## Frozen campaigns
+
+Store the explicit campaign specification in the private operator workspace,
+then run these commands on its declared Linux evaluation worker:
+
+```bash
+anvil-serving eval benchmark campaign plan --spec CAMPAIGN.json
+anvil-serving eval benchmark campaign prepare --spec CAMPAIGN.json --confirm
+anvil-serving eval benchmark campaign run pilot --ownership-id evaluation --arm incumbent --confirm
+anvil-serving eval benchmark campaign report pilot --ownership-id evaluation
+anvil-serving eval benchmark campaign cancel pilot --ownership-id evaluation --confirm
+```
+
+Campaigns coordinate existing durable agentic, Aider, or finite performance
+jobs. Each cell selects one explicit task and belongs to a frozen batch of
+one or four serial workers. Preparation binds the profile, product source,
+prepared inputs, model and recipe identities, controls, task order, repeats,
+requested cache condition, and telemetry requirements. Changes require a new
+campaign. Existing terminal children are retained; repeating a measurement
+requires a new explicit cell rather than retrying its run ID.
+
+The diagnostic pilot contains 12 tasks, C1 and C4 batches, two repeats, and
+two deployment arms: 96 planned children. Six native tasks use 24 steps,
+8,192 completion tokens per request, and 600 seconds per task. Six Aider
+tasks come from the prepared, independently checked language selection.
+The debug-loop-v2 case is a deterministic fixture, not repository repair.
+Different model or quantization identities make this a deployment comparison;
+they cannot isolate the effect of an inference engine.
+
+Active measurement is bounded to at most one hour per arm and two hours in
+total, with an explicit drain reserve. Preparation is separate. Overlapping
+children consume elapsed batch time rather than the sum of their durations.
+Missing closure or unverified server drain blocks further admission. Drain
+collectors declare either `generation-label/v1` (model and generation labels on
+both native gauges) or `generation-bound-observer/v1` (the exact frozen
+`/engine/<64-hex-generation>/metrics` URL and native model labels). The observer
+contract rejects superseded generations and bounds cached metrics to 35 seconds;
+execution waits 35 seconds after owned clients stop before accepting two zero
+running/waiting samples. Its timeout must exceed `35 + 2 * poll_s + 2` seconds,
+and the drain reserve must include that timeout plus six seconds for client
+termination; a 40-second timeout and 60-second reserve satisfy this contract.
+Missing identity, stale samples, insufficient reserve, or unknown drain remain
+incomplete evidence. A configured C4 batch does not prove four simultaneous model requests; reports
+keep observed overlap and unavailable telemetry separate.
+
+Reports retain planned, submitted, attempted, scored, failed, cancelled, and
+unfinished populations. Negative oracle scores remain scored results; absent
+evidence stays unknown. Comparisons require matching task, repeat,
+concurrency, controls, workload, oracle, and cache bindings and show excluded
+cells. Two repeats support descriptive ranges and agreement only. Public
+projections use synthetic labels and omit endpoints and prompt content.
+Campaign commands do not load models, change routes, or promote a deployment.
+
 ## Aider Polyglot
 
 Inspect the profile and prepare its exact sources, Python environment, and
@@ -359,6 +412,13 @@ Missing or failed oracle evidence blocks model traffic. The image receipt
 freezes its base digest, build inputs, resolved package inventory, and final
 image ID. Mutable package resolution during preparation means that a future
 rebuild is not promised to be byte-identical.
+The single-stage image build uses the managed build planner with four CPUs,
+8 GiB of memory and no extra swap, and a one-hour client deadline. Buildx
+must support resource limits. Tracked in-tree documentation links are copied
+as regular files; external or untracked link targets remain rejected.
+The generated image pins Jest 29.7.0 to satisfy the pinned tasks' dependency
+contract, retains that upstream recipe deviation, and verifies the installed
+version. Oracle tests remain unchanged.
 
 Test containers have no external network, credentials, GPU, or host socket
 access. Container-local IPC is allowed for the pinned toolchains. They use

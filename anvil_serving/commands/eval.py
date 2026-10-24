@@ -240,6 +240,36 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
     )
 
 
+def _campaign() -> CommandNode:
+    children = []
+    for action, summary in (
+        ("plan", "Validate explicit campaign cells without writes or traffic."),
+        ("prepare", "Prepare actual assets and freeze child specifications."),
+        ("run", "Run one frozen arm with bounded C1 or C4 batches."),
+        ("report", "Report independent scores and matched populations."),
+        ("cancel", "Persist cancellation and stop only campaign-owned children."),
+    ):
+        options = (
+            (_option("--spec", summary="Explicit ordered campaign specification JSON.", value_name="PATH"),)
+            if action in {"plan", "prepare"} else
+            (_option("--ownership-id", summary="Campaign owner (or configured ANVIL_BENCHMARK_OWNERSHIP_ID).", value_name="ID"),)
+        )
+        if action == "run":
+            options += (_option("--arm", summary="One frozen arm to run in the foreground.", value_name="ID"),)
+        if action == "prepare":
+            options += (_option("--offline", summary="Require prepared dependencies in cache."),)
+        common = {"options": options, "docs_anchor": "docs/benchmarks/context-agentic-swe.md#frozen-campaigns"}
+        if action in {"prepare", "run", "cancel"}:
+            common["options"] += (_option("--confirm", summary="Confirm the campaign operation.", requires_confirmation=True),)
+            children.append(_resource_node(action, summary, "anvil_serving.benchmarking.campaigns_cli",
+                role="evaluation", mutation="mutate", argv_prefix=(action,), forward_confirm_flag=True, **common))
+        else:
+            children.append(_node(action, summary,
+                handler=_handler("anvil_serving.benchmarking.campaigns_cli", argv_prefix=(action,)), **common))
+    return _node("campaign", "Prepare and execute frozen batches over durable benchmark jobs.",
+                 children=tuple(children), docs_anchor="docs/benchmarks/context-agentic-swe.md#frozen-campaigns")
+
+
 @command_family(category="Quality loop")
 def commands() -> CommandNode:
     return _node(
@@ -355,6 +385,7 @@ def commands() -> CommandNode:
                 "benchmark",
                 "Run or import benchmark evidence.",
                 children=(
+                    _campaign(),
                     _node(
                         "jev",
                         "Replay selected evidence through a shadow Jev pilot.",

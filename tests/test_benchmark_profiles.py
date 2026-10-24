@@ -117,6 +117,21 @@ def test_v2_budget_identity_and_copy():
     assert validate_profile(profile)["suites"]["agentic"]["budgets"] == budgets
 
 
+def test_pilot_native_tasks_have_individual_scenarios_and_approved_limits():
+    from anvil_serving.benchmarking.agentic import build_agentic_scenario
+    from anvil_serving.benchmarking.suite_runner import _agentic_selection
+
+    suite = load_profile("pilot-v2")["suites"]["agentic"]
+    expected = ["structured-edit", "tool-sequence", "parallel-tools",
+                "dependent-result", "tool-recovery", "debug-loop-v2"]
+    assert suite["cases"] == expected
+    assert (suite["max_steps"], suite["max_completion_tokens"], suite["timeout_s"]) == (24, 8192, 600)
+    for task in expected:
+        selected = _agentic_selection(suite, {"case_ids": [task], "recovery_result": "error"})
+        assert selected["case_ids"] == [task]
+        assert build_agentic_scenario(task, recovery_result="error")
+
+
 @pytest.mark.parametrize("field", [
     "max_model_calls", "max_completion_tokens", "deadline_s", "max_retries", "min_free_disk_bytes",
 ])

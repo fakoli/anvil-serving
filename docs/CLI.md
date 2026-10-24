@@ -223,6 +223,12 @@ required operands, choices, and defaults.
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval routed` | Run fail-closed router and real-client acceptance for one alias. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--expected-served-model`<br>`--expected-config-fingerprint`<br>`--expected-router-config-sha256`<br>`--min-context-tokens`<br>`--clients`<br>`--openclaw-provider`<br>`--hermes-provider`<br>`--hermes-expected-provider`<br>`--no-harness-sync`<br>`--openclaw-config`<br>`--pi-models`<br>`--pi-settings`<br>`--client-state-path`<br>`--client-backup-root`<br>`--timeout-seconds`<br>`--run-id`<br>`--output` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark campaign` | Prepare and execute frozen batches over durable benchmark jobs. | `read` / `bounded` | - |
+| `eval benchmark campaign plan` | Validate explicit campaign cells without writes or traffic. | `read` / `bounded` | `--spec` |
+| `eval benchmark campaign prepare` | Prepare actual assets and freeze child specifications. | `mutate` / `bounded` | `--spec`<br>`--offline`<br>`--confirm` |
+| `eval benchmark campaign run` | Run one frozen arm with bounded C1 or C4 batches. | `mutate` / `bounded` | `--ownership-id`<br>`--arm`<br>`--confirm` |
+| `eval benchmark campaign report` | Report independent scores and matched populations. | `read` / `bounded` | `--ownership-id` |
+| `eval benchmark campaign cancel` | Persist cancellation and stop only campaign-owned children. | `mutate` / `bounded` | `--ownership-id`<br>`--confirm` |
 | `eval benchmark jev` | Replay selected evidence through a shadow Jev pilot. | `read` / `bounded` | `--config`<br>`--allow-export`<br>`--no-jev` |
 | `eval benchmark stability` | Replay bounded mixed-load scenarios and retain coverage and failure evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scenario`<br>`--output` |
 | `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |

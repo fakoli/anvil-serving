@@ -278,3 +278,228 @@ def test_malformed_recipe_serve_returns_clean_cli_error(tmp_path, value):
     path, _ = fixture(tmp_path)
     (tmp_path / "recipe.toml").write_text(f'[[recipe]]\nmodel="test-recipe"\nserve={value}\n')
     assert main([str(path), "--root", str(tmp_path)]) == 1
+
+
+class CampaignStore:
+    """Small durable-artifact fixture; no inference or external processes."""
+    def __init__(self, root):
+        self.run_root = str(root)
+        root.mkdir()
+        self.records, self.artifacts = {}, {}
+
+    def status(self, run_id):
+        return self.records.get(run_id)
+
+    def artifact(self, run_id):
+        return self.artifacts.get(run_id)
+
+
+def campaign_fixture(tmp_path, *, repeats=1, suite="agentic"):
+    from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA, job_spec_sha256
+    store = CampaignStore(tmp_path / "campaign-runs")
+    manifest = {"campaign_id": "private-campaign", "ownership_id": "owner",
+                "manifest_sha256": "a" * 64,
+                "arms": [{"arm_id": "private-left", "identity": {"model": "private-model", "label": "private-person"}},
+                         {"arm_id": "private-right", "identity": {"model": "different-model"}}], "cells": []}
+    for arm in manifest["arms"]:
+        for repeat in range(1, repeats + 1):
+            run_id = f"{arm['arm_id']}-{repeat}"
+            spec = {"schema": JOB_SPEC_SCHEMA, "ownership_id": "owner", "run_id": run_id,
+                    "suite": suite, "profile": "pilot-v2", "submitted_at": "2026-10-24T12:00:00Z",
+                    "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "private-model"},
+                    "worker": {"id": "private-worker"}, "timeout_s": 30,
+                    "parameters": {"case_ids": ["tool-sequence"]}}
+            manifest["cells"].append({"cell_id": run_id, "arm_id": arm["arm_id"], "batch_id": run_id,
+                "task_id": "tool-sequence", "repeat": repeat, "concurrency": 4, "cache_condition": "cold",
+                "spec": spec, "spec_sha256": job_spec_sha256(spec),
+                "matching": {key: "b" * 64 for key in ("workload_sha256", "controls_sha256", "oracle_sha256", "cache_sha256")}})
+    return manifest, store
+
+
+def campaign_result(manifest, store, index, *, passed=True, state="completed", native=None, timing=None):
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_execution import bind_campaign_child
+    from anvil_serving.benchmarking.jobs import job_spec_sha256
+    cell = manifest["cells"][index]
+    spec = bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
+        campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=cell["batch_id"])
+    run_id = spec["run_id"]
+    root = Path(store.run_root) / spec["ownership_id"] / run_id
+    root.mkdir(parents=True)
+    store.records[run_id] = {"spec": spec, "state": state, "started_at": "2026-10-24T12:00:01Z", "spec_sha256": job_spec_sha256(spec)}
+    if native is None:
+        native = {"schema": "anvil-serving.agentic-suite-run/v1", "observations": [
+            {"scenario_id": cell["task_id"], "passed": passed, "failure_class": None,
+             "visible_answer": "PRIVATE PROMPT", "turns": [{"latency_ms": 8}]}]}
+    stage = root / "native.json"
+    stage.write_text(json.dumps(native))
+    store.artifacts[run_id] = {"run": {"spec_sha256": job_spec_sha256(spec)},
+        "results": {"evidence": {"stages": [{"name": spec["suite"], "evidence": [evidence_file_reference(str(stage), root=str(root))]}]}}}
+    if timing:
+        receipt = {"schema": "anvil-serving.campaign-execution/v1", "campaign": spec["campaign"],
+                   "spec_sha256": job_spec_sha256(spec), "boot_id": "private-boot", "status": "closed",
+                   "started_monotonic": timing[0], "closed_monotonic": timing[1], "clients_stopped": True,
+                   "drain": {"status": "verified"}, "telemetry_coverage": {}}
+        (root / "campaign-execution.json").write_text(json.dumps(receipt))
+        store.artifacts[run_id]["results"]["campaign_execution"] = evidence_file_reference(str(root / "campaign-execution.json"), root=str(root))
+    return root
+
+
+def test_campaign_partial_denominators_and_scored_negative_are_separate(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, repeats=2)
+    campaign_result(manifest, store, 0, passed=False)
+    campaign_result(manifest, store, 1)
+    run = manifest["cells"][1]["spec"]["run_id"]
+    store.artifacts.pop(run)  # Completed durable job, no scoring evidence.
+    campaign_result(manifest, store, 2, state="cancelled", native={"schema": "anvil-serving.agentic-suite-run/v1", "observations": []})
+    report = report_campaign(manifest, store)
+    assert report["jobs"]["planned"]["count"] == 4
+    assert report["arms"][0]["jobs"]["planned"]["count"] == 2
+    assert report["arms"][0]["samples"]["scored"]["unknown_cells"] == 1
+    assert report["jobs"]["completed"]["count"] == 2
+    assert report["jobs"]["scored"] == {"count": None, "known_count": 1, "unknown_cells": 1}
+    assert report["samples"]["scored"]["known_count"] == 1
+    assert report["samples"]["failed"]["known_count"] == 1
+    assert report["samples"]["cancelled"]["count"] == 1
+    assert report["jobs"]["unfinished"]["count"] == 1
+    assert report["comparisons"][0]["complete"] is False
+    assert len(report["comparisons"][0]["matched"]) == 2
+    assert report["cells"][0]["outcomes"][0]["passed"] is False
+
+
+def test_campaign_controls_mismatch_excludes_both_arms_without_survivor_selection(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    manifest["cells"][1]["matching"]["controls_sha256"] = "c" * 64
+    campaign_result(manifest, store, 0)
+    campaign_result(manifest, store, 1)
+    comparison = report_campaign(manifest, store)["comparisons"][0]
+    assert comparison["matched"] == []
+    assert len(comparison["exclusions"]) == 2
+    assert {r["reason"] for r in comparison["exclusions"]} == {"missing_matching_cell"}
+    assert comparison["scope"] == "deployment_comparison"
+    assert comparison["engine_causal_claim"] is False
+
+
+def test_campaign_intervals_union_is_not_configured_or_request_concurrency(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    campaign_result(manifest, store, 0, timing=(10, 20))
+    campaign_result(manifest, store, 1, timing=(15, 25))
+    report = report_campaign(manifest, store)
+    assert report["timing"]["child_active_wall_seconds"] == 15
+    assert report["timing"]["active_wall_seconds"] is None
+    assert report["timing"]["observed_job_overlap"] == 2
+    assert report["timing"]["observed_request_overlap"] is None
+    assert report["cells"][0]["requested_concurrency"] == 4
+    assert report["cells"][0]["telemetry_coverage"]["gpu"] == "unknown"
+    assert report["comparisons"][0]["complete"] is False
+
+
+def test_campaign_two_repeats_are_descriptive_and_public_export_is_allowlisted(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, repeats=2)
+    for index in range(4):
+        campaign_result(manifest, store, index, passed=index != 1)
+    report = report_campaign(manifest, store)
+    assert report["repeats"][0]["score_range"] == [0, 1]
+    assert report["repeats"][0]["agreement"] is False
+    output = json.dumps(report)
+    assert all(text not in output for text in ("private-", "PRIVATE PROMPT", "127.0.0.1", "owner", "different-model", "tool-sequence"))
+    assert report["promotion_authorized"] is False
+
+
+@pytest.mark.parametrize("change", ["hash", "wrong_sample", "duplicate_sample", "spec", "escape"])
+def test_campaign_damaged_or_mismatched_artifact_never_scores(tmp_path, change):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    native = {"schema": "anvil-serving.agentic-suite-run/v1", "observations": [{"scenario_id": "tool-sequence", "passed": True}]}
+    if change == "wrong_sample":
+        native["observations"][0]["scenario_id"] = "other-task"
+    if change == "duplicate_sample":
+        native["observations"] *= 2
+    root = campaign_result(manifest, store, 0, native=native)
+    run = manifest["cells"][0]["spec"]["run_id"]
+    if change == "hash":
+        (root / "native.json").write_text("{}")
+    if change == "spec":
+        store.records[run]["spec_sha256"] = "f" * 64
+    if change == "escape":
+        store.artifacts[run]["results"]["evidence"]["stages"][0]["evidence"][0]["path"] = "../outside.json"
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["samples"]["scored"] is None
+    assert row["measurement_complete"] is False
+
+
+def test_campaign_performance_preserves_native_unknowns_without_synthetic_requests(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="performance")
+    for cell in manifest["cells"]:
+        cell["spec"]["parameters"] = {"request_count": 3, "cache_condition": "cold"}
+    native = {"schema": "anvil-serving.performance-run/v1", "summary": {"native_complete": True,
+        "metrics": {"request_count": {"status": "measured", "value": 3, "unit": "requests"},
+                    "time_to_first_token": {"status": "unknown", "value": 0, "unit": "ms"}}}}
+    campaign_result(manifest, store, 0, native=native)
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["samples"]["planned"] == 3
+    assert row["samples"]["attempted"] == 3
+    assert row["samples"]["scored"] is None
+    assert row["native_aggregate_metrics"]["time_to_first_token"]["value"] is None
+    assert row["native_aggregate_metrics"]["error_request_count"]["value"] is None
+    assert row["outcomes"] is None
+    assert row["cache"] == {"requested": "cold", "proven": None}
+
+
+def test_campaign_aider_ungraded_placeholder_does_not_prove_attempt(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    native = {"schema": "anvil-serving.aider-run/v1", "instances": [{"instance_id": "tool-sequence", "resolved": None}]}
+    campaign_result(manifest, store, 0, native=native, state="failed")
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["samples"]["attempted"] is None
+    assert row["samples"]["failed"] is None
+    assert row["samples"]["scored"] == 0
+
+
+def test_campaign_native_negative_oracle_score_survives_infrastructure_classification(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path)
+    native = {"schema": "anvil-serving.agentic-suite-run/v1", "observations": [
+        {"scenario_id": "tool-sequence", "passed": False, "failure_class": "infrastructure_failure"}]}
+    campaign_result(manifest, store, 0, native=native, state="failed")
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["samples"]["scored"] == 1
+    assert row["samples"]["failed"] == 1
+
+
+def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_total(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes
+    manifest, store = campaign_fixture(tmp_path)
+    manifest["budgets"] = {"drain_reserve_s": 10, "per_arm_s": 40, "total_s": 80}
+    for arm in manifest["arms"]:
+        arm["budget_s"] = 40
+    manifest["manifest_sha256"] = hashlib.sha256(canonical_json_bytes({k: v for k, v in manifest.items() if k != "manifest_sha256"})).hexdigest()
+    paths = [campaign_result(manifest, store, 0, timing=(10, 20)),
+             campaign_result(manifest, store, 1, timing=(15, 25))]
+    batches = Path(store.run_root) / "owner" / manifest["campaign_id"] / "campaign/batches"
+    batches.mkdir(parents=True)
+    for index, cell in enumerate(manifest["cells"]):
+        (batches / (cell["batch_id"] + ".json")).write_text(json.dumps({
+            "schema": "anvil-serving.campaign-release/v1", "arm_id": cell["arm_id"],
+            "manifest_sha256": manifest["manifest_sha256"], "batch_id": cell["batch_id"],
+            "run_ids": [cell["spec"]["run_id"]], "boot_id": "private-boot", "released_monotonic": 9 + index * 5,
+            "deadline_monotonic": 49 + index * 5, "traffic_deadline_monotonic": 39 + index * 5,
+            "drain_reserve_s": 10, "allowance_s": 40}))
+    report = report_campaign(manifest, store)
+    assert report["timing"]["active_wall_seconds"] == 16
+    assert report["timing"]["child_active_wall_seconds"] == 15
+    receipt_path = paths[1] / "campaign-execution.json"
+    receipt = json.loads(receipt_path.read_text())
+    receipt["drain"]["status"] = "unknown"
+    receipt_path.write_text(json.dumps(receipt))
+    timing = report_campaign(manifest, store)["timing"]
+    assert timing["active_wall_seconds"] is None
+    assert timing["known_active_wall_seconds"] == 11
+    assert timing["unknown_batch_intervals"] == 1
