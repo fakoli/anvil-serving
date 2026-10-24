@@ -1,0 +1,3 @@
+index, memory.used [MiB], memory.free [MiB], temperature.gpu, power.draw [W], utilization.gpu [%]
+0, 95185 MiB, 2157 MiB, 83, 286.01 W, 5 %
+1, 95215 MiB, 2127 MiB, 85, 283.63 W, 4 %

@@ -1,5 +1,19 @@
 # Benchmark run catalog
 
+## 2026-10-21–23 Flare engine investigations
+
+| Date | Scope | Decision | Evidence |
+| --- | --- | --- | --- |
+| 2026-10-21 | Initial candidate scout and configuration optimization | `no-promotion`; different checkpoints and incomplete replacement gates prevent an engine-only ranking | [GLM dossier](models/glm53-flash.md) · [Scout](../findings/2026-10-21-flare-glm53-trial.md) · [optimization](../findings/2026-10-21-flare-glm53-optimization.md) |
+| 2026-10-21–22 | Inference and cache-row diagnostics | `no-promotion`; retained counters and replay observations are diagnostic, not a performance qualification | [GLM dossier](models/glm53-flash.md) · [Inference](../findings/2026-10-21-flare-inference-diagnostics.md) · [cache](../findings/2026-10-22-flare-cache-diagnostics.md) |
+| 2026-10-22–23 | Allocation, protected-regression, and upstream compatibility controls | `no-promotion`; numerical/protected gates remain held and the incumbent was restored | [GLM dossier](models/glm53-flash.md) · [Allocation](../findings/2026-10-22-flare-cache-fix.md) · [state](../findings/2026-10-23-flare-state-diagnostics.md) · [refresh](../findings/2026-10-23-flare-upstream-refresh.md) |
+
+## 2026-10-19 Ignis 0.7.2
+
+| Configuration | Hardware | Result | Decision | Evidence |
+|---|---|---|---|---|
+| Qwen3.8 Flash Next, Ignis0.7.2, 131K configured, MTP3, eight lanes | 1x RTX PRO6000 Blackwell Max-Q | C1 5/5; short C8 tools8/8; SWE incomplete: one graded unresolved, four empty ungraded | `no-promotion`; incumbent restored; no performance comparison | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-19-ignis-072.md) |
+
 ## 2026-10-17 GLM NVIDIA FP4 primary promotion follow-up
 
 | Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |

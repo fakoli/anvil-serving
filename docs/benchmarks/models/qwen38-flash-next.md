@@ -6,6 +6,8 @@
 
 ## Current status and review date
 
+**2026-10-19 addendum:** Ignis0.7.2 is not qualified. Bounded serving checks passed, but the fixed-five coding run ended with one officially unresolved patch and four empty ungraded step-limit submissions. The incumbent was restored; no recommendation change. [Evidence and limits](../../findings/2026-10-19-ignis-072.md).
+
 **2026-10-05 replacement scout:** the evaluated prospective primary profile
 resolved 3/5 frozen coding tasks against a 4/5 floor and its strict C4
 128-word cell was 0/4 performance-eligible. It is rejected with

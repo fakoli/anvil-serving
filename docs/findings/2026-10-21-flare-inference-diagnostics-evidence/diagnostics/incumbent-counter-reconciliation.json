@@ -1,0 +1,490 @@
+{
+  "rows": [
+    {
+      "name": "incumbent-before-c1-prime",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 14129
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 14129.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c1-prime.json",
+          "sha256": "20d7670f8c2f5c064cbbf10638335540ef7fd48a72dbb59089e337f559324b88"
+        },
+        {
+          "path": "incumbent-before-c1-prime-before-native.prom",
+          "sha256": "967d522536aea18fd3ad3a0b45bad39462e70234b122d438968cf2a3cb96e267"
+        },
+        {
+          "path": "incumbent-before-c1-prime-after-native.prom",
+          "sha256": "7549f24e1e5eea93877f0267aac432c7ee488ffd2e21d5c06d05a4976ad5c33c"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c1-r1",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 14761
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 14761.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c1-r1.json",
+          "sha256": "10abbef51d0015f2c82801d8d8717177a93481833395fe0751e4ee2480ab3fdc"
+        },
+        {
+          "path": "incumbent-before-c1-r1-before-native.prom",
+          "sha256": "cae97d6ae42532e3a242edc4cc2c365c74a7b27739e702a571d55916f0d81d87"
+        },
+        {
+          "path": "incumbent-before-c1-r1-after-native.prom",
+          "sha256": "5d2656d3b6b325971d3351c8015fb53468d1f036d89132cca5a1e92cdb91ec82"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c1-r2",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 14053
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 14053.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c1-r2.json",
+          "sha256": "f4745db8db1ce6d514e4cc0feece052ba16b9a0c48c9842ab56f4d4d15e8acef"
+        },
+        {
+          "path": "incumbent-before-c1-r2-before-native.prom",
+          "sha256": "65962ef172ee225acef03dc66e39070de82f414b2072259e8a7c9e4fa3294c5c"
+        },
+        {
+          "path": "incumbent-before-c1-r2-after-native.prom",
+          "sha256": "276cd4eb92331017241114a3b072abb433887ae48c1665fd5f4764d09e263860"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c1-r3",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 15282
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 15282.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c1-r3.json",
+          "sha256": "3f0e53d2eaa027dcf77853a9e7aa295f164cfd67bfb788b1e11eb4f5c9479081"
+        },
+        {
+          "path": "incumbent-before-c1-r3-before-native.prom",
+          "sha256": "276cd4eb92331017241114a3b072abb433887ae48c1665fd5f4764d09e263860"
+        },
+        {
+          "path": "incumbent-before-c1-r3-after-native.prom",
+          "sha256": "24299c0689a8fee04141d3d56d7702e4a99013d8abef6a575887d9a9d52b3259"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c4-prime",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 46614
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 46614.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c4-prime.json",
+          "sha256": "dac4ef6148ca82ddcb802ea19cbdf7548eddffdb278b25c880167efe67468c89"
+        },
+        {
+          "path": "incumbent-before-c4-prime-before-native.prom",
+          "sha256": "c24e0358133c46fac56b533d2ae2dac68040279e9847f468fe112fede67a8396"
+        },
+        {
+          "path": "incumbent-before-c4-prime-after-native.prom",
+          "sha256": "818d2f88dcea74c4c826c49c3f661bed86619b89a6f47da808e858d45ccc54ec"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c4-r1",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 50005
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 50005.0
+      },
+      "reconciled": true,
+      "failed_requests": 1,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c4-r1.json",
+          "sha256": "a64f66c7203c9b98618bc23c9b44dba1b828dc9cc89dd4acc41be9f88f6cc0f8"
+        },
+        {
+          "path": "incumbent-before-c4-r1-before-native.prom",
+          "sha256": "1bd1d855a2ccb3cd4838994b49f07e4cbf2bf5d158de2678beff4dc51d49e31a"
+        },
+        {
+          "path": "incumbent-before-c4-r1-after-native.prom",
+          "sha256": "fc69fa8b9809f9049f770b1a07c72aca71fb6eb694bfeb2ee0b2348df5e1486f"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c4-r2",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 43419
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 43419.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c4-r2.json",
+          "sha256": "b0b76ee84ceb4b28935c0881bafdf2cf94b42f8bf5a1842cfc3dfd810ad4a93b"
+        },
+        {
+          "path": "incumbent-before-c4-r2-before-native.prom",
+          "sha256": "aa896d453bae91c21ffcd71c0fab317597f0dec6bda0f7a66d359a2ceca2987d"
+        },
+        {
+          "path": "incumbent-before-c4-r2-after-native.prom",
+          "sha256": "e103bc0329af10f2f821ddfc12722e36fb93ae5d754c7abbf101a5df9fd1c5f4"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-before-c4-r3",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 44641
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 44641.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-before-c4-r3.json",
+          "sha256": "6d9679c749ee17aad6eeede4b8cb2b34b23572df876e8eacd8cd258f4d67a17b"
+        },
+        {
+          "path": "incumbent-before-c4-r3-before-native.prom",
+          "sha256": "3d6478d7767d9f20f860d7d822b62c9bb43fae69f2c873f19bcb31449b145b7b"
+        },
+        {
+          "path": "incumbent-before-c4-r3-after-native.prom",
+          "sha256": "967d885cd890f0141909f288f73e0c286a52cc308c48f806b3cb6e9b5587d64e"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c1-prime",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 15919
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 15919.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c1-prime.json",
+          "sha256": "2b7f35f98111b52891e0f883e203cf87efcfc3022ce1e2a220c0e177ae55da4a"
+        },
+        {
+          "path": "incumbent-after-c1-prime-before-native.prom",
+          "sha256": "d12d95520dd51d701b90d187ec49eb6e3721c30ec41bb81a24ae55b89aa5e529"
+        },
+        {
+          "path": "incumbent-after-c1-prime-after-native.prom",
+          "sha256": "ba8d431cb4a982b10b892d2d690878c2667f412936d1b50641bb8ace7738e224"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c1-r1",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 13510
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 13510.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c1-r1.json",
+          "sha256": "8b7e1f8df0267e55fac56efaf2edeacc9330f77f1fb57c908fa744d212231bdc"
+        },
+        {
+          "path": "incumbent-after-c1-r1-before-native.prom",
+          "sha256": "f6970c56090e4b8738c062e877b3992fca397b6a3f016a2186540092f9f1b99c"
+        },
+        {
+          "path": "incumbent-after-c1-r1-after-native.prom",
+          "sha256": "14ac8b0cd4f9146f0c2ba4587e9d1281682edc2972fff8c5ea6287b046c4d792"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c1-r2",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 14761
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 14761.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c1-r2.json",
+          "sha256": "08b3c90c5b460a3ba30ed846c3a99872c261c962a7e6d712ad21358cfd8d655a"
+        },
+        {
+          "path": "incumbent-after-c1-r2-before-native.prom",
+          "sha256": "3b44d46f2d6b1c1a8504939a177bc7d4a15029cdbe6a6c7e0573a39cc552c499"
+        },
+        {
+          "path": "incumbent-after-c1-r2-after-native.prom",
+          "sha256": "052baacc572c1eb2bbbc790872da6bc2fa72aa513be6574787e0f86020cfd40b"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c1-r3",
+      "expected": {
+        "vllm:request_success_total": 52,
+        "vllm:prompt_tokens_total": 399899,
+        "vllm:generation_tokens_total": 14450
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 52.0,
+        "vllm:prompt_tokens_total": 399899.0,
+        "vllm:generation_tokens_total": 14450.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c1-r3.json",
+          "sha256": "9c22db5cad0e2bf4d1353381cdbfc5e4374ca723cdc4d467e038b633378d5b05"
+        },
+        {
+          "path": "incumbent-after-c1-r3-before-native.prom",
+          "sha256": "0988e2a0497852a5304c451951cd7bd58328d9b933530ff53bd0fb73f9a26d95"
+        },
+        {
+          "path": "incumbent-after-c1-r3-after-native.prom",
+          "sha256": "13fd662d43c2e534fec7a6476ba71c506861a7f47553f36fe04e5ad4fc254f68"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c4-prime",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 43623
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 43623.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c4-prime.json",
+          "sha256": "3de4730ba61cd680c4639fe27c0120577d814b2e919a23453b53f5283d595b81"
+        },
+        {
+          "path": "incumbent-after-c4-prime-before-native.prom",
+          "sha256": "8c35af1c97e9dd559c091c7c87523afd548990141512a44eaa18732632fe322e"
+        },
+        {
+          "path": "incumbent-after-c4-prime-after-native.prom",
+          "sha256": "c01a1addaff89e21818a751db2413ac1630a28bafa36e319a1f94631cb2068cc"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c4-r1",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 45489
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 45489.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c4-r1.json",
+          "sha256": "cf74751f82e9ca9d6e940280b70dd162089853ac058fc237d8bcbfbb464bff21"
+        },
+        {
+          "path": "incumbent-after-c4-r1-before-native.prom",
+          "sha256": "e383cfd15b0b68466bd15bea8979468296b1d359ad8f03f438f7ff73e83cf7d0"
+        },
+        {
+          "path": "incumbent-after-c4-r1-after-native.prom",
+          "sha256": "aa3d549f268af8de3fda182fa6c9b63edc41e5f1cbe1bd8b472875bfe63dad96"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c4-r2",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 44727
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 44727.0
+      },
+      "reconciled": true,
+      "failed_requests": 0,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c4-r2.json",
+          "sha256": "55e98828885c1d9c023302ac9bce2191f2beee14b1cb6a33737b1a8b8d4b459d"
+        },
+        {
+          "path": "incumbent-after-c4-r2-before-native.prom",
+          "sha256": "25aa6e09189aa483227437da59b23913a4e62119c190c07d5445fd89b822f3a8"
+        },
+        {
+          "path": "incumbent-after-c4-r2-after-native.prom",
+          "sha256": "90c4a33984aa7943491f8f4801d39e7ff22c8da1072cff1cd67baa531bf8b057"
+        }
+      ]
+    },
+    {
+      "name": "incumbent-after-c4-r3",
+      "expected": {
+        "vllm:request_success_total": 160,
+        "vllm:prompt_tokens_total": 1236764,
+        "vllm:generation_tokens_total": 46044
+      },
+      "native_deltas": {
+        "vllm:request_success_total": 160.0,
+        "vllm:prompt_tokens_total": 1236764.0,
+        "vllm:generation_tokens_total": 46044.0
+      },
+      "reconciled": true,
+      "failed_requests": 1,
+      "prefix_hits": 0.0,
+      "sources": [
+        {
+          "path": "incumbent-after-c4-r3.json",
+          "sha256": "017ad32386bf58b9713140b616b07dfee16dcc6237f128bbe58c0b0de343db62"
+        },
+        {
+          "path": "incumbent-after-c4-r3-before-native.prom",
+          "sha256": "625c23be04a6d145ba7f031f788b80dab066ca6466691b9755c96b8ba2f5beb9"
+        },
+        {
+          "path": "incumbent-after-c4-r3-after-native.prom",
+          "sha256": "252c2baf78323c200eaa659b0e62d0ba4313b7ee86346e1a22de17c530ccf4d2"
+        }
+      ]
+    }
+  ],
+  "all_reconciled": true,
+  "limits": [
+    "Reconciliation checks request/token counts, not semantic quality or absence of unrelated host work",
+    "Failed request usage remains in the attempted population; no survivor-only ranking"
+  ],
+  "analyzer_sha256": "33a2e7f0d180c075d2033ca4303c9355f9e2ac63a774609ff903ab7edc30aa65"
+}

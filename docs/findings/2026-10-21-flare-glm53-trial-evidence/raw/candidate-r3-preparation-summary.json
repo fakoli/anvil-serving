@@ -1,0 +1,18 @@
+{
+  "status": "interrupted-for-supported-compile-parallelism-change",
+  "served_requests": 0,
+  "sample_count": 20,
+  "sampled_cgroup_peak_bytes": 12963590144,
+  "sampled_oom_events_max": 0,
+  "cold_weight_load_seconds": 66.85,
+  "cold_graph_catalog_seconds": 93.7,
+  "completed_export": false,
+  "runtime_throughput": null,
+  "warm_cache_retained": true,
+  "evidence": [
+    "candidate-r3-resource-samples.jsonl",
+    "candidate-r3-logs.json",
+    "candidate-r3-unload.json"
+  ],
+  "caveat": "sampled peak as last observed before stop, not continuous lifetime final peak"
+}

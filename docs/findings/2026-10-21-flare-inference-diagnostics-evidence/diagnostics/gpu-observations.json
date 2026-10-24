@@ -1,0 +1,3118 @@
+{
+  "rows": [
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 405000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 405000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 180000000.0,
+      "max": 2257000000.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 180000000.0,
+      "max": 2220000000.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "memory_used_bytes",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 101140398080.0,
+      "max": 101140398080.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "memory_used_bytes",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 101142495232.0,
+      "max": 101142495232.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_draw_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 17.12,
+      "max": 303.62
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_draw_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 11.24,
+      "max": 306.02
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_limit_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_limit_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "temperature_gpu",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 45.0,
+      "max": 88.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "temperature_gpu",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 49.0,
+      "max": 88.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-before",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "incumbent-before-c1-r1",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-before-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-before-c4-r1",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-before-c4-r2",
+          "returned_samples": 20
+        },
+        {
+          "window": "incumbent-before-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 1755000000.0,
+      "max": 2002000000.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 1755000000.0,
+      "max": 2025000000.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "memory_used_bytes",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 99823386624.0,
+      "max": 99823386624.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "memory_used_bytes",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 99798220800.0,
+      "max": 99798220800.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_draw_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 297.61,
+      "max": 302.38
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_draw_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 297.6,
+      "max": 302.44
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_limit_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_limit_watts",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "temperature_gpu",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 85.0,
+      "max": 88.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "temperature_gpu",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 86.0,
+      "max": 88.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.8,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-control",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 87,
+      "coverage": [
+        {
+          "window": "flare-control-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c1-r2",
+          "returned_samples": 9
+        },
+        {
+          "window": "flare-control-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-control-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-control-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-control-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.87,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 1755000000.0,
+      "max": 2085000000.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 1747000000.0,
+      "max": 2085000000.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 1.0,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "memory_used_bytes",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 99823386624.0,
+      "max": 99823386624.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "memory_used_bytes",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 99798220800.0,
+      "max": 99798220800.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_draw_watts",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 297.91,
+      "max": 301.62
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_draw_watts",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 297.83,
+      "max": 301.71
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_limit_watts",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_limit_watts",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "temperature_gpu",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 84.0,
+      "max": 88.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "temperature_gpu",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 86.0,
+      "max": 88.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.86,
+      "max": 1.0
+    },
+    {
+      "arm": "flare-instrumented",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 85,
+      "coverage": [
+        {
+          "window": "flare-instrumented-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c1-r3",
+          "returned_samples": 8
+        },
+        {
+          "window": "flare-instrumented-c4-r1",
+          "returned_samples": 20
+        },
+        {
+          "window": "flare-instrumented-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "flare-instrumented-c4-r3",
+          "returned_samples": 20
+        }
+      ],
+      "min": 0.87,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_memory_clock_hz",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 13365000000.0,
+      "max": 13365000000.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 1770000000.0,
+      "max": 2122000000.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_current_sm_clock_hz",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 1770000000.0,
+      "max": 2137000000.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_power_brake_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_hw_thermal_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 1.0,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_power_cap",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "clocks_event_reasons_sw_thermal_slowdown",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.0,
+      "max": 0.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "memory_used_bytes",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 101136203776.0,
+      "max": 101138300928.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "memory_used_bytes",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 101138300928.0,
+      "max": 101138300928.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_draw_watts",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 293.08,
+      "max": 304.58
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_draw_watts",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 290.47,
+      "max": 303.71
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "power_limit_watts",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "power_limit_watts",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 300.0,
+      "max": 300.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "temperature_gpu",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 85.0,
+      "max": 87.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "temperature_gpu",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 85.0,
+      "max": 89.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.9500000000000001,
+      "max": 1.0
+    },
+    {
+      "arm": "incumbent-after",
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "metric": "utilization_gpu_ratio",
+      "returned_samples": 89,
+      "coverage": [
+        {
+          "window": "incumbent-after-c1-r1",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r2",
+          "returned_samples": 8
+        },
+        {
+          "window": "incumbent-after-c1-r3",
+          "returned_samples": 9
+        },
+        {
+          "window": "incumbent-after-c4-r1",
+          "returned_samples": 22
+        },
+        {
+          "window": "incumbent-after-c4-r2",
+          "returned_samples": 21
+        },
+        {
+          "window": "incumbent-after-c4-r3",
+          "returned_samples": 21
+        }
+      ],
+      "min": 0.8200000000000001,
+      "max": 1.0
+    }
+  ],
+  "sources": [
+    {
+      "path": "incumbent-before-prometheus-gpu-range.json",
+      "sha256": "e804a5475b926545d84d6ce525bb4d46a09dbb2dcd3e1240302f4e47295c2444"
+    },
+    {
+      "path": "incumbent-before-c1-r1.json",
+      "sha256": "10abbef51d0015f2c82801d8d8717177a93481833395fe0751e4ee2480ab3fdc"
+    },
+    {
+      "path": "incumbent-before-c1-r2.json",
+      "sha256": "f4745db8db1ce6d514e4cc0feece052ba16b9a0c48c9842ab56f4d4d15e8acef"
+    },
+    {
+      "path": "incumbent-before-c1-r3.json",
+      "sha256": "3f0e53d2eaa027dcf77853a9e7aa295f164cfd67bfb788b1e11eb4f5c9479081"
+    },
+    {
+      "path": "incumbent-before-c4-r1.json",
+      "sha256": "a64f66c7203c9b98618bc23c9b44dba1b828dc9cc89dd4acc41be9f88f6cc0f8"
+    },
+    {
+      "path": "incumbent-before-c4-r2.json",
+      "sha256": "b0b76ee84ceb4b28935c0881bafdf2cf94b42f8bf5a1842cfc3dfd810ad4a93b"
+    },
+    {
+      "path": "incumbent-before-c4-r3.json",
+      "sha256": "6d9679c749ee17aad6eeede4b8cb2b34b23572df876e8eacd8cd258f4d67a17b"
+    },
+    {
+      "path": "flare-control-prometheus-gpu-range.json",
+      "sha256": "8e7afcb09563ff275741c5048f56a70db01b07ae74eb97ea9e7fded72d6f7eef"
+    },
+    {
+      "path": "flare-control-c1-r1.json",
+      "sha256": "790a5d7d02eca805e01b7fe41449a8effef7f32ebacd1eaf5b39980b1bf6aa70"
+    },
+    {
+      "path": "flare-control-c1-r2.json",
+      "sha256": "377119f1b48274c400a346d9f5745fa40f9472da05073a2915c6486d173980b2"
+    },
+    {
+      "path": "flare-control-c1-r3.json",
+      "sha256": "c4ee314a72a5ceb9d305af3f6d5602fc9e0b3830bee97aeebb6f3cf7c6428cef"
+    },
+    {
+      "path": "flare-control-c4-r1.json",
+      "sha256": "86f93853d2a5cfa7c3032ee83c06f0979ef4c853cb6c0ab2fb62b827bfc29449"
+    },
+    {
+      "path": "flare-control-c4-r2.json",
+      "sha256": "b17b9ac6a04d75d93840240767f1e5092d4242f1470df1d3306289cb3cd4d71b"
+    },
+    {
+      "path": "flare-control-c4-r3.json",
+      "sha256": "59e1abf3589a57a0d6791e23cdafd17c250e3b2362804764df5d01c15d8c4d9f"
+    },
+    {
+      "path": "flare-instrumented-prometheus-gpu-range.json",
+      "sha256": "c5364e382e23d45e64a061703b75d8c3418f710034d2bf11e4914f245bf8560a"
+    },
+    {
+      "path": "flare-instrumented-c1-r1.json",
+      "sha256": "b8f8617038aae2171da8be797fe735e1b848fa5fb21bd7e51040bb5d2c993a20"
+    },
+    {
+      "path": "flare-instrumented-c1-r2.json",
+      "sha256": "10c4cea1b439e6b980fc3869f075a78b17fe2d9a91c66db97686d4b4a1f768be"
+    },
+    {
+      "path": "flare-instrumented-c1-r3.json",
+      "sha256": "83c415b7172cac9f530cb4607c6863f0ddf87c6fe0023178bc05ad2af9ef8b67"
+    },
+    {
+      "path": "flare-instrumented-c4-r1.json",
+      "sha256": "59018f6c1f42856fcc0dd36e1a48219296395190f6c309a0fc09cc90ea5230ac"
+    },
+    {
+      "path": "flare-instrumented-c4-r2.json",
+      "sha256": "34bf7ba82d631ecc1a9b28f3b6760a757fd826d53ab2d91698f56ef4470372ef"
+    },
+    {
+      "path": "flare-instrumented-c4-r3.json",
+      "sha256": "a37c808825880aa5af20c620afbcf75df59e92463b1624f602d8e6082d277eb2"
+    },
+    {
+      "path": "incumbent-after-prometheus-gpu-range.json",
+      "sha256": "d42524294aac0dd63bcffdf03983114534a75b640fb1f023fb235df889d3c19c"
+    },
+    {
+      "path": "incumbent-after-c1-r1.json",
+      "sha256": "8b7e1f8df0267e55fac56efaf2edeacc9330f77f1fb57c908fa744d212231bdc"
+    },
+    {
+      "path": "incumbent-after-c1-r2.json",
+      "sha256": "08b3c90c5b460a3ba30ed846c3a99872c261c962a7e6d712ad21358cfd8d655a"
+    },
+    {
+      "path": "incumbent-after-c1-r3.json",
+      "sha256": "9c22db5cad0e2bf4d1353381cdbfc5e4374ca723cdc4d467e038b633378d5b05"
+    },
+    {
+      "path": "incumbent-after-c4-r1.json",
+      "sha256": "cf74751f82e9ca9d6e940280b70dd162089853ac058fc237d8bcbfbb464bff21"
+    },
+    {
+      "path": "incumbent-after-c4-r2.json",
+      "sha256": "55e98828885c1d9c023302ac9bce2191f2beee14b1cb6a33737b1a8b8d4b459d"
+    },
+    {
+      "path": "incumbent-after-c4-r3.json",
+      "sha256": "017ad32386bf58b9713140b616b07dfee16dcc6237f128bbe58c0b0de343db62"
+    }
+  ],
+  "missing_windows": [],
+  "analyzer_sha256": "d1f4f8201b9380470a84dcd47e047a632245778decc501f685b2d0ccef765fef",
+  "limits": [
+    "Descriptive returned Prometheus samples within measured block UTC windows, including failed populations",
+    "Queries can repeat collector samples; counts are not independent measurements",
+    "No energy integration, kernel attribution, hardware saturation or causal power conclusion",
+    "Temperature is exporter GPU temperature; sampled extrema are not guaranteed physical extrema"
+  ]
+}

@@ -1,0 +1,138 @@
+diff --git a/helios/README.md b/helios/README.md
+index 7207b045..2e52b1c6 100644
+--- a/helios/README.md
++++ b/helios/README.md
+@@ -413,7 +413,7 @@ rendering. Marks are forbidden inside macros, captured assignments, and filter
+ blocks; a root call site marks output after a macro returns. Generation headers
+ remain outside completed messages. Annotations follow Jinja whitespace controls.
+ 
+-The exact deployed Qwen3.8, inference-transformed Step, and segmented Kimi K3
++The exact deployed Qwen3.8, GLM, inference-transformed Step, and segmented Kimi K3
+ templates are replaced in memory with their annotated recipe assets. Kimi K3
+ uses segment-count marks at the preamble and complete-message endpoints.
+ Other unannotated templates fail to load. Checkpoint-derived annotations must
+diff --git a/helios/src/frontend/templates.rs b/helios/src/frontend/templates.rs
+index 24a5152c..3b753cd9 100644
+--- a/helios/src/frontend/templates.rs
++++ b/helios/src/frontend/templates.rs
+@@ -3,16 +3,17 @@ use super::jinja::{CompiledTemplate, Error};
+ const QWEN: &str = include_str!("../../../ignition/recipes/qwen38/assets/chat_template.jinja");
+ const STEP: &str = include_str!("../../../ignition/recipes/step5/assets/chat_template.jinja");
+ const KIMI3: &str = include_str!("../../../ignition/recipes/kimi3/assets/chat_template.jinja");
++const GLM: &str = include_str!("../../../ignition/recipes/glm53/assets/chat_template.jinja");
+ 
+ pub(super) fn compile(source: &str) -> Result<CompiledTemplate, Error> {
+-    for annotated in [QWEN, STEP, KIMI3] {
++    for annotated in [QWEN, STEP, KIMI3, GLM] {
+         if source == annotated.replace("{%- mark -%}", "").replace("{%- mark ns.segments | length -%}", "") {
+             return CompiledTemplate::compile(annotated);
+         }
+     }
+     let compiled = CompiledTemplate::compile(source)?;
+     if compiled.annotation_spans().is_empty() {
+-        return Err(Error { message: "chat template requires message-boundary mark annotations; only the deployed Qwen3.8, Step, and Kimi K3 templates can be upgraded automatically".into(), offset: 0 });
++        return Err(Error { message: "chat template requires message-boundary mark annotations; only the deployed Qwen3.8, Step, Kimi K3, and GLM templates can be upgraded automatically".into(), offset: 0 });
+     }
+     Ok(compiled)
+ }
+@@ -23,7 +24,7 @@ mod tests {
+ 
+     #[test]
+     fn compatibility_requires_exact_legacy_bytes() {
+-        for annotated in [QWEN, STEP, KIMI3] {
++        for annotated in [QWEN, STEP, KIMI3, GLM] {
+             let mut raw = annotated.to_owned();
+             for span in CompiledTemplate::compile(annotated).unwrap().annotation_spans().iter().rev() {
+                 raw.replace_range(span.clone(), "");
+@@ -34,4 +35,18 @@ mod tests {
+         }
+         assert!(compile("{{ messages }}").is_err());
+     }
++
++    #[test]
++    fn glm_compatibility_matches_only_the_deployed_template() {
++        use sha2::{Digest, Sha256};
++
++        let legacy = GLM.replace("{%- mark -%}", "");
++        assert_eq!(
++            format!("{:x}", Sha256::digest(legacy.as_bytes())),
++            "0c4099f3382d6c92700dfb99725025360966fd73032f0ecf32377c0d9e6309c5"
++        );
++        assert!(compile(&legacy).is_ok());
++        assert!(compile(&legacy.replace("Reasoning Effort:", "Reasoning effort:")).is_err());
++        assert!(compile(&legacy.replace('\n', "\r\n")).is_err());
++    }
+ }
+diff --git a/helios/tests/message_boundaries.rs b/helios/tests/message_boundaries.rs
+index c0d1edaf..24213aff 100644
+--- a/helios/tests/message_boundaries.rs
++++ b/helios/tests/message_boundaries.rs
+@@ -303,3 +303,68 @@ fn segmented_xtml_preserves_block_hints_through_json_escaping() {
+     assert!(changed.token_ids.starts_with(&marked.token_ids[..cut]));
+     assert!(changed.message_boundaries.contains(&cut));
+ }
++
++#[test]
++fn legacy_glm_preserves_prompt_tokens_and_rendered_tool_boundaries() {
++    let source = include_str!("../../ignition/recipes/glm53/assets/chat_template.jinja");
++    let annotated = frontend(source, TemplateEncoding::Text);
++    let upgraded = frontend(&source.replace("{%- mark -%}", ""), TemplateEncoding::Text);
++    let options = json!({"add_generation_prompt":true,"reasoning_effort":"low"});
++    let histories = [
++        json!([
++            {"role":"system","content":"Be precise. café 世界"},
++            {"role":"user","content":"Question"},
++            {"role":"assistant","reasoning_content":"Consider.","content":"Reply."},
++            {"role":"user","content":"Follow-up"}
++        ]),
++        json!([
++            {"role":"user","content":"Find both."},
++            {"role":"assistant","content":"","tool_calls":[
++                {"id":"a","type":"function","function":{"name":"lookup","arguments":{"q":"first"}}},
++                {"id":"b","type":"function","function":{"name":"lookup","arguments":{"q":"second"}}}
++            ]},
++            {"role":"tool","tool_call_id":"b","content":"Second 世界"},
++            {"role":"tool","tool_call_id":"a","content":"First café"},
++            {"role":"user","content":"Follow-up"}
++        ]),
++    ];
++    for (index, history) in histories.iter().enumerate() {
++        let messages = history.as_array().unwrap();
++        let expected = annotated.render_chat(messages, options.as_object().unwrap()).unwrap();
++        let actual = upgraded.render_chat(messages, options.as_object().unwrap()).unwrap();
++        assert_eq!(actual.text, expected.text);
++        assert_eq!(actual.token_ids, expected.token_ids);
++        assert_eq!(actual.message_boundaries, expected.message_boundaries);
++        assert!(!actual.message_boundaries.is_empty());
++        assert!(actual.message_boundaries.windows(2).all(|pair| pair[0] < pair[1]));
++        assert!(actual.message_boundaries.iter().all(|&end| end < actual.token_ids.len()));
++        if index == 0 {
++            assert_eq!(actual.text, concat!(
++                "[gMASK]<sop><|system|>Reasoning Effort: Low",
++                "<|system|>Be precise. café 世界<|user|>Question",
++                "<|assistant|><think>Consider.</think>Reply.",
++                "<|user|>Follow-up<|assistant|><think>"
++            ));
++        } else {
++            // Tool results arrive in reverse order but marks follow the rendered call order.
++            let first = "<tool_response>First café</tool_response>";
++            let second = "<tool_response>Second 世界</tool_response>";
++            let first_at = actual.text.find(first).unwrap();
++            let second_at = actual.text.find(second).unwrap();
++            assert!(first_at < second_at);
++            for end in [first_at + first.len(), second_at + second.len()] {
++                let prefix = upgraded.encode(&actual.text[..end], false).unwrap();
++                assert!(actual.message_boundaries.contains(&prefix.len()));
++                assert!(actual.token_ids.starts_with(&prefix));
++            }
++        }
++        let cut = actual.text.rfind("<|user|>").unwrap();
++        let prefix = upgraded.encode(&actual.text[..cut], false).unwrap();
++        assert!(actual.message_boundaries.contains(&prefix.len()));
++        let mut changed = messages.clone();
++        changed.last_mut().unwrap()["content"] = json!("Different suffix");
++        let changed = upgraded.render_chat(&changed, options.as_object().unwrap()).unwrap();
++        assert!(changed.token_ids.starts_with(&prefix));
++        assert!(changed.message_boundaries.contains(&prefix.len()));
++    }
++}

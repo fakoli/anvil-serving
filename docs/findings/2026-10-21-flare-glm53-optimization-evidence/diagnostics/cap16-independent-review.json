@@ -1,0 +1,10 @@
+{
+  "reviewer": "flare_trial_review",
+  "functional_evidence": "accepted",
+  "comparison": "hold pending controls",
+  "cache_remedy": "Fresh forward-cache isolation remedied this observed preparation failure. Underlying cache-key provenance cause remains plausible, not proven.",
+  "retrieval": "10/11 exact kept separate from18/18context",
+  "tests": "12475collected covered by contiguous disjoint partitions12400passed75skipped; same source before/after",
+  "actions": "Hash-bound collection/stdout/receipts; same-index/volume lineage captured; planned native weight-byte verification; MTP0,fixed3,throughput,host32controls",
+  "promoted": false
+}

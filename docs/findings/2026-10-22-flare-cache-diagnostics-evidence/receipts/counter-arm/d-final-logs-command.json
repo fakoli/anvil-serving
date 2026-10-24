@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "logs",
+    "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+    "--container",
+    "glm53-flare-cache-counters",
+    "--registry",
+    "OPERATOR_PATH_1d6ce967ed58/flare-instrumented-recipe.toml",
+    "--tail",
+    "180",
+    "--json"
+  ],
+  "at": 1792664428.7640326
+}

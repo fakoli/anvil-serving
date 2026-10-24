@@ -1,0 +1,118 @@
+{
+  "started_at": "2026-10-23T05:39:53.296798+00:00",
+  "scope": "Internal state/logits diagnostic and protected-lane regression isolation; targeted fixes with verified evidence",
+  "repositories": [
+    {
+      "label": "flare",
+      "root": "OPERATOR_PATH_d81b073e3d22/flare-local-inference",
+      "head": "47581ccac82660953a5b59cb04b2750d64edc97d",
+      "dirty_entries": 21
+    },
+    {
+      "label": "product",
+      "root": "OPERATOR_PATH_cc25b9dd30c4/anvil-serving",
+      "head": "80ad7e5c5de49221ba1e75fa133ef358af3e72e3",
+      "dirty_entries": 2050
+    },
+    {
+      "label": "operator",
+      "root": "OPERATOR_PATH_1bd330efbe02/anvil-serving-ops-private",
+      "head": "11cf13cb461623c5a76a3d818dd56857871713cc",
+      "dirty_entries": 459
+    }
+  ],
+  "prior_campaign": "../2026-10-22-flare-cache-fix",
+  "prior_source_delta_sha256": "0d2fad845e49aa61b0dde312564cb83a61bf76ec37fa1ac31f29a46e572ce857",
+  "repair_budget": "At most two targeted corrections for one failing implementation or harness stage; preserve failed attempts and revisit diagnosis before another change",
+  "gpu_owner": "root only",
+  "live_window_active": false,
+  "upstream_submission": false,
+  "promotion": false,
+  "protected_window": {
+    "completed_epoch": 1792737498.699457,
+    "experiment_error": null,
+    "restoration_error": "RuntimeError: r2-protected-incumbent-reconcile failed; inspect owning result",
+    "restored": false,
+    "wall_deadline_epoch": 1792740988.3064039,
+    "wall_deadline_met": true,
+    "generations": [
+      "9f37c48c3a65a0c58bd6a64ed476c7780c173a35297e038eb2b0a71a88c0605a",
+      "a81fe1103afb1b5e2ccdcd67b5f787f3abf565c7833b5f625e971bdd1bbfec8b",
+      "a9f6cbf9f976ba3b4a4fd4b54bf558d38d3659cb7f2c3330044c2880def9ba12",
+      "d56350fdbabd6f49f59dcc04ec2adc7d5ffe488405b9d023b9a559567629ee71",
+      "ed8146be985b32420a720f7dfeccc59447752596732bad042cb9fd964bafc979",
+      "f1bad807c6b1588a819614022bd3f2a0a9df4476c5beece034836b61360f5092",
+      "f43406c64fdb5de33e8c28d76c6b134fd73531ba9c7279e2bedd2c7b3896909f",
+      "f7af52167d2cf08c6cd9329a3af7c8ec7bf9c058a3f1ca77d416321ffa8c2648"
+    ],
+    "performance_eligible": false,
+    "promoted": false
+  },
+  "controller_repairs": 2,
+  "controller_review": "review/http-harness-review.md",
+  "state_source_review": "review/state-implementation-review.md",
+  "state_action_review": "review/state-action-review.md",
+  "state_compile_passes": 5,
+  "protected_active_attempt": 2,
+  "protected_recovery": {
+    "closed_epoch": 1792737864.497723,
+    "all_264_requests_completed": true,
+    "original_closeout_retained": true,
+    "restored_after_wrapper_failure": true,
+    "exact_incumbent_identity": true,
+    "ready_admitting": true,
+    "direct_routed_passed": true,
+    "candidate_unloaded": true,
+    "source_failure": "runtime/r2-protected-incumbent-reconcile.json",
+    "recovery_receipt_prefix": "runtime/manual-recovery-"
+  },
+  "state_window": {
+    "completed_epoch": 1792739406.3533776,
+    "experiment_error": null,
+    "restoration_error": null,
+    "restored": true,
+    "wall_deadline_epoch": 1792743920.5213478,
+    "wall_deadline_met": true,
+    "generations": [
+      "45685d48e7575d87886eaf28214fc0bc9460cf68a1c022d197d9a20395d2106c"
+    ],
+    "performance_eligible": false,
+    "promoted": false
+  },
+  "protected_analysis": "analysis/protected-abba-2.json",
+  "protected_outcome": "264/264 requests; small12 B slowdown in both paired medians; pageheavy mixed; diagnostic only",
+  "recovery_incident": "Original ABBA wrapper rejected expected stopped status exit1; manual managed restoration independently verified; additive recovery-closeout retained",
+  "native_fixture_repairs": 2,
+  "native_failed_window": "state/window-1",
+  "native_active_window": "state/window-2",
+  "native_action": "runtime/state-tool-action-r5.json",
+  "native_review": "review/state-implementation-review.md",
+  "trace_action": "runtime/trace-tool-action.json",
+  "trace_status": "closed; offline normalization and independent final causal review accepted as bounded diagnostic evidence; qualification held",
+  "updated_epoch": 1792740707.2167466,
+  "trace_window": {
+    "completed_epoch": 1792740707.2167466,
+    "experiment_error": null,
+    "restoration_error": null,
+    "restored": true,
+    "wall_deadline_epoch": 1792744862.116667,
+    "wall_deadline_met": true,
+    "generations": [
+      "8fe3ea95f88c4cbe622a5bcaf79a46d7b5a67dd3b9c7759411e859d56378bcce",
+      "b7b5cfc6861a23199abe24f96484c2c9e91573c8db1cbc36df33263e6a7b14b0",
+      "cdcf9c389d82a2d9d0b72c3a2026d7ff7786f82e52736a58a612112fb8e4e0dc",
+      "dcc1640a9959feffb2c014193603a09de94e0bac6d081b226cc269c4022ba738"
+    ],
+    "performance_eligible": false,
+    "promoted": false
+  },
+  "state_compile_passes_detail": {
+    "initial": 3,
+    "repair": 2,
+    "total": 5,
+    "gpu_execution_in_compile_validation": false
+  },
+  "trace_analysis": "analysis/trace-paired-1/trace-paired-1-summary.json",
+  "trace_review": "review/final-trace-causal-review.md",
+  "trace_review_sha256": "cbba3f2d26929e51be749149c8090d95f37a477d7542dfb0452a9bcbc22a1a2e"
+}

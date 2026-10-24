@@ -1,0 +1,473 @@
+{
+  "timestamp": "2026-10-22T06:05:50.618334+00:00",
+  "versions": {
+    "prometheus": {
+      "tag": "prom/prometheus:v3.14.0",
+      "digest": "prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-08T08:57:07.009856+00:00",
+      "release_notes": "https://github.com/prometheus/prometheus/releases/tag/v3.14.0",
+      "reason": "Stable release verified from upstream; pinned independently of inference."
+    },
+    "grafana": {
+      "tag": "grafana/grafana:13.2.1",
+      "digest": "grafana/grafana@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-08T08:57:07.024447+00:00",
+      "release_notes": "https://github.com/grafana/grafana/releases/tag/v13.2.1",
+      "reason": "Stable release verified from upstream; pinned independently of inference."
+    },
+    "node": {
+      "tag": "quay.io/prometheus/node-exporter:v1.12.1",
+      "digest": "quay.io/prometheus/node-exporter@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-08T08:57:07.037575+00:00",
+      "release_notes": "https://github.com/prometheus/node_exporter/releases/tag/v1.12.1",
+      "reason": "Stable release verified from upstream; pinned independently of inference."
+    },
+    "gpu": {
+      "tag": "utkuozdemir/nvidia_gpu_exporter:1.15.1",
+      "digest": "utkuozdemir/nvidia_gpu_exporter@sha256:7aee2d42836ad29d4adb2722b7cfdc806ec9cc8d45fd0b8971ebbad2d9f3d087",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-08T08:57:07.052094+00:00",
+      "release_notes": "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/tag/v1.15.1",
+      "reason": "Stable release verified from upstream; pinned independently of inference."
+    },
+    "python": {
+      "tag": "python:3.14.6-alpine3.23",
+      "digest": "python@sha256:b165067c5afc37fa5608a3c05609cc3d51aafd808a30fbfd822ee594fef55ad4",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-08T08:57:07.067664+00:00",
+      "release_notes": "https://www.python.org/downloads/release/python-3146/",
+      "reason": "Stable release verified from upstream; pinned independently of inference."
+    },
+    "loki": {
+      "tag": "grafana/loki:3.7.7",
+      "digest": "grafana/loki@sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-09T09:25:02.912923+00:00",
+      "release_notes": "https://github.com/grafana/loki/releases/tag/v3.7.7",
+      "reason": "Pinned stable release for container log collection; no inference changes."
+    },
+    "alloy": {
+      "tag": "grafana/alloy:v1.19.2",
+      "digest": "grafana/alloy@sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839",
+      "platform": "linux/amd64",
+      "verified_at": "2026-09-09T09:25:02.927056+00:00",
+      "release_notes": "https://github.com/grafana/alloy/releases/tag/v1.19.2",
+      "reason": "Pinned stable release for container log collection; no inference changes."
+    }
+  },
+  "windows_versions": {
+    "schema_version": 1,
+    "verified_at": "2026-09-08",
+    "platform": "windows/amd64",
+    "windows_exporter": {
+      "version": "0.31.8",
+      "release_url": "https://github.com/prometheus-community/windows_exporter/releases/tag/v0.31.8",
+      "msi_url": "https://github.com/prometheus-community/windows_exporter/releases/download/v0.31.8/windows_exporter-0.31.8-amd64.msi",
+      "msi_sha256": "0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40",
+      "exe_url": "https://github.com/prometheus-community/windows_exporter/releases/download/v0.31.8/windows_exporter-0.31.8-amd64.exe",
+      "exe_sha256": "03bb0fe80b8ad0b4e39606b96c4c5cc56b1f766760011ea2b00111157c6ef077",
+      "checksum_url": "https://github.com/prometheus-community/windows_exporter/releases/download/v0.31.8/sha256sums.txt",
+      "verification": "Downloaded MSI and executable match official SHA-256 manifest and GitHub release asset digests; Windows Authenticode status recorded during enrollment. No certificate trust-store changes.",
+      "reason": "Pinned supported stable release; native CPU, memory, filesystem, network and OS collection."
+    },
+    "nvidia_gpu_exporter": {
+      "version": "1.15.1",
+      "release_url": "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/tag/v1.15.1",
+      "archive_url": "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v1.15.1/nvidia_gpu_exporter_1.15.1_windows_x86_64.zip",
+      "archive_sha256": "91f1fb4b9cb4d0abe34fae1f73c609538d7283806b653dbd0819b1a91510f532",
+      "exe_sha256": "68d174548f5d743c5518ac69fc849c29c4167d7051d5031cf91b11dad7ee128c",
+      "checksum_url": "https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v1.15.1/checksums.txt",
+      "verification": "Downloaded archive matches official SHA-256 manifest and GitHub asset digest; extracted executable hash recorded. Sigstore verification not performed; checksum is integrity evidence, not independent signature attestation.",
+      "reason": "Native Windows SCM support, bounded background collection and freshness metrics; no driver or Docker mode change required."
+    }
+  },
+  "runtime_versions": {
+    "grafana": "13.2.1",
+    "prometheus": "3.14.0"
+  },
+  "query_count": 164,
+  "query_set_digest": "3f12e463ce3c881f52f98b9fdb5e11634216a589980cf1bc78fcc6cc7d603741",
+  "method": "Bounded read-only Prometheus target API, inventory identities, capability PromQL and authenticated Grafana APIs; no generation or service mutations.",
+  "checks": [
+    {
+      "check": "targets",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "host_capabilities:primary-node.host",
+      "status": "passed",
+      "detail": {
+        "host": "primary-node",
+        "required_collectors": [
+          "cpu",
+          "diskstats",
+          "filesystem",
+          "meminfo",
+          "netdev"
+        ],
+        "capabilities": {
+          "cpu": {
+            "metric": "node_cpu_seconds_total",
+            "series": 288
+          },
+          "memory": {
+            "metric": "node_memory_MemTotal_bytes",
+            "series": 1
+          },
+          "filesystem": {
+            "metric": "node_filesystem_size_bytes",
+            "series": 9
+          },
+          "disk_io": {
+            "metric": "node_disk_read_bytes_total",
+            "series": 3
+          },
+          "network": {
+            "metric": "node_network_receive_bytes_total",
+            "series": 5
+          },
+          "monitoring_data_volume": {
+            "mountpoint": "/data",
+            "filesystem": "xfs",
+            "series": 1
+          }
+        },
+        "optional_collectors_unsuccessful": [
+          "bcachefs",
+          "bonding",
+          "conntrack",
+          "fibrechannel",
+          "ipvs",
+          "nfs",
+          "nfsd",
+          "tapestats",
+          "zfs"
+        ]
+      }
+    },
+    {
+      "check": "host_capabilities:secondary-node.host",
+      "status": "passed",
+      "detail": {
+        "host": "secondary-node",
+        "required_collectors": [
+          "cpu",
+          "logical_disk",
+          "memory",
+          "net",
+          "os",
+          "system"
+        ],
+        "capabilities": {
+          "cpu": {
+            "metric": "windows_cpu_time_total",
+            "series": 160
+          },
+          "memory": {
+            "metric": "windows_memory_physical_total_bytes",
+            "series": 1
+          },
+          "filesystem": {
+            "metric": "windows_logical_disk_size_bytes",
+            "series": 4
+          },
+          "disk_io": {
+            "metric": "windows_logical_disk_read_bytes_total",
+            "series": 4
+          },
+          "network": {
+            "metric": "windows_net_bytes_received_total",
+            "series": 8
+          }
+        },
+        "optional_collectors_unsuccessful": []
+      }
+    },
+    {
+      "check": "engine_capabilities:secondary-node.engine",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "host_capabilities:mobile-node.host",
+      "status": "passed",
+      "detail": {
+        "host": "mobile-node",
+        "required_collectors": [
+          "cpu",
+          "diskstats",
+          "filesystem",
+          "meminfo",
+          "netdev"
+        ],
+        "capabilities": {
+          "cpu": {
+            "metric": "node_cpu_seconds_total",
+            "series": 64
+          },
+          "memory": {
+            "metric": "node_memory_total_bytes",
+            "series": 1
+          },
+          "filesystem": {
+            "metric": "node_filesystem_size_bytes",
+            "series": 13
+          },
+          "disk_io": {
+            "metric": "node_disk_read_bytes_total",
+            "series": 5
+          },
+          "network": {
+            "metric": "node_network_receive_bytes_total",
+            "series": 28
+          }
+        },
+        "optional_collectors_unsuccessful": []
+      }
+    },
+    {
+      "check": "engine_capabilities:primary-node.engine",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "distinct_gpu_identity",
+      "status": "passed",
+      "detail": [
+        {
+          "labels": {
+            "__name__": "operator:gpu_memory_total_bytes",
+            "gpu_uuid": "synthetic-id-14c581c315ea",
+            "host": "primary-node",
+            "lab": "operator"
+          },
+          "value": "102641958912"
+        },
+        {
+          "labels": {
+            "__name__": "operator:gpu_memory_total_bytes",
+            "gpu_uuid": "synthetic-id-d013185ea964",
+            "host": "primary-node",
+            "lab": "operator"
+          },
+          "value": "102641958912"
+        }
+      ]
+    },
+    {
+      "check": "fleet_gpu_identity",
+      "status": "passed",
+      "detail": [
+        {
+          "labels": {
+            "__name__": "operator:gpu_memory_total_bytes",
+            "gpu_uuid": "synthetic-id-14c581c315ea",
+            "host": "primary-node",
+            "lab": "operator"
+          },
+          "value": "102641958912"
+        },
+        {
+          "labels": {
+            "__name__": "operator:gpu_memory_total_bytes",
+            "gpu_uuid": "synthetic-id-d013185ea964",
+            "host": "primary-node",
+            "lab": "operator"
+          },
+          "value": "102641958912"
+        },
+        {
+          "labels": {
+            "__name__": "operator:gpu_memory_total_bytes",
+            "gpu_uuid": "synthetic-id-b686f35dfb0a",
+            "host": "secondary-node",
+            "lab": "operator"
+          },
+          "value": "34190917632"
+        }
+      ]
+    },
+    {
+      "check": "gpu_collection",
+      "status": "passed",
+      "detail": [
+        {
+          "labels": {
+            "__name__": "nvidia_smi_last_collect_success",
+            "availability": "always_on",
+            "engine": "none",
+            "exporter": "nvidia_smi",
+            "gpu_source_role": "primary",
+            "host": "primary-node",
+            "instance": "100.64.0.62:9835",
+            "job": "nvidia-gpus",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "none",
+            "os": "linux",
+            "service": "gpu-exporter",
+            "target_id": "primary-node.gpu",
+            "topology": "unknown",
+            "workload": "unknown"
+          },
+          "value": "1"
+        },
+        {
+          "labels": {
+            "__name__": "nvidia_smi_last_collect_success",
+            "availability": "opportunistic",
+            "engine": "none",
+            "exporter": "nvidia_smi",
+            "gpu_source_role": "primary",
+            "host": "secondary-node",
+            "instance": "100.64.0.208:9835",
+            "job": "nvidia-gpus",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "none",
+            "os": "windows",
+            "service": "gpu-exporter",
+            "target_id": "secondary-node.gpu",
+            "topology": "unknown",
+            "workload": "unknown"
+          },
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "check": "gpu_freshness",
+      "status": "passed",
+      "detail": [
+        {
+          "labels": {
+            "availability": "always_on",
+            "engine": "none",
+            "exporter": "nvidia_smi",
+            "gpu_source_role": "primary",
+            "host": "primary-node",
+            "instance": "100.64.0.62:9835",
+            "job": "nvidia-gpus",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "none",
+            "os": "linux",
+            "service": "gpu-exporter",
+            "target_id": "primary-node.gpu",
+            "topology": "unknown",
+            "workload": "unknown"
+          },
+          "value": "14.970999956130981"
+        },
+        {
+          "labels": {
+            "availability": "opportunistic",
+            "engine": "none",
+            "exporter": "nvidia_smi",
+            "gpu_source_role": "primary",
+            "host": "secondary-node",
+            "instance": "100.64.0.208:9835",
+            "job": "nvidia-gpus",
+            "lab": "operator",
+            "maintenance": "none",
+            "model": "none",
+            "os": "windows",
+            "service": "gpu-exporter",
+            "target_id": "secondary-node.gpu",
+            "topology": "unknown",
+            "workload": "unknown"
+          },
+          "value": "15.970999956130981"
+        }
+      ]
+    },
+    {
+      "check": "host_inventory_identity",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "service_identity",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "historical_benchmarks",
+      "status": "failed",
+      "detail": "ValueError"
+    },
+    {
+      "check": "grafana_health",
+      "status": "passed",
+      "detail": {
+        "database": "ok",
+        "version": "13.2.1"
+      }
+    },
+    {
+      "check": "grafana_prometheus_datasource",
+      "status": "passed",
+      "detail": {
+        "uid": "operator-prometheus",
+        "status": "OK"
+      }
+    },
+    {
+      "check": "grafana_loki_datasource",
+      "status": "passed",
+      "detail": {
+        "uid": "operator-loki",
+        "status": "OK"
+      }
+    },
+    {
+      "check": "prometheus_version",
+      "status": "passed",
+      "detail": {
+        "version": "3.14.0"
+      }
+    },
+    {
+      "check": "provisioned_dashboards",
+      "status": "passed",
+      "detail": [
+        "operator-benchmarks",
+        "operator-fleet",
+        "operator-gpu",
+        "operator-inference",
+        "operator-linux",
+        "operator-logs",
+        "operator-monitoring",
+        "operator-windows"
+      ]
+    },
+    {
+      "check": "dashboard_promql",
+      "status": "passed",
+      "detail": {
+        "promql_expressions_accepted": 131
+      }
+    },
+    {
+      "check": "registration_unchanged",
+      "status": "passed",
+      "detail": {
+        "generation": "efe471ccdfb331b129916a82ea89641f44032c3b8c4ea0396bd5b97ece2d4e07",
+        "container_id": "container-3"
+      }
+    }
+  ],
+  "not_run": [
+    "host_reboot",
+    "external_notification_delivery",
+    "inference_A_B_overhead_benchmark",
+    "new_generation_smoke"
+  ],
+  "generation_note": "This read-only verifier never submits generation. See docs/verification.md for dated smoke acceptance and separate evidence.",
+  "blocked": [],
+  "passed": false
+}

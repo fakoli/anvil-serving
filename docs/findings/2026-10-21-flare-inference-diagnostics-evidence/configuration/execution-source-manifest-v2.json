@@ -1,0 +1,80 @@
+{
+  "recorded_ns": 1792646767496474188,
+  "files": {
+    "execution-source-v2/product/anvil_serving/scheduler_trace.py": {
+      "sha256": "c3e1a2e23af6dff78a51a96df99a620763afde7eb93bb5e3cc5d337bf352afeb",
+      "bytes": 10866,
+      "source": "OPERATOR_PATH_c7d0cb882d1d/scheduler_trace.py"
+    },
+    "execution-source-v2/product/anvil_serving/recipe_secrets.py": {
+      "sha256": "e56cd9463f23c1de18afd60980e404235f59742b561f4b8b118b4f7b2bd21473",
+      "bytes": 4913,
+      "source": "OPERATOR_PATH_9cf57ef8d6dd/recipe_secrets.py"
+    },
+    "execution-source-v2/product/anvil_serving/recipe_monitoring.py": {
+      "sha256": "7d304ce80227db952d9a989ee4dd5961ebc9a447b7f5feef8518025273f7ce6f",
+      "bytes": 9290,
+      "source": "OPERATOR_PATH_a0a31941aa5a/recipe_monitoring.py"
+    },
+    "execution-source-v2/product/anvil_serving/serve_recipes.py": {
+      "sha256": "c46d6a841eb3225f74325805013a1f6b2b258d946966a31ba912f18154df83d2",
+      "bytes": 81580,
+      "source": "OPERATOR_PATH_6331be44046c/serve_recipes.py"
+    },
+    "execution-source-v2/product/anvil_serving/models.py": {
+      "sha256": "cca385bf4efa46c53108941f43dc823165ab5a21cb3399fa8c56951c67fe3033",
+      "bytes": 168432,
+      "source": "OPERATOR_PATH_0ccd8b57aca5/models.py"
+    },
+    "execution-source-v2/product/anvil_serving/serves.py": {
+      "sha256": "10711d0f4a1704fd97bb4da53ee4b04cc1d484a09d4f4c2c29b05c51c9b3a6f4",
+      "bytes": 327171,
+      "source": "OPERATOR_PATH_e9b8187bce87/serves.py"
+    },
+    "execution-source-v2/product/anvil_serving/commands/models.py": {
+      "sha256": "d0f8f636ba0280b41eaa90734077ce2cd67d78c75e565cef6e02da7453d96b7f",
+      "bytes": 16858,
+      "source": "OPERATOR_PATH_c4924d1729c2/models.py"
+    },
+    "execution-source-v2/product/anvil_serving/benchmarking/config.py": {
+      "sha256": "a16831c8f763b748f3ecaf6f71b9701597bff87f25240cf0bcd9c1dff4e4622f",
+      "bytes": 1122,
+      "source": "OPERATOR_PATH_6ebb80149dcc/config.py"
+    },
+    "execution-source-v2/product/anvil_serving/benchmarking/cli.py": {
+      "sha256": "09c81ae29db5e4e21a462ec7a458fe4379571065dd88540d875e8f2581b8a374",
+      "bytes": 56945,
+      "source": "OPERATOR_PATH_3eadc1369447/cli.py"
+    },
+    "execution-source-v2/product/skills/anvil-serving-kernel-tuning/SKILL.md": {
+      "sha256": "be1d404d9043d5cb4f3b9eadc90f4ab19003a2819e5ccb0c27a981d43a4a15f8",
+      "bytes": 7467,
+      "source": "OPERATOR_PATH_811a71fb3344/SKILL.md"
+    },
+    "execution-source-v2/observer/observer/server.py": {
+      "sha256": "91048cdf11b60c3c95573973d4f3518596931f40d31e235ced6cf5691c615531",
+      "bytes": 36538,
+      "source": "OPERATOR_PATH_a5e2f34eaea5/server.py"
+    },
+    "execution-source-v2/observer/compose.yaml": {
+      "sha256": "5d873213fb47841cec14df32d3c975c89fa4c664118108856e41d0cc8520a9cf",
+      "bytes": 9755,
+      "source": "OPERATOR_PATH_69c96d90e060/compose.yaml"
+    },
+    "execution-source-v2/observer/scripts/bootstrap.py": {
+      "sha256": "5c87d1f4f6d6169293614428c0a5879e74aa7d51cf0c5845e8248d58c77b1f4e",
+      "bytes": 29270,
+      "source": "OPERATOR_PATH_290204c92e61/bootstrap.py"
+    },
+    "execution-source-v2/observer/docs/recipe-monitoring.md": {
+      "sha256": "86102937bf7dbcd298c9d63271031f2d43002f9f903964daec1a37d2c19e552c",
+      "bytes": 5903,
+      "source": "OPERATOR_PATH_0d5634244a6a/recipe-monitoring.md"
+    },
+    "execution-source-v2/observer/tests/test_model_probe_auth.py": {
+      "sha256": "c89f49f990bebbb1fa3d6b3fc2350b3af001f5f467eadb67a09d328ecd92830c",
+      "bytes": 3946,
+      "source": "OPERATOR_PATH_fc70036ae932/test_model_probe_auth.py"
+    }
+  }
+}

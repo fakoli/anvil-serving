@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "error": null,
+  "status_samples": 2,
+  "audit": true,
+  "performance_eligible": false,
+  "child_returncode": 0,
+  "utc": "2026-10-22T22:40:02.448250+00:00",
+  "epoch_ns": 1792708802448256844,
+  "monotonic_ns": 1074862168477003
+}

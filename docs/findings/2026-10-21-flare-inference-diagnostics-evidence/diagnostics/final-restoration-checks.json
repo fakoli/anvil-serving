@@ -1,0 +1,107 @@
+{
+  "at": 1792653064.4296796,
+  "ok": true,
+  "identity": {
+    "schema": "recipe-container-status/v1",
+    "container": "glm53-nvidia-fp4-local-ab-r2",
+    "container_id": "container-2",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "state": "running",
+    "running": true,
+    "health": null,
+    "started_at": "2026-10-22T06:36:16.603873971Z",
+    "restart_count": 0,
+    "host_memory": {
+      "limit_bytes": 55834574848,
+      "ram_plus_swap_limit_bytes": 55834574849,
+      "oom_killed": false,
+      "exit_code": 0,
+      "current_bytes": 23249633280,
+      "peak_bytes": 30406086656,
+      "events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0
+      },
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0
+    },
+    "containment_error": null
+  },
+  "registration": {
+    "bound_port": 39126,
+    "container": "glm53-nvidia-fp4-local-ab-r2",
+    "container_id": "container-2",
+    "engine": "vllm-b12x-release-10152026",
+    "generation": "a81b0558ff86ddf12c68d5148b9ee8066274481aa183285369c84c1dd167902f",
+    "gpu_selection": [
+      "synthetic-id-d013185ea964",
+      "synthetic-id-14c581c315ea"
+    ],
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "metrics_contract": "vllm",
+    "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "recipe_digest": "50d5cfe756db664c54d13939c722ae05d79a9bf2e26b47b4eb4673fc2655e065",
+    "registry_digest": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+    "schema": "recipe-monitoring/v1",
+    "started_at": "2026-10-22T06:36:16.603873971Z",
+    "state": "active",
+    "updated": 1792651153.2659454
+  },
+  "protected_files": {
+    "discovery/engine.json": {
+      "before": "c68a1e6cb09af8fb7bfb96f2063786fcf43940285846496297a560a3e25a6371",
+      "after": "c68a1e6cb09af8fb7bfb96f2063786fcf43940285846496297a560a3e25a6371",
+      "equal": true
+    },
+    "discovery/gpu.json": {
+      "before": "469969040559459f547e6f30dde2f42229e35cee223e41e3641b43ea02c93a4c",
+      "after": "469969040559459f547e6f30dde2f42229e35cee223e41e3641b43ea02c93a4c",
+      "equal": true
+    },
+    "discovery/macos.json": {
+      "before": "baec8cdbbcab4e2ce5d90e52de345aa9448201b54c293a32eedc537fd42b50c8",
+      "after": "baec8cdbbcab4e2ce5d90e52de345aa9448201b54c293a32eedc537fd42b50c8",
+      "equal": true
+    },
+    "discovery/node.json": {
+      "before": "cb05487aa2ee178421c144db29c4b6ddd2a7c1746651b83db4c67ff2944d408a",
+      "after": "cb05487aa2ee178421c144db29c4b6ddd2a7c1746651b83db4c67ff2944d408a",
+      "equal": true
+    },
+    "discovery/router.json": {
+      "before": "e49a377d06e77881f27c36ba97f35f7d76208fd4c67e1fc745a83528c7631dc4",
+      "after": "e49a377d06e77881f27c36ba97f35f7d76208fd4c67e1fc745a83528c7631dc4",
+      "equal": true
+    },
+    "discovery/windows.json": {
+      "before": "60c515337be4a9c6b089bcbb04fa9f47fb64f25912942a96026c808fe067284e",
+      "after": "60c515337be4a9c6b089bcbb04fa9f47fb64f25912942a96026c808fe067284e",
+      "equal": true
+    },
+    "router.toml": {
+      "before": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+      "after": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+      "equal": true
+    },
+    "operator-topology.toml": {
+      "before": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+      "after": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+      "equal": true
+    },
+    "recipe-monitoring.json accepted authentication integration": {
+      "before": "7abfba1e03a4163d71b6acd243c9eb59accb5a85b3f0053d0a1c28cb3b55dbea",
+      "after": "7abfba1e03a4163d71b6acd243c9eb59accb5a85b3f0053d0a1c28cb3b55dbea",
+      "equal": true
+    }
+  },
+  "power": "synthetic-id-14c581c315ea, 300.00\nGPU-synthetic-id-f2505531ad94, 300.00\n",
+  "candidate_absent": true,
+  "promoted": false
+}

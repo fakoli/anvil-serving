@@ -1,0 +1,11 @@
+{
+  "at": 1792660066.151127,
+  "argv": [
+    "nvidia-smi",
+    "--query-gpu=uuid,name,driver_version,power.limit,memory.used,utilization.gpu",
+    "--format=csv,noheader"
+  ],
+  "returncode": 0,
+  "stdout": "synthetic-id-14c581c315ea, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 300.00 W, 96457 MiB, 0 %\nGPU-synthetic-id-f2505531ad94, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 615.71.09, 300.00 W, 96455 MiB, 0 %\n",
+  "stderr": ""
+}

@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-10-21T13:24:46.021436+00:00",
+  "source": "cap16-fixed2-host32-host-cache-r2.json",
+  "original_fixture_exit": 1,
+  "strict_ready": "failed: READY. instead of READY",
+  "nine_fact_oracles": {
+    "passed": 6,
+    "attempted": 6
+  },
+  "host_single_restore": "proven by host hit, fetched, restore graph, no init and7288cached tokens",
+  "branch_restore_raw": {
+    "active_peak": 4,
+    "host_fetch": 1,
+    "gpu_lookup_hits": 4,
+    "host_hits": 3,
+    "init_graphs": 0,
+    "restore_graphs": 2,
+    "minimum_per_branch_reuse": 7237
+  },
+  "branch_sum_hit_oracle": "Source-confirmed invalid sum of overlapping counters. Original fixture boolean stays failed; separate source-backed assessment proves deep host restore and all four semantic branches.",
+  "promotion": false,
+  "independent_review": {
+    "reviewer": "Sol read-only",
+    "source": "helios/src/scheduler.rs:1252-1255,1361-1372,1439-1441",
+    "conclusion": "4GPU ancestors,3host extensions,1uniquehostfetch,2restoregraphs,0init,all4cached7237andcorrectanswers; no rerun solely to turn boolean green"
+  }
+}

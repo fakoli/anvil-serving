@@ -1,0 +1,9 @@
+{
+  "at": 1792664622.4996774,
+  "outer_timeout_seconds": 120,
+  "error": "subprocess.TimeoutExpired",
+  "managed_action": "serves mode restore-retained",
+  "apply_returned_success": false,
+  "observed": "same retained container started; startup logs progressing; CLI wait interrupted, container not recreated",
+  "resolution": "verify exact identity and native readiness, then supported monitor-sync, direct/routed preflights and readmission; no lifecycle retry"
+}

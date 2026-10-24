@@ -1,0 +1,59 @@
+{
+  "campaign": "2026-10-19-ignis-072",
+  "candidate": {
+    "context_tokens": 131072,
+    "model": "qwen3.8-flash-next",
+    "request_timeout_seconds": 2400,
+    "runtime_version": "0.7.2"
+  },
+  "comparison_boundary": "This is a focused qualification campaign, not a matched performance comparison. No controlled-output speed, p99, or full-window simultaneous-capacity claim is planned from the retained draft evidence.",
+  "gates": [
+    {
+      "artifact": "raw/preflight-c1.json",
+      "id": "functional-c1",
+      "status": "observed"
+    },
+    {
+      "artifact": "raw/preflight-c8.json",
+      "id": "tool-c8",
+      "status": "observed"
+    },
+    {
+      "artifacts": [
+        "raw/preflight-long-context.json",
+        "raw/preflight-long-context-r2.json"
+      ],
+      "id": "long-context",
+      "status": "partially-observed"
+    },
+    {
+      "artifacts": [
+        "raw/swe-stage-initial.json",
+        "raw/swe-dependency-diagnosis.json",
+        "raw/swe-r2/artifact.json",
+        "raw/swe-quality-review.json"
+      ],
+      "id": "swe-fixed-five",
+      "status": "incomplete"
+    },
+    {
+      "artifacts": [
+        "raw/deadline-contract.json",
+        "raw/deadline-correlation.json"
+      ],
+      "id": "deadline-expiry",
+      "status": "observed"
+    },
+    {
+      "artifacts": [
+        "raw/restoration-verification.json",
+        "raw/restore-direct-preflight.json",
+        "raw/restore-routed-preflight.json",
+        "raw/restoration-verification.json"
+      ],
+      "id": "restoration",
+      "status": "observed"
+    }
+  ],
+  "schema": "anvil-serving.ignis-run-plan/v1"
+}

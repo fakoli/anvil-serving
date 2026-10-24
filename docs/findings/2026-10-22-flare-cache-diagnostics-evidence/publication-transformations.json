@@ -1,0 +1,89 @@
+{
+  "schema": "publication-transformations/v1",
+  "date": "2026-10-24",
+  "scope": "Publication copies only. Original experiment evidence is unchanged.",
+  "transformations": [
+    "Replace private observer and machine labels and runtime hostnames with generic labels.",
+    "Normalize Python import formatting where present; no executable behavior changes.",
+    "Update public provenance hashes; retain previous bindings."
+  ],
+  "files": [
+    {
+      "path": "receipts/a-observer.prom.gz!gunzip",
+      "before_sha256": "e2f3f2603d758631d1cf6958d51015fc06038d7dcbc7f774081a1ca840e9adf8",
+      "after_sha256": "2e183b471d24a8e02049b6ffa74197293f7bfbae22edd07a515f78a770447e5a",
+      "before_bytes": 1053110,
+      "after_bytes": 1053123
+    },
+    {
+      "path": "receipts/a-observer.prom.gz",
+      "before_sha256": "29ad14fcb5f23c2a4545a63b7be4fcb0ecee98b384104843c34ed6bd376b808e",
+      "after_sha256": "f14093d2a0972b4e95cabd0f1ecb86e8de8892958a7bf900e538752fc0ee7184",
+      "before_bytes": 28652,
+      "after_bytes": 28654
+    },
+    {
+      "path": "receipts/a-prom-targets.json",
+      "before_sha256": "a0773e1d101b36bf302371b819c93a1631c8237e869cc30fc4d345673bd1ce81",
+      "after_sha256": "be0dff608cf3d81634b9f3a670d82556b8bd9677a57a8c840d28121e05c08a55",
+      "before_bytes": 14316,
+      "after_bytes": 14345
+    },
+    {
+      "path": "receipts/b-observer.prom.gz!gunzip",
+      "before_sha256": "57c0804f8162ad529b115bb62de91d8b8c7fb8e5067123b78f63593029a0f2b0",
+      "after_sha256": "6d03b3b8f1ab4422a2640e9f94452aa3f88690aea30eca0859842f726c533caf",
+      "before_bytes": 1053110,
+      "after_bytes": 1053123
+    },
+    {
+      "path": "receipts/b-observer.prom.gz",
+      "before_sha256": "7da531dbb353718cfb31f27b6e35bef8f748684402ad08c5162689cdf885e11a",
+      "after_sha256": "78ba8d54df831d82b45c04bc3c3baf3de0c0cae825fad674bb1485cde6e9acc0",
+      "before_bytes": 28657,
+      "after_bytes": 28659
+    },
+    {
+      "path": "receipts/b-prom-targets.json",
+      "before_sha256": "ec28d56fc4c94abf3d40d439909588ac201cf91355291bf2e62f5de955c5a153",
+      "after_sha256": "5b8e39aec28b8ecb07c9a3ee25837df78c036b7392b52d55af25e9e44c26f3e4",
+      "before_bytes": 14317,
+      "after_bytes": 14346
+    },
+    {
+      "path": "receipts/counter-arm/c-prometheus-targets.json",
+      "before_sha256": "46b08ad15c94d0d939199113c4f52fbc93c58fce334d54faf856cda6c9202fc7",
+      "after_sha256": "4e27076c2a8ebf55003c6e1a9df40a1dae42048ead7ade17da4544cbbca0746a",
+      "before_bytes": 14317,
+      "after_bytes": 14346
+    },
+    {
+      "path": "receipts/counter-arm/d-prometheus-targets.json",
+      "before_sha256": "4deca5d9bfff18b03073152592bd80addc5098b85171fd8c3a1a5ac3c1045a75",
+      "after_sha256": "e9bc82ca362717f2954662da322f9d88d3ddd3c9f7466ad533d21b5681fe5e33",
+      "before_bytes": 14315,
+      "after_bytes": 14344
+    },
+    {
+      "path": "receipts/counter-arm/final-monitoring-r2.json",
+      "before_sha256": "9b593c6cc502258d880805b980bf44552e8c5d86ee2d529380a5976dd7890a67",
+      "after_sha256": "dada109cfedefebb58eb7440b418383e2249d66ae083f4c4d46c6a6644e5a6fe",
+      "before_bytes": 23438,
+      "after_bytes": 23445
+    },
+    {
+      "path": "receipts/restore1-monitoring.json",
+      "before_sha256": "1a39ce543b56996c84ddf76acd34aae3cf603e0338282773c6592fe5ad8e4922",
+      "after_sha256": "b355d71367acbc6f83804276a01cf9e3bdf5dfdededd6eb6f10f3d3ac6e4ba7a",
+      "before_bytes": 23440,
+      "after_bytes": 23447
+    },
+    {
+      "path": "provenance.json.gz",
+      "before_sha256": "397ef0ae73ad9c486c72059adf901c5ff5470b09076c5573d5bbf922c3612699",
+      "after_sha256": "5b007f28172e10144a6e97cb8b292dd2db1bbfa77946c8fd85952ab716a91e16",
+      "before_bytes": 131505,
+      "after_bytes": 132121
+    }
+  ]
+}

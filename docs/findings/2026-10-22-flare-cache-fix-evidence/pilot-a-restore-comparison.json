@@ -1,0 +1,124 @@
+{
+  "status": "failed_exact_all_case_gate",
+  "rows": [
+    {
+      "case_id": "0",
+      "equal": true,
+      "lengths": [
+        128,
+        128
+      ],
+      "first_divergence": null,
+      "reference_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 7666.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 0.0,
+        "flare_host_cache_stored_total": 3.0,
+        "flare_host_cache_fetched_total": 0.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 0.0,
+        "flare_cache_hits_total": 1.0
+      },
+      "measured_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 7666.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 0.0,
+        "flare_host_cache_stored_total": 3.0,
+        "flare_host_cache_fetched_total": 0.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 0.0,
+        "flare_cache_hits_total": 1.0
+      }
+    },
+    {
+      "case_id": "40",
+      "equal": false,
+      "lengths": [
+        128,
+        128
+      ],
+      "first_divergence": 7,
+      "reference_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 7693.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 0.0,
+        "flare_host_cache_stored_total": 3.0,
+        "flare_host_cache_fetched_total": 0.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 0.0,
+        "flare_cache_hits_total": 1.0
+      },
+      "measured_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 7693.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 0.0,
+        "flare_host_cache_stored_total": 3.0,
+        "flare_host_cache_fetched_total": 0.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 0.0,
+        "flare_cache_hits_total": 1.0
+      }
+    },
+    {
+      "case_id": "51",
+      "equal": true,
+      "lengths": [
+        128,
+        128
+      ],
+      "first_divergence": null,
+      "reference_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 7699.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 0.0,
+        "flare_host_cache_stored_total": 3.0,
+        "flare_host_cache_fetched_total": 0.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 0.0,
+        "flare_cache_hits_total": 1.0
+      },
+      "measured_deltas": {
+        "flare_requests_completed_total": 1.0,
+        "flare_requests_cancelled_total": 0.0,
+        "flare_prefill_tokens_total": 0.0,
+        "flare_generated_tokens_total": 128.0,
+        "flare_cache_reused_tokens_total": 9.0,
+        "flare_host_cache_reused_tokens_total": 7699.0,
+        "flare_host_cache_stored_total": 1.0,
+        "flare_host_cache_fetched_total": 1.0,
+        "flare_host_cache_store_failed_total": 0.0,
+        "flare_host_cache_fetch_failed_total": 0.0,
+        "flare_host_cache_lookups_total": 1.0,
+        "flare_host_cache_hits_total": 1.0,
+        "flare_cache_hits_total": 1.0
+      }
+    }
+  ],
+  "observation": "Case40 diverged without host restore; case51 completed host restore with exact128 IDs. Cause unresolved. No timing acceptance.",
+  "performance_eligible": false
+}

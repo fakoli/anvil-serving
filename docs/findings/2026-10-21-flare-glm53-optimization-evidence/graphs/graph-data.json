@@ -1,0 +1,1076 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 195.4948668553143,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 191.57322389184014,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 192.78946342437717,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 189.6751126641199,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 190.3437344104787,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 191.1614871675003,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 184.85651793705907,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 198.6411418676964,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Decode: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 192.79085075255628,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 187.66156182241033,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 178.5930908348129,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 182.77676115887172,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 186.22871601862286,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 185.50328387401476,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 171.88899415202877,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 177.8472533656514,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 36.78748395759612,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 46.44404898863286,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 36.62890603300184,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 45.24797294288874,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 38.82319398690015,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 58.62912395969033,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 50.76111608650535,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 58.677271008491516,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "First any output: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 1183.1074130022898,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 1188.6430280283093,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 157.1285299723968,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 278.73152191750705,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 1006.6005769185722,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 891.2773330230266,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 181.50198203511536,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 197.46181508526206,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 5.102434131234587,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 5.168657218084925,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 5.180392292021668,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 5.08997991847856,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 5.2411271844537985,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 5.225283988346789,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 5.319245420237579,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 4.993892402551439,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT proxy: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms/token"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 1569.286294048652,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 1537.0849709725007,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 504.9757909728214,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 587.5534159131348,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 1294.2196330986917,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 1429.4868330471218,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 521.5744690503925,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 513.6257029371336,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "End to end: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json",
+              "artifact_sha256": "e72d84c079fc344307afb730223eabf36404b39f7a948df71ccd48243dee337d",
+              "value": 208575.009541278,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json",
+              "artifact_sha256": "d0a1d399cb8d82d5aac5ecf25dd5494f8fa020fa80b0b4fcf5d757cc61e316d0",
+              "value": 491845.77463474666,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "7fa52b6db9ba8908abeba8e1f6e366dff08b41f7f1c6081fc4cc3abd980cb713",
+              "value": 205277.26438497406,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "d8e5399a783fdfbd0fbef53ad8177229e9d103b2d108e60efed759c803c61fe1",
+              "value": 498733.17307553085,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json",
+              "artifact_sha256": "bb3d1fa967b1537301d7b24b0a63c09c91676d1e68e7d383d3d6f754cdfd59f4",
+              "value": 196777.31467318666,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json",
+              "artifact_sha256": "15c5100c903661256fe17b1c90b260dcc4d196898afe9e0ccc647eb3907e7561",
+              "value": 390834.2676413018,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json",
+              "artifact_sha256": "845e28d61561fd21f2eeff9081ddd9b5e91018457c0f2b76933536a2e79927cc",
+              "value": 148344.55004427937,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json",
+              "artifact_sha256": "1923cbab9f879870a3de74ec06e681df9178e149d769f0062fcc8a287af8abd2",
+              "value": 387958.6913566166,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill: C1 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "input tokens/s"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 104.45976748299475,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 95.9452989769656,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 94.70255407306449,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 96.90928114216861,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 106.63977085534681,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 101.40555260404156,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 101.43434925487885,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 101.5575973960762,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Decode: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 375.5832475006309,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 363.2827476972452,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 318.3278124345695,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 327.11309401109594,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 386.0079586511745,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 363.89662325855136,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 346.19344594995727,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 329.89694035830814,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 101.1842240113765,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 113.70677605737,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 105.17017298843712,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 110.63808796461672,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 24.28253402467817,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 46.109026996418834,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 22.469001007266343,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 81.04790304787457,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "First any output: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 1705.7775619905442,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 2462.217030930333,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 347.97348000574857,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 383.3933639107272,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 1906.7887070123106,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 1866.493320907466,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 260.1411530049518,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 434.9897779757157,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 9.522375246843346,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 10.326197333893065,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 10.36726008331041,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 10.016249261199214,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 9.294836742092707,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 9.860610194791239,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 9.376709086253591,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 9.814746573444127,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT proxy: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms/token"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 2383.804040029645,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 3227.402388001792,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 918.6739419819787,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 1053.514375933446,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 2300.370312994346,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 2382.619317038916,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 820.9098399383947,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 1006.3897989457473,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "End to end: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json",
+              "artifact_sha256": "7944e3d18b4aa71d29fe10410dc4a72960d511e66ca6fb30ce56ad953c1e0e74",
+              "value": 74556.68991670095,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json",
+              "artifact_sha256": "44adcfaaf008a5d5da30ca5ec4440c6a9e0d49566267915d7388aa924f2e5db3",
+              "value": 200778.4313762761,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "194903d4fd899738ce3c755e80a42c7966180f12b6ab117441d3dab92e321a86",
+              "value": 71581.28565291734,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "90ebfbdad352976aaeb478a5085e14ecd4057f081006492272157bbf052906ff",
+              "value": 202680.7580783198,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json",
+              "artifact_sha256": "2bcb00450101b143cd7775a538ab5b05f6114e3a6a028767d1d207502c337e92",
+              "value": 315395.77177073,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json",
+              "artifact_sha256": "a851a3d8e35069ea29405fb1d1ef5af84a8211b347832ae6e07d34818f4d9a6b",
+              "value": 484237.155565566,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json",
+              "artifact_sha256": "1f7ee9815cd6ed65145dd463da95f0a868be474ca936fce41f183fa0142e6a84",
+              "value": 204429.93802903823,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json",
+              "artifact_sha256": "acf6cc8d5f2d45cec38753bb82da53649fec188c3eed913167d3788619037de8",
+              "value": 277702.0483354285,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill: C4 warm, n12/cell",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "input tokens/s"
+    }
+  ],
+  "metric_semantics": {
+    "prefill": "Includes scheduling/queueing and first-token work; warm prefix reuse.",
+    "throughput": "Variable output lengths; natural-output scout only.",
+    "tpot": "Per-request aggregate proxy, not raw token interval distribution."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Different checkpoints; variable reasoning/output; n12/cell; warm prefixes. Policy labels matter; no engine-only ranking.",
+  "title": "Flare tuned whole-recipe scout"
+}

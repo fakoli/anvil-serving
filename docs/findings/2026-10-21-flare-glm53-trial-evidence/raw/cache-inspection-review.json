@@ -1,0 +1,10 @@
+{
+  "reviewer": "independent Sol reviewer",
+  "gate": "approved-for-bounded-retry",
+  "blocking_findings": [],
+  "tests": 236,
+  "caveats": [
+    "default helper unchanged without explicit field",
+    "recovery download uses normal pull image"
+  ]
+}

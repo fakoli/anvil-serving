@@ -1,0 +1,95 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-23-flare-state-diagnostics",
+  "complete": true,
+  "identity": {
+    "model": "GLM-5.3-Flash",
+    "source_revision": "47581ccac82660953a5b59cb04b2750d64edc97d",
+    "candidate_patch": "b132065b27532028bf2a02e754e86553ea846281f616f22ce74e89442ff0ec76",
+    "image_sha256": "d8fb208298fd3dd3f6b2b631148b01467a9449a9dcd1fef7dca304714bcf9411",
+    "topology": "TP2; fixed 32 GiB cache pool"
+  },
+  "workload": {
+    "protected_bracket": "small12 24 and pageheavy 12 measured requests per arm; A/B/B/A",
+    "trace": "small12/pageheavy A/B captures; 72 measured requests, 144 scheduler samples"
+  },
+  "measurement": {
+    "path": "online direct protected diagnostic; routed probes were restoration-only",
+    "warm_cold_state": "matched warmup/prime phases retained; trace measured phase only",
+    "sample_count": 264,
+    "statistics": [
+      "per-incarnation medians and nearest-rank p95 retained in analysis/protected-abba-2.json",
+      "trace summary statistics are descriptive only",
+      "No chart pack: the matched ABBA results remain performance-ineligible, so a chart would not support a qualified comparison."
+    ]
+  },
+  "gates": [
+    {
+      "name": "protected matched population",
+      "status": "passed diagnostic",
+      "evidence": "analysis/protected-abba-2.json"
+    },
+    {
+      "name": "native state roundtrip",
+      "status": "passed reduced geometry only",
+      "evidence": "analysis/state-logprob.json"
+    },
+    {
+      "name": "trace completeness",
+      "status": "passed diagnostic",
+      "evidence": "analysis/trace-paired-1/trace-paired-1-summary.json"
+    },
+    {
+      "name": "numerical qualification",
+      "status": "failed/open",
+      "reason": "no full-logit or independent teacher-forced oracle; prior exact-output gate remains unresolved"
+    },
+    {
+      "name": "performance qualification",
+      "status": "held",
+      "reason": "protected regression threshold and causal attribution remain unresolved"
+    }
+  ],
+  "headline_results": [
+    {
+      "name": "protected bracket completion",
+      "value": "264/264",
+      "condition": "24 warmups, 96 prime, 144 measured; failures=0"
+    },
+    {
+      "name": "trace coverage",
+      "value": "72/72 HTTP requests; 144 samples",
+      "condition": "four complete 30-second TP2 captures; no drops or boundary exclusions"
+    }
+  ],
+  "failures": [
+    "protected ABBA-1 interrupted before timed phases",
+    "state Window 1 native failure retained; two bounded repairs followed",
+    "initial full test stopped after 51 passes because /tmp had a .git ancestor",
+    "initial .venv Ruff invocation lacked Ruff"
+  ],
+  "limitations": [
+    "A/B graph-shape mixtures differ",
+    "no HTTP-to-slot/generation mapping",
+    "trace cannot identify a production bottleneck or causal arm effect",
+    "state oracle uses reduced geometry and is not logits or host-offload proof",
+    "no performance qualification or promotion"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Bind HTTP requests to scheduler slots/generations and admission/host-index spans separately from timing; bind a raw-logit semantic package."
+  },
+  "evidence": [
+    "report.md",
+    "analysis/protected-abba-2.json",
+    "analysis/state-logprob.json",
+    "analysis/trace-paired-1/trace-paired-1-summary.json",
+    "archives/reviews.tar.gz#review/final-trace-causal-review.md"
+  ]
+}

@@ -1,0 +1,368 @@
+{
+  "cancelled_clients": [
+    {
+      "elapsed_seconds": 1.0104918209835887,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0109464479610324,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0086383859161288,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0097565620671958,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0108044899534434,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0139033710584044,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0051585040055215,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    },
+    {
+      "elapsed_seconds": 1.0035646019969136,
+      "error": "timed out",
+      "error_type": "TimeoutError",
+      "status": null
+    }
+  ],
+  "note": "Client timeouts and subsequent admission; correlate server cancellation logs. These requests are diagnostic, not scored quality.",
+  "passed": true,
+  "recovered_requests": [
+    {
+      "elapsed_seconds": 1.0965363390278071,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "427",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond exactly OK. User says Reply with exactly OK. Need final only OK. Ensure no extra.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-23",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 27,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 84
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 1.0955875869840384,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "421",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond to user: \"Reply with exactly OK.\" Need ensure final exactly OK. No extra.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-28",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 26,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 83
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 0.9909557919017971,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "402",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need respond exactly OK. User says reply exactly OK. Need final OK only.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-29",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 21,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 78
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 1.1296342290006578,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "440",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond exactly OK. Need ensure final only OK. User: \"Reply with exactly OK.\" So final should be OK.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-26",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 31,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 88
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 1.0933210840448737,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "418",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond to user: \"Reply with exactly OK.\" Need final only OK. Ensure no extra.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-24",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 26,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 83
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 0.8971576999174431,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "377",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:25 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond exactly OK. Need final only OK.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-25",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 73
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 1.048345641931519,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "418",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond exactly OK. User says reply with exactly OK. Need comply. final only OK.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-27",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 25,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 82
+        }
+      },
+      "status": 200
+    },
+    {
+      "elapsed_seconds": 0.9203398250974715,
+      "headers": {
+        "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+        "connection": "close",
+        "content-length": "381",
+        "content-type": "application/json",
+        "date": "Tue, 20 Oct 2026 02:22:26 GMT"
+      },
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+              "content": "OK",
+              "reasoning_content": "We need to respond exactly \"OK\". Need final only OK.",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792462945,
+        "id": "chatcmpl-30",
+        "model": "qwen3.8-flash-next",
+        "object": "chat.completion",
+        "usage": {
+          "completion_tokens": 17,
+          "prompt_tokens": 57,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 74
+        }
+      },
+      "status": 200
+    }
+  ]
+}

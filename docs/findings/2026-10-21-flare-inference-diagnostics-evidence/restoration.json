@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-21-flare-inference-diagnostics",
+  "status": "verified",
+  "verified": true,
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "description": "exact retained incumbent container/image"
+  },
+  "ending_state": {
+    "captured": true,
+    "description": "same incumbent restored and primary readmitted; candidate absent"
+  },
+  "differences": [
+    "new incumbent process incarnation",
+    "authorized protected Flare authentication reference and local observer integration retained"
+  ],
+  "post_run_checks": [
+    "direct/routed preflight",
+    "20/20 fresh monitoring checks",
+    "original router/topology and six discovery hashes",
+    "accepted monitoring config hash",
+    "300W per GPU",
+    "no OOM"
+  ],
+  "outage_minutes": 72.34172201156616
+}

@@ -1,0 +1,33 @@
+{
+  "recorded_at": "2026-10-21T14:07:32.094293+00:00",
+  "scope": "Bounded quality follow-up, not performance ranking",
+  "population": {
+    "requests": 100,
+    "concurrency": 4,
+    "nominal_context": 10240,
+    "response_words": 16,
+    "max_tokens": 2048,
+    "prompt_cache_mode": "unique",
+    "request_canaries": true,
+    "controlled_output_policy": "strict",
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "workload_seed": 211016,
+    "inference_seed": null
+  },
+  "arms": [
+    {
+      "engine": "Flare",
+      "runtime": "cap16-p2048-fixed2-host32",
+      "reasoning_effort": null
+    },
+    {
+      "engine": "restored incumbent",
+      "reasoning_effort": null
+    }
+  ],
+  "selection": "Run after smaller scouts; independent100-request adherence/canary stress population. Do not pool16word with failed128word populations. Different checkpoints and default templates remain.",
+  "metrics": "Capacity CLI descriptive latency retained; no complete17family serving-comparison or causal engine speedup claimed.",
+  "cache": "New namespace, attempted cold; actual reuse governs.100unique prefixes intentionally exceeds earlier12request working set.",
+  "deadline": "Start incumbent control before15:10; restore prioritized; recordunrun explicitly."
+}

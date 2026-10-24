@@ -1,0 +1,7 @@
+{
+  "at": "2026-10-21T13:35:23.932621+00:00",
+  "remote_HEAD": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "method": "git ls-remote origin HEAD",
+  "source_clean": true,
+  "decision": "No new upstream revision to test; retained pin is current observed HEAD."
+}

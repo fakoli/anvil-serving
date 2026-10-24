@@ -1,0 +1,133 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-23-flare-state-diagnostics",
+    "capability": "Flare cache-state diagnostic",
+    "repository_revision": "47581ccac82660953a5b59cb04b2750d64edc97d",
+    "dirty_state": "private source state retained in raw provenance",
+    "started_at": "2026-10-23T05:39:53Z",
+    "completed_at": "2026-10-23T08:00:00Z",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "flare-state-diagnostics-trace-summary/v1",
+    "anvil-serving.benchmark-decision-summary/v1"
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": "No public artifact size policy was verified before finalization.",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "report.md",
+        "provenance.json"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md",
+        "plan.json",
+        "archives/harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "plan.json",
+        "progress.json",
+        "archives/harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "raw/trace-reconcile-alignment.txt",
+        "archives/formal.tar.gz",
+        "archives/state.tar.gz",
+        "archives/runtime.tar.gz",
+        "archives/source.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "archives/formal.tar.gz",
+        "archives/state.tar.gz",
+        "archives/analysis.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "raw/trace-reconcile-alignment.txt",
+        "archives/runtime.tar.gz",
+        "archives/source.tar.gz",
+        "archives/reviews.tar.gz",
+        "archives/validation.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "raw/trace-reconcile-alignment.txt",
+        "archives/state.tar.gz",
+        "archives/runtime.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "analysis/trace-paired-1/trace-paired-1-summary.json",
+        "analysis/state-logprob.json",
+        "analysis/protected-abba-2.json",
+        "archives/analysis.tar.gz",
+        "archives/reviews.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "report.md"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    }
+  ],
+  "closed_inventory": true,
+  "output": "artifact-manifest.json"
+}

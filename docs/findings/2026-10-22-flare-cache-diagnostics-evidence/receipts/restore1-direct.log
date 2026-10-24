@@ -1,0 +1,11 @@
+PRE-FLIGHT  http://127.0.0.1:39126/v1  model=glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2  thinking=default visible=256 reasoning_headroom=8192 max_tokens=8448
+------------------------------------------------------------
+[PASS] smoke (short coding)                   2.2s got="```python\nsum(xs)\n```\n\nThat's it — Python's built-" finish='stop' visible=381 reasoning_chars=1154 reasoning_tokens=286
+[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=179 reasoning_tokens=40
+[PASS] needle @ ~8192 ctx                     1.5s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=448 reasoning_tokens=111
+[PASS] shared-prefix tool batch x20           20/20 clean (sample: 2.5s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=81 reasoning_tokens=20)
+[PASS] streaming tool call                    0.5s done=True events=13 valid tool_call get_weather(city='Oakland') finish='tool_calls'
+[PASS] tool-result continuation               0.8s tool result retained finish='stop' visible=11 reasoning_chars=197 reasoning_tokens=54
+[PASS] Responses API subset                   0.3s status='completed' output='READY' reasoning_chars=146
+------------------------------------------------------------
+RESULT: ALL PASS

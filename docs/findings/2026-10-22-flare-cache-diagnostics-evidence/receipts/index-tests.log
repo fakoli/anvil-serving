@@ -1,0 +1,87 @@
+   Compiling syn v3.0.6
+   Compiling flare-helios v0.1.0 (OPERATOR_PATH_0dcd669e3b05/helios)
+   Compiling bitflags v2.13.2
+   Compiling io-uring v0.7.15
+   Compiling thiserror-impl v2.0.21
+   Compiling thiserror v2.0.21
+error[E0432]: unresolved import `crate::runtime_package`
+    --> src/offload/composite.rs:2605:13
+     |
+2605 |             runtime_package::{LoadOptions, NativeModel},
+     |             ^^^^^^^^^^^^^^^ could not find `runtime_package` in the crate root
+     |
+note: found an item that was configured out
+    --> src/lib.rs:15:9
+     |
+  14 | #[cfg(feature = "runtime-package")]
+     |       --------------------------- the item is gated behind the `runtime-package` feature
+  15 | pub mod runtime_package;
+     |         ^^^^^^^^^^^^^^^
+
+error[E0432]: unresolved import `crate::runtime_package`
+    --> src/offload/memory.rs:2138:13
+     |
+2138 |             runtime_package::{LoadOptions, NativeModel},
+     |             ^^^^^^^^^^^^^^^ could not find `runtime_package` in the crate root
+     |
+note: found an item that was configured out
+    --> src/lib.rs:15:9
+     |
+  14 | #[cfg(feature = "runtime-package")]
+     |       --------------------------- the item is gated behind the `runtime-package` feature
+  15 | pub mod runtime_package;
+     |         ^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find `runtime_package` in `crate`
+    --> src/offload/composite.rs:2617:24
+     |
+2617 |                 crate::runtime_package::test_support::authorize(Path::new(&package)),
+     |                        ^^^^^^^^^^^^^^^ could not find `runtime_package` in the crate root
+     |
+note: found an item that was configured out
+    --> src/lib.rs:15:9
+     |
+  14 | #[cfg(feature = "runtime-package")]
+     |       --------------------------- the item is gated behind the `runtime-package` feature
+  15 | pub mod runtime_package;
+     |         ^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find `runtime_package` in `crate`
+    --> src/offload/memory.rs:2148:24
+     |
+2148 |                 crate::runtime_package::test_support::authorize(std::path::Path::new(&package)),
+     |                        ^^^^^^^^^^^^^^^ could not find `runtime_package` in the crate root
+     |
+note: found an item that was configured out
+    --> src/lib.rs:15:9
+     |
+  14 | #[cfg(feature = "runtime-package")]
+     |       --------------------------- the item is gated behind the `runtime-package` feature
+  15 | pub mod runtime_package;
+     |         ^^^^^^^^^^^^^^^
+
+error[E0433]: cannot find module or crate `serde_json` in this scope
+   --> src/model/tests.rs:178:9
+    |
+178 |         serde_json::from_str(include_str!("../../tests/support/contracts/qwen38.json")).unwrap();
+    |         ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_json`
+    |
+    = help: if you wanted to use a crate named `serde_json`, use `cargo add serde_json` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `serde_json` in this scope
+    --> src/model/tests.rs:1517:9
+     |
+1517 |         serde_json::from_str(include_str!("../../tests/support/contracts/qwen38.json")).unwrap();
+     |         ^^^^^^^^^^ use of unresolved module or unlinked crate `serde_json`
+     |
+     = help: if you wanted to use a crate named `serde_json`, use `cargo add serde_json` to add it to your `Cargo.toml`
+
+error[E0425]: cannot find function `gpu_transport` in this scope
+    --> src/offload/composite.rs:2710:22
+     |
+2710 |             Box::new(gpu_transport(context, device, &geometry)),
+     |                      ^^^^^^^^^^^^^ not found in this scope
+
+Some errors have detailed explanations: E0425, E0432, E0433.
+For more information about an error, try `rustc --explain E0425`.
+error: could not compile `flare-helios` (lib test) due to 7 previous errors
