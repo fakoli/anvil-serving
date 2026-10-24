@@ -64,6 +64,16 @@ def _retained(tmp_path, source):
     return root, Store(tmp_path, source)
 
 
+def _prepared_regrade(tmp_path, monkeypatch):
+    source = {**_record("source"), "state": "completed"}
+    retained, store = _retained(tmp_path, source)
+    monkeypatch.setattr(swe_regrade, "_verify_dataset_snapshot", lambda _: None)
+    monkeypatch.setattr(swe_regrade, "_validate_assets", lambda *_: {"swe-bench": {"cache_key": "grader"}})
+    monkeypatch.setattr(swe_regrade, "_python_environment", lambda *_args, **_kwargs: (sys.executable, {}))
+    monkeypatch.setenv("ANVIL_BENCHMARK_CACHE_ROOT", str(tmp_path))
+    return swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source")), retained
+
+
 def test_prepare_regrade_rejects_other_owner_without_model_calls(tmp_path, monkeypatch):
     source = {**_record("source", "other"), "state": "completed"}
     _retained(tmp_path, source)
@@ -74,14 +84,8 @@ def test_prepare_regrade_rejects_other_owner_without_model_calls(tmp_path, monke
 
 
 def test_regrade_only_runs_regenerated_grader_and_preserves_source(tmp_path, monkeypatch):
-    source = {**_record("source"), "state": "completed"}
-    retained, store = _retained(tmp_path, source)
+    plan, retained = _prepared_regrade(tmp_path, monkeypatch)
     original = (retained / "predictions.jsonl").read_bytes()
-    monkeypatch.setattr(swe_regrade, "_verify_dataset_snapshot", lambda _: None)
-    monkeypatch.setattr(swe_regrade, "_validate_assets", lambda *_: {"swe-bench": {"cache_key": "grader"}})
-    monkeypatch.setattr(swe_regrade, "_python_environment", lambda *_args, **_kwargs: (sys.executable, {}))
-    monkeypatch.setenv("ANVIL_BENCHMARK_CACHE_ROOT", str(tmp_path))
-    plan = swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source"))
     calls = []
 
     def grader(argv, cwd, timeout, env):
@@ -96,6 +100,66 @@ def test_regrade_only_runs_regenerated_grader_and_preserves_source(tmp_path, mon
     assert result["summary"] == {"attempted": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
     assert len(calls) == 1
     assert (retained / "predictions.jsonl").read_bytes() == original
+
+
+def test_regrade_excludes_official_error_ids_from_completion(tmp_path, monkeypatch):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+
+    def grader(_argv, cwd, _timeout, _env):
+        (Path(cwd) / "fake.target.json").write_text(json.dumps({"completed_ids": [INSTANCE], "resolved_ids": [INSTANCE], "error_ids": [INSTANCE]}))
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+
+    result = swe_regrade.regrade_swe_predictions(plan, runner=grader)
+    assert result["state"] == "incomplete"
+    assert result["summary"] == {"attempted": 1, "graded": 0, "resolved": 0, "resolve_rate": None}
+
+
+@pytest.mark.parametrize("report", [
+    {"completed_ids": INSTANCE, "resolved_ids": [], "error_ids": []},
+    {"completed_ids": [], "resolved_ids": [INSTANCE], "error_ids": []},
+])
+def test_regrade_rejects_malformed_or_contradictory_report(tmp_path, monkeypatch, report):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+
+    def grader(_argv, cwd, _timeout, _env):
+        (Path(cwd) / "fake.target.json").write_text(json.dumps(report))
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+
+    with pytest.raises(BenchmarkJobError, match="(report|resolved IDs)"):
+        swe_regrade.regrade_swe_predictions(plan, runner=grader)
+
+
+def test_regrade_nonzero_grader_cannot_claim_success(tmp_path, monkeypatch):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+    result = swe_regrade.regrade_swe_predictions(
+        plan, runner=lambda *_args: SimpleNamespace(returncode=1, stdout=b"failed", stderr=b"")
+    )
+    assert result["state"] == "incomplete"
+    assert result["official_grader_complete"] is False
+    assert result["summary"] == {"attempted": 1, "graded": 0, "resolved": 0, "resolve_rate": None}
+
+
+def test_regrade_retains_typed_bounded_runner_failure(tmp_path, monkeypatch):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+
+    def overflow(*_args):
+        raise swe_regrade._ProcessOutputOverflow()
+
+    result = swe_regrade.regrade_swe_predictions(plan, runner=overflow)
+    assert result["failure"] == {"class": "infrastructure_failure", "stage": "official_grader", "code": "grader_output_overflow"}
+    assert Path(plan["paths"]["result"]).is_file()
+
+
+def test_regrade_rejects_oversized_grader_report(tmp_path, monkeypatch):
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+
+    def grader(_argv, cwd, _timeout, _env):
+        with (Path(cwd) / "fake.target.json").open("wb") as handle:
+            handle.truncate(swe_regrade.MAX_SWE_RETAINED_BYTES + 1)
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+
+    with pytest.raises(BenchmarkJobError, match="report"):
+        swe_regrade.regrade_swe_predictions(plan, runner=grader)
 
 
 def test_prepare_regrade_rejects_tampered_retained_hash(tmp_path, monkeypatch):

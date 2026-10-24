@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
+import subprocess
 import time
 from typing import Any, Mapping
 
@@ -12,13 +13,13 @@ from .artifacts import atomic_write_json, real_path
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .evidence_reader import read_referenced_job_evidence
 from .retention import SWE_CANONICAL_RETENTION_SCHEMA, read_retained_swe_artifacts
+from .retention import MAX_SWE_RETAINED_BYTES
 from .swe import (
     GRADER_REVISION,
     LIMITS,
     SOURCE_HASHES,
     SWE_DATASET,
     SWE_PLAN_SCHEMA,
-    _default_runner,
     _find_official_report,
     _read_json,
     _result_record,
@@ -29,11 +30,19 @@ from .swe import (
 )
 from .profiles import load_profile
 from .swe_images import instance_image_tag
+from ..transports import _ProcessOutputOverflow, _ProcessPipeError, _run_bounded_process
 
 
 RETAINED_SCHEMA = SWE_CANONICAL_RETENTION_SCHEMA
 REVIEW_SCHEMA = "anvil-serving.swe-regrade/v1"
+MAX_REPLAY_OUTPUT_BYTES = 1024 * 1024
 _TERMINAL = frozenset({"completed", "failed", "cancelled"})
+
+
+def _regrade_runner(argv, cwd, timeout, env):
+    return _run_bounded_process(
+        argv, timeout=timeout, max_output_bytes=MAX_REPLAY_OUTPUT_BYTES, cwd=cwd, env=env
+    )
 
 
 def _fail(code: str, message: str) -> None:
@@ -71,6 +80,28 @@ def _terminal_manifest_reference(store: Any, source: Mapping[str, Any]) -> Mappi
         if isinstance(reference, Mapping):
             return reference
     _fail("missing_swe_canonical_evidence", "source terminal evidence does not reference canonical SWE retention")
+
+
+def _official_report(path: str, selected: list[str]) -> tuple[set[str], set[str], str]:
+    report_path = Path(path)
+    if report_path.is_symlink() or not report_path.is_file() or report_path.stat().st_size > MAX_SWE_RETAINED_BYTES:
+        _fail("bad_official_grader_report", "official SWE grader report is unsafe or exceeds the retention bound")
+    report = _read_json(str(report_path), code="bad_official_grader_report")
+    if not isinstance(report, Mapping):
+        _fail("bad_official_grader_report", "official SWE grader report is invalid")
+    rows: dict[str, set[str]] = {}
+    allowed = set(selected)
+    for key in ("completed_ids", "resolved_ids", "error_ids"):
+        value = report.get(key)
+        if (not isinstance(value, list) or any(not isinstance(item, str) for item in value)
+                or len(value) != len(set(value)) or not set(value).issubset(allowed)):
+            _fail("bad_official_grader_report", "official SWE grader report IDs are invalid")
+        rows[key] = set(value)
+    if not rows["resolved_ids"].issubset(rows["completed_ids"]):
+        _fail("bad_official_grader_report", "official SWE grader resolved IDs contradict completion")
+    completed = rows["completed_ids"] - rows["error_ids"]
+    resolved = rows["resolved_ids"] & completed
+    return completed, resolved, _sha256_file(str(report_path))
 
 
 def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]:
@@ -163,7 +194,7 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
     }
 
 
-def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _default_runner) -> dict[str, Any]:
+def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_runner) -> dict[str, Any]:
     """Run the regenerated official-grader command only; source evidence remains read-only."""
     if not isinstance(plan, Mapping) or plan.get("schema") != REVIEW_SCHEMA:
         _fail("bad_swe_regrade_plan", "SWE regrade plan is invalid")
@@ -200,24 +231,38 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _default_r
     clean_env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": grader["root"]}
     try:
         process = runner(command, paths["grader_work"], plan["timeout_s"], clean_env)
-    except Exception as exc:
+    except subprocess.TimeoutExpired:
         result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
-                  "failure": {"class": type(exc).__name__, "stage": "official_grader"}, "stages": []}
+                  "failure": {"class": "timeout", "stage": "official_grader", "code": "grader_timeout"}, "stages": []}
+        atomic_write_json(str(result_path), result)
+        atomic_write_json(str(artifact_path), result)
+        return result
+    except _ProcessOutputOverflow:
+        result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
+                  "failure": {"class": "infrastructure_failure", "stage": "official_grader", "code": "grader_output_overflow"}, "stages": []}
+        atomic_write_json(str(result_path), result)
+        atomic_write_json(str(artifact_path), result)
+        return result
+    except (_ProcessPipeError, OSError) as exc:
+        result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
+                  "failure": {"class": "infrastructure_failure", "stage": "official_grader", "code": type(exc).__name__}, "stages": []}
         atomic_write_json(str(result_path), result)
         atomic_write_json(str(artifact_path), result)
         return result
     stage = _result_record(command, process, time.monotonic() - started, started_at)
     stage.update({"name": "official_grader", "status": "completed" if stage["returncode"] == 0 else "failed"})
     report_path = _find_official_report(paths["grader_work"], plan["run_id"])
-    report = _read_json(report_path, code="bad_official_grader_report") if report_path and stage["returncode"] == 0 else {}
-    completed = set(report.get("completed_ids", [])) & set(selected) if isinstance(report, Mapping) else set()
-    resolved = set(report.get("resolved_ids", [])) & completed if isinstance(report, Mapping) else set()
+    completed: set[str] = set()
+    resolved: set[str] = set()
+    report_sha256 = None
+    if report_path and stage["returncode"] == 0:
+        completed, resolved, report_sha256 = _official_report(report_path, selected)
     result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "completed" if len(completed) == len(selected) else "incomplete",
               "source_plan_sha256": plan["source_plan_sha256"], "source_predictions_sha256": plan["source_predictions_sha256"],
               "stages": [stage], "official_grader_complete": len(completed) == len(selected),
               "summary": {"attempted": len(selected), "graded": len(completed), "resolved": len(resolved),
                           "resolve_rate": len(resolved) / len(completed) if completed else None},
-              "report_sha256": _sha256_file(report_path) if report_path else None,
+              "report_sha256": report_sha256,
               "failure": None if len(completed) == len(selected) else {"class": "test_failure", "stage": "official_grader"}}
     atomic_write_json(str(result_path), result)
     atomic_write_json(str(artifact_path), result)

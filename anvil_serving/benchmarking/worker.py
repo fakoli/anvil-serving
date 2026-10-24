@@ -29,7 +29,7 @@ from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
 from .swe_logs import server_log_collector
-from .retention import retain_swe_artifacts
+from .retention import read_retained_swe_artifacts, retain_swe_artifacts
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -674,7 +674,7 @@ def _worker_group_stopped(worker_path: str, *, run_id: str, database: str, run_r
 
 
 def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
-    """Retain then remove one terminal run's disposable work after owner proof."""
+    """Remove disposable work only after worker and retained-evidence proof."""
     record = store.status(run_id)
     if record is None:
         raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
@@ -683,7 +683,7 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     spec = record["spec"]
     run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
     worker_path = os.path.join(run_path, "worker.json")
-    if record["state"] == "cancelled":
+    if record["state"] == "cancelled" and spec["suite"] == "swe":
         try:
             receipt = json.loads(Path(os.path.join(run_path, "evidence", "worker-stop-receipt.json")).read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -693,9 +693,21 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     if not _worker_group_stopped(worker_path, run_id=run_id, database=os.path.realpath(store.path), run_root=store.run_root):
         raise BenchmarkJobError("cleanup_worker_unverified", "owned benchmark worker group is not proven stopped")
     work_path = os.path.join(run_path, "work")
-    retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
-    if retention["state"] == "failed":
-        raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be retained")
+    if spec["suite"] == "swe":
+        from .swe_regrade import _terminal_manifest_reference
+        anchored = _terminal_manifest_reference(store, record)
+        try:
+            manifest = read_retained_swe_artifacts(run_path=run_path)
+            current = evidence_file_reference(os.path.join(run_path, "evidence", "swe-canonical", "manifest.json"), root=run_path)
+        except (OSError, ValueError) as exc:
+            raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be verified") from exc
+        if dict(anchored) != current:
+            raise BenchmarkJobError("swe_canonical_evidence_mismatch", "SWE canonical retention is not bound by terminal evidence")
+        retention = {"state": manifest["state"], "manifest": manifest, "manifest_reference": current, "reused": True}
+    else:
+        retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+        if retention["state"] == "failed":
+            raise BenchmarkJobError("native_artifact_retention_failed", "native partial output could not be retained")
     existed = os.path.isdir(work_path)
     if existed:
         shutil.rmtree(work_path)

@@ -276,7 +276,8 @@ Use the equivalent `agentic` or `swe` command family for the other suites.
 SWE runs preserve their exact plan, generated configuration, predictions,
 trajectories, paired image identities, and official grader output under
 `evidence/swe-canonical/`. Its manifest records relative paths, sizes, hashes,
-and missing inputs. Retention is bounded to 512 regular files and 64 MiB;
+and missing inputs. Retention is bounded to 512 regular files, 512 directories,
+32 directory levels, and 64 MiB;
 unsafe or oversized evidence leaves the work directory in place. Retained
 destinations are immutable. A missing prediction or grader report remains
 incomplete evidence even when the available files were retained successfully.
@@ -285,7 +286,8 @@ Explicit cleanup requires a terminal durable job and verified absence of its
 owned worker process group. Queued, active, and unverified jobs cannot be
 cleaned. Cancellation uses the same evidence retention after its existing
 identity-checked worker stop. Shared caches and historical results remain
-available.
+available. SWE cleanup also requires a matching canonical-manifest reference
+in terminal job evidence; missing custody evidence preserves the work directory.
 
 New SWE jobs may select `parameters.prompt_contract: "disclosed/v2"` to put
 the configured step budget, completion-token cap, and patch submission
@@ -308,7 +310,9 @@ uses the existing submission, status, cancellation, and artifact commands,
 writes a new score under the new run, and leaves the original evidence
 unchanged. The endpoint fields remain provenance in the job specification;
 regrade preflight and execution make no endpoint or agent calls and do not
-load model credentials into the grader.
+load model credentials into the grader. Grader replay caps captured output at
+1 MiB and rejects oversized or malformed reports; official grader errors never
+count as graded or resolved instances.
 
 ## What each artifact means
 

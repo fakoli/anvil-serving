@@ -1475,13 +1475,23 @@ def _verified_known_hosts_file(line: str):
                 raise _ProcessPipeError("verified known_hosts cleanup failed: %s" % exc) from None
 
 
-def _run_bounded_process(argv: Sequence[str], *, timeout: float, max_output_bytes: int):
+def _run_bounded_process(
+    argv: Sequence[str],
+    *,
+    timeout: float,
+    max_output_bytes: int,
+    cwd: str | os.PathLike[str] | None = None,
+    env: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[bytes]:
+    """Capture bounded output while retaining the caller's process group."""
     process = subprocess.Popen(
         list(argv),
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=False,
+        cwd=cwd,
+        env=env,
     )
     assert process.stdout is not None
     assert process.stderr is not None
