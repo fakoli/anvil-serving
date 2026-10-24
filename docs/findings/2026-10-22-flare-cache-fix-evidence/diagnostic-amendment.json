@@ -1,0 +1,24 @@
+{
+  "schema": "flare-cache-fix-diagnostic-amendment/v1",
+  "observed_at": "2026-10-22T22:12:20.002452+00:00",
+  "reason": "Baseline128token exact-output oracle fails on repeated fullGPUhits without hostrestore; signedpackage positive-temperature ranges make requested0 non-greedy. Rootcause unresolved.",
+  "original_gate_status": "failed; not relaxed or rewritten",
+  "scope": "After byte/lifetime safety checks, allow bounded75percent pilot and three fullmatched diagnosticpairs. This does not authorize a qualified performance recommendation or promotion.",
+  "unmodified": [
+    "candidate75 selected beforetiming",
+    "total32GiB",
+    "all frozenbodybytes",
+    "AB,BA,ABorders",
+    "allattemptdenominators",
+    "identities/containment/restoration",
+    "workmatchingrequirements",
+    "thresholds5percent/3percent"
+  ],
+  "required_reporting": [
+    "requested_vs_effective_sampling",
+    "alltoken/specworkmismatches",
+    "diagnostic/performanceeligible status",
+    "actualproofscope of everytest"
+  ],
+  "review": "review/sampling-discriminator.md"
+}

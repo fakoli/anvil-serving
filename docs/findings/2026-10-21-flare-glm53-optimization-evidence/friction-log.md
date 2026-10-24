@@ -1,0 +1,23 @@
+# Campaign friction log
+| Stage | Evidence | Disposition | Durable follow-up | Status |
+|---|---|---|---|---|
+| Preflight | base-preflight-native.json: smoke exhausted256tokens in reasoning | Restored prior8192 reasoning headroom; corrected seven checks pass | Subsequent preflight commands require8192 headroom; preserve budget-correction record | closed configuration error |
+| Capacity | base-ctx32768-c1-warm.json: one marker-at-start failure, own marker present/no foreign marker | Cell failed95/96total; three same-prompt diagnostics passed but do not erase failure | base-canary-diagnostic.json; original body absent, cause remains unknown; repeat with bounded body capture if recurring | open |
+| Cache | C1 cells show36snapshot publications/evictions per12requests, near-zero reuse | Measured host32 restores100%warm reuse across allfourcells | versioned host32 recipe + memory gates + source-backed host-cache-r2 assessment | closed mechanism; bounded quality remains |
+| Speculation | Base C4 only width1 graph available | Prepared capacity16; observed C4width2–4 | recipe-cap16-r2.toml,packageidentity,shape-deltas | closed; not speculative causal speedup without no-spec control |
+| Methodology | Natural outputs, snapshot-only collection, template initialized after first requests | Restrict claims to diagnostic scout | coverage-and-gaps.md; no full-comparison or promotion claim | disclosed limitation |
+| Upstream options | GLM packed-verification flag can be recorded without implemented graphs on export/run path | Exclude unsupported flag | source-findings.md upstream watch, no external message | deferred upstream validation gap |
+| SWE setup | Initial asset preparation reused litellm1.102.1, observer requires1.102.0 | Applied exact prior reviewed dependency-pin fix; second preparation reused correct cache | swe-harness-reused-fix.patch,19tests,independent review; no model request before fix | closed |
+| SWE plan | Native job timeout ignored by SWE planner; six-hour per-stage timeout and detached-container cleanup gap | Do not submit SWE in deadline window; selected5attempted0graded0 | .tickets/2026-10-21-swe-deadline-and-container-custody.md; independent source review | blocked harness; no model SWE score |
+| Preparation | cap16-failed-preparation-logs.txt: BindingMismatch on speculative1x4 after successful59-graph capture | Isolated forwards cache in versioned recipe; keep full bindings/guards | recipe-cap16-r2.toml,empty-volume inventory,independent review; successful41forwardwarmups+59graphs+nativepackage | closed; source cache-identity cause remains unproven |
+| Interpretation | Compile29/29 is rank-local work,not evidence of12cache hits in41loaded forwards | Corrected reviewer count inference before publication | cap16-r2-remedy-review.json; source _prepare_ranks len(work) and restored-item increments | corrected |
+
+## Counter-denominator correction
+An offline derived-analysis assertion rejected accepted_drafts/verification_drafts because the JSON denominator is width-minus-one per physical graph, while accepted_drafts sums progressing requests. No invalid derived result was published. Source metrics.rs70-82,270-306,336-370 confirmed the units. The corrected retained analysis sums matching Prometheus speculative record offered/accepted counters and checks accepted<=offered. It retains JSON graph counters separately; these are not per-request causal traces.
+
+| MTP0 | Initial C4toolbatch engine samplingerror1/TPdisagreement; retry4passed7protocol | Preserve firstcrash; no MTP0performancecontrol or causal speculation claim | cap16-mtp0-failure-assessment.json and independent review; unresolved engine watch | open |
+| Context | fixed2host32 passed15/18C1; two empty length-exhausted answers, one wrongmarker | Block fullcontextquality claim; compare settings only with exact matched fixtures | cap16-fixed2-host32-context-assessment.json | open |
+| Host diagnostic | r1 overfilled both caches; r2 strictREADYpunctuation and overlappingcounter assumption | Retain bothfailedfixtures; mandatory cachedusage,34snapshotpressure; separatelyreview actualrestore | host-cache-r2-assessment.json; source scheduler.rs GPUancestor/hostextension | measured restore, strictformatfail retained |
+| Concurrent prefill | 440–500ms decode delivery gaps during32k/101kfreshprefill; countingoracle failed | Timingdiagnostic only; prepare2048chunk comparison | prefill2048-hypothesis.json and reviewedmanagedrecipe | completed diagnostic; counting failures retained |
+
+| Final policy control | Incumbent High agentic15/18, Flare High18/18 | Preserve two final-answer failures and one protocol failure; do not equate speed with task quality | native-incumbent-high-agentic | open quality caveat |

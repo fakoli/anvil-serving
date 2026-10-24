@@ -1,0 +1,23 @@
+{
+  "note": "Public redaction changes bytes. artifact.json binds only the sanitized public stage bytes; this ledger preserves protected-original identities without publishing their contents.",
+  "original_stage_files": [
+    {
+      "bytes": 11034,
+      "path": "evidence/0-assets.json",
+      "sha256": "d786edbc4889cdbee96e91ce8e23553d204b8f5cb150cfcffb946127b25128c2"
+    },
+    {
+      "bytes": 1971,
+      "path": "evidence/0-preflight.json",
+      "sha256": "b8de2fa74e259860f999be9cb639a790ca06e1e127e4d15edf4141da5e0e8306"
+    },
+    {
+      "bytes": 664868,
+      "path": "evidence/2-swe.json",
+      "sha256": "51051dac9d8175229b995e06224093abb6cfd2b8f5f23d8638758efff5e83537"
+    }
+  ],
+  "public_artifact": "artifact.json",
+  "schema": "anvil-serving.public-redaction-provenance/v1",
+  "source": "protected native SWE r2 extraction"
+}

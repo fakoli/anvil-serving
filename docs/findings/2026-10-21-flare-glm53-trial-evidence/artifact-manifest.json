@@ -1,0 +1,512 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-21-flare-glm53-trial",
+    "capability": "text",
+    "repository_revision": "80ad7e5c5de49221ba1e75fa133ef358af3e72e3",
+    "dirty_state": "uncommitted bounded preflight sampling and recipe admission/seccomp changes; retained source hashes",
+    "started_at": "2026-10-21T08:29:22Z",
+    "completed_at": "2026-10-21T09:36:00Z",
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "ddf6d3a49f64ad396be1ccbec6690a2445f2e879615c2dd76efffe08c7e3da6c",
+          "bytes": 2057
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "10128ccbdcd6180bcdf27d19976823085543b9c99e941ca9fee918fa8c5d47e2",
+          "bytes": 1519
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/scout-plan.json",
+          "sha256": "c092f3a48905460db26b439c30ad700592092374bf1f30a0e40ced0ae3abe8b7",
+          "bytes": 3128
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/scout-plan.json",
+          "sha256": "c092f3a48905460db26b439c30ad700592092374bf1f30a0e40ced0ae3abe8b7",
+          "bytes": 3128
+        },
+        {
+          "path": "raw/scout-execution-priority.json",
+          "sha256": "a45c4e8a22405071365e7626374ac2ba7cd76952cc5865f500d2ef6088c3bc5b",
+          "bytes": 591
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "ca1e8d961a97174141129bb971a2cff980691758b00a30df0301c67f37389b56",
+          "bytes": 1329
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration/Dockerfile.preparation",
+          "sha256": "e876a1348bbfa2c2ab0c8cc66eb947f3c4ba20fa5e7343b793e4ac63f3a6d927",
+          "bytes": 1364
+        },
+        {
+          "path": "configuration/README.md",
+          "sha256": "c852b471fb1f60511699cd1790527c7fed4fd5a774710c7ac31d51f90c89c286",
+          "bytes": 1972
+        },
+        {
+          "path": "configuration/flare-config.toml",
+          "sha256": "38ceed997744d35cfdee20a277f8ebafac39cc15c8f9618212b04f77448e7fe9",
+          "bytes": 315
+        },
+        {
+          "path": "configuration/seccomp.json",
+          "sha256": "dcc4a1e40b8b5e12c59951cd82ab5e76bce12135cfbe2061a73c717b986a766b",
+          "bytes": 22434
+        },
+        {
+          "path": "configuration/serve-recipe.toml",
+          "sha256": "3585e37db7a1778c9bd9adb05784c78f159266f60f3cc641d50a70a0fbf17c4e",
+          "bytes": 2494
+        },
+        {
+          "path": "raw/benchmark-source-verification.json",
+          "sha256": "29645fed94723bd193ff62fe980a9444d82e8a95a58bf1fef2ff442dab9dc163",
+          "bytes": 216
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/benchmark-source-verification.json",
+          "sha256": "29645fed94723bd193ff62fe980a9444d82e8a95a58bf1fef2ff442dab9dc163",
+          "bytes": 216
+        },
+        {
+          "path": "raw/cache-inspection-review.json",
+          "sha256": "b3c1d7e4644ffdd56483ff8475cf9a240945d4fa02c1b698dded2fada820153f",
+          "bytes": 250
+        },
+        {
+          "path": "raw/candidate-end.json",
+          "sha256": "502dc75f4ed6dd85ecefe35661ea2fcfe9b5ed87c16a088eb17afddd36a49d2c",
+          "bytes": 81
+        },
+        {
+          "path": "raw/candidate-export-memory-pressure.json",
+          "sha256": "cb65f5af691b352831d16bc044bd1334eede9add25c6522245fccda8adb40387",
+          "bytes": 2120
+        },
+        {
+          "path": "raw/candidate-final-absence.json",
+          "sha256": "135e08a3051cb3fa77116f2b5919b3824b3fc176916374a267c22644758db83b",
+          "bytes": 718
+        },
+        {
+          "path": "raw/candidate-final-unload.json",
+          "sha256": "860352343ab32709b3f8c081571cd78ad298f9c4e19a9001fe0fb2ebe784cb1c",
+          "bytes": 658
+        },
+        {
+          "path": "raw/candidate-package-identity.json",
+          "sha256": "61425a7b57443a946c6d745ef39dde3086933bc1c23ea6e90438e1fb510f9cca",
+          "bytes": 577
+        },
+        {
+          "path": "raw/candidate-r2-logs.json",
+          "sha256": "3d3be19c9bfd1e31ac52f30927b2d5cf3abb544f317b85e14628c022d3395a2f",
+          "bytes": 4978
+        },
+        {
+          "path": "raw/candidate-r3-preparation-summary.json",
+          "sha256": "dcb30283705366d2c9e834475c7c0efc0ea16648726f914f5fad7ba3ff943a19",
+          "bytes": 575
+        },
+        {
+          "path": "raw/candidate-r4-final-metrics.json",
+          "sha256": "59888c85b8f9770bb2392369fe17a8ed90f30ed64e40a7528ba6b5e1d1909b34",
+          "bytes": 1379
+        },
+        {
+          "path": "raw/candidate-r4-preparation-logs.json",
+          "sha256": "977cd59f63d8eafcd128f7f05979ea8894f253bf37c93484870490b7639ffc63",
+          "bytes": 125361
+        },
+        {
+          "path": "raw/candidate-r4-resource-samples.jsonl",
+          "sha256": "beda4c3f3c90b45a6ead195c52bcf7247db2b6dcb521c262e4cd8f7fdf2a70c6",
+          "bytes": 82938
+        },
+        {
+          "path": "raw/candidate-runtime-samples.jsonl",
+          "sha256": "7b92511c6deb717fced66e67527d62074a91b3c098984fda327a860d79dc1380",
+          "bytes": 347317
+        },
+        {
+          "path": "raw/candidate-warm-final-logs.json",
+          "sha256": "baff260c4a521211ddc38cdb4240ed6f2c95f849447f10f3e08c8af33becbfe3",
+          "bytes": 2109
+        },
+        {
+          "path": "raw/candidate-warm-final-metrics.json",
+          "sha256": "b1ef06dc3529173dac85a1cc89f7af4188ecb9ac07c08addcce46f693954e105",
+          "bytes": 1367
+        },
+        {
+          "path": "raw/candidate-warm-load-timing.json",
+          "sha256": "d76007698436b8fe96323dc2a4fbd26b500c51637b1b9aba2b5523de8940767c",
+          "bytes": 162
+        },
+        {
+          "path": "raw/compile-worker-review.json",
+          "sha256": "fd2bd3986aab8510bdae7a937badd149bf2aa0176ad68ea8a519f7b99413671c",
+          "bytes": 332
+        },
+        {
+          "path": "raw/flare-natural-ctx10240-c1.json",
+          "sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+          "bytes": 21920
+        },
+        {
+          "path": "raw/flare-natural-ctx10240-c1.json.journal.jsonl",
+          "sha256": "2c983cd0bb95b61ec77352c23af17d4a1f2d7941d99e89328d76f26ebdd6600c",
+          "bytes": 10824
+        },
+        {
+          "path": "raw/flare-natural-ctx10240-c4.json",
+          "sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+          "bytes": 21958
+        },
+        {
+          "path": "raw/flare-natural-ctx10240-c4.json.journal.jsonl",
+          "sha256": "e0f16979312a15ca74f3eb19ce90e3330a9f5fdc66ff242df30e3e9b7360e920",
+          "bytes": 10842
+        },
+        {
+          "path": "raw/flare-natural-ctx32768-c1.json",
+          "sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+          "bytes": 21957
+        },
+        {
+          "path": "raw/flare-natural-ctx32768-c1.json.journal.jsonl",
+          "sha256": "b190c332dcd1e07c78f1a679995e1d92fc529b7a1e9273530846488f1a1a1dd8",
+          "bytes": 10839
+        },
+        {
+          "path": "raw/flare-natural-ctx32768-c4.json",
+          "sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+          "bytes": 21928
+        },
+        {
+          "path": "raw/flare-natural-ctx32768-c4.json.journal.jsonl",
+          "sha256": "93387709fe406c46bea67388cb36037f98f016226861bbd61606ab9a40ed0d81",
+          "bytes": 10842
+        },
+        {
+          "path": "raw/flare-preflight.json",
+          "sha256": "8cd9ae2951701d7b33133d6f3c34e43f3df59471c10d6f860ab9f16793dadb99",
+          "bytes": 10970
+        },
+        {
+          "path": "raw/flare-strict-ctx8192-c1.json",
+          "sha256": "62d9b6b45a5c8695659db36344314a599d6888a0f59e699bf8fad117f6b558a0",
+          "bytes": 22429
+        },
+        {
+          "path": "raw/flare-strict-ctx8192-c1.json.journal.jsonl",
+          "sha256": "87200147e36f343c40d9fe16d4d9943a611089558b5bc975e1a5d119355d8d79",
+          "bytes": 10944
+        },
+        {
+          "path": "raw/flare-strict-ctx8192-c4.json",
+          "sha256": "ddd80d2f327bd7600759e827e7f3d745bb4272a4abefae3066374402c35e94ed",
+          "bytes": 22441
+        },
+        {
+          "path": "raw/flare-strict-ctx8192-c4.json.journal.jsonl",
+          "sha256": "e1569e4b043f676ca4cbe9f09e4bc201459347ee5c8d56073a7ceb8e5062187e",
+          "bytes": 10957
+        },
+        {
+          "path": "raw/flare-warm-preflight.json",
+          "sha256": "d0c243c32ddcb3f5278ac1701560c8c2b2fd5c517d0ba45eadee1af28a8854fe",
+          "bytes": 11125
+        },
+        {
+          "path": "raw/forward-compilation-review.json",
+          "sha256": "f7f32bf903e7feb45732facbd9a61a1f9c99371b7ea0500799689b173ce32fe0",
+          "bytes": 616
+        },
+        {
+          "path": "raw/gpu-attempt-start.json",
+          "sha256": "9ed61d776ae9f316f3202282f1e22fe5de13f7d44dbf8aabc20dec589ceb15cb",
+          "bytes": 325
+        },
+        {
+          "path": "raw/incumbent-before-interruption.json",
+          "sha256": "4149b6d366347f4b9ca98c4bad363816b86688848b39653cdfd77f5af5f03686",
+          "bytes": 1820
+        },
+        {
+          "path": "raw/incumbent-capacity-c1.json",
+          "sha256": "94b9c1a9a36793a173123677c865e04c6da5e0dce0f8c17b14a6d087c59dcdd9",
+          "bytes": 22314
+        },
+        {
+          "path": "raw/incumbent-capacity-c1.json.journal.jsonl",
+          "sha256": "e6dbf3f8e1ea7b06af657c3b6c724996bedfe23bf2390d66037adbf1ec47bfbd",
+          "bytes": 10831
+        },
+        {
+          "path": "raw/incumbent-capacity-c4.json",
+          "sha256": "7129fd3c1a2fccdd1994121a722ca10b392b3471d826faf747f008f99f3df45f",
+          "bytes": 22349
+        },
+        {
+          "path": "raw/incumbent-capacity-c4.json.journal.jsonl",
+          "sha256": "5d187f2c5b102876f3e5f205cb58c587830dfeee6415104beb2f4981b04ce5dd",
+          "bytes": 10866
+        },
+        {
+          "path": "raw/incumbent-capacity-summary.json",
+          "sha256": "2f68150ab21a5617582eb54415c52e190f15c306402ab6f789f17e1e7539daba",
+          "bytes": 807
+        },
+        {
+          "path": "raw/incumbent-final-status.json",
+          "sha256": "615ee2122e79dd58abbd218af1b6ba6ef99da582b4cf474cac41ec77d706b5e8",
+          "bytes": 1911
+        },
+        {
+          "path": "raw/incumbent-natural-ctx10240-c1.json",
+          "sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+          "bytes": 21928
+        },
+        {
+          "path": "raw/incumbent-natural-ctx10240-c1.json.journal.jsonl",
+          "sha256": "9cb7770065fea06ff65e24b428652e027c3a736647fb4916cf30a9a05589c1ac",
+          "bytes": 10828
+        },
+        {
+          "path": "raw/incumbent-natural-ctx10240-c4.json",
+          "sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+          "bytes": 21969
+        },
+        {
+          "path": "raw/incumbent-natural-ctx10240-c4.json.journal.jsonl",
+          "sha256": "033614d5c82583cf37edd9d6d915d0182ef01cba4253036a3d7aa8c92543817f",
+          "bytes": 10849
+        },
+        {
+          "path": "raw/incumbent-natural-ctx32768-c1.json",
+          "sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+          "bytes": 21961
+        },
+        {
+          "path": "raw/incumbent-natural-ctx32768-c1.json.journal.jsonl",
+          "sha256": "62d97abdd06e1d3b6192cc7311c12e4ba49b55c17df90196047804876c189d2e",
+          "bytes": 10851
+        },
+        {
+          "path": "raw/incumbent-natural-ctx32768-c4.json",
+          "sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+          "bytes": 21978
+        },
+        {
+          "path": "raw/incumbent-natural-ctx32768-c4.json.journal.jsonl",
+          "sha256": "02751b35b9c1533f648d2a772bbdeefde0c87b44f03fcc57febae58ed2cc8e05",
+          "bytes": 10863
+        },
+        {
+          "path": "raw/incumbent-preflight.json",
+          "sha256": "224966984fbc28b218f41fcd6e46d3690b2f1c59cbe4315173b1c76a9db27ef3",
+          "bytes": 12479
+        },
+        {
+          "path": "raw/incumbent-runtime-samples.jsonl.gz",
+          "sha256": "13040d1e24c1806803858bcb0a474833d338279d611edbd76b1a0ef8fa75967a",
+          "bytes": 568876
+        },
+        {
+          "path": "raw/no-compile-review.json",
+          "sha256": "e8de01df1e48677a1ee524a7b960d9eb390f454de7c99911df991c718fb86a56",
+          "bytes": 857
+        },
+        {
+          "path": "raw/process-lesson.json",
+          "sha256": "9da1cec719a83fb8c6858d93cec49295e7db4baaf0e9d57d7d7f9eca7e229133",
+          "bytes": 1203
+        },
+        {
+          "path": "raw/protected-manifest-verification.json",
+          "sha256": "4f34b0c3360205bd3cd36d8dd773a7b33345016aa24256fa5d7e3610cbecb93e",
+          "bytes": 4437
+        },
+        {
+          "path": "raw/restoration-final.json",
+          "sha256": "1c09d027a65301a8f7670dc6efc51f7919a200b2b7ec7c7c360932939fcc126f",
+          "bytes": 910
+        },
+        {
+          "path": "raw/restore-final-apply.json",
+          "sha256": "3a1b0a0268491a7d2459fe242744fff171c66039ab4433c98dd09f9551cce397",
+          "bytes": 1472
+        },
+        {
+          "path": "raw/restored-incumbent-preflight.json",
+          "sha256": "77c5e84593d12bf60520fdebce30bfea72821afb282a039b80e8dc3a7027d88f",
+          "bytes": 12722
+        },
+        {
+          "path": "raw/restored-routed-preflight.json",
+          "sha256": "9f95d35f39805ada7a80b8524ccae15d42657bdf122c68ec746b27f48eac9a64",
+          "bytes": 11872
+        },
+        {
+          "path": "raw/router-restored-readmit.json",
+          "sha256": "71dbb2dbbb6243eb8a9e04de0f0dfe269f12c31b59374b6cc3528af805c15fc1",
+          "bytes": 697
+        },
+        {
+          "path": "raw/router-restored-status.json",
+          "sha256": "25849122819885a00991e63d195a2684eab7d7db5d6ef86f35f494df86161d27",
+          "bytes": 493
+        },
+        {
+          "path": "raw/scout-execution-priority.json",
+          "sha256": "a45c4e8a22405071365e7626374ac2ba7cd76952cc5865f500d2ef6088c3bc5b",
+          "bytes": 591
+        },
+        {
+          "path": "raw/scout-plan.json",
+          "sha256": "c092f3a48905460db26b439c30ad700592092374bf1f30a0e40ced0ae3abe8b7",
+          "bytes": 3128
+        },
+        {
+          "path": "raw/seccomp-review.json",
+          "sha256": "a83b1c92bfdd00bfd326161383f4c4c1ab0bdab3e6d18bb5324c98fa05761809",
+          "bytes": 419
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "4866f718a7e8971029ccc1f6a4f53557ff0e9bf5b2767a51d104e48214dc5a43",
+          "bytes": 12631
+        },
+        {
+          "path": "graphs/matrix.svg",
+          "sha256": "345bd7419d41a4fa662e33b4f61dcc6dd41c13412ee89a17a15fac97ef407117",
+          "bytes": 30410
+        },
+        {
+          "path": "graphs/graph-data.json",
+          "sha256": "b54956a7464776dc48eec320ec93688cb4463942ea59970a0ed430cc4ab9e866",
+          "bytes": 20586
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "85fdf539656cd92bead86e2a9908743aa25f5780522ef5c058f847872183197c",
+          "bytes": 2561
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "ca1e8d961a97174141129bb971a2cff980691758b00a30df0301c67f37389b56",
+          "bytes": 1329
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "d4f78b444e380daecc99cb1a55c04b353f10306a83083a6b23bd825dd7ffd692",
+          "bytes": 1129
+        },
+        {
+          "path": "raw/restoration-final.json",
+          "sha256": "1c09d027a65301a8f7670dc6efc51f7919a200b2b7ec7c7c360932939fcc126f",
+          "bytes": 910
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "53afd525bede63b8e566dd6c4fbaa6835defb8ce10c2f4310f6a8a4febcc2173",
+          "bytes": 72116
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "1daf1268219e5ce8137d6c5cb87543047284118e71047e002f4cd0b30dab9851",
+          "bytes": 657
+        }
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

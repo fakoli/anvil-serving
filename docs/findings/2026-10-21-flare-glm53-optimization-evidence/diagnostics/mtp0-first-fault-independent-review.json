@@ -1,0 +1,26 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "reviewer": "independent Sol high /root/flare_trial_review",
+  "gate_state": "conditional_scout_only",
+  "source": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "findings": [
+    {
+      "finding": "Rank0 sampler status3/error1 is first fault at lane2 first sample; TP disagreement secondary. Peers record consumption without sampling in no-MTP graphs.",
+      "references": [
+        "ignition/recipes/glm53/generation.py:11-36",
+        "ignition/recipes/glm53/bootstrap.py:394-418"
+      ]
+    },
+    {
+      "finding": "INVALID_DISTRIBUTION error1 combines nonfinite max, invalid probability mass, invalid FlashInfer sample, out-of-range token. Existing logs do not distinguish.",
+      "references": [
+        "ignition/components/sampling.py:345-400"
+      ]
+    },
+    {
+      "finding": "Three other HTTP failures followed coordinated abort; no evidence of three independent sampling faults. No OOM; no grammar supplied by failing auto-tool probe; exact retry tools4/4 and full7/7 passed."
+    }
+  ],
+  "next_gate": "Only bounded same-package seeded no-spec control after fresh cold/warm C4 tools/full7 preflight. On recurrence, split sampler error diagnostics before more HTTP repetitions. No valid no-spec performance control is claimed.",
+  "promoted": false
+}

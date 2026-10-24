@@ -1,0 +1,126 @@
+[
+  {
+    "request": {
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Return READY."
+        }
+      ],
+      "temperature": 1,
+      "top_p": 0.95,
+      "max_tokens": 1,
+      "reasoning_effort": "max",
+      "return_prompt_text": true
+    },
+    "response": {
+      "id": "chatcmpl-a300939183f5c5b7",
+      "object": "chat.completion",
+      "created": 1792594489,
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "reasoning": "The"
+          },
+          "logprobs": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "token_ids": null,
+          "routed_experts": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": "vllm-0.1.dev21830+g8244d1c44-tp2-07686532",
+      "usage": {
+        "prompt_tokens": 15,
+        "total_tokens": 16,
+        "completion_tokens": 1,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1
+        }
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "prompt_text": "[gMASK]<sop><|system|>Reasoning Effort: Max<|user|>Return READY.<|assistant|><think>",
+      "kv_transfer_params": null,
+      "ec_transfer_params": null,
+      "metrics": null
+    }
+  },
+  {
+    "request": {
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Return READY."
+        }
+      ],
+      "temperature": 1,
+      "top_p": 0.95,
+      "max_tokens": 1,
+      "reasoning_effort": "high",
+      "return_prompt_text": true
+    },
+    "response": {
+      "id": "chatcmpl-83eea681d7f18516",
+      "object": "chat.completion",
+      "created": 1792594489,
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "reasoning": "The"
+          },
+          "logprobs": null,
+          "finish_reason": "length",
+          "stop_reason": null,
+          "token_ids": null,
+          "routed_experts": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": "vllm-0.1.dev21830+g8244d1c44-tp2-07686532",
+      "usage": {
+        "prompt_tokens": 15,
+        "total_tokens": 16,
+        "completion_tokens": 1,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 1
+        }
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "prompt_text": "[gMASK]<sop><|system|>Reasoning Effort: High<|user|>Return READY.<|assistant|><think>",
+      "kv_transfer_params": null,
+      "ec_transfer_params": null,
+      "metrics": null
+    }
+  }
+]

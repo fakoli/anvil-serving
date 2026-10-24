@@ -1,0 +1,159 @@
+{
+  "schema": "flare-cache-fix-native-evidence-schemas/v1",
+  "purpose": "Public-safe format registry for selected FLARE-FIX-001 evidence; this documents retained receipt shapes and does not validate them, report metrics, or change acceptance gates.",
+  "path_policy": {
+    "source_paths": "All paths in this registry are evidence-root-relative.",
+    "public_selection": "A reviewed publication inventory selects files; this registry does not itself select or authorize publication.",
+    "redaction": "Sanitize payload text and exposed names with the reviewed publisher, retain original-to-sanitized hash provenance, and exclude credentials, private topology, private paths, addresses, and operator or container identities."
+  },
+  "families": [
+    {
+      "name": "phase-plan-and-wrapper-summary",
+      "schema_marker": null,
+      "representative_paths": [
+        "formal/r2-a/fixed-work/warmup/plan.json",
+        "formal/r2-a/fixed-work/measured/summary.json"
+      ],
+      "producer_or_consumer": [
+        "harness/run-phase.py",
+        "harness/normalize.py:phase_artifacts"
+      ],
+      "core_fields": {
+        "plan": "arm, audit, epoch_ns and monotonic_ns anchor phase intent and clocks; expected_image, runtime_pins, registry_sha256, and command references bind the managed configuration. epoch_ns and monotonic_ns are integer nanoseconds; request_deadline_epoch is Unix seconds.",
+        "summary": "ok, error, child_returncode, status_samples, audit, epoch_ns, and monotonic_ns record wrapper completion. performance_eligible is always false for these diagnostic runs."
+      },
+      "unknown_or_null": "Absent optional wrapper fields do not alone imply failure or incompleteness. Wrapper outcome is determined by explicit ok, error, child_returncode, and required receipt checks."
+    },
+    {
+      "name": "http-attempts-and-failures",
+      "schema_marker": null,
+      "representative_paths": [
+        "formal/r2-a/fixed-work/measured/http/attempts.json",
+        "formal/r2-a/fixed-work/measured/http/summary.json",
+        "formal/r2-a/fixed-work/measured/http/identity.json"
+      ],
+      "producer_or_consumer": [
+        "harness/replay.py",
+        "harness/decode.py",
+        "harness/normalize.py:phase_artifacts"
+      ],
+      "core_fields": {
+        "replay_attempt": "case_id and iteration identify an expected replay request; ok, done, message, finish_reasons, usage, output_token_ids, request_ids, body_sha256, and error retain outcome and matching inputs. start_ns and start_epoch_ns are nanoseconds; e2e, visible_ttft, reasoning_ttft, client_generated_ttft, and native_first_token_seconds are seconds when present.",
+        "decode_attempt": "Compact decode rows retain case_id, ok, body_sha256, usage, output_token_ids, decode_tokens_per_second (tokens per second), and speculative_work=null with batch_only_no_request_attribution. They omit replay iteration, start_ns, start_epoch_ns, message, finish_reasons, done, native_first_token_seconds, and request_ids. Raw response files retain the stream, finish, and timestamp inputs validated before compaction.",
+        "work_and_counters": "prompt_tokens and reasoning_tokens carry native accounting when available; speculative_work carries request work except decode, whose batch_speculative_work is in the phase summary. deltas are native before/after counter differences and retain their native units; this registry does not enumerate arbitrary counter names.",
+        "phase_summary": "expected, attempted, completed, missing, error, and performance_eligible preserve denominators and phase outcome. Decode adds batch_speculative_work and speculative_work_scope=whole_drained_batch."
+      },
+      "unknown_or_null": "A missing timing, reasoning count, metric, output, or work field is unknown rather than zero. On a successful replay attempt, omitted error means no error reported; on a successful wrapper summary, error=null has the same meaning when the explicit outcome fields pass. Absent required validity fields still fail the relevant consumer contract. Failed and missing attempts remain in denominators; HTTP success alone does not prove semantic correctness or reuse."
+    },
+    {
+      "name": "identity-and-configuration-binding",
+      "schema_marker": null,
+      "representative_paths": [
+        "formal/r2-a/fixed-work/warmup/running-proof.json",
+        "formal/r2-a/fixed-work/warmup/status.jsonl",
+        "formal/r2-a/fixed-work/warmup/http/identity.json"
+      ],
+      "producer_or_consumer": [
+        "harness/run-phase.py",
+        "harness/normalize.py:phase_artifacts",
+        "analysis/assemble-proofs.py:phase_checks"
+      ],
+      "core_fields": {
+        "running_proof": "Binds the selected managed inventory record to the phase configuration and HTTP served-model alias.",
+        "status_stream": "Ordered managed status observations retain incarnation continuity for a phase.",
+        "identity_response": "The native model-list response supplies the declared served alias used by the normalizer."
+      },
+      "unknown_or_null": "A missing, changed, or unselectable identity binding is an evidence failure. Public copies must scrub operator/container identifiers while retaining sanitized provenance."
+    },
+    {
+      "name": "monitoring-and-historical-readiness",
+      "schema_marker": "flare-cache-fix-historical-readiness/v1",
+      "representative_paths": [
+        "analysis/readiness-history/r2-a/fixed-work.json"
+      ],
+      "producer_or_consumer": [
+        "analysis/collect-retained-monitoring.py:collect_lane",
+        "analysis/assemble-proofs.py:monitoring"
+      ],
+      "core_fields": {
+        "binding": "lane, arm, repetition, generation, traffic_plan_epoch, retrieved_utc, and kind identify a read-only retrospective query at the pre-warmup point.",
+        "queries": "Each named query retains its expression, evaluation_epoch in Unix seconds, and raw Prometheus response. The approved proof consumer checks the declared up/count/minimum/age/freshness contract."
+      },
+      "unknown_or_null": "Empty, ambiguous, failed, or stale query results are retained as evidence limitations; retrospective reads do not claim original live enforcement."
+    },
+    {
+      "name": "restoration-and-window-closeout",
+      "schema_marker": "flare-cache-fix-window-closeout/v1",
+      "representative_paths": [
+        "formal/r2-a/closeout.json",
+        "analysis/readiness-history/r2-a/restoration.json"
+      ],
+      "producer_or_consumer": [
+        "analysis/collect-retained-monitoring.py:collect_restoration",
+        "analysis/assemble-proofs.py:restoration"
+      ],
+      "core_fields": {
+        "closeout": "repetition, arm, targets_requested/completed, warmups_requested/completed, diagnostic_only, performance_eligible, and promoted record bounded-window disposition. incumbent and candidate generation fields bind restoration and fresh incarnations.",
+        "restoration_readiness": "purpose=incumbent-restoration, verification_epoch, generation, and the five raw historical query responses bind readiness to the final retained monitoring observation. verification_epoch is Unix seconds."
+      },
+      "unknown_or_null": "A false or absent default restoration proof remains false even if later supplemental evidence is retained; supplemental receipts must be separately labeled and reviewed."
+    },
+    {
+      "name": "gate-proofs-and-proof-index",
+      "schema_marker": "flare-cache-fix-proof/v1 and flare-cache-fix-lane-proofs/v1",
+      "representative_paths": [
+        "formal/r2-a/fixed-work/functional.json",
+        "formal/r2-a/fixed-work/proofs.json"
+      ],
+      "producer_or_consumer": [
+        "analysis/assemble-proofs.py:assemble",
+        "harness/normalize.py:proof_gate"
+      ],
+      "core_fields": {
+        "proof": "gate, ok, checks, issues, evidence, and scoped fields record a bounded derivation. Native evidence entries retain raw absolute source paths and SHA-256 bindings; those paths can point outside this campaign root, including sibling evidence or product-source files.",
+        "index": "Native proofs maps each named gate to an absolute proof pointer and SHA-256, allowing the normalizer to reject mismatched or absent receipts. Public copies require the reviewed publisher's sanitization and original-to-sanitized provenance mapping; this registry's own evidence-relative representative paths do not describe raw proof-payload path format."
+      },
+      "unknown_or_null": "False gates, issues, and scoped limitations are retained. Functional proof scope is not an independent semantic rescore of every formal request."
+    },
+    {
+      "name": "normalized-matrix",
+      "schema_marker": "flare-cache-fix-normalized/v1",
+      "representative_paths": [
+        "analysis/normalized-matrix.json"
+      ],
+      "producer_or_consumer": [
+        "harness/normalize.py:normalize",
+        "harness/analyze.py:compare",
+        "analysis/describe.py:describe"
+      ],
+      "core_fields": {
+        "matrix": "diagnostic_only, diagnostic_amendment, runs, source_artifacts, and denominators bind all arms, lanes, attempts, source hashes, receipts, phase summaries, actual order, and normalization_issues.",
+        "denominators": "expected_requests, attempted_requests, failed_attempts, uncertain_target_slots, and attempted_count_is_lower_bound retain coverage without promoting missing evidence to success."
+      },
+      "unknown_or_null": "The frozen producer can normalize incomplete corpora and deliberately retains missing, failed, and uncertain denominators. Selecting a normalized matrix only after campaign closure is final-publication policy. Normalization issues, false receipts, and decode parser limitations remain visible rather than being silently repaired."
+    },
+    {
+      "name": "strict-and-descriptive-analysis",
+      "schema_marker": "flare-cache-fix-analysis/v1 and flare-cache-fix-descriptive/v1",
+      "representative_paths": [
+        "analysis/diagnostic-analysis.json",
+        "analysis/descriptive.json"
+      ],
+      "producer_or_consumer": [
+        "harness/analyze.py:compare",
+        "analysis/describe.py:describe"
+      ],
+      "core_fields": {
+        "strict": "promoted, recommend_candidate, performance_eligible, comparison_gates_passed, failures, and lane/repetition pair status retain the strict comparison result and full failure denominators.",
+        "descriptive": "diagnostic_only, performance_eligible, recommend_candidate, numerical_gate, p95_method, lanes, source hashes, full-population denominators, match fields, phase sums, and observed_percent_delta describe unqualified observations."
+      },
+      "unknown_or_null": "Descriptive deltas require complete identical measured populations, finite metrics, and no failed measured request; null remains null when that condition is not met. Neither output can override failed numerical, fidelity, independent-oracle, or causal gates."
+    }
+  ],
+  "oracle_and_publication_limits": [
+    "The sampled-output numerical gate is failed.",
+    "No teacher-forced or logit oracle is implemented.",
+    "Actual transfer-byte evidence is not a numerical/state-fidelity oracle.",
+    "This registry is documentation for a reviewed public inventory, not an acceptance, promotion, or confidentiality certification."
+  ]
+}

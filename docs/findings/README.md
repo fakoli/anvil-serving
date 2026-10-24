@@ -1,5 +1,9 @@
 # Findings index
 
+**2026-10-21–23 Flare engine investigation series:** [initial scout](2026-10-21-flare-glm53-trial.md), [optimization](2026-10-21-flare-glm53-optimization.md), [inference diagnostics](2026-10-21-flare-inference-diagnostics.md), [cache diagnostics](2026-10-22-flare-cache-diagnostics.md), [cache allocation](2026-10-22-flare-cache-fix.md), [state diagnostics](2026-10-23-flare-state-diagnostics.md), and [upstream refresh](2026-10-23-flare-upstream-refresh.md) retain closed diagnostic evidence and restoration. The incumbent remains selected; no promotion or upstream submission follows.
+
+**2026-10-19 Ignis 0.7.2:** [focused qualification](2026-10-19-ignis-072.md) passed bounded serving checks but failed coding qualification: one graded unresolved patch and four empty ungraded submissions. Incumbent restoration passed; no promotion.
+
 **2026-10-17 GLM NVIDIA FP4 primary promotion follow-up:** the
 [decision and evidence](2026-10-17-glm53-nvidia-fp4-promotion.md) record the
 operator's selected primary, the exact FP4 recipe, and its EXL3 r11 rollback.

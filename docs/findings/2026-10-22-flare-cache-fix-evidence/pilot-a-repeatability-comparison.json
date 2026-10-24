@@ -1,0 +1,161 @@
+[
+  {
+    "case_id": "0",
+    "samples": [
+      {
+        "phase": "pilot-a-restore-reference",
+        "equal_original": true,
+        "equal_previous_repeat": false,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 7666.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-restore-measured",
+        "equal_original": true,
+        "equal_previous_repeat": false,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 7666.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-1",
+        "equal_original": false,
+        "equal_previous_repeat": true,
+        "first_divergence_original": 14,
+        "path": {
+          "flare_prefill_tokens_total": 0.0,
+          "flare_cache_reused_tokens_total": 7675.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-2",
+        "equal_original": false,
+        "equal_previous_repeat": false,
+        "first_divergence_original": 23,
+        "path": {
+          "flare_prefill_tokens_total": 0.0,
+          "flare_cache_reused_tokens_total": 7675.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      }
+    ]
+  },
+  {
+    "case_id": "40",
+    "samples": [
+      {
+        "phase": "pilot-a-restore-reference",
+        "equal_original": true,
+        "equal_previous_repeat": false,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 7693.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-restore-measured",
+        "equal_original": false,
+        "equal_previous_repeat": true,
+        "first_divergence_original": 7,
+        "path": {
+          "flare_prefill_tokens_total": 7693.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-1",
+        "equal_original": false,
+        "equal_previous_repeat": true,
+        "first_divergence_original": 7,
+        "path": {
+          "flare_prefill_tokens_total": 7693.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-2",
+        "equal_original": false,
+        "equal_previous_repeat": false,
+        "first_divergence_original": 7,
+        "path": {
+          "flare_prefill_tokens_total": 0.0,
+          "flare_cache_reused_tokens_total": 7702.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      }
+    ]
+  },
+  {
+    "case_id": "51",
+    "samples": [
+      {
+        "phase": "pilot-a-restore-reference",
+        "equal_original": true,
+        "equal_previous_repeat": true,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 7699.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-restore-measured",
+        "equal_original": true,
+        "equal_previous_repeat": true,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 0.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 7699.0,
+          "flare_host_cache_fetched_total": 1.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-1",
+        "equal_original": true,
+        "equal_previous_repeat": true,
+        "first_divergence_original": null,
+        "path": {
+          "flare_prefill_tokens_total": 7699.0,
+          "flare_cache_reused_tokens_total": 9.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      },
+      {
+        "phase": "pilot-a-repeatability-2",
+        "equal_original": false,
+        "equal_previous_repeat": false,
+        "first_divergence_original": 7,
+        "path": {
+          "flare_prefill_tokens_total": 0.0,
+          "flare_cache_reused_tokens_total": 7708.0,
+          "flare_host_cache_reused_tokens_total": 0.0,
+          "flare_host_cache_fetched_total": 0.0
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "schema": "anvil-serving.capacity-config/v1",
+  "options": {
+    "gpu": "dual-rtx-pro-6000-blackwell-max-q",
+    "ctx-tokens": 10240,
+    "max-tokens": 2048,
+    "max-model-len": 32768,
+    "margin": 2048,
+    "temperature": 1,
+    "top-p": 0.95,
+    "reasoning-effort": "max",
+    "prompt-cache-mode": "unique",
+    "timeout": 60,
+    "clock-domain-id": "dark-native-wave-v1",
+    "base-url": "http://127.0.0.1:39126/v1",
+    "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "engine": "vllm-b12x-release-10152026",
+    "concurrency": 4,
+    "requests": 160,
+    "seed": 4642
+  }
+}

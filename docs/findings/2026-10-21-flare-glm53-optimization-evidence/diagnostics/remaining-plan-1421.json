@@ -1,0 +1,16 @@
+{
+  "recorded_at": "2026-10-21T14:21:36.404137+00:00",
+  "scope": "remaining bounded experiments; no promotion",
+  "order": [
+    "Finish High C1 context18",
+    "Approved default-Max C4 near317K diagnostic4 with420s+30s drain",
+    "Strict128-word12 defaultMax;12 High",
+    "Predeclared strict16-word100 defaultMax; High100 only if needed to assess request-policy alternative",
+    "Optional matched prefill4096 return diagnostic if time permits",
+    "Restore retained incumbent by~14:50, then matched strict128/strict16/context controls before15:10"
+  ],
+  "hard_stop_new_experiments": "2026-10-21T15:10:00Z",
+  "deadline": "2026-10-21T15:30:00Z",
+  "c4_review": "concurrent-context-independent-review.json",
+  "seed_clarification": "API seed omitted, live Flare default0; not independent random-seed replications"
+}

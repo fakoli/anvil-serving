@@ -1,5 +1,11 @@
 # GLM-5.3-Flash
 
+**2026-10-21–23 Flare engine investigations:** seven closed findings retain the
+candidate scout, tuning, cache, state, and current-upstream diagnostics. The
+result is diagnostic-only: protected and numerical gates remain incomplete or
+held, the incumbent was restored after each window, and no promotion follows.
+See [engine testing](../engine-testing.md) for the ordered reports.
+
 **Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and

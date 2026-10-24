@@ -1,0 +1,238 @@
+{
+  "passed": 15,
+  "attempted": 18,
+  "observations": [
+    {
+      "case_id": "native-needle-65536-0.100-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64251,
+      "position": 0.1,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 6970.057668047957
+    },
+    {
+      "case_id": "native-needle-65536-0.500-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64251,
+      "position": 0.5,
+      "passed": false,
+      "failure": {
+        "code": "empty_visible_answer",
+        "message": "response has no visible assistant content"
+      },
+      "finish_reason": "length",
+      "latency_ms": 47568.371409899555
+    },
+    {
+      "case_id": "native-needle-65536-0.900-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64251,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 7565.59258303605
+    },
+    {
+      "case_id": "native-order-65536-0.100-r0",
+      "case_type": "native-order",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64266,
+      "position": 0.1,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 7549.967062892392
+    },
+    {
+      "case_id": "native-order-65536-0.500-r0",
+      "case_type": "native-order",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64266,
+      "position": 0.5,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 8245.45141402632
+    },
+    {
+      "case_id": "native-order-65536-0.900-r0",
+      "case_type": "native-order",
+      "requested_tokens": 65536,
+      "prompt_tokens": 64266,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 7930.102542974055
+    },
+    {
+      "case_id": "native-needle-131072-0.100-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129909,
+      "position": 0.1,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 14411.948870983906
+    },
+    {
+      "case_id": "native-needle-131072-0.500-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129909,
+      "position": 0.5,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 14818.211650010198
+    },
+    {
+      "case_id": "native-needle-131072-0.900-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129909,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 14568.87826405
+    },
+    {
+      "case_id": "native-order-131072-0.100-r0",
+      "case_type": "native-order",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129924,
+      "position": 0.1,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 15591.021987958811
+    },
+    {
+      "case_id": "native-order-131072-0.500-r0",
+      "case_type": "native-order",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129924,
+      "position": 0.5,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 15487.095289048739
+    },
+    {
+      "case_id": "native-order-131072-0.900-r0",
+      "case_type": "native-order",
+      "requested_tokens": 131072,
+      "prompt_tokens": 129924,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 15167.617855011486
+    },
+    {
+      "case_id": "native-needle-319488-0.100-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317233,
+      "position": 0.1,
+      "passed": false,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 40348.11970998999
+    },
+    {
+      "case_id": "native-needle-319488-0.500-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317233,
+      "position": 0.5,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 37174.74839789793
+    },
+    {
+      "case_id": "native-needle-319488-0.900-r0",
+      "case_type": "native-needle",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317233,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 37262.27555098012
+    },
+    {
+      "case_id": "native-order-319488-0.100-r0",
+      "case_type": "native-order",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317248,
+      "position": 0.1,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 37186.259908019565
+    },
+    {
+      "case_id": "native-order-319488-0.500-r0",
+      "case_type": "native-order",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317248,
+      "position": 0.5,
+      "passed": false,
+      "failure": {
+        "code": "empty_visible_answer",
+        "message": "response has no visible assistant content"
+      },
+      "finish_reason": "length",
+      "latency_ms": 78486.0966890119
+    },
+    {
+      "case_id": "native-order-319488-0.900-r0",
+      "case_type": "native-order",
+      "requested_tokens": 319488,
+      "prompt_tokens": 317248,
+      "position": 0.9,
+      "passed": true,
+      "failure": null,
+      "finish_reason": "stop",
+      "latency_ms": 37729.49153394438
+    }
+  ],
+  "curve": {
+    "advertised_context": 1048576,
+    "attempted_buckets": [
+      65536,
+      131072,
+      319488
+    ],
+    "effective_context": 131072,
+    "first_material_degradation": {
+      "pass_rate": 0.6666666666666666,
+      "reasons": [
+        "pass_rate_below_floor"
+      ],
+      "relative_drop": 0.20000000000000007,
+      "requested_tokens": 319488
+    },
+    "notes": [
+      "effective_context uses attempted buckets only",
+      "missing engine telemetry is unavailable and is not inferred from latency"
+    ],
+    "schema": "anvil-serving.context-curve/v1",
+    "threshold_policy": {
+      "baseline_bucket": 65536,
+      "baseline_pass_rate": 0.8333333333333334,
+      "max_relative_drop": 0.25,
+      "pass_rate_floor": 0.75
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "type": "mock-only no network or GPU work",
+  "wrapper_sha256": "9c43743baf67655d3419c63a5251982ee509d8ffc7cae468754233a873562751",
+  "timeout_partial_retained": true,
+  "truncated_journal_tail_excluded": true,
+  "busy_then_idle_drain_verified": true,
+  "exit_code": 1,
+  "test_adaptation": "Only output root and fixture path substituted into a temporary directory; process timeout, journal recovery and drain logic executed unchanged with mocked subprocess/metrics."
+}

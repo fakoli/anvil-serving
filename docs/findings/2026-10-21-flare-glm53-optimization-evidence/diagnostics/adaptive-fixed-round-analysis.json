@@ -1,0 +1,29 @@
+{
+  "scope": "source-guided diagnostic. Acceptance percent alone is not target throughput.",
+  "cells": [
+    {
+      "cell": "cap16-host32-ctx10240-c1-warm",
+      "generated_tokens_per_verification_graph": 1.8815004262574595,
+      "offered_acceptance": 0.8436988543371522,
+      "generated_tokens": 2207,
+      "verification_graphs": 1173,
+      "warning": "request populations and natural total lengths differ; descriptive mechanism clue, not causal speedup"
+    },
+    {
+      "cell": "cap16-fixed2-host32-ctx10240-c1-warm",
+      "generated_tokens_per_verification_graph": 2.52959028831563,
+      "offered_acceptance": 0.7640364188163885,
+      "generated_tokens": 3334,
+      "verification_graphs": 1318,
+      "warning": "request populations and natural total lengths differ; descriptive mechanism clue, not causal speedup"
+    },
+    {
+      "cell": "cap16-fixed3-ctx10240-c1-cold",
+      "generated_tokens_per_verification_graph": 2.9474660074165637,
+      "offered_acceptance": 0.6489493201483313,
+      "generated_tokens": 4769,
+      "verification_graphs": 1618,
+      "warning": "request populations and natural total lengths differ; descriptive mechanism clue, not causal speedup"
+    }
+  ]
+}

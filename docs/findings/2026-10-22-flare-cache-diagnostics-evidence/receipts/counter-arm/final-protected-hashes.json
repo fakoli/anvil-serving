@@ -1,0 +1,84 @@
+{
+  "at": 1792664879.278653,
+  "ok": true,
+  "files": [
+    {
+      "path": "OPERATOR_PATH_338b8ea0b2bf/run-phase.py",
+      "expected": "90ed74294de9273aca53ecec0a7f42a7b7601151a0c1678631ff6a255425a2fa",
+      "actual": "90ed74294de9273aca53ecec0a7f42a7b7601151a0c1678631ff6a255425a2fa",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_53f9a4708ed8/cache-replay.py",
+      "expected": "158fa5dad1eb4f92c1739aed1277dba5e19d8e06501c14c4687f04e2bd731108",
+      "actual": "158fa5dad1eb4f92c1739aed1277dba5e19d8e06501c14c4687f04e2bd731108",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_1d6ce967ed58/flare-instrumented-recipe.toml",
+      "expected": "0b1e6d5d995f37c4e9fbc1c11e3fefaf4f14a083bb65206bd0ef4da909483273",
+      "actual": "0b1e6d5d995f37c4e9fbc1c11e3fefaf4f14a083bb65206bd0ef4da909483273",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_e8fe0215028e/cache-build-r3-result.json",
+      "expected": "78e0216cbba53f5759bf0e73d11d68c0162cf4403b93142e9fc0a788569c10fe",
+      "actual": "78e0216cbba53f5759bf0e73d11d68c0162cf4403b93142e9fc0a788569c10fe",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_b2002893f4f6/cache-counters.patch",
+      "expected": "c0ab38d0a643e9e979d324c925f51d603a55b0e7f4e1e87f3ab087b026240eae",
+      "actual": "c0ab38d0a643e9e979d324c925f51d603a55b0e7f4e1e87f3ab087b026240eae",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_e366ee407e65/counter-arm-plan.json",
+      "expected": "36c4c3a15dd6aabb547757b23d9fffb633270aa6d0427d791a71169c94096f25",
+      "actual": "36c4c3a15dd6aabb547757b23d9fffb633270aa6d0427d791a71169c94096f25",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_a11e61aa1b2c/corpus-c1.json",
+      "expected": "cf1bd0b4d02d49d42733e063085d51a7bea154b63eb5f54e4536a6c74036c04b",
+      "actual": "cf1bd0b4d02d49d42733e063085d51a7bea154b63eb5f54e4536a6c74036c04b",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_f0006e4d1d45/requests.py",
+      "expected": "3de134738d29210b2cf3bbedc221d11bb4ba396a7cded14ed5314e1e5590012d",
+      "actual": "3de134738d29210b2cf3bbedc221d11bb4ba396a7cded14ed5314e1e5590012d",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_9cf57ef8d6dd/recipe_secrets.py",
+      "expected": "2b6799329fc3f95f3df860ee557b9b0df6c297e46ef1ea59816f7a909367e204",
+      "actual": "2b6799329fc3f95f3df860ee557b9b0df6c297e46ef1ea59816f7a909367e204",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_72fc2a9c500f/restore-original-recipe.toml",
+      "expected": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+      "actual": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_c06ed5b080af/router.toml",
+      "expected": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+      "actual": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_645ea4fbd90f/operator-topology.toml",
+      "expected": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+      "actual": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+      "matches": true
+    },
+    {
+      "path": "OPERATOR_PATH_74a5523f4cc1/recipe-monitoring.json",
+      "expected": "7abfba1e03a4163d71b6acd243c9eb59accb5a85b3f0053d0a1c28cb3b55dbea",
+      "actual": "7abfba1e03a4163d71b6acd243c9eb59accb5a85b3f0053d0a1c28cb3b55dbea",
+      "matches": true
+    }
+  ]
+}

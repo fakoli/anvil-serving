@@ -1,0 +1,39 @@
+schema = "anvil-serving.serve-recipes/v1"
+[[recipe]]
+model = "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis"
+name = "ignis-072-flash-next-tp1-c8-131k-mtp3"
+status = "qualification-candidate"
+source = "Maintainer 0.7.2 qualification recipe; one 96 GB GPU; isolated unpromoted trial."
+family = "qwen3.8-flash-next-moe"
+[recipe.download]
+repo = "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis"
+revision = "f75e492c6d726537a4d4c85858bc91ee06a070ef"
+volume = "ignis-flash-next-f75e492c"
+cache_mount = "/models"
+require_complete_cache = false
+[recipe.hardware]
+gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q"
+arch = "sm_120"
+vram_total_gb = 96
+[recipe.serve]
+engine = "ignis-0.7.2"
+image = "ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db"
+entrypoint = ["ignis-server"]
+model_flag = "--model-artifact"
+model_path = "/models/hub/models--gpillon--Qwen3.8-Flash-Next-trellis-a25-ignis/snapshots/f75e492c6d726537a4d4c85858bc91ee06a070ef/qwen3_8_flash_next_trellis_a25-v2.ninfer"
+quantization = "Trellis mixed 2-4 bpw experts, 2.5 mean; resident experts; MTP3"
+context_tokens = 131072
+port = 30000
+health = "/ready"
+served_model_name = "qwen3.8-flash-next"
+startup_timeout_seconds = 3600
+memory_limit_mib = 53248
+memory_swap_limit_mib = 53248
+host_memory_reserve_mib = 16384
+ipc = "host"
+shm_size = "8gb"
+env = ["CUDA_DEVICE_ORDER=PCI_BUS_ID", "IGNIS_DOWNLOAD_ENABLED=false"]
+flags = ["--profile rtxpro6000", "--model-id qwen3.8-flash-next", "--download-enabled false", "--model-max-context 131072", "--vision-enabled false", "--model-idle-unload 0", "--reuse-kv-host-pool-bytes 0", "--server-bind 0.0.0.0:30000"]
+note = "Maintainer profile includes 8 lanes, MTP3, automatic n-gram sizing and native RoPE at 131072. Default loop guard retained. Host limit 52 GiB, no swap, 16 GiB reserve. Local qualification pending."
+[recipe.sources]
+official = ["https://github.com/gpillon/ignis/tree/9179781ddbd826a9876fd873199e04cb75285956", "https://github.com/gpillon/ignis/releases/tag/v0.7.2", "https://huggingface.co/gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis/tree/f75e492c6d726537a4d4c85858bc91ee06a070ef"]

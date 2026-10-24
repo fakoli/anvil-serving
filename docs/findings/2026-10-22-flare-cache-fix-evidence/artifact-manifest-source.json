@@ -1,0 +1,232 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-22-flare-cache-fix",
+    "title": "Flare 32 GiB host-cache row allocation diagnostics",
+    "decision": "no-promotion",
+    "diagnostic_only": true,
+    "performance_eligible": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "flare-cache-fix-normalized/v1",
+    "flare-cache-fix-analysis/v1",
+    "flare-cache-fix-descriptive/v1",
+    "flare-cache-fix-proof/v1",
+    "flare-cache-fix-lane-proofs/v1",
+    "flare-cache-fix-historical-readiness/v1",
+    "flare-cache-fix-window-closeout/v1",
+    "preflight/v2",
+    "recipe-container-status/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 8 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "publication/source-alias-map.json",
+        "report-evidence-map.json",
+        "report.md",
+        "provenance.json",
+        "publication-transformations.json"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "contribution/CONTRIBUTION.md",
+        "contribution/SPLIT-REVIEW.md",
+        "contribution/flare-fix-001-incremental.patch",
+        "contribution/flare-fix-001-row-share-admission.patch",
+        "contribution/flare-fix-001-transfer-audit.patch",
+        "contribution/manifest.json",
+        "harness/oracles.py",
+        "source-registry.json",
+        "raw/lifetime-and-transfer-fixtures.tar.gz",
+        "source/frozen-source-and-harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "analysis/normalized-matrix.json.gz",
+        "harness/DECODE.md",
+        "harness/NORMALIZATION.md",
+        "harness/PROOFS.md",
+        "harness/README.md",
+        "harness/RUNTIME.md",
+        "harness/oracle-fixtures.json",
+        "harness/oracles.py",
+        "harness/sse-model-identity-issue.md",
+        "source/frozen-source-and-harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "analysis/final-causal-procedure.md",
+        "diagnostic-amendment.json",
+        "geometry.json",
+        "publication/README.md",
+        "publication/inventory-selection-plan.md",
+        "publication/native-evidence-schemas.json",
+        "publication/source-alias-map.json",
+        "raw/configuration-and-operations.tar.gz",
+        "review/reviews-and-limitations.tar.gz",
+        "source/frozen-source-and-harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "implementation/source-tests.md",
+        "lifetime-test-proposal/COVERAGE.md",
+        "monitoring/capture-plan.md",
+        "raw/configuration-and-operations.tar.gz",
+        "raw/formal-r1-a.tar.gz",
+        "raw/formal-r1-b.tar.gz",
+        "raw/formal-r2-a.tar.gz",
+        "raw/formal-r2-b.tar.gz",
+        "raw/formal-r3-a.tar.gz",
+        "raw/formal-r3-b.tar.gz",
+        "raw/monitoring-and-readiness.tar.gz",
+        "raw/pilots-and-audits.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "audit-a-correctness/http/attempts.json",
+        "audit-a-correctness/summary.json",
+        "audit-a-transfer-audit.json",
+        "audit-a-transfer-logs.json",
+        "audit-b-correctness/http/attempts.json",
+        "audit-b-correctness/summary.json",
+        "audit-b-transfer-audit.json",
+        "audit-b-transfer-logs.json",
+        "lifetime-test-execution/execution.json",
+        "lifetime-test-execution/r2/execution.json",
+        "pilot-a-repeatability-comparison.json",
+        "pilot-a-restore-comparison.json",
+        "raw/failed-windows.tar.gz",
+        "raw/formal-r1-a.tar.gz",
+        "raw/formal-r1-b.tar.gz",
+        "raw/formal-r2-a.tar.gz",
+        "raw/formal-r2-b.tar.gz",
+        "raw/formal-r3-a.tar.gz",
+        "raw/formal-r3-b.tar.gz",
+        "raw/lifetime-and-transfer-fixtures.tar.gz",
+        "raw/monitoring-and-readiness.tar.gz",
+        "raw/pilots-and-audits.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "review/audit-a-gate-review.md",
+        "review/cache-counter-semantics.md",
+        "review/correctness-coverage.md",
+        "review/decode-warmup-audit-review.md",
+        "review/descriptive-analysis-review.md",
+        "review/final-causal-review.md",
+        "review/final-matrix-review.md",
+        "review/final-report-review.md",
+        "review/functional-proof-scope.md",
+        "review/lifetime-fixture-review.md",
+        "review/live-cancellation-feasibility.md",
+        "review/monitoring-collector-review.md",
+        "review/narrative-draft-review.md",
+        "review/native-evidence-registry-review.md",
+        "review/numerical-policy-addendum.md",
+        "review/preformal-gate-review.md",
+        "review/proof-assembler-review.md",
+        "review/publication-prep-review.md",
+        "review/r1-b-closeout-review.md",
+        "review/r2-a-closeout-review.md",
+        "review/r2-b-closeout-review.md",
+        "review/r3-a-closeout-review.md",
+        "review/r3-b-closeout-review.md",
+        "review/review.md",
+        "review/sampling-discriminator.json",
+        "review/sampling-discriminator.md",
+        "review/serial-runner-review.md",
+        "review/transfer-verification-feasibility.md",
+        "review/upstream-freshness.md",
+        "raw/configuration-and-operations.tar.gz",
+        "raw/failed-windows.tar.gz",
+        "raw/formal-r1-a.tar.gz",
+        "raw/formal-r1-b.tar.gz",
+        "raw/formal-r2-a.tar.gz",
+        "raw/formal-r2-b.tar.gz",
+        "raw/formal-r3-a.tar.gz",
+        "raw/formal-r3-b.tar.gz",
+        "raw/lifetime-and-transfer-fixtures.tar.gz",
+        "raw/pilots-and-audits.tar.gz",
+        "review/reviews-and-limitations.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "raw/configuration-and-operations.tar.gz",
+        "raw/failed-windows.tar.gz",
+        "raw/formal-r1-a.tar.gz",
+        "raw/formal-r1-b.tar.gz",
+        "raw/formal-r2-a.tar.gz",
+        "raw/formal-r2-b.tar.gz",
+        "raw/formal-r3-a.tar.gz",
+        "raw/formal-r3-b.tar.gz",
+        "raw/monitoring-and-readiness.tar.gz",
+        "raw/pilots-and-audits.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "analysis/README.md",
+        "analysis/cache-causal-observations.json.gz",
+        "analysis/descriptive.json.gz",
+        "analysis/diagnostic-analysis.json",
+        "analysis/final-causal-assessment.json",
+        "analysis/final-causal-assessment.md",
+        "analysis/final-causal-procedure.md",
+        "analysis/normalized-matrix.json.gz",
+        "analysis/proof-assembly-map.md",
+        "analysis/r1-b-monitoring-limitations.md",
+        "coverage-and-gaps.md",
+        "report-evidence-map.json",
+        "report.md",
+        "summary.json",
+        "review/reviews-and-limitations.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Requested public deliverable is the complete dated report and evidence bundle, not separate social or announcement copy."
+    }
+  ]
+}

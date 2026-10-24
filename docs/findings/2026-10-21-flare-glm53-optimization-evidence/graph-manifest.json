@@ -1,0 +1,854 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Flare tuned whole-recipe scout",
+  "subtitle": "Different checkpoints; variable reasoning/output; n12/cell; warm prefixes. Policy labels matter; no engine-only ranking.",
+  "output": "graphs/matrix.svg",
+  "data_output": "graphs/graph-data.json",
+  "metric_semantics": {
+    "throughput": "Variable output lengths; natural-output scout only.",
+    "tpot": "Per-request aggregate proxy, not raw token interval distribution.",
+    "prefill": "Includes scheduling/queueing and first-token work; warm prefix reuse."
+  },
+  "charts": [
+    {
+      "title": "Decode: C1 warm, n12/cell",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output: C1 warm, n12/cell",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First any output: C1 warm, n12/cell",
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Visible TTFT: C1 warm, n12/cell",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "TPOT proxy: C1 warm, n12/cell",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms/token",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End to end: C1 warm, n12/cell",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effective prefill: C1 warm, n12/cell",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "input tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c1-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c1-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c1-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decode: C4 warm, n12/cell",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output: C4 warm, n12/cell",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First any output: C4 warm, n12/cell",
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Visible TTFT: C4 warm, n12/cell",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "TPOT proxy: C4 warm, n12/cell",
+      "metric": "metrics.tpot_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms/token",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End to end: C4 warm, n12/cell",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Effective prefill: C4 warm, n12/cell",
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "x_label": "Actual mean input (approximately)",
+      "y_label": "input tokens/s",
+      "series": [
+        {
+          "label": "Incumbent FP4 / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4 / High",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/incumbent-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/incumbent-high-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / Max",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-ctx32768-c4-warm.json"
+            }
+          ]
+        },
+        {
+          "label": "Flare QAD / High (shorter reasoning)",
+          "points": [
+            {
+              "x": "7.7K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx10240-c4-warm.json"
+            },
+            {
+              "x": "22.9K",
+              "artifact": "capacity/cap16-p2048-fixed2-host32-high-ctx32768-c4-warm.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "publication-transformations/v1",
+  "date": "2026-10-24",
+  "scope": "Publication copies only. Original experiment evidence is unchanged.",
+  "transformations": [
+    "Replace private observer and machine labels and runtime hostnames with generic labels.",
+    "Normalize Python import formatting where present; no executable behavior changes.",
+    "Update public provenance hashes; retain previous bindings."
+  ],
+  "files": [
+    {
+      "path": "raw/monitoring-and-readiness.tar.gz!monitoring/live-verification.json",
+      "before_sha256": "23e692d66553bf6f20b874b3ed4e0d6e8388a48c63016460159ac83667d1d9fb",
+      "after_sha256": "cbed5313fb37026f5a4a3f9aaecb658f853248005574f09998d2460596d49b1d",
+      "before_bytes": 23438,
+      "after_bytes": 23445
+    },
+    {
+      "path": "raw/monitoring-and-readiness.tar.gz!monitoring/prometheus-targets.json",
+      "before_sha256": "0c8ab10d2bb10f575a094778b0b3f6d5a933a734375de18234ebc5ec8ef607d7",
+      "after_sha256": "06a693767820064bd22d44e6c583f392dd8fa8c3aa96e2fb8f9333467c75fcd7",
+      "before_bytes": 20766,
+      "after_bytes": 20795
+    },
+    {
+      "path": "raw/monitoring-and-readiness.tar.gz",
+      "before_sha256": "d030ebc2e6f014e0385afc1759b340552faccb73ce671da1dfc7a33eab7b7e54",
+      "after_sha256": "cd016e5d990034f9999bbb94b6b36c3273aee6fcb0e5bb614a2beb323cc07c8e",
+      "before_bytes": 22818,
+      "after_bytes": 22826
+    },
+    {
+      "path": "provenance.json",
+      "before_sha256": "aa44d3993177fa86673025e881d768ee055a7bda43351a9521154385880b1a6d",
+      "after_sha256": "eb18896a8ae92779f2eb44452471c71e618639267694289b40d536bf85f4a94c",
+      "before_bytes": 5904392,
+      "after_bytes": 5904752
+    }
+  ]
+}

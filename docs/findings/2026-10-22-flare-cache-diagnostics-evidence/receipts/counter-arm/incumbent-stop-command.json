@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "serves",
+    "down",
+    "tp2-glm53-nvidia-fp4-r2",
+    "--manifest",
+    "OPERATOR_PATH_ebdab1d7a3b2/serves.glm53-nvidia-fp4-promotion-20261017.toml",
+    "--keep-container",
+    "--confirm",
+    "--json"
+  ],
+  "at": 1792663234.1489527
+}

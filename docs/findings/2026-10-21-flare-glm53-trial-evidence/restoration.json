@@ -1,0 +1,42 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-21-flare-glm53-trial",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "raw/incumbent-before-interruption.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "raw/incumbent-final-status.json",
+      "raw/router-restored-status.json"
+    ]
+  },
+  "differences": [
+    "Candidate removed; model/package/config volumes and image intentionally retained.",
+    "No route mapping or promotion. No initial router file hash was recorded; mapping identity was verified."
+  ],
+  "post_run_checks": {
+    "container_id": true,
+    "image_digest": true,
+    "model": true,
+    "revision": true,
+    "served_identity": true,
+    "recipe_digest": true,
+    "gpu_selection": true,
+    "running": true,
+    "containment": true,
+    "no_oom": true,
+    "candidate_absent": true,
+    "protected_manifests": true,
+    "direct_preflight": true,
+    "routed_preflight": true,
+    "router_admitting": true
+  },
+  "verified": true,
+  "not_applicable_reason": null
+}

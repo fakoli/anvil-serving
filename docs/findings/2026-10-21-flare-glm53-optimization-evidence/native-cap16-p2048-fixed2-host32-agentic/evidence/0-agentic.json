@@ -1,0 +1,1489 @@
+{
+  "observations": [
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        48
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 46,
+          "finish_reason": "stop",
+          "latency_ms": 280.36015504039824,
+          "prompt_tokens": 48,
+          "reasoning_chars": 181,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "inspect -> patch -> test"
+    },
+    {
+      "answer_sha256": "67a17894fa34e8dfb34c1e414ff34a7601834e0241a3aa1f8e0d93e5d872c482",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        48
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "planning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 46,
+          "finish_reason": "stop",
+          "latency_ms": 199.31299693416804,
+          "prompt_tokens": 48,
+          "reasoning_chars": 181,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "inspect -> patch -> test"
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        31
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 47,
+          "finish_reason": "stop",
+          "latency_ms": 284.76249100640416,
+          "prompt_tokens": 31,
+          "reasoning_chars": 148,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "42"
+    },
+    {
+      "answer_sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        31
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "reasoning",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": true,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 47,
+          "finish_reason": "stop",
+          "latency_ms": 227.2347779944539,
+          "prompt_tokens": 31,
+          "reasoning_chars": 148,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "42"
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        33
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 104,
+          "finish_reason": "stop",
+          "latency_ms": 535.9493079595268,
+          "prompt_tokens": 33,
+          "reasoning_chars": 389,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "{\"file\":\"app.py\",\"line\":12,\"value\":45}"
+    },
+    {
+      "answer_sha256": "3d9ccad928f884486faa8d30961daa0e9889b58edaea1f27c495b9cb77c91afc",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        33
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "structured-edit",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 104,
+          "finish_reason": "stop",
+          "latency_ms": 476.127004949376,
+          "prompt_tokens": 33,
+          "reasoning_chars": 389,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "{\"file\":\"app.py\",\"line\":12,\"value\":45}"
+    },
+    {
+      "answer_sha256": "e1e498a50fc9f75f272c5ba26cfa405121893786bf65bca38aeb1816fc57047d",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        239,
+        336,
+        398
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-sequence",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "id": "T-17"
+          },
+          "name": "read_ticket"
+        },
+        {
+          "arguments": {
+            "path": "src/app.py"
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 85,
+          "finish_reason": "tool_calls",
+          "latency_ms": 558.2791699562222,
+          "prompt_tokens": 239,
+          "reasoning_chars": 241,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 50,
+          "finish_reason": "tool_calls",
+          "latency_ms": 284.349872963503,
+          "prompt_tokens": 336,
+          "reasoning_chars": 76,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 58,
+          "finish_reason": "stop",
+          "latency_ms": 336.6988640045747,
+          "prompt_tokens": 398,
+          "reasoning_chars": 0,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Here are the results:\n\n- **Ticket T-17** pointed to the file: `src/app.py`\n- **File read result** (`src/app.py`) returned the marker: **FILE-READY**\n\nThe exact marker from the file result is: `FILE-READY`"
+    },
+    {
+      "answer_sha256": "e1e498a50fc9f75f272c5ba26cfa405121893786bf65bca38aeb1816fc57047d",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        239,
+        336,
+        398
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "tool-sequence",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "id": "T-17"
+          },
+          "name": "read_ticket"
+        },
+        {
+          "arguments": {
+            "path": "src/app.py"
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 85,
+          "finish_reason": "tool_calls",
+          "latency_ms": 378.0995199922472,
+          "prompt_tokens": 239,
+          "reasoning_chars": 241,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 50,
+          "finish_reason": "tool_calls",
+          "latency_ms": 231.04166891425848,
+          "prompt_tokens": 336,
+          "reasoning_chars": 76,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 58,
+          "finish_reason": "stop",
+          "latency_ms": 279.81492306571454,
+          "prompt_tokens": 398,
+          "reasoning_chars": 0,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Here are the results:\n\n- **Ticket T-17** pointed to the file: `src/app.py`\n- **File read result** (`src/app.py`) returned the marker: **FILE-READY**\n\nThe exact marker from the file result is: `FILE-READY`"
+    },
+    {
+      "answer_sha256": "29de7abe412aed2964065cbab7fb0e36a37bb416d275dbc1a6c20b4560fcfdc1",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        173,
+        261
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "parallel-tools",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "path": "a.py"
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "path": "b.py"
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 52,
+          "finish_reason": "tool_calls",
+          "latency_ms": 382.9688769765198,
+          "prompt_tokens": 173,
+          "reasoning_chars": 113,
+          "tool_call_count": 2
+        },
+        {
+          "completion_tokens": 44,
+          "finish_reason": "stop",
+          "latency_ms": 299.76992995943874,
+          "prompt_tokens": 261,
+          "reasoning_chars": 37,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Both files were read independently in parallel:\n\n- **a.py** \u2192 marker: `A-OK`\n- **b.py** \u2192 marker: `B-OK`"
+    },
+    {
+      "answer_sha256": "29de7abe412aed2964065cbab7fb0e36a37bb416d275dbc1a6c20b4560fcfdc1",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        173,
+        261
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "parallel-tools",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "path": "a.py"
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "path": "b.py"
+          },
+          "name": "read_file"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 52,
+          "finish_reason": "tool_calls",
+          "latency_ms": 228.6040650215,
+          "prompt_tokens": 173,
+          "reasoning_chars": 113,
+          "tool_call_count": 2
+        },
+        {
+          "completion_tokens": 44,
+          "finish_reason": "stop",
+          "latency_ms": 205.12448204681277,
+          "prompt_tokens": 261,
+          "reasoning_chars": 37,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Both files were read independently in parallel:\n\n- **a.py** \u2192 marker: `A-OK`\n- **b.py** \u2192 marker: `B-OK`"
+    },
+    {
+      "answer_sha256": "980557612877de77d7b58301ade8e26396435975fe468c7fffcfa9b5b60b0f20",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        250,
+        349,
+        422
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "dependent-result",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "name": "Ada"
+          },
+          "name": "lookup_user"
+        },
+        {
+          "arguments": {
+            "id": "user-73",
+            "state": "active"
+          },
+          "name": "update_user"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 87,
+          "finish_reason": "tool_calls",
+          "latency_ms": 614.5080419955775,
+          "prompt_tokens": 250,
+          "reasoning_chars": 275,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 61,
+          "finish_reason": "tool_calls",
+          "latency_ms": 324.5308379409835,
+          "prompt_tokens": 349,
+          "reasoning_chars": 85,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 43,
+          "finish_reason": "stop",
+          "latency_ms": 260.62723400536925,
+          "prompt_tokens": 422,
+          "reasoning_chars": 0,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Done! I looked up user **Ada** (ID: `user-73`) and updated that exact user to active. The update result's exact status string was: **`UPDATED-73`**"
+    },
+    {
+      "answer_sha256": "980557612877de77d7b58301ade8e26396435975fe468c7fffcfa9b5b60b0f20",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        250,
+        349,
+        422
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "dependent-result",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "name": "Ada"
+          },
+          "name": "lookup_user"
+        },
+        {
+          "arguments": {
+            "id": "user-73",
+            "state": "active"
+          },
+          "name": "update_user"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 87,
+          "finish_reason": "tool_calls",
+          "latency_ms": 430.42251793667674,
+          "prompt_tokens": 250,
+          "reasoning_chars": 275,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 61,
+          "finish_reason": "tool_calls",
+          "latency_ms": 269.4899420021102,
+          "prompt_tokens": 349,
+          "reasoning_chars": 85,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 43,
+          "finish_reason": "stop",
+          "latency_ms": 205.73984400834888,
+          "prompt_tokens": 422,
+          "reasoning_chars": 0,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "Done! I looked up user **Ada** (ID: `user-73`) and updated that exact user to active. The update result's exact status string was: **`UPDATED-73`**"
+    },
+    {
+      "answer_sha256": "b9dba70da215532ff15c8768653247c945235d3820035d56e5df24c02ab6336e",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        201,
+        315,
+        403
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "tool-recovery-error",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "attempt": "1",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        },
+        {
+          "arguments": {
+            "attempt": "2",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 104,
+          "finish_reason": "tool_calls",
+          "latency_ms": 637.9366959445179,
+          "prompt_tokens": 201,
+          "reasoning_chars": 293,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 70,
+          "finish_reason": "tool_calls",
+          "latency_ms": 377.501787035726,
+          "prompt_tokens": 315,
+          "reasoning_chars": 129,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 92,
+          "finish_reason": "stop",
+          "latency_ms": 483.3663299214095,
+          "prompt_tokens": 403,
+          "reasoning_chars": 128,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "The retry succeeded. Here's the summary:\n\n- **Build ID:** B-9\n- **First attempt:** Failed with a temporary error (unusable)\n- **Retry (attempt 2):** Succeeded \u2014 status: `passed`\n- **Exact marker:** `BUILD-OK`"
+    },
+    {
+      "answer_sha256": "b9dba70da215532ff15c8768653247c945235d3820035d56e5df24c02ab6336e",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        201,
+        315,
+        403
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "tool-recovery-error",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "attempt": "1",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        },
+        {
+          "arguments": {
+            "attempt": "2",
+            "id": "B-9"
+          },
+          "name": "fetch_build"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 104,
+          "finish_reason": "tool_calls",
+          "latency_ms": 469.62339198216796,
+          "prompt_tokens": 201,
+          "reasoning_chars": 293,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 70,
+          "finish_reason": "tool_calls",
+          "latency_ms": 320.1163939666003,
+          "prompt_tokens": 315,
+          "reasoning_chars": 129,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 92,
+          "finish_reason": "stop",
+          "latency_ms": 422.7586890337989,
+          "prompt_tokens": 403,
+          "reasoning_chars": 128,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "The retry succeeded. Here's the summary:\n\n- **Build ID:** B-9\n- **First attempt:** Failed with a temporary error (unusable)\n- **Retry (attempt 2):** Succeeded \u2014 status: `passed`\n- **Exact marker:** `BUILD-OK`"
+    },
+    {
+      "answer_sha256": "8599fe03081d6ced90fe5c52f1fac920c0a1124380ba6103cd5752a243780da6",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [],
+      "history_prompt_tokens": [
+        383,
+        538,
+        603,
+        725,
+        775
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "debug-loop",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "scope": "unit"
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": "calc.py"
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "edit": "return a + b",
+            "path": "calc.py"
+          },
+          "name": "apply_edit"
+        },
+        {
+          "arguments": {
+            "scope": "unit"
+          },
+          "name": "run_tests"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 138,
+          "finish_reason": "tool_calls",
+          "latency_ms": 889.8535220650956,
+          "prompt_tokens": 383,
+          "reasoning_chars": 518,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 45,
+          "finish_reason": "tool_calls",
+          "latency_ms": 267.6542579429224,
+          "prompt_tokens": 538,
+          "reasoning_chars": 64,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 112,
+          "finish_reason": "tool_calls",
+          "latency_ms": 587.1970800217241,
+          "prompt_tokens": 603,
+          "reasoning_chars": 267,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 31,
+          "finish_reason": "tool_calls",
+          "latency_ms": 206.067712046206,
+          "prompt_tokens": 725,
+          "reasoning_chars": 25,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 120,
+          "finish_reason": "stop",
+          "latency_ms": 634.7968319896609,
+          "prompt_tokens": 775,
+          "reasoning_chars": 0,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "The tests now **pass**.\n\nSummary of what was done:\n1. **Ran unit tests** \u2014 they failed in `calc.py`.\n2. **Inspected the failing file** \u2014 it contained `return a - b`, so the function subtracted its inputs instead of summing them.\n3. **Applied the one-line fix** \u2014 replaced the line with `return a + b` so the function returns the sum of `a` and `b`.\n4. **Reran the unit tests** \u2014 result: `passed` (marker `TESTS-PASS`)."
+    },
+    {
+      "answer_sha256": "0f055a65b35d659216f165a5689f96e703e3acc8643e30d3ba6f60a1cb1a2f2c",
+      "failure": null,
+      "failure_class": "protocol_failure",
+      "full_history": [],
+      "history_prompt_tokens": [
+        383,
+        489,
+        1256,
+        1459,
+        1520
+      ],
+      "oracle_revision": "8",
+      "passed": false,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "debug-loop",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": false
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [
+        {
+          "arguments": {
+            "scope": "all"
+          },
+          "name": "run_tests"
+        },
+        {
+          "arguments": {
+            "path": "sum.py"
+          },
+          "name": "read_file"
+        },
+        {
+          "arguments": {
+            "edit": "return a + b",
+            "path": "sum.py"
+          },
+          "name": "apply_edit"
+        },
+        {
+          "arguments": {
+            "scope": "all"
+          },
+          "name": "run_tests"
+        }
+      ],
+      "turns": [
+        {
+          "completion_tokens": 93,
+          "finish_reason": "tool_calls",
+          "latency_ms": 436.28804909531027,
+          "prompt_tokens": 383,
+          "reasoning_chars": 253,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 754,
+          "finish_reason": "tool_calls",
+          "latency_ms": 4142.450705985539,
+          "prompt_tokens": 489,
+          "reasoning_chars": 3300,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 190,
+          "finish_reason": "tool_calls",
+          "latency_ms": 1028.5251329187304,
+          "prompt_tokens": 1256,
+          "reasoning_chars": 537,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 48,
+          "finish_reason": "tool_calls",
+          "latency_ms": 283.48454600200057,
+          "prompt_tokens": 1459,
+          "reasoning_chars": 111,
+          "tool_call_count": 1
+        },
+        {
+          "completion_tokens": 465,
+          "finish_reason": "stop",
+          "latency_ms": 2443.013963988051,
+          "prompt_tokens": 1520,
+          "reasoning_chars": 861,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "I completed the four tool calls exactly as instructed, one per turn and in order: **run_tests \u2192 read_file \u2192 apply_edit \u2192 run_tests**. No other tools were called and no other files were inspected.\n\n**Result of the final test run: the tests did not pass.**\n\nEvery one of the four calls \u2014 including both test runs, the file read, and the edit \u2014 returned the same error response: `{\"error\": \"unexpected deterministic tool call\"}`. This means:\n\n1. The initial test run produced no pass/fail output or failure details, so I could not identify the failing file from test output; I attempted to inspect `sum.py` as the most likely location of the sum function.\n2. The file read returned an error, so I never saw the actual source and could not confirm the buggy line.\n3. I applied the one-line fix (`return a + b` in `sum.py`) as specified, but the edit result was also an error, so it's unknown whether the change was actually written.\n4. The rerun did not return a passing test result \u2014 it returned the same error.\n\nBecause the final test run did not execute successfully, I cannot report that the tests pass. The fix is **unverified**: the environment rejected all deterministic tool calls, so neither the bug's presence, the fix's application, nor the tests' outcome could be confirmed."
+    },
+    {
+      "answer_sha256": "a1e72877adeaf6458d482d73c9450121bdf471507f9199e4b5a9af94b9f42929",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [
+        {
+          "content": "Remember private session code SESSION-8841.",
+          "role": "user"
+        },
+        {
+          "content": "Turn 0: remember neutral note 0.",
+          "role": "user"
+        },
+        {
+          "content": "noted 0",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 1: remember neutral note 1.",
+          "role": "user"
+        },
+        {
+          "content": "noted 1",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 2: remember neutral note 2.",
+          "role": "user"
+        },
+        {
+          "content": "noted 2",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 3: remember neutral note 3.",
+          "role": "user"
+        },
+        {
+          "content": "noted 3",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 4: remember neutral note 4.",
+          "role": "user"
+        },
+        {
+          "content": "noted 4",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 5: remember neutral note 5.",
+          "role": "user"
+        },
+        {
+          "content": "noted 5",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 6: remember neutral note 6.",
+          "role": "user"
+        },
+        {
+          "content": "noted 6",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 7: remember neutral note 7.",
+          "role": "user"
+        },
+        {
+          "content": "noted 7",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 8: remember neutral note 8.",
+          "role": "user"
+        },
+        {
+          "content": "noted 8",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 9: remember neutral note 9.",
+          "role": "user"
+        },
+        {
+          "content": "noted 9",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 10: remember neutral note 10.",
+          "role": "user"
+        },
+        {
+          "content": "noted 10",
+          "role": "assistant"
+        },
+        {
+          "content": "Return only the private session code.",
+          "role": "user"
+        }
+      ],
+      "history_prompt_tokens": [
+        228
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 0,
+      "scenario_id": "context-recovery",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 289,
+          "finish_reason": "stop",
+          "latency_ms": 2367.3888739431277,
+          "prompt_tokens": 228,
+          "reasoning_chars": 1386,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "SESSION-8841"
+    },
+    {
+      "answer_sha256": "a1e72877adeaf6458d482d73c9450121bdf471507f9199e4b5a9af94b9f42929",
+      "failure": null,
+      "failure_class": null,
+      "full_history": [
+        {
+          "content": "Remember private session code SESSION-8841.",
+          "role": "user"
+        },
+        {
+          "content": "Turn 0: remember neutral note 0.",
+          "role": "user"
+        },
+        {
+          "content": "noted 0",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 1: remember neutral note 1.",
+          "role": "user"
+        },
+        {
+          "content": "noted 1",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 2: remember neutral note 2.",
+          "role": "user"
+        },
+        {
+          "content": "noted 2",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 3: remember neutral note 3.",
+          "role": "user"
+        },
+        {
+          "content": "noted 3",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 4: remember neutral note 4.",
+          "role": "user"
+        },
+        {
+          "content": "noted 4",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 5: remember neutral note 5.",
+          "role": "user"
+        },
+        {
+          "content": "noted 5",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 6: remember neutral note 6.",
+          "role": "user"
+        },
+        {
+          "content": "noted 6",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 7: remember neutral note 7.",
+          "role": "user"
+        },
+        {
+          "content": "noted 7",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 8: remember neutral note 8.",
+          "role": "user"
+        },
+        {
+          "content": "noted 8",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 9: remember neutral note 9.",
+          "role": "user"
+        },
+        {
+          "content": "noted 9",
+          "role": "assistant"
+        },
+        {
+          "content": "Turn 10: remember neutral note 10.",
+          "role": "user"
+        },
+        {
+          "content": "noted 10",
+          "role": "assistant"
+        },
+        {
+          "content": "Return only the private session code.",
+          "role": "user"
+        }
+      ],
+      "history_prompt_tokens": [
+        228
+      ],
+      "oracle_revision": "8",
+      "passed": true,
+      "reasoning_present": true,
+      "repetition": 1,
+      "scenario_id": "context-recovery",
+      "schema": "anvil-serving.agentic-observation/v1",
+      "stages": {
+        "final_answer": {
+          "passed": true
+        },
+        "history": {
+          "passed": true
+        },
+        "protocol": {
+          "passed": true
+        },
+        "reasoning": {
+          "applicable": false,
+          "passed": true
+        },
+        "recovery": {
+          "passed": true
+        },
+        "result_incorporation": {
+          "passed": true
+        }
+      },
+      "tool_calls": [],
+      "turns": [
+        {
+          "completion_tokens": 119,
+          "finish_reason": "stop",
+          "latency_ms": 615.138522000052,
+          "prompt_tokens": 228,
+          "reasoning_chars": 523,
+          "tool_call_count": 0
+        }
+      ],
+      "visible_answer": "SESSION-8841"
+    }
+  ],
+  "passed": true,
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_ids": [
+    "chatcmpl-1-125",
+    "chatcmpl-1-126",
+    "chatcmpl-1-127",
+    "chatcmpl-1-128",
+    "chatcmpl-1-129",
+    "chatcmpl-1-130",
+    "chatcmpl-1-131",
+    "chatcmpl-1-132",
+    "chatcmpl-1-133",
+    "chatcmpl-1-134",
+    "chatcmpl-1-135",
+    "chatcmpl-1-136",
+    "chatcmpl-1-137",
+    "chatcmpl-1-138",
+    "chatcmpl-1-139",
+    "chatcmpl-1-140",
+    "chatcmpl-1-141",
+    "chatcmpl-1-142",
+    "chatcmpl-1-143",
+    "chatcmpl-1-144",
+    "chatcmpl-1-145",
+    "chatcmpl-1-146",
+    "chatcmpl-1-147",
+    "chatcmpl-1-148",
+    "chatcmpl-1-149",
+    "chatcmpl-1-150",
+    "chatcmpl-1-151",
+    "chatcmpl-1-152",
+    "chatcmpl-1-153",
+    "chatcmpl-1-154",
+    "chatcmpl-1-155",
+    "chatcmpl-1-156",
+    "chatcmpl-1-157",
+    "chatcmpl-1-158",
+    "chatcmpl-1-159",
+    "chatcmpl-1-160",
+    "chatcmpl-1-161",
+    "chatcmpl-1-162",
+    "chatcmpl-1-163",
+    "chatcmpl-1-164"
+  ],
+  "schema": "anvil-serving.agentic-suite-run/v1",
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 0.9444444444444444,
+    "passed": 17,
+    "required_pass_rate": 0.75
+  }
+}

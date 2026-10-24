@@ -1,0 +1,117 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-22-flare-cache-diagnostics",
+  "sources": [
+    {
+      "id": "source-1",
+      "url": "https://docs.vllm.ai/en/latest/design/prefix_caching/",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-2",
+      "url": "https://docs.vllm.ai/en/latest/design/hybrid_kv_cache_manager/",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-3",
+      "url": "https://github.com/vllm-project/vllm/blob/5957bbf125b1f6bed0dcbedba7737b27cd068f8d/vllm/v1/core/single_type_kv_cache_manager.py",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-4",
+      "url": "https://docs.sglang.io/docs/advanced_features/hicache_best_practices",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-5",
+      "url": "https://docs.sglang.io/docs/advanced_features/hicache_design",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-6",
+      "url": "https://github.com/sgl-project/sglang/blob/d0a75654368a470d8484e3ea45b06e500fee57af/python/sglang/srt/mem_cache/unified_cache/components/mamba.py",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-7",
+      "url": "https://arxiv.org/abs/2411.19379",
+      "published_or_observed": "2026-10-22 observed; historical paper dates in research plan",
+      "observed_at": "2026-10-22",
+      "age_class": "historical mechanism",
+      "evidence_type": "primary research paper",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-8",
+      "url": "https://arxiv.org/abs/2309.06180",
+      "published_or_observed": "2026-10-22 observed; historical paper dates in research plan",
+      "observed_at": "2026-10-22",
+      "age_class": "historical mechanism",
+      "evidence_type": "primary research paper",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-9",
+      "url": "https://arxiv.org/abs/2312.07104",
+      "published_or_observed": "2026-10-22 observed; historical paper dates in research plan",
+      "observed_at": "2026-10-22",
+      "age_class": "historical mechanism",
+      "evidence_type": "primary research paper",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-10",
+      "url": "https://arxiv.org/abs/2403.02310",
+      "published_or_observed": "2026-10-22 observed; historical paper dates in research plan",
+      "observed_at": "2026-10-22",
+      "age_class": "historical mechanism",
+      "evidence_type": "primary research paper",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    },
+    {
+      "id": "source-11",
+      "url": "https://github.com/NVIDIA/flare-local-inference",
+      "published_or_observed": "2026-10-22 observed",
+      "observed_at": "2026-10-22",
+      "age_class": "current documentation or pinned source",
+      "evidence_type": "official documentation or source",
+      "hardware_runtime_relevance": "Mechanism prior only; no imported local speedup. GLM is not assumed to be Mamba.",
+      "decision_impact": "Separate state rows/pages and restore eligibility; test order and instrument before allocator or kernel changes."
+    }
+  ],
+  "exact_pins": "research/upstream-pins.json.gz"
+}

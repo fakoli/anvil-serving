@@ -1,0 +1,649 @@
+{
+  "schema": "flare-cache-fix-analysis/v1",
+  "promoted": false,
+  "recommend_candidate": false,
+  "lanes": {
+    "original-reverse": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "original-forward": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "small12": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "fixed-work": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 104,
+            "attempted": 104,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "pageheavy": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 24,
+            "attempted": 24,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "cold": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 12,
+            "attempted": 12,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "decode-c1": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r1-a/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r1-b/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r2-a/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r2-b/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r3-a/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r3-b/decode-c1/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 1,
+            "attempted": 1,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "decode-c4": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r1-a/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r1-b/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false",
+          "missing/unmatched whole-batch speculative work",
+          "missing/unmatched prompt, output or speculative work"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r2-a/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r2-b/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false",
+          "missing/unmatched whole-batch speculative work",
+          "missing/unmatched prompt, output or speculative work"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: formal/r3-a/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "A: acceptance receipt missing or false",
+          "B: formal/r3-b/decode-c4/measured/http/batch-before.prom: invalid request index",
+          "B: acceptance receipt missing or false",
+          "missing/unmatched whole-batch speculative work",
+          "missing/unmatched prompt, output or speculative work"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 4,
+            "attempted": 4,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ],
+    "small12-original": [
+      {
+        "repetition": 1,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 2,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      },
+      {
+        "repetition": 3,
+        "status": "incomplete",
+        "issues": [
+          "A: acceptance receipt missing or false",
+          "B: acceptance receipt missing or false"
+        ],
+        "denominators": {
+          "A": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          },
+          "B": {
+            "expected": 36,
+            "attempted": 36,
+            "failed": 0,
+            "missing": 0
+          }
+        }
+      }
+    ]
+  },
+  "failures": [],
+  "unresolved_prospective_blockers": [
+    "exact128numericalgatefailed; remainunqualified"
+  ],
+  "comparison_gates_passed": false,
+  "diagnostic_only": true,
+  "diagnostic_amendment": {
+    "path": "OPERATOR_PATH_ea2fb369a27f/diagnostic-amendment.json",
+    "sha256": "b6be295ebe5e6e41de64ffa43d65990866479dbcaf2a1cf0183b6068f8e0c68a"
+  },
+  "performance_eligible": false,
+  "input_sha256": "5d47ecba13a6b7cc089ebe7fcb07018bcf94cc872e38190c30d1896bb6209143"
+}

@@ -1,0 +1,7 @@
+{
+  "at": 1792663221.8374703,
+  "stop_experiment_seconds": 4200,
+  "restore_deadline_seconds": 5400,
+  "previous_window_restored": true,
+  "retained_incumbent": "container-17"
+}

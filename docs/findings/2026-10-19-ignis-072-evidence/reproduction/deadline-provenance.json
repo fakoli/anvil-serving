@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.deadline-probe-provenance/v1",
+  "protected_source_runner_sha256": "9abafd4bcc70a037a155d7cd2a66e70a406b04da966af6e9a86a29cf93443eaa",
+  "public_runner": "reproduction/deadline_probe.py",
+  "public_runner_sha256": "0d877c50e9176b74dc351b800fd20656b278f39531fdafc91a2154911d078af1",
+  "scope": "The public runner is a portable reconstruction with offline malformed-response coverage. It does not claim byte identity with the protected live diagnostic runner or reproduce its managed lifecycle.",
+  "protected_source_recipe_sha256": "bee4532ca7b7d6591b5a078668829c653fbe82679773a6557f1ed3ffa0fef956",
+  "public_recipe": "reproduction/deadline-probe.toml",
+  "public_recipe_sha256": "01b8cfcf6b5bbcffa6cf6bedf844882241cf39c9fb0d1ed7d2909967fbf96dbf"
+}

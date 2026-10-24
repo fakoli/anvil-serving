@@ -1,0 +1,100 @@
+{
+  "active_assignments": [],
+  "campaign_id": "2026-10-19-ignis-072",
+  "completed_cells": [
+    "C1 native preflight 5/5 checks",
+    "C8 explicit shared-prefix tool batch 8/8",
+    "long-context r2 two observed probes",
+    "SWE r2 attempted 5; one official grade unresolved; four empty ungraded LimitsExceeded submissions",
+    "2-second deadline nonstream/stream partial-reply plus same-lane recovery"
+  ],
+  "current_stage": "closed",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "module_source": "anvil_serving/cli.py",
+    "repository_revision": "803e44e2809fa0f9ced0480083008e89a79838d7",
+    "verified": true,
+    "version": null
+  },
+  "next_actions": [],
+  "promotion_authorized": false,
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "stages": [
+    {
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": [],
+      "id": "research",
+      "status": "complete"
+    },
+    {
+      "evidence": [
+        "configuration/effective-config.json",
+        "identity/model-hashes.json"
+      ],
+      "failures": [],
+      "id": "feasibility",
+      "status": "complete"
+    },
+    {
+      "evidence": [
+        "raw/preflight-c1.json",
+        "raw/preflight-c8.json",
+        "raw/preflight-long-context.json",
+        "raw/preflight-long-context-r2.json"
+      ],
+      "failures": [
+        "The original long-context attempt is retained as failed evidence; r2 passed its two observed probes."
+      ],
+      "id": "scout",
+      "status": "complete"
+    },
+    {
+      "evidence": [],
+      "failures": [
+        "No matched controlled-output performance comparison is retained."
+      ],
+      "id": "finalist",
+      "status": "not-run"
+    },
+    {
+      "evidence": [
+        "raw/quality.json",
+        "raw/swe-stage-initial.json",
+        "raw/swe-dependency-diagnosis.json",
+        "raw/swe-r2/artifact.json",
+        "raw/swe-quality-review.json"
+      ],
+      "failures": [
+        "Initial SWE attempt made zero model requests because the harness client dependency contract was not pinned. Corrected run attempted five cases: Django is officially unresolved; four 60-step LimitsExceeded cases have empty ungraded submissions."
+      ],
+      "id": "quality",
+      "status": "complete"
+    },
+    {
+      "evidence": [
+        "raw/restoration-verification.json",
+        "raw/restore-direct-preflight.json",
+        "raw/restore-routed-preflight.json"
+      ],
+      "failures": [],
+      "id": "restoration",
+      "status": "complete"
+    },
+    {
+      "evidence": [
+        "SANITIZATION.md",
+        "artifact-manifest.json",
+        "raw/deadline-contract.json",
+        "raw/deadline-correlation.json",
+        "raw/protected-original-and-public-copy-hashes.json"
+      ],
+      "failures": [],
+      "id": "publication",
+      "status": "complete"
+    }
+  ],
+  "status": "complete",
+  "updated_at": "2026-10-20T03:32:40.511841+00:00"
+}

@@ -1,0 +1,66 @@
+{
+  "source_commit": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "candidate_frozen": false,
+  "package_snapshot": "d5aec1543dc32413175462d17d374e54d27def24129f878045358c4db128c357",
+  "package_metadata_sha256": "23e72fed4a157ee6e5cbe712dc829edb634e625929999d9f710eef7c213724c9",
+  "metadata_signatures_reverified": false,
+  "geometry_validation": "bounded protobuf metadata reconstruction using checked-in schema and source Layout arithmetic; startup counts corroborated; no CUDA loading",
+  "B_total": 34359738368,
+  "B_input": 0,
+  "B_checkpoint": 34359738368,
+  "row_record_bytes": 162930688,
+  "page_record_bytes": 3538944,
+  "page_tokens": 512,
+  "per_rank": {
+    "row_unit_bytes": 81464576,
+    "row_padded_bytes": 81465344,
+    "latent_planes": 12,
+    "latent_unit_bytes": 135168,
+    "latent_padded_bytes": 135168,
+    "index_planes": 12,
+    "index_unit_bytes": 8448,
+    "index_padded_bytes": 12288,
+    "page_record_bytes": 1769472
+  },
+  "projections": [
+    {
+      "row_percent": 25,
+      "rows": 52,
+      "pages": 7314,
+      "allocated_bytes": 34356232192
+    },
+    {
+      "row_percent": 50,
+      "rows": 105,
+      "pages": 4874,
+      "allocated_bytes": 34356535296
+    },
+    {
+      "row_percent": 75,
+      "rows": 158,
+      "pages": 2434,
+      "allocated_bytes": 34356838400
+    }
+  ],
+  "prime_publications": 157,
+  "prime_transferred_page_units": 781,
+  "two_wave_row_upper_bound": 209,
+  "two_wave_caveat": "209 is a conservative bound including up to 52 new replay terminal endpoints, not a measured exact unique-key count. Maximum rows preserving 128 pages is208, so full retention cannot be guaranteed at32GiB. Protected tokenized fixtures and exact endpoint-key graph remain unresolved.",
+  "source_refs": [
+    "helios/src/offload/geometry.rs::Layout::new",
+    "helios/src/offload/mod.rs::input_staging_bytes,input_memory_bytes",
+    "helios/src/runtime_package/memory.rs::cache_geometry",
+    "OPERATOR_PATH_5ed0eed7bb87/results.json",
+    "OPERATOR_PATH_080f93113845/051-after.prom",
+    "OPERATOR_PATH_2c93b60ffacc/d-final-logs.json"
+  ],
+  "allocation_accounting_correction": {
+    "observed_at": "2026-10-22T21:51:47.414645+00:00",
+    "baseline_startup_mapping_bytes": 34359738368,
+    "baseline_logical_record_bytes": 34356232192,
+    "mapping_padding_bytes": 3506176,
+    "reason": "SlabPool::sized_by_rank uses CUDA map_device_host_parts; physical mappings round to allocation granularity. Earlier projected allocated_bytes means logical row/page record bytes, not physical mapping.",
+    "evidence": "pilot-a-startup-logs.json",
+    "candidate_physical_mapping": "pending startup verification"
+  }
+}

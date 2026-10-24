@@ -1,0 +1,125 @@
+[
+  {
+    "attempt": 0,
+    "index": 5,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.05321615398861468,
+      "ttft": 0.7807833020342514,
+      "e2e": 1.1496547260321677,
+      "out_toks": 196,
+      "output_token_source": "usage",
+      "content_chunks": 62,
+      "reasoning_chunks": 132,
+      "visible_content": "ANVIL_REQ_210321_00005 The input is a benchmark scaffold of hundreds of repetitive Python stubs (helper_5 through helper_1236), each simply returning `compute(i)` for an incrementing integer argument, marked with \"routine specialist context\" comments and no actual implementation logic.",
+      "visible_content_captured_chars": 286,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22924,
+        "completion_tokens": 196,
+        "total_tokens": 23120,
+        "prompt_tokens_details": {
+          "cached_tokens": 22924
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00005",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  },
+  {
+    "attempt": 1,
+    "index": 7,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.031629889039322734,
+      "ttft": 1.1716878169681877,
+      "e2e": 1.605349631048739,
+      "out_toks": 282,
+      "output_token_source": "usage",
+      "content_chunks": 76,
+      "reasoning_chunks": 204,
+      "visible_content": "ANVIL_REQ_210321_00007 A Python benchmark script defining an unbroken chain of boilerplate helpers (helper_7 through ~helper_1237), each of which simply returns compute(n) for sequentially increasing n (0\u20131230), with the final definition (helper_1238) truncated mid-declaration and all lines annotated \"routine specialist context.\"",
+      "visible_content_captured_chars": 331,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22923,
+        "completion_tokens": 282,
+        "total_tokens": 23205,
+        "prompt_tokens_details": {
+          "cached_tokens": 22923
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00007",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  },
+  {
+    "attempt": 2,
+    "index": 5,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.03174883802421391,
+      "ttft": 0.8223720160312951,
+      "e2e": 1.2038978470955044,
+      "out_toks": 208,
+      "output_token_source": "usage",
+      "content_chunks": 68,
+      "reasoning_chunks": 138,
+      "visible_content": "ANVIL_REQ_210321_00005 A repetitive Python script defining over 1,200 near-identical helper functions (helper_5 through helper_1236, truncated mid-definition), each simply calling compute(n) with an incrementing argument from 0 to 1231 and carrying the comment \"routine specialist context.\"",
+      "visible_content_captured_chars": 290,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22924,
+        "completion_tokens": 208,
+        "total_tokens": 23132,
+        "prompt_tokens_details": {
+          "cached_tokens": 22924
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00005",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  }
+]

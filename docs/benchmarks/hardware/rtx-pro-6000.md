@@ -1,5 +1,10 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-21–23 Flare engine investigations:** the dual-card TP2 reports are
+bounded diagnostic evidence, not a hardware ranking or a promotion. The
+[engine-testing index](../engine-testing.md) links every retained finding and
+its restoration boundary.
+
 **Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
@@ -601,3 +606,7 @@ finding and a stable [model dossier](../models/index.md).
 ## 2026-10-16 measured dual-GPU baseline
 
 The dated GLM baseline used a dual-GPU resident serve with shared host/router traffic; it was not an isolated hardware benchmark. See [the finding](../../findings/2026-10-16-glm-natural-baseline.md).
+
+## 2026-10-19 Ignis 0.7.2
+
+Measured on one RTX PRO6000 Blackwell Max-Q: bounded C1 and short C8 tool checks passed, but the five-task coding run remained incomplete and unsuccessful. The candidate was removed and the incumbent restored. This is not a hardware capacity or performance comparison. [Finding](../../findings/2026-10-19-ignis-072.md).

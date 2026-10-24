@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "preflight",
+    "--base-url",
+    "http://127.0.0.1:8000/v1",
+    "--model",
+    "llm.primary",
+    "--api-key-env",
+    "ANVIL_ROUTER_TOKEN",
+    "--checks",
+    "smoke,json,needle,tools,streaming-tools,tool-result,responses",
+    "--needle-ctx",
+    "8192",
+    "--tool-batch",
+    "20",
+    "--visible-answer-tokens",
+    "256",
+    "--reasoning-headroom-tokens",
+    "8192",
+    "--timeout",
+    "90",
+    "--confirm",
+    "--output",
+    "OPERATOR_PATH_0089a9e874cd/final-routed-preflight.json"
+  ],
+  "at": 1792664848.681389
+}

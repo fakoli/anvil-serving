@@ -1,0 +1,13 @@
+# Next bounded improvement experiment
+
+The next candidate is an allocator change in Helios offload/slab.rs::Pool::sized_counts, not a speculative kernel rewrite. The current code allocates roughly one quarter of the host budget to fixed state rows and the rest to pages. Counter evidence must show row pressure with page headroom before this arm is admitted.
+
+1. Derive exact page_record_bytes and row_record_bytes from the pinned model layout and validate byte arithmetic, minimums, overflow, TP partition and mapping limits in CPU tests. Expose actual geometry in the existing metrics/debug surface if needed; do not estimate capacity from generic model size.
+2. Try one explicit row/page partition at the same total 32 GiB, selected from measured checkpoint demand and exact record costs. Preserve index, key identity, checkpoint eligibility, pinning, async completion, disk=0 and all generation controls. No automatic choice based solely on this one corpus.
+3. Independent review of allocation safety and numerical restore correctness; pinned image build and source diff. Run the same fresh 52-prime/reverse and 52-prime/forward controls, plus fresh 12-body and page-heavy/long-context protected lanes. Preserve every failure. A simplified CPU index test is not proof of live async or GPU correctness.
+4. Only after functional acceptance, run three matched repetitions with primary benefit at least 5% and protected regression at most 3%, fixed bytes and reproducible request/output contracts. Include semantic/strict-output gates and all denominators. Cache hit rate alone is not a performance win.
+5. Investigate upstream d2036807 decode changes as a separate pinned runtime arm, with compatible package/checkpoint and preserved offload geometry. Do not combine runtime, model quantization, allocator and speculation changes in one comparison.
+6. For decode attribution, establish matched generated tokens and speculative work or use a separately validated replay fixture. Then use a bounded Nsight Systems critical-path capture, followed by a numerically checked component reproducer for any kernel target. Overlapping GPU intervals cannot be summed into a speedup claim.
+7. Preserve the incumbent container across the outage using the supported keep-container/restore-retained flow. Verify exact image/container, drained admission, direct/routed preflight and generation-specific monitoring after restore. Keep the 70-minute request cutoff and 90-minute restoration bound.
+
+No upstream submission, promotion, power change, router rewrite or provider change is included. A contribution package should begin with the minimal reproducer and observability patch, followed by an allocator patch only if it passes these gates.

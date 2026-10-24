@@ -1,0 +1,12 @@
+{
+  "schema": "flare-upstream-refresh-restoration-summary/v1",
+  "restored": true,
+  "experiment_error": null,
+  "recovery_errors": [],
+  "wall_deadline_met": true,
+  "completed_epoch": 1792819731.0485187,
+  "source": "formal/current-baseline-canonical/closeout.json",
+  "source_sha256": "a4a1c8d3735eddf79f92da5c775d391411b1cd1fbaa0d11bf7e94c7b77bb5047",
+  "scope": "Exact retained incumbent, direct/routed preflights, readmission, monitoring and containment; see complete native root/restoration archive.",
+  "promotion_authorized": false
+}
