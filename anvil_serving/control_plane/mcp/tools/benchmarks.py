@@ -383,6 +383,10 @@ def tool_preflight_probe(args: dict) -> dict:
     allowed_finish_reasons = _str_arg(args, "allowed_finish_reasons") or "stop,tool_calls"
     if not any(item.strip() for item in allowed_finish_reasons.split(",")):
         raise ToolError("bad_argument", "allowed_finish_reasons cannot be empty")
+    temperature = args.get("temperature", 0.0)
+    if (isinstance(temperature, bool) or not isinstance(temperature, (int, float))
+            or not 0 <= temperature <= 2):
+        raise ToolError("bad_argument", "temperature must be a number from 0 through 2")
     dry_run = _arg_bool(args.get("dry_run"), False, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 900, min_value=1, max_value=3600)
@@ -400,6 +404,8 @@ def tool_preflight_probe(args: dict) -> dict:
         base_url,
         "--model",
         model,
+        "--temperature",
+        str(temperature),
         "--needle-ctx",
         str(needle_ctx),
         "--tool-batch",
@@ -723,6 +729,7 @@ FAMILY = ToolFamily(
                     "base_url": {"type": "string"},
                     "model": {"type": "string"},
                     "api_key_env": {"type": "string"},
+                    "temperature": {"type": "number", "minimum": 0, "maximum": 2, "default": 0},
                     "needle_ctx": _bounded_integer_schema(1, 1000000, 128000),
                     "tool_batch": _bounded_integer_schema(1, 128, 20),
                     "no_thinking": {"type": "boolean"},

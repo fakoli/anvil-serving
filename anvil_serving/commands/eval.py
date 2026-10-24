@@ -263,6 +263,7 @@ def commands() -> CommandNode:
                         "model",
                         "api_key_env",
                         "needle_ctx",
+                        "temperature",
                         "tool_batch",
                         "checks",
                         "image_path",

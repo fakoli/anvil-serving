@@ -21,6 +21,7 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
         "base_url": "http://127.0.0.1:30000/v1",
         "model": "local",
         "checks": "smoke,json",
+        "temperature": 1.0,
         "reasoning_effort": "max",
         "allowed_finish_reasons": "stop,length",
         "timeout_seconds": 30,
@@ -32,6 +33,7 @@ def test_preflight_probe_explicit_dry_run_executes_the_safe_child_plan(monkeypat
     assert result["data"]["dry_run"] is True
     argv, kwargs = calls[0]
     assert "--dry-run" in argv
+    assert argv[argv.index("--temperature") + 1] == "1.0"
     assert argv[argv.index("--timeout-seconds") + 1] == "30"
     assert argv[argv.index("--allowed-finish-reasons") + 1] == "stop,length"
     assert argv[argv.index("--reasoning-effort") + 1] == "max"
@@ -224,3 +226,12 @@ def test_preflight_probe_video_arguments_reach_child(monkeypatch, tmp_path):
     argv = calls[0][0]
     assert argv[argv.index("--video-path") + 1] == str(video)
     assert argv[argv.index("--video-expect") + 1] == "red"
+
+
+@pytest.mark.parametrize("value", [True, "1", -1, 2.1, float("nan"), float("inf")])
+def test_preflight_probe_rejects_invalid_temperature(value):
+    result = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1", "model": "local",
+        "temperature": value, "dry_run": True,
+    })
+    assert result["ok"] is False

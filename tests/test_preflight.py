@@ -58,7 +58,8 @@ def test_response_observation_records_finish_and_reasoning_evidence():
 def test_preflight_main_records_model_controls_and_budget(monkeypatch, tmp_path):
     calls = []
 
-    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout,
+                   temperature=0.0):
         calls.append((ctk, max_tokens, reasoning_effort))
         assert timeout == 60.0
         evidence.append({"test": "smoke", "finish_reason": "stop", "reasoning_chars": 12})
@@ -168,7 +169,8 @@ def test_preflight_chat_omits_template_kwargs_without_a_thinking_control(monkeyp
 def test_preflight_forwards_deepseek_max_reasoning_effort(monkeypatch):
     calls = []
 
-    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout,
+                   temperature=0.0):
         calls.append(reasoning_effort)
         evidence.append({"test": "smoke", "finish_reason": "stop", "reasoning_chars": 12})
         return True, "ok"
@@ -186,7 +188,8 @@ def test_preflight_forwards_deepseek_max_reasoning_effort(monkeypatch):
 def test_preflight_forwards_qwen38_xhigh_reasoning_effort(monkeypatch):
     calls = []
 
-    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout,
+                   temperature=0.0):
         calls.append(reasoning_effort)
         evidence.append({"test": "smoke", "finish_reason": "stop", "reasoning_chars": 12})
         return True, "ok"
@@ -202,7 +205,8 @@ def test_preflight_forwards_qwen38_xhigh_reasoning_effort(monkeypatch):
 
 
 def test_preflight_rejects_length_finish_and_missing_required_reasoning(monkeypatch):
-    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout):
+    def fake_smoke(base, model, key, ctk, max_tokens, reasoning_effort, evidence, timeout,
+                   temperature=0.0):
         assert timeout == 60.0
         evidence.append({
             "test": "smoke", "finish_reason": "length", "reasoning_chars": 0,
@@ -694,3 +698,51 @@ def test_validation_error_does_not_duplicate_or_mislabel_request(monkeypatch):
     assert len(evidence) == 1
     assert evidence[0]["finish_reason"] == "stop"
     assert "error_type" not in evidence[0]
+
+
+@pytest.mark.parametrize("temperature", [0.0, 1.0])
+def test_preflight_sampling_reaches_all_text_transports(monkeypatch, tmp_path, temperature):
+    bodies = []
+
+    def reject(request, **kwargs):
+        bodies.append(json.loads(request.data))
+        raise RuntimeError("synthetic transport failure")
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", reject)
+    out = tmp_path / "sampling.json"
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+        "--checks", "smoke,json,needle,tools,long-tools,streaming-tools,tool-result,responses",
+        "--tool-batch", "2", "--needle-ctx", "32", "--temperature", str(temperature),
+        "--output", str(out),
+    ]) == 1
+    assert len(bodies) == 9
+    assert all(body["temperature"] == temperature for body in bodies)
+    assert json.loads(out.read_text())["sampling"] == {"temperature": temperature}
+
+
+def test_preflight_sampling_reaches_image_and_video_probes(monkeypatch):
+    temperatures = []
+
+    def chat(*args, **kwargs):
+        temperatures.append(kwargs["temperature"])
+        return {"choices": [{"finish_reason": "stop", "message": {
+            "content": "IMAGE_OK VIDEO_OK",
+        }}]}, 0.1
+
+    monkeypatch.setattr(pf, "chat", chat)
+    assert pf.t_multimodal(
+        "http://127.0.0.1:30000/v1", "candidate", None, "data:image/png;base64,AA==",
+        {"sha256": "a" * 64}, ("IMAGE_OK",), check="image", temperature=1.0,
+    )[0]
+    assert pf.t_video(
+        "http://127.0.0.1:30000/v1", "candidate", None, "data:video/mp4;base64,AA==",
+        {"sha256": "b" * 64}, ("VIDEO_OK",), temperature=1.0,
+    )[0]
+    assert temperatures == [1.0, 1.0]
+
+
+@pytest.mark.parametrize("value", ["-1", "2.1", "nan", "inf"])
+def test_preflight_rejects_invalid_temperature(value):
+    with pytest.raises(SystemExit):
+        pf.main(["--temperature", value, "--dry-run"])
