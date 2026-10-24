@@ -139,11 +139,6 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         controls = _context_request_controls(parameters)
         selection = _context_selection(suite, parameters)
         _validate_case_limit(parameters, suite="context")
-        if budgets is not None and (
-            selection["output_headroom_tokens"] > budgets["max_completion_tokens"]
-            or selection["repetitions"] > suite["repetitions"]
-        ):
-            raise BenchmarkJobError("profile_budget_exceeded", "context selection widens the profile budget")
         return {"profile": profile["name"], "request_controls": controls, "selection": selection, **binding}
     if suite_name == "agentic":
         controls = resolve_job_request_controls(_controls(parameters))

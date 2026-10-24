@@ -1037,3 +1037,11 @@ def test_new_v2_job_checks_budget_before_durable_creation(tmp_path):
         store.submit(value)
     assert exc.value.code == "profile_budget_exceeded"
     assert store.status(value["run_id"]) is None
+
+
+def test_v2_context_matrix_widening_rejected_before_durable_creation(tmp_path):
+    store = _store(tmp_path)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(_spec(profile="pilot-v2", parameters={"token_buckets": [1048576]}))
+    assert exc.value.code == "profile_budget_exceeded"
+    assert store.status("run-001") is None

@@ -163,6 +163,14 @@ def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
         raise BenchmarkJobError(
             "bad_context_headroom", "context output_headroom_tokens must be from 1 through 65536"
         )
+    if "budgets" in suite and (
+        not set(cases) <= set(suite["cases"])
+        or not set(buckets) <= set(suite["token_buckets"])
+        or not set(positions) <= set(suite["positions"])
+        or repetitions > suite["repetitions"]
+        or headroom > suite["budgets"]["max_completion_tokens"]
+    ):
+        raise BenchmarkJobError("profile_budget_exceeded", "context selection widens the v2 profile matrix or budget")
     advertised = parameters.get("advertised_context")
     if advertised is not None:
         if (
@@ -337,6 +345,7 @@ def run_context_suite(
     }
     request_kwargs.update(request_sampling_kwargs(request_controls["sampling"]))
     limits = suite_budgets(profile, "context")
+    selection = _context_selection(suite, parameters) if limits else None
     budget = NativeBudget(limits, caller, timeout_s=spec["timeout_s"]) if limits else None
     if budget:
         caller = budget
@@ -361,7 +370,8 @@ def run_context_suite(
                 "message": str(exc)[:1024],
             },
         })
-    selection = _context_selection(suite, parameters)
+    if selection is None:
+        selection = _context_selection(suite, parameters)
     case_limit = _validate_case_limit(parameters, suite="context")
     observations = []
     request_ids = []

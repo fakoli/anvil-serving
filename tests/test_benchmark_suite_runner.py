@@ -655,6 +655,8 @@ def budget_profile(suite, *, calls, tokens=16, deadline=600, repetitions=1):
     profile = copy.deepcopy(load_profile("deep"))
     profile["schema"] = "anvil-serving.benchmark-profile/v2"
     settings = profile["suites"][suite]
+    if suite == "context":
+        settings.update(token_buckets=[512, 1024], positions=[0.5, 0.97])
     settings["repetitions"] = repetitions
     settings["timeout_s"] = deadline
     settings["output_headroom_tokens" if suite == "context" else "max_completion_tokens"] = tokens
@@ -844,3 +846,10 @@ def test_v1_suite_results_have_no_new_budget_fields():
     result = run_agentic_suite(load_profile("smoke"), spec("agentic", case_ids=["tool-recovery"]),
                                caller=AgentCaller())
     assert not {"budget", "state", "status", "truncated"}.intersection(result)
+
+
+def test_v2_context_rejects_out_of_profile_buckets_before_calibration():
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_context_suite(load_profile("pilot-v2"), spec("context", token_buckets=[1048576]),
+                          caller=lambda *_a, **_kw: pytest.fail("model traffic before admission"))
+    assert exc.value.code == "profile_budget_exceeded"

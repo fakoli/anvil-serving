@@ -106,6 +106,9 @@ def test_v2_admission_binds_profile_and_budgets_without_changing_v1():
     ({"timeout_s": 1801}, "profile_budget_exceeded"),
     ({"parameters": {"output_headroom_tokens": 2049}}, "profile_budget_exceeded"),
     ({"parameters": {"repetitions": 2}}, "profile_budget_exceeded"),
+    ({"parameters": {"token_buckets": [1048576]}}, "profile_budget_exceeded"),
+    ({"parameters": {"token_buckets": [16384]}}, "profile_budget_exceeded"),
+    ({"parameters": {"positions": [0.25]}}, "profile_budget_exceeded"),
     ({"parameters": {"max_model_calls": 100000}}, "suite_incompatible_parameter"),
     ({"parameters": {"budgets": {"max_model_calls": 100000}}}, "suite_incompatible_parameter"),
 ])
@@ -115,3 +118,9 @@ def test_v2_submission_cannot_widen_or_silently_override_budgets(changes, code):
     with pytest.raises(BenchmarkJobError) as exc:
         validate_submission_spec(value)
     assert exc.value.code == code
+
+
+def test_v2_context_admits_only_profile_matrix_subsets():
+    value = _spec({"token_buckets": [8192], "positions": [0.5], "case_ids": ["native-needle"], "output_headroom_tokens": 512}, suite="context")
+    value["profile"] = "pilot-v2"
+    assert validate_submission_spec(value)["selection"]["token_buckets"] == [8192]

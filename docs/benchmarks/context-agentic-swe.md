@@ -172,7 +172,9 @@ timeout is not a hard wall-clock process deadline. SWE also uses its bounded
 external runner. Asset preparation is separate from suite execution. Unknown
 suite names are rejected before new durable submission or worker preparation;
 historical records remain readable. V2 jobs reject unsupported parameter keys
-and overrides that widen token, repetition, or deadline limits.
+and overrides that widen token, repetition, or deadline limits. V2 context
+case IDs, token buckets, and positions must be subsets of the profile matrix;
+smaller output caps and case limits can narrow a run.
 
 SWE instance IDs are always explicit, ordered, unique, and equal in count to
 the selected profile's `instance_limit`. The adapter never silently replaces a
