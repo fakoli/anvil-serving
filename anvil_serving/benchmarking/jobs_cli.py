@@ -24,6 +24,7 @@ from .evidence_reader import read_referenced_job_evidence
 from .jobs import (
     BenchmarkJobError,
     job_spec_sha256,
+    load_job_spec,
     resolve_owned_run_path,
     validate_job_spec,
 )
@@ -57,7 +58,9 @@ def _parser() -> argparse.ArgumentParser:
         plan.add_argument("--observed-context", type=int)
         plan.add_argument("--dry-run", action="store_true")
         preflight = actions.add_parser("preflight")
-        preflight.add_argument("--spec-json", required=True)
+        preflight_spec = preflight.add_mutually_exclusive_group(required=True)
+        preflight_spec.add_argument("--spec", metavar="PATH", help="client-side job specification JSON file")
+        preflight_spec.add_argument("--spec-json", metavar="JSON", help="inline job specification JSON")
         preflight.add_argument("--requirements-json", default="{}")
         prepare = actions.add_parser("prepare")
         prepare.add_argument("--profile", choices=sorted(PROFILE_NAMES), required=True)
@@ -81,7 +84,9 @@ def _parser() -> argparse.ArgumentParser:
         cleanup.add_argument("--ownership-id", required=True)
         cleanup.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         submit = actions.add_parser("submit")
-        submit.add_argument("--spec-json", required=True)
+        submit_spec = submit.add_mutually_exclusive_group(required=True)
+        submit_spec.add_argument("--spec", metavar="PATH", help="client-side job specification JSON file")
+        submit_spec.add_argument("--spec-json", metavar="JSON", help="inline job specification JSON")
         submit.add_argument("--dry-run", action="store_true", help="validate the job specification without state changes")
         mode = submit.add_mutually_exclusive_group()
         mode.add_argument("--follow", action="store_true")
@@ -110,14 +115,6 @@ def _require_suite(value: dict, suite: str) -> dict:
             f"job specification suite must be {suite!r} for this command",
         )
     return normalized
-
-
-def _spec_json(raw: str, suite: str) -> dict:
-    try:
-        value = json.loads(raw)
-    except (TypeError, json.JSONDecodeError) as exc:
-        raise BenchmarkJobError("bad_spec_json", "spec-json must be valid JSON") from exc
-    return _require_suite(value, suite)
 
 
 def _json_object(raw: str, *, field: str) -> dict:
@@ -289,8 +286,11 @@ def run(argv: list[str]) -> dict:
             confirm=confirm,
             min_free_bytes=args.min_free_bytes,
         )
+    submitted_spec = None
+    if args.action in {"submit", "preflight"}:
+        submitted_spec = load_job_spec(spec_path=args.spec, spec_json=args.spec_json, suite=args.suite)
     if args.action == "submit" and args.dry_run:
-        spec = bind_submission_spec(_spec_json(args.spec_json, args.suite))
+        spec = bind_submission_spec(submitted_spec)
         admission = validate_submission_spec(spec)
         return {
             "schema": "anvil-serving.benchmark-submit-preview/v1",
@@ -305,12 +305,9 @@ def run(argv: list[str]) -> dict:
             "dry_run": True,
             "deferred": ["job store", "worker launch", "model requests", "artifact write"],
         }
-    submitted_spec = None
     if args.action == "submit":
         if not (args.confirm or confirmation_authorized()):
             raise BenchmarkJobError("confirmation_required", "submit requires --confirm")
-        submitted_spec = _spec_json(args.spec_json, args.suite)
-        validate_submission_spec(submitted_spec)
     store = _store()
     if args.action in {"prepare", "assets", "cleanup"}:
         if args.action == "assets":
@@ -349,7 +346,7 @@ def run(argv: list[str]) -> dict:
         )
     if args.action == "preflight":
         return run_benchmark_preflight(
-            _spec_json(args.spec_json, args.suite),
+            submitted_spec,
             run_root=store.run_root,
             requirements=_json_object(args.requirements_json, field="requirements-json"),
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
@@ -363,8 +360,8 @@ def run(argv: list[str]) -> dict:
                 run_root=store.run_root,
                 run_id=job["spec"]["run_id"],
             )
-            if job["state"] == "queued"
-            else {"launched": False, "reason": f"job is {job['state']}"}
+            if disposition == "submitted"
+            else {"launched": False, "reason": "job already exists"}
         )
         return {
             "disposition": disposition,

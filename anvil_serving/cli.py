@@ -101,6 +101,7 @@ _WORKLOAD_FILTER_OPTIONS = {
     "--limit": "limit",
 }
 _HANDLER_PROGS = {
+    "anvil_serving.benchmarking.jobs_cli": "anvil-serving eval benchmark",
     "anvil_serving.benchmark": "anvil-serving eval benchmark run",
     "anvil_serving.benchmark_evidence": "anvil-serving eval benchmark evidence",
     "anvil_serving.connect.cli": "anvil-serving connect",
@@ -702,6 +703,9 @@ def _remote_arguments(
         raise UsageError(f"declared controller tool {remote.tool!r} is unavailable")
     schema = tool["inputSchema"]
     properties = schema.get("properties", {})
+    benchmark_spec = remote.tool in {"benchmark_job_submit", "benchmark_job_preflight"}
+    if benchmark_spec:
+        properties = {**properties, "spec": {"type": "string"}}
     argument_aliases = dict(remote.argument_aliases)
     arguments = dict(remote.fixed_arguments)
     fixed_argument_names = set(arguments)
@@ -725,7 +729,8 @@ def _remote_arguments(
         if (
             not field
             or not isinstance(field_schema, Mapping)
-            or (remote.allowed_arguments and field not in remote.allowed_arguments)
+            or (remote.allowed_arguments and field not in remote.allowed_arguments
+                and not (benchmark_spec and field == "spec"))
         ):
             raise UsageError(f"{flag} is not supported for remote {node.name}; use focused help")
 
@@ -780,6 +785,20 @@ def _remote_arguments(
             arguments.update(zip(fields, positional, strict=True))
         else:
             raise UsageError("remote command positional arguments are incomplete")
+    if benchmark_spec:
+        from .benchmarking.jobs import BenchmarkJobError, canonical_json_bytes, load_job_spec
+
+        try:
+            spec = load_job_spec(
+                spec_path=arguments.pop("spec", None),
+                spec_json=arguments.get("spec_json"),
+                suite=arguments["suite"],
+            )
+        except BenchmarkJobError as exc:
+            raise UsageError(exc.message, code=exc.code) from None
+        arguments["spec_json"] = canonical_json_bytes(spec).decode("utf-8")
+        if arguments.get("follow") and arguments.get("detach"):
+            raise UsageError("--follow and --detach are mutually exclusive")
     if confirmed:
         arguments.update(remote.confirmed_arguments)
         if "confirm" in properties and "confirm" not in arguments:

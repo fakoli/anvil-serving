@@ -38,7 +38,7 @@ def _spec(run_id: str = "run-001", **changes):
         "run_id": run_id,
         "ownership_id": "campaign-001",
         "suite": "context",
-        "profile": "context-smoke-v1",
+        "profile": "smoke",
         "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "deepseek"},
         "worker": {"id": "ai-laptop-node"},
         "submitted_at": "2026-08-03T12:00:00Z",
@@ -1014,18 +1014,20 @@ def test_standalone_benchmark_reader_bad_database_is_unavailable_without_mutatio
     assert tuple(tmp_path.iterdir()) == (path,)
 
 
-def test_new_unknown_suite_rejected_but_historical_record_readable(monkeypatch, tmp_path):
-    from anvil_serving.benchmarking import profiles
-
+def test_new_unknown_suite_rejected_but_historical_record_readable(tmp_path):
     store = _store(tmp_path)
     value = _spec(suite="historical-suite")
     with pytest.raises(BenchmarkJobError) as exc:
         store.submit(value)
     assert exc.value.code == "unknown_suite"
     assert store.status(value["run_id"]) is None
-    with monkeypatch.context() as old_writer:
-        old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
-        _, record = store.submit(value)
+    # Seed an old writer's record; current admission must never create it.
+    record = new_job_record(value)
+    with store._connection() as connection:
+        connection.execute(
+            "INSERT INTO benchmark_jobs (run_id, spec_sha256, state, revision, record) VALUES (?, ?, ?, ?, ?)",
+            (value["run_id"], record["spec_sha256"], record["state"], record["revision"], json.dumps(record)),
+        )
     assert store.status(value["run_id"]) == record
     assert store.submit(value) == ("existing", record)
 
@@ -1047,13 +1049,15 @@ def test_v2_context_matrix_widening_rejected_before_durable_creation(tmp_path):
     assert store.status("run-001") is None
 
 
-@pytest.mark.parametrize("suite", ["context", "agentic", "swe", "aider"])
+@pytest.mark.parametrize("suite", ["context", "agentic", "swe", "aider", "performance"])
 def test_v2_submission_persists_admission_pin_and_retries_original_without_lookup(monkeypatch, tmp_path, suite):
     from anvil_serving.benchmarking import submission
     from anvil_serving.benchmarking.profiles import load_profile
 
     store = _store(tmp_path)
     parameters = {"instance_ids": ["astropy__astropy-12907"]} if suite == "swe" else {}
+    if suite == "performance":
+        parameters = {"runner": "aiperf", "workload": {"input_tokens": 128, "output_tokens": 32}, "request_count": 1}
     value = _spec(profile="pilot-v2", suite=suite, parameters=parameters)
     _, submitted = store.submit(value)
     assert submitted["spec"]["profile_sha256"] == load_profile("pilot-v2")["content_sha256"]
@@ -1089,3 +1093,16 @@ def test_legacy_submission_and_retry_leave_record_bytes_unchanged(tmp_path):
     assert store.submit(value) == ("existing", record)
     with closing(sqlite3.connect(store.path)) as connection:
         assert connection.execute("SELECT record FROM benchmark_jobs").fetchone()[0] == original
+
+
+@pytest.mark.parametrize("changes,code", [
+    ({"profile": "context-smoke-v1"}, "profile_not_found"),
+    ({"parameters": {"instance_ids": ["example"]}}, "suite_incompatible_parameter"),
+    ({"parameters": {"offline": "false"}}, "bad_offline"),
+])
+def test_new_v1_jobs_share_full_submission_admission(tmp_path, changes, code):
+    store = _store(tmp_path)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(_spec(**changes))
+    assert exc.value.code == code
+    assert store.status("run-001") is None

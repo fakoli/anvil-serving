@@ -58,3 +58,24 @@ def test_aider_command_manifest_advertises_plan_and_prepare_options():
         return {flag for option in records[path]["options"] for flag in option["flags"]}
     assert {"--dry-run", "--profile"} <= flags("eval benchmark aider")
     assert {"--confirm", "--profile"} <= flags("eval benchmark aider prepare")
+
+
+@pytest.mark.parametrize("suite", ["aider", "performance"])
+def test_focused_prepare_help_lists_required_profile(capsys, suite):
+    from anvil_serving import cli
+
+    assert cli.main(["eval", "benchmark", suite, "prepare", "--help"]) == 0
+    help_text = capsys.readouterr().out
+    usage = " ".join(help_text.split("options:", 1)[0].split())
+    assert "--profile {" in usage
+    assert "[--profile" not in usage
+    assert "pilot-v2" in help_text
+
+
+@pytest.mark.parametrize("action", ["submit", "preflight"])
+@pytest.mark.parametrize("options", [[], ["--spec", "job.json", "--spec-json", "{}"]])
+def test_spec_sources_are_required_and_exclusive_before_store(monkeypatch, action, options):
+    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid sources opened store"))
+    with pytest.raises(SystemExit) as exc:
+        jobs_cli.run(["aider", action, *options])
+    assert exc.value.code == 2

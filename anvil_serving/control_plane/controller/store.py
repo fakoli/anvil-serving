@@ -891,12 +891,8 @@ class BenchmarkJobStore:
                 return "existing", existing
             # Read paths remain schema-compatible with historical suite names.
             # Admission applies only when creating a new durable job.
-            from ...benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES, V1_PROFILE_NAMES
-            if normalized["suite"] not in SUITE_NAMES:
-                raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
-            if normalized["profile"] in PROFILE_NAMES - V1_PROFILE_NAMES or "profile_sha256" in normalized:
-                from ...benchmarking.submission import bind_submission_spec
-                normalized = bind_submission_spec(normalized)
+            from ...benchmarking.submission import bind_submission_spec
+            normalized = bind_submission_spec(normalized)
             digest = job_spec_sha256(normalized)
             record = new_job_record(normalized)
             connection.execute(

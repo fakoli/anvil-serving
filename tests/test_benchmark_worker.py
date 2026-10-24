@@ -144,7 +144,9 @@ def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeyp
     value = spec()
     value["parameters"] = {"thinking_mode": "bogus"}
     store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
+        store.submit(value)
     monkeypatch.setattr(
         "anvil_serving.benchmarking.worker.prepare_harness_assets",
         lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
@@ -276,7 +278,8 @@ def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
 def test_detached_launcher_reports_typed_process_failure(tmp_path):
     database = str(tmp_path / "jobs.db")
     run_root = str(tmp_path / "runs")
-    BenchmarkJobStore(database, run_root=run_root).submit(spec())
+    store = BenchmarkJobStore(database, run_root=run_root)
+    _, submitted = store.submit(spec())
 
     with pytest.raises(BenchmarkJobError) as exc:
         launch_benchmark_job(
@@ -287,6 +290,67 @@ def test_detached_launcher_reports_typed_process_failure(tmp_path):
         )
 
     assert exc.value.code == "worker_launch_failed"
+    assert store.status("worker-run") == submitted
+    assert store.submit(spec()) == ("existing", submitted)
+    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
+
+
+@pytest.mark.parametrize("state", [None, "running", "completed", "failed", "cancelled"])
+def test_detached_launcher_rejects_absent_or_nonqueued_jobs_before_spawn(tmp_path, state):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    if state is not None:
+        store.submit(spec())
+        store.claim("worker-run")
+        if state != "running":
+            store.transition("worker-run", state, failure={"code": "fixture"} if state == "failed" else None)
+    original = store.status("worker-run")
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        launch_benchmark_job(
+            path=store.path, run_root=store.run_root, run_id="worker-run",
+            popen=lambda *_a, **_kw: pytest.fail("ineligible job spawned a worker"),
+        )
+
+    assert exc.value.code == ("job_not_found" if state is None else "job_already_claimed")
+    assert store.status("worker-run") == original
+    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
+def test_rejected_relaunch_preserves_original_worker_cancellation_identity(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "original-start")
+    launch_benchmark_job(
+        path=store.path, run_root=store.run_root, run_id="worker-run",
+        popen=lambda *_a, **_kw: SimpleNamespace(pid=987),
+    )
+    worker_path = tmp_path / "runs" / "campaign" / "worker-run" / "worker.json"
+    original = worker_path.read_bytes()
+    store.claim("worker-run")
+    with pytest.raises(BenchmarkJobError, match="not queued"):
+        launch_benchmark_job(
+            path=store.path, run_root=store.run_root, run_id="worker-run",
+            popen=lambda *_a, **_kw: pytest.fail("duplicate worker launched"),
+        )
+    assert worker_path.read_bytes() == original
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: (
+        sys.executable, "-m", "anvil_serving.benchmarking.worker",
+        "--db", os.path.realpath(store.path), "--run-root", store.run_root,
+        "--run-id", "worker-run",
+    ))
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda pid: pid)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda pid: pid)
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
+    signals = []
+    monkeypatch.setattr(benchmark_worker.os, "killpg", lambda *args: signals.append(args))
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert signals == [(987, signal.SIGTERM)]
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["worker_terminated"] is True
+    assert cancelled["cleanup_deferred"] is False
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
@@ -553,7 +617,9 @@ def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
     value["suite"] = suite
     value["parameters"] = parameters
     store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
+        store.submit(value)
     monkeypatch.setattr(
         "anvil_serving.benchmarking.worker.prepare_harness_assets",
         lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
@@ -754,6 +820,7 @@ def test_historical_unknown_contract_fails_with_durable_evidence(monkeypatch, tm
     # Model an older writer without changing the persisted record format.
     with monkeypatch.context() as old_writer:
         old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
         store.submit(value)
     monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: pytest.fail("asset preparation"))
     record = execute_benchmark_job(store, "worker-run")

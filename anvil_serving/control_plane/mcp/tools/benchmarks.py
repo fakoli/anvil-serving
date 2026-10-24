@@ -7,8 +7,7 @@ import json
 import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
-from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
-from ....benchmarking.submission import validate_submission_spec
+from ....benchmarking.jobs import BenchmarkJobError, parse_job_spec_json
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
@@ -90,13 +89,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
     if not confirm:
         raise ToolError("confirmation_required", "benchmark submission requires confirmation")
     try:
-        value = json.loads(raw)
-        spec = validate_job_spec(value)
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
-        validate_submission_spec(spec)
+        spec = parse_job_spec_json(raw, suite=suite)
         store = _benchmark_job_store()
         disposition, job = store.submit(spec)
         launch = (
@@ -105,8 +98,8 @@ def tool_benchmark_job_submit(args: dict) -> dict:
                 run_root=store.run_root,
                 run_id=job["spec"]["run_id"],
             )
-            if job["state"] == "queued"
-            else {"launched": False, "reason": f"job is {job['state']}"}
+            if disposition == "submitted"
+            else {"launched": False, "reason": f"existing job is {job['state']}"}
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_spec_json", "spec_json must be valid JSON") from None
@@ -128,14 +121,10 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
     raw_spec = _str_arg(args, "spec_json", required=True)
     raw_requirements = _str_arg(args, "requirements_json") or "{}"
     try:
-        spec = validate_job_spec(json.loads(raw_spec))
+        spec = parse_job_spec_json(raw_spec, suite=suite)
         requirements = json.loads(raw_requirements)
         if not isinstance(requirements, dict):
             raise BenchmarkJobError("bad_json", "requirements_json must be an object")
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
         store = _benchmark_job_store()
         artifact = run_benchmark_preflight(
             spec,

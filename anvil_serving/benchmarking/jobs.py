@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import urllib.parse
 from collections.abc import Mapping
 from typing import Any
@@ -239,6 +240,45 @@ def canonical_json_bytes(value: Any) -> bytes:
         ensure_ascii=True,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def parse_job_spec_json(raw: str | bytes, *, suite: str | None = None) -> dict[str, Any]:
+    """Parse bounded UTF-8 JSON and validate the portable specification."""
+    if not isinstance(raw, (str, bytes)):
+        raise BenchmarkJobError("bad_spec_json", "job specification must be valid UTF-8 JSON")
+    try:
+        encoded = raw.encode("utf-8") if isinstance(raw, str) else raw
+        if len(encoded) > MAX_BENCHMARK_JOB_SPEC_BYTES:
+            raise BenchmarkJobError(
+                "spec_too_large", f"job spec exceeds {MAX_BENCHMARK_JOB_SPEC_BYTES} bytes"
+            )
+        value = json.loads(encoded.decode("utf-8"))
+    except (UnicodeError, ValueError, RecursionError) as exc:
+        raise BenchmarkJobError("bad_spec_json", "job specification must be valid UTF-8 JSON") from exc
+    spec = validate_job_spec(value)
+    if suite is not None and spec["suite"] != suite:
+        raise BenchmarkJobError("suite_mismatch", f"job specification suite must be {suite!r} for this command")
+    return spec
+
+
+def load_job_spec(
+    *, spec_path: str | None = None, spec_json: str | None = None, suite: str | None = None,
+) -> dict[str, Any]:
+    """Read exactly one client-side file or inline specification with a byte limit."""
+    if (spec_path is None) == (spec_json is None):
+        raise BenchmarkJobError("bad_spec_source", "provide exactly one of --spec and --spec-json")
+    if spec_path is None:
+        return parse_job_spec_json(spec_json, suite=suite)
+    try:
+        with open(spec_path, "rb", opener=lambda path, flags: os.open(
+            path, flags | getattr(os, "O_NONBLOCK", 0)
+        )) as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise BenchmarkJobError("bad_spec_file", "job specification must be a regular file")
+            raw = handle.read(MAX_BENCHMARK_JOB_SPEC_BYTES + 1)
+    except (OSError, ValueError) as exc:
+        raise BenchmarkJobError("bad_spec_file", "job specification file could not be read") from exc
+    return parse_job_spec_json(raw, suite=suite)
 
 
 def validate_job_spec(value: Any) -> dict[str, Any]:

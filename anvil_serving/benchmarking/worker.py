@@ -428,6 +428,19 @@ def launch_benchmark_job(
     """Launch an owned detached worker without embedding credentials in argv."""
     database = os.path.realpath(path)
     root = os.path.realpath(run_root)
+    store = BenchmarkJobStore(database, run_root=root)
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "cannot launch a worker for an absent job")
+    if record["state"] != "queued":
+        raise BenchmarkJobError("job_already_claimed", "benchmark job is not queued")
+    worker_path = resolve_owned_run_path(
+        root,
+        ownership_id=record["spec"]["ownership_id"],
+        run_id=run_id,
+        relative="worker.json",
+    )
+    Path(worker_path).parent.mkdir(parents=True, exist_ok=True)
     argv = [
         sys.executable,
         "-m",
@@ -451,17 +464,6 @@ def launch_benchmark_job(
         raise BenchmarkJobError(
             "worker_launch_failed", "detached benchmark worker could not be launched"
         ) from exc
-    store = BenchmarkJobStore(database, run_root=root)
-    record = store.status(run_id)
-    if record is None:
-        raise BenchmarkJobError("job_not_found", "cannot register a worker for an absent job")
-    worker_path = resolve_owned_run_path(
-        root,
-        ownership_id=record["spec"]["ownership_id"],
-        run_id=run_id,
-        relative="worker.json",
-    )
-    Path(worker_path).parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(worker_path, {
         "run_id": run_id,
         "pid": int(process.pid),

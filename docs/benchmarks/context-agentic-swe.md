@@ -277,14 +277,25 @@ coverage from those historical results or from a mutable `latest` tag alone.
 Submit to the registered worker through the controller and return after the
 job is durable:
 
-```powershell
-anvil-serving eval benchmark context submit `
-  --target host-role:benchmark-worker `
-  --transport controller `
-  --spec-json $spec `
-  --detach `
-  --confirm
+```bash
+anvil-serving eval benchmark context submit --spec JOB.json --target host-role:benchmark-worker --transport controller --detach --confirm
 ```
+
+Submission and preflight accept either `--spec JOB.json` or `--spec-json JSON`,
+never both. A file is read and validated on the calling machine before its JSON
+is sent to the controller; the worker does not need that caller-side path.
+Both forms use the same bounded parser and suite validation. MCP callers use
+the equivalent inline `spec_json` argument.
+
+Retry the original specification to retrieve the same durable job. The run ID,
+owner, timestamp, and other fields must remain unchanged. A retry retains the
+original admitted profile pin even if the installed profile has since changed;
+it does not start another worker. A new job validates the currently installed
+profile before admission, and its worker checks that pin before traffic.
+If the initial worker launch fails, the queued job remains visible and
+submission reports the launch error.
+Cancel that job and use a new run ID for a new attempt; resubmission is not a
+worker restart command.
 
 Observe and retrieve the run through Anvil:
 

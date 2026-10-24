@@ -125,6 +125,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 options=(
+                    _option("--spec", summary="Client-side benchmark job specification JSON file (exclusive with --spec-json).", value_name="PATH"),
                     _option(
                         "--spec-json",
                         summary="Portable benchmark job specification JSON.",
@@ -150,6 +151,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 role="evaluation",
                 mutation="mutate",
                 options=confirm_options + (
+                    _option("--spec", summary="Client-side benchmark job specification JSON file (exclusive with --spec-json).", value_name="PATH"),
                     _option(
                         "--spec-json",
                         summary="Portable benchmark job specification JSON.",

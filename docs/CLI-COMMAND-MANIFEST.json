@@ -17206,6 +17206,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--spec-json"
           ],
           "output_policy": null,
@@ -17407,6 +17416,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -19193,6 +19211,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--spec-json"
           ],
           "output_policy": null,
@@ -19394,6 +19421,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -21380,6 +21416,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--spec-json"
           ],
           "output_policy": null,
@@ -21581,6 +21626,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -23367,6 +23421,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--spec-json"
           ],
           "output_policy": null,
@@ -23568,6 +23631,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
         },
         {
           "flags": [
@@ -25354,6 +25426,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--spec-json"
           ],
           "output_policy": null,
@@ -25555,6 +25636,15 @@
           "requires_confirmation": false,
           "summary": "Confirm the guarded mutation.",
           "value_name": null
+        },
+        {
+          "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side benchmark job specification JSON file (exclusive with --spec-json).",
+          "value_name": "PATH"
         },
         {
           "flags": [
