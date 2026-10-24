@@ -16396,7 +16396,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -16547,7 +16547,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -16774,7 +16774,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -16960,7 +16960,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17166,7 +17166,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17352,7 +17352,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17568,7 +17568,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17744,7 +17744,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17950,7 +17950,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18146,7 +18146,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18329,7 +18329,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18480,7 +18480,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18707,7 +18707,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18893,7 +18893,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19099,7 +19099,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19285,7 +19285,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19501,7 +19501,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19677,7 +19677,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19883,7 +19883,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20079,7 +20079,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20262,7 +20262,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20413,7 +20413,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20640,7 +20640,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20828,7 +20828,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21026,7 +21026,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21232,7 +21232,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21418,7 +21418,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21634,7 +21634,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21810,7 +21810,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22016,7 +22016,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22212,7 +22212,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "smoke|scout|deep"
+          "value_name": "deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
