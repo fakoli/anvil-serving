@@ -12,7 +12,8 @@ _JOB_READ_OPTIONS = (
 
 
 def _benchmark_suite(name: str, summary: str) -> CommandNode:
-    common_remote = {"fixed": (("suite", name),)}
+    # A 256 KiB spec plus 1 MiB retained logs is returned twice by operation status.
+    common_remote = {"fixed": (("suite", name),), "max_response_bytes": 4 * 1024 * 1024}
     # --dry-run is inherited from the suite's plan surface.
     confirm_options = tuple(option for option in CONFIRM_OPTIONS if "--dry-run" not in option.flags)
     return _node(
@@ -230,7 +231,8 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 remote_operation=_remote(
                     "benchmark_job_artifact",
                     allowed=("run_id", "path"),
-                    **common_remote,
+                    # A 1 MiB evidence file can expand sixfold through JSON escaping.
+                    **{**common_remote, "max_response_bytes": 8 * 1024 * 1024},
                 ),
             ),
         ),

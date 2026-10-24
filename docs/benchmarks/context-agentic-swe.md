@@ -33,13 +33,17 @@ model host. Put the real endpoint, worker registration, and credential
 environment reference in the private operator configuration. Public evidence
 uses the generic address above.
 
-SWE preparation, planning, and execution require a Linux or macOS worker.
-Native Windows may control remote jobs but cannot serve as the SWE worker:
-the pinned grader imports POSIX `resource` and mini-SWE uses POSIX shell cleanup.
-Unsupported workers fail before downloading assets or creating run files.
+Detached job execution currently requires Linux process-start identity so
+cancellation can verify the owned worker. Other hosts can control the Linux
+worker remotely. SWE preparation and planning additionally require POSIX
+tooling: the pinned grader imports `resource` and mini-SWE uses POSIX shell
+cleanup. Native Windows cannot prepare a local SWE worker.
 
 The controller launches a detached worker after durable submission. That
-worker claims the run ID exactly once, prepares pinned assets, performs
+worker waits for its verified cancellation record before it can claim the run
+ID, prepare assets, or send requests. A failed launch handoff stops the child;
+a lost parent before handoff leaves the child unable to execute.
+The worker claims the run ID exactly once, prepares pinned assets, performs
 read-only preflight, executes the selected suite, and writes partial or
 terminal evidence to the owned run directory. Status, bounded cursor logs,
 cancellation, and artifact retrieval survive the initiating CLI request.

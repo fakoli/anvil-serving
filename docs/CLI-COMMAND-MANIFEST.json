@@ -17471,7 +17471,7 @@
         "fixed_arguments": {
           "suite": "context"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -17656,7 +17656,7 @@
         "fixed_arguments": {
           "suite": "context"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -17871,7 +17871,7 @@
         "fixed_arguments": {
           "suite": "context"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -18067,7 +18067,7 @@
         "fixed_arguments": {
           "suite": "context"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -18262,7 +18262,7 @@
         "fixed_arguments": {
           "suite": "context"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 8388608,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -19476,7 +19476,7 @@
         "fixed_arguments": {
           "suite": "agentic"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -19661,7 +19661,7 @@
         "fixed_arguments": {
           "suite": "agentic"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -19876,7 +19876,7 @@
         "fixed_arguments": {
           "suite": "agentic"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -20072,7 +20072,7 @@
         "fixed_arguments": {
           "suite": "agentic"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -20267,7 +20267,7 @@
         "fixed_arguments": {
           "suite": "agentic"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 8388608,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -21681,7 +21681,7 @@
         "fixed_arguments": {
           "suite": "swe"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -21866,7 +21866,7 @@
         "fixed_arguments": {
           "suite": "swe"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -22081,7 +22081,7 @@
         "fixed_arguments": {
           "suite": "swe"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -22277,7 +22277,7 @@
         "fixed_arguments": {
           "suite": "swe"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -22472,7 +22472,7 @@
         "fixed_arguments": {
           "suite": "swe"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 8388608,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -23686,7 +23686,7 @@
         "fixed_arguments": {
           "suite": "aider"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -23871,7 +23871,7 @@
         "fixed_arguments": {
           "suite": "aider"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -24086,7 +24086,7 @@
         "fixed_arguments": {
           "suite": "aider"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -24282,7 +24282,7 @@
         "fixed_arguments": {
           "suite": "aider"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -24477,7 +24477,7 @@
         "fixed_arguments": {
           "suite": "aider"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 8388608,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"
@@ -25691,7 +25691,7 @@
         "fixed_arguments": {
           "suite": "performance"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_submit"
@@ -25876,7 +25876,7 @@
         "fixed_arguments": {
           "suite": "performance"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_status"
@@ -26091,7 +26091,7 @@
         "fixed_arguments": {
           "suite": "performance"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_logs"
@@ -26287,7 +26287,7 @@
         "fixed_arguments": {
           "suite": "performance"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 4194304,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_cancel"
@@ -26482,7 +26482,7 @@
         "fixed_arguments": {
           "suite": "performance"
         },
-        "max_response_bytes": null,
+        "max_response_bytes": 8388608,
         "mode": "tool",
         "positional_arguments": [],
         "tool": "benchmark_job_artifact"

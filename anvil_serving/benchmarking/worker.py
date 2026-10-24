@@ -8,9 +8,11 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from typing import Any, Mapping
 
@@ -450,7 +452,7 @@ def launch_benchmark_job(
         "--run-id", run_id,
     ]
     kwargs: dict[str, Any] = {
-        "stdin": subprocess.DEVNULL,
+        "stdin": subprocess.PIPE,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
         "close_fds": True,
@@ -464,17 +466,98 @@ def launch_benchmark_job(
         raise BenchmarkJobError(
             "worker_launch_failed", "detached benchmark worker could not be launched"
         ) from exc
-    atomic_write_json(worker_path, {
-        "run_id": run_id,
-        "pid": int(process.pid),
-        "db": database,
-        "run_root": root,
-        "process_start": _process_start_identity(int(process.pid)),
-        "process_group_id": int(process.pid),
-        "session_id": int(process.pid),
-        "launched_at": utc_now(),
-    })
+    try:
+        process_start = _process_start_identity(int(process.pid))
+        if not isinstance(process_start, str) or not process_start:
+            raise BenchmarkJobError("worker_custody_unverified", "worker process start identity is unavailable")
+        atomic_write_json(worker_path, {
+            "run_id": run_id,
+            "pid": int(process.pid),
+            "db": database,
+            "run_root": root,
+            "process_start": process_start,
+            "process_group_id": int(process.pid),
+            "session_id": int(process.pid),
+            "launched_at": utc_now(),
+        })
+        process.stdin.write(b"1")
+        process.stdin.flush()
+        process.stdin.close()
+    except BaseException as exc:
+        # We still own the unreaped child even when no durable receipt exists.
+        try:
+            if os.name == "nt":
+                process.kill()
+            else:
+                os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        finally:
+            process.wait(timeout=5)
+            try:
+                process.stdin.close()
+            except OSError:
+                pass
+        if not isinstance(exc, Exception):
+            raise
+        raise BenchmarkJobError(
+            "worker_launch_failed", "detached benchmark worker custody handoff failed"
+        ) from exc
     return {"launched": True, "pid": int(process.pid), "run_id": run_id}
+
+
+_WORKER_HANDOFF_TIMEOUT_S = 10.0
+
+
+def _await_worker_custody(store: BenchmarkJobStore, run_id: str) -> None:
+    """Require the launching parent's acknowledgement and this child's receipt."""
+    acknowledged = threading.Event()
+    receipt = []
+
+    def read_acknowledgement() -> None:
+        try:
+            receipt.append(os.read(sys.stdin.fileno(), 1))
+        except (OSError, ValueError):
+            pass
+        finally:
+            acknowledged.set()
+
+    threading.Thread(target=read_acknowledgement, daemon=True).start()
+    if not acknowledged.wait(_WORKER_HANDOFF_TIMEOUT_S) or receipt != [b"1"]:
+        raise BenchmarkJobError("worker_custody_unverified", "worker custody was not acknowledged")
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+    worker_path = resolve_owned_run_path(
+        store.run_root, ownership_id=record["spec"]["ownership_id"],
+        run_id=run_id, relative="worker.json",
+    )
+    pid = os.getpid()
+    process_start = _process_start_identity(pid)
+    if not isinstance(process_start, str) or not process_start:
+        raise BenchmarkJobError("worker_custody_unverified", "worker process start identity is unavailable")
+    expected = {
+        "run_id": run_id, "pid": pid, "db": os.path.realpath(store.path),
+        "run_root": store.run_root, "process_start": process_start,
+        "process_group_id": pid, "session_id": pid,
+    }
+    try:
+        with open(worker_path, "rb", opener=lambda path, flags: os.open(
+            path, flags | getattr(os, "O_NONBLOCK", 0)
+        )) as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise ValueError("worker receipt is not a regular file")
+            raw = handle.read(65537)
+        if len(raw) > 65536:
+            raise ValueError("worker receipt exceeds 64 KiB")
+        worker = json.loads(raw)
+        matches = isinstance(worker, dict) and all(worker.get(key) == value for key, value in expected.items())
+        if os.name != "nt":
+            matches = matches and os.getpgid(pid) == pid and os.getsid(pid) == pid
+    except (OSError, ValueError, RecursionError):
+        matches = False
+    if not matches:
+        raise BenchmarkJobError("worker_custody_unverified", "worker custody does not match this process")
 
 
 def _process_start_identity(pid: int) -> str | None:
@@ -826,7 +909,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        execute_benchmark_job(_store(args.db, args.run_root), args.run_id)
+        store = _store(args.db, args.run_root)
+        _await_worker_custody(store, args.run_id)
+        execute_benchmark_job(store, args.run_id)
     except BenchmarkJobError as exc:
         if exc.code != "job_already_claimed":
             return 2

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 
 import pytest
@@ -458,3 +459,84 @@ def test_file_preflight_serializes_client_contents(monkeypatch, tmp_path):
     remote = cli._remote_arguments(path[-1], rest, confirmed=False)
     assert json.loads(remote["spec_json"]) == local
     assert "spec" not in remote
+
+
+def test_large_job_roundtrips_through_controller_and_reconciles(monkeypatch, tmp_path):
+    from anvil_serving import controller, transports
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes, job_spec_sha256, validate_job_spec
+
+    # Escaped content makes the wire representation larger than its source strings.
+    raw = _spec(parameters={"identities": {"model": {
+        f"part-{index}": '\\"' * 1000 for index in range(48)
+    }}})
+    spec = validate_job_spec(json.loads(raw))
+    assert 64 * 1024 < len(canonical_json_bytes(spec)) < 256 * 1024
+    store = BenchmarkJobStore(str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"))
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: store)
+    launches = []
+    monkeypatch.setattr(benchmarks, "launch_benchmark_job", lambda **kw: launches.append(kw) or {"launched": True})
+    token = "synthetic-roundtrip-token"
+    server = controller.make_server(
+        "127.0.0.1", 0, auth_token_env="TEST_CONTROLLER_TOKEN",
+        env={"TEST_CONTROLLER_TOKEN": token},
+        idempotency_db_path=str(tmp_path / "operations.sqlite3"),
+        call_tool_func=mcp.call_tool, audit_logger=lambda _record: None,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        def transport(action):
+            path, _, _, _ = cli._resolve(["eval", "benchmark", "context", action])
+            remote = path[-1].remote_operation
+            assert remote.max_response_bytes == 4 * 1024 * 1024
+            name = cli._command_spec(path).name
+            client = transports.ControllerTransport(
+                f"http://127.0.0.1:{server.server_port}", auth_env="TEST_CONTROLLER_TOKEN",
+                allowed_operations=[name], environment={"TEST_CONTROLLER_TOKEN": token},
+                max_response_bytes=remote.max_response_bytes,
+            )
+            return client, name, remote.tool
+
+        submit, submit_name, submit_tool = transport("submit")
+        operation = transports.Operation(submit_name, {
+            "suite": "context", "spec_json": raw, "confirm": True,
+        }, tool_name=submit_tool)
+        context = {"topology": "test", "execution_host": "worker", "execution_runtime": "native"}
+        first = submit.execute(operation, idempotency_key="large-job-submit", idempotency_context=context)
+        assert first.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert first.data["data"]["job"]["spec_sha256"] == job_spec_sha256(spec)
+
+        status, status_name, status_tool = transport("status")
+        observed = status.execute(transports.Operation(status_name, {
+            "suite": "context", "run_id": spec["run_id"],
+        }, tool_name=status_tool))
+        assert observed.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert observed.data["data"]["spec_sha256"] == first.data["data"]["job"]["spec_sha256"]
+        reconciled = submit.operation_status("large-job-submit")
+        assert reconciled.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert reconciled.data["status"] == "succeeded"
+        assert reconciled.data["result"] == first.data
+        assert reconciled.data["response"] == first.data
+        replay = submit.execute(operation, idempotency_key="large-job-submit", idempotency_context=context)
+        assert replay.data == first.data
+        assert len(launches) == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_benchmark_response_limits_are_scoped_and_within_controller_cap():
+    from anvil_serving.commands import manifest_data
+    from anvil_serving.transports import MAX_CONTROLLER_RESPONSE_BYTES
+
+    for record in manifest_data()["commands"]:
+        remote = record["remote_operation"]
+        if remote and remote["tool"] in {
+            "benchmark_job_submit", "benchmark_job_status", "benchmark_job_logs",
+            "benchmark_job_cancel", "benchmark_job_artifact",
+        }:
+            expected = 8 * 1024 * 1024 if remote["tool"] == "benchmark_job_artifact" else 4 * 1024 * 1024
+            assert remote["max_response_bytes"] == expected <= MAX_CONTROLLER_RESPONSE_BYTES
+    path, _, _, _ = cli._resolve(["router", "status"])
+    assert path[-1].remote_operation.max_response_bytes is None

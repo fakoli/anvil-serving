@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 import math
 import re
@@ -252,13 +253,14 @@ def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force
     }
 
 
-def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
+def test_detached_launcher_keeps_credentials_out_of_argv(monkeypatch, tmp_path):
     observed = {}
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "test-start")
 
     def popen(argv, **kwargs):
         observed["argv"] = argv
         observed["kwargs"] = kwargs
-        return SimpleNamespace(pid=987)
+        return SimpleNamespace(pid=987, stdin=io.BytesIO())
 
     database = str(tmp_path / "jobs.db")
     run_root = str(tmp_path / "runs")
@@ -295,6 +297,117 @@ def test_detached_launcher_reports_typed_process_failure(tmp_path):
     assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+@pytest.mark.parametrize("failure", ["identity", "write", "after-write"])
+def test_failed_custody_handoff_stops_real_child_before_claim_or_preparation(monkeypatch, tmp_path, failure):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    _, submitted = store.submit(spec())
+    ready, prepared = tmp_path / "ready", tmp_path / "prepared"
+    children = []
+    write_json = benchmark_worker.atomic_write_json
+    code = (
+        "import sys; from pathlib import Path; "
+        "from anvil_serving.benchmarking import worker; "
+        f"worker.prepare_harness_assets = lambda *a, **kw: Path({str(prepared)!r}).write_text('unexpected'); "
+        "worker.run_benchmark_preflight = lambda *a, **kw: {}; "
+        f"Path({str(ready)!r}).touch(); "
+        "raise SystemExit(worker.main(sys.argv[1:]))"
+    )
+
+    def popen(argv, **kwargs):
+        process = subprocess.Popen([sys.executable, "-c", code, *argv[3:]], **kwargs)
+        children.append(process)
+        return process
+
+    def fail_write(*_args, **_kwargs):
+        if failure == "after-write":
+            write_json(*_args, **_kwargs)
+        deadline = time.monotonic() + 5
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert ready.exists(), "child failed to reach the custody gate"
+        time.sleep(0.1)
+        assert store.status("worker-run") == submitted
+        assert not prepared.exists()
+        raise OSError("disk full")
+
+    try:
+        with monkeypatch.context() as fault:
+            fault.setattr(benchmark_worker, "atomic_write_json", fail_write)
+            if failure == "identity":
+                fault.setattr(benchmark_worker, "_process_start_identity", lambda _pid: None)
+            with pytest.raises(BenchmarkJobError) as exc:
+                launch_benchmark_job(
+                    path=store.path, run_root=store.run_root, run_id="worker-run", popen=popen,
+                )
+        assert exc.value.code == "worker_launch_failed"
+        assert len(children) == 1
+        assert children[0].poll() is not None
+        assert not benchmark_worker._process_group_running(children[0].pid)
+        assert not prepared.exists()
+        assert store.status("worker-run") == submitted
+        assert store.submit(spec()) == ("existing", submitted)
+        assert (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists() is (failure == "after-write")
+        assert cancel_benchmark_job(store, "worker-run")["state"] == "cancelled"
+        assert store.submit({**spec(), "run_id": "replacement-run"})[0] == "submitted"
+    finally:
+        for child in children:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait(timeout=5)
+
+
+@pytest.mark.parametrize("handoff", ["parent-eof", "timeout", "wrong-custody", "missing-start", "oversize", "fifo"])
+def test_real_child_requires_bounded_matching_custody_before_execution(tmp_path, handoff):
+    if handoff == "fifo" and os.name == "nt":
+        pytest.skip("FIFO requires POSIX")
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    _, submitted = store.submit(spec())
+    executed = tmp_path / "executed"
+    code = (
+        "import sys; from pathlib import Path; "
+        "from anvil_serving.benchmarking import worker; "
+        "worker._WORKER_HANDOFF_TIMEOUT_S = 0.1; "
+        f"worker.execute_benchmark_job = lambda *a: Path({str(executed)!r}).touch(); "
+        "raise SystemExit(worker.main(sys.argv[1:]))"
+    )
+    if handoff == "missing-start":
+        code = code.replace("raise SystemExit", "worker._process_start_identity = lambda pid: None; raise SystemExit")
+    process = subprocess.Popen(
+        [sys.executable, "-c", code, "--db", store.path, "--run-root", store.run_root, "--run-id", "worker-run"],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        start_new_session=os.name != "nt",
+    )
+    try:
+        if handoff == "parent-eof":
+            process.stdin.close()
+        elif handoff not in {"timeout", "parent-eof"}:
+            run = tmp_path / "runs" / "campaign" / "worker-run"
+            run.mkdir(parents=True)
+            (run / "worker.json").write_text(json.dumps({
+                "run_id": "worker-run", "pid": process.pid + (handoff == "wrong-custody"), "db": store.path,
+                "run_root": store.run_root, "process_start": None if handoff == "missing-start" else benchmark_worker._process_start_identity(process.pid),
+                "process_group_id": process.pid, "session_id": process.pid,
+            }))
+            if handoff == "oversize":
+                with (run / "worker.json").open("a") as handle:
+                    handle.write(" " * 65536)
+            if handoff == "fifo":
+                (run / "worker.json").unlink()
+                os.mkfifo(run / "worker.json")
+            process.stdin.write(b"1")
+            process.stdin.flush()
+        assert process.wait(timeout=5) == 2, process.stderr.read().decode()
+        assert not executed.exists()
+        assert store.status("worker-run") == submitted
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        process.stdin.close()
+        process.stderr.close()
+
+
 @pytest.mark.parametrize("state", [None, "running", "completed", "failed", "cancelled"])
 def test_detached_launcher_rejects_absent_or_nonqueued_jobs_before_spawn(tmp_path, state):
     store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
@@ -323,7 +436,7 @@ def test_rejected_relaunch_preserves_original_worker_cancellation_identity(monke
     monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "original-start")
     launch_benchmark_job(
         path=store.path, run_root=store.run_root, run_id="worker-run",
-        popen=lambda *_a, **_kw: SimpleNamespace(pid=987),
+        popen=lambda *_a, **_kw: SimpleNamespace(pid=987, stdin=io.BytesIO()),
     )
     worker_path = tmp_path / "runs" / "campaign" / "worker-run" / "worker.json"
     original = worker_path.read_bytes()

@@ -1272,7 +1272,7 @@ class OperationStore:
         *,
         retention_seconds: float = DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
         max_records: int = DEFAULT_IDEMPOTENCY_MAX_RECORDS,
-        max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
+        max_result_bytes: int | None = None,
         clock: Clock = time.time,
         _snapshot_clock: Clock = time.monotonic,
     ) -> None:
@@ -1282,14 +1282,17 @@ class OperationStore:
             raise ValueError("idempotency retention must be positive")
         if max_records < 1:
             raise ValueError("idempotency max records must be positive")
-        if max_result_bytes < 1:
-            raise ValueError("idempotency max result bytes must be positive")
+        if max_result_bytes is not None and (type(max_result_bytes) is not int or max_result_bytes < 1):
+            raise ValueError("idempotency max result bytes must be a positive integer")
         if not callable(_snapshot_clock):
             raise ValueError("operation snapshot clock must be callable")
         self.path = path
         self.retention_seconds = float(retention_seconds)
         self.max_records = int(max_records)
-        self.max_result_bytes = int(max_result_bytes)
+        self._configured_result_limit = max_result_bytes is not None
+        self.max_result_bytes = (
+            DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES if max_result_bytes is None else int(max_result_bytes)
+        )
         self._clock = clock
         self._snapshot_clock = _snapshot_clock
         self._lock = threading.RLock()
@@ -1537,11 +1540,16 @@ class OperationStore:
                 self._active_keys.discard(key)
 
     def complete(
-        self, key: str, status: str, response: Mapping[str, Any], auth_token: Optional[str]
+        self, key: str, status: str, response: Mapping[str, Any], auth_token: Optional[str],
+        *, default_max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
     ) -> None:
         if status not in {"succeeded", "failed"}:
             raise ValueError("operation records can only complete as succeeded or failed")
-        safe_response = _bounded_persisted_value(response, auth_token, self.max_result_bytes)
+        if type(default_max_result_bytes) is not int or default_max_result_bytes < 1:
+            raise ValueError("default result limit must be a positive integer")
+        # Trusted dispatch may select a larger default; an operator cap always wins.
+        limit = self.max_result_bytes if self._configured_result_limit else default_max_result_bytes
+        safe_response = _bounded_persisted_value(response, auth_token, limit)
         if _is_persistence_failure(safe_response):
             status = "failed"
         result = safe_response if status == "succeeded" else None

@@ -44,7 +44,6 @@ from .security import (
 from .store import (
     DEFAULT_IDEMPOTENCY_DB_PATH,
     DEFAULT_IDEMPOTENCY_MAX_RECORDS,
-    DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
     DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
     OperationStore,
 )
@@ -88,7 +87,7 @@ def make_server(
     idempotency_db_path: str = DEFAULT_IDEMPOTENCY_DB_PATH,
     idempotency_retention_seconds: float = DEFAULT_IDEMPOTENCY_RETENTION_SECONDS,
     idempotency_max_records: int = DEFAULT_IDEMPOTENCY_MAX_RECORDS,
-    idempotency_max_result_bytes: int = DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
+    idempotency_max_result_bytes: int | None = None,
     operation_store: Optional[OperationStore] = None,
     resolver: Optional[Callable[..., Sequence[Any]]] = None,
     allowed_operations: Optional[Sequence[str]] = None,
