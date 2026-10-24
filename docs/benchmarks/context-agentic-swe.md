@@ -1,6 +1,6 @@
-# Context, agentic, and SWE benchmark jobs
+# Context, agentic, SWE, and Aider benchmark jobs
 
-Anvil Serving can run three durable evaluation families against an already
+Anvil Serving can run four durable evaluation families against an already
 served router alias:
 
 - `context` measures independently scored retrieval correctness across token
@@ -9,7 +9,9 @@ served router alias:
 - `agentic` measures planning, structured output, tool sequencing, dependent
   results, recovery, and final-answer behavior with deterministic fixture tools;
 - `swe` runs a pinned mini-SWE-agent revision and requires the pinned official
-  SWE-bench grader before a run can be complete.
+  SWE-bench grader before a run can be complete;
+- `aider` uses pinned Aider whole-file edits and Polyglot tasks, with the
+  upstream test callback executing generated code in contained containers.
 
 These are evaluation jobs, not model lifecycle commands. Submission, preflight,
 execution, cancellation, evidence retrieval, and owned cleanup do not start,
@@ -305,6 +307,48 @@ anvil-serving eval benchmark context cancel --run-id deepseek-context-smoke-001 
 ```
 
 Use the equivalent `agentic` or `swe` command family for the other suites.
+
+## Aider Polyglot
+
+Inspect the profile and prepare its exact sources, Python environment, and
+test image on the worker:
+
+```bash
+anvil-serving eval benchmark aider --profile pilot-v2 --dry-run
+anvil-serving eval benchmark aider prepare --profile pilot-v2 --ownership-id pilot --run-id aider-preparation --confirm
+```
+
+Use the same durable submission, status, logs, cancellation, and artifact
+commands with the `aider` suite. The initial prepared selection contains one
+eligible task per language: C++, Go, Java, JavaScript, Python, and Rust.
+Selection order and exclusions are retained. An explicit `instance_ids` list
+may narrow that prepared selection; it cannot introduce an unprepared task.
+Each task gets at most two upstream attempts with test feedback. The pilot
+caps the suite at 12 transport attempts, 16,384 completion tokens per request,
+and one hour of execution. Preparation time is recorded separately.
+
+Preparation must prove that every selected starter fails and its reference
+solution passes the same upstream test command in the exact prepared image.
+Missing or failed oracle evidence blocks model traffic. The image receipt
+freezes its base digest, build inputs, resolved package inventory, and final
+image ID. Mutable package resolution during preparation means that a future
+rebuild is not promised to be byte-identical.
+
+Test containers have no network, credentials, GPU, or Docker socket. They use
+a read-only root filesystem, an owned task directory, temporary scratch space,
+8 GiB memory and memory-plus-swap limits, four CPUs, and at most 512 processes.
+The adapter verifies these settings and container ownership before starting
+tests. Cancellation stops the owned worker, then verifies and removes its
+owned test containers. An unverified stop or container leaves cleanup deferred.
+
+The pinned upstream callback controls original-test restoration, test command
+selection, timeout feedback, and output normalization. The bridge verifies its
+source hashes and changes only where the subprocess executes. Plans, selected
+inputs, raw results, per-attempt feedback, and partial evidence stay under the
+owned run's `aider/` directory, outside disposable `work/`. Task IDs are relative
+paths; artifact filenames use their hashes. Neither a successful process exit
+nor a completed job alone establishes coding quality: inspect scored attempts
+and retained failures.
 
 ## Retained SWE evidence and regrading
 

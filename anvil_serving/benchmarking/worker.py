@@ -127,6 +127,8 @@ def _identities(
             "dataset",
             {"name": "SWE-bench_Verified", "split": "test"}
             if spec["suite"] == "swe"
+            else {"name": "Aider Polyglot", "revision": profile.get("adapters", {}).get("polyglot-benchmark", {}).get("revision", "unavailable")}
+            if spec["suite"] == "aider"
             else {"name": "deterministic-native", "profile_sha256": profile.get("content_sha256", "unavailable")},
         ),
     }
@@ -141,6 +143,20 @@ def _stage(sequence: int, name: str, status: str, reference: dict[str, Any]) -> 
     }
 
 
+def _retain_stopped_aider(record: Mapping[str, Any], *, run_path: str) -> dict[str, Any]:
+    """Containers outlive worker processes; verify their cleanup before retention."""
+    from .aider import retain_aider_artifacts
+    from .aider_containment import cleanup_aider_containers
+
+    spec = record["spec"]
+    cleanup = cleanup_aider_containers(
+        run_path=run_path, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
+    )
+    if cleanup["status"] != "completed":
+        return {"state": "failed", "reason": "aider_container_cleanup_unverified", "containers": cleanup}
+    return {**retain_aider_artifacts(run_path=run_path), "containers": cleanup}
+
+
 def _run_suite(
     store: BenchmarkJobStore,
     record: Mapping[str, Any],
@@ -152,7 +168,7 @@ def _run_suite(
         return run_context_suite(profile, spec)
     if spec["suite"] == "agentic":
         return run_agentic_suite(profile, spec)
-    if spec["suite"] != "swe":
+    if spec["suite"] not in {"swe", "aider"}:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
     instance_ids = spec.get("parameters", {}).get("instance_ids")
     parameters = spec.get("parameters", {})
@@ -160,6 +176,18 @@ def _run_suite(
         "ANVIL_BENCHMARK_CACHE_ROOT",
         os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
     )
+    if spec["suite"] == "aider":
+        from .aider import build_aider_run_plan, run_aider_benchmark
+
+        plan = build_aider_run_plan(
+            profile, assets, endpoint=spec["endpoint"], instance_ids=instance_ids,
+            run_root=store.run_root, cache_root=cache_root,
+            ownership_id=spec["ownership_id"], run_id=spec["run_id"],
+            request_controls={key: parameters[key] for key in (
+                "thinking_mode", "reasoning_effort", "temperature", "top_p"
+            ) if key in parameters}, timeout_s=spec["timeout_s"],
+        )
+        return run_aider_benchmark(plan)
     plan = build_swe_run_plan(
         profile,
         assets,
@@ -260,6 +288,15 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         suite_result = _run_suite(store, record, profile, assets)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
+        if spec["suite"] == "aider":
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            retention = _retain_stopped_aider(record, run_path=run_path)
+            retention_ref = _write_stage(store, record, "aider-retention", retention)
+            stages.append(_stage(len(stages), "aider_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+            if retention["state"] == "failed":
+                raise BenchmarkJobError("aider_artifact_retention_failed", "Aider containers or canonical artifacts could not be verified")
+            if retention["state"] != "retained" and suite_result.get("state") == "completed":
+                raise BenchmarkJobError("aider_artifact_retention_incomplete", "Aider canonical artifacts are incomplete")
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(
                 store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
@@ -309,6 +346,15 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return current
         code = exc.code if isinstance(exc, BenchmarkJobError) else type(exc).__name__
         message = exc.message if isinstance(exc, BenchmarkJobError) else str(exc)
+        if spec["suite"] == "aider" and not any(stage["name"] == "aider_retention" for stage in stages):
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            try:
+                retention = _retain_stopped_aider(record, run_path=run_path)
+                retention_ref = _write_stage(store, record, "aider-retention", retention)
+                stages.append(_stage(len(stages), "aider_retention", "incomplete", retention_ref))
+            except (BenchmarkJobError, OSError, ValueError):
+                # Preserve the original error and all run files if retention itself failed.
+                pass
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
             work_path = os.path.join(run_path, "work")
@@ -554,6 +600,19 @@ def _cancellation_evidence(
     record: Mapping[str, Any], *, run_path: str, retention: Mapping[str, Any], termination: Mapping[str, Any]
 ) -> dict[str, Any]:
     spec = record["spec"]
+    if spec["suite"] == "aider":
+        manifest_path = os.path.join(run_path, "evidence", "cancellation-aider.json")
+        Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(manifest_path, {"schema": "anvil-serving.aider-cancellation/v1", "retention": retention, "termination": termination})
+        retained = retention["state"] in {"retained", "incomplete"}
+        return build_measured_evidence(
+            run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": "aider", "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+            identities=_identities(spec, {}, None, None),
+            stages=[_stage(0, "aider_retention", "incomplete" if retained else "failed", evidence_file_reference(manifest_path, root=run_path))],
+            completeness="cancelled", summary={"completed": False, "aider_retention": dict(retention)},
+            failure={"class": "cancellation", "code": "cancelled" if retained else "partial_artifact_retention_failed", "message": "Aider cancellation preserves all canonical files outside disposable work"},
+            created_at=utc_now(), artifact_root=run_path,
+        )
     if spec["suite"] != "swe":
         manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
         Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
@@ -618,7 +677,9 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     try:
         if termination["stopped"]:
-            if record["spec"]["suite"] == "swe":
+            if record["spec"]["suite"] == "aider":
+                retention = _retain_stopped_aider(record, run_path=run_path)
+            elif record["spec"]["suite"] == "swe":
                 receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
                 Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
                 atomic_write_json(receipt_path, {"schema": "anvil-serving.worker-stop-receipt/v1", "run_id": run_id, "termination": termination})
@@ -632,7 +693,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         )
         failure = evidence["failure"]
         results = {"evidence": evidence}
-    except (BenchmarkArtifactError, OSError):
+    except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {"state": "failed", "reason": "cancellation_artifact_unavailable"}
         failure = {
             "class": "cancellation",
@@ -642,7 +703,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         results = {"cancellation": {"retention": retention, "termination": termination}}
 
     def cleanup(work_path: str) -> None:
-        allowed = {"retained", "incomplete"} if record["spec"]["suite"] == "swe" else {"retained", "absent"}
+        allowed = {"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider"} else {"retained", "absent"}
         if termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
@@ -653,7 +714,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     cancelled["worker_terminated"] = termination["stopped"]
     cancelled["cleanup_deferred"] = artifact_retention_failed or not (
-        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] == "swe" else {"retained", "absent"})
+        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider"} else {"retained", "absent"})
     )
     return cancelled
 
@@ -703,7 +764,11 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     if not _worker_group_stopped(worker_path, run_id=run_id, database=os.path.realpath(store.path), run_root=store.run_root):
         raise BenchmarkJobError("cleanup_worker_unverified", "owned benchmark worker group is not proven stopped")
     work_path = os.path.join(run_path, "work")
-    if spec["suite"] == "swe":
+    if spec["suite"] == "aider":
+        retention = _retain_stopped_aider(record, run_path=run_path)
+        if retention["state"] == "failed":
+            raise BenchmarkJobError("aider_artifact_retention_failed", "Aider containers or canonical artifacts could not be verified")
+    elif spec["suite"] == "swe":
         from .swe_regrade import _terminal_manifest_reference
         anchored = _terminal_manifest_reference(store, record)
         try:

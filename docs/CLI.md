@@ -256,6 +256,16 @@ required operands, choices, and defaults.
 | `eval benchmark swe logs` | Read bounded cursor logs for a swe benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
 | `eval benchmark swe cancel` | Cancel a swe benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
 | `eval benchmark swe artifact` | Read the terminal or partial swe benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark aider` | Run pinned Aider Polyglot edits with contained tests. | `read` / `bounded` | `--profile`<br>`--observed-context` |
+| `eval benchmark aider prepare` | Prepare digest-pinned aider harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark aider assets` | Inspect prepared aider harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark aider cleanup` | Clean only the owned work directory for a aider benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark aider preflight` | Validate the endpoint and worker for a aider benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark aider submit` | Submit a durable aider benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark aider status` | Read durable aider benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark aider logs` | Read bounded cursor logs for a aider benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark aider cancel` | Cancel a aider benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
+| `eval benchmark aider artifact` | Read the terminal or partial aider benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark multimodal` | Run a hashed deterministic image/video corpus. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

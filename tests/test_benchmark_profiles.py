@@ -17,7 +17,7 @@ from anvil_serving.benchmarking.profiles import (
 def test_checked_in_profiles_are_content_addressed_and_valid(name):
     profile = load_profile(name)
     assert profile["content_sha256"] == profile_content_sha256(profile)
-    assert set(profile["suites"]) == {"context", "agentic", "swe"}
+    assert set(profile["suites"]) == ({"context", "agentic", "swe", "aider"} if name == "pilot-v2" else {"context", "agentic", "swe"})
 
 
 @pytest.mark.parametrize("name", sorted(PROFILE_NAMES))

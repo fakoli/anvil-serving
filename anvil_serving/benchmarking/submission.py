@@ -47,6 +47,10 @@ _SUITE_PARAMETERS = {
         "server_log",
         "operation", "source_run_id", "prompt_contract",
     }),
+    "aider": frozenset({
+        "thinking_mode", "reasoning_effort", "temperature", "top_p",
+        "instance_ids",
+    }),
 }
 
 
@@ -145,6 +149,13 @@ def validate_submission_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         selection = _agentic_selection(suite, parameters)
         _validate_case_limit(parameters, suite="agentic")
         return {"profile": profile["name"], "request_controls": controls, "selection": selection, **binding}
+    if suite_name == "aider":
+        from .aider import validate_aider_parameters
+
+        selection = validate_aider_parameters(
+            profile, {key: value for key, value in parameters.items() if key in _SUITE_PARAMETERS["aider"]}
+        )
+        return {"profile": profile["name"], **selection, **binding}
     if suite_name == "swe":
         operation = parameters.get("operation", "run")
         if not isinstance(operation, str) or operation not in {"run", "regrade"}:

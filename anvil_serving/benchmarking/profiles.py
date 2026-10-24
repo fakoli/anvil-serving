@@ -1,4 +1,4 @@
-"""Versioned, content-addressed profiles for context, agentic, and SWE jobs."""
+"""Versioned, content-addressed profiles for managed evaluation jobs."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ BENCHMARK_PROFILE_SCHEMA_V2 = "anvil-serving.benchmark-profile/v2"
 V1_PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
 V1_SUITE_NAMES = frozenset({"context", "agentic", "swe"})
 PROFILE_NAMES = V1_PROFILE_NAMES | {"pilot-v2"}
-SUITE_NAMES = frozenset({"context", "agentic", "swe"})
+SUITE_NAMES = frozenset({"context", "agentic", "swe", "aider"})
 # Reuse the existing bounded evaluation attempt and completion ceilings.
 _BUDGET_BOUNDS = {
     "max_model_calls": (1, MAX_TOTAL_EVAL_ATTEMPTS),
@@ -100,6 +100,7 @@ def _validate_suite(
         "context": {"token_buckets", "positions", "output_headroom_tokens"},
         "agentic": {"max_steps", "max_completion_tokens"},
         "swe": {"instance_limit", "max_steps", "max_completion_tokens"},
+        "aider": {"instance_limit", "max_steps", "max_completion_tokens"},
     }[name]
     if v2:
         extra = extra | {"budgets"}
@@ -166,10 +167,16 @@ def _validate_suite(
             minimum=1,
             maximum=65536,
         )
-        if name == "swe":
+        if name in {"swe", "aider"}:
             _bounded_integer(
                 suite.get("instance_limit"), name="instance_limit", minimum=1, maximum=500
             )
+        if name == "aider" and (
+            suite["max_steps"] != 2 or suite["repetitions"] != 1
+            or suite["cases"] != ["polyglot"]
+            or set(adapter_names) != {"aider", "polyglot-benchmark"}
+        ):
+            raise BenchmarkJobError("bad_profile", "Aider requires Polyglot, two attempts, one repetition, and its pinned adapters")
     if v2:
         suite["budgets"] = _validate_budgets(name, suite)
     return suite

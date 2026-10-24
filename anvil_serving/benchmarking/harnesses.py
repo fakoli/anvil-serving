@@ -529,6 +529,7 @@ def prepare_harness_assets(
         assets[name] = asset
         command_logs.extend(logs)
     python_environment = None
+    aider_environment = None
     if suite == "swe":
         python_environment, logs = _prepare_swe_python_environment(
             assets=assets,
@@ -536,6 +537,14 @@ def prepare_harness_assets(
             offline=offline,
             max_download_bytes=max_download_bytes,
             runner=runner,
+        )
+        command_logs.extend(logs)
+    if suite == "aider":
+        from .aider_prepare import prepare_aider_environment
+        python_environment, aider_environment, logs = prepare_aider_environment(
+            assets=assets, cache_root=cache, offline=offline,
+            max_download_bytes=max_download_bytes, run_path=run_path,
+            ownership_id=ownership_id, run_id=run_id, runner=runner,
         )
         command_logs.extend(logs)
     manifest = {
@@ -551,6 +560,7 @@ def prepare_harness_assets(
         "offline": offline,
         "assets": assets,
         "python_environment": python_environment,
+        "aider_environment": aider_environment,
         "command_logs": command_logs,
     }
     manifest["cache_identity"] = hashlib.sha256(
@@ -559,6 +569,7 @@ def prepare_harness_assets(
                 "profile": manifest["profile_sha256"],
                 "assets": assets,
                 "python_environment": python_environment,
+                "aider_environment": aider_environment,
             }
         )
     ).hexdigest()

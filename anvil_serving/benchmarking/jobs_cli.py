@@ -1,4 +1,4 @@
-"""CLI for durable context, agentic, and SWE benchmark jobs."""
+"""CLI for durable benchmark jobs."""
 
 from __future__ import annotations
 
@@ -214,6 +214,8 @@ def run(argv: list[str]) -> dict:
     args = _parser().parse_args(argv)
     if args.action == "plan":
         profile = load_profile(args.profile, observed_context=args.observed_context)
+        if args.suite not in profile["suites"]:
+            raise BenchmarkJobError("unknown_suite", "benchmark suite is absent from the selected profile")
         return {
             "schema": "anvil-serving.benchmark-plan/v1",
             "suite": args.suite,

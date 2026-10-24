@@ -1,8 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-profile/v2",
   "name": "pilot-v2",
-  "description": "Bounded pilot of the existing context, agentic, and SWE suites with explicit transport budgets.",
-  "content_sha256": "f030a885cee9b89dfd744752f752d7266228d7299ee5f61b7f1ac570a2d9454a",
+  "description": "Bounded native, SWE and contained Aider Polyglot evaluation with explicit transport budgets.",
   "adapters": {
     "ruler": {
       "kind": "git",
@@ -32,6 +31,16 @@
     "worker-base": {
       "kind": "image",
       "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+    },
+    "aider": {
+      "kind": "git",
+      "source": "https://github.com/Aider-AI/aider",
+      "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c"
+    },
+    "polyglot-benchmark": {
+      "kind": "git",
+      "source": "https://github.com/paraemsi/polyglot-benchmark",
+      "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
     }
   },
   "suites": {
@@ -122,6 +131,35 @@
         "max_retries": 0,
         "min_free_disk_bytes": 21474836480
       }
+    },
+    "aider": {
+      "cases": [
+        "polyglot"
+      ],
+      "repetitions": 1,
+      "timeout_s": 3600,
+      "instance_limit": 6,
+      "max_steps": 2,
+      "max_completion_tokens": 16384,
+      "scoring": {
+        "pass_rate_floor": 1.0
+      },
+      "requirements": {
+        "min_free_disk_bytes": 21474836480,
+        "container_required": true
+      },
+      "adapters": [
+        "aider",
+        "polyglot-benchmark"
+      ],
+      "budgets": {
+        "max_model_calls": 12,
+        "max_completion_tokens": 16384,
+        "deadline_s": 3600,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      }
     }
-  }
+  },
+  "content_sha256": "c5366e3681a7d2873652eee50a07794db40bc26a56eb9914a6f71d174b4d9f47"
 }
