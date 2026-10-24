@@ -111,7 +111,7 @@ def _identities(
                 ),
             },
         ),
-        "concurrency": declared_or("concurrency", {"requests": 1, "workers": 1}),
+        "concurrency": declared_or("concurrency", {"requests": parameters.get("concurrency", 1), "workers": 1, "status": "configured"} if spec["suite"] == "performance" else {"requests": 1, "workers": 1}),
         "harnesses": declared_or(
             "harnesses",
             {
@@ -129,6 +129,8 @@ def _identities(
             if spec["suite"] == "swe"
             else {"name": "Aider Polyglot", "revision": profile.get("adapters", {}).get("polyglot-benchmark", {}).get("revision", "unavailable")}
             if spec["suite"] == "aider"
+            else {"name": "native-synthetic", "runner": parameters.get("runner"), "requested_workload": parameters.get("workload"), "tokenizer_match": "unverified"}
+            if spec["suite"] == "performance"
             else {"name": "deterministic-native", "profile_sha256": profile.get("content_sha256", "unavailable")},
         ),
     }
@@ -157,6 +159,13 @@ def _retain_stopped_aider(record: Mapping[str, Any], *, run_path: str) -> dict[s
     return {**retain_aider_artifacts(run_path=run_path), "containers": cleanup}
 
 
+def _retain_external_artifacts(record: Mapping[str, Any], *, run_path: str) -> dict[str, Any]:
+    if record["spec"]["suite"] == "aider":
+        return _retain_stopped_aider(record, run_path=run_path)
+    from .performance import retain_performance_artifacts
+    return retain_performance_artifacts(run_path=run_path)
+
+
 def _run_suite(
     store: BenchmarkJobStore,
     record: Mapping[str, Any],
@@ -168,7 +177,7 @@ def _run_suite(
         return run_context_suite(profile, spec)
     if spec["suite"] == "agentic":
         return run_agentic_suite(profile, spec)
-    if spec["suite"] not in {"swe", "aider"}:
+    if spec["suite"] not in {"swe", "aider", "performance"}:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
     instance_ids = spec.get("parameters", {}).get("instance_ids")
     parameters = spec.get("parameters", {})
@@ -176,6 +185,19 @@ def _run_suite(
         "ANVIL_BENCHMARK_CACHE_ROOT",
         os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
     )
+    if spec["suite"] == "performance":
+        from .performance import build_performance_run_plan, run_performance_benchmark
+        plan = build_performance_run_plan(
+            profile, assets, endpoint=spec["endpoint"],
+            parameters={key: parameters[key] for key in (
+                "runner", "workload", "concurrency", "request_count", "duration_s",
+                "warmup_requests", "cache_condition", "thinking_mode", "reasoning_effort",
+                "temperature", "top_p",
+            ) if key in parameters},
+            run_root=store.run_root, cache_root=cache_root,
+            ownership_id=spec["ownership_id"], run_id=spec["run_id"], timeout_s=spec["timeout_s"],
+        )
+        return run_performance_benchmark(plan)
     if spec["suite"] == "aider":
         from .aider import build_aider_run_plan, run_aider_benchmark
 
@@ -288,15 +310,16 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         suite_result = _run_suite(store, record, profile, assets)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
-        if spec["suite"] == "aider":
+        if spec["suite"] in {"aider", "performance"}:
+            suite = spec["suite"]
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
-            retention = _retain_stopped_aider(record, run_path=run_path)
-            retention_ref = _write_stage(store, record, "aider-retention", retention)
-            stages.append(_stage(len(stages), "aider_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+            retention = _retain_external_artifacts(record, run_path=run_path)
+            retention_ref = _write_stage(store, record, f"{suite}-retention", retention)
+            stages.append(_stage(len(stages), f"{suite}_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
             if retention["state"] == "failed":
-                raise BenchmarkJobError("aider_artifact_retention_failed", "Aider containers or canonical artifacts could not be verified")
+                raise BenchmarkJobError(f"{suite}_artifact_retention_failed", f"{suite} canonical artifacts could not be verified")
             if retention["state"] != "retained" and suite_result.get("state") == "completed":
-                raise BenchmarkJobError("aider_artifact_retention_incomplete", "Aider canonical artifacts are incomplete")
+                raise BenchmarkJobError(f"{suite}_artifact_retention_incomplete", f"{suite} canonical artifacts are incomplete")
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(
                 store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
@@ -346,12 +369,12 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return current
         code = exc.code if isinstance(exc, BenchmarkJobError) else type(exc).__name__
         message = exc.message if isinstance(exc, BenchmarkJobError) else str(exc)
-        if spec["suite"] == "aider" and not any(stage["name"] == "aider_retention" for stage in stages):
+        if spec["suite"] in {"aider", "performance"} and not any(stage["name"] == f"{spec['suite']}_retention" for stage in stages):
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
             try:
-                retention = _retain_stopped_aider(record, run_path=run_path)
-                retention_ref = _write_stage(store, record, "aider-retention", retention)
-                stages.append(_stage(len(stages), "aider_retention", "incomplete", retention_ref))
+                retention = _retain_external_artifacts(record, run_path=run_path)
+                retention_ref = _write_stage(store, record, f"{spec['suite']}-retention", retention)
+                stages.append(_stage(len(stages), f"{spec['suite']}_retention", "incomplete", retention_ref))
             except (BenchmarkJobError, OSError, ValueError):
                 # Preserve the original error and all run files if retention itself failed.
                 pass
@@ -600,17 +623,18 @@ def _cancellation_evidence(
     record: Mapping[str, Any], *, run_path: str, retention: Mapping[str, Any], termination: Mapping[str, Any]
 ) -> dict[str, Any]:
     spec = record["spec"]
-    if spec["suite"] == "aider":
-        manifest_path = os.path.join(run_path, "evidence", "cancellation-aider.json")
+    if spec["suite"] in {"aider", "performance"}:
+        suite = spec["suite"]
+        manifest_path = os.path.join(run_path, "evidence", f"cancellation-{suite}.json")
         Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(manifest_path, {"schema": "anvil-serving.aider-cancellation/v1", "retention": retention, "termination": termination})
+        atomic_write_json(manifest_path, {"schema": f"anvil-serving.{suite}-cancellation/v1", "retention": retention, "termination": termination})
         retained = retention["state"] in {"retained", "incomplete"}
         return build_measured_evidence(
-            run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": "aider", "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+            run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": suite, "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
             identities=_identities(spec, {}, None, None),
-            stages=[_stage(0, "aider_retention", "incomplete" if retained else "failed", evidence_file_reference(manifest_path, root=run_path))],
-            completeness="cancelled", summary={"completed": False, "aider_retention": dict(retention)},
-            failure={"class": "cancellation", "code": "cancelled" if retained else "partial_artifact_retention_failed", "message": "Aider cancellation preserves all canonical files outside disposable work"},
+            stages=[_stage(0, f"{suite}_retention", "incomplete" if retained else "failed", evidence_file_reference(manifest_path, root=run_path))],
+            completeness="cancelled", summary={"completed": False, f"{suite}_retention": dict(retention)},
+            failure={"class": "cancellation", "code": "cancelled" if retained else "partial_artifact_retention_failed", "message": f"{suite} cancellation preserves canonical files outside disposable work"},
             created_at=utc_now(), artifact_root=run_path,
         )
     if spec["suite"] != "swe":
@@ -677,8 +701,8 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     try:
         if termination["stopped"]:
-            if record["spec"]["suite"] == "aider":
-                retention = _retain_stopped_aider(record, run_path=run_path)
+            if record["spec"]["suite"] in {"aider", "performance"}:
+                retention = _retain_external_artifacts(record, run_path=run_path)
             elif record["spec"]["suite"] == "swe":
                 receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
                 Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
@@ -703,7 +727,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         results = {"cancellation": {"retention": retention, "termination": termination}}
 
     def cleanup(work_path: str) -> None:
-        allowed = {"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider"} else {"retained", "absent"}
+        allowed = {"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"}
         if termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
@@ -714,7 +738,7 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     cancelled["worker_terminated"] = termination["stopped"]
     cancelled["cleanup_deferred"] = artifact_retention_failed or not (
-        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider"} else {"retained", "absent"})
+        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"})
     )
     return cancelled
 
@@ -764,10 +788,10 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     if not _worker_group_stopped(worker_path, run_id=run_id, database=os.path.realpath(store.path), run_root=store.run_root):
         raise BenchmarkJobError("cleanup_worker_unverified", "owned benchmark worker group is not proven stopped")
     work_path = os.path.join(run_path, "work")
-    if spec["suite"] == "aider":
-        retention = _retain_stopped_aider(record, run_path=run_path)
+    if spec["suite"] in {"aider", "performance"}:
+        retention = _retain_external_artifacts(record, run_path=run_path)
         if retention["state"] == "failed":
-            raise BenchmarkJobError("aider_artifact_retention_failed", "Aider containers or canonical artifacts could not be verified")
+            raise BenchmarkJobError(f"{spec['suite']}_artifact_retention_failed", f"{spec['suite']} canonical artifacts could not be verified")
     elif spec["suite"] == "swe":
         from .swe_regrade import _terminal_manifest_reference
         anchored = _terminal_manifest_reference(store, record)

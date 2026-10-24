@@ -266,6 +266,16 @@ required operands, choices, and defaults.
 | `eval benchmark aider logs` | Read bounded cursor logs for a aider benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
 | `eval benchmark aider cancel` | Cancel a aider benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
 | `eval benchmark aider artifact` | Read the terminal or partial aider benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark performance` | Run pinned LIL or AIPerf performance measurements. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark performance prepare` | Prepare digest-pinned performance harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark performance assets` | Inspect prepared performance harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark performance cleanup` | Clean only the owned work directory for a performance benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark performance preflight` | Validate the endpoint and worker for a performance benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark performance submit` | Submit a durable performance benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark performance status` | Read durable performance benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark performance logs` | Read bounded cursor logs for a performance benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark performance cancel` | Cancel a performance benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark performance artifact` | Read the terminal or partial performance benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark multimodal` | Run a hashed deterministic image/video corpus. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |

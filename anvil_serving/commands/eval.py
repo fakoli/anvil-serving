@@ -387,6 +387,9 @@ def commands() -> CommandNode:
                     _benchmark_suite(
                         "aider", "Run pinned Aider Polyglot edits with contained tests."
                     ),
+                    _benchmark_suite(
+                        "performance", "Run pinned LIL or AIPerf performance measurements."
+                    ),
                     _resource_node(
                         "capacity",
                         "Measure endpoint latency, throughput, context, and cache behavior.",

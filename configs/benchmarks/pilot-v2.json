@@ -1,7 +1,7 @@
 {
   "schema": "anvil-serving.benchmark-profile/v2",
   "name": "pilot-v2",
-  "description": "Bounded native, SWE and contained Aider Polyglot evaluation with explicit transport budgets.",
+  "description": "Bounded native, SWE, contained Aider Polyglot and native performance evaluation with explicit transport budgets.",
   "adapters": {
     "ruler": {
       "kind": "git",
@@ -41,6 +41,16 @@
       "kind": "git",
       "source": "https://github.com/paraemsi/polyglot-benchmark",
       "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+    },
+    "lil": {
+      "kind": "git",
+      "source": "https://github.com/local-inference-lab/llm-inference-bench",
+      "revision": "533ef609325390361f6bd8a3640bb4764454a7bd"
+    },
+    "aiperf": {
+      "kind": "git",
+      "source": "https://github.com/ai-dynamo/aiperf",
+      "revision": "794f8bb75f8582f22e412d7e650fc71ca2a3d21a"
     }
   },
   "suites": {
@@ -159,7 +169,33 @@
         "max_retries": 0,
         "min_free_disk_bytes": 21474836480
       }
+    },
+    "performance": {
+      "cases": [
+        "decode"
+      ],
+      "repetitions": 1,
+      "timeout_s": 1800,
+      "max_completion_tokens": 4096,
+      "scoring": {
+        "pass_rate_floor": 1.0,
+        "quality_measured": false
+      },
+      "requirements": {
+        "min_free_disk_bytes": 10737418240
+      },
+      "adapters": [
+        "lil",
+        "aiperf"
+      ],
+      "budgets": {
+        "max_model_calls": 128,
+        "max_completion_tokens": 4096,
+        "deadline_s": 1800,
+        "max_retries": 0,
+        "min_free_disk_bytes": 10737418240
+      }
     }
   },
-  "content_sha256": "c5366e3681a7d2873652eee50a07794db40bc26a56eb9914a6f71d174b4d9f47"
+  "content_sha256": "e25ad695431c63be28006b44922554500cb8d2ba3183cc161ee7d6c3a5130062"
 }

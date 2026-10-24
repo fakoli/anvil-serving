@@ -24422,6 +24422,1993 @@
       "coowned_resource_roles": [],
       "docs_anchor": "docs/cli/eval.md#benchmark",
       "execution_host_os": [],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": null,
+      "resource_role": null,
+      "summary": "Run pinned LIL or AIPerf performance measurements.",
+      "transports": [],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--ownership-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Benchmark ownership identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--offline"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Require exact assets to exist in cache.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--max-download-bytes"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum prepared repository bytes.",
+          "value_name": "BYTES"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance prepare",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "profile",
+          "run_id",
+          "ownership_id",
+          "offline",
+          "max_download_bytes"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_harness_prepare"
+      },
+      "resource_role": "evaluation",
+      "summary": "Prepare digest-pinned performance harness assets on the benchmark worker.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--ownership-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Benchmark ownership identifier.",
+          "value_name": "ID"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance assets",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id",
+          "ownership_id"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_harness_status"
+      },
+      "resource_role": "evaluation",
+      "summary": "Inspect prepared performance harness assets.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--ownership-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Benchmark ownership identifier.",
+          "value_name": "ID"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance cleanup",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id",
+          "ownership_id"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_harness_cleanup"
+      },
+      "resource_role": "evaluation",
+      "summary": "Clean only the owned work directory for a performance benchmark run.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--spec-json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark job specification JSON.",
+          "value_name": "JSON"
+        },
+        {
+          "flags": [
+            "--requirements-json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Worker and harness requirement JSON.",
+          "value_name": "JSON"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance preflight",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "spec_json",
+          "requirements_json"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_preflight"
+      },
+      "resource_role": "evaluation",
+      "summary": "Validate the endpoint and worker for a performance benchmark job.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--spec-json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark job specification JSON.",
+          "value_name": "JSON"
+        },
+        {
+          "flags": [
+            "--follow"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Follow the submitted job.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--detach"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Return after durable submission.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance submit",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "spec_json",
+          "follow",
+          "detach"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_submit"
+      },
+      "resource_role": "evaluation",
+      "summary": "Submit a durable performance benchmark job.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance status",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_status"
+      },
+      "resource_role": "evaluation",
+      "summary": "Read durable performance benchmark job status.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--cursor"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "First log cursor.",
+          "value_name": "N"
+        },
+        {
+          "flags": [
+            "--limit"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Maximum returned log entries.",
+          "value_name": "N"
+        },
+        {
+          "flags": [
+            "--follow"
+          ],
+          "output_policy": "follow",
+          "requires_confirmation": false,
+          "summary": "Continue following job logs.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "follow",
+      "path": "eval benchmark performance logs",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id",
+          "cursor",
+          "limit",
+          "follow"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_logs"
+      },
+      "resource_role": "evaluation",
+      "summary": "Read bounded cursor logs for a performance benchmark job.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "mutate",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--confirm"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Confirm the guarded mutation.",
+          "value_name": null
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance cancel",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {
+          "confirm": true
+        },
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_cancel"
+      },
+      "resource_role": "evaluation",
+      "summary": "Cancel a performance benchmark job after recording partial evidence.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
+      "execution_policy": "resource-owner",
+      "execution_runtime_roles": [
+        "native",
+        "docker"
+      ],
+      "gpu_role_required": false,
+      "handler": "anvil_serving.benchmarking.jobs_cli:main",
+      "mutation_class": "read",
+      "options": [
+        {
+          "flags": [
+            "--topology"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Topology document used for target resolution (default: operator config home).",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--topology-overlay"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Deployment overlay applied to the topology.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--command-host"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command host.",
+          "value_name": "host:ID"
+        },
+        {
+          "flags": [
+            "--command-runtime"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Declared command runtime.",
+          "value_name": "runtime:ID"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Explicit resource-owner target.",
+          "value_name": "host:ID|host-role:ROLE"
+        },
+        {
+          "flags": [
+            "--transport"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Execution transport.",
+          "value_name": "auto|local|controller|ssh"
+        },
+        {
+          "flags": [
+            "--allow-ssh-fallback"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow verified SSH recovery after a proven pre-dispatch controller failure.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--experimental-model-workload"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Allow a topology-permitted experimental model workload on a model-free host.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--json"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Emit the machine-readable result envelope.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--quiet"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Suppress nonessential human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--verbose"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Include diagnostic human output.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "-h",
+            "--help"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Show focused help and exit.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--dry-run"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Inspect the plan without requests or writes.",
+          "value_name": null
+        },
+        {
+          "flags": [
+            "--profile"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Versioned benchmark profile.",
+          "value_name": "deep|pilot-v2|scout|smoke"
+        },
+        {
+          "flags": [
+            "--observed-context"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Observed model context capacity used to enforce output headroom.",
+          "value_name": "TOKENS"
+        },
+        {
+          "flags": [
+            "--run-id"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Portable benchmark run identifier.",
+          "value_name": "ID"
+        },
+        {
+          "flags": [
+            "--path"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Digest-bound stage evidence path from the job artifact.",
+          "value_name": "PATH"
+        }
+      ],
+      "output_policy": "bounded",
+      "path": "eval benchmark performance artifact",
+      "product_family": "evaluation-evidence",
+      "recovery_capable": false,
+      "remote_operation": {
+        "allowed_arguments": [
+          "run_id",
+          "path"
+        ],
+        "argument_aliases": {},
+        "confirmed_arguments": {},
+        "fixed_arguments": {
+          "suite": "performance"
+        },
+        "max_response_bytes": null,
+        "mode": "tool",
+        "positional_arguments": [],
+        "tool": "benchmark_job_artifact"
+      },
+      "resource_role": "evaluation",
+      "summary": "Read the terminal or partial performance benchmark artifact.",
+      "transports": [
+        "local",
+        "controller"
+      ],
+      "visible": true
+    },
+    {
+      "coowned_resource_roles": [],
+      "docs_anchor": "docs/cli/eval.md#benchmark",
+      "execution_host_os": [],
       "execution_policy": "resource-owner",
       "execution_runtime_roles": [
         "native",

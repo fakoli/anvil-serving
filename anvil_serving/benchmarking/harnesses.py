@@ -488,6 +488,8 @@ def prepare_harness_assets(
     """Prepare exact profile assets through one bounded, owned product operation."""
     if suite == "swe":
         require_swe_worker_platform()
+    if suite == "performance" and platform.system() != "Linux":
+        raise BenchmarkJobError("performance_platform_unsupported", "managed performance runtime currently requires Linux")
     validated = validate_profile(profile)
     if suite not in validated["suites"]:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
@@ -547,6 +549,13 @@ def prepare_harness_assets(
             ownership_id=ownership_id, run_id=run_id, runner=runner,
         )
         command_logs.extend(logs)
+    performance_environments = None
+    if suite == "performance":
+        from .performance_prepare import prepare_performance_environments
+        performance_environments = prepare_performance_environments(
+            validated, assets, cache_root=cache, run_path=run_path, offline=offline,
+            max_download_bytes=max_download_bytes, runner=None if runner is _default_runner else runner,
+        )
     manifest = {
         "schema": HARNESS_ASSETS_SCHEMA,
         "created_at": utc_now(),
@@ -562,6 +571,7 @@ def prepare_harness_assets(
         "python_environment": python_environment,
         "aider_environment": aider_environment,
         "command_logs": command_logs,
+        **({"performance_environments": performance_environments} if performance_environments is not None else {}),
     }
     manifest["cache_identity"] = hashlib.sha256(
         canonical_json_bytes(
@@ -570,6 +580,7 @@ def prepare_harness_assets(
                 "assets": assets,
                 "python_environment": python_environment,
                 "aider_environment": aider_environment,
+                **({"performance_environments": performance_environments} if performance_environments is not None else {}),
             }
         )
     ).hexdigest()

@@ -23,7 +23,7 @@ BENCHMARK_PROFILE_SCHEMA_V2 = "anvil-serving.benchmark-profile/v2"
 V1_PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
 V1_SUITE_NAMES = frozenset({"context", "agentic", "swe"})
 PROFILE_NAMES = V1_PROFILE_NAMES | {"pilot-v2"}
-SUITE_NAMES = frozenset({"context", "agentic", "swe", "aider"})
+SUITE_NAMES = frozenset({"context", "agentic", "swe", "aider", "performance"})
 # Reuse the existing bounded evaluation attempt and completion ceilings.
 _BUDGET_BOUNDS = {
     "max_model_calls": (1, MAX_TOTAL_EVAL_ATTEMPTS),
@@ -101,6 +101,7 @@ def _validate_suite(
         "agentic": {"max_steps", "max_completion_tokens"},
         "swe": {"instance_limit", "max_steps", "max_completion_tokens"},
         "aider": {"instance_limit", "max_steps", "max_completion_tokens"},
+        "performance": {"max_completion_tokens"},
     }[name]
     if v2:
         extra = extra | {"budgets"}
@@ -159,6 +160,11 @@ def _validate_suite(
         drop = scoring.get("max_relative_drop")
         if not isinstance(drop, (int, float)) or isinstance(drop, bool) or not 0 <= drop <= 1:
             raise BenchmarkJobError("bad_profile", "max_relative_drop must be from 0 through 1")
+    elif name == "performance":
+        _bounded_integer(suite.get("max_completion_tokens"), name="max_completion_tokens", minimum=1, maximum=65536)
+        if (suite["cases"] != ["decode"] or suite["repetitions"] != 1
+                or set(adapter_names) != {"lil", "aiperf"}):
+            raise BenchmarkJobError("bad_profile", "performance requires one decode cell and its pinned native runners")
     else:
         _bounded_integer(suite.get("max_steps"), name="max_steps", minimum=1, maximum=1000)
         _bounded_integer(

@@ -1,6 +1,6 @@
-# Context, agentic, SWE, and Aider benchmark jobs
+# Context, agentic, coding, and performance benchmark jobs
 
-Anvil Serving can run four durable evaluation families against an already
+Anvil Serving can run five durable evaluation families against an already
 served router alias:
 
 - `context` measures independently scored retrieval correctness across token
@@ -11,7 +11,9 @@ served router alias:
 - `swe` runs a pinned mini-SWE-agent revision and requires the pinned official
   SWE-bench grader before a run can be complete;
 - `aider` uses pinned Aider whole-file edits and Polyglot tasks, with the
-  upstream test callback executing generated code in contained containers.
+  upstream test callback executing generated code in contained containers;
+- `performance` runs pinned Local Inference Lab or AIPerf against one explicit
+  workload cell, preserving native measurements and incomplete results.
 
 These are evaluation jobs, not model lifecycle commands. Submission, preflight,
 execution, cancellation, evidence retrieval, and owned cleanup do not start,
@@ -237,7 +239,7 @@ families that use chat-template thinking controls, set `thinking_mode` to
 `enabled` or `disabled` instead. Agentic, SWE, and Aider jobs require these controls
 to be mutually exclusive. Context jobs can combine them when the selected
 model supports both, and accept `clear_thinking` only with enabled thinking.
-All four suites forward the selected controls and record them in evidence.
+All five suites forward the selected controls and record them in evidence.
 
 `parameters.temperature` and `parameters.top_p` are optional sampler controls
 for context, agentic, SWE, and Aider jobs. Temperature must be finite from 0 through
@@ -315,7 +317,7 @@ anvil-serving eval benchmark context cancel --run-id deepseek-context-smoke-001 
   --target host-role:benchmark-worker --transport controller --confirm
 ```
 
-Use the equivalent `agentic`, `swe`, or `aider` command family for the other suites.
+Use the equivalent `agentic`, `swe`, `aider`, or `performance` command family for the other suites.
 
 ## Aider Polyglot
 
@@ -363,6 +365,56 @@ owned run's `aider/` directory, outside disposable `work/`. Task IDs are relativ
 paths; artifact filenames use their hashes. Neither a successful process exit
 nor a completed job alone establishes coding quality: inspect scored attempts
 and retained failures.
+
+## LIL and AIPerf performance
+
+Prepare the pinned Python environments on a Linux benchmark worker:
+
+```bash
+anvil-serving eval benchmark performance prepare --profile pilot-v2 --ownership-id pilot --run-id performance-preparation --confirm
+```
+
+Use the same durable submission commands with `suite: "performance"`,
+`profile: "pilot-v2"`, and a job timeout no greater than 1,800 seconds. Its
+parameters select one finite workload cell, for example:
+
+```json
+{"runner":"lil","workload":{"input_tokens":0,"output_tokens":256},"concurrency":4,"request_count":16,"cache_condition":"basic","temperature":0,"top_p":1}
+```
+
+The initial adapter accepts finite request counts, no warmup, and the `basic`
+cache condition. Duration runs, cache manipulation, and positive LIL input
+padding are rejected before traffic. LIL's zero input target still sends its
+native prompt; it does not mean a zero-token request. AIPerf accepts its native
+synthetic input target and uses a prepared offline `o200k_base` tokenizer.
+Neither target is proof of the served model's measured input length or matching
+tokenizer. Requested concurrency and workload remain configured values.
+
+The pilot caps transport attempts at 128, completion requests at 4,096 tokens,
+and execution at 1,800 seconds, with no retries. The guard observes actual
+HTTP sends across native workers, including failed attempts, and denies changed
+aliases, destinations, redirects, and administrative requests. Its validation
+and ledger add pre-dispatch overhead; timings describe this managed harness.
+The adapter neither resets nor proves server cache state. It omits the exact
+source-verified unconditional LIL warmup block, which otherwise sends a request
+even when native warmup options are zero. This instrumentation difference is
+recorded; native response parsing and measurement remain upstream-owned.
+
+Preparation pins the upstream source and resolved dependency inventory in
+separate environments. Planning and execution check actual environment bytes,
+modes, links, and exact upstream transport seams. An empty owned working
+directory and HOME prevent ambient dotenv files from configuring the runner.
+Unsupported platforms and unverified runtime contracts fail before traffic.
+
+Raw JSON, CSV, JSONL, process outcomes, request observations, and normalized
+metrics remain under `performance/`, outside disposable `work/`. Retention is
+bounded to 512 files, 512 directories, 32 levels, and 64 MiB. Missing native
+output, failed requests, malformed streams, and cancellation remain visible.
+Native latency units and percentiles are preserved. AIPerf first-token and
+first-visible-output timings remain separate. LIL chunk intervals are not
+relabeled token intervals; token rates remain unknown when the native result
+cannot distinguish server usage from chunk-count fallback. A completed
+performance run measures transport behavior, not coding quality or kernel time.
 
 ## Retained SWE evidence and regrading
 

@@ -29,6 +29,7 @@ _RESERVED_PARAMETERS = {
     "server_log",
     "offline", "client_topology", "model_host_id", "identities",
     "operation", "source_run_id", "prompt_contract",
+    "runner", "workload", "concurrency", "request_count", "duration_s", "warmup_requests", "cache_condition",
 }
 _COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities"})
 _SUITE_PARAMETERS = {
@@ -50,6 +51,10 @@ _SUITE_PARAMETERS = {
     "aider": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p",
         "instance_ids",
+    }),
+    "performance": frozenset({
+        "runner", "workload", "concurrency", "request_count", "duration_s", "warmup_requests", "cache_condition",
+        "thinking_mode", "reasoning_effort", "temperature", "top_p",
     }),
 }
 
@@ -165,6 +170,13 @@ def validate_submission_spec(
         selection = _agentic_selection(suite, parameters)
         _validate_case_limit(parameters, suite="agentic")
         return {"profile": profile["name"], "request_controls": controls, "selection": selection, **binding}
+    if suite_name == "performance":
+        from .performance import validate_performance_parameters
+
+        selection = validate_performance_parameters(
+            profile, {key: value for key, value in parameters.items() if key in _SUITE_PARAMETERS["performance"]}
+        )
+        return {"profile": profile["name"], "selection": selection, **binding}
     if suite_name == "aider":
         from .aider import validate_aider_parameters
 
