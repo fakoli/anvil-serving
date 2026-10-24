@@ -61,6 +61,21 @@ def commands() -> CommandNode:
                 "Manage recorded serve recipes.",
                 children=(
                     _resource_node(
+                        "monitor-sync",
+                        "Register one verified running recipe with the local observer.",
+                        "anvil_serving.recipe_monitoring",
+                        role="model-serve",
+                        execution_host_os=("linux",),
+                        argv_prefix=(),
+                        options=CONFIRM_OPTIONS + (
+                            _option("--container", summary="Exact running container name.", value_name="NAME"),
+                            _option("--registry", summary="Exact recipe registry.", value_name="PATH"),
+                        ),
+                        mutation="mutate",
+                        docs_anchor="docs/cli/recipe-monitoring.md",
+                        forward_confirm_flag=True,
+                    ),
+                    _resource_node(
                         "trace-artifacts",
                         "Inspect or export a stopped recipe's diagnostic traces.",
                         "anvil_serving.recipe_trace",

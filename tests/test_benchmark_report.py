@@ -536,6 +536,7 @@ def test_campaign_report_projects_verified_release_activation_without_private_bi
     path.write_text(json.dumps(release))
     row = report_campaign(manifest, store)["cells"][0]
     assert row["identity_status"] == "verified"
+    assert set(row["telemetry_coverage"].values()) == {"unknown"}  # Summary-only legacy claims are not series evidence.
     public = json.dumps(row)
     assert all(value not in public for value in binding.values())
 

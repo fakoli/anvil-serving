@@ -72,7 +72,7 @@ def read_campaign_spec(path):
 def plan_campaign(value):
     """Validate explicit cells without preparing assets, writing, or sending traffic."""
     result = _object(value, {"schema", "campaign_id", "ownership_id", "submitted_at", "source_sha256",
-                            "arms", "cells", "budgets", "drain_policy", "telemetry"}, "campaign")
+                            "arms", "cells", "budgets", "drain_policy", "telemetry", "telemetry_collection"}, "campaign")
     if result.get("schema") != SCHEMA:
         raise BenchmarkJobError("bad_campaign", "unsupported campaign schema")
     for field in ("campaign_id", "ownership_id"):
@@ -130,6 +130,9 @@ def plan_campaign(value):
             validate_drain_policy(arm["drain_policy"], reserve_s=budgets["drain_reserve_s"])
         _bind_drain_model(arm.get("drain_policy", result["drain_policy"]), identity)
         arm_map[arm_id] = arm
+    if 'telemetry_collection' in result:
+        from .campaign_telemetry import validate_collection
+        validate_collection(result['telemetry_collection'], arms=[{**arm, 'drain_policy': arm.get('drain_policy', result['drain_policy'])} for arm in arms], reserve_s=budgets['drain_reserve_s'])
     cells = result.get("cells")
     if not isinstance(cells, list) or not 1 <= len(cells) <= 4096:
         raise BenchmarkJobError("bad_campaign", "campaign requires one to 4096 explicit cells")
@@ -360,78 +363,98 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
     batches = {}
     for cell in manifest["cells"]:
         batches.setdefault(cell["batch_id"], []).append(cell)
-    for batch_id, cells in batches.items():
-        if cells[0]["arm_id"] != arm_id:
-            continue
-        with campaign_lock(directory):
-            state = _state(directory, manifest=manifest)
-            if state["cancel_requested"]:
-                return {"state": "cancelled", "campaign_id": manifest["campaign_id"]}
-            _check_source(manifest)
-            # Reconcile every arm before spending another batch's allowance.
-            for prior_id, prior in batches.items():
-                records = [_owned_record(store, manifest, cell) for cell in prior]
-                if not any(records):
-                    continue
-                if prior_id == batch_id:
-                    continue
-                receipt = execution.reconcile_batch(manifest, prior_id, run_root=store.run_root, store=store)
-                if receipt.get("status") != "closed":
-                    raise BenchmarkJobError("campaign_unclosed_batch", "a prior batch lacks verified closure")
-            existing = [_owned_record(store, manifest, cell) for cell in cells]
-            if any(existing):
-                if not all(existing):
-                    raise BenchmarkJobError("campaign_partial_submission", "partially submitted frozen batch requires cancellation; it cannot be regrouped")
-                if all(record["state"] in TERMINAL_JOB_STATES for record in existing):
-                    receipt = execution.reconcile_batch(manifest, batch_id, run_root=store.run_root, store=store)
-                    if receipt.get("status") != "closed":
-                        raise BenchmarkJobError("campaign_unclosed_batch", "terminal jobs lack verified batch closure")
-                    continue
-            else:
-                for cell in cells:
-                    execution.verify_prepared_child(cell["spec"], cell["prepared"], run_root=store.run_root)
-                state["batches"][batch_id] = {"phase": "submitting", "run_ids": [cell["spec"]["run_id"] for cell in cells]}
-                atomic_write_json(directory / "state.json", state)
-                for cell in cells:
-                    spec = execution.bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
-                        campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=batch_id)
-                    disposition, record = store.submit(spec)
-                    if disposition == "submitted":
-                        launch_benchmark_job(path=store.path, run_root=store.run_root, run_id=record["spec"]["run_id"])
-                state["batches"][batch_id]["phase"] = "waiting"
-                atomic_write_json(directory / "state.json", state)
-        ready_deadline = time.monotonic() + 60
-        released = False
-        while True:
+    sampler = None
+    try:
+        for batch_id, cells in batches.items():
+            if cells[0]["arm_id"] != arm_id:
+                continue
             with campaign_lock(directory):
                 state = _state(directory, manifest=manifest)
                 if state["cancel_requested"]:
                     return {"state": "cancelled", "campaign_id": manifest["campaign_id"]}
-                records = [_owned_record(store, manifest, cell) for cell in cells]
-                receipt = execution.reconcile_batch(manifest, batch_id, run_root=store.run_root, store=store)
-                if receipt.get("status") == "closed":
-                    break
-                if receipt.get("status") == "blocked":
-                    raise BenchmarkJobError("campaign_unclosed_batch", "batch deadline or closure is unverified; further traffic is blocked")
-                released = released or receipt.get("status") == "active"
-                if not released and execution.batch_ready(manifest, batch_id, run_root=store.run_root):
-                    _check_source(manifest)
-                    allowance = max(cell["spec"]["timeout_s"] for cell in cells) + manifest["budgets"]["drain_reserve_s"]
-                    execution.release_batch(manifest, batch_id, run_root=store.run_root, allowance_s=allowance, store=store)
-                    released = True
-                elif not released and (time.monotonic() >= ready_deadline or any(
-                        record["state"] in TERMINAL_JOB_STATES for record in records)):
-                    raise BenchmarkJobError("campaign_batch_not_ready", "frozen batch could not reach readiness; cancel it before proceeding")
-                elif released and all(record["state"] in TERMINAL_JOB_STATES for record in records):
-                    raise BenchmarkJobError("campaign_unclosed_batch", "terminal batch lacks verified drain; further traffic is blocked")
-            time.sleep(poll_s)
+                _check_source(manifest)
+                # Reconcile every arm before spending another batch's allowance.
+                for prior_id, prior in batches.items():
+                    records = [_owned_record(store, manifest, cell) for cell in prior]
+                    if not any(records):
+                        continue
+                    if prior_id == batch_id:
+                        continue
+                    receipt = execution.reconcile_batch(manifest, prior_id, run_root=store.run_root, store=store)
+                    if receipt.get("status") != "closed":
+                        raise BenchmarkJobError("campaign_unclosed_batch", "a prior batch lacks verified closure")
+                existing = [_owned_record(store, manifest, cell) for cell in cells]
+                if any(existing):
+                    if not all(existing):
+                        raise BenchmarkJobError("campaign_partial_submission", "partially submitted frozen batch requires cancellation; it cannot be regrouped")
+                    if all(record["state"] in TERMINAL_JOB_STATES for record in existing):
+                        receipt = execution.reconcile_batch(manifest, batch_id, run_root=store.run_root, store=store)
+                        if receipt.get("status") != "closed":
+                            raise BenchmarkJobError("campaign_unclosed_batch", "terminal jobs lack verified batch closure")
+                        continue
+                else:
+                    for cell in cells:
+                        execution.verify_prepared_child(cell["spec"], cell["prepared"], run_root=store.run_root)
+                    state["batches"][batch_id] = {"phase": "submitting", "run_ids": [cell["spec"]["run_id"] for cell in cells]}
+                    atomic_write_json(directory / "state.json", state)
+                    for cell in cells:
+                        spec = execution.bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
+                            campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=batch_id)
+                        disposition, record = store.submit(spec)
+                        if disposition == "submitted":
+                            launch_benchmark_job(path=store.path, run_root=store.run_root, run_id=record["spec"]["run_id"])
+                    state["batches"][batch_id]["phase"] = "waiting"
+                    atomic_write_json(directory / "state.json", state)
+            ready_deadline = time.monotonic() + 60
+            released = False
+            while True:
+                if sampler is not None and sampler.release and not sampler.finished:
+                    raw = []
+                    try:
+                        raw = [execution._receipt(c, manifest, store.run_root) for c in cells]
+                    except FileNotFoundError:
+                        pass
+                    if raw and all(r.get('status') in {'closed', 'blocked'} for r in raw):
+                        sampler.finish()
+                    else:
+                        sampler.tick()
+                with campaign_lock(directory):
+                    state = _state(directory, manifest=manifest)
+                    if state["cancel_requested"]:
+                        return {"state": "cancelled", "campaign_id": manifest["campaign_id"]}
+                    records = [_owned_record(store, manifest, cell) for cell in cells]
+                    receipt = execution.reconcile_batch(manifest, batch_id, run_root=store.run_root, store=store)
+                    if receipt.get("status") == "closed":
+                        break
+                    if receipt.get("status") == "blocked":
+                        raise BenchmarkJobError("campaign_unclosed_batch", "batch deadline or closure is unverified; further traffic is blocked")
+                    released = released or receipt.get("status") == "active"
+                    if not released and execution.batch_ready(manifest, batch_id, run_root=store.run_root):
+                        _check_source(manifest)
+                        allowance = max(cell["spec"]["timeout_s"] for cell in cells) + manifest["budgets"]["drain_reserve_s"]
+                        options = {}
+                        if 'telemetry_collection' in manifest:
+                            from .campaign_telemetry import BatchSampler
+                            sampler = BatchSampler(manifest, batch_id, run_root=store.run_root)
+                            options['sampler'] = sampler
+                        execution.release_batch(manifest, batch_id, run_root=store.run_root, allowance_s=allowance, store=store, **options)
+                        released = True
+                    elif not released and (time.monotonic() >= ready_deadline or any(
+                            record["state"] in TERMINAL_JOB_STATES for record in records)):
+                        raise BenchmarkJobError("campaign_batch_not_ready", "frozen batch could not reach readiness; cancel it before proceeding")
+                    elif released and all(record["state"] in TERMINAL_JOB_STATES for record in records):
+                        raise BenchmarkJobError("campaign_unclosed_batch", "terminal batch lacks verified drain; further traffic is blocked")
+                time.sleep(poll_s)
+    finally:
+        if sampler is not None and not sampler.finished:
+            sampler.finish(partial=True)
     return {"state": "completed", "campaign_id": manifest["campaign_id"], "arm_id": arm_id}
 
 
 def run_campaign(manifest, store, *, arm_id, poll_s=0.1):
     try:
         return _run_campaign(manifest, store, arm_id=arm_id, poll_s=poll_s)
-    except (BenchmarkJobError, KeyboardInterrupt):
+    except (BenchmarkJobError, KeyboardInterrupt, OSError, ValueError):
         # Retain cancellation intent even when the foreground coordinator cannot continue.
         cancel_campaign(manifest, store)
         raise

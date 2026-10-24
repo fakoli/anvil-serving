@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import json
 import math
 import os
@@ -12,7 +11,6 @@ import select
 import sqlite3
 import stat
 import time
-from urllib.parse import urlsplit
 import subprocess
 import sys
 
@@ -192,7 +190,17 @@ def reconcile_batch(manifest, batch_id, *, run_root, store=None):
     if closed:
         closed = store is not None and all(_anchored_closure(store, c, manifest, run_root) for c in cells)
     if closed:
-        return {**result, 'status': 'closed', 'active_seconds': max(r['closed_monotonic'] for r in rows) - release['released_monotonic']}
+        end = max(r['closed_monotonic'] for r in rows)
+        if 'telemetry_collection' in manifest:
+            try:
+                from .campaign_telemetry import verify_terminal
+                terminal, _, _ = verify_terminal(manifest, batch_id, release, run_root=run_root,
+                    reference=rows[0].get('telemetry_terminal'))
+                end = max(end, terminal['finalized_monotonic'])
+            except (OSError, ValueError, KeyError, TypeError, BenchmarkJobError):
+                # Missing finalization cannot reclaim the remaining reservation.
+                end = release['deadline_monotonic']
+        return {**result, 'status': 'closed', 'active_seconds': end - release['released_monotonic']}
     active = release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic'] and all(r['status'] in {'active', 'draining', 'ready', 'closed'} for r in rows)
     return {**result, 'status': 'active' if active else 'blocked'}
 
@@ -238,6 +246,20 @@ def campaign_result_reference(store, spec):
     path = _path(spec, store.run_root, 'campaign-execution.json')
     if not path.exists():
         return {}
+    # All success/failure/cancellation artifacts pass this seam. Never rewrite
+    # receipts already referenced by an immutable terminal artifact.
+    record = store.status(spec['run_id'])
+    if record and record['state'] not in {'completed', 'failed', 'cancelled'}:
+        manifest_path = _path({'ownership_id': spec['ownership_id'], 'run_id': spec['campaign']['campaign_id']}, store.run_root, 'campaign/manifest.json')
+        manifest = _read(manifest_path)
+        release_path = _directory(manifest, store.run_root) / 'batches' / (spec['campaign']['batch_id'] + '.json')
+        if 'telemetry_collection' in manifest and release_path.exists():
+            from .campaign_telemetry import attach_terminal
+            release = _read(release_path)
+            _validate_release(release, manifest, spec['campaign']['batch_id'])
+            value = attach_terminal(store, spec, _read(path), manifest, release)
+            if store.status(spec['run_id'])['state'] not in {'completed', 'failed', 'cancelled'}:
+                atomic_write_json(str(path), value)
     return {'campaign_execution': evidence_file_reference(str(path), root=str(path.parent))}
 
 
@@ -262,7 +284,7 @@ def _remaining_budget(manifest, batch_id, *, run_root, store):
     return min(min(3600, budgets['per_arm_s'], arm['budget_s']) - used, min(7200, budgets['total_s']) - total)
 
 
-def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None):
+def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None, sampler=None):
     """Caller holds campaign scheduling lock; every earlier batch must be closed."""
     cells = _cells(manifest, batch_id)
     directory = _directory(manifest, run_root)
@@ -281,6 +303,11 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None):
     arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == cells[0]['arm_id'])
     validate_drain_policy(arm.get('drain_policy', manifest.get('drain_policy', {})), reserve_s=reserve)
     activation = _activation(arm)
+    if sampler is not None:
+        sampler.start(activation)
+        _activation(arm, expected=activation)
+    elif 'telemetry_collection' in manifest:
+        raise BenchmarkJobError('campaign_telemetry_unavailable', 'frozen collection requires the coordinator sampler')
     now = time.monotonic()
     value = {'schema': 'anvil-serving.campaign-release/v1', 'manifest_sha256': _manifest_digest(manifest),
         'batch_id': batch_id, 'arm_id': cells[0]['arm_id'], 'run_ids': [c['spec']['run_id'] for c in cells],
@@ -290,6 +317,8 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None):
     value['activation'] = activation
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(str(path), value)
+    if sampler is not None:
+        sampler.release = value
     return value
 
 
@@ -331,29 +360,31 @@ def validate_drain_policy(policy, *, reserve_s=None, resolved=False):
         raise BenchmarkJobError('bad_campaign_drain', 'drain requires bounded gauges, model labels, and an explicit endpoint')
     minimum = 35 + poll + 1
     if resolved:
+        from .campaign_identity import _url
         try:
-            url = urlsplit(policy['metrics_url'])
-            ipaddress.ip_address(url.hostname or '')
-        except (ValueError, TypeError) as exc:
+            if not re.fullmatch('[0-9a-f]{64}', policy.get('generation', '')):
+                raise ValueError()
+            _url(policy['metrics_url'], local=True, suffix='/engine/' + policy['generation'] + '/metrics')
+        except (ValueError, TypeError, BenchmarkJobError) as exc:
             raise BenchmarkJobError('bad_campaign_drain', 'resolved observer URL is invalid') from exc
-        if (url.scheme != 'http' or not ipaddress.ip_address(url.hostname).is_loopback
-                or url.path != '/engine/' + policy.get('generation', '') + '/metrics'
-                or not re.fullmatch('[0-9a-f]{64}', policy.get('generation', ''))):
-            raise BenchmarkJobError('bad_campaign_drain', 'resolved observer URL is invalid')
     if timeout <= minimum or reserve_s is not None and reserve_s < timeout + 22:
         raise BenchmarkJobError('bad_campaign_drain', 'drain timeout and reserve must include freshness, samples, activation rechecks and client termination')
     return policy
 
 
-def observe_drain(policy, *, deadline):
+def observe_drain(policy, *, deadline, stopped_wall=None):
     """Require one post-expiry observer sample with all selected gauges zero."""
     try:
         validate_drain_policy(policy, resolved=True)
+        if policy:
+            from .campaign_identity import _local_address
+            _local_address(policy['metrics_url'])
     except BenchmarkJobError:
         return {'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'}
     if not policy:
         return {'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'}
     stopped_at = time.monotonic()
+    stopped_wall = time.time() if stopped_wall is None else stopped_wall
     deadline = min(deadline, stopped_at + policy['timeout_s'])
     freshness_wait = 35
     if deadline - stopped_at <= freshness_wait + policy['poll_s']:
@@ -362,20 +393,15 @@ def observe_drain(policy, *, deadline):
         time.sleep(freshness_wait)
     while time.monotonic() < deadline:
         try:
-            from ..router.model_capacity import _default_metrics_read, _label_value
+            from ..router.model_capacity import _default_metrics_read
             status, raw = _default_metrics_read(policy['metrics_url'], {},
                 timeout=min(1, max(.01, deadline-time.monotonic())), max_bytes=1024 * 1024)
             if status != 200 or len(raw) > 1024 * 1024:
                 raise ValueError('oversized metrics')
-            values = {}
-            for key in ('running_metric', 'waiting_metric'):
-                pattern = re.compile(r'^' + re.escape(policy[key]) + r'(?:\{(?P<labels>[^\n]*)\})?\s+(?P<value>[^\s]+)(?:\s+[^\s]+)?$', re.M)
-                found = [float(m.group('value')) for m in pattern.finditer(raw.decode())
-                         if _label_value(m.group('labels') or '', next(iter(policy['metric_labels']))) == next(iter(policy['metric_labels'].values()))]
-                if not found or any(not math.isfinite(v) or v < 0 for v in found):
-                    raise ValueError('missing or invalid engine gauge')
-                values[key] = sum(found)
-            sample = {'observed_monotonic': time.monotonic(), **values}
+            from .campaign_telemetry import engine_sample
+            stamp, values = engine_sample(raw.decode('utf-8'), policy,
+                next(iter(policy['metric_labels'].values())), time.time(), stopped_wall=stopped_wall)
+            sample = {'observed_monotonic': time.monotonic(), 'source_timestamp_seconds': stamp, **values}
             if sample['running_metric'] == sample['waiting_metric'] == 0:
                 return {'status': 'verified', 'sample': sample, 'identity_contract': 'generation-bound-observer/v1',
                         'collector_sha256': _digest(policy), 'freshness_wait_s': freshness_wait}
@@ -439,10 +465,12 @@ def enter_campaign(store, spec):
         raise BenchmarkJobError('campaign_watchdog_unavailable', 'bounded supervisor did not acknowledge custody')
     supervisor.stdout.close()
     return {'manifest': manifest, 'payload': payload, 'release': release, 'receipt': value,
-            'path': path}
+            'path': path, 'store': store, 'spec': spec}
 
 
 def close_campaign(context, *, clients_stopped=None):
+    if context.get('store') is not None and context['store'].status(context['spec']['run_id'])['state'] in {'completed', 'failed', 'cancelled'}:
+        return _read(context['path'])
     value = context['receipt']
     clients = _clients_stopped() if clients_stopped is None else clients_stopped
     arm = next(a for a in context['manifest']['arms'] if a['arm_id'] == value['campaign']['arm_id'])
@@ -452,11 +480,12 @@ def close_campaign(context, *, clients_stopped=None):
                      drain={'status': 'unknown', 'reason': 'engine_drain_collector_unavailable'})
         atomic_write_json(str(context['path']), value)
         return value
+    clients_stopped_wall = time.time() if clients else None
     if clients:
         # Publish the end of traffic before the bounded identity recheck. The
         # receipt remains bound to the release activation, and the watchdog can
         # now reserve the release's drain interval for observation only.
-        value.update(status='draining', clients_stopped=True,
+        value.update(status='draining', clients_stopped=True, clients_stopped_wall=clients_stopped_wall,
                      drain={'status': 'pending', 'reason': 'awaiting_fresh_engine_drain'})
         atomic_write_json(str(context['path']), value)
     try:
@@ -464,7 +493,7 @@ def close_campaign(context, *, clients_stopped=None):
         resolved = {**policy, 'metrics_url': activation['metrics_url'], 'generation': activation['generation']}
         if next(iter(policy['metric_labels'].values())) != activation['served_model']:
             raise BenchmarkJobError('bad_campaign_drain', 'drain model label differs from the active served model')
-        drain = observe_drain(resolved, deadline=context['release']['deadline_monotonic']) if clients else {'status': 'unknown', 'reason': 'owned_clients_not_stopped'}
+        drain = observe_drain(resolved, deadline=context['release']['deadline_monotonic'], stopped_wall=clients_stopped_wall) if clients else {'status': 'unknown', 'reason': 'owned_clients_not_stopped'}
         if drain['status'] == 'verified':
             _activation(arm, expected=context['release']['activation'])
     except BenchmarkJobError:
@@ -487,7 +516,7 @@ def close_cancelled_campaign(store, spec, *, clients_stopped):
     if not release_path.exists():
         return None
     return close_campaign({'receipt': _read(path), 'path': path, 'manifest': manifest,
-        'release': _read(release_path)}, clients_stopped=clients_stopped)
+        'release': _read(release_path), 'store': store, 'spec': spec}, clients_stopped=clients_stopped)
 
 
 def _watchdog(database, run_root, run_id):
@@ -512,7 +541,7 @@ def _watchdog(database, run_root, run_id):
         if (receipt['status'] in {'closed', 'blocked'} and receipt.get('clients_stopped') is True
                 and _anchored_closure(store, cell, manifest, run_root)):
             return
-        if (receipt.get('status') == 'draining' and receipt.get('clients_stopped') is True
+        if (receipt.get('status') in {'draining', 'closed', 'blocked'} and receipt.get('clients_stopped') is True
                 and receipt.get('activation') == release.get('activation')):
             deadline = release['deadline_monotonic']
         time.sleep(min(.1, max(0, deadline - time.monotonic())))

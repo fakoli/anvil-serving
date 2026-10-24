@@ -106,11 +106,11 @@ def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
     from anvil_serving.router import model_capacity
     from types import SimpleNamespace
     clock = [0.0]
-    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
+    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
     generation = 'a' * 64
     policy = {'metrics_url': 'http://127.0.0.1:30001/engine/'+generation+'/metrics', 'generation': generation,
               'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'candidate'}, 'poll_s': .1, 'timeout_s': 40}
-    monkeypatch.setattr(model_capacity, '_default_metrics_read', lambda *a, **k: (200, b'running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0'))
+    monkeypatch.setattr(model_capacity, '_default_metrics_read', lambda *a, **k: (200, ('running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="candidate"} ' + str(clock[0])).encode()))
     assert execution.observe_drain(policy, deadline=50)['status'] == 'verified'
 
 
@@ -208,7 +208,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
     class Engine(EndpointHandler):
         def do_GET(self):
             if self.path.endswith('/metrics'):
-                raw = b'running{model_name="model"} 0\nwaiting{model_name="model"} 0\n'
+                raw = ('running{model_name="model"} 0\nwaiting{model_name="model"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="model"} ' + str(time.time())).encode()
                 self.send_response(200); self.send_header('Content-Length', str(len(raw))); self.end_headers(); self.wfile.write(raw)
             else:
                 super().do_GET()
@@ -301,7 +301,7 @@ def test_observer_generation_url_expires_cached_zero_before_drain(monkeypatch):
     from types import SimpleNamespace
     from anvil_serving.router import model_capacity
     clock = [100.0]
-    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0]+seconds)))
+    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0]+seconds)))
     generation = 'a' * 64
     policy = {'generation': generation,
         'metrics_url': 'http://127.0.0.1:30001/engine/'+generation+'/metrics',
@@ -310,7 +310,7 @@ def test_observer_generation_url_expires_cached_zero_before_drain(monkeypatch):
     observed = []
     def read(*args, **kwargs):
         observed.append(clock[0])
-        return 200, b'running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0'
+        return 200, ('running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="candidate"} ' + str(clock[0])).encode()
     monkeypatch.setattr(model_capacity, '_default_metrics_read', read)
     execution.validate_drain_policy(policy, reserve_s=70, resolved=True)
     assert execution.observe_drain(policy, deadline=130)['status'] == 'unknown'

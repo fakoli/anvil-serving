@@ -136,6 +136,7 @@ nav:
           - Serve lifecycle: cli/serves.md
           - Models and recipes: cli/models.md
           - Recipe trace artifacts: cli/recipe-traces.md
+          - Recipe monitoring: cli/recipe-monitoring.md
           - Capability Gateway: cli/router.md
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md

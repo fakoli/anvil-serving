@@ -2792,6 +2792,11 @@ def _recipe_container_unload(
         raise serve_recipes.RecipeError(
             "recipe container identity changed after selection; rediscover and retry"
         )
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(container=container)
+    except (ValueError, OSError, TypeError) as exc:
+        raise serve_recipes.RecipeError("monitoring withdrawal failed before unload") from exc
     completed = _run(
         ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
@@ -2850,6 +2855,11 @@ def _discovered_recipe_container_unload(
     ):
         return 3
     current = _recheck_discovered_recipe_container(identity, _run=_run)
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(container=current["container"])
+    except (ValueError, OSError, TypeError) as exc:
+        raise serve_recipes.RecipeError("monitoring withdrawal failed before unload") from exc
     completed = _run(
         ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
@@ -3526,6 +3536,12 @@ def _recipe_main(argv):
             if serve_recipes.uses_native_kv_offload(recipe):
                 cleanup = host_ops.prepare_native_kv_offload_shared_memory()
                 host_ops.render_vllm_offload_shared_memory(cleanup)
+            return 1
+        from . import recipe_monitoring
+        try:
+            recipe_monitoring.publish(recipe, a.container, registry_digest=selected_registry_digest)
+        except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+            print("recipe is running but monitoring registration failed; metrics remain withheld", file=sys.stderr)
             return 1
         if cache_policy["enabled"]:
             result = host_ops.automatic_cache_reclaim(

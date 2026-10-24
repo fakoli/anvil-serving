@@ -144,11 +144,38 @@ def test_activation_receipt_reads_are_bounded_and_regular(tmp_path, kind):
         ci._read_json(path)
 
 
-def test_activation_refuses_nonloopback_observer(activation):
+def test_activation_refuses_nonlocal_observer_before_metadata(activation, monkeypatch):
+    value, _, runner = activation
+    value['activation']['observer_base_url'] = 'http://192.0.2.10:19100'
+    ci.validate_activation(value)  # Pure planning validates the literal address; execution proves ownership.
+    class Socket:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def bind(self, address): raise OSError('address not assigned')
+    monkeypatch.setattr(ci.socket, 'socket', lambda *args: Socket())
+    with pytest.raises(BenchmarkJobError, match='not owned'):
+        ci.verify_activation(value, runner=runner, fetch=lambda *args: pytest.fail('nonlocal request'))
+
+
+def test_activation_accepts_proven_same_host_bridge_observer(activation, monkeypatch):
+    value, _, runner = activation
+    value['activation']['observer_base_url'] = 'http://192.0.2.10:19100'
+    bindings = []
+    class Socket:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def bind(self, address): bindings.append(address)
+    monkeypatch.setattr(ci.socket, 'socket', lambda *args: Socket())
+    result = ci.verify_activation(value, runner=runner, fetch=direct_fetch)
+    assert bindings[0] == ('192.0.2.10', 0)
+    assert result['metrics_url'].startswith('http://192.0.2.10:19100/engine/')
+
+
+@pytest.mark.parametrize('host', ['8.8.8.8', '0.0.0.0', '169.254.1.1', '224.0.0.1', 'observer.example.test'])
+def test_activation_rejects_nonlocal_address_classes_without_network(activation, host):
     value, _, _ = activation
-    value["activation"]["observer_base_url"] = "http://192.0.2.10:19100"
-    with pytest.raises(BenchmarkJobError, match="literal loopback"):
-        ci.validate_activation(value)
+    value['activation']['observer_base_url'] = 'http://' + host + ':19100'
+    with pytest.raises(BenchmarkJobError): ci.validate_activation(value)
 
 
 @pytest.mark.parametrize("url", ["http://127.0.0.1:19100\r\n", " http://127.0.0.1:19100", "http://user:secret@127.0.0.1:19100"])

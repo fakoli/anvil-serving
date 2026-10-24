@@ -1150,7 +1150,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     }
 
 
-def discover_recipe_containers(*, _run=subprocess.run) -> dict:
+def discover_recipe_containers(*, _run=subprocess.run, strict=False) -> dict:
     """Return bounded, secret-free identities for Anvil recipe containers."""
     try:
         listed = _run(
@@ -1177,6 +1177,8 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         container_id = line.strip()
         if re.fullmatch(r"[0-9a-f]{12,64}", container_id) and container_id not in ids:
             ids.append(container_id)
+        elif strict and container_id:
+            raise RecipeError("Docker recipe discovery contains an invalid or duplicate ID")
     if len(ids) > MAX_DISCOVERED_RECIPE_CONTAINERS:
         raise RecipeError(
             "recipe container discovery exceeds the %d-container safety bound"
@@ -1202,12 +1204,29 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         raise RecipeError("Docker recipe identity inspection returned malformed JSON") from None
     if not isinstance(rows, list):
         raise RecipeError("Docker recipe identity inspection returned malformed JSON")
+    if strict and len(rows) != len(ids):
+        raise RecipeError("Docker recipe identity inspection is incomplete")
     containers = []
     for row in rows[:MAX_DISCOVERED_RECIPE_CONTAINERS]:
+        if strict and (not isinstance(row, dict) or any(
+                row.get(key) is not None and not isinstance(row[key], dict)
+                for key in ("State", "HostConfig", "Config"))):
+            raise RecipeError("Docker recipe identity inspection contains malformed owner metadata")
+        if strict and isinstance(row, dict) and (row.get("State") or {}).get("Running"):
+            bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+            if (not isinstance(bindings, dict)
+                    or any(not isinstance(value, list) for value in bindings.values())
+                    or sum(len(value) for value in bindings.values()) != len(_recipe_bound_endpoints(row))):
+                raise RecipeError("monitoring requires unambiguous exact TCP bindings")
         record = _recipe_container_record(row, _run=_run)
         if record is not None:
             containers.append(record)
+        elif strict:
+            raise RecipeError("Docker recipe identity inspection contains an invalid owner")
     containers.sort(key=lambda item: item["container"].casefold())
+    if strict and (len({r["container_id"] for r in containers}) != len(ids)
+                   or any(sum(r["container_id"].startswith(i) for r in containers) != 1 for i in ids)):
+        raise RecipeError("Docker recipe inspection does not match discovered IDs")
     return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": containers}
 
 
@@ -1830,6 +1849,11 @@ def load_recipe(
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         raise RecipeError("host memory containment refused: %s" % exc) from exc
     bounded = recipe_memory.limits(recipe["serve"]) is not None
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(port=recipe["serve"].get("port"), container=container, pending=True)
+    except (ValueError, OSError, TypeError) as exc:
+        raise RecipeError("monitoring withdrawal failed before Docker start") from exc
     try:
         completed = _run(argv, check=False, **({"stdout": subprocess.PIPE, "text": True} if bounded else {}))
     except OSError:

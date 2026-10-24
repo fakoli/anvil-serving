@@ -389,10 +389,58 @@ sample do not count as independent observations. Its timeout must exceed the
 freshness interval and bounded metric read,
 and the drain reserve must include that timeout, six seconds for client
 termination, and two eight-second activation checks. A 40-second timeout and
-70-second reserve satisfy this contract.
+70-second reserve satisfy the drain-only contract. The observation also requires
+`anvil_observer_metrics_sample_timestamp_seconds{model="<served-model>"}`:
+its age must be at most 35 seconds, it must not be in the future, and its source
+time must be later than the owned-client stop time. Waiting 35 seconds alone
+never proves freshness.
 Missing identity, stale samples, insufficient reserve, or unknown drain remain
 incomplete evidence. A configured C4 batch does not prove four simultaneous model requests; reports
 keep observed overlap and unavailable telemetry separate.
+
+An optional frozen `telemetry_collection` object enables one synchronous sampler
+per batch in the existing campaign coordinator. It has schema
+`anvil-serving.campaign-telemetry/v1`, `cadence_s` (1–30), `max_gap_s` (at most
+60), `timeout_s` (0.1–3 per plane), `max_rows` (2–4096), and `max_bytes`
+(64 KiB–8 MiB). Its `gpu` and `host` objects declare a literal local HTTP
+`/metrics` URL, `timestamp_metric`, and a `metrics` map from metric name to
+`gauge` or `counter`. GPU additionally declares `identity_label: "uuid"`,
+`identity_prefix` (empty or `GPU-`), and `success_metric`, which must equal one.
+The prefix is an explicit exporter UUID normalization, never device inference.
+Only selected arm GPU UUIDs enter retained samples; serial labels are discarded.
+Collection validates local address ownership and follows no redirects.
+
+Engine collection uses the release generation, served-model labels, drain
+gauges, and observer source timestamp. Managed recipe discovery supplies the
+model cgroup, verified against the exact container ID, start time, image,
+recipe and GPU selection. Its memory/current/peak, configured limits and OOM
+counters describe the model container. Host memory and pressure describe the
+whole host, including other workloads. Counter decreases remain separate reset
+segments; missing metrics, identity drift, failed reads and nonfinite values
+never become zero. Source timestamps count samples; cached HTTP responses do
+not add observations. Values retain metric names and units, without raw labels.
+
+The sampler takes a pre-release sample after activation verification, binds the
+same activation at release, collects on the frozen cadence, and takes final
+samples after every child has closed or blocked. Final collection waits at most
+`max_gap_s` for source timestamps spanning closure. Its reserve must cover the
+drain timeout, 22 seconds for client/identity checks, `max_gap_s`, four per-plane
+timeouts, and one second for final receipt binding. For timeout 40 seconds,
+gap 40 seconds and per-plane timeout 2 seconds, use a 120-second reserve. The
+one-hour arm cap includes release, drain and telemetry finalization; missing
+finalization conservatively consumes the full reserved allowance.
+
+Each immutable child artifact anchors its execution receipt, which anchors the
+shared `telemetry/<batch>/terminal.json`, which anchors bounded `samples.jsonl`.
+Workers wait only until the release deadline. Coordinator loss leaves partial
+rows and unavailable terminal evidence; cancellation retains partial evidence.
+Neither path repairs an already anchored receipt. Reports verify all referenced
+bytes and rederive distinct sample counts, source gaps, failures, reset segments
+and interval coverage. Forged summaries, missing series and broken references
+remain unknown. Older v1 manifests without a collection contract stay readable,
+with unknown interval coverage even if they contain a measured summary. A
+configured concurrency or sparse engine gauge does not establish exact request
+overlap; that field remains unknown.
 
 Reports retain planned, submitted, attempted, scored, failed, cancelled, and
 unfinished populations. Negative oracle scores remain scored results; absent

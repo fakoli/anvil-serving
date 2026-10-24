@@ -139,21 +139,26 @@ def _receipt(cell, root, expected, store):
         return None
 
 
-def _coverage(receipt):
-    receipt = receipt or {}
-    coverage = receipt.get("telemetry_coverage", {})
-    result = {}
-    for key in ("engine", "gpu", "host", "cgroup"):
-        item = coverage.get(key, {}) if isinstance(coverage, dict) else {}
-        item = item if isinstance(item, dict) else {}
-        start, end = item.get("started_monotonic"), item.get("closed_monotonic")
-        full = (item.get("status") == "measured" and item.get("complete") is True
-                and type(item.get("sample_count")) is int and item["sample_count"] > 0
-                and _number(start) and _number(end)
-                and _number(receipt.get("started_monotonic")) and _number(receipt.get("closed_monotonic"))
-                and start <= receipt["started_monotonic"] <= receipt["closed_monotonic"] <= end)
-        result[key] = "measured" if full else "unknown"
-    return result
+def _coverage(receipt, manifest=None, cell=None, store=None):
+    result = dict.fromkeys(('engine', 'gpu', 'host', 'cgroup'), 'unknown')
+    if not receipt or not manifest or 'telemetry_collection' not in manifest:
+        return result
+    try:
+        from .campaign_telemetry import verify_terminal, coverage
+        release_path = Path(resolve_owned_run_path(store.run_root, ownership_id=manifest['ownership_id'],
+            run_id=manifest['campaign_id'], relative='campaign/batches/' + cell['batch_id'] + '.json'))
+        release = _read_execution(release_path)
+        _validate_release(release, manifest, cell['batch_id'])
+        reference = receipt['telemetry_terminal']
+        terminal, rows, _ = verify_terminal(manifest, cell['batch_id'], release, run_root=store.run_root, reference=reference)
+        arm = next(a for a in manifest['arms'] if a['arm_id'] == cell['arm_id'])
+        derived = coverage(rows, manifest['telemetry_collection'], arm,
+            receipt.get('started_monotonic'), receipt.get('closed_monotonic'), complete=terminal['complete'])
+        if derived != receipt.get('telemetry_coverage') or receipt.get('activation') != release['activation'] or receipt.get('boot_id') != release['boot_id']:
+            return result
+        return {key: 'measured' if value['complete'] else 'unknown' for key, value in derived.items()}
+    except (OSError, ValueError, TypeError, KeyError, RecursionError, BenchmarkJobError):
+        return result
 
 
 def _identity_status(manifest, cell, receipt, store):
@@ -229,7 +234,7 @@ def _campaign_timing(manifest, store, receipts, started_runs):
             "active_wall_seconds": active["active_wall_seconds"],
             "known_active_wall_seconds": active["known_active_wall_seconds"],
             "unknown_batch_intervals": active["unknown_intervals"],
-            "scope": "active wall is release-to-verified-drain union; child overlap is not request concurrency"}
+            "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency"}
 
 
 def _latency_range(rows):
@@ -297,7 +302,7 @@ def report_campaign(manifest, store, *, state=None):
         counts = {"planned": planned, "submitted": planned if record else 0, "attempted": attempted,
                   "scored": scored, "failed": failed, "cancelled": remaining if status == "cancelled" else 0,
                   "unfinished": remaining if status != "cancelled" else 0}
-        coverage = _coverage(receipt)
+        coverage = _coverage(receipt, manifest, cell, store)
         identity_status = _identity_status(manifest, cell, receipt, store)
         requested_cache = cell.get("cache_condition", spec.get("parameters", {}).get("cache_condition"))
         if requested_cache not in {"basic", "cold", "warm", "unknown", "unique", "shared", "uncontrolled"}:

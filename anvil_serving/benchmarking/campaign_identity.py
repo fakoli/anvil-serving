@@ -23,7 +23,7 @@ def _error(message):
     raise BenchmarkJobError("campaign_activation_mismatch", message)
 
 
-def _url(value, *, loopback=False, suffix=None):
+def _url(value, *, local=False, suffix=None):
     if not isinstance(value, str) or any(ord(char) < 33 or ord(char) == 127 for char in value):
         _error("campaign activation URL is invalid")
     try:
@@ -39,8 +39,8 @@ def _url(value, *, loopback=False, suffix=None):
         address = ipaddress.ip_address(parsed.hostname)
     except ValueError:
         _error("campaign activation URL must use a literal IP address")
-    if loopback and not address.is_loopback:
-        _error("campaign observer must use literal loopback")
+    if local and (address.is_global or address.is_link_local or address.is_multicast or address.is_unspecified):
+        _error("campaign observer must use a literal local IP address")
     return value.rstrip("/")
 
 
@@ -53,7 +53,7 @@ def validate_activation(arm):
     for key in ("registry_path", "monitoring_receipt_path"):
         if not isinstance(activation[key], str) or not os.path.isabs(activation[key]):
             _error("campaign activation paths must be absolute")
-    _url(activation["observer_base_url"], loopback=True)
+    _url(activation["observer_base_url"], local=True)
     _url(activation["upstream_base_url"], suffix="/v1")
     try:
         ipaddress.ip_address(urlsplit(arm["endpoint"]["base_url"]).hostname or "")
@@ -127,6 +127,7 @@ def _fetch_json(url, *, headers, fetch=None, timeout=3):
 def verify_activation(arm, *, runner=None, fetch=None):
     """Return the current generation only when frozen and live owners agree."""
     activation = validate_activation(arm)
+    _local_address(activation["observer_base_url"])
     identity, endpoint = arm["identity"], arm["endpoint"]
     from .. import serve_recipes
     from ..transports import _run_bounded_process
