@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -81,6 +82,23 @@ def test_aiperf_top_level_scalar_and_explicit_units_preserve_ttft_ttfo():
     assert metrics["request_latency"]["value"] is None
     assert metrics["request_latency"]["unavailable_reason"]
     assert summary["cache_condition"]["status"] == summary["kernel_timing"]["status"] == "unknown"
+
+
+def test_aiperf_actual_clean_export_omits_error_counter_without_measuring_zero():
+    # Pinned 1.4 export shape observed from a complete real native fake-SSE run.
+    native = {"schema_version": "1.4", "is_complete": True, "was_cancelled": False,
+              "error_summary": [], "request_count": {"avg": 2.0, "unit": "requests"},
+              "time_to_first_token": {"avg": 12.0, "unit": "ms", "count": 2}}
+    summary = perf.normalize_performance_metrics(native_plan(), native)
+    assert summary["native_complete"] is True
+    assert summary["metrics"]["error_request_count"]["value"] is None
+    assert summary["metrics"]["error_request_count"]["status"] == "unknown"
+    for update in ({"error_summary": None}, {"error_summary": {}}, {"error_summary": [{"count": 1}]},
+                   {"error_request_count": None}, {"error_request_count": {"avg": 1, "unit": "requests"}},
+                   {"is_complete": False}, {"was_cancelled": True}, {"request_count": {"avg": 1, "unit": "requests"}}):
+        assert not perf.normalize_performance_metrics(native_plan(), {**native, **update})["native_complete"]
+    native.pop("error_summary")
+    assert not perf.normalize_performance_metrics(native_plan(), native)["native_complete"]
 
 
 @pytest.mark.parametrize("updates", [{"is_complete": False}, {"was_cancelled": True},
@@ -261,3 +279,73 @@ def test_native_symlink_and_oversized_document_are_rejected(tmp_path):
     link.write_text("{} ")
     with pytest.raises(ValueError, match="oversized"):
         perf._read_json(str(link), str(base), limit=2)
+
+
+@pytest.mark.parametrize("runner_name", ["lil", "aiperf"])
+def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name):
+    """Opt-in complete public plan/runner probe against an owned fixture, never a model."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import threading
+
+    receipt_path = os.environ.get("ANVIL_PERFORMANCE_SMOKE_RECEIPT")
+    if not receipt_path:
+        pytest.skip("set ANVIL_PERFORMANCE_SMOKE_RECEIPT for full prepared native runner verification")
+    prepared = json.loads(Path(receipt_path).read_text())
+    profile = load_profile("pilot-v2")
+    seen = []
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+        def log_message(self, *args):
+            pass
+        def do_GET(self):
+            seen.append(("GET", self.path, self.headers.get("Authorization")))
+            body = json.dumps({"data": [{"id": "llm.primary"}]} if self.path == "/v1/models" else {}).encode()
+            self.send_response(200 if self.path == "/v1/models" else 404)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            seen.append(("POST", self.path, self.headers.get("Authorization"), body))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            for delta in ({"reasoning_content": "reason"}, {"content": "two words"}):
+                self.wfile.write(("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk",
+                    "choices": [{"index": 0, "delta": delta}]}) + "\n\n").encode())
+                self.wfile.flush()
+            self.wfile.write(("data: " + json.dumps({"id": "fixture", "object": "chat.completion.chunk", "choices": [],
+                "usage": {"prompt_tokens": 4, "completion_tokens": 7, "total_tokens": 11}}) + "\n\n").encode())
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+            self.close_connection = True
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    manifest = {"schema": perf.HARNESS_ASSETS_SCHEMA, "suite": "performance", "profile_sha256": profile["content_sha256"],
+        "assets": {name: {**profile["adapters"][name], "dirty": False} for name in ("lil", "aiperf")},
+        "performance_environments": prepared["environments"]}
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    try:
+        plan = perf.build_performance_run_plan(profile, manifest,
+            endpoint={"base_url": f"http://127.0.0.1:{server.server_port}/v1", "model": "llm.primary"},
+            parameters={**parameters(runner_name), "request_count": 1},
+            run_root=str(runs), cache_root=prepared["cache_root"], ownership_id="fixture", run_id=runner_name, timeout_s=60)
+        result = perf.run_performance_benchmark(plan)
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert result["state"] == "completed", result
+    assert result["retention"]["state"] == "retained"
+    assert result["summary"]["native_complete"] is True
+    assert result["instrumentation"] == plan["instrumentation"]
+    assert result["budget"]["model_calls"] == 1
+    calls = [row for row in seen if row[0] == "POST"]
+    assert len(calls) == 1 and calls[0][1] == "/v1/chat/completions"
+    assert calls[0][3]["model"] == "llm.primary"
+    assert all(row[2] is None for row in seen), "no-auth endpoint unexpectedly received credentials"
+    if runner_name == "aiperf":
+        assert result["summary"]["metrics"]["error_request_count"]["value"] is None
+    assert perf.retain_performance_artifacts(run_path=plan["run_path"]) == result["retention"]

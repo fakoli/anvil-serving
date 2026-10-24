@@ -96,6 +96,12 @@ def _paths(run_path, runner):
     return paths
 
 
+def _adapter_command(python, plan_path):
+    # An explicit argv path also works when the checkout contains PYTHONPATH separators.
+    bootstrap = "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('anvil_serving.benchmarking.performance_adapter',run_name='__main__')"
+    return [python, "-B", "-c", bootstrap, str(Path(__file__).resolve().parents[2]), "--plan", plan_path]
+
+
 def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters, run_root,
                                cache_root, ownership_id, run_id, timeout_s=None):
     from .performance_prepare import verify_performance_environment
@@ -133,7 +139,9 @@ def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters
         "ownership_id": ownership_id, "run_id": run_id, "paths": paths,
         "profile": profile["name"], "profile_sha256": profile["content_sha256"],
         "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest(),
-        "command": [python, "-m", "anvil_serving.benchmarking.performance_adapter", "--plan", paths["plan"]]}
+        "instrumentation": {"lil_unconditional_warmup_disabled": runner == "lil",
+                            "native_stream_parser": True, "http_attempt_guard": True},
+        "command": _adapter_command(python, paths["plan"])}
     plan["plan_sha256"] = _digest(plan)
     verify_plan(plan)
     return plan
@@ -154,7 +162,7 @@ def verify_plan(plan):
         raise BenchmarkJobError("bad_performance_plan", "performance artifact ownership changed")
     if any(not path_is_within(path, owned) for path in plan["paths"].values()):
         raise BenchmarkJobError("bad_performance_plan", "performance artifact escaped owned run")
-    if plan["command"] != [python, "-m", "anvil_serving.benchmarking.performance_adapter", "--plan", plan["paths"]["plan"]]:
+    if plan["command"] != _adapter_command(python, plan["paths"]["plan"]):
         raise BenchmarkJobError("bad_performance_plan", "command does not match the prepared interpreter")
     if hashlib.sha256(Path(__file__).with_name("performance_adapter.py").read_bytes()).hexdigest() != plan["adapter_sha256"]:
         raise BenchmarkJobError("performance_adapter_mismatch", "performance containment adapter changed")
@@ -220,11 +228,15 @@ def normalize_performance_metrics(plan, native):
                 metrics[name]["distribution"] = {
                     key: value for key, value in record.items()
                     if key in {"p50", "p90", "p95", "p99", "min", "max", "std", "count"} and _number(value)}
+        # Pinned AIPerf ERROR_ONLY counters are omitted on clean runs. Keep the
+        # missing metric unknown; explicit empty error evidence can still prove completion.
+        no_errors = (metrics["error_request_count"]["value"] == 0
+                     or "error_request_count" not in native and native.get("error_summary") == [])
         complete = (native.get("is_complete") is True and native.get("was_cancelled") is False
                     and not native.get("incomplete_reason") and not native.get("error_summary")
                     and metrics["request_count"]["status"] == "measured"
                     and metrics["request_count"]["value"] > 0
-                    and metrics["error_request_count"]["value"] == 0)
+                    and no_errors)
         expected = plan["parameters"].get("request_count")
         if expected is not None:
             complete = complete and metrics["request_count"]["value"] == expected
@@ -317,7 +329,7 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
     parent = os.environ if environ is None else environ
     env = {key: parent[key] for key in ("PATH", "LANG", "LC_ALL", "SSL_CERT_FILE", "SSL_CERT_DIR") if key in parent}
     env.update(HOME=paths["home"], PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1",
-        PYTHONPATH=str(Path(__file__).resolve().parents[2]), LLM_BENCH_NO_UPDATE_CHECK="1",
+        LLM_BENCH_NO_UPDATE_CHECK="1",
         HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1")
     tokenizer = plan["environment"].get("tokenizer")
     if tokenizer:
@@ -328,7 +340,7 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
         auth = plan["endpoint"].get("auth_env")
         if auth and not parent.get(auth, "").strip():
             raise BenchmarkJobError("missing_credential", "performance endpoint credential reference is unavailable")
-        env["OPENAI_API_KEY"] = parent[auth].strip() if auth else "anvil-local"
+        env["OPENAI_API_KEY"] = parent[auth].strip() if auth else ""
         verify_plan(plan)
         if shutil.disk_usage(base).free < plan["budgets"]["min_free_disk_bytes"]:
             raise BenchmarkJobError("min_free_disk_bytes", "performance disk reserve is unavailable")
@@ -350,6 +362,7 @@ def run_performance_benchmark(plan, *, command_runner=_budget_runner, environ=No
     try:
         terminal = _adapter_evidence(plan)
         result["budget"] = terminal["budget"]
+        result["instrumentation"] = terminal.get("instrumentation")
         result["request_observations"] = evidence_file_reference(paths["request_events"], root=plan["run_path"])
         if terminal["budget"].get("exhausted"):
             result["failure"] = {"class": "budget_exhausted", "code": terminal["budget"].get("reason")}
