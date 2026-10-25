@@ -11,7 +11,7 @@ import stat
 from pathlib import Path
 import re
 
-from .aider import AIDER_PLAN_SCHEMA, validated_aider_task_grade
+from .aider import AIDER_PLAN_SCHEMA, _validate_request_accounting, validated_aider_task_grade
 from .jobs import BenchmarkJobError, canonical_json_bytes, job_spec_sha256, resolve_owned_run_path
 from .swe_agent_adapter import EVENT_SCHEMA, MAX_BYTES, MAX_EVENTS
 from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch, batch_closure
@@ -125,6 +125,18 @@ def _retained_aider_diagnostics(root, manifest):
         byte_count = sum(map(len, lines[:event_count]))
         if event_count > MAX_EVENTS - 1 or byte_count > MAX_BYTES - 4096:
             return None
+        request_accounting = None
+        accounting_declared = (rows[0].get("request_accounting_schema") is not None
+                               or terminal is not None and terminal.get("request_accounting") is not None)
+        if accounting_declared:
+            adapter_reference = _retained_reference(manifest, "aider/adapter-result.json")
+            if (terminal is None or adapter_reference is None
+                    or _retained_missing(manifest, adapter_reference)):
+                return None
+            adapter_result = _read(root, adapter_reference["path"], adapter_reference)
+            if adapter_result.get("schema") != "anvil-serving.aider-adapter-result/v1":
+                return None
+            request_accounting = _validate_request_accounting(rows, adapter_result)
         if terminal is not None:
             counters = ("event_count", "byte_count", "omitted_events", "omitted_bytes")
             limits = terminal.get("limits")
@@ -134,12 +146,15 @@ def _retained_aider_diagnostics(root, manifest):
                     or any(type(value) is not int for value in limits.values())
                     or limits != {"max_events": MAX_EVENTS, "max_bytes": MAX_BYTES}
                     or terminal.get("outcome") not in {"completed", "failed", "budget_exhausted", "boundary_rejected"}
-                    or terminal.get("status") not in {"complete", "truncated"}):
+                    or terminal.get("status") not in {"complete", "truncated", "incomplete"}):
                 return None
             if terminal["status"] == "complete":
                 if terminal["omitted_events"] != 0 or terminal["omitted_bytes"] != 0:
                     return None
-            elif terminal["omitted_events"] <= 0 or terminal["omitted_bytes"] <= 0:
+            elif terminal["status"] == "truncated":
+                if terminal["omitted_events"] <= 0 or terminal["omitted_bytes"] <= 0:
+                    return None
+            elif request_accounting is None or terminal["omitted_events"] or terminal["omitted_bytes"]:
                 return None
         signals = {"output_truncated": "aider_transport_response",
                    "compilation_failure": "aider_contained_command_finished"}

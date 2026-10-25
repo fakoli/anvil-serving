@@ -395,6 +395,25 @@ def cancelled_aider_retention(manifest, store, *, change=None):
         requests_path = root / "aider/requests.jsonl"
         requests_path.write_text("".join(json.dumps(event) + "\n" for event in events))
         artifacts.append(evidence_file_reference(str(requests_path), root=str(root)))
+    if change == "accounted_deadline":
+        from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder
+        requests_path = root / "aider/requests.jsonl"
+        recorder = EventRecorder(requests_path)
+        recorder.record("aider_adapter_ready", request_accounting_schema=aider.AIDER_REQUEST_ACCOUNTING_SCHEMA)
+        recorder.record("aider_transport_started", logical_request_id="logical-00000001", attempt=1,
+                        model_call=1)
+        recorder.record("aider_transport_error", logical_request_id="logical-00000001", attempt=1,
+                        error_type="timeout", http_status=None, finish_reason=None,
+                        output_truncated=None, usage=dict.fromkeys(aider._AIDER_USAGE_FIELDS))
+        accounting = {"schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": "incomplete",
+                      "started": 1, "responses": 0, "errors": 1, "pending": 0}
+        recorder.close(outcome="budget_exhausted", request_accounting=accounting)
+        adapter_result_path = root / "aider/adapter-result.json"
+        adapter_result_path.write_text(json.dumps({
+            "schema": "anvil-serving.aider-adapter-result/v1", "outcome": "budget_exhausted",
+            "request_accounting": accounting, "events_complete": False}))
+        artifacts.extend(evidence_file_reference(str(path), root=str(root))
+                         for path in (requests_path, adapter_result_path))
     if change == "forged_hash":
         artifacts[-1]["sha256"] = "0" * 64
     retention_manifest = {"schema": "anvil-serving.aider-retention/v1", "state": "incomplete",
@@ -468,6 +487,19 @@ def test_campaign_cancelled_aider_diagnostics_are_allowlisted_and_independent(tm
     assert row["state"] == "cancelled"
 
 
+def test_campaign_retains_producer_shaped_deadline_diagnostics_and_independent_grade(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change="accounted_deadline")
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grade_diagnostics"] == {
+        "output_truncated": None, "compilation_failure": None,
+        "coverage": "partial", "num_exhausted_context_windows": None}
+    assert row["raw_task_grades"] == [
+        {"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]
+    assert row["state"] == "cancelled"
+
+
 
 @pytest.mark.parametrize("change", [
     "complete", "truncated", "absent", "midstream", "duplicate", "complete_omits_events",
@@ -526,6 +558,53 @@ def test_retained_aider_diagnostics_validate_producer_terminal_contract(tmp_path
     if change in {"complete", "truncated", "absent"}:
         assert result == {"output_truncated": True, "compilation_failure": None,
                           "coverage": "complete" if change == "complete" else "partial"}
+    else:
+        assert result is None
+
+
+@pytest.mark.parametrize("change", ["valid", "legacy_incomplete", "missing_adapter",
+                                    "adapter_mismatch", "events_complete"])
+def test_retained_aider_diagnostics_require_versioned_incomplete_accounting(tmp_path, change):
+    from anvil_serving.benchmarking import aider
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_report import _retained_aider_diagnostics
+    from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder
+
+    path = tmp_path / "aider/requests.jsonl"
+    recorder = EventRecorder(path)
+    recorder.record("aider_adapter_ready", request_accounting_schema=aider.AIDER_REQUEST_ACCOUNTING_SCHEMA)
+    recorder.record("aider_transport_started", logical_request_id="logical-00000001", attempt=1,
+                    model_call=1)
+    accounting = {"schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": "incomplete",
+                  "started": 1, "responses": 0, "errors": 0, "pending": 1}
+    recorder.close(outcome="budget_exhausted", request_accounting=accounting)
+    adapter_path = tmp_path / "aider/adapter-result.json"
+    adapter_result = {"schema": "anvil-serving.aider-adapter-result/v1",
+                      "outcome": "budget_exhausted", "request_accounting": accounting,
+                      "events_complete": False}
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    if change == "legacy_incomplete":
+        del rows[0]["request_accounting_schema"]
+        del rows[-1]["request_accounting"]
+        del adapter_result["request_accounting"]
+    elif change == "adapter_mismatch":
+        adapter_result["request_accounting"] = {**accounting, "pending": 0}
+    elif change == "events_complete":
+        adapter_result["events_complete"] = True
+    raw = [(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n").encode()
+           for row in rows[:-1]]
+    rows[-1]["byte_count"] = sum(map(len, raw))
+    path.write_text(b"".join(raw).decode()
+                    + json.dumps(rows[-1], sort_keys=True, separators=(",", ":")) + "\n")
+    adapter_path.write_text(json.dumps(adapter_result))
+    artifacts = [evidence_file_reference(str(path), root=str(tmp_path))]
+    if change != "missing_adapter":
+        artifacts.append(evidence_file_reference(str(adapter_path), root=str(tmp_path)))
+    manifest = {"artifacts": artifacts, "missing": []}
+    result = _retained_aider_diagnostics(tmp_path, manifest)
+    if change == "valid":
+        assert result == {"output_truncated": None, "compilation_failure": None,
+                          "coverage": "partial"}
     else:
         assert result is None
 
