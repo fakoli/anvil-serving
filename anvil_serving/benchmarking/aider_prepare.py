@@ -361,7 +361,7 @@ def _build_image(roots, rows, target, container, max_bytes, runner, logs):
         _fail("unexpected pinned Aider Jest installation command")
     recipe = recipe.replace(jest_line, "    jest@" + JEST_VERSION + " " + chr(92) + "\n", 1)
     atomic_write_json(str(context / "anvil-dependency-pins.json"), [JEST_DEPENDENCY_PIN])
-    recipe += '''\nRUN mv /root/.cargo /opt/cargo && mv /root/.rustup /opt/rustup && chmod -R a+rX /opt/cargo /opt/rustup
+    recipe += '''\nRUN chmod -R a+rX /aider && mv /root/.cargo /opt/cargo && mv /root/.rustup /opt/rustup && chmod -R a+rX /opt/cargo /opt/rustup
 ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/prepared-cache/cargo GRADLE_USER_HOME=/opt/prepared-cache/gradle GOPATH=/opt/prepared-cache/go
 ENV PATH=/opt/cargo/bin:${PATH}
 RUN mkdir -p /opt/prepared-cache/cargo /opt/prepared-cache/gradle /opt/prepared-cache/go && python3 /aider/anvil-warm.py && chmod -R a+rX /opt/prepared-cache
@@ -438,7 +438,7 @@ def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, ru
     return value
 
 
-def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner):
+def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner, logs):
     from .aider_containment import run_contained_test
     task = Path(run_path) / "aider/preparation/inventory"
     task.mkdir(parents=True, exist_ok=True)
@@ -446,7 +446,11 @@ def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner
                               *LINT_CONTRACT["command_prefix"], "--version"],
         task_dir=task, run_path=run_path, ownership_id=ownership_id, run_id=run_id,
         image_id=image_id, container_binary=container, runner=runner)
-    lint_output, truncated = runtime._bounded_text(lint.stdout)
+    lint_output, truncated = runtime._bounded_text(lint.stdout, keep_tail=True)
+    # Containment merges both streams; retain that fact before a probe can fail.
+    logs.append({"command": list(lint.args), "returncode": lint.returncode,
+                 "stdout": lint_output, "stderr": "", "output_streams": "combined",
+                 "output_truncated": truncated})
     if lint.returncode or truncated or not lint_output.startswith(LINT_CONTRACT["version"] + " "):
         _fail("prepared Aider flake8 dependency did not verify")
     command = ["sh", "-c", "set -e; dpkg-query -W; python3 -I -m pip freeze --all; "
@@ -460,6 +464,10 @@ def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner
     result = run_contained_test(command, task_dir=task, run_path=run_path,
         ownership_id=ownership_id, run_id=run_id, image_id=image_id,
         container_binary=container, runner=runner)
+    bounded_output, truncated = runtime._bounded_text(result.stdout, keep_tail=True)
+    logs.append({"command": list(result.args), "returncode": result.returncode,
+                 "stdout": bounded_output, "stderr": "", "output_streams": "combined",
+                 "output_truncated": truncated})
     raw = result.stdout
     output = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw or "")
     if result.returncode or len(output.encode()) > 1024**2 or not output.strip():
@@ -548,7 +556,7 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
             info = json.loads(_checked(runner, (container, "image", "inspect", environment["image_id"]), logs))[0]
             if info.get("Id") != environment["image_id"] or info.get("Size") != environment["build_inputs"]["image_size_bytes"]:
                 _fail("cached Aider image changed")
-            inventory = _image_inventory(environment["image_id"], run_path, ownership_id, run_id, container, runner)
+            inventory = _image_inventory(environment["image_id"], run_path, ownership_id, run_id, container, runner, logs)
             if inventory != environment["package_inventory"] or _digest(inventory) != environment["package_inventory_sha256"]:
                 _fail("cached Aider package inventory changed")
             environment["reused"] = True
@@ -557,7 +565,7 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
                 _fail("prepared Aider image is absent offline", "harness_assets_offline")
             target.mkdir(parents=True)
             image_id, inputs = _build_image(roots, rows, target, container, max_download_bytes, runner, logs)
-            inventory = _image_inventory(image_id, run_path, ownership_id, run_id, container, runner)
+            inventory = _image_inventory(image_id, run_path, ownership_id, run_id, container, runner, logs)
             oracle = _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, runner, logs)
             environment = {"schema": AIDER_ENVIRONMENT_SCHEMA, "cache_key": key,
                            "identity": identity, "image_id": image_id, "source_hashes": SOURCE_HASHES,

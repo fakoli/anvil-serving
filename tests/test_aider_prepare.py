@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 
@@ -188,14 +189,23 @@ def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypat
         elif command[1:3] == ("buildx", "build"):
             Path(command[command.index("--iidfile") + 1]).write_text(image)
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
-    observed, inputs = prep._build_image({"aider": source, "polyglot-benchmark": polyglot},
-                                        rows, target, "docker", 1024**2, runner, [])
+    previous_umask = os.umask(0o077)
+    try:
+        observed, inputs = prep._build_image({"aider": source, "polyglot-benchmark": polyglot},
+                                            rows, target, "docker", 1024**2, runner, [])
+    finally:
+        os.umask(previous_umask)
     assert observed == image
     assert (target / "build/Dockerfile").read_text().startswith("FROM " + digest + "\n")
     assert inputs["base_digest"] == digest and inputs["rebuild_bit_reproducible"] is False
     assert "anvil-entrypoint.py" in inputs["files"]
     assert json.loads((target / "build/anvil-source-version.json").read_text()) == prep.SOURCE_VERSION_METADATA
     recipe = (target / "build/Dockerfile").read_text()
+    if os.name == "posix":
+        assert (target / "build/anvil-entrypoint.py").stat().st_mode & 0o777 == 0o600
+    permission_step = "RUN chmod -R a+rX /aider && mv /root/.cargo"
+    assert recipe.count(permission_step) == 1
+    assert recipe.index("COPY . /aider") < recipe.index(permission_step) < recipe.index("ENTRYPOINT")
     assert "RUN " + prep.SCM_VERSION_ASSIGNMENT + " uv pip install" in recipe
     assert "ENV " + prep.SCM_VERSION_VARIABLE not in recipe
     assert "    jest@29.7.0 " in recipe and "    jest " not in recipe
@@ -249,7 +259,7 @@ def test_image_inventory_verifies_contained_lint_version(tmp_path, monkeypatch):
         return subprocess.CompletedProcess(command, 0, stdout=output)
     monkeypatch.setattr(aider_containment, "run_contained_test", contained)
     image = "sha256:" + "1" * 64
-    result = prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None)
+    result = prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None, [])
     assert result.startswith("Aider contained lint: 7.3.0 ") and "flake8==7.3.0" in result
     assert calls[0][0] == ["python3", "/aider/anvil-entrypoint.py", "python3", "-I", "-m", "flake8", "--version"]
     assert all(kwargs["image_id"] == image for _, kwargs in calls)
@@ -257,7 +267,7 @@ def test_image_inventory_verifies_contained_lint_version(tmp_path, monkeypatch):
     monkeypatch.setattr(aider_containment, "run_contained_test", lambda command, **kwargs:
                         subprocess.CompletedProcess(command, 0, stdout="7.2.0 wrong version"))
     with pytest.raises(BenchmarkJobError, match="flake8 dependency"):
-        prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None)
+        prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None, [])
 
 
 def test_tracked_source_python_install_binds_scm_version(tmp_path, monkeypatch):
@@ -355,3 +365,36 @@ def test_preparation_failure_keeps_bounded_stderr_head_and_terminal_error(timeou
     assert "middle output omitted" in result["stderr"]
     assert len(result["stderr"].encode()) == harnesses.MAX_HARNESS_OUTPUT_BYTES
     assert result["stdout"] == stdout[:harnesses.MAX_HARNESS_OUTPUT_BYTES].decode()
+
+
+@pytest.mark.parametrize("failed_probe", ["lint", "packages"])
+def test_failed_image_inventory_retains_bounded_combined_output_in_receipt(tmp_path, monkeypatch, failed_probe):
+    cache, run = tmp_path / "cache", tmp_path / "run"
+    image = "sha256:" + "1" * 64
+    monkeypatch.setattr(prep, "verify_aider_sources", lambda *args, **kwargs:
+                        {"aider": tmp_path, "polyglot-benchmark": tmp_path})
+    monkeypatch.setattr(prep, "_selection", lambda _: [])
+    monkeypatch.setattr(prep, "_python_environment", lambda *args: {})
+    monkeypatch.setattr(prep.runtime, "resolve_container_binary", lambda: "docker")
+    monkeypatch.setattr(prep, "_build_image", lambda *args: (image, {}))
+    failure = b"probe start\n" + b"progress\n" * 20000 + b"Permission denied\n"
+    def contained(command, **kwargs):
+        lint = "--version" in command
+        if lint and failed_probe == "packages":
+            return subprocess.CompletedProcess(command, 0, stdout="7.3.0 (mccabe: 0.7.0) CPython")
+        return subprocess.CompletedProcess(command, 2, stdout=failure)
+    monkeypatch.setattr(aider_containment, "run_contained_test", contained)
+    with pytest.raises(BenchmarkJobError, match="flake8 dependency|package inventory"):
+        prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=False,
+            max_download_bytes=1024**2, run_path=str(run), ownership_id="owner", run_id="run")
+    receipt = json.loads((run / "aider/preparation/receipt.json").read_text())
+    assert receipt["status"] == "failed"
+    logs = receipt["command_logs"]
+    assert len(logs) == (1 if failed_probe == "lint" else 2)
+    result = logs[-1]
+    assert result["returncode"] == 2 and result["output_streams"] == "combined"
+    assert result["stderr"] == "" and result["output_truncated"] is True
+    assert result["stdout"].startswith("probe start\n")
+    assert result["stdout"].endswith("Permission denied\n")
+    assert len(result["stdout"].encode()) == prep.runtime.MAX_HARNESS_OUTPUT_BYTES
+    assert not list(cache.glob("aider-environments/*/environment.json"))
