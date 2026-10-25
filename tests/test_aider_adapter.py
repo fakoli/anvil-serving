@@ -650,3 +650,59 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
                 coder.summarizer_thread.join(5)
         # Only local synthetic classes: undo deadline fencing for fixture cleanup.
         Client.send, Model.send_completion = original_send, original_completion
+
+
+
+def test_drain_preserves_admitted_sdk_retry_but_closes_new_completions(tmp_path):
+    entered, release, drain_started = threading.Event(), threading.Event(), threading.Event()
+    failures = []
+    def send_effect():
+        if len(sent) == 1:
+            entered.set()
+            assert release.wait(5)
+            return types.SimpleNamespace(status_code=503, content=b"{}")
+        return types.SimpleNamespace(status_code=200, content=b"{}")
+    Model, Client, sent = offline_model_client(send_effect=send_effect)
+    original_completion = Model.send_completion
+    def sdk_retry(self):
+        response = original_completion(self)
+        if response.status_code == 503:
+            response = original_completion(self)
+        return response
+    Model.send_completion = sdk_retry
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = adapter.SuiteBudget({"max_model_calls": 2, "max_completion_tokens": 8,
+        "deadline_s": 60, "max_retries": 1, "min_free_disk_bytes": 0}, recorder)
+    guard = adapter.install_transport_guard(Client, Model,
+        endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
+        controls={}, budget=budget, recorder=recorder)
+    original_wait = guard.condition.wait
+    def wait(timeout=None):
+        drain_started.set()
+        return original_wait(timeout)
+    guard.condition.wait = wait
+    def complete():
+        try:
+            assert Model().send_completion().status_code == 200
+        except BaseException as exc:
+            failures.append(exc)
+    worker = threading.Thread(target=complete)
+    worker.start()
+    closer = threading.Thread(target=guard.drain)
+    try:
+        assert entered.wait(5)
+        closer.start()
+        assert drain_started.wait(5)
+        with pytest.raises(adapter.BudgetStopped):
+            Model().send_completion()
+    finally:
+        release.set()
+        worker.join(5)
+        if closer.ident is not None:
+            closer.join(5)
+        guard()
+        recorder.close(outcome="completed", request_accounting=guard.accounting())
+    assert not worker.is_alive() and not closer.is_alive() and not failures
+    assert len(sent) == 2
+    assert guard.accounting()["responses"] == 2
+    assert guard.accounting()["status"] == "complete"

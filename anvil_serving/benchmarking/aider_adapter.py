@@ -233,7 +233,7 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
     def send(self, request, *args, **kwargs):
         context = getattr(guard.local, "active", None)
         with guard.condition:
-            if args or context is None or guard.closed:
+            if args or context is None:
                 raise BudgetStopped("unsupported Aider transport outside admitted model request")
             observed = urlsplit(str(request.url))
             body = json.loads(request.content)
