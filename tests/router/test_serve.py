@@ -246,3 +246,44 @@ def test_tier_output_cap_supplies_missing_budget_without_false_warning():
     assert seen == [5120]
     assert "_anvil_output_clamp" not in request.raw
     assert routing._decision_log.records[-1].attempts[0].reason == "served"
+
+
+@pytest.mark.parametrize("completion_cap", [16384, 32768])
+@pytest.mark.parametrize("requested_reasoning", ["max", "low"])
+def test_diagnostic_caps_and_configured_controls_reach_relay_transport(completion_cap, requested_reasoning):
+    """Offline wire propagation is evidence of forwarding, not engine support."""
+    import json
+    from anvil_serving.router.backends.relay import RelayBackend
+    from anvil_serving.router.dialects.openai import OpenAIDialect
+
+    captured = []
+    def transport(url, *, data, headers, timeout):
+        captured.append((url, json.loads(data)))
+        return json.dumps({"choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"},
+                                       "finish_reason": "stop"}]}).encode()
+
+    config = load(_CONFIG)
+    configured_controls = {"thinking_token_budget": 49152, "reasoning_effort": "max",
+                           "temperature": 0.6, "top_p": 0.95}
+    tier = replace(next(tier for tier in config.tiers if tier.id == "primary-local"),
+                   base_url="http://127.0.0.1:30000/v1", model="diagnostic-model",
+                   max_output_tokens=65536, extra_body_defaults=None, extra_body=configured_controls)
+    config = replace(config, tiers=tuple(tier if item.id == tier.id else item for item in config.tiers))
+    relay = RelayBackend(tier, env={}, transport=transport)
+    routing = RoutingBackend(config, {tier.id: relay})
+    request = OpenAIDialect().parse_request({
+        "model": "llm.primary", "messages": [{"role": "user", "content": "fixture"}],
+        "max_tokens": completion_cap, "reasoning_effort": requested_reasoning,
+        "temperature": 0.6, "top_p": 0.95,
+    })
+    assert list(routing.generate(request))
+    assert len(captured) == 1
+    url, body = captured[0]
+    assert url == "http://127.0.0.1:30000/v1/chat/completions"
+    assert body["model"] == "diagnostic-model"
+    assert body["max_tokens"] == completion_cap
+    assert {key: body[key] for key in configured_controls} == configured_controls
+    assert "chat_template_kwargs" not in body
+    assert "_anvil_output_clamp" not in request.raw
+    # A hard configured max remains max even for a lower caller request.
+    assert routing._decision_log.records[-1].attempts[0].reason == "served"
