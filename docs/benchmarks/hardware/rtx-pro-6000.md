@@ -1,5 +1,9 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-25 GLM Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) completed six measurements on the dual-card GLM configuration, with one passing and five failing task grades. Two supported cells remained unstarted and four reasoning controls were blocked. All six jobs have complete engine/GPU/host/cgroup telemetry and verified closure. Raw grades remain separate from completed measurements; this diagnostic establishes no causal cap benefit or hardware ranking. No Ignis run or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
+
+Closure through the final postcheck took 26.73 minutes. Sampled host available RAM ranged from 69.30 to 71.49 GiB; observed host and serving-cgroup OOM counters did not increase. Three additional Aider request starts lack captured responses, so their usage remains unknown; completed measurement eligibility does not imply complete token accounting.
+
 **2026-10-25 R12/R13 successor:** the dual-card GLM FP4 incumbent completed 44 measured/graded jobs (38 pass, six fail), with four cancelled unknowns. R13's configured one-card Ignis candidate was refused before creation; it supplied no GPU workload or capacity result. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No hardware/engine comparison or promotion follows. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md) · [Manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json).
 
 **Historical R5–R10 evaluation-platform diagnostics, 2026-10-24–25:** the dual-card GLM FP4 incumbent executed the coding/tool workload; the one-card Ignis 0.8 candidate reached startup only. R8 retains 42 complete incumbent grades (32 pass, ten fail) with censored remaining rows and unknown final interval. A separate mixed-C4 canary verified four complete measurements and shared closure, with one valid task failure. R9 host-reserve refusal and R10 monitoring identity refusal supply no candidate inference or hardware-capacity result. Exact incumbent service restoration passed, while strict Pi final-text acceptance failed. The pilot remains incomplete; no comparative performance or promotion claim follows. [Finding and population boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md).
@@ -96,7 +100,7 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-25 (R12 incumbent diagnostic). **Evidence
+history. **Last locally measured:** 2026-10-25 (Go/Rust completion-cap diagnostic). **Evidence
 interpretation reviewed:** 2026-10-25.
 
 > Side-by-side speed and recipe links for every configuration measured on this

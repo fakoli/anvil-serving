@@ -1,0 +1,19 @@
+{
+  "campaign_cancel_requested": true,
+  "command_exit_code": 2,
+  "interpretation": "Expected refusal before the next submission; does not convert completed or unsubmitted jobs into cancelled jobs.",
+  "job_states": {
+    "cancelled": 0,
+    "completed": 6,
+    "failed": 0,
+    "planned_unsubmitted": 2
+  },
+  "native_error_code": "campaign_budget_exceeded",
+  "remaining_seconds": 575.216,
+  "required_seconds": 780,
+  "schema": "bounded-campaign-stop/v1",
+  "source_stdout": {
+    "bytes": 788,
+    "sha256": "b4f37d26e025b7015acf8d79b2bb874c00fd0eae3c1620201b550d61f6eff869"
+  }
+}

@@ -69,6 +69,29 @@ does not extend or promote these results.
 5. Restore and verify the incumbent, close the coverage ledger, then publish
    the result, raw artifacts, source pins, failures and missing cells together.
 
+## Bounded coding diagnostics
+
+Use the versioned [16K Aider profile](https://github.com/fakoli/anvil-serving/blob/3e211eec5998998712acba85cf2d06ae4a49cd1a/configs/benchmarks/aider-diagnostic-16k-v1.json)
+or [32K Aider profile](https://github.com/fakoli/anvil-serving/blob/3e211eec5998998712acba85cf2d06ae4a49cd1a/configs/benchmarks/aider-diagnostic-32k-v1.json)
+for a single-task diagnostic. They retain identical pinned Aider/Polyglot
+revisions, two edit attempts, at most twelve model calls, zero retries, a 600-second
+suite deadline and a 20 GiB free-disk requirement; only the completion cap
+differs. `pilot-v2` remains unchanged. Freeze the task, profile digest,
+sampling and reasoning controls in the existing campaign specification.
+
+Verify requested controls separately from the body forwarded by the router
+and the behavior supported by the engine. A tier's hard reasoning override
+can prevent a lower requested setting from reaching the engine even when the
+request is accepted. Keep unsupported control cells blocked and visible; do
+not substitute the configured setting and call it a comparison. Offline wire
+capture proves forwarding only.
+
+Report native grades, job completion, diagnostic coverage and measurement
+eligibility separately, following the [Aider evidence contract](methodology.md#aider-grades-lifecycle-and-diagnostic-observations).
+Use the [whole-batch admission rule](repeatable-campaigns.md#reserve-the-complete-batch-window)
+before execution. These profile and harness contracts establish no live model
+result or promotion decision.
+
 ## Instrumentation and source availability
 
 The Flare investigations used local Anvil source additions for authenticated
