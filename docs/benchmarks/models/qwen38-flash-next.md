@@ -6,7 +6,9 @@
 
 ## Current status and review date
 
-**2026-10-25 Ignis 0.8 addendum:** [R9/R10 admission diagnostics](../../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement) produced no generation or coding result. R9 was refused by the host-reserve gate; R10 loaded but Anvil Serving withheld monitoring after misreading its served model identity. Both 48-row reports remain entirely planned. The incumbent service was restored; strict Pi acceptance and a fresh post-fix candidate campaign remain required. No qualification, ranking or promotion follows.
+**2026-10-25 R12/R13 successor:** R13 froze a fresh 48-cell Ignis 0.8 candidate-only attempt but submitted zero jobs: the host-reserve guard refused before container creation. This is separate from R12's 48 unrun candidate cells and the earlier R9/R10 attempts. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No candidate qualification, comparison or promotion follows. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
+
+**Historical R9/R10 Ignis 0.8 addendum, 2026-10-25:** [R9/R10 admission diagnostics](../../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement) produced no generation or coding result. R9 was refused by the host-reserve gate; R10 loaded but Anvil Serving withheld monitoring after misreading its served model identity. Both 48-row reports remain entirely planned. The incumbent service was restored; strict Pi acceptance and a fresh post-fix candidate campaign remain required. No qualification, ranking or promotion follows.
 
 **2026-10-19 addendum:** Ignis0.7.2 is not qualified. Bounded serving checks passed, but the fixed-five coding run ended with one officially unresolved patch and four empty ungraded step-limit submissions. The incumbent was restored; no recommendation change. [Evidence and limits](../../findings/2026-10-19-ignis-072.md).
 
@@ -203,6 +205,14 @@ is retained as the slower same-day correctness baseline.
 
 ## Evidence by measurement class
 
+### R12 baseline and R13 admission refusal, 2026-10-25
+
+- **Status:** unexecuted candidate; host-policy admission refusal, `no-promotion`.
+- **Configured, not measured:** pinned Ignis 0.8/Trellis TP1 on one RTX PRO 6000, 131,072 context, eight profile lanes and MTP3; 49 GiB RAM/no extra swap plus a 16 GiB host reserve. These controls did not receive inference qualification.
+- **Observed:** the 65 GiB available-memory requirement was refused before creation; exact refusal-time available memory and shortfall are unknown. All 48 candidate jobs remained planned. No model traffic or router alias transition occurred.
+- **Limits:** no candidate grade, latency, throughput, peak memory or GPU-capacity result; an admission refusal is not an OOM or model-quality result. The prospective comparison retained all six failed R12 grades among 44 eligible baseline keys and excluded four cancelled unknowns, but no paired comparison ran.
+- **Evidence:** [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json), [index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md), [manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json), [finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal). Sanitized derivatives retain distinct original-private and public-byte hashes.
+
 ### Ignis 0.8 startup and admission, 2026-10-24–25
 
 R9 retains a pre-create host-envelope refusal. R10 retains loaded/ready startup evidence, a source-verified Anvil Serving identity-adapter defect and correct monitoring refusal. The coordinator's raw readiness/models responses were not durably retained; their provenance is explicit. Zero generation means no model quality, latency, throughput, energy or capacity result. Configured eight-lane concurrency is not measured capacity. [Diagnostic finding and artifacts](../../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement).
@@ -304,6 +314,7 @@ functional, quality, capacity, and client gates.
 
 ## Dated run history
 
+- 2026-10-25 — [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal): Separate R13 candidate-only attempt refused before creation: 0/48 submitted. Incumbent restoration and minimal-thinking Pi accepted; thinking-off failure remains open; no candidate measurement.
 - 2026-10-24–25: [Ignis 0.8 evaluation-platform admission diagnostics](../../findings/2026-10-24-evaluation-platform-ignis.md) — R9 refused, R10 monitoring blocked after startup; candidate generation unmeasured, pilot acceptance incomplete.
 - 2026-10-13 — [full qualification closure](../../findings/2026-10-13-full-qualification.md): QAD and EXL3 4.05 TP1 records retain distinct protocol and quality evidence; the Tabby parser correction has full-13 protocol and quality-12 coverage. The source-aligned top-k-20 control was cancelled before load/query, so no quality or speed improvement is claimed. Ignis R4 terminal SWE was 2/5 resolved, 2/5 graded, and three empty; serial C1 passed 6/6, the separate C8 preflight passed 6/13 with seven immediate 503 refusals, and 24 SWE engine-full retry notices all recovered. Pylint remained ungraded/empty; these retries do not explain the three empty patches. `no-promotion`.
 

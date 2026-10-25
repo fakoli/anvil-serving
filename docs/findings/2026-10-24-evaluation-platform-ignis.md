@@ -4,16 +4,16 @@
 
 **Scope:** Local routed coding/tool diagnostics on NVIDIA RTX PRO 6000 Blackwell Max-Q hardware
 
-**Decision:** `no-promotion`; diagnostic attempt closeout, pilot acceptance incomplete
+**Decision:** `no-promotion`; diagnostic closeout, comparison acceptance incomplete
 
-**Outcome:** This diagnostic attempt closed without a deployment comparison. R8 retained 42 complete incumbent measurements with 32 passing and ten failing grades, but cancellation custody and its final interval remain incomplete. R9 was refused before candidate creation. R10 loaded the candidate, then Anvil Serving withheld monitoring because its served-identity adapter misread the model argument; no candidate generation ran. The exact incumbent service was restored and routed preflight passed, but the real Pi client's strict final-answer oracle failed.
+**Outcome, updated 2026-10-25:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four were cancelled with unknown grades. Its 48 planned candidate cells did not run. The separate R13 candidate-only attempt was refused before container creation, with zero of 48 jobs submitted. Exact incumbent restoration, routed preflight and an explicitly minimal-thinking Pi read/final probe passed. The historical thinking-off strict-output failure remains open. No candidate comparison or promotion follows.
 
-**Pilot acceptance remains incomplete.** A fresh candidate campaign after the source correction and a passing accepted Pi final-answer oracle remain required. Publishing these failed attempts does not complete that work or authorize promotion.
+**Comparison acceptance remains incomplete.** The candidate has no measured result. Minimal-thinking Pi acceptance is a scoped restoration check, not acceptance of thinking-off or default behavior.
 
 <!-- benchmark-result-card/v1 -->
 ## Result card
 
-The pilot exposed harness startup, import and mixed-concurrency closure defects, followed by candidate admission and identity-integration failures. Its strongest completed result is narrower than a model comparison: the repaired platform stopped four mixed clients, performed one shared fresh-zero drain, retained complete four-plane telemetry and closed an independently verified immutable evidence chain. Task quality remains a separate result, including the Go failure.
+The pilot exposed harness startup, import and mixed-concurrency closure defects, followed by candidate admission and identity-integration failures. The earlier mixed-C4 canary established a narrower result than a model comparison: the repaired platform stopped four mixed clients, performed one shared fresh-zero drain, retained complete four-plane telemetry and closed an independently verified immutable evidence chain. Task quality remains a separate result, including the Go failure.
 
 | Setup | Retained scope |
 |---|---|
@@ -23,8 +23,8 @@ The pilot exposed harness startup, import and mixed-concurrency closure defects,
 | Configured context / admission | Incumbent 327,680 tokens / C4; candidate 131,072 tokens / eight profile lanes, unqualified |
 | Evidence class | Bounded functional/quality observations, source validation, failure and restoration diagnostics; no comparative performance |
 | Planned comparison | 12 tasks × C1/C4 × two repeats × two arms: 96 cells in 60 batches per attempt |
-| Current result | Partial incumbent task outcomes and accepted bounded closure diagnostics; no matched deployment comparison |
-| Decision | Preserve incumbent assignment; candidate removed and service restored, strict real-client acceptance incomplete; no promotion |
+| Current result | R12: 44 complete incumbent measurements, 38 passing / six failing grades, four cancelled unknowns; candidate unmeasured |
+| Decision | Preserve incumbent assignment; exact restoration and explicit minimal-thinking Pi acceptance verified; thinking-off failure open; no promotion |
 
 | Population | Submitted / planned | Retained terminal boundary |
 |---|---:|---|
@@ -36,6 +36,8 @@ The pilot exposed harness startup, import and mixed-concurrency closure defects,
 | R8 | 48 / 96 | 42 complete grades: 32 passes / ten failures; two maximum-call failures with unknown grades, two cancelled, two cancelling; 48 candidate cells unrun |
 | R9 candidate-only | 0 / 48 | Host-reserve admission refused before creation; all rows remain planned |
 | R10 candidate-only | 0 / 48 | Candidate loaded; monitoring identity gate blocked admission; all rows remain planned |
+| R12 | 48 / 96 | Incumbent: 44 completed/graded, 38 pass / six fail; four cancelled with unknown grades. All released batch closures valid; 48 planned candidate cells unrun |
+| R13 candidate-only | 0 / 48 | Separate pre-create host-reserve refusal; no candidate container, traffic or router alias transition |
 | Candidate across these populations | 0 | No measured functional, quality, latency, capacity or energy result |
 
 R5/R6 reached no graded Aider result. R7 has 17 known grades—15 passing and two failing—but only 16 complete measurements. Neither those populations nor the separate canaries may be pooled into R8. Process success, HTTP status, task grade and measurement closure are different facts.
@@ -43,6 +45,26 @@ R5/R6 reached no graded Aider result. R7 has 17 known grades—15 passing and tw
 Packet navigation: [R8 evidence index](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/README.md), [manifest](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/artifact-manifest.json), [publication summary](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/publication-summary.md); [R10 restoration index](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/README.md).
 
 Authoritative summaries: [R5](2026-10-24-evaluation-platform-ignis-evidence/r5-cancelled/summary.json), [R6](2026-10-24-evaluation-platform-ignis-evidence/r6-cancelled/summary.json), [R7 diagnostic](2026-10-24-evaluation-platform-ignis-evidence/r7-diagnostic/summary.json), [four C++ canaries](2026-10-24-evaluation-platform-ignis-evidence/aider-canaries/summary.json), [mixed-C4 canary](2026-10-24-evaluation-platform-ignis-evidence/mixed-c4-canary/summary.json), [R8 diagnostic](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/summary.json).
+
+## 2026-10-25 successor: R12 baseline and R13 admission refusal
+
+The [authoritative R12/R13 summary](2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) separates these fresh attempts from R5–R10 and the standalone canaries. The [evidence index](2026-10-25-evaluation-platform-r12-r13-evidence/README.md) and [artifact manifest](2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json) map the retained records. Both attempts froze source `c0ce1d0633939eaf686bbd1e9e59241f6a0534aa`; they do not reuse earlier attempt outcomes.
+
+R12 closed 44 incumbent measurements and grades: 38 pass and six fail. Four further submitted jobs were cancelled at the traffic bound with grades unknown. The six grade failures are completed task outcomes, not failed job execution; the four unknowns are not scored failures. All 30 released batch closures verified client stop, fresh zero drain and bound four-plane telemetry. The active interval was 3,529.878 seconds, including closure, within the 3,600-second arm budget and its 120-second reserve. [Native report](2026-10-25-evaluation-platform-r12-r13-evidence/campaign-report.json) · [Closure and cancellation](2026-10-25-evaluation-platform-r12-r13-evidence/r12-closure-and-cancellation.json).
+
+Complete interval telemetry does not establish complete per-request accounting: request overlap remains unknown. One cancelled child's process, adapter-result and native grader records are missing. The fixed task order, uncontrolled cache and small mixed native/Aider sample remain diagnostic limits; these are neither full-benchmark scores nor simultaneous maximum-context capacity measurements. The planned R12 candidate arm remained unrun.
+
+R13 froze a separate 48-cell candidate population, with prospective comparison eligibility restricted to the 44 graded R12 keys, including all six failures; the four cancelled keys were excluded in advance. It submitted no jobs. The 49 GiB RAM/no-extra-swap candidate plus 16 GiB host reserve required 65 GiB available host memory. The managed guard refused before container creation; exact refusal-time available memory and shortfall were not retained. This is a host-policy admission refusal, not a measured OOM, model-quality failure or GPU-capacity result. [Refusal evidence](2026-10-25-evaluation-platform-r12-r13-evidence/r13/admission-refusal.json) · [Frozen population](2026-10-25-evaluation-platform-r12-r13-evidence/r13/frozen-population.json) · [Zero-job report](2026-10-25-evaluation-platform-r12-r13-evidence/r13/campaign-report.json).
+
+The exact incumbent recipe, image, model revision and GPU order were restored in a new managed incarnation; the original router configuration never transitioned. Fresh routed coding, JSON, approximately 128K context and 20-tool checks passed. One explicitly **minimal-thinking** Pi invocation passed all 29 independent read/final checks with two complete HTTP 200 captures. A reviewer accessor false-negative was corrected offline against that same invocation; there was no live retry. This does not close the historical thinking-off failure or establish upstream/downstream byte equivalence. Remote-memory terminal state remains unknown; local zero counters do not prove fleet-wide drain. [Restoration](2026-10-25-evaluation-platform-r12-r13-evidence/restoration.json) · [Scoped acceptance evidence](2026-10-25-evaluation-platform-r12-r13-evidence/restoration-evidence.json).
+
+Public artifacts are sanitized derivatives. Their ledgers bind original private hashes to separately hashed public bytes; they cannot revalidate native private hash chains against redacted bytes. The R12 projection retains native record schemas; complete R13 prepared-graph validation is not claimed. Earlier 127 artifacts remain separate. No model/engine ranking or promotion is supported.
+
+### R5–R10 closeout at its original cutoff
+
+**Historical outcome:** This diagnostic attempt closed without a deployment comparison. R8 retained 42 complete incumbent measurements with 32 passing and ten failing grades, but cancellation custody and its final interval remain incomplete. R9 was refused before candidate creation. R10 loaded the candidate, then Anvil Serving withheld monitoring because its served-identity adapter misread the model argument; no candidate generation ran. The exact incumbent service was restored and routed preflight passed, but the real Pi client's strict final-answer oracle failed.
+
+**Acceptance at that cutoff was incomplete.** A fresh candidate campaign after the source correction and a passing accepted Pi final-answer oracle were still required. The later scoped Pi pass does not supply a candidate measurement or authorize promotion.
 
 ## Exact configuration
 
@@ -59,10 +81,10 @@ This is a public-safe reconstruction of the pinned managed recipes. The table re
 | Context / runtime concurrency | 327,680 tokens / four sequences | 131,072 tokens / eight configured profile lanes |
 | Speculation | MTP3 | MTP3 profile |
 | Selected runtime controls | Prefix caching enabled; 7,650,410,496-byte KV setting; memory utilization 0.985 | `rtxpro6000` profile; default loop guard; host KV reuse pool disabled; vision disabled |
-| Host-memory containment | Exact incumbent recipe retained | R9: 52 GiB RAM/no extra swap plus 16 GiB reserve; R10: 49 GiB/no extra swap plus the same reserve |
+| Host-memory containment | Exact incumbent recipe retained | R9: 52 GiB RAM/no extra swap plus 16 GiB reserve; R10/R13: 49 GiB/no extra swap plus the same reserve |
 | Observability | Identity-bound engine metrics | Readiness `/ready`; metrics `/ui/metrics` on the same API listener, not a second metrics port |
 
-The candidate image is a locally retained immutable image of the pinned upstream build. Its identity is not an assertion that a mutable tag remains unchanged. GPU allocation and reserved memory do not prove active compute, utilization or simultaneous full-context capacity. Only the incumbent ran model work in R5–R8 and the separate canaries.
+The candidate image is a locally retained immutable image of the pinned upstream build. Its identity is not an assertion that a mutable tag remains unchanged. GPU allocation and reserved memory do not prove active compute, utilization or simultaneous full-context capacity. Only the incumbent ran model work in R5–R8, R12 and the separate canaries; R13 never created a candidate container.
 
 ## Method: independent tasks inside a durable campaign
 
@@ -157,15 +179,17 @@ Before candidate outcomes, the [prospective eligibility ledger](2026-10-24-evalu
 
 ## Service restored; strict real-client acceptance failed
 
+This section records the R10 cutoff. The later R12/R13 restoration and scoped minimal-thinking acceptance are recorded [above](#2026-10-25-successor-r12-baseline-and-r13-admission-refusal); the thinking-off failure remains open.
+
 The first R10 incumbent restoration command omitted the original explicit GPU selection/order and used the default `all` selection. The engine was healthy, but monitoring correctly refused the changed GPU identity. This was a coordinator launch omission, not a second engine or product defect. That incarnation was removed and the exact explicit-order reload passed. The original image, model, recipe, GPU order and endpoint were restored with fresh monitoring registration; the original router configuration remained unchanged and admitting. Its eight local counters were zero, while a separate remote-memory terminal remained unknown: local zeros do not prove global drain. The [failed attempt](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/restoration-failed-attempt.json) remains alongside the [final service evidence](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/final-restoration-evidence.json).
 
 Fresh routed preflight passed coding, JSON, approximately 128K needle retrieval and 20/20 tool requests. Real Pi read/terminal operations and selected provider/model checks passed. However, the first Pi launch inherited its launcher script on stdin. A second attempt used `DEVNULL` and the exact 198-byte prompt; it still added prose and duplicated the required digest, failing the exact final-text oracle. Both operator mistakes—the GPU-selection omission and stdin contamination—are retained plainly. The validator's later recognition of `agent_settled` after `agent_end` corrected terminal-event interpretation without changing the strict output failure. No further retry is included.
 
-The [two-attempt Pi validation](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/pi-validation.json) and [restoration summary](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/restoration.json) therefore record `service_restored=true`, `restoration_acceptance_complete=false`. Routed preflight does not override failed real-client acceptance. A fresh post-fix candidate campaign and a passing accepted Pi final-answer oracle remain required for pilot acceptance; these diagnostic artifacts establish neither implementation completion nor a successful replacement trial.
+The [two-attempt Pi validation](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/pi-validation.json) and [restoration summary](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/restoration.json) therefore record `service_restored=true`, `restoration_acceptance_complete=false`. Routed preflight does not override failed real-client acceptance. At that cutoff, a fresh post-fix candidate campaign and a passing accepted Pi final-answer oracle were still required; those diagnostic artifacts established neither implementation completion nor a successful replacement trial.
 
 ## Evidence and publication boundary
 
-The eight populations have separate artifact manifests: [R5](2026-10-24-evaluation-platform-ignis-evidence/r5-cancelled/artifact-manifest.json), [R6](2026-10-24-evaluation-platform-ignis-evidence/r6-cancelled/artifact-manifest.json), [R7](2026-10-24-evaluation-platform-ignis-evidence/r7-diagnostic/artifact-manifest.json), [four Aider canaries](2026-10-24-evaluation-platform-ignis-evidence/aider-canaries/artifact-manifest.json), [mixed-C4 canary](2026-10-24-evaluation-platform-ignis-evidence/mixed-c4-canary/artifact-manifest.json), [R8](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/artifact-manifest.json), [R9](2026-10-24-evaluation-platform-ignis-evidence/r9-refusal/artifact-manifest.json), and [R10](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/artifact-manifest.json). Their summaries are authoritative within their own population; packet-level publication summaries are derivative copies, not replacement measurements.
+The eight earlier populations have separate artifact manifests: [R5](2026-10-24-evaluation-platform-ignis-evidence/r5-cancelled/artifact-manifest.json), [R6](2026-10-24-evaluation-platform-ignis-evidence/r6-cancelled/artifact-manifest.json), [R7](2026-10-24-evaluation-platform-ignis-evidence/r7-diagnostic/artifact-manifest.json), [four Aider canaries](2026-10-24-evaluation-platform-ignis-evidence/aider-canaries/artifact-manifest.json), [mixed-C4 canary](2026-10-24-evaluation-platform-ignis-evidence/mixed-c4-canary/artifact-manifest.json), [R8](2026-10-24-evaluation-platform-ignis-evidence/r8-diagnostic/artifact-manifest.json), [R9](2026-10-24-evaluation-platform-ignis-evidence/r9-refusal/artifact-manifest.json), and [R10](2026-10-24-evaluation-platform-ignis-evidence/r10-diagnostic/artifact-manifest.json). Their summaries are authoritative within their own population; packet-level publication summaries are derivative copies, not replacement measurements.
 
 Private originals remain authoritative. Embedded native hashes bind original bytes; projection ledgers and artifact manifests bind sanitized derivative bytes. Projections cannot reproduce redacted inputs or revalidate private identity chains. Public wrappers were assembled after execution and do not claim to be before-request captures. R5/R6 preserve their reviewed derivative graphs; R7/R8 explicitly retain refused full projections and diagnostic substitutes. R9/R10 retain unexecuted reports and admission/restoration evidence, with no fabricated campaign closure. Missing or invalid intervals remain missing or invalid.
 
@@ -181,5 +205,7 @@ The exception covers the aggregate above 5 MiB and these four files above 1 MiB,
 | `r6-cancelled/projections/child-evidence-records-0001.jsonl` | 10,160,811 | `ceb72cd32feb4913f9c28671c907cd89aa8746c193740f933666333bad1051e7` |
 
 These records retain complete failed/cancelled populations and original-to-derivative provenance. A compact subset would discard that evidence; no existing anonymous immutable external store with verified retention was available. The reviewer accepted the explicit Git/review cost for this inventory only. Any byte, path, count or total change requires a new exception review. Link, privacy and final-tree checks remain separate publication gates.
+
+**R12/R13 addition, 2026-10-25:** independent reviewer `evaluation_t006_recipe_monitoring` approved the separate 22-file, 29,730,566-byte addition and verified that the earlier 127 files remain unchanged. The combined exact exception covers **149 files totaling 68,119,372 bytes**. The addition's inventory SHA-256 is `c3665559f0ed264ede595031cc4d195e07ba256470fa82e56331f4492f947148`; the final named size-review SHA-256 is `f216f775b1691a69fbed41a1288067a0bb101dab892add22d9b64f7d5f9c62e7`. The [new manifest](2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json) and [evidence index](2026-10-25-evaluation-platform-r12-r13-evidence/README.md) identify the retained files. Its four files above 1 MiB are the projection ledger and the child-evidence, Aider/partial and telemetry JSONL streams. They preserve the complete failed/cancelled population, interval observations and redaction provenance; a summary-only subset would remove that audit trail. The PR records the exact paths, byte totals and approving reviewer. This exception does not make the candidate comparison complete.
 
 Publication does not authorize promotion, hidden fallback, provider reconfiguration or a recommendation change. The retained incumbent selection is unchanged.

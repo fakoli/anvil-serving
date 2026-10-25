@@ -1,6 +1,8 @@
 # RTX PRO 6000 benchmark view
 
-**2026-10-24–25 evaluation-platform diagnostics:** the dual-card GLM FP4 incumbent executed the coding/tool workload; the one-card Ignis 0.8 candidate reached startup only. R8 retains 42 complete incumbent grades (32 pass, ten fail) with censored remaining rows and unknown final interval. A separate mixed-C4 canary verified four complete measurements and shared closure, with one valid task failure. R9 host-reserve refusal and R10 monitoring identity refusal supply no candidate inference or hardware-capacity result. Exact incumbent service restoration passed, while strict Pi final-text acceptance failed. The pilot remains incomplete; no comparative performance or promotion claim follows. [Finding and population boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md).
+**2026-10-25 R12/R13 successor:** the dual-card GLM FP4 incumbent completed 44 measured/graded jobs (38 pass, six fail), with four cancelled unknowns. R13's configured one-card Ignis candidate was refused before creation; it supplied no GPU workload or capacity result. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No hardware/engine comparison or promotion follows. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md) · [Manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json).
+
+**Historical R5–R10 evaluation-platform diagnostics, 2026-10-24–25:** the dual-card GLM FP4 incumbent executed the coding/tool workload; the one-card Ignis 0.8 candidate reached startup only. R8 retains 42 complete incumbent grades (32 pass, ten fail) with censored remaining rows and unknown final interval. A separate mixed-C4 canary verified four complete measurements and shared closure, with one valid task failure. R9 host-reserve refusal and R10 monitoring identity refusal supply no candidate inference or hardware-capacity result. Exact incumbent service restoration passed, while strict Pi final-text acceptance failed. The pilot remains incomplete; no comparative performance or promotion claim follows. [Finding and population boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md).
 
 **2026-10-21–23 Flare engine investigations:** the dual-card TP2 reports are
 bounded diagnostic evidence, not a hardware ranking or a promotion. The
@@ -94,8 +96,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-17. **Evidence
-interpretation reviewed:** 2026-10-17.
+history. **Last locally measured:** 2026-10-25 (R12 incumbent diagnostic). **Evidence
+interpretation reviewed:** 2026-10-25.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -362,6 +364,7 @@ The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6
 
 ## Recent changes
 
+- 2026-10-25: [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) — identity-bound engine/GPU/host/cgroup coverage and shared closure for the released incumbent batches; complete interval coverage does not establish request overlap or simultaneous full-window capacity. R13's 49 GiB RAM plus 16 GiB host-reserve requirement was refused before creation; exact refusal-time available memory is unknown. No candidate hardware measurement or ranking.
 - 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — measured incumbent tools/coding on the dual-card pair; candidate startup on one card without generation; censored attempts and incomplete real-client acceptance retained.
 - 2026-09-08: native Linux / retained WSL GLM comparison added above; same
   measured dual-card pair, faster historical-style decode with explicit failed

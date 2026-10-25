@@ -1,0 +1,83 @@
+{
+  "absence_observed_at": "2026-10-25T11:02:06.445318+00:00",
+  "alias_transition_evidence": "Coordinator reports no alias transition; this selected native refusal evidence itself proves pre-create admission only.",
+  "candidate_absent": true,
+  "candidate_created": false,
+  "candidate_generation_requests": 0,
+  "classification": "pre-create host-reserve containment refusal",
+  "conclusions": {
+    "candidate_engine_failure_claim": false,
+    "candidate_inference_or_quality_measurement": false,
+    "candidate_oom_claim": false,
+    "incumbent_restoration_complete": null,
+    "pre_create_refusal_verified": true
+  },
+  "configured": {
+    "docker_wire_limits_bytes": [
+      52613349376,
+      52613349377
+    ],
+    "effective_requested_swap_bytes": 0,
+    "host_memory_reserve_mib": 16384,
+    "inherited_note_erratum": "serve.note still says 52 GiB; operative frozen fields bind 49 GiB RAM plus 16 GiB reserve, no effective swap.",
+    "memory_limit_mib": 50176,
+    "memory_swap_limit_mib": 50176,
+    "model": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+    "required_available_bytes": 69793218560,
+    "required_available_gib": 65.0
+  },
+  "derivative": true,
+  "error_code": "execution_failed",
+  "later_memory_observation": {
+    "available_gib": 51.05389404296875,
+    "available_minus_required_bytes": -14974517248,
+    "facts_bytes": {
+      "MemAvailable": 54818701312,
+      "MemTotal": 134164500480,
+      "SwapFree": 0
+    },
+    "meets_guard_now": false,
+    "observed_at": "2026-10-25T11:02:06.279872+00:00",
+    "required_available_bytes": 69793218560,
+    "scope": "Later read during parent-owned incumbent restoration; not the load-refusal instant and not authorization to retry."
+  },
+  "load_attempt": {
+    "error": "host memory containment refused: candidate RAM limit would consume the declared available host reserve",
+    "exit_code": 1,
+    "finished_at": "2026-10-25T10:59:59.567901+00:00",
+    "started_at": "2026-10-25T10:59:59.303298+00:00",
+    "stdout_hash_verified": true
+  },
+  "memory_at_refusal": {
+    "condition_supported_by_exact_error": true,
+    "exact_available_bytes": null,
+    "exact_shortfall_bytes": null,
+    "reason_exact_values_unknown": "Linux guard emits no numeric MemAvailable or shortfall; receipt retained only refusal message. Current reading is not reconstructed past state.",
+    "source_verified_condition": "MemAvailable < required_available_bytes"
+  },
+  "native_graph_validation_claimed": false,
+  "schema": "t006-load-refusal-audit/v1",
+  "source_check_order": [
+    {
+      "fact": "check_host resolves local endpoint, verifies memory/swap/cgroup-v2 capabilities, reads MemAvailable, then compares against (RAM+reserve)*MiB before optional swap check.",
+      "lines": "152-170",
+      "path": "anvil_serving/recipe_memory.py"
+    },
+    {
+      "fact": "load_recipe constructs argv; check_host executes at1850; refusal raises at1852 before monitoring withdrawal1856 and before subprocess start1860.",
+      "lines": "1843-1860",
+      "path": "anvil_serving/serve_recipes.py"
+    },
+    {
+      "fact": "CLI prints docker argv before calling load_recipe. The printed docker run is not evidence of executed container creation.",
+      "lines": "3471-3497",
+      "path": "anvil_serving/models.py"
+    }
+  ],
+  "submitted_cells": 0,
+  "unknowns": [
+    "Exact MemAvailable and byte shortfall at refusal were not retained by the Linux guard.",
+    "Which allocations changed available memory is not established by this bounded audit.",
+    "Parent-owned restoration outcome is outside this audit."
+  ]
+}

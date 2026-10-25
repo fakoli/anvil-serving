@@ -1,0 +1,1117 @@
+{
+  "baseline_active_seconds": 3529.8781661863904,
+  "baseline_manifest_sha256": "f29d0b50fd8eb5c132e2a06cbc1fc5ce7005691de48d9cbc8df0502400fe0b0b",
+  "candidate_configured": {
+    "budget_seconds": 3600,
+    "drain_reserve_s": 120,
+    "gpu_count": 1,
+    "identity": {
+      "image": "sha256:2b8d56c75bbba758b504bc0ef7edea59bf45df398dd9a4cde1514edc81b63029",
+      "model": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+      "revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+      "runtime": "ignis-0.8.0"
+    },
+    "planned_batches": 30,
+    "planned_cells": 48
+  },
+  "candidate_manifest_original_raw_sha256": "0eaf71e61cf267fde3d7644a94445e443f6d89a700c8f1f82e3d76a894b2421b",
+  "candidate_manifest_sha256": "7142f426b23b18609e5d4cdeb14c2cbd635900ac306f92772b229324c691c428",
+  "candidate_observed_paired_measurements": 0,
+  "combined_active_budget_max_seconds": 7129.87816618639,
+  "declared_at": "2026-10-25T10:46:54.648822+00:00",
+  "derivative": true,
+  "eligible": [
+    {
+      "baseline_cell": "job-0001",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "structured-edit",
+        1,
+        1,
+        "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1210.3746458888054,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0002",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-sequence",
+        1,
+        1,
+        "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1694.828124716878,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0003",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "parallel-tools",
+        1,
+        1,
+        "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1479.0646659675986,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0004",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "dependent-result",
+        1,
+        1,
+        "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1890.7576848287135,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0005",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-recovery",
+        1,
+        1,
+        "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2687.4283589422703,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0006",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "debug-loop-v2",
+        1,
+        1,
+        "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3976.878365268931,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0007",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "cpp/exercises/practice/all-your-base",
+        1,
+        1,
+        "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0008",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "go/exercises/practice/alphametics",
+        1,
+        1,
+        "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0009",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "java/exercises/practice/affine-cipher",
+        1,
+        1,
+        "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0010",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "javascript/exercises/practice/affine-cipher",
+        1,
+        1,
+        "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0011",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "python/exercises/practice/affine-cipher",
+        1,
+        1,
+        "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0012",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "rust/exercises/practice/accumulate",
+        1,
+        1,
+        "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0013",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "structured-edit",
+        1,
+        4,
+        "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4988.097242079675,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0014",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-sequence",
+        1,
+        4,
+        "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5097.7470928337425,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0015",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "parallel-tools",
+        1,
+        4,
+        "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3182.5785008259118,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0016",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "dependent-result",
+        1,
+        4,
+        "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5514.810833148658,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0017",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-recovery",
+        1,
+        4,
+        "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2322.6091528777033,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0018",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "debug-loop-v2",
+        1,
+        4,
+        "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3590.995820937678,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0019",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "cpp/exercises/practice/all-your-base",
+        1,
+        4,
+        "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0020",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "go/exercises/practice/alphametics",
+        1,
+        4,
+        "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0021",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "java/exercises/practice/affine-cipher",
+        1,
+        4,
+        "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0022",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "javascript/exercises/practice/affine-cipher",
+        1,
+        4,
+        "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0023",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "python/exercises/practice/affine-cipher",
+        1,
+        4,
+        "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0024",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "rust/exercises/practice/accumulate",
+        1,
+        4,
+        "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0025",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "structured-edit",
+        2,
+        1,
+        "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1246.3025848846883,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0026",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-sequence",
+        2,
+        1,
+        "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1724.3811152875423,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0027",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "parallel-tools",
+        2,
+        1,
+        "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1413.7747418135405,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0028",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "dependent-result",
+        2,
+        1,
+        "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1908.597698668018,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0029",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-recovery",
+        2,
+        1,
+        "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2235.0779199041426,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0030",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "debug-loop-v2",
+        2,
+        1,
+        "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3709.663546644151,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0031",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "cpp/exercises/practice/all-your-base",
+        2,
+        1,
+        "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0032",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "go/exercises/practice/alphametics",
+        2,
+        1,
+        "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0033",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "java/exercises/practice/affine-cipher",
+        2,
+        1,
+        "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0034",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "javascript/exercises/practice/affine-cipher",
+        2,
+        1,
+        "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0035",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "python/exercises/practice/affine-cipher",
+        2,
+        1,
+        "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0036",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "rust/exercises/practice/accumulate",
+        2,
+        1,
+        "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0037",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "structured-edit",
+        2,
+        4,
+        "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3543.993494939059,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0038",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-sequence",
+        2,
+        4,
+        "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4541.127003962174,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0039",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "parallel-tools",
+        2,
+        4,
+        "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2003.4931187983602,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0040",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "dependent-result",
+        2,
+        4,
+        "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3501.7395860049874,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0041",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "tool-recovery",
+        2,
+        4,
+        "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4389.064148999751,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0042",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "agentic",
+        "debug-loop-v2",
+        2,
+        4,
+        "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5437.090896302834,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0043",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "cpp/exercises/practice/all-your-base",
+        2,
+        4,
+        "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "state": "completed"
+    },
+    {
+      "baseline_cell": "job-0044",
+      "measurement_complete": true,
+      "native_matching_key": [
+        "aider",
+        "go/exercises/practice/alphametics",
+        2,
+        4,
+        "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "state": "completed"
+    }
+  ],
+  "engine_causal_claim": false,
+  "excluded": [
+    {
+      "baseline_cell": "job-0045",
+      "measurement_complete": false,
+      "native_matching_key": [
+        "aider",
+        "java/exercises/practice/affine-cipher",
+        2,
+        4,
+        "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": null,
+      "state": "cancelled"
+    },
+    {
+      "baseline_cell": "job-0046",
+      "measurement_complete": false,
+      "native_matching_key": [
+        "aider",
+        "javascript/exercises/practice/affine-cipher",
+        2,
+        4,
+        "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": null,
+      "state": "cancelled"
+    },
+    {
+      "baseline_cell": "job-0047",
+      "measurement_complete": false,
+      "native_matching_key": [
+        "aider",
+        "python/exercises/practice/affine-cipher",
+        2,
+        4,
+        "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": null,
+      "state": "cancelled"
+    },
+    {
+      "baseline_cell": "job-0048",
+      "measurement_complete": false,
+      "native_matching_key": [
+        "aider",
+        "rust/exercises/practice/accumulate",
+        2,
+        4,
+        "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3",
+        "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "c94ee8468633aa717b05d9af9303c63bf2ac349bd82f9cdd2ce90f1199e5b06e",
+        "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130"
+      ],
+      "outcomes": null,
+      "state": "cancelled"
+    }
+  ],
+  "grade_failures_retained": 6,
+  "key_function": "anvil_serving.benchmarking.campaign_report._key",
+  "limitations": [
+    "Separate campaign attempts; not a native same-campaign comparison.",
+    "Candidate contributes only exact matching keys with complete measurements; all other candidate denominators retained.",
+    "Native aggregates and descriptive ranges only; no manufactured per-request ranking or confidence interval.",
+    "R13 full prepared plans remain private; this is a bounded refusal derivative, not full R13 native graph validation."
+  ],
+  "performance_ranking_eligible": false,
+  "promoted": false,
+  "schema": "t006-prospective-cross-attempt-population/v1",
+  "source_head": "c0ce1d0633939eaf686bbd1e9e59241f6a0534aa",
+  "source_sha256": "c769b70b4e020e62a39ab4ea7ea5a636dacb0064fdde9144216609ffe3dae2f4"
+}

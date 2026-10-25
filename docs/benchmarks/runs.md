@@ -1,6 +1,17 @@
 # Benchmark run catalog
 
+## 2026-10-25 R12 baseline and R13 admission refusal
+
+| Configuration / population | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4, vLLM TP2; R12 incumbent | 2x RTX PRO 6000 Blackwell Max-Q; C1/C4 native tools and contained coding tests | 48 submitted: 44 complete measurements/grades (38 pass, six fail), four cancelled unknowns. Released batch closure verified; request overlap unknown. Planned 48-cell candidate arm unrun. | [GLM](models/glm53-flash.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) |
+| Qwen3.8 Flash Next Trellis, Ignis 0.8; separate R13 | One RTX PRO 6000 configured, no candidate container created | 0/48 submitted; 49 GiB RAM plus 16 GiB host reserve refused before creation, exact available memory unknown. No candidate quality, timing or capacity result. | [Qwen](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) |
+
+Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No matched comparison or promotion. [Authoritative summary](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) · [Evidence index](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md) · [Manifest](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json).
+
 ## 2026-10-24–25 evaluation-platform pilot
+
+The following rows retain the historical R5–R10 cutoff. The successor above records later evidence without changing those outcomes.
 
 | Configuration / population | Hardware and evidence | Outcome / boundary | Links |
 |---|---|---|---|
