@@ -340,6 +340,10 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         if campaign_context and spec["suite"] in {"aider", "performance"}:
             from .campaign_execution import verify_child
             _, prepared = verify_child(spec, run_root=store.run_root)
+        if campaign_context:
+            from .campaign_execution import require_campaign_suite_window
+            require_campaign_suite_window(campaign_context)
+        if campaign_context and spec["suite"] in {"aider", "performance"}:
             if spec["suite"] == "aider":
                 from .aider import run_aider_benchmark
                 suite_result = run_aider_benchmark(prepared["plan"])

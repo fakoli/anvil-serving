@@ -1,5 +1,13 @@
 # Benchmark run catalog
 
+## 2026-10-25 GLM Go/Rust completion-cap diagnostics
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM-5.3-Flash; pinned Aider/Polyglot Go and Rust tasks with 16K/32K completion caps | Dual RTX PRO 6000 Blackwell Max-Q measured; complete engine/GPU/host/cgroup telemetry and verified closure for all six submitted jobs | Six completed measurements: one passing/five failing task grades; two supported cells unstarted, four reasoning controls blocked. Raw grades remain separate from lifecycle and measurement eligibility. No causal cap benefit, Ignis run or promotion. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md) · [Evidence index](../findings/2026-10-25-glm-diagnostics-evidence/README.md) |
+
+Closure through the final postcheck took 26.73 minutes within the 45-minute operator limit. Three additional Aider request starts lack captured responses; their usage remains unknown. See the [authoritative summary](../findings/2026-10-25-glm-diagnostics-evidence/summary.json).
+
 ## 2026-10-25 R12 baseline and R13 admission refusal
 
 | Configuration / population | Hardware and evidence | Outcome / boundary | Links |

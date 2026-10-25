@@ -60,6 +60,7 @@ def test_native_result_only_measured_with_exact_model_and_whole_edit(tmp_path):
     aider._normalize(plan, result)
     assert result["summary"]["resolve_rate"] is None
     assert result["failure"]["class"] == "broken_harness"
+    assert aider.validated_aider_task_grade(plan, {"model": "cloud", "edit_format": "whole", "tests_outcomes": [True]}) is None
 
 
 def test_tampered_plan_rejected_before_any_run():

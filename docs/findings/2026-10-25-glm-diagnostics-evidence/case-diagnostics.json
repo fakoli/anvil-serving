@@ -1,0 +1,503 @@
+{
+  "cases": [
+    {
+      "captured_responses": 2,
+      "cell": "cell-1",
+      "completion_cap": 16384,
+      "contained_tests": [
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 10,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": false,
+        "second_attempt_passed": false
+      },
+      "measurement_complete": true,
+      "native_model_calls": 2,
+      "repeat": 1,
+      "request_starts": 2,
+      "responses": [
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 16384,
+            "prompt_tokens": 1134,
+            "reasoning_tokens": 16384,
+            "total_tokens": 17518
+          },
+          "utc_observed_at": "2026-10-25T21:40:18.061587Z"
+        },
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 16384,
+            "prompt_tokens": 1466,
+            "reasoning_tokens": 16384,
+            "total_tokens": 17850
+          },
+          "utc_observed_at": "2026-10-25T21:41:47.453979Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4057,
+        "sha256": "cab0f8e631a94fe932ac4095acca2d545c2127e1d2e46ffda6890d53ac999100"
+      },
+      "source_result": {
+        "bytes": 72985,
+        "sha256": "1c213e6de5da23ee22b4b4ba816a30d499bc56f00a7c8d225d8f76459b215c9a"
+      },
+      "starts_without_captured_response": 0,
+      "state": "completed",
+      "suite_elapsed_seconds": 184.057791,
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "captured_responses": 2,
+      "cell": "cell-2",
+      "completion_cap": 16384,
+      "contained_tests": [
+        {
+          "compilation_failure": true,
+          "compilation_failure_signals": [
+            "rust_could_not_compile",
+            "rust_error_code"
+          ],
+          "compiler_diagnostics_truncated": false,
+          "returncode": 101,
+          "rust_compiler_error_codes": [
+            "E0277",
+            "E0308",
+            "E0599",
+            "E0631"
+          ],
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": true,
+          "compilation_failure_signals": [
+            "rust_could_not_compile",
+            "rust_error_code"
+          ],
+          "compiler_diagnostics_truncated": false,
+          "returncode": 101,
+          "rust_compiler_error_codes": [
+            "E0594"
+          ],
+          "seq": 11,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": false,
+        "second_attempt_passed": false
+      },
+      "measurement_complete": true,
+      "native_model_calls": 3,
+      "repeat": 1,
+      "request_starts": 3,
+      "responses": [
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 4544,
+            "prompt_tokens": 927,
+            "reasoning_tokens": 4307,
+            "total_tokens": 5471
+          },
+          "utc_observed_at": "2026-10-25T21:43:30.508539Z"
+        },
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 2069,
+            "prompt_tokens": 5283,
+            "reasoning_tokens": 1693,
+            "total_tokens": 7352
+          },
+          "utc_observed_at": "2026-10-25T21:43:42.128899Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4419,
+        "sha256": "e79f1ed3f08616e088b8fedccc4f89d7baaa4a01907b29e442e61a9538dbb106"
+      },
+      "source_result": {
+        "bytes": 54288,
+        "sha256": "525b0885f5ce7641178ba5d48345476d4bcb14b8b4474e44059a91953e12fe46"
+      },
+      "starts_without_captured_response": 1,
+      "state": "completed",
+      "suite_elapsed_seconds": 37.194194,
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "captured_responses": 2,
+      "cell": "cell-3",
+      "completion_cap": 32768,
+      "contained_tests": [
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 10,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": false,
+        "second_attempt_passed": false
+      },
+      "measurement_complete": true,
+      "native_model_calls": 2,
+      "repeat": 1,
+      "request_starts": 2,
+      "responses": [
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 32768,
+            "prompt_tokens": 1134,
+            "reasoning_tokens": 32768,
+            "total_tokens": 33902
+          },
+          "utc_observed_at": "2026-10-25T21:48:11.011645Z"
+        },
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 32768,
+            "prompt_tokens": 1466,
+            "reasoning_tokens": 32768,
+            "total_tokens": 34234
+          },
+          "utc_observed_at": "2026-10-25T21:51:08.184108Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4057,
+        "sha256": "fc2b212e59e19f92c59618d0c8c53c6ebf7c610808d014f19de9b3ef5a430b0e"
+      },
+      "source_result": {
+        "bytes": 74774,
+        "sha256": "4ca3ec9573c28c7815a2bb3b6695ded407ee52c342e0bfbf16d94887a7314f87"
+      },
+      "starts_without_captured_response": 0,
+      "state": "completed",
+      "suite_elapsed_seconds": 360.277917,
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "captured_responses": 2,
+      "cell": "cell-4",
+      "completion_cap": 32768,
+      "contained_tests": [
+        {
+          "compilation_failure": true,
+          "compilation_failure_signals": [
+            "rust_could_not_compile",
+            "rust_error_code"
+          ],
+          "compiler_diagnostics_truncated": false,
+          "returncode": 101,
+          "rust_compiler_error_codes": [
+            "E0277",
+            "E0308",
+            "E0599"
+          ],
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 0,
+          "rust_compiler_error_codes": null,
+          "seq": 11,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": true,
+        "second_attempt_passed": true
+      },
+      "measurement_complete": true,
+      "native_model_calls": 3,
+      "repeat": 1,
+      "request_starts": 3,
+      "responses": [
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 872,
+            "prompt_tokens": 927,
+            "reasoning_tokens": 698,
+            "total_tokens": 1799
+          },
+          "utc_observed_at": "2026-10-25T21:52:36.968695Z"
+        },
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 767,
+            "prompt_tokens": 5240,
+            "reasoning_tokens": 526,
+            "total_tokens": 6007
+          },
+          "utc_observed_at": "2026-10-25T21:52:42.482003Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4360,
+        "sha256": "ba1d4ffd0f7b11fa43fa5097e5b46a1efadc20944230a7a6e1fc005701633742"
+      },
+      "source_result": {
+        "bytes": 34569,
+        "sha256": "c6c3c371a0add9349ccd93d09d2fdc0ac4829f4d6b49ad4b6178340cd676c56a"
+      },
+      "starts_without_captured_response": 1,
+      "state": "completed",
+      "suite_elapsed_seconds": 13.552413,
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "captured_responses": 2,
+      "cell": "cell-5",
+      "completion_cap": 32768,
+      "contained_tests": [
+        {
+          "compilation_failure": true,
+          "compilation_failure_signals": [
+            "rust_could_not_compile",
+            "rust_error_code"
+          ],
+          "compiler_diagnostics_truncated": false,
+          "returncode": 101,
+          "rust_compiler_error_codes": [
+            "E0277",
+            "E0282",
+            "E0308",
+            "E0631"
+          ],
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": true,
+          "compilation_failure_signals": [
+            "rust_could_not_compile",
+            "rust_error_code"
+          ],
+          "compiler_diagnostics_truncated": false,
+          "returncode": 101,
+          "rust_compiler_error_codes": [
+            "E0596"
+          ],
+          "seq": 11,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": false,
+        "second_attempt_passed": false
+      },
+      "measurement_complete": true,
+      "native_model_calls": 3,
+      "repeat": 2,
+      "request_starts": 3,
+      "responses": [
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 19569,
+            "prompt_tokens": 927,
+            "reasoning_tokens": 19192,
+            "total_tokens": 20496
+          },
+          "utc_observed_at": "2026-10-25T21:55:49.106214Z"
+        },
+        {
+          "finish_reason": "stop",
+          "http_status": 200,
+          "output_truncated": false,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 3340,
+            "prompt_tokens": 5288,
+            "reasoning_tokens": 2893,
+            "total_tokens": 8628
+          },
+          "utc_observed_at": "2026-10-25T21:56:07.192562Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4423,
+        "sha256": "396a1c3e4cc0b5973d496f315980b8125c3b0b8b03412ab4c4155a2b1cf50b79"
+      },
+      "source_result": {
+        "bytes": 73257,
+        "sha256": "b8c8f36b2ebca93fb1b0af96aa376ea546e7b4451cb01607fed6ccc4646fd9c0"
+      },
+      "starts_without_captured_response": 1,
+      "state": "completed",
+      "suite_elapsed_seconds": 116.886193,
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "captured_responses": 2,
+      "cell": "cell-6",
+      "completion_cap": 32768,
+      "contained_tests": [
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 6,
+          "timed_out": false
+        },
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "seq": 10,
+          "timed_out": false
+        }
+      ],
+      "grade": {
+        "first_attempt_passed": false,
+        "resolved": false,
+        "second_attempt_passed": false
+      },
+      "measurement_complete": true,
+      "native_model_calls": 2,
+      "repeat": 2,
+      "request_starts": 2,
+      "responses": [
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 4,
+          "usage": {
+            "completion_tokens": 32768,
+            "prompt_tokens": 1134,
+            "reasoning_tokens": 32768,
+            "total_tokens": 33902
+          },
+          "utc_observed_at": "2026-10-25T22:00:42.417842Z"
+        },
+        {
+          "finish_reason": "length",
+          "http_status": 200,
+          "output_truncated": true,
+          "seq": 8,
+          "usage": {
+            "completion_tokens": 32768,
+            "prompt_tokens": 1467,
+            "reasoning_tokens": 32768,
+            "total_tokens": 34235
+          },
+          "utc_observed_at": "2026-10-25T22:03:35.737085Z"
+        }
+      ],
+      "source_request_events": {
+        "bytes": 4057,
+        "sha256": "2163164be33e5ee54fd1c4386c63b49793ed29ecc3c8be0f4bd78889dcae7fec"
+      },
+      "source_result": {
+        "bytes": 74058,
+        "sha256": "dde600537f5a49a55b3aaddd018055a3efe39d800895700d5eec7cca911b7d7e"
+      },
+      "starts_without_captured_response": 0,
+      "state": "completed",
+      "suite_elapsed_seconds": 359.232341,
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "cell": "cell-7",
+      "completion_cap": 16384,
+      "grade": null,
+      "measurement_complete": false,
+      "repeat": 2,
+      "state": "planned",
+      "task": "rust/exercises/practice/accumulate",
+      "unstarted_reason": "Full780s allowance required;575.216s remained. No submission or model grade."
+    },
+    {
+      "cell": "cell-8",
+      "completion_cap": 16384,
+      "grade": null,
+      "measurement_complete": false,
+      "repeat": 2,
+      "state": "planned",
+      "task": "go/exercises/practice/alphametics",
+      "unstarted_reason": "Full780s allowance required;575.216s remained. No submission or model grade."
+    }
+  ],
+  "schema": "glm-coding-diagnostic-cases/v1",
+  "scope": "Metadata and native grades from six closed jobs; no reconstructed usage for missing responses."
+}

@@ -33,6 +33,8 @@ from .campaign_identity import (
 STATE_SCHEMA = "anvil-serving.benchmark-campaign-state/v1"
 MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024
 CAMPAIGN_LOCK_TIMEOUT_S = 5.0
+# Covers post-release asset checks, watchdog startup (30s) and preflight (10s).
+CAMPAIGN_ENTRY_RESERVE_S = 60
 
 
 def source_sha256():
@@ -550,6 +552,31 @@ def _remaining_budget(manifest, batch_id, *, run_root, store):
     return min(min(3600, budgets['per_arm_s'], arm['budget_s']) - used, min(7200, budgets['total_s']) - total)
 
 
+def required_batch_allowance(manifest, batch_id):
+    # Child timeout already includes contained tests. The validated drain reserve
+    # covers client cleanup, engine drain and final telemetry/receipt collection.
+    return (CAMPAIGN_ENTRY_RESERVE_S + max(cell['spec']['timeout_s'] for cell in _cells(manifest, batch_id))
+            + manifest['budgets']['drain_reserve_s'])
+
+
+def require_batch_allowance(manifest, batch_id, *, run_root, store, allowance_s=None):
+    required = required_batch_allowance(manifest, batch_id)
+    remaining = _remaining_budget(manifest, batch_id, run_root=run_root, store=store)
+    requested = required if allowance_s is None else allowance_s
+    if not _finite(requested) or requested < required or requested > remaining:
+        raise BenchmarkJobError('campaign_budget_exceeded',
+            f'full batch requires {required:g}s; requested {requested!r}s; remaining {remaining:g}s')
+    return requested
+
+
+def require_campaign_suite_window(context):
+    release, spec = context['release'], context['spec']
+    remaining = release['traffic_deadline_monotonic'] - time.monotonic()
+    if release['boot_id'] != _boot_id() or not _finite(remaining) or remaining < spec['timeout_s']:
+        raise BenchmarkJobError('campaign_budget_exceeded',
+            f'full suite requires {spec["timeout_s"]:g}s after entry; remaining {remaining:g}s')
+
+
 def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None, sampler=None):
     """Caller holds campaign scheduling lock; every earlier batch must be closed."""
     cells = _cells(manifest, batch_id)
@@ -563,9 +590,8 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None, samp
     reserve = budgets['drain_reserve_s']
     if not _finite(allowance_s) or not _finite(reserve) or not 10 <= reserve < allowance_s:
         raise BenchmarkJobError('campaign_budget_exceeded', 'allowance must include at least ten seconds of drain reserve')
-    allowance_s = min(allowance_s, _remaining_budget(manifest, batch_id, run_root=run_root, store=store))
-    if allowance_s <= reserve:
-        raise BenchmarkJobError('campaign_budget_exceeded', 'active campaign budget exhausted')
+    allowance_s = require_batch_allowance(manifest, batch_id, run_root=run_root, store=store,
+                                         allowance_s=allowance_s)
     arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == cells[0]['arm_id'])
     validate_drain_policy(arm.get('drain_policy', manifest.get('drain_policy', {})), reserve_s=reserve)
     activation = _activation(arm)

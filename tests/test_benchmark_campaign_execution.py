@@ -15,10 +15,10 @@ from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 from tests.test_benchmark_worker import spec
 
 
-def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activation=None, drain_reserve_s=10):
+def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activation=None, drain_reserve_s=10, timeout_s=10):
     root = str(tmp_path / 'runs')
     Path(root).mkdir()
-    arm_budget = max(60, drain_reserve_s + 10)
+    arm_budget = 60 + timeout_s + drain_reserve_s
     activation = activation or {'status': 'verified', 'generation': 'a' * 64,
                   'metrics_url': 'http://127.0.0.1:19100/engine/' + 'a' * 64 + '/metrics',
                   'container_id': 'b' * 64, 'started_at': 'test', 'served_model': 'model'}
@@ -28,6 +28,7 @@ def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activati
     cells = []
     for index in range(count):
         base = spec()
+        base['timeout_s'] = timeout_s
         base['run_id'] = f'child-{index}'
         if endpoint:
             base['endpoint']['base_url'] = endpoint
@@ -78,18 +79,18 @@ def test_frozen_plan_and_closed_binding_reject_drift_before_traffic(tmp_path, mo
         job_spec_sha256(changed)
 
 
-def test_ready_barrier_union_budget_unknown_closure_and_clamp(tmp_path, monkeypatch):
+def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
     with pytest.raises(BenchmarkJobError, match='all frozen children'):
-        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=50)
+        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80)
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
     store.submit(bound[0])
     store.claim(bound[0]['run_id'])
     first = ready(root, manifest, bound)
-    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=50)
+    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80)
     ready(root, manifest, bound, 1)
     with pytest.raises(BenchmarkJobError, match='prior batch lacks'):
-        execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=50)
+        execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=80)
     first.update(status='closed', started_monotonic=release['released_monotonic'],
         closed_monotonic=release['released_monotonic']+20, clients_stopped=True, clients_stopped_wall=time.time(),
         activation=release['activation'], drain={'status': 'verified'})
@@ -103,11 +104,28 @@ def test_ready_barrier_union_budget_unknown_closure_and_clamp(tmp_path, monkeypa
     atomic_write_json(target, shared)
     store.transition(bound[0]['run_id'], 'completed', results=execution.campaign_result_reference(store, bound[0]))
     assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds'] == 20
-    second = execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=50, store=store)
-    assert second['allowance_s'] == 40
+    with pytest.raises(BenchmarkJobError, match='requires 80s.*remaining 60s'):
+        execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=80, store=store)
+    assert not (execution._directory(manifest, root) / 'batches/batch-1.json').exists()
     first['closed_monotonic'] = release['released_monotonic'] - 1
     atomic_write_json(execution._path(bound[0], root, 'campaign-execution.json'), first)
     assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds'] is None
+
+
+@pytest.mark.parametrize('allowance', [79, 81])
+def test_release_refuses_short_or_unfunded_allowance_before_activation(tmp_path, monkeypatch, allowance):
+    root, manifest, bound = campaign(tmp_path, monkeypatch)
+    ready(root, manifest, bound)
+    monkeypatch.setattr(execution, '_activation', lambda *a, **k: pytest.fail('refused release activated'))
+    with pytest.raises(BenchmarkJobError, match='full batch requires 80s.*remaining 80s'):
+        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=allowance)
+    assert not (execution._directory(manifest, root) / 'batches/batch-0.json').exists()
+
+
+def test_batch_allowance_counts_parallel_task_timeout_once():
+    manifest = {'budgets': {'drain_reserve_s': 120}, 'cells': [
+        {'batch_id': 'batch', 'arm_id': 'arm', 'spec': {'timeout_s': timeout}} for timeout in (10, 20, 30, 40)]}
+    assert execution.required_batch_allowance(manifest, 'batch') == 60 + 40 + 120
 
 
 def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
@@ -158,7 +176,7 @@ def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tm
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
     store.submit(bound[0])
     ready(root, manifest, bound)
-    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20, store=store)
+    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80, store=store)
     stopped = []
 
     class UnreadableAtDeadline:
@@ -189,7 +207,7 @@ def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_p
     root, manifest, bound = campaign(tmp_path, monkeypatch)
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
     store.submit(bound[0]); ready(root, manifest, bound)
-    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20, store=store)
+    release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80, store=store)
     class MissingAtDeadline:
         path, run_root = store.path, root
         calls = 0
@@ -231,6 +249,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
         hook = tmp_path / 'hook'; hook.mkdir()
         (hook / 'sitecustomize.py').write_text(
+            'import os, sys; sys.path.insert(0, os.getcwd())\n'
             'from anvil_serving.benchmarking import campaign_execution as e\n'
             'a = ' + repr(activation) + '\n'
             'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
@@ -242,8 +261,8 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline and not execution.batch_ready(manifest, 'batch-0', run_root=root): time.sleep(.02)
-        assert execution.batch_ready(manifest, 'batch-0', run_root=root)
-        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80)
+        assert execution.batch_ready(manifest, 'batch-0', run_root=root), store.logs(bound[0]['run_id'])
+        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140)
         while time.monotonic() < deadline:
             execution.coordinate_batch(manifest, 'batch-0', store=store)
             result = store.status(bound[0]['run_id'])
@@ -281,19 +300,24 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
         hook = tmp_path / 'hook'; hook.mkdir()
         (hook / 'sitecustomize.py').write_text(
+            'import os, sys; sys.path.insert(0, os.getcwd())\n'
             'import time\n'
             'from anvil_serving.benchmarking import campaign_execution as e\n'
             'a = ' + repr(activation) + '\n'
             'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
         )
         monkeypatch.setenv('PYTHONPATH', str(hook))
-        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation)
+        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=1)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline and not execution.batch_ready(manifest, 'batch-0', run_root=root): time.sleep(.02)
-        assert execution.batch_ready(manifest, 'batch-0', run_root=root)
-        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=12)
+        assert execution.batch_ready(manifest, 'batch-0', run_root=root), store.logs(bound[0]['run_id'])
+        # Model a historical short release: reading it must retain watchdog
+        # enforcement even though new admission now refuses this allowance.
+        with monkeypatch.context() as historical:
+            historical.setattr(execution, 'require_batch_allowance', lambda *a, **k: k['allowance_s'])
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=12)
         while time.monotonic() < deadline:
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
@@ -362,7 +386,7 @@ def entry_campaign(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, '_run_suite', lambda *args, **kwargs: pytest.fail('model traffic'))
     sampler = telemetry.BatchSampler(manifest, cell['batch_id'], run_root=root)
     release = execution.release_batch(manifest, cell['batch_id'], run_root=root,
-                                      allowance_s=130, store=store, sampler=sampler)
+                                      allowance_s=190, store=store, sampler=sampler)
     return store, manifest, child, sampler, release
 
 
@@ -525,9 +549,9 @@ def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_
     store.claim(child['run_id'])
     path = sampler.root / 'batches' / (sampler.batch_id + '.json')
     if mode == 'partial_deadline':
-        release['released_monotonic'] = time.monotonic() - 9.7
-        release['traffic_deadline_monotonic'] = release['released_monotonic'] + 10
-        release['deadline_monotonic'] = release['released_monotonic'] + 130
+        release['released_monotonic'] = time.monotonic() - 69.7
+        release['traffic_deadline_monotonic'] = release['released_monotonic'] + 70
+        release['deadline_monotonic'] = release['released_monotonic'] + 190
         atomic_write_json(path, release)
     original_popen = subprocess.Popen
     supervisors = []

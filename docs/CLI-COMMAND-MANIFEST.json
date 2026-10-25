@@ -17463,7 +17463,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17623,7 +17623,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -17850,7 +17850,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18045,7 +18045,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18251,7 +18251,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18455,7 +18455,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18680,7 +18680,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -18865,7 +18865,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19080,7 +19080,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19276,7 +19276,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19468,7 +19468,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19628,7 +19628,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -19855,7 +19855,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20050,7 +20050,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20256,7 +20256,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20460,7 +20460,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20685,7 +20685,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -20870,7 +20870,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21085,7 +21085,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21281,7 +21281,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21473,7 +21473,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21633,7 +21633,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -21860,7 +21860,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22057,7 +22057,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22255,7 +22255,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22461,7 +22461,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22665,7 +22665,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -22890,7 +22890,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -23075,7 +23075,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -23290,7 +23290,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -23486,7 +23486,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -23678,7 +23678,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -23838,7 +23838,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -24065,7 +24065,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -24260,7 +24260,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -24466,7 +24466,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -24670,7 +24670,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -24895,7 +24895,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -25080,7 +25080,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -25295,7 +25295,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -25491,7 +25491,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -25683,7 +25683,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -25843,7 +25843,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -26070,7 +26070,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -26265,7 +26265,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -26471,7 +26471,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -26675,7 +26675,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -26900,7 +26900,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -27085,7 +27085,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -27300,7 +27300,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [
@@ -27496,7 +27496,7 @@
           "output_policy": null,
           "requires_confirmation": false,
           "summary": "Versioned benchmark profile.",
-          "value_name": "deep|pilot-v2|scout|smoke"
+          "value_name": "aider-diagnostic-16k-v1|aider-diagnostic-32k-v1|deep|pilot-v2|scout|smoke"
         },
         {
           "flags": [

@@ -95,6 +95,44 @@ def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_pa
     assert evidence["identities"]["model"] == {"alias": "candidate"}
 
 
+@pytest.mark.parametrize('slow_stage', ['preflight', 'prepared_verification'])
+def test_campaign_requires_full_timeout_after_preflight_and_prepared_verification(monkeypatch, tmp_path, slow_stage):
+    from anvil_serving.benchmarking import campaign_execution as execution, aider
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='aider', timeout_s=30,
+                 parameters={'instance_ids': ['rust/exercises/practice/accumulate']})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    clock, calls = [0], []
+    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0],
+        perf_counter=time.perf_counter, sleep=time.sleep))
+    context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'},
+               'release': {'boot_id': execution._boot_id(), 'traffic_deadline_monotonic': 90}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    def preflight(*args, **kwargs):
+        calls.append('preflight')
+        clock[0] = 61 if slow_stage == 'preflight' else 10
+        return {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []}
+    def verify(*args, **kwargs):
+        calls.append('prepared_verification')
+        if slow_stage == 'prepared_verification':
+            clock[0] = 61
+        return {}, {'plan': {}}
+    monkeypatch.setattr(benchmark_worker, 'run_benchmark_preflight', preflight)
+    monkeypatch.setattr(execution, 'verify_child', verify)
+    monkeypatch.setattr(aider, 'run_aider_benchmark', lambda *a, **k: pytest.fail('short window started suite'))
+    monkeypatch.setattr(execution, 'close_campaign', lambda *a, **k: {'status': 'closed'})
+    monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: {})
+    monkeypatch.setattr(benchmark_worker, '_retain_external_artifacts', lambda *a, **k: {'state': 'absent'})
+    result = execute_benchmark_job(store, value['run_id'])
+    assert calls == ['preflight', 'prepared_verification']
+    assert result['state'] == 'failed' and result['failure']['code'] == 'campaign_budget_exceeded'
+    assert 'requires 30s after entry; remaining 29s' in result['failure']['message']
+
+
 def test_incomplete_swe_budget_exhaustion_retains_outer_resource_cause(monkeypatch, tmp_path):
     value = spec()
     value["suite"] = "swe"

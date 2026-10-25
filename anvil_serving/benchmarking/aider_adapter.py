@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import runpy
 import stat
 import subprocess
@@ -26,6 +27,15 @@ from .aider_containment import (
     load_test_callback as load_test_callback,
     contained_test_callback as contained_test_callback,
 )
+
+_COMPILER_DIAGNOSTIC_PATTERNS = {
+    "rust": {
+        "rust_could_not_compile": r"(?m)^error: could not compile `[^`\r\n]+`",
+        "rust_syntax_error": r"(?m)^error: (?:expected |unexpected |mismatched closing delimiter|unclosed delimiter|unterminated )",
+        "rust_linker_error": r"(?m)^error: linking with [^\r\n]+ failed:",
+    },
+    "go": {"go_build_failed": r"(?m)^FAIL[ \t]+[^\r\n]+[ \t]+\[build failed\][ \t]*\r?$"},
+}
 
 
 def verify_source(root, *, runner=subprocess.run):
@@ -121,6 +131,35 @@ def disable_dotenv():
         dotenv.load_dotenv, dotenv.find_dotenv = old_load, old_find
 
 
+def response_diagnostics(response):
+    """Observe bounded protocol metadata without retaining generated text."""
+    result = {"finish_reason": None, "output_truncated": None,
+              "usage": dict.fromkeys(("prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens"))}
+    try:
+        if not 200 <= response.status_code < 300 or len(response.content) > 8 * 1024 * 1024:
+            return result
+        body = json.loads(response.content)
+        choices = body.get("choices")
+        if isinstance(choices, list) and len(choices) == 1 and isinstance(choices[0], dict):
+            reason = choices[0].get("finish_reason")
+            if reason in ("stop", "length", "tool_calls", "content_filter", "function_call"):
+                result.update(finish_reason=reason, output_truncated=reason == "length")
+        usage = body.get("usage")
+        if isinstance(usage, dict):
+            details = usage.get("completion_tokens_details")
+            values = dict(usage)
+            reasoning = details.get("reasoning_tokens") if isinstance(details, dict) else None
+            if type(reasoning) is int and 0 <= reasoning <= 10**12:
+                values["reasoning_tokens"] = reasoning
+            for name in result["usage"]:
+                value = values.get(name)
+                if type(value) is int and 0 <= value <= 10**12:
+                    result["usage"][name] = value
+    except (AttributeError, TypeError, ValueError, RecursionError):
+        pass  # Missing/malformed metadata must not change transport or SDK retries.
+    return result
+
+
 def install_transport_guard(client, model_class, *, endpoint, controls, budget, recorder):
     """Count actual synchronous HTTP attempts, including provider and SDK retries."""
     original_send, original_completion = client.send, model_class.send_completion
@@ -161,7 +200,8 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
             if 200 <= response.status_code < 300:
                 retry_context = None
             recorder.record("aider_transport_response", logical_request_id=active["logical_request_id"],
-                            http_status=response.status_code)
+                            attempt=active["sdk_transport_attempt_ordinal"],
+                            http_status=response.status_code, **response_diagnostics(response))
             return response
         finally:
             budget.check()
@@ -190,16 +230,47 @@ def run_contained_callback(command, *, plan, budget, **kwargs):
     if kwargs.get("timeout") != 180:
         raise RuntimeError("upstream Aider test timeout changed")
     budget.check()
-    if getattr(budget, "recorder", None) is not None:
-        budget.recorder.record("aider_contained_command", command=list(command),
-            task=str(Path(kwargs["cwd"]).relative_to(plan["run_path"])), timeout_s=180)
+    recorder = getattr(budget, "recorder", None)
+    task = Path(kwargs["cwd"]).relative_to(plan["run_path"])
+    if recorder is not None:
+        recorder.record("aider_contained_command", command=list(command), task=str(task), timeout_s=180)
+    completed, timed_out = None, None
     try:
-        return run_contained_test(["python3", "/aider/anvil-entrypoint.py", *command], task_dir=kwargs["cwd"],
+        completed = run_contained_test(["python3", "/aider/anvil-entrypoint.py", *command], task_dir=kwargs["cwd"],
             run_path=plan["run_path"], ownership_id=plan["ownership_id"],
             run_id=plan["run_id"], image_id=plan["aider_environment"]["image_id"],
             timeout=min(180, budget.check()), container_binary=plan["container_executable"])
+        timed_out = False
+        return completed
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        raise
     finally:
         verify_task_tree(kwargs["cwd"])
+        if recorder is not None:
+            compiler_codes, compiler_signals, truncated = set(), set(), None
+            language = task.parts[-4] if len(task.parts) >= 4 and task.parts[-3:-1] == ("exercises", "practice") else None
+            if completed is not None and language in _COMPILER_DIAGNOSTIC_PATTERNS:
+                truncated = False
+                for output in (completed.stdout, completed.stderr):
+                    if isinstance(output, (str, bytes)):
+                        truncated |= len(output) > 65536
+                        text = output[:65536]
+                        if isinstance(text, bytes):
+                            text = text.decode("utf-8", "replace")
+                        if language == "rust":
+                            compiler_codes.update(re.findall(r"(?m)^error\[(E[0-9]{4})\]:", text))
+                        compiler_signals.update(label for label, pattern in _COMPILER_DIAGNOSTIC_PATTERNS[language].items()
+                                                if re.search(pattern, text))
+                if compiler_codes:
+                    compiler_signals.add("rust_error_code")
+            # Diagnostic signatures are observations, not a replacement test oracle.
+            recorder.record("aider_contained_command_finished", task=str(task),
+                returncode=completed.returncode if completed is not None else None, timed_out=timed_out,
+                rust_compiler_error_codes=sorted(compiler_codes)[:32] or None,
+                compilation_failure=True if compiler_signals and completed.returncode != 0 else None,
+                compilation_failure_signals=sorted(compiler_signals) or None,
+                compiler_diagnostics_truncated=truncated if truncated is None else truncated or len(compiler_codes) > 32)
 
 
 def run_contained_lint(command, *, plan, budget, **kwargs):
