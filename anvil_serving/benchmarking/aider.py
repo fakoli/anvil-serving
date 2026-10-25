@@ -12,7 +12,7 @@ import time
 from typing import Mapping
 from urllib.parse import urlsplit
 
-from .aider_prepare import AIDER_PLAN_SCHEMA as AIDER_PLAN_SCHEMA
+from .aider_prepare import AIDER_PLAN_SCHEMA as AIDER_PLAN_SCHEMA, _adapter_command
 from .aider_containment import AIDER_REVISION, POLYGLOT_REVISION, SOURCE_HASHES, task_snapshot, validate_task_id
 from .artifacts import atomic_write_json, evidence_file_reference, path_is_within, real_path
 from .harnesses import HARNESS_ASSETS_SCHEMA, resolve_container_binary
@@ -122,7 +122,7 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
             "aider_environment": environment, "python_environment": python_env,
             "source_hashes": SOURCE_HASHES, "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest(),
             "container_executable": container,
-            "command": [python, "-m", "anvil_serving.benchmarking.aider_adapter", "--plan", paths["plan"]]}
+            "command": _adapter_command(python, paths["plan"])}
     plan["plan_sha256"] = _digest(plan)
     verify_plan(plan)
     return plan
@@ -180,7 +180,6 @@ def run_aider_benchmark(plan, *, command_runner=_budget_runner, environ=None):
     parent = os.environ if environ is None else environ
     child_env = {key: parent[key] for key in ("PATH", "LANG", "LC_ALL", "SSL_CERT_FILE", "SSL_CERT_DIR") if key in parent}
     child_env.update(HOME=paths["home"], PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1",
-                     PYTHONPATH=str(Path(__file__).resolve().parents[2]),
                      OPENAI_API_BASE=plan["endpoint"]["base_url"],
                      AIDER_BENCHMARK_DIR=paths["aider"], LITELLM_LOCAL_MODEL_COST_MAP="True",
                      AIDER_ANALYTICS="false")

@@ -85,11 +85,12 @@ def test_process_timeout_retains_partial_output_and_sanitizes_client_environment
     monkeypatch.setattr(aider, "verify_plan", lambda value: None)
     def runner(command, cwd, timeout, env):
         assert env["OPENAI_API_KEY"] == "test-reference-value"
-        assert "UNRELATED_CLOUD_KEY" not in env and "PYTHONPATH" in env
+        assert "UNRELATED_CLOUD_KEY" not in env and "PYTHONPATH" not in env and "PYTHONHOME" not in env
         assert "TEST_KEY" not in env
         raise subprocess.TimeoutExpired(command, timeout, output="partial upstream output")
     result = aider.run_aider_benchmark(plan, command_runner=runner,
-        environ={"TEST_KEY": "test-reference-value", "UNRELATED_CLOUD_KEY": "must not inherit"})
+        environ={"TEST_KEY": "test-reference-value", "UNRELATED_CLOUD_KEY": "must not inherit",
+                 "PYTHONPATH": "/untrusted/product", "PYTHONHOME": "/untrusted/python"})
     assert result["state"] == "incomplete"
     assert result["quality"]["status"] == "unknown"
     assert result["failure"]["class"] == "budget_exhausted"
@@ -179,10 +180,62 @@ def test_python_drift_during_run_setup_rejected_before_command_runner(tmp_path, 
         aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("model command executed"))
 
 
-def test_prepared_python_command_cannot_substitute_interpreter(tmp_path, monkeypatch):
+@pytest.mark.parametrize("changed", ["interpreter", "product_root", "bootstrap"])
+def test_prepared_python_command_cannot_substitute_interpreter(tmp_path, monkeypatch, changed):
     profile, manifest, kwargs, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
     plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
-    plan["command"][0] = "/usr/bin/python3"
+    position = {"interpreter": 0, "bootstrap": plan["command"].index("-c") + 1,
+                "product_root": plan["command"].index("-c") + 2}[changed]
+    plan["command"][position] = "/untrusted/substitute"
     plan["plan_sha256"] = aider._digest({k:v for k,v in plan.items() if k != "plan_sha256"})
     with pytest.raises(BenchmarkJobError, match="prepared interpreter"):
         aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("substitute Python executed"))
+
+
+@pytest.mark.parametrize("adapter", ["aider", "performance"])
+def test_real_isolated_adapter_startup_from_path_separator_checkout(tmp_path, monkeypatch, adapter):
+    """No installed product or upstream packages: reach the real plan gate offline."""
+    import os
+    from pathlib import Path
+    import shutil
+    import subprocess
+    import venv
+    from anvil_serving.benchmarking import aider_prepare, performance_prepare
+
+    source = Path(aider.__file__).resolve().parents[2]
+    checkout = tmp_path / ("product" + os.pathsep + "checkout")
+    shutil.copytree(source / "anvil_serving", checkout / "anvil_serving",
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    environment = tmp_path / "isolated"
+    venv.EnvBuilder(with_pip=False).create(environment)
+    python = str(environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
+    cwd = tmp_path / "upstream"
+    cwd.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {"PATH": os.defpath, "HOME": str(home), "PYTHONNOUSERSITE": "1"}
+    absent = subprocess.run([python, "-I", "-c", "import importlib.util; assert importlib.util.find_spec('anvil_serving') is None"],
+                            cwd=cwd, env=env, capture_output=True, timeout=10)
+    assert absent.returncode == 0, absent.stderr
+    if adapter == "aider":
+        # Neither cwd nor ambient Python settings may supply trusted code.
+        hostile = cwd / "anvil_serving"
+        hostile.mkdir()
+        (hostile / "__init__.py").write_text("raise RuntimeError('untrusted product imported')\n")
+        (cwd / "sitecustomize.py").write_text("raise RuntimeError('untrusted startup imported')\n")
+        env.update(PYTHONPATH=str(cwd), PYTHONHOME=str(tmp_path / "absent-python-home"))
+    preparer = aider_prepare if adapter == "aider" else performance_prepare
+    monkeypatch.setattr(preparer, "__file__", str(checkout / "anvil_serving/benchmarking" / (adapter + "_prepare.py")))
+    plan_path = tmp_path / "invalid-plan.json"
+    plan_path.write_text("{}")
+    command = preparer._adapter_command(python, str(plan_path))
+    help_result = subprocess.run([*command[:-2], "--help"], cwd=cwd, env=env,
+                                 capture_output=True, text=True, timeout=10)
+    assert help_result.returncode == 0, help_result.stderr
+    assert "--plan" in help_result.stdout
+    rejected = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, timeout=10)
+    assert rejected.returncode != 0
+    assert ("Aider" if adapter == "aider" else "performance") + " plan identity changed" in rejected.stderr
+    assert str(checkout / "anvil_serving/benchmarking" / (adapter + "_prepare.py")) in rejected.stderr
+    assert "ModuleNotFoundError" not in rejected.stderr
+    assert "untrusted" not in help_result.stderr + rejected.stderr

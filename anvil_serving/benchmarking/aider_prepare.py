@@ -578,12 +578,19 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
         raise
 
 
+def _adapter_command(python, plan_path):
+    # Like performance runners, pass the trusted product root as one argv item:
+    # PYTHONPATH would split valid checkout names containing os.pathsep.
+    bootstrap = "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('anvil_serving.benchmarking.aider_adapter',run_name='__main__')"
+    return [python, "-I", "-B", "-c", bootstrap, str(Path(__file__).resolve().parents[2]), "--plan", plan_path]
+
+
 def verify_aider_plan(plan):
     if (not isinstance(plan, Mapping) or plan.get("schema") != AIDER_PLAN_SCHEMA
             or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
         raise BenchmarkJobError("bad_aider_plan", "Aider plan identity changed")
     python = verify_aider_python_environment(plan.get("python_environment"), cache_root=plan["cache_root"])
-    if plan.get("command") != [python, "-m", "anvil_serving.benchmarking.aider_adapter", "--plan", plan["paths"]["plan"]]:
+    if plan.get("command") != _adapter_command(python, plan["paths"]["plan"]):
         raise BenchmarkJobError("bad_aider_plan", "Aider command does not match its prepared interpreter")
     owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
     if owned != plan["run_path"] or plan["source_hashes"] != ADAPTER_SOURCE_HASHES:
