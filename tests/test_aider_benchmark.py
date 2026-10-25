@@ -9,6 +9,91 @@ from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.profiles import load_profile
 
 
+def accounted_event_stream(*, terminal_status="complete", pending=0):
+    schema = aider.AIDER_REQUEST_ACCOUNTING_SCHEMA
+    usage = {"prompt_tokens": None, "completion_tokens": None,
+             "total_tokens": None, "reasoning_tokens": None}
+    events = [
+        {"schema": "event/v1", "event": "aider_adapter_ready", "seq": 1,
+         "utc_observed_at": "2026-10-25T00:00:00Z", "request_accounting_schema": schema},
+        {"schema": "event/v1", "event": "aider_transport_started", "seq": 2,
+         "utc_observed_at": "2026-10-25T00:00:01Z",
+         "logical_request_id": "logical-00000001", "attempt": 1},
+        {"schema": "event/v1", "event": "aider_transport_response", "seq": 3,
+         "utc_observed_at": "2026-10-25T00:00:02Z",
+         "logical_request_id": "logical-00000001", "attempt": 1},
+        {"schema": "event/v1", "event": "aider_transport_started", "seq": 4,
+         "utc_observed_at": "2026-10-25T00:00:03Z",
+         "logical_request_id": "logical-00000002", "attempt": 1},
+    ]
+    errors = 0
+    if not pending:
+        events.append({"schema": "event/v1", "event": "aider_transport_error", "seq": 5,
+            "utc_observed_at": "2026-10-25T00:00:04Z",
+            "logical_request_id": "logical-00000002", "attempt": 1,
+            "error_type": "transport_error", "http_status": None, "finish_reason": None,
+            "output_truncated": None, "usage": usage})
+        errors = 1
+    accounting = {"schema": schema, "status": terminal_status, "started": 2,
+                  "responses": 1, "errors": errors, "pending": pending}
+    events.append({"schema": "event/v1", "event": "adapter_finished", "seq": len(events) + 1,
+                   "utc_observed_at": "2026-10-25T00:00:05Z", "status": terminal_status,
+                   "request_accounting": accounting})
+    adapter_result = {"request_accounting": accounting,
+                      "events_complete": terminal_status == "complete"}
+    return events, adapter_result
+
+
+def test_versioned_request_accounting_accepts_one_response_or_error_per_start():
+    events, adapter_result = accounted_event_stream()
+    assert aider._validate_request_accounting(events, adapter_result) == {
+        "schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": "complete",
+        "started": 2, "responses": 1, "errors": 1, "pending": 0}
+    with pytest.raises(ValueError):
+        aider._validate_request_accounting([[]], {})
+
+
+@pytest.mark.parametrize("mutation", ["duplicate_start", "duplicate_terminal", "orphan_terminal",
+                                      "contradictory_counts", "unversioned_summary", "error_message",
+                                      "invalid_error_type", "invalid_error_metadata"])
+def test_versioned_request_accounting_rejects_duplicates_orphans_and_contradictions(mutation):
+    events, adapter_result = accounted_event_stream()
+    if mutation == "duplicate_start":
+        events.insert(2, dict(events[1]))
+    elif mutation == "duplicate_terminal":
+        events.insert(-1, dict(events[2]))
+    elif mutation == "orphan_terminal":
+        events[2]["logical_request_id"] = "logical-00000003"
+    elif mutation == "contradictory_counts":
+        events[-1]["request_accounting"]["responses"] = 2
+    elif mutation == "unversioned_summary":
+        del events[0]["request_accounting_schema"]
+    elif mutation == "error_message":
+        events[-2]["message"] = "private transport detail"
+    elif mutation == "invalid_error_type":
+        events[-2]["error_type"] = "private transport detail"
+    else:
+        events[-2]["usage"]["completion_tokens"] = 1
+    with pytest.raises(ValueError):
+        aider._validate_request_accounting(events, adapter_result)
+
+
+@pytest.mark.parametrize("pending", [0, 1])
+def test_versioned_request_accounting_retains_explicit_incomplete_state(pending):
+    events, adapter_result = accounted_event_stream(terminal_status="incomplete", pending=pending)
+    assert aider._validate_request_accounting(events, adapter_result)["pending"] == pending
+    events[-1]["status"] = "truncated"
+    assert aider._validate_request_accounting(events, adapter_result)["status"] == "incomplete"
+
+
+def test_legacy_request_stream_with_gap_is_not_retroactively_reclassified():
+    events, adapter_result = accounted_event_stream(terminal_status="complete", pending=1)
+    del events[0]["request_accounting_schema"]
+    del events[-1]["request_accounting"]
+    del adapter_result["request_accounting"]
+    assert aider._validate_request_accounting(events, adapter_result) is None
+
+
 def test_admission_preserves_relative_task_ids_and_request_controls():
     value = aider.validate_aider_parameters(load_profile("pilot-v2"), {
         "instance_ids": ["python/exercises/practice/example"], "thinking_mode": "disabled"})
@@ -61,6 +146,22 @@ def test_native_result_only_measured_with_exact_model_and_whole_edit(tmp_path):
     assert result["summary"]["resolve_rate"] is None
     assert result["failure"]["class"] == "broken_harness"
     assert aider.validated_aider_task_grade(plan, {"model": "cloud", "edit_format": "whole", "tests_outcomes": [True]}) is None
+
+
+def test_request_accounting_failure_does_not_erase_independently_valid_native_grade(tmp_path):
+    task = "python/exercises/practice/example"
+    result_dir = tmp_path / task
+    result_dir.mkdir(parents=True)
+    (result_dir / ".aider.results.json").write_text(json.dumps({
+        "model": "openai/llm.primary", "edit_format": "whole", "tests_outcomes": [True]}))
+    plan = {"selection": {"instance_ids": [task]}, "paths": {"results": str(tmp_path)},
+            "endpoint": {"model": "llm.primary"}}
+    failure = {"class": "broken_harness", "code": "incomplete_aider_observations"}
+    result = {"instances": [], "failure": failure}
+    aider._normalize(plan, result)
+    assert result["failure"] == failure
+    assert result["summary"] == {"selected": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
+    assert result["instances"][0]["resolved"] is True
 
 
 def test_tampered_plan_rejected_before_any_run():
@@ -149,6 +250,85 @@ def prepared_plan_inputs(tmp_path, monkeypatch):
         endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
         run_root=str(run_root), cache_root=str(cache), ownership_id="owner", run_id="run",
         request_controls={"thinking_mode": "disabled"}), python, rows, receipt
+
+
+@pytest.mark.parametrize("mode,expected_state,expected_failure", [
+    ("legacy_gap", "completed", None),
+    ("accounted_complete", "completed", None),
+    ("accounted_incomplete", "incomplete", "incomplete_aider_observations"),
+])
+def test_run_parser_versions_request_accounting_without_changing_native_grade(
+        tmp_path, monkeypatch, mode, expected_state, expected_failure):
+    import subprocess
+    from pathlib import Path
+
+    profile, manifest, kwargs, _, rows, _ = prepared_plan_inputs(tmp_path, monkeypatch)
+    task = rows[0]["task_id"]
+    kwargs["instance_ids"] = [task]
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
+
+    def runner(command, _cwd, _timeout, _env):
+        results = Path(plan["paths"]["results"]) / task
+        results.mkdir(parents=True)
+        (results / ".aider.results.json").write_text(json.dumps({
+            "model": "openai/" + plan["endpoint"]["model"], "edit_format": "whole",
+            "tests_outcomes": [True]}))
+        ready = {"schema": "event/v1", "event": "aider_adapter_ready", "seq": 1,
+                 "utc_observed_at": "2026-10-25T00:00:00Z",
+                 "adapter_sha256": plan["adapter_sha256"], "source_hashes": aider.SOURCE_HASHES}
+        if mode != "legacy_gap":
+            ready["request_accounting_schema"] = aider.AIDER_REQUEST_ACCOUNTING_SCHEMA
+        events = [ready,
+            {"schema": "event/v1", "event": "aider_transport_started", "seq": 2,
+             "utc_observed_at": "2026-10-25T00:00:01Z",
+             "logical_request_id": "logical-00000001", "attempt": 1},
+            {"schema": "event/v1", "event": "aider_transport_response", "seq": 3,
+             "utc_observed_at": "2026-10-25T00:00:02Z",
+             "logical_request_id": "logical-00000001", "attempt": 1},
+            {"schema": "event/v1", "event": "aider_transport_started", "seq": 4,
+             "utc_observed_at": "2026-10-25T00:00:03Z",
+             "logical_request_id": "logical-00000002", "attempt": 1}]
+        if mode == "accounted_complete":
+            events.append({"schema": "event/v1", "event": "aider_transport_error", "seq": 5,
+                "utc_observed_at": "2026-10-25T00:00:04Z",
+                "logical_request_id": "logical-00000002", "attempt": 1,
+                "error_type": "transport_error", "http_status": None, "finish_reason": None,
+                "output_truncated": None, "usage": dict.fromkeys(aider._AIDER_USAGE_FIELDS)})
+        status = "incomplete" if mode == "accounted_incomplete" else "complete"
+        accounting = None if mode == "legacy_gap" else {
+            "schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": status, "started": 2,
+            "responses": 1, "errors": int(mode == "accounted_complete"),
+            "pending": int(mode == "accounted_incomplete")}
+        raw = [(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n").encode()
+               for event in events]
+        budget = {"configured": plan["budgets"], "model_calls": 2, "elapsed_s": 1.0,
+                  "exhausted": False, "reason": None}
+        event_terminal = {"schema": "event/v1", "event": "adapter_finished",
+                          "seq": len(events) + 1, "utc_observed_at": "2026-10-25T00:00:05Z",
+                          "status": status, "outcome": status, "event_count": len(events),
+                          "byte_count": sum(map(len, raw)), "omitted_events": 0,
+                          "omitted_bytes": 0, "budget": budget}
+        adapter_result = {"schema": "anvil-serving.aider-adapter-result/v1",
+                          "outcome": "completed" if status == "complete" else "incomplete",
+                          "plan_sha256": plan["plan_sha256"],
+                          "adapter_sha256": plan["adapter_sha256"], "budget": budget,
+                          "events_complete": status == "complete"}
+        if accounting is not None:
+            event_terminal["request_accounting"] = accounting
+            adapter_result["request_accounting"] = accounting
+        raw.append((json.dumps(event_terminal, sort_keys=True, separators=(",", ":")) + "\n").encode())
+        Path(plan["paths"]["request_events"]).write_bytes(b"".join(raw))
+        Path(plan["paths"]["adapter_result"]).write_text(json.dumps(adapter_result))
+        return subprocess.CompletedProcess(command, 0, stdout=b"", stderr=b"")
+
+    result = aider.run_aider_benchmark(plan, command_runner=runner)
+    assert result["state"] == expected_state
+    assert result["instances"][0]["resolved"] is True
+    assert result["summary"] == {"selected": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
+    assert (result["failure"] or {}).get("code") == expected_failure
+    if mode == "accounted_incomplete":
+        assert result["quality"] == {"status": "unknown"}
+        assert result["request_accounting"]["pending"] == 1
 
 
 def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch):

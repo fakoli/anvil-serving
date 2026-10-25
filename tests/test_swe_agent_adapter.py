@@ -480,3 +480,36 @@ def test_adapter_file_executes_without_anvil_install():
                             capture_output=True, timeout=10, check=False)
     assert result.returncode == 0
     assert b"--budgets" in result.stdout
+
+
+
+def test_recorder_close_is_serialized_idempotent_and_late_writes_do_not_raise(tmp_path):
+    import threading
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    _ready(recorder)
+    barrier = threading.Barrier(3)
+    def close():
+        barrier.wait()
+        recorder.close(outcome="completed")
+    threads = [threading.Thread(target=close) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    barrier.wait()
+    for thread in threads:
+        thread.join(5)
+        assert not thread.is_alive()
+    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
+    assert [row["event"] for row in rows] == ["adapter_ready", "adapter_finished"]
+    before = recorder.path.read_bytes()
+    assert recorder.record("late_event") is False
+    assert recorder.write_failed is True
+    recorder.close(outcome="failed")
+    assert recorder.path.read_bytes() == before
+
+
+def test_recorder_external_close_is_a_capture_failure_not_a_writer_exception(tmp_path):
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    recorder._file.close()
+    assert recorder.record("adapter_ready") is False
+    assert recorder.write_failed is True
+    recorder.close(outcome="failed")

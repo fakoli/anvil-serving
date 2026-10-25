@@ -24,12 +24,95 @@ from .swe import _budget_runner, _endpoint, _result_record
 from .swe_agent_adapter import validate_budgets
 
 AIDER_RUN_SCHEMA = "anvil-serving.aider-run/v1"
+AIDER_REQUEST_ACCOUNTING_SCHEMA = "anvil-serving.aider-request-accounting/v1"
 # Aider prints reasoning and repeated edits; retained stage output stays 64 KiB per stream.
 MAX_AIDER_PROCESS_OUTPUT_BYTES = 8 * 1024 * 1024
+
+_AIDER_TRANSPORT_ERROR_TYPES = {
+    "timeout", "os_error", "transport_error", "interrupted", "budget_stopped",
+}
+_AIDER_USAGE_FIELDS = {"prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens"}
 
 
 def _digest(value):
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def _request_event_identity(event):
+    logical_request_id, attempt = event.get("logical_request_id"), event.get("attempt")
+    if (not isinstance(logical_request_id, str) or len(logical_request_id) != 16
+            or not logical_request_id.startswith("logical-") or not logical_request_id[8:].isdigit()
+            or type(attempt) is not int or attempt <= 0):
+        raise ValueError("invalid Aider request identity")
+    return logical_request_id, attempt
+
+
+def _validate_request_accounting(events, adapter_result):
+    """Validate the opt-in request-accounting contract without reclassifying legacy evidence."""
+    if not events or any(not isinstance(event, Mapping) for event in events):
+        raise ValueError("invalid Aider request event")
+    ready, event_terminal = events[0], events[-1]
+    ready_schema = ready.get("request_accounting_schema")
+    terminal_accounting = event_terminal.get("request_accounting")
+    result_accounting = adapter_result.get("request_accounting")
+    if ready_schema is None and terminal_accounting is None and result_accounting is None:
+        return None
+    if (ready_schema != AIDER_REQUEST_ACCOUNTING_SCHEMA or not isinstance(terminal_accounting, Mapping)
+            or terminal_accounting != result_accounting):
+        raise ValueError("contradictory Aider request-accounting declaration")
+    fields = {"schema", "status", "started", "responses", "errors", "pending"}
+    if (set(terminal_accounting) != fields
+            or terminal_accounting.get("schema") != AIDER_REQUEST_ACCOUNTING_SCHEMA
+            or terminal_accounting.get("status") not in {"complete", "incomplete"}
+            or any(type(terminal_accounting.get(name)) is not int or terminal_accounting[name] < 0
+                   for name in fields - {"schema", "status"})):
+        raise ValueError("invalid Aider request-accounting summary")
+
+    started, finished = set(), {}
+    responses = errors = 0
+    for event in events[1:-1]:
+        kind = event.get("event")
+        if kind not in {"aider_transport_started", "aider_transport_response", "aider_transport_error"}:
+            continue
+        identity = _request_event_identity(event)
+        if kind == "aider_transport_started":
+            if identity in started:
+                raise ValueError("duplicate Aider transport start")
+            started.add(identity)
+            continue
+        if identity not in started or identity in finished:
+            raise ValueError("orphan or duplicate Aider transport terminal")
+        if kind == "aider_transport_error":
+            expected = {"schema", "event", "seq", "utc_observed_at", "logical_request_id", "attempt",
+                        "error_type", "http_status", "finish_reason", "output_truncated", "usage"}
+            usage = event.get("usage")
+            if (set(event) != expected or event.get("error_type") not in _AIDER_TRANSPORT_ERROR_TYPES
+                    or any(event.get(name) is not None
+                           for name in ("http_status", "finish_reason", "output_truncated"))
+                    or not isinstance(usage, Mapping) or set(usage) != _AIDER_USAGE_FIELDS
+                    or any(value is not None for value in usage.values())):
+                raise ValueError("invalid Aider transport error")
+            errors += 1
+        else:
+            responses += 1
+        finished[identity] = kind
+
+    pending = len(started - set(finished))
+    observed = {"started": len(started), "responses": responses, "errors": errors, "pending": pending}
+    if any(terminal_accounting[name] != value for name, value in observed.items()):
+        raise ValueError("Aider request-accounting counts changed")
+    if terminal_accounting["status"] == "complete" and (pending or len(started) != responses + errors):
+        raise ValueError("complete Aider request accounting has unresolved requests")
+    stream_status = event_terminal.get("status")
+    if (terminal_accounting["status"] == "complete" and stream_status != "complete"
+            or terminal_accounting["status"] == "incomplete"
+            and stream_status not in {"incomplete", "truncated"}):
+        raise ValueError("Aider stream and request-accounting status disagree")
+    expected_events_complete = terminal_accounting["status"] == "complete"
+    if (type(adapter_result.get("events_complete")) is not bool
+            or adapter_result["events_complete"] is not expected_events_complete):
+        raise ValueError("Aider adapter completion contradicts request accounting")
+    return dict(terminal_accounting)
 
 
 def validate_aider_parameters(profile, parameters):
@@ -232,22 +315,26 @@ def run_aider_benchmark(plan, *, command_runner=partial(_budget_runner, max_outp
             raise ValueError("invalid request evidence")
         raw_events = events_path.read_bytes().splitlines(keepends=True)
         events = [json.loads(line) for line in raw_events]
+        request_accounting = _validate_request_accounting(events, terminal) if events else None
         if (not events or events[0].get("event") != "aider_adapter_ready"
                 or events[0].get("adapter_sha256") != plan["adapter_sha256"]
                 or events[0].get("source_hashes") != SOURCE_HASHES
                 or events[-1].get("event") != "adapter_finished"
-                or events[-1].get("status") != "complete"
+                or request_accounting is None and events[-1].get("status") != "complete"
                 or events[-1].get("event_count") != len(events) - 1
                 or events[-1].get("byte_count") != sum(map(len, raw_events[:-1]))
                 or [row.get("seq") for row in events] != list(range(1, len(events) + 1))
                 or sum(row.get("event") == "aider_transport_started" for row in events) != terminal["budget"]["model_calls"]):
             raise ValueError("incomplete request evidence")
         result["request_observations"] = evidence_file_reference(str(events_path), root=plan["run_path"])
+        if request_accounting is not None:
+            result["request_accounting"] = request_accounting
         if terminal["budget"]["exhausted"]:
             result["failure"] = {"class": "budget_exhausted", "code": terminal["budget"]["reason"]}
         elif (terminal.get("outcome") != "completed" or terminal.get("plan_sha256") != plan["plan_sha256"]
               or terminal.get("adapter_sha256") != plan["adapter_sha256"] or not terminal.get("events_complete")
-              or terminal["budget"]["configured"] != plan["budgets"]):
+              or terminal["budget"]["configured"] != plan["budgets"]
+              or request_accounting is not None and request_accounting["status"] != "complete"):
             result["failure"] = result["failure"] or {"class": "broken_harness", "code": "incomplete_aider_observations"}
     except (OSError, ValueError, KeyError, TypeError):
         result["failure"] = result["failure"] or {"class": "broken_harness", "code": "missing_aider_observations"}

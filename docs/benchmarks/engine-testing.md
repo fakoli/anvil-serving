@@ -86,6 +86,17 @@ request is accepted. Keep unsupported control cells blocked and visible; do
 not substitute the configured setting and call it a comparison. Offline wire
 capture proves forwarding only.
 
+The [reasoning-limit probe packet](reasoning-limit-probe.md) prepares a small
+numeric-budget enforcement check. It remains unexecuted and requires a
+notified, isolated managed request path before any running-model action.
+
+New Aider runs declare versioned request accounting: every started transport
+attempt must have exactly one response or sanitized error before accounting
+can be complete. Final summarization joins within the suite deadline; an
+unsettled request leaves incomplete evidence. Transport errors retain unknown
+token usage. Historical artifacts keep their original contract and grades;
+the stricter contract does not reconstruct missing historical responses.
+
 Report native grades, job completion, diagnostic coverage and measurement
 eligibility separately, following the [Aider evidence contract](methodology.md#aider-grades-lifecycle-and-diagnostic-observations).
 Use the [whole-batch admission rule](repeatable-campaigns.md#reserve-the-complete-batch-window)

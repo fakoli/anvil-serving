@@ -4,6 +4,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import threading
 import types
 
 import pytest
@@ -90,10 +91,7 @@ def test_dotenv_never_searches_or_loads(monkeypatch):
     assert dotenv.load_dotenv is forbidden
 
 
-def transport(tmp_path, *, status=200, max_calls=2, max_retries=0, response_content=b"{}"):
-    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
-    budget = adapter.SuiteBudget({"max_model_calls": max_calls, "max_completion_tokens": 8,
-        "deadline_s": 60, "max_retries": max_retries, "min_free_disk_bytes": 0}, recorder)
+def offline_model_client(*, status=200, response_content=b"{}", send_effect=None):
     sent = []
     class URL:
         path = "/v1/chat/completions"
@@ -102,13 +100,25 @@ def transport(tmp_path, *, status=200, max_calls=2, max_retries=0, response_cont
     class Client:
         def send(self, request, **kwargs):
             sent.append(kwargs)
+            if send_effect is not None:
+                return send_effect()
             return types.SimpleNamespace(status_code=status, content=response_content)
     class Model:
         name = "openai/llm.primary"
+        def __init__(self, name="openai/llm.primary", **kwargs):
+            self.name = name
         def send_completion(self, body=None):
             request = types.SimpleNamespace(method="POST", url=URL(), extensions={},
                 content=json.dumps(body or {"model": "llm.primary", "max_tokens": 8}).encode())
             return Client().send(request)
+    return Model, Client, sent
+
+
+def transport(tmp_path, *, status=200, max_calls=2, max_retries=0, response_content=b"{}", send_effect=None):
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = adapter.SuiteBudget({"max_model_calls": max_calls, "max_completion_tokens": 8,
+        "deadline_s": 60, "max_retries": max_retries, "min_free_disk_bytes": 0}, recorder)
+    Model, Client, sent = offline_model_client(status=status, response_content=response_content, send_effect=send_effect)
     restore = adapter.install_transport_guard(Client, Model, endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
         controls={}, budget=budget, recorder=recorder)
     return Model, sent, budget, recorder, restore
@@ -402,3 +412,241 @@ def test_cpp_header_lint_rejects_redirected_generated_header_and_changed_metadat
     with pytest.raises(adapter.BudgetStopped, match="metadata changed"):
         with adapter.cpp_header_lint(plan, upstream):
             pytest.fail("changed metadata accepted")
+
+
+@pytest.mark.parametrize("error", [TimeoutError("private"), OSError("private"),
+                                   RuntimeError("private"), KeyboardInterrupt("private")])
+def test_transport_error_is_terminal_sanitized_and_preserves_exception(tmp_path, error):
+    def fail():
+        budget.started -= 61  # A simultaneous deadline must not mask the send error.
+        raise error
+    Model, _sent, budget, recorder, guard = transport(tmp_path, send_effect=fail)
+    try:
+        with pytest.raises(type(error)) as caught:
+            Model().send_completion()
+        assert caught.value is error
+    finally:
+        guard()
+        accounting = guard.accounting()
+        recorder.close(outcome="failed", request_accounting=accounting)
+    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
+    terminal = next(row for row in rows if row["event"] == "aider_transport_error")
+    assert terminal["error_type"] in {"timeout", "os_error", "transport_error", "interrupted"}
+    assert terminal["usage"] == dict.fromkeys(("prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens"))
+    assert terminal["http_status"] is terminal["finish_reason"] is terminal["output_truncated"] is None
+    assert accounting == {"schema": adapter.REQUEST_ACCOUNTING_SCHEMA, "status": "complete",
+                          "started": 1, "responses": 0, "errors": 1, "pending": 0}
+    assert not any(row["event"] == "aider_transport_response" for row in rows)
+    assert "private" not in recorder.path.read_text()
+
+
+def test_simultaneous_admission_is_atomic_and_response_keeps_its_owner(tmp_path):
+    entered, release, start = threading.Event(), threading.Event(), threading.Barrier(3)
+    failures = []
+    rejected = threading.Event()
+    def delayed():
+        entered.set()
+        assert release.wait(5)
+        return types.SimpleNamespace(status_code=200, content=b"{}")
+    Model, sent, _budget, recorder, guard = transport(tmp_path, send_effect=delayed)
+    def call():
+        start.wait()
+        try:
+            Model().send_completion()
+        except BaseException as exc:
+            failures.append(exc)
+            rejected.set()
+    threads = [threading.Thread(target=call) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    try:
+        start.wait()
+        assert entered.wait(5) and rejected.wait(5)
+    finally:
+        release.set()
+        for thread in threads:
+            thread.join(5)
+        guard()
+        recorder.close(outcome="failed", request_accounting=guard.accounting())
+    assert len(sent) == 1
+    assert len(failures) == 1 and isinstance(failures[0], adapter.BudgetStopped)
+    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
+    request = next(row for row in rows if row["event"] == "aider_transport_started")
+    response = next(row for row in rows if row["event"] == "aider_transport_response")
+    assert (request["logical_request_id"], request["attempt"]) == (response["logical_request_id"], response["attempt"])
+
+
+def test_retry_context_does_not_leak_between_threads(tmp_path):
+    Model, sent, _budget, recorder, guard = transport(tmp_path, status=503, max_calls=3, max_retries=1)
+    failures = []
+    def separate_request():
+        try:
+            Model().send_completion()
+        except BaseException as exc:
+            failures.append(exc)
+    try:
+        Model().send_completion()
+        thread = threading.Thread(target=separate_request)
+        thread.start()
+        thread.join(5)
+        assert not thread.is_alive()
+        Model().send_completion()  # Main thread retains its own failed-call retry.
+    finally:
+        guard()
+        recorder.close(outcome="failed", request_accounting=guard.accounting())
+    assert not failures and len(sent) == 3
+    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
+    starts = [row for row in rows if row["event"] == "aider_transport_started"]
+    assert [row["attempt"] for row in starts] == [1, 1, 2]
+    assert starts[0]["logical_request_id"] == starts[2]["logical_request_id"] != starts[1]["logical_request_id"]
+
+
+def test_recorder_omissions_make_balanced_accounting_incomplete(tmp_path):
+    Model, _sent, _budget, recorder, guard = transport(tmp_path)
+    recorder.max_events = 2
+    Model().send_completion()
+    guard()
+    accounting = guard.accounting()
+    recorder.close(outcome="failed", request_accounting=accounting)
+    assert accounting["pending"] == 0 and accounting["status"] == "incomplete"
+    assert json.loads(recorder.path.read_text().splitlines()[-1])["status"] == "truncated"
+
+
+# Verbatim Coder methods from Aider 5dc9490bb35f9729ef2c95d00a19ccd30c26339c,
+# aider/coders/base_coder.py:1002-1034 (full file is verified by SOURCE_HASHES).
+_PINNED_SUMMARY_METHODS = '    def summarize_start(self):\n        if not self.summarizer.too_big(self.done_messages):\n            return\n\n        self.summarize_end()\n\n        if self.verbose:\n            self.io.tool_output("Starting to summarize chat history.")\n\n        self.summarizer_thread = threading.Thread(target=self.summarize_worker)\n        self.summarizer_thread.start()\n\n    def summarize_worker(self):\n        self.summarizing_messages = list(self.done_messages)\n        try:\n            self.summarized_done_messages = self.summarizer.summarize(self.summarizing_messages)\n        except ValueError as err:\n            self.io.tool_warning(err.args[0])\n\n        if self.verbose:\n            self.io.tool_output("Finished summarizing chat history.")\n\n    def summarize_end(self):\n        if self.summarizer_thread is None:\n            return\n\n        self.summarizer_thread.join()\n        self.summarizer_thread = None\n\n        if self.summarizing_messages == self.done_messages:\n            self.done_messages = self.summarized_done_messages\n        self.summarizing_messages = None\n        self.summarized_done_messages = []\n\n'
+
+
+@pytest.mark.parametrize("final_response", ["success", "error", "deadline"])
+def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeypatch, final_response):
+    from contextlib import nullcontext
+    namespace = {"threading": threading}
+    exec("class Coder:\n" + _PINNED_SUMMARY_METHODS, namespace)
+    Coder = namespace["Coder"]
+    Coder.allowed_to_edit = lambda *args: None
+    original_start, original_end = Coder.summarize_start, Coder.summarize_end
+    entered, release = threading.Event(), threading.Event()
+    failures, coders, captured_guards = [], [], []
+    now = [100.0]
+    if final_response == "deadline":
+        monkeypatch.setattr(adapter.time, "monotonic", lambda: now[0])
+    def send_effect():
+        if len(sent) == 3:
+            entered.set()
+            assert release.wait(5)
+            if final_response == "error":
+                raise ValueError("private failure text")
+        return types.SimpleNamespace(status_code=200, content=b'{"choices":[{"finish_reason":"stop"}]}')
+    Model, Client, sent = offline_model_client(send_effect=send_effect)
+    original_send, original_completion = Client.send, Model.send_completion
+    models = types.SimpleNamespace(Model=Model, model_info_manager=types.SimpleNamespace(_update_cache=lambda: None))
+    Linter = type("Linter", (), {"flake8_lint": lambda *args: None})
+    WholeFileCoder = type("WholeFileCoder", (), {"do_live_diff": lambda *args: None})
+    modules = {"httpx": types.SimpleNamespace(Client=Client),
+               "aider": types.SimpleNamespace(linter=types.SimpleNamespace(), models=models),
+               "aider.coders.base_coder": types.SimpleNamespace(Coder=Coder),
+               "aider.linter": types.SimpleNamespace(Linter=Linter),
+               "aider.coders.wholefile_coder": types.SimpleNamespace(WholeFileCoder=WholeFileCoder)}
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    benchmark = {}
+    exec("def run_test_real(): pass\ndef run_unit_tests(*args): pass", benchmark)
+    def app(**kwargs):
+        model = benchmark["models"].Model("openai/llm.primary")
+        model.send_completion()
+        model.send_completion()
+        coder = Coder()
+        coder.summarizer_thread = None
+        coder.verbose = False
+        coder.done_messages = ["history"]
+        coder.summarizing_messages = None
+        coder.summarized_done_messages = []
+        coder.io = types.SimpleNamespace(tool_warning=lambda _text: None)
+        def summarize(_messages):
+            model.send_completion()
+            return ["summary"]
+        coder.summarizer = types.SimpleNamespace(too_big=lambda _messages: True, summarize=summarize)
+        coders.append(coder)
+        coder.summarize_start()
+        assert entered.wait(5)
+        # Like pinned benchmark.py, return after grading without summarize_end().
+        if final_response == "deadline":
+            now[0] += 61
+    benchmark["app"] = app
+    install = adapter.install_transport_guard
+    def capture_guard(*args, **kwargs):
+        guard = install(*args, **kwargs)
+        captured_guards.append(guard)
+        return guard
+    monkeypatch.setattr(adapter, "install_transport_guard", capture_guard)
+    monkeypatch.setattr(adapter, "verify_source", lambda _root: tmp_path)
+    monkeypatch.setattr(adapter, "disable_dotenv", nullcontext)
+    monkeypatch.setattr(adapter, "cpp_header_lint", lambda *_args: nullcontext())
+    monkeypatch.setattr(adapter, "contained_test_callback", lambda original, replacement: original)
+    monkeypatch.setattr(adapter.runpy, "run_path", lambda *args, **kwargs: benchmark)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setenv("AIDER_DOCKER", "fixture-original")
+    plan = {"paths": {"aider_root": str(tmp_path), "request_events": str(tmp_path / "events.jsonl"),
+                      "adapter_result": str(tmp_path / "result.json"), "results": str(tmp_path / "results"),
+                      "aider": str(tmp_path)},
+            "budgets": {"max_model_calls": 12, "max_completion_tokens": 8,
+                        "deadline_s": 60, "max_retries": 0, "min_free_disk_bytes": 0},
+            "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
+            "request_controls": {}, "plan_sha256": "a" * 64, "adapter_sha256": "b" * 64}
+    # Release only after shutdown has entered the bounded *actual* summary join.
+    observed_join = threading.Event()
+    def watch_join():
+        assert entered.wait(5)
+        thread = coders[0].summarizer_thread
+        original_join = thread.join
+        def join(timeout=None):
+            observed_join.set()
+            if final_response != "deadline":
+                release.set()
+            return original_join(timeout=timeout)
+        thread.join = join
+    # Install the join observer synchronously as app returns, avoiding scheduling races.
+    actual_app = benchmark["app"]
+    benchmark["app"] = lambda **kwargs: (actual_app(**kwargs), watch_join())
+    monkeypatch.setattr(threading, "excepthook", lambda args: failures.append(args.exc_value))
+    try:
+        if final_response == "deadline":
+            with pytest.raises(adapter.BudgetStopped):
+                adapter.run_adapter(plan)
+        else:
+            adapter.run_adapter(plan)
+        assert observed_join.is_set()
+        result = json.loads((tmp_path / "result.json").read_text())
+        rows = [json.loads(line) for line in (tmp_path / "events.jsonl").read_text().splitlines()]
+        assert rows[0]["request_accounting_schema"] == adapter.REQUEST_ACCOUNTING_SCHEMA
+        assert rows[-1]["request_accounting"] == result["request_accounting"]
+        accounting = result["request_accounting"]
+        assert accounting["started"] == 3
+        if final_response == "deadline":
+            assert result["outcome"] == "budget_exhausted" and result["events_complete"] is False
+            assert rows[-1]["status"] == accounting["status"] == "incomplete"
+            assert accounting["responses"] == 2 and accounting["pending"] == 1
+            assert Client.send is not original_send  # Still fences late retries.
+            release.set()
+            coders[0].summarizer_thread.join(5)
+            with pytest.raises(adapter.BudgetStopped):
+                Model().send_completion()
+            assert len(sent) == 3
+            assert (tmp_path / "events.jsonl").read_text().splitlines() == [json.dumps(row, sort_keys=True, separators=(",", ":")) for row in rows]
+        else:
+            assert result["outcome"] == "completed" and result["events_complete"] is True
+            assert accounting["pending"] == 0 and accounting["status"] == "complete"
+            assert accounting["responses"] == (3 if final_response == "success" else 2)
+            assert accounting["errors"] == (1 if final_response == "error" else 0)
+            assert coders[0].summarizer_thread is None
+            assert Client.send is original_send and Model.send_completion is original_completion
+            assert Coder.summarize_start is original_start and Coder.summarize_end is original_end
+            assert not failures
+        assert "private failure text" not in (tmp_path / "events.jsonl").read_text()
+    finally:
+        release.set()
+        for coder in coders:
+            if coder.summarizer_thread is not None:
+                coder.summarizer_thread.join(5)
+        # Only local synthetic classes: undo deadline fencing for fixture cleanup.
+        Client.send, Model.send_completion = original_send, original_completion

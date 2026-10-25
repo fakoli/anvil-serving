@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from functools import partial
 import hashlib
 import json
@@ -13,6 +13,8 @@ import runpy
 import stat
 import subprocess
 import sys
+import threading
+import time
 import types
 from urllib.parse import urlsplit
 
@@ -160,57 +162,150 @@ def response_diagnostics(response):
     return result
 
 
+REQUEST_ACCOUNTING_SCHEMA = "anvil-serving.aider-request-accounting/v1"
+
+
+def _remaining_deadline(budget):
+    return max(0, budget.configured["deadline_s"] - (time.monotonic() - budget.started))
+
+
+class AiderTransportGuard:
+    """Own a synchronous model call atomically; retries belong to its thread."""
+
+    def __init__(self, client, model_class, budget, recorder):
+        self.client, self.model_class = client, model_class
+        self.original_send, self.original_completion = client.send, model_class.send_completion
+        self.budget, self.recorder = budget, recorder
+        self.condition = threading.Condition()
+        self.local = threading.local()
+        self.active = False
+        self.closed = self.drained = False
+        self.started = self.responses = self.errors = 0
+
+    def drain(self):
+        with self.condition:
+            self.closed = True
+            while self.active:
+                remaining = _remaining_deadline(self.budget)
+                if not remaining:
+                    return False
+                self.condition.wait(remaining)
+            self.drained = True
+            return True
+
+    def accounting(self, *, summaries_complete=True):
+        with self.condition:
+            pending = self.started - self.responses - self.errors
+            complete = (self.drained and summaries_complete and not pending
+                        and not self.recorder.write_failed and not self.recorder.omitted_events)
+            return {"schema": REQUEST_ACCOUNTING_SCHEMA, "status": "complete" if complete else "incomplete",
+                    "started": self.started, "responses": self.responses, "errors": self.errors, "pending": pending}
+
+    def __call__(self):
+        # Never expose unguarded transport to a still-running SDK or summary retry.
+        if self.drain():
+            self.client.send, self.model_class.send_completion = self.original_send, self.original_completion
+
+
 def install_transport_guard(client, model_class, *, endpoint, controls, budget, recorder):
     """Count actual synchronous HTTP attempts, including provider and SDK retries."""
-    original_send, original_completion = client.send, model_class.send_completion
-    active = None
-    retry_context = None
+    guard = AiderTransportGuard(client, model_class, budget, recorder)
     target = urlsplit(endpoint["base_url"] + "/chat/completions")
 
     def completion(self, *args, **kwargs):
-        nonlocal active, retry_context
-        if self.name != "openai/" + endpoint["model"] or active is not None:
-            raise BudgetStopped("unexpected Aider model or nested request")
-        active = retry_context or {"sdk_transport_attempt_ordinal": 0,
-                  "logical_request_id": recorder.next_logical_request_id()}
+        with guard.condition:
+            if self.name != "openai/" + endpoint["model"] or guard.active or guard.closed:
+                raise BudgetStopped("unexpected Aider model, concurrent request, or closed admission")
+            guard.active = True
+            context = getattr(guard.local, "retry_context", None)
+            if context is None:
+                context = {"sdk_transport_attempt_ordinal": 0,
+                           "logical_request_id": recorder.next_logical_request_id()}
+            guard.local.active = context
         try:
-            return original_completion(self, *args, **kwargs)
+            return guard.original_completion(self, *args, **kwargs)
         finally:
-            active = None
+            with guard.condition:
+                guard.local.active = None
+                guard.active = False
+                guard.condition.notify_all()
 
     def send(self, request, *args, **kwargs):
-        nonlocal retry_context
-        if args or active is None:
-            raise BudgetStopped("unsupported Aider transport outside model request")
-        observed = urlsplit(str(request.url))
-        body = json.loads(request.content)
-        if (observed != target or body.get("model") != endpoint["model"]
-                or body.get("max_tokens") != budget.configured["max_completion_tokens"]):
-            raise BudgetStopped("unexpected Aider endpoint, alias, or token cap")
-        expected = request_body_controls(controls)
-        if any(body.get(key) != value for key, value in expected.items()):
-            raise BudgetStopped("Aider request controls were not preserved")
-        budget.before_send(request, active, self, kwargs)
-        active["sdk_transport_attempt_ordinal"] += 1
-        recorder.record("aider_transport_started", logical_request_id=active["logical_request_id"],
-                        attempt=active["sdk_transport_attempt_ordinal"], model_call=budget.model_calls)
-        retry_context = active
+        context = getattr(guard.local, "active", None)
+        with guard.condition:
+            if args or context is None or guard.closed:
+                raise BudgetStopped("unsupported Aider transport outside admitted model request")
+            observed = urlsplit(str(request.url))
+            body = json.loads(request.content)
+            if (observed != target or body.get("model") != endpoint["model"]
+                    or body.get("max_tokens") != budget.configured["max_completion_tokens"]):
+                raise BudgetStopped("unexpected Aider endpoint, alias, or token cap")
+            expected = request_body_controls(controls)
+            if any(body.get(key) != value for key, value in expected.items()):
+                raise BudgetStopped("Aider request controls were not preserved")
+            budget.before_send(request, context, self, kwargs)
+            context["sdk_transport_attempt_ordinal"] += 1
+            fields = {"logical_request_id": context["logical_request_id"],
+                      "attempt": context["sdk_transport_attempt_ordinal"]}
+            guard.started += 1
+            recorder.record("aider_transport_started", **fields, model_call=budget.model_calls)
+            guard.local.retry_context = context
         try:
-            response = original_send(self, request, **kwargs)
+            response = guard.original_send(self, request, **kwargs)
+        except BaseException as exc:
+            category = ("budget_stopped" if isinstance(exc, BudgetStopped) else
+                        "timeout" if isinstance(exc, TimeoutError) else
+                        "os_error" if isinstance(exc, OSError) else
+                        "interrupted" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "transport_error")
+            with guard.condition:
+                recorder.record("aider_transport_error", **fields, error_type=category, http_status=None,
+                                finish_reason=None, output_truncated=None,
+                                usage=dict.fromkeys(("prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens")))
+                guard.errors += 1
+            # Budget checks must not replace the original transport exception.
+            raise
+        with guard.condition:
             if 200 <= response.status_code < 300:
-                retry_context = None
-            recorder.record("aider_transport_response", logical_request_id=active["logical_request_id"],
-                            attempt=active["sdk_transport_attempt_ordinal"],
+                guard.local.retry_context = None
+            recorder.record("aider_transport_response", **fields,
                             http_status=response.status_code, **response_diagnostics(response))
-            return response
-        finally:
-            budget.check()
+            guard.responses += 1
+        budget.check()
+        return response
 
     client.send, model_class.send_completion = send, completion
+    return guard
 
-    def restore():
-        client.send, model_class.send_completion = original_send, original_completion
-    return restore
+
+def install_summary_guard(coder_class, budget):
+    """Bound the pinned Coder's real summary joins, including the final one."""
+    original_start, original_end = coder_class.summarize_start, coder_class.summarize_end
+    coders = []
+
+    def start(self):
+        if not any(coder is self for coder in coders):
+            coders.append(self)
+        return original_start(self)
+
+    def end(self):
+        thread = self.summarizer_thread
+        if thread is not None:
+            thread.join(timeout=_remaining_deadline(budget))
+            if thread.is_alive():
+                budget.stop("deadline_s")
+        # Preserve upstream message bookkeeping, now with a finished thread.
+        return original_end(self)
+
+    coder_class.summarize_start, coder_class.summarize_end = start, end
+
+    def finish():
+        try:
+            for coder in coders:
+                end(coder)
+        finally:
+            if all(coder.summarizer_thread is None or not coder.summarizer_thread.is_alive() for coder in coders):
+                coder_class.summarize_start, coder_class.summarize_end = original_start, original_end
+    return finish
 
 
 def request_body_controls(controls):
@@ -288,9 +383,10 @@ def run_adapter(plan):
     root = verify_source(plan["paths"]["aider_root"])
     sys.path[:0] = [str(root / "benchmark"), str(root)]
     recorder = EventRecorder(plan["paths"]["request_events"])
-    recorder.record("aider_adapter_ready", adapter_sha256=plan["adapter_sha256"], source_hashes=SOURCE_HASHES)
+    recorder.record("aider_adapter_ready", adapter_sha256=plan["adapter_sha256"], source_hashes=SOURCE_HASHES,
+                    request_accounting_schema=REQUEST_ACCOUNTING_SCHEMA)
     budget = SuiteBudget(plan["budgets"], recorder)
-    outcome, restore = "failed", None
+    outcome, restore, finish_summaries = "failed", None, None
     try:
         with disable_dotenv():
             namespace = runpy.run_path(str(root / "benchmark/benchmark.py"), run_name="anvil_aider_benchmark")
@@ -302,6 +398,7 @@ def run_adapter(plan):
 
             restore = install_transport_guard(httpx.Client, models.Model, endpoint=plan["endpoint"],
                                               controls=plan["request_controls"], budget=budget, recorder=recorder)
+            finish_summaries = install_summary_guard(Coder, budget)
             real_model = models.Model
             # Unknown local aliases must not trigger mutable remote metadata downloads.
             models.model_info_manager._update_cache = lambda: None
@@ -367,15 +464,52 @@ def run_adapter(plan):
         outcome = "budget_exhausted" if budget.reason else "boundary_rejected"
         raise
     finally:
+        original_failure = sys.exc_info()[0] is not None
+        summaries_complete = True
+        shutdown_failure = None
+        try:
+            if finish_summaries:
+                finish_summaries()
+        except BaseException as exc:
+            summaries_complete = False
+            shutdown_failure = exc
+            outcome = ("budget_exhausted" if budget.reason else "boundary_rejected") if isinstance(exc, BudgetStopped) else "failed"
         if restore:
-            restore()
-        recorder.close(outcome=outcome)
+            drained = restore.drain()
+            if not drained:
+                outcome = "budget_exhausted"
+                try:
+                    budget.stop("deadline_s")
+                except BudgetStopped:
+                    pass
+            # A timed-out summary may retry after its current send has returned.
+            if drained and summaries_complete:
+                restore()
+        try:
+            budget.check()
+        except BudgetStopped:
+            if outcome == "completed":
+                outcome = "budget_exhausted"
+        # Snapshot accounting and the terminal together: a late send cannot race
+        # another response between those records after a bounded drain failed.
+        with restore.condition if restore else nullcontext():
+            accounting = (restore.accounting(summaries_complete=summaries_complete) if restore else
+                          {"schema": REQUEST_ACCOUNTING_SCHEMA, "status": "incomplete",
+                           "started": 0, "responses": 0, "errors": 0, "pending": 0})
+            if outcome == "completed" and accounting["status"] != "complete":
+                outcome = "failed"
+            recorder.close(outcome=outcome, request_accounting=accounting)
         atomic_write_json(plan["paths"]["adapter_result"], {
             "schema": "anvil-serving.aider-adapter-result/v1", "outcome": outcome,
             "plan_sha256": plan["plan_sha256"], "adapter_sha256": plan["adapter_sha256"],
-            "budget": budget.snapshot(),
-            "events_complete": not recorder.write_failed and not recorder.omitted_events,
+            "budget": budget.snapshot(), "request_accounting": accounting,
+            "events_complete": (accounting["status"] == "complete"
+                                and not recorder.write_failed and not recorder.omitted_events),
         })
+        if not original_failure and shutdown_failure is not None:
+            raise shutdown_failure
+        if not original_failure and outcome != "completed":
+            raise BudgetStopped("Aider shutdown or evidence incomplete")
 
 
 def main(argv=None):
