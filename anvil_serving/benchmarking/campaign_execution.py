@@ -258,6 +258,8 @@ def reconcile_batch(manifest, batch_id, *, run_root, store=None):
 
 
 def _validate_release(release, manifest, batch_id):
+    if not isinstance(release, dict):
+        raise BenchmarkJobError('campaign_release_invalid', 'release must be an object')
     cells = _cells(manifest, batch_id)
     arm = next(a for a in manifest['arms'] if a['arm_id'] == cells[0]['arm_id'])
     numbers = ('released_monotonic', 'traffic_deadline_monotonic', 'deadline_monotonic', 'allowance_s', 'drain_reserve_s')
@@ -305,11 +307,24 @@ def campaign_result_reference(store, spec):
         manifest_path = _path({'ownership_id': spec['ownership_id'], 'run_id': spec['campaign']['campaign_id']}, store.run_root, 'campaign/manifest.json')
         manifest = _read(manifest_path)
         release_path = _directory(manifest, store.run_root) / 'batches' / (spec['campaign']['batch_id'] + '.json')
-        if 'telemetry_collection' in manifest and release_path.exists():
+        if 'telemetry_collection' in manifest:
             from .campaign_telemetry import attach_terminal
-            release = _read(release_path)
-            _validate_release(release, manifest, spec['campaign']['batch_id'])
-            value = attach_terminal(store, spec, _read(path), manifest, release)
+            cell = next(c for c in manifest['cells'] if c['cell_id'] == spec['campaign']['cell_id'])
+            value = _receipt(cell, manifest, store.run_root)
+            try:
+                release = _read(release_path)
+                _validate_release(release, manifest, spec['campaign']['batch_id'])
+                if release.get('boot_id') == _boot_id() and release['released_monotonic'] > time.monotonic():
+                    raise BenchmarkJobError('campaign_release_invalid', 'release begins in the future')
+            except (OSError, ValueError, KeyError, TypeError, BenchmarkJobError):
+                # A failed entry with no trustworthy release has no terminal to
+                # await. Retain unknown coverage, never a fabricated closure.
+                if value.get('status') != 'blocked' or 'entry_failure' not in value:
+                    raise
+                value['telemetry_terminal'] = {'status': 'unavailable', 'reason': 'campaign_release_unverified'}
+                value['telemetry_coverage'] = {key: {'status': 'unavailable'} for key in ('engine', 'gpu', 'host', 'cgroup')}
+            else:
+                value = attach_terminal(store, spec, value, manifest, release)
             if store.status(spec['run_id'])['state'] not in {'completed', 'failed', 'cancelled'}:
                 atomic_write_json(str(path), value)
     return {'campaign_execution': evidence_file_reference(str(path), root=str(path.parent))}
@@ -474,48 +489,103 @@ def enter_campaign(store, spec):
         'ready_at': utc_now(), 'clients_stopped': False,
         'telemetry_coverage': {k: {'status': 'unavailable'} for k in ('engine', 'gpu', 'host', 'cgroup')}}
     atomic_write_json(str(path), value)
-    release_path = _directory(manifest, store.run_root) / 'batches' / (binding['batch_id'] + '.json')
-    wait_until = time.monotonic() + 60
-    while not release_path.exists():
-        if time.monotonic() >= wait_until or store.status(spec['run_id'])['state'] != 'running':
-            raise BenchmarkJobError('campaign_release_missing', 'campaign release was not received before the bounded readiness deadline')
-        time.sleep(.05)
-    release = _read(release_path)
-    _validate_release(release, manifest, binding['batch_id'])
-    with campaign_lock(_directory(manifest, store.run_root)):
-        if _state(_directory(manifest, store.run_root), manifest=manifest).get('cancel_requested') is True:
-            raise BenchmarkJobError('campaign_cancelled', 'campaign cancellation was requested before traffic')
-        if release['allowance_s'] > _remaining_budget(manifest, binding['batch_id'], run_root=store.run_root, store=store):
-            raise BenchmarkJobError('campaign_budget_exceeded', 'release exceeds remaining verified campaign budget')
-    if (release.get('manifest_sha256') != binding['manifest_sha256'] or release.get('batch_id') != binding['batch_id']
-            or release.get('boot_id') != _boot_id() or spec['run_id'] not in release.get('run_ids', [])
-            or not _finite(release.get('traffic_deadline_monotonic'))
-            or not _finite(release.get('deadline_monotonic')) or not _finite(release.get('released_monotonic'))
-            or not 0 < release['deadline_monotonic'] - release['released_monotonic'] <= 3600
-            or not release['released_monotonic'] <= time.monotonic() < release['traffic_deadline_monotonic'] < release['deadline_monotonic']):
-        raise BenchmarkJobError('campaign_release_invalid', 'release is expired or does not bind this worker')
-    # Recheck after the barrier: setup-time verification alone leaves a drift window.
-    verify_child(spec, run_root=store.run_root)
-    arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == binding['arm_id'])
-    _activation(arm, expected=release['activation'])
-    value.update(status='active', started_at=utc_now(), started_monotonic=time.monotonic())
-    value['activation'] = release['activation']
-    atomic_write_json(str(path), value)
-    # A finite supervisor survives both coordinator loss and a worker crash. It uses
-    # the existing custody-checked cancellation and partial-retention path.
-    supervisor = subprocess.Popen([sys.executable, '-m', 'anvil_serving.benchmarking.worker',
-        '--campaign-watchdog', '--db', os.path.realpath(store.path), '--run-root', store.run_root, '--run-id', spec['run_id']],
-        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        start_new_session=True, close_fds=True)
-    ready, _, _ = select.select([supervisor.stdout], [], [], min(2, max(0, release['traffic_deadline_monotonic'] - time.monotonic())))
-    if not ready or supervisor.stdout.readline(32) != b'ready\n':
-        supervisor.kill()
-        supervisor.wait(timeout=2)
+    context = {'manifest': manifest, 'payload': payload, 'receipt': value,
+               'path': path, 'store': store, 'spec': spec}
+    supervisor = None
+    try:
+        release_path = _directory(manifest, store.run_root) / 'batches' / (binding['batch_id'] + '.json')
+        wait_until = time.monotonic() + 60
+        while not release_path.exists():
+            if time.monotonic() >= wait_until or store.status(spec['run_id'])['state'] != 'running':
+                raise BenchmarkJobError('campaign_release_missing', 'campaign release was not received before the bounded readiness deadline')
+            time.sleep(.05)
+        release = _read(release_path)
+        _validate_release(release, manifest, binding['batch_id'])
+        with campaign_lock(_directory(manifest, store.run_root)):
+            if _state(_directory(manifest, store.run_root), manifest=manifest).get('cancel_requested') is True:
+                raise BenchmarkJobError('campaign_cancelled', 'campaign cancellation was requested before traffic')
+            if release['allowance_s'] > _remaining_budget(manifest, binding['batch_id'], run_root=store.run_root, store=store):
+                raise BenchmarkJobError('campaign_budget_exceeded', 'release exceeds remaining verified campaign budget')
+        if (release.get('manifest_sha256') != binding['manifest_sha256'] or release.get('batch_id') != binding['batch_id']
+                or release.get('boot_id') != _boot_id() or spec['run_id'] not in release.get('run_ids', [])
+                or not _finite(release.get('traffic_deadline_monotonic'))
+                or not _finite(release.get('deadline_monotonic')) or not _finite(release.get('released_monotonic'))
+                or not 0 < release['deadline_monotonic'] - release['released_monotonic'] <= 3600
+                or not release['released_monotonic'] <= time.monotonic() < release['traffic_deadline_monotonic'] < release['deadline_monotonic']):
+            raise BenchmarkJobError('campaign_release_invalid', 'release is expired or does not bind this worker')
+        context['release'] = release
+        # Recheck after the barrier: setup-time verification alone leaves a drift window.
+        verify_child(spec, run_root=store.run_root)
+        arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == binding['arm_id'])
+        _activation(arm, expected=release['activation'])
+        value.update(status='active', started_at=utc_now(), started_monotonic=time.monotonic())
+        value['activation'] = release['activation']
+        atomic_write_json(str(path), value)
+        # Full frozen-asset verification may take seconds. Give custody startup
+        # thirty seconds, always charged to the remaining traffic allowance.
+        supervisor = subprocess.Popen([sys.executable, '-m', 'anvil_serving.benchmarking.worker',
+            '--campaign-watchdog', '--db', os.path.realpath(store.path), '--run-root', store.run_root, '--run-id', spec['run_id']],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            start_new_session=True, close_fds=True)
+        startup_deadline = min(time.monotonic() + 30, release['traffic_deadline_monotonic'])
+        acknowledgement = b''
+        while time.monotonic() < startup_deadline:
+            readable, _, _ = select.select([supervisor.stdout], [], [], max(0, startup_deadline - time.monotonic()))
+            if not readable:
+                break
+            chunk = os.read(supervisor.stdout.fileno(), 6 - len(acknowledgement))
+            acknowledgement += chunk
+            if not chunk or not b'ready\n'.startswith(acknowledgement) or acknowledgement == b'ready\n':
+                break
+        if acknowledgement != b'ready\n' or time.monotonic() >= startup_deadline or supervisor.poll() is not None:
+            raise BenchmarkJobError('campaign_watchdog_unavailable', 'bounded supervisor did not acknowledge custody')
         supervisor.stdout.close()
-        raise BenchmarkJobError('campaign_watchdog_unavailable', 'bounded supervisor did not acknowledge custody')
-    supervisor.stdout.close()
-    return {'manifest': manifest, 'payload': payload, 'release': release, 'receipt': value,
-            'path': path, 'store': store, 'spec': spec}
+        return context
+    except Exception as exc:
+        # The caller has not received this context yet. Publish closure before
+        # its failure artifact waits on the coordinator's shared terminal.
+        try:
+            _abort_campaign_entry(context, supervisor, exc)
+        except Exception:
+            # Inaccessible storage/custody must not replace the original error.
+            # Without a writable unanchored receipt, closure remains unknown.
+            pass
+        raise
+
+
+def _abort_campaign_entry(context, supervisor, error):
+    stopped = supervisor is None
+    if supervisor is not None:
+        try:
+            if supervisor.poll() is None:
+                supervisor.kill()
+            supervisor.wait(timeout=2)
+            stopped = True
+        except (OSError, subprocess.SubprocessError):
+            pass
+        finally:
+            try:
+                supervisor.stdout.close()
+            except OSError:
+                pass
+    store, spec = context['store'], context['spec']
+    if store.status(spec['run_id'])['state'] in {'completed', 'failed', 'cancelled'}:
+        return  # Never change an immutable artifact's anchored receipt.
+    value = context['receipt']
+    value['entry_failure'] = {'code': error.code if isinstance(error, BenchmarkJobError) else type(error).__name__}
+    if stopped and value['status'] == 'active' and 'release' in context:
+        try:
+            close_campaign(context)
+            return
+        except Exception:
+            pass
+    clients = stopped and _clients_stopped()
+    value.update(status='blocked', clients_stopped=clients,
+                 drain={'status': 'unknown', 'reason': 'campaign_entry_aborted'})
+    if clients:
+        value['clients_stopped_wall'] = time.time()
+    if store.status(spec['run_id'])['state'] not in {'completed', 'failed', 'cancelled'}:
+        atomic_write_json(str(context['path']), value)
 
 
 def close_campaign(context, *, clients_stopped=None):

@@ -322,3 +322,229 @@ def test_observer_generation_url_expires_cached_zero_before_drain(monkeypatch):
     assert execution.observe_drain(policy, deadline=200)['status'] == 'unknown'
     with pytest.raises(BenchmarkJobError):
         execution.validate_drain_policy({**policy, 'generation': 'b'*64}, reserve_s=70, resolved=True)
+
+
+def entry_campaign(tmp_path, monkeypatch):
+    """Frozen real child/store and sampler; collector failures involve no network."""
+    from tests.test_campaign_telemetry import contract
+    from anvil_serving.benchmarking import campaign_telemetry as telemetry
+    root, manifest, bound = campaign(tmp_path, monkeypatch, drain_reserve_s=120,
+        drain={'running_metric': 'running', 'waiting_metric': 'waiting',
+               'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .1})
+    manifest['telemetry_collection'] = contract()
+    manifest['arms'][0]['identity'] = {'hardware': ['GPU-a']}
+    manifest['manifest_sha256'] = execution._manifest_digest(manifest)
+    cell = manifest['cells'][0]
+    child = execution.bind_campaign_child(cell['spec'], manifest_sha256=manifest['manifest_sha256'],
+        campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+    directory = execution._directory(manifest, root)
+    atomic_write_json(directory / 'manifest.json', manifest)
+    atomic_write_json(directory / 'state.json', execution._new_state(manifest))
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=root)
+    store.submit(child)
+    ready(root, manifest, [child])
+    def unavailable(*args, **kwargs):
+        raise OSError('offline collector fixture')
+    monkeypatch.setattr('anvil_serving.router.model_capacity._default_metrics_read', unavailable)
+    monkeypatch.setattr(telemetry, '_container', unavailable)
+    monkeypatch.setattr(execution, '_clients_stopped', lambda: True)
+    monkeypatch.setattr(execution, 'observe_drain', lambda *args, **kwargs:
+                        {'status': 'unknown', 'reason': 'offline_drain_fixture'})
+    monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *args, **kwargs: pytest.fail('model traffic'))
+    monkeypatch.setattr(worker, '_run_suite', lambda *args, **kwargs: pytest.fail('model traffic'))
+    sampler = telemetry.BatchSampler(manifest, cell['batch_id'], run_root=root)
+    release = execution.release_batch(manifest, cell['batch_id'], run_root=root,
+                                      allowance_s=130, store=store, sampler=sampler)
+    return store, manifest, child, sampler, release
+
+
+@pytest.mark.parametrize('failure', ['no_ack', 'early_exit', 'spawn', 'activation', 'closure', 'prepared', 'cancel', 'budget'])
+def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_path, monkeypatch, failure):
+    from concurrent.futures import ThreadPoolExecutor
+    import subprocess
+    import sys
+    from anvil_serving.benchmarking import campaign_telemetry as telemetry
+    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
+    original_popen = subprocess.Popen
+    supervisors = []
+    original_verify = execution.verify_child
+    calls = []
+    expected = 'campaign_watchdog_unavailable'
+    def spawn(*args, **kwargs):
+        assert execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))['status'] == 'active'
+        if failure == 'spawn':
+            raise OSError('watchdog spawn fixture')
+        process = original_popen([sys.executable, '-c', 'pass' if failure == 'early_exit' else 'import time; time.sleep(60)'], **kwargs)
+        supervisors.append(process)
+        return process
+    monkeypatch.setattr(execution.subprocess, 'Popen', spawn)
+    if failure != 'early_exit':
+        def no_ack(read, write, error, timeout):
+            assert 0 < timeout <= min(30, release['traffic_deadline_monotonic'] - release['released_monotonic'])
+            return [], [], []
+        monkeypatch.setattr(execution.select, 'select', no_ack)
+    if failure == 'spawn':
+        expected = 'OSError'
+    if failure == 'activation':
+        expected = 'campaign_activation_mismatch'
+        def drift(*args, **kwargs):
+            raise BenchmarkJobError(expected, 'activation fixture drift')
+        monkeypatch.setattr(execution, '_activation', drift)
+    if failure == 'closure':
+        def broken_close(*args, **kwargs):
+            raise OSError('closure fixture unavailable')
+        monkeypatch.setattr(execution, 'close_campaign', broken_close)
+    if failure == 'prepared':
+        expected = 'campaign_prepared_mismatch'
+        def changed(*args, **kwargs):
+            calls.append(True)
+            if len(calls) > 1:
+                raise BenchmarkJobError(expected, 'post-barrier fixture drift')
+            return original_verify(*args, **kwargs)
+        monkeypatch.setattr(execution, 'verify_child', changed)
+    if failure == 'cancel':
+        expected = 'campaign_cancelled'
+        state = execution._new_state(manifest); state['cancel_requested'] = True
+        atomic_write_json(execution._directory(manifest, store.run_root) / 'state.json', state)
+    if failure == 'budget':
+        expected = 'campaign_budget_exceeded'
+        monkeypatch.setattr(execution, '_remaining_budget', lambda *args, **kwargs: 0)
+    path = execution._path(child, store.run_root, 'campaign-execution.json')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(worker.execute_benchmark_job, store, child['run_id'])
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            receipt = execution._read(path)
+            if receipt['status'] == 'blocked':
+                break
+            time.sleep(.01)
+        assert receipt['status'] == 'blocked'
+        assert receipt['clients_stopped'] is True
+        assert receipt['drain']['status'] == 'unknown'
+        assert receipt['entry_failure']['code'] == expected
+        assert not future.done()  # The immutable artifact still waits for the coordinator.
+        assert store.status(child['run_id'])['state'] == 'running'
+        assert not execution._anchored_closure(store, manifest['cells'][0], manifest, store.run_root)
+        assert all(p.poll() is not None and p.stdout.closed for p in supervisors)
+        # Same closed/blocked predicate used by the foreground coordinator.
+        sampler.finish()
+        result = future.result(timeout=3)
+    assert result['state'] == 'failed' and result['finished_at']
+    assert result['failure']['code'] == expected
+    artifact = store.artifact(child['run_id'])
+    receipt = execution._read(path)
+    terminal, _, reference = telemetry.verify_terminal(manifest, sampler.batch_id, release,
+        run_root=store.run_root, reference=receipt['telemetry_terminal'])
+    assert terminal['complete'] is False
+    assert reference == receipt['telemetry_terminal']
+    assert artifact['results']['campaign_execution']['sha256']
+    assert execution._anchored_closure(store, manifest['cells'][0], manifest, store.run_root)
+    assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['status'] == 'blocked'
+    original = path.read_bytes()
+    execution.campaign_result_reference(store, child)
+    assert path.read_bytes() == original  # Terminal references are immutable.
+    receipt.update(status='closed', drain={'status': 'verified'}, started_monotonic=release['released_monotonic'],
+                   closed_monotonic=time.monotonic())
+    atomic_write_json(path, receipt)
+    assert not execution._anchored_closure(store, manifest['cells'][0], manifest, store.run_root)
+    assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['active_seconds'] is None
+
+
+@pytest.mark.parametrize('failure', ['missing', 'invalid', 'malformed', 'expired', 'future', 'wrong_boot'])
+def test_untrusted_entry_release_reaches_failed_without_fabricating_closure(tmp_path, monkeypatch, failure):
+    from types import SimpleNamespace
+    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
+    path = sampler.root / 'batches' / (sampler.batch_id + '.json')
+    expected = 'campaign_release_invalid'
+    if failure == 'missing':
+        path.unlink()
+        clock = [time.monotonic()]
+        monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=time.time,
+            perf_counter=time.perf_counter, sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
+        expected = 'campaign_release_missing'
+    elif failure == 'invalid':
+        atomic_write_json(path, {**release, 'manifest_sha256': 'f' * 64})
+    elif failure == 'malformed':
+        path.write_text('{')
+        expected = 'JSONDecodeError'
+    else:
+        if failure == 'wrong_boot':
+            release['boot_id'] = 'different-boot'
+        else:
+            for key in ('released_monotonic', 'traffic_deadline_monotonic', 'deadline_monotonic'):
+                release[key] += 1000 if failure == 'future' else -1000
+        atomic_write_json(path, release)
+    monkeypatch.setattr(execution.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('untrusted release spawned watchdog'))
+    result = worker.execute_benchmark_job(store, child['run_id'])
+    assert result['state'] == 'failed' and result['finished_at']
+    assert result['failure']['code'] == expected
+    receipt_path = execution._path(child, store.run_root, 'campaign-execution.json')
+    receipt = execution._read(receipt_path)
+    assert receipt['status'] == 'blocked' and receipt['clients_stopped'] is True
+    assert receipt['drain']['status'] == 'unknown'
+    assert receipt['telemetry_terminal']['status'] == 'unavailable'
+    assert all(v['status'] == 'unavailable' for v in receipt['telemetry_coverage'].values())
+    assert store.artifact(child['run_id'])['results']['campaign_execution']['sha256']
+    # The failure fallback cannot bless a foreign receipt or unverified release.
+    assert 'closed_monotonic' not in receipt and 'active_seconds' not in receipt
+
+
+@pytest.mark.parametrize('kind', ['receipt', 'release'])
+def test_entry_failure_fallback_keeps_binding_and_release_guards(tmp_path, monkeypatch, kind):
+    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
+    store.claim(child['run_id'])
+    path = execution._path(child, store.run_root, 'campaign-execution.json')
+    receipt = execution._read(path)
+    receipt.update(status='blocked', clients_stopped=True, entry_failure={'code': 'fixture'})
+    if kind == 'receipt':
+        receipt['spec_sha256'] = '0' * 64
+    else:
+        receipt.pop('entry_failure')
+        release['allowance_s'] = 3601
+    atomic_write_json(path, receipt)
+    atomic_write_json(sampler.root / 'batches' / (sampler.batch_id + '.json'), release)
+    with pytest.raises(BenchmarkJobError):
+        execution.campaign_result_reference(store, child)
+    assert store.status(child['run_id'])['state'] == 'running'
+    assert 'telemetry_terminal' not in execution._read(path)
+
+
+@pytest.mark.parametrize('mode', ['delayed', 'partial_deadline'])
+def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_path, monkeypatch, mode):
+    import subprocess
+    import sys
+    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
+    store.claim(child['run_id'])
+    path = sampler.root / 'batches' / (sampler.batch_id + '.json')
+    if mode == 'partial_deadline':
+        release['released_monotonic'] = time.monotonic() - 9.7
+        release['traffic_deadline_monotonic'] = release['released_monotonic'] + 10
+        release['deadline_monotonic'] = release['released_monotonic'] + 130
+        atomic_write_json(path, release)
+    original_popen = subprocess.Popen
+    supervisors = []
+    def spawn(*args, **kwargs):
+        code = ('import time; time.sleep(2.1); print("ready", flush=True); time.sleep(60)' if mode == 'delayed'
+                else 'import time; print("r", end="", flush=True); time.sleep(60)')
+        process = original_popen([sys.executable, '-c', code], **kwargs)
+        supervisors.append(process)
+        return process
+    monkeypatch.setattr(execution.subprocess, 'Popen', spawn)
+    started = time.monotonic()
+    try:
+        if mode == 'delayed':
+            context = execution.enter_campaign(store, child)
+            assert context['receipt']['status'] == 'active'
+            assert 2 < time.monotonic() - started < 8
+            assert supervisors[0].poll() is None and supervisors[0].stdout.closed
+        else:
+            with pytest.raises(BenchmarkJobError, match='did not acknowledge'):
+                execution.enter_campaign(store, child)
+            assert time.monotonic() - started < 2
+            assert supervisors[0].poll() is not None
+            assert execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))['status'] == 'blocked'
+    finally:
+        for process in supervisors:
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=2)
