@@ -133,14 +133,18 @@ def _cancelled_aider_raw_task_grades(store, cell, record, root, expected_sha256)
                 or plan.get("plan_sha256") != hashlib.sha256(canonical_json_bytes(
                     {key: value for key, value in plan.items() if key != "plan_sha256"}
                 )).hexdigest()
+                or not isinstance(cell.get("prepared"), dict)
+                or plan["plan_sha256"] != cell["prepared"].get("plan_sha256")
                 or plan.get("ownership_id") != cell["spec"]["ownership_id"]
                 or plan.get("run_id") != cell["spec"]["run_id"]
                 or plan.get("profile") != cell["spec"]["profile"]
+                or plan.get("endpoint") != cell["spec"]["endpoint"]
                 or not isinstance(plan.get("selection"), dict)
                 or selection != plan["selection"]):
             return None
         instance_ids = selection.get("instance_ids")
-        if (not isinstance(instance_ids, list) or task_id not in instance_ids
+        if (not isinstance(instance_ids, list) or instance_ids != [task_id]
+                or instance_ids != cell["spec"].get("parameters", {}).get("instance_ids")
                 or selection.get("sha256") != hashlib.sha256(canonical_json_bytes(instance_ids)).hexdigest()):
             return None
         grade = validated_aider_task_grade(plan, _read(root, native_reference["path"], native_reference))

@@ -355,18 +355,22 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     from anvil_serving.benchmarking.jobs import job_spec_sha256
 
     cell = manifest["cells"][0]
+    cell["spec"]["parameters"] = {"instance_ids": [cell["task_id"]]}
     spec = bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
         campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=cell["batch_id"])
     root = Path(store.run_root) / spec["ownership_id"] / spec["run_id"]
     native_path = root / "aider/results/tool-sequence/.aider.results.json"
-    selection = {"instance_ids": [cell["task_id"]], "sha256": aider._digest([cell["task_id"]])}
+    selected_task = "other-task" if change == "swapped_task" else cell["task_id"]
+    selection = {"instance_ids": [selected_task], "sha256": aider._digest([selected_task])}
     plan = {"schema": aider.AIDER_PLAN_SCHEMA, "ownership_id": spec["ownership_id"], "run_id": spec["run_id"],
-            "profile": spec["profile"], "endpoint": {"model": "llm.primary"}, "selection": selection}
+            "profile": spec["profile"], "endpoint": {**spec["endpoint"], "model": "other-model" if change == "swapped_model" else spec["endpoint"]["model"]},
+            "selection": selection}
     plan["plan_sha256"] = aider._digest(plan)
+    cell["prepared"] = {"plan_sha256": plan["plan_sha256"]}
     paths = {"aider/plan.json": plan, "aider/selection.json": selection}
     if change != "missing":
         paths["aider/results/tool-sequence/.aider.results.json"] = {
-            "model": "cloud" if change == "model" else "openai/llm.primary",
+            "model": "cloud" if change == "model" else "openai/" + plan["endpoint"]["model"],
             "edit_format": "whole", "tests_outcomes": [True] if change == "pass" else [False, False],
         }
     for relative, value in paths.items():
@@ -405,6 +409,8 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     ("model", None),
     ("selection", None),
     ("symlink", None),
+    ("swapped_model", None),
+    ("swapped_task", None),
 ])
 def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
     from anvil_serving.benchmarking.campaign_report import report_campaign
@@ -413,6 +419,8 @@ def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(
     row = report_campaign(manifest, store)["cells"][0]
     assert row["raw_task_grades"] == expected
     assert row["outcomes"] is None
+    assert row["samples"] == {"planned": 1, "submitted": 1, "attempted": None,
+                              "scored": None, "failed": None, "cancelled": None, "unfinished": 0}
     assert row["measurement_complete"] is False
 
 
