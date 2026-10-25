@@ -13,6 +13,7 @@ import re
 
 from .aider import AIDER_PLAN_SCHEMA, validated_aider_task_grade
 from .jobs import BenchmarkJobError, canonical_json_bytes, job_spec_sha256, resolve_owned_run_path
+from .swe_agent_adapter import EVENT_SCHEMA, MAX_BYTES, MAX_EVENTS
 from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch, batch_closure
 
 SCHEMA = "anvil-serving.benchmark-campaign-report/v1"
@@ -98,19 +99,38 @@ def _retained_reference(manifest, path):
     return reference
 
 
+def _retained_missing(manifest, reference):
+    return reference["path"].removeprefix("aider/") in manifest["missing"]
+
+
 def _retained_aider_diagnostics(root, manifest):
     reference = _retained_reference(manifest, "aider/requests.jsonl")
-    if reference is None:
+    if reference is None or _retained_missing(manifest, reference):
         return None
     try:
-        rows = [json.loads(line) for line in _read_bytes(root, reference["path"], reference).splitlines()]
-        if not all(isinstance(row, dict) for row in rows):
+        raw = _read_bytes(root, reference["path"], reference)
+        lines = raw.splitlines(keepends=True)
+        if not 1 <= len(lines) <= MAX_EVENTS or len(raw) > MAX_BYTES + 8192:
             return None
-        signals = ("output_truncated", "compilation_failure")
-        if any(key in row and type(row[key]) is not bool for row in rows for key in signals):
+        rows = [json.loads(line) for line in lines]
+        if any(not isinstance(row, dict) or row.get("schema") != EVENT_SCHEMA or row.get("seq") != index
+               or not isinstance(row.get("event"), str) for index, row in enumerate(rows, 1)):
             return None
-        return {key: True if any(row.get(key) is True for row in rows) else None for key in signals}
-    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError):
+        terminal = rows[-1] if rows[-1]["event"] == "adapter_finished" else None
+        if terminal is not None and (terminal.get("event_count") != len(rows) - 1
+                                     or terminal.get("byte_count") != sum(map(len, lines[:-1]))
+                                     or terminal.get("status") not in {"complete", "truncated"}):
+            return None
+        signals = {"output_truncated": "aider_transport_response",
+                   "compilation_failure": "aider_contained_command_finished"}
+        observed = {}
+        for signal, event in signals.items():
+            values = [row[signal] for row in rows if row["event"] == event and signal in row]
+            if any(value is not None and type(value) is not bool for value in values):
+                return None
+            observed[signal] = True if any(value is True for value in values) else None
+        return {**observed, "coverage": "complete" if terminal and terminal["status"] == "complete" else "partial"}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, UnicodeDecodeError):
         return None
 
 
@@ -148,7 +168,7 @@ def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
         if not plan_reference or not selection_reference:
             return None
         if any(not isinstance(path, str) for path in manifest["missing"]) or any(
-                path in manifest["missing"] for path in (plan_reference["path"], selection_reference["path"])):
+                _retained_missing(manifest, reference) for reference in (plan_reference, selection_reference)):
             return None
         plan = _read(root, plan_reference["path"], plan_reference)
         selection = _read(root, selection_reference["path"], selection_reference)
@@ -157,7 +177,7 @@ def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
                     {key: value for key, value in plan.items() if key != "plan_sha256"}
                 )).hexdigest()
                 or not isinstance(cell.get("prepared"), dict)
-                or plan["plan_sha256"] != cell["prepared"].get("plan_sha256")
+                or hashlib.sha256(canonical_json_bytes(plan)).hexdigest() != cell["prepared"].get("plan_sha256")
                 or plan.get("ownership_id") != cell["spec"]["ownership_id"]
                 or plan.get("run_id") != cell["spec"]["run_id"]
                 or plan.get("profile") != cell["spec"]["profile"]
@@ -172,7 +192,7 @@ def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
             return None
         diagnostics = _retained_aider_diagnostics(root, manifest)
         if (native_reference is None or native_reference["bytes"] > 1024 * 1024
-                or native_reference["path"] in manifest["missing"]):
+                or _retained_missing(manifest, native_reference)):
             return {"grades": None, "diagnostics": {**diagnostics, "num_exhausted_context_windows": None}
                     if diagnostics is not None else None}
         native = _read(root, native_reference["path"], native_reference)
@@ -184,7 +204,7 @@ def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
             return {"grades": [grade], "diagnostics": None}
         exhausted = native.get("num_exhausted_context_windows")
         diagnostics = {**diagnostics, "num_exhausted_context_windows": exhausted
-                       if type(exhausted) is int and exhausted >= 0 else None}
+                       if type(exhausted) is int and 0 <= exhausted <= 12 else None}
         return {"grades": [grade], "diagnostics": diagnostics}
     except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, BenchmarkJobError):
         return None
