@@ -159,6 +159,9 @@ def test_prepared_six_language_manifest_builds_bound_plan(tmp_path, monkeypatch)
         run_root=str(run_root), cache_root=str(cache), ownership_id="owner", run_id="run",
         request_controls={"thinking_mode": "disabled"})
     assert plan["command"][0] == str(python)
+    assert plan["execution_contract"]["cpp_header_lint"] == (
+        "pinned basic_lint with C++ grammar for admitted cpp solution .h files; "
+        "other paths unchanged; local correction, not official leaderboard equivalence")
     assert plan["selection"]["instance_ids"] == sorted(row["task_id"] for row in rows)
     assert plan["aider_environment"]["image_id"] == receipt["oracle"]["image_id"]
     assert plan["request_controls"]["chat_template_kwargs"] == {"enable_thinking": False}
@@ -335,3 +338,17 @@ def test_actual_process_capture_caps_deadline_and_owned_group_cleanup(tmp_path, 
     assert observed["remaining_peers"] == []
     if expected == "completed":
         assert observed["returncode"] == 0 and observed["bytes"] == count
+
+
+@pytest.mark.parametrize("changed", ["adapter", "upstream-linter"])
+def test_cpp_lint_implementation_identity_is_bound_before_launch(tmp_path, monkeypatch, changed):
+    from pathlib import Path
+    profile, manifest, kwargs, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
+    if changed == "adapter":
+        plan["adapter_sha256"] = "0" * 64
+        plan["plan_sha256"] = aider._digest({key: value for key, value in plan.items() if key != "plan_sha256"})
+    else:
+        (Path(plan["paths"]["aider_root"]) / "aider/linter.py").write_text("changed linter")
+    with pytest.raises(BenchmarkJobError, match="adapter changed|callback or helper changed"):
+        aider.run_aider_benchmark(plan, command_runner=lambda *_: pytest.fail("model command executed"))

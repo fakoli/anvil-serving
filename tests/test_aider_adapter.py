@@ -220,3 +220,91 @@ def test_lint_keeps_upstream_argv_but_executes_only_inside_image(tmp_path, monke
     assert result.stdout == "lint diagnostics" and result.stderr == ""
     with pytest.raises(adapter.BudgetStopped, match="lint command"):
         adapter.run_contained_lint(["sh", "-c", "untrusted"], plan={}, budget=None, cwd=tmp_path)
+
+
+def cpp_lint_fixture(tmp_path):
+    """Small upstream API double; actual pinned parser is also checked offline."""
+    from pathlib import Path
+    source, results = tmp_path / "source", tmp_path / "results"
+    task = "cpp/exercises/practice/example"
+    original = source / task / ".meta/config.json"
+    original.parent.mkdir(parents=True)
+    original.write_text(json.dumps({"files": {"solution": ["main.h", "mixed.c"]}}))
+    names = [task + "/main.h", task + "/mixed.c", task + "/test.h",
+             "cpp/exercises/practice/unselected/main.h", "python/exercises/practice/example/main.h"]
+    for name in names:
+        file = results / name
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text("source")
+    plan = {"paths": {"results": str(results), "polyglot_root": str(source)},
+            "selection": {"instance_ids": [task], "files": {task: {
+                ".meta/config.json": hashlib.sha256(original.read_bytes()).hexdigest(),
+                "main.h": "bound-source", "mixed.c": "bound-source"}}}}
+    namespace = {"filename_to_lang": lambda name: "c"}
+    exec("def basic_lint(fname, code):\n return (filename_to_lang(fname), fname, code)\n", namespace)
+    basic = namespace["basic_lint"]
+    class Linter:
+        def __init__(self):
+            self.languages = {}
+            self.all_lint_cmd = None
+        def set_linter(self, language, command):
+            self.languages[language] = command
+        def lint(self, fname, cmd=None):
+            command = cmd or self.all_lint_cmd or self.languages.get("c")
+            if callable(command):
+                return command(fname, str(fname), Path(fname).read_text())
+            return command or basic(str(fname), Path(fname).read_text())
+    return plan, types.SimpleNamespace(Linter=Linter, basic_lint=basic), [results / name for name in names]
+
+
+def test_cpp_header_lint_scopes_original_solution_paths_and_restores(tmp_path):
+    plan, upstream, paths = cpp_lint_fixture(tmp_path)
+    linter = upstream.Linter()
+    original, mapping = upstream.Linter.lint, linter.languages
+    with adapter.cpp_header_lint(plan, upstream):
+        assert linter.lint(paths[0]) == ("cpp", str(paths[0]), "source")
+        assert linter.languages is mapping
+        for other in paths[1:]:
+            assert linter.lint(other) == ("c", str(other), "source")
+        assert upstream.basic_lint(str(paths[0]), "source")[0] == "c"
+    assert upstream.Linter.lint is original
+    assert linter.lint(paths[0])[0] == "c"
+
+
+@pytest.mark.parametrize("custom", ["explicit", "all", "c"])
+def test_cpp_header_lint_preserves_custom_commands(tmp_path, custom):
+    plan, upstream, paths = cpp_lint_fixture(tmp_path)
+    linter = upstream.Linter()
+    if custom == "all":
+        linter.all_lint_cmd = "custom"
+    elif custom == "c":
+        linter.set_linter("c", "custom")
+    with adapter.cpp_header_lint(plan, upstream):
+        assert linter.lint(paths[0], "custom" if custom == "explicit" else None) == "custom"
+
+
+def test_cpp_header_lint_restores_after_callback_failure(tmp_path):
+    plan, upstream, paths = cpp_lint_fixture(tmp_path)
+    namespace = {}
+    exec("def basic_lint(fname, code):\n raise RuntimeError('parser failed')\n", namespace)
+    upstream.basic_lint = namespace["basic_lint"]
+    linter = upstream.Linter()
+    original, mapping = upstream.Linter.lint, linter.languages
+    with pytest.raises(RuntimeError, match="parser failed"):
+        with adapter.cpp_header_lint(plan, upstream):
+            linter.lint(paths[0])
+    assert upstream.Linter.lint is original
+    assert linter.languages is mapping
+
+
+def test_cpp_header_lint_rejects_redirected_generated_header_and_changed_metadata(tmp_path):
+    plan, upstream, paths = cpp_lint_fixture(tmp_path)
+    paths[0].unlink()
+    paths[0].symlink_to(paths[1])
+    with adapter.cpp_header_lint(plan, upstream):
+        with pytest.raises(adapter.BudgetStopped, match="header path"):
+            upstream.Linter().lint(paths[0])
+    plan["selection"]["files"][plan["selection"]["instance_ids"][0]][".meta/config.json"] = "0" * 64
+    with pytest.raises(adapter.BudgetStopped, match="metadata changed"):
+        with adapter.cpp_header_lint(plan, upstream):
+            pytest.fail("changed metadata accepted")

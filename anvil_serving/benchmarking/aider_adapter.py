@@ -64,6 +64,52 @@ def guard_solution_path(coder, path, results_root):
 
 
 @contextmanager
+def cpp_header_lint(plan, upstream):
+    """Select C++ only for admitted C++ solution headers, retaining pinned lint logic."""
+    results = Path(plan["paths"]["results"]).resolve()
+    headers = {}
+    for task_id in plan["selection"]["instance_ids"]:
+        if not validate_task_id(task_id).startswith("cpp/"):
+            continue
+        config_path = Path(plan["paths"]["polyglot_root"]) / task_id / ".meta/config.json"
+        raw = config_path.read_bytes()
+        files = plan["selection"]["files"][task_id]
+        if hashlib.sha256(raw).hexdigest() != files[".meta/config.json"]:
+            raise BudgetStopped("Aider solution metadata changed")
+        for name in json.loads(raw)["files"]["solution"]:
+            if name in files and Path(name).suffix == ".h":
+                headers[results / task_id / name] = results / task_id
+
+    # Reuse the hash-guarded parser, error traversal and exception handling unchanged.
+    namespace = dict(upstream.basic_lint.__globals__, filename_to_lang=lambda _fname: "cpp")
+    cpp_lint = types.FunctionType(upstream.basic_lint.__code__, namespace,
+                                 upstream.basic_lint.__name__, upstream.basic_lint.__defaults__,
+                                 upstream.basic_lint.__closure__)
+    original = upstream.Linter.lint
+
+    def lint(self, fname, cmd=None):
+        candidate = Path(os.path.abspath(fname))
+        if candidate not in headers or cmd or self.all_lint_cmd or "c" in self.languages:
+            return original(self, fname, cmd)
+        if candidate.resolve() != candidate:
+            raise BudgetStopped("unsafe generated Aider header path")
+        verify_task_tree(headers[candidate])
+        languages = self.languages
+        self.languages = dict(languages)
+        try:
+            self.set_linter("c", lambda _fname, rel_fname, code: cpp_lint(rel_fname, code))
+            return original(self, fname, cmd)
+        finally:
+            self.languages = languages
+
+    upstream.Linter.lint = lint
+    try:
+        yield
+    finally:
+        upstream.Linter.lint = original
+
+
+@contextmanager
 def disable_dotenv():
     import dotenv  # Importing the library does not search or read environment files.
     old_load, old_find = dotenv.load_dotenv, dotenv.find_dotenv
@@ -178,7 +224,7 @@ def run_adapter(plan):
         with disable_dotenv():
             namespace = runpy.run_path(str(root / "benchmark/benchmark.py"), run_name="anvil_aider_benchmark")
             import httpx
-            from aider import models
+            from aider import linter as upstream_linter, models
             from aider.coders.base_coder import Coder
             from aider.linter import Linter
             from aider.coders.wholefile_coder import WholeFileCoder
@@ -238,7 +284,8 @@ def run_adapter(plan):
                     "--edit-format", "whole", "--tries", "2", "--threads", "1",
                     "--exercises-dir", "original"]
             try:
-                namespace["app"](args=args, standalone_mode=False)
+                with cpp_header_lint(plan, upstream_linter):
+                    namespace["app"](args=args, standalone_mode=False)
                 budget.check()
                 outcome = "completed"
             finally:

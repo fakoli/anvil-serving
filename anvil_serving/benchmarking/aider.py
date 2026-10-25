@@ -119,6 +119,8 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
             "budgets": budgets, "timeout_s": timeout, "paths": paths,
             "execution_contract": {"edit_format": "whole", "attempts": 2, "test_timeout_s": 180,
                 "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
+                "cpp_header_lint": "pinned basic_lint with C++ grammar for admitted cpp solution .h files; "
+                    "other paths unchanged; local correction, not official leaderboard equivalence",
                 "prompt": "unchanged pinned upstream instructions and test feedback"},
             "selection": {"instance_ids": selected, "sha256": _digest(selected),
                           "excluded": sorted(set(available) - set(selected)), "files": snapshots},
