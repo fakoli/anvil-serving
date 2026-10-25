@@ -14,7 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict, deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from http.cookies import SimpleCookie
 
 from .contracts import ObservatoryError, identifier, strict_json
@@ -385,6 +385,13 @@ class Access:
                 profile = self.profile_store.connect_profile(assertion.binding.subject)
                 profile_id = profile["id"]
                 mapped = Principal(profile_id, profile_id, "viewer", frozenset(), frozenset())
+            elif self.connect.role_mode:
+                # A role supplies grants, never a shared private-data owner.
+                # Reuse the subject's stable profile across logins/role changes.
+                # Old template-owned records remain untouched: their individual
+                # owner cannot be inferred safely, so do not adopt them here.
+                profile_id = self.profile_store.connect_profile(assertion.binding.subject)["id"]
+                mapped = replace(mapped, identity=profile_id)
             if len(self._sessions) >= 256:
                 raise ObservatoryError("sessions_full", "Too many active sessions; try later.", 429)
             expires_at = min(now + self.lifetime, float(assertion.session_exp))
