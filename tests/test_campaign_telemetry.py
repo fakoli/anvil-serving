@@ -44,7 +44,8 @@ def setup(tmp_path, monkeypatch, *, count=1):
     activation['binding_sha256'] = execution._digest({k: v for k, v in activation.items() if k != 'status'})
     monkeypatch.setattr(execution, '_activation', lambda arm, expected=None: activation)
     clock = [1000.]
-    timer = SimpleNamespace(monotonic=lambda: clock[0], time=lambda: 1000 + clock[0], sleep=time.sleep)
+    timer = SimpleNamespace(monotonic=lambda: clock[0], time=lambda: 1000 + clock[0],
+                            sleep=time.sleep, perf_counter=time.perf_counter)
     monkeypatch.setattr(telemetry, 'time', timer)
     monkeypatch.setattr(execution, 'time', timer)
     def read(url, *args, **kwargs):

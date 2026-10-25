@@ -9,12 +9,11 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
-import sys
 import time
 from collections.abc import Mapping
 from urllib.parse import urlsplit
 
-from .artifacts import atomic_write_json, evidence_file_reference, path_is_within, real_path
+from .artifacts import atomic_write_json, evidence_file_reference, real_path
 from .harnesses import HARNESS_ASSETS_SCHEMA
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import suite_budgets, validate_profile
@@ -25,8 +24,11 @@ from .retention import (
 )
 from .swe import _budget_runner, _endpoint, _result_record
 from .swe_agent_adapter import validate_budgets
+from .performance_prepare import (
+    PERFORMANCE_PLAN_SCHEMA as PERFORMANCE_PLAN_SCHEMA,
+    _supported as _supported, _paths as _paths, _adapter_command as _adapter_command,
+)
 
-PERFORMANCE_PLAN_SCHEMA = "anvil-serving.performance-plan/v1"
 PERFORMANCE_RUN_SCHEMA = "anvil-serving.performance-run/v1"
 MAX_NATIVE_JSON_BYTES = 32 * 1024 * 1024
 
@@ -76,36 +78,10 @@ def validate_performance_parameters(profile, parameters):
     return value
 
 
-def _supported(parameters):
-    from .performance_adapter import validate_supported_parameters
-    try:
-        validate_supported_parameters(parameters)
-    except (ValueError, TypeError, KeyError) as exc:
-        raise BenchmarkJobError("unsupported_performance_parameters", str(exc)) from exc
-
-
-def _paths(run_path, runner):
-    base = Path(run_path) / "performance"
-    paths = {key: str(base / name) for key, name in {
-        "performance": ".", "work": "work", "home": "home", "output": "native", "plan": "plan.json",
-        "result": "result.json", "adapter_result": "adapter-result.json", "request_events": "requests.jsonl",
-        "process": "process.json"}.items()}
-    paths["work"] = str(Path(run_path) / "work" / "performance")
-    paths["home"] = str(Path(run_path) / "work" / "performance-home")
-    paths["native_output"] = str(base / "native" / ("lil.json" if runner == "lil" else "profile_export_aiperf.json"))
-    return paths
-
-
-def _adapter_command(python, plan_path):
-    # An explicit argv path also works when the checkout contains PYTHONPATH separators.
-    bootstrap = "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('anvil_serving.benchmarking.performance_adapter',run_name='__main__')"
-    return [python, "-B", "-c", bootstrap, str(Path(__file__).resolve().parents[2]), "--plan", plan_path]
-
-
 def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters, run_root,
                                cache_root, ownership_id, run_id, timeout_s=None):
     from .performance_prepare import verify_performance_environment
-    from .performance_adapter import instrumentation
+    from .performance_prepare import instrumentation
 
     profile = validate_profile(profile)
     params = validate_performance_parameters(profile, parameters)
@@ -148,28 +124,9 @@ def build_performance_run_plan(profile, assets_manifest, *, endpoint, parameters
 
 
 def verify_plan(plan):
-    from .performance_prepare import verify_performance_environment
-
-    if sys.platform != "linux":
-        raise BenchmarkJobError("unsupported_performance_platform", "managed performance execution requires Linux")
-    if (not isinstance(plan, Mapping) or plan.get("schema") != PERFORMANCE_PLAN_SCHEMA
-            or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
-        raise BenchmarkJobError("bad_performance_plan", "performance plan identity changed")
-    _supported(plan["parameters"])
-    python = verify_performance_environment(plan["environment"], cache_root=plan["cache_root"], runner_name=plan["runner"])
-    owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
-    if owned != plan["run_path"] or plan["paths"] != _paths(owned, plan["runner"]):
-        raise BenchmarkJobError("bad_performance_plan", "performance artifact ownership changed")
-    if any(not path_is_within(path, owned) for path in plan["paths"].values()):
-        raise BenchmarkJobError("bad_performance_plan", "performance artifact escaped owned run")
-    if plan["command"] != _adapter_command(python, plan["paths"]["plan"]):
-        raise BenchmarkJobError("bad_performance_plan", "command does not match the prepared interpreter")
-    if hashlib.sha256(Path(__file__).with_name("performance_adapter.py").read_bytes()).hexdigest() != plan["adapter_sha256"]:
-        raise BenchmarkJobError("performance_adapter_mismatch", "performance containment adapter changed")
-    budgets = validate_budgets(plan["budgets"])
-    if (type(plan["timeout_s"]) not in {int, float}
-            or not 0 < plan["timeout_s"] <= budgets["deadline_s"]):
-        raise BenchmarkJobError("bad_performance_plan", "performance timeout exceeds its admitted budget")
+    """Compatibility entrypoint for the shared preparation/launch validator."""
+    from .performance_prepare import verify_performance_plan
+    return verify_performance_plan(plan)
 
 
 def _read_json(path, root, *, limit=MAX_NATIVE_JSON_BYTES):

@@ -135,6 +135,39 @@ def _canonical_sha256(value) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _normalize_benchmark_profile_catalog_delta(public_tools):
+    """Assert the versioned-suite additions before restoring legacy digest input."""
+    tools = {tool["name"]: tool for tool in public_tools}
+    for name in (
+        "benchmark_harness_prepare",
+        "benchmark_harness_status",
+        "benchmark_harness_cleanup",
+        "benchmark_job_preflight",
+        "benchmark_job_submit",
+        "benchmark_job_status",
+        "benchmark_job_logs",
+        "benchmark_job_cancel",
+        "benchmark_job_artifact",
+    ):
+        suite = tools[name]["inputSchema"]["properties"]["suite"]
+        assert suite == {
+            "type": "string",
+            "enum": ["agentic", "aider", "context", "performance", "swe"],
+            "maxLength": 262144,
+        }
+        suite["enum"] = ["context", "agentic", "swe"]
+    profile = tools["benchmark_harness_prepare"]["inputSchema"]["properties"]["profile"]
+    assert profile == {
+        "type": "string",
+        "enum": ["deep", "pilot-v2", "scout", "smoke"],
+        "maxLength": 262144,
+    }
+    profile["enum"] = ["smoke", "scout", "deep"]
+    submit = tools["benchmark_job_submit"]
+    assert submit["description"] == "Submit one durable benchmark job for the selected suite."
+    submit["description"] = "Submit one durable context, agentic, or SWE benchmark job."
+
+
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
     # The propagation declaration is deliberately scoped and absent from legacy
@@ -158,6 +191,7 @@ def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable
     }
     assert preflight["properties"].pop("force_nonempty_content") == {"type": "boolean"}
     preflight["maxProperties"] = 21
+    _normalize_benchmark_profile_catalog_delta(public_tools)
     assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
 
 
@@ -186,6 +220,7 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     }
     assert preflight["properties"].pop("force_nonempty_content") == {"type": "boolean"}
     preflight["maxProperties"] = 21
+    _normalize_benchmark_profile_catalog_delta(public_tools)
     assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
     assert schema["properties"].pop("member") == {
         "type": "string", "minLength": 1, "maxLength": 64,

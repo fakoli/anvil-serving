@@ -8,7 +8,7 @@ import subprocess
 import pytest
 
 from anvil_serving.benchmarking import aider_prepare as prep
-from anvil_serving.benchmarking import aider_adapter, aider_containment
+from anvil_serving.benchmarking import aider_containment
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 
 
@@ -111,7 +111,7 @@ def test_oracle_uses_callback_and_exact_container_image_and_retains_failure(tmp_
     # This is only the proxy wiring test; actual pinned AST behavior is tested by the adapter.
     def callback(original, task, history, tests):
         return subprocess.run(["test-command"], cwd=task, timeout=180)
-    monkeypatch.setattr(aider_adapter, "load_test_callback", lambda _: callback)
+    monkeypatch.setattr(aider_containment, "load_test_callback", lambda _: callback)
     image = "sha256:" + "1" * 64
     def contained(command, **kwargs):
         calls.append((command, kwargs))

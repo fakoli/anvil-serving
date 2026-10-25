@@ -929,8 +929,16 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     return {"cleaned": existed, "scope": "owned-work", "retention": retention}
 
 
+def _campaign_watchdog(database: str, run_root: str, run_id: str) -> None:
+    """Run the campaign supervisor with the worker's exact custody operations."""
+    from .campaign_execution import _watchdog
+    _watchdog(database, run_root, run_id, cancel_job=cancel_benchmark_job,
+              stop_worker=_stop_owned_worker)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="anvil-benchmark-worker")
+    parser.add_argument("--campaign-watchdog", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--db", required=True)
     parser.add_argument("--run-root", required=True)
     parser.add_argument("--run-id", required=True)
@@ -940,6 +948,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
+        if args.campaign_watchdog:
+            _campaign_watchdog(args.db, args.run_root, args.run_id)
+            return 0
         store = _store(args.db, args.run_root)
         _await_worker_custody(store, args.run_id)
         execute_benchmark_job(store, args.run_id)

@@ -1,6 +1,7 @@
 """Frozen campaign execution, bounded release and fail-closed drain receipts."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import math
@@ -15,42 +16,110 @@ import subprocess
 import sys
 
 from .artifacts import atomic_write_json, evidence_file_reference
-from .jobs import BenchmarkJobError, canonical_json_bytes, job_spec_sha256, resolve_owned_run_path, utc_now, validate_job_spec
+from .jobs import BenchmarkJobError, job_spec_sha256, utc_now
+from .campaign_identity import (
+    _digest as _digest,
+    _manifest_digest as _manifest_digest,
+    _read as _read,
+    _path as _path,
+    _directory as _directory,
+    _boot_id as _boot_id,
+    bind_campaign_child as bind_campaign_child,
+    _cells as _cells,
+    _receipt as _receipt,
+)
 
 
-def _digest(value):
-    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+STATE_SCHEMA = "anvil-serving.benchmark-campaign-state/v1"
+MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024
+CAMPAIGN_LOCK_TIMEOUT_S = 5.0
 
 
-def _manifest_digest(value):
-    return _digest({k: v for k, v in value.items() if k != 'manifest_sha256'})
+def source_sha256():
+    """Pin executable product bytes, including adapters and independent oracles."""
+    root = Path(__file__).resolve().parents[1]
+    return _digest({str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in sorted(root.rglob("*.py"))})
 
 
-def _read(path):
-    with open(path, 'rb', opener=lambda p, f: os.open(p, f | os.O_NONBLOCK | os.O_NOFOLLOW)) as stream:
-        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-            raise BenchmarkJobError('campaign_evidence_invalid', 'campaign evidence must be regular files')
-        raw = stream.read(16 * 1024 * 1024 + 1)
-    if len(raw) > 16 * 1024 * 1024:
-        raise BenchmarkJobError('campaign_evidence_invalid', 'campaign evidence exceeds size limit')
-    return json.loads(raw)
+def read_campaign_spec(path):
+    try:
+        with open(path, "rb", opener=lambda name, flags: os.open(
+                name, flags | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0))) as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise ValueError("not a regular file")
+            raw = handle.read(MAX_CAMPAIGN_BYTES + 1)
+        if len(raw) > MAX_CAMPAIGN_BYTES:
+            raise ValueError("oversized")
+        return json.loads(raw)
+    except (OSError, ValueError, RecursionError) as exc:
+        raise BenchmarkJobError("bad_campaign_file", "campaign must be bounded JSON") from exc
 
 
-def _path(spec, root, relative):
-    return Path(resolve_owned_run_path(root, ownership_id=spec['ownership_id'], run_id=spec['run_id'], relative=relative))
+@contextmanager
+def campaign_lock(directory, *, timeout_s=CAMPAIGN_LOCK_TIMEOUT_S):
+    """Take a bounded, regular-file OS lock; process death releases it."""
+    directory = Path(directory)
+    if type(timeout_s) not in (int, float) or not math.isfinite(timeout_s) or timeout_s < 0:
+        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock timeout must be a non-negative finite number")
+    directory.mkdir(parents=True, exist_ok=True)
+    flags = (os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
+    try:
+        descriptor = os.open(directory / ".lock", flags, 0o600)
+    except OSError as exc:
+        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a readable regular file") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a regular file")
+        deadline = time.perf_counter() + timeout_s
+        acquired = False
+        while not acquired:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    os.write(descriptor, b"0")
+                    os.lseek(descriptor, 0, os.SEEK_SET)
+                    msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+            except OSError as exc:
+                if time.perf_counter() >= deadline:
+                    raise BenchmarkJobError("campaign_lock_timeout", "campaign lock acquisition exceeded its bounded deadline") from exc
+                time.sleep(min(0.05, max(0, deadline - time.perf_counter())))
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                os.lseek(descriptor, 0, os.SEEK_SET)
+                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+    finally:
+        os.close(descriptor)
 
 
-def _directory(manifest, root):
-    return _path({'ownership_id': manifest['ownership_id'], 'run_id': manifest['campaign_id']}, root, 'campaign')
+def _new_state(manifest):
+    return {"schema": STATE_SCHEMA, "manifest_sha256": manifest["manifest_sha256"],
+            "cancel_requested": False, "batches": {}}
 
 
-def _boot_id():
-    return Path('/proc/sys/kernel/random/boot_id').read_text().strip()
-
-
-def bind_campaign_child(spec, *, manifest_sha256, campaign_id, cell_id, arm_id, batch_id):
-    return validate_job_spec({**spec, 'campaign': dict(campaign_id=campaign_id, cell_id=cell_id,
-        arm_id=arm_id, batch_id=batch_id, manifest_sha256=manifest_sha256)})
+def _state(directory, *, manifest):
+    path = directory / "state.json"
+    try:
+        state = read_campaign_spec(path)
+    except BenchmarkJobError as exc:
+        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is unreadable or malformed") from exc
+    if (not isinstance(state, dict)
+            or set(state) != {"schema", "manifest_sha256", "cancel_requested", "batches"}
+            or state.get("schema") != STATE_SCHEMA
+            or state.get("manifest_sha256") != manifest.get("manifest_sha256")
+            or type(state.get("cancel_requested")) is not bool
+            or not isinstance(state.get("batches"), dict)):
+        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is not bound to this frozen manifest")
+    return state
 
 
 def _source_hashes():
@@ -123,7 +192,6 @@ def verify_child(spec, *, run_root):
     binding = spec['campaign']
     manifest_path = _path({'ownership_id': spec['ownership_id'], 'run_id': binding['campaign_id']}, run_root, 'campaign/manifest.json')
     manifest = _read(manifest_path)
-    from .campaigns import source_sha256
     if manifest.get('source_sha256') != source_sha256():
         raise BenchmarkJobError('campaign_source_mismatch', 'frozen executable source changed')
     if _manifest_digest(manifest) != binding['manifest_sha256']:
@@ -136,13 +204,6 @@ def verify_child(spec, *, run_root):
     return manifest, verify_prepared_child(base, matches[0]['prepared'], run_root=run_root)
 
 
-def _cells(manifest, batch_id):
-    cells = [c for c in manifest['cells'] if c['batch_id'] == batch_id]
-    if not cells or len(cells) > 4 or len({c['arm_id'] for c in cells}) != 1:
-        raise BenchmarkJobError('campaign_batch_invalid', 'batch must bind one through four children on one arm')
-    return cells
-
-
 def _activation(arm, *, expected=None):
     from .campaign_identity import verify_activation
     observed = verify_activation(arm)
@@ -150,15 +211,6 @@ def _activation(arm, *, expected=None):
     value = {'status': 'verified', **binding, 'binding_sha256': _digest(binding)}
     if observed.get('binding_sha256') != value['binding_sha256'] or expected is not None and value != expected:
         raise BenchmarkJobError('campaign_activation_mismatch', 'active serving identity changed during the campaign')
-    return value
-
-
-def _receipt(cell, manifest, root):
-    value = _read(_path(cell['spec'], root, 'campaign-execution.json'))
-    expected = bind_campaign_child(cell['spec'], manifest_sha256=_manifest_digest(manifest),
-        campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
-    if value.get('campaign') != expected['campaign'] or value.get('spec_sha256') != job_spec_sha256(expected):
-        raise BenchmarkJobError('campaign_receipt_mismatch', 'child receipt binding differs from manifest')
     return value
 
 
@@ -340,7 +392,6 @@ def _clients_stopped():
         return False
 
 
-
 def validate_drain_policy(policy, *, reserve_s=None, resolved=False):
     if policy == {}:
         return policy
@@ -431,7 +482,6 @@ def enter_campaign(store, spec):
         time.sleep(.05)
     release = _read(release_path)
     _validate_release(release, manifest, binding['batch_id'])
-    from .campaigns import _state, campaign_lock
     with campaign_lock(_directory(manifest, store.run_root)):
         if _state(_directory(manifest, store.run_root), manifest=manifest).get('cancel_requested') is True:
             raise BenchmarkJobError('campaign_cancelled', 'campaign cancellation was requested before traffic')
@@ -453,8 +503,8 @@ def enter_campaign(store, spec):
     atomic_write_json(str(path), value)
     # A finite supervisor survives both coordinator loss and a worker crash. It uses
     # the existing custody-checked cancellation and partial-retention path.
-    supervisor = subprocess.Popen([sys.executable, '-m', 'anvil_serving.benchmarking.campaign_execution',
-        '--watchdog', os.path.realpath(store.path), store.run_root, spec['run_id']],
+    supervisor = subprocess.Popen([sys.executable, '-m', 'anvil_serving.benchmarking.worker',
+        '--campaign-watchdog', '--db', os.path.realpath(store.path), '--run-root', store.run_root, '--run-id', spec['run_id']],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         start_new_session=True, close_fds=True)
     ready, _, _ = select.select([supervisor.stdout], [], [], min(2, max(0, release['traffic_deadline_monotonic'] - time.monotonic())))
@@ -519,9 +569,9 @@ def close_cancelled_campaign(store, spec, *, clients_stopped):
         'release': _read(release_path), 'store': store, 'spec': spec}, clients_stopped=clients_stopped)
 
 
-def _watchdog(database, run_root, run_id):
+def _watchdog(database, run_root, run_id, *, cancel_job, stop_worker):
+    """Bounded supervisor algorithm; worker supplies its custody operations."""
     from ..control_plane.controller.store import BenchmarkJobStore
-    from .worker import cancel_benchmark_job
     store = BenchmarkJobStore(database, run_root=run_root)
     record = store.status(run_id)
     spec = record['spec']
@@ -551,8 +601,7 @@ def _watchdog(database, run_root, run_id):
         # The worker receipt was verified before this supervisor acknowledged
         # custody. A damaged database must not turn the finite deadline into an
         # unbounded run.
-        from .worker import _stop_owned_worker
-        termination = _stop_owned_worker(
+        termination = stop_worker(
             str(_path(spec, run_root, 'worker.json')), run_id,
             database=os.path.realpath(store.path), run_root=store.run_root,
         )
@@ -567,19 +616,13 @@ def _watchdog(database, run_root, run_id):
         except (BenchmarkJobError, OSError, ValueError, KeyError):
             pass
         return
-    from .worker import _stop_owned_worker
     stopped = False
     if terminal is None or terminal['state'] not in {'completed', 'failed', 'cancelled'}:
         try:
-            cancelled = cancel_benchmark_job(store, run_id)
+            cancelled = cancel_job(store, run_id)
             stopped = cancelled.get('worker_terminated') is True
         except (BenchmarkJobError, OSError, ValueError, sqlite3.Error):
             pass
     if not stopped:
-        _stop_owned_worker(str(_path(spec, run_root, 'worker.json')), run_id,
+        stop_worker(str(_path(spec, run_root, 'worker.json')), run_id,
                            database=os.path.realpath(store.path), run_root=store.run_root)
-
-
-if __name__ == '__main__':
-    if len(sys.argv) == 5 and sys.argv[1] == '--watchdog':
-        _watchdog(*sys.argv[2:])

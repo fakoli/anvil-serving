@@ -8,21 +8,28 @@ import os
 from pathlib import Path
 import platform
 import shutil
-import subprocess
 import sys
 import tempfile
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Mapping
 
 from .artifacts import atomic_write_json, is_filesystem_root, path_is_within, real_path
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import validate_profile
+from .harness_runtime import (
+    MAX_HARNESS_OUTPUT_BYTES as MAX_HARNESS_OUTPUT_BYTES,
+    DEFAULT_HARNESS_COMMAND_TIMEOUT as DEFAULT_HARNESS_COMMAND_TIMEOUT,
+    CommandRunner as CommandRunner,
+    resolve_container_binary as resolve_container_binary,
+    _default_runner as _default_runner,
+    _bounded_text as _bounded_text,
+    _run as _run,
+    _directory_bytes as _directory_bytes,
+    _normalized_freeze as _normalized_freeze,
+)
 
 
 HARNESS_ASSETS_SCHEMA = "anvil-serving.benchmark-harness-assets/v1"
 SWE_PYTHON_ENVIRONMENT_SCHEMA = "anvil-serving.swe-python-environment/v1"
-MAX_HARNESS_OUTPUT_BYTES = 64 * 1024
-DEFAULT_HARNESS_COMMAND_TIMEOUT = 1800
-CommandRunner = Callable[[Sequence[str], str | None, float], Any]
 
 
 def require_swe_worker_platform() -> None:
@@ -33,78 +40,6 @@ def require_swe_worker_platform() -> None:
             "SWE preparation and execution require a Linux or macOS worker; "
             "the pinned grader imports resource and mini-SWE cleanup uses POSIX shell commands",
         )
-
-
-def resolve_container_binary() -> str | None:
-    """Resolve Docker for detached workers whose service PATH may be minimal."""
-    discovered = shutil.which("docker")
-    if discovered:
-        return discovered
-    if sys.platform == "darwin":
-        for candidate in (
-            "/usr/local/bin/docker",
-            "/opt/homebrew/bin/docker",
-            "/Applications/Docker.app/Contents/Resources/bin/docker",
-        ):
-            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-                return candidate
-    return None
-
-
-def _default_runner(argv: Sequence[str], cwd: str | None, timeout: float):
-    return subprocess.run(
-        list(argv),
-        cwd=cwd,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=timeout,
-        check=False,
-    )
-
-
-def _bounded_text(value: Any, *, keep_tail: bool = False) -> tuple[str, bool]:
-    raw = value if isinstance(value, bytes) else str(value or "").encode("utf-8")
-    truncated = len(raw) > MAX_HARNESS_OUTPUT_BYTES
-    if truncated and keep_tail:
-        marker = b"\n...[middle output omitted]...\n"
-        head = (MAX_HARNESS_OUTPUT_BYTES - len(marker)) // 2
-        tail = MAX_HARNESS_OUTPUT_BYTES - len(marker) - head
-        raw = raw[:head] + marker + raw[-tail:]
-    return raw[:MAX_HARNESS_OUTPUT_BYTES].decode("utf-8", "replace"), truncated
-
-
-def _run(
-    runner: CommandRunner,
-    argv: Sequence[str],
-    *,
-    cwd: str | None = None,
-    timeout: float = DEFAULT_HARNESS_COMMAND_TIMEOUT,
-) -> dict[str, Any]:
-    try:
-        result = runner(tuple(argv), cwd, timeout)
-    except subprocess.TimeoutExpired as exc:
-        stdout, stdout_truncated = _bounded_text(exc.stdout)
-        stderr, stderr_truncated = _bounded_text(exc.stderr, keep_tail=True)
-        raise BenchmarkJobError(
-            "harness_timeout",
-            "managed harness command timed out",
-            {
-                "command": list(argv),
-                "stdout": stdout,
-                "stderr": stderr,
-                "output_truncated": stdout_truncated or stderr_truncated,
-            },
-        ) from exc
-    stdout, stdout_truncated = _bounded_text(getattr(result, "stdout", b""))
-    stderr, stderr_truncated = _bounded_text(getattr(result, "stderr", b""), keep_tail=True)
-    return {
-        "command": list(argv),
-        "returncode": int(getattr(result, "returncode", 1)),
-        "stdout": stdout,
-        "stderr": stderr,
-        "output_truncated": stdout_truncated or stderr_truncated,
-    }
 
 
 def _safe_cache_root(path: str) -> str:
@@ -122,17 +57,6 @@ def _cache_path(root: str, name: str, identity: str) -> str:
     return path
 
 
-def _directory_bytes(path: str) -> int:
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for name in files:
-            try:
-                total += os.path.getsize(os.path.join(root, name))
-            except OSError:
-                continue
-    return total
-
-
 def _lock_path(path: str) -> Path:
     return Path(path) / ".anvil-harness-lock.json"
 
@@ -148,17 +72,6 @@ def _existing_lock(path: str, expected: Mapping[str, Any]) -> bool:
 def _venv_python(path: str) -> str:
     relative = ("Scripts", "python.exe") if os.name == "nt" else ("bin", "python")
     return os.path.join(path, *relative)
-
-
-def _normalized_freeze(value: str, *, cache_root: str) -> list[str]:
-    normalized_root = real_path(cache_root).replace("\\", "/").rstrip("/")
-    packages = []
-    for raw in value.splitlines():
-        line = raw.strip().replace("\\", "/")
-        if not line:
-            continue
-        packages.append(line.replace(normalized_root, "$CACHE_ROOT"))
-    return sorted(packages, key=str.casefold)
 
 
 def _swe_environment_identity(

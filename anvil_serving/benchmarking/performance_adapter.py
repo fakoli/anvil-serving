@@ -19,45 +19,17 @@ from urllib.parse import urlsplit
 
 from .aider_adapter import request_body_controls
 from .swe_agent_adapter import BudgetStopped, validate_budgets
+from .performance_prepare import (
+    SOURCE_HASHES as SOURCE_HASHES,
+    MAX_SSE_EVENT_BYTES as MAX_SSE_EVENT_BYTES,
+    instrumentation as instrumentation,
+    validate_supported_parameters as validate_supported_parameters,
+)
 
 LIL_REVISION = "533ef609325390361f6bd8a3640bb4764454a7bd"
 AIPERF_REVISION = "794f8bb75f8582f22e412d7e650fc71ca2a3d21a"
-SOURCE_HASHES = {
-    "lil": {"llm_decode_bench.py": "1abaf62aae74bc528ca456ea0674331b3bcfb8a95383f0365830d9a9f9cd3a74"},
-    "aiperf": {
-        "src/aiperf/config/flags/resolver.py": "b90b876cc9d66783cc8c3ac99a7c19273fd823b2c3f66d8438823290ed545e1f",
-        "src/aiperf/cli.py": "5e15615c92a6037ee0a5fc7e767a98ebde692dc8622004621d0117cd2c0e3ff3",
-        "src/aiperf/cli_commands/profile.py": "6f7495bb68cb42775e3613ecbd2a87eb2e2a0e6b1d0b845b92158d9bd4c9c0af",
-        "src/aiperf/cli_runner/_single_run.py": "68b4fca1d2992ec05049f6b9d06172d7e3d5f1c500e5948c4eb74e25c6b8bc04",
-        "src/aiperf/cli_runner/_process_setup.py": "0fab0def3f901533150beea7cf68e11e89b6c496470fb9cf9bfe7bc7b9be7f79",
-        "src/aiperf/controller/multiprocess_service_manager.py": "bb6540d72bc5bb6db12ac271333ecf8879253b614591bb23c1c9614c5f9389b1",
-        "src/aiperf/transports/aiohttp_client.py": "26a40b95c8cf83eb88381e0d9a676c02aba91abe2624f43367d2143c4270a271",
-        "src/aiperf/config/flags/cli_config.py": "2be937b185ddfe3a19e8090aa4411f1015a2e00899d29db3055d3f7e19bdd42b",
-        "src/aiperf/common/environment.py": "4e34cfc3edf5069c0d51741551b4b34c230115eefdabbf4d857ac44d92fd52e1",
-    },
-}
 MAX_PROBE_ATTEMPTS = 32
-MAX_SSE_EVENT_BYTES = 65536
 PROBE_PATHS = ("/v1/models", "/get_server_info", "/version", "/metrics")
-
-
-def instrumentation(runner):
-    return {"lil_unconditional_warmup_disabled": runner == "lil",
-            "native_stream_parser": True, "http_attempt_guard": True,
-            "receive_stream_observer": True, "receive_observer_overhead_included": True,
-            "max_sse_event_bytes": MAX_SSE_EVENT_BYTES}
-
-
-def validate_supported_parameters(parameters):
-    """One finite native cell, with no optional traffic-producing features."""
-    if (parameters.get("runner") not in SOURCE_HASHES
-            or type(parameters.get("request_count")) is not int
-            or parameters["request_count"] < 1 or parameters.get("duration_s") is not None
-            or parameters.get("warmup_requests", 0) != 0
-            or parameters.get("cache_condition", "basic") != "basic"):
-        raise ValueError("performance adapters require a finite request count and zero warmup")
-    if parameters["runner"] == "lil" and parameters["workload"]["input_tokens"] != 0:
-        raise ValueError("LIL supports only zero padding context; positive contexts require calibration qualification")
 
 
 def verify_source(root, runner, *, installed=False):
@@ -719,7 +691,7 @@ def main(argv=None):
     parser.add_argument("--plan", required=True)
     args = parser.parse_args(argv)
     plan = json.loads(Path(args.plan).read_text())
-    from .performance import verify_plan
+    from .performance_prepare import verify_performance_plan as verify_plan
     verify_plan(plan)
     run_plan(plan)
 

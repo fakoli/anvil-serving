@@ -12,7 +12,8 @@ import time
 from typing import Mapping
 from urllib.parse import urlsplit
 
-from .aider_adapter import AIDER_REVISION, POLYGLOT_REVISION, SOURCE_HASHES, task_snapshot, validate_task_id
+from .aider_prepare import AIDER_PLAN_SCHEMA as AIDER_PLAN_SCHEMA
+from .aider_containment import AIDER_REVISION, POLYGLOT_REVISION, SOURCE_HASHES, task_snapshot, validate_task_id
 from .artifacts import atomic_write_json, evidence_file_reference, path_is_within, real_path
 from .harnesses import HARNESS_ASSETS_SCHEMA, resolve_container_binary
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
@@ -21,7 +22,6 @@ from .request_controls import resolve_job_request_controls
 from .swe import _budget_runner, _endpoint, _result_record
 from .swe_agent_adapter import validate_budgets
 
-AIDER_PLAN_SCHEMA = "anvil-serving.aider-plan/v1"
 AIDER_RUN_SCHEMA = "anvil-serving.aider-run/v1"
 
 
@@ -129,28 +129,9 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
 
 
 def verify_plan(plan):
-    if (not isinstance(plan, Mapping) or plan.get("schema") != AIDER_PLAN_SCHEMA
-            or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
-        raise BenchmarkJobError("bad_aider_plan", "Aider plan identity changed")
-    from .aider_prepare import verify_aider_python_environment
-    python = verify_aider_python_environment(plan.get("python_environment"), cache_root=plan["cache_root"])
-    if plan.get("command") != [python, "-m", "anvil_serving.benchmarking.aider_adapter", "--plan", plan["paths"]["plan"]]:
-        raise BenchmarkJobError("bad_aider_plan", "Aider command does not match its prepared interpreter")
-    owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
-    if owned != plan["run_path"] or plan["source_hashes"] != SOURCE_HASHES:
-        raise BenchmarkJobError("bad_aider_plan", "Aider ownership or source identity changed")
-    for name, path in plan["paths"].items():
-        if name not in {"aider_root", "polyglot_root"} and not path_is_within(path, owned):
-            raise BenchmarkJobError("bad_aider_plan", "Aider artifact escaped owned run")
-    for relative, expected in SOURCE_HASHES.items():
-        path = Path(plan["paths"]["aider_root"]) / relative
-        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-            raise BenchmarkJobError("aider_source_mismatch", "pinned Aider callback or helper changed")
-    if hashlib.sha256(Path(__file__).with_name("aider_adapter.py").read_bytes()).hexdigest() != plan["adapter_sha256"]:
-        raise BenchmarkJobError("aider_adapter_mismatch", "Aider containment adapter changed")
-    for task_id, expected in plan["selection"]["files"].items():
-        if task_snapshot(plan["paths"]["polyglot_root"], task_id) != expected:
-            raise BenchmarkJobError("aider_task_mismatch", "pinned Aider task content changed")
+    """Compatibility entrypoint for the shared preparation/launch validator."""
+    from .aider_prepare import verify_aider_plan
+    return verify_aider_plan(plan)
 
 
 def _normalize(plan, result):

@@ -16,7 +16,6 @@ from anvil_serving.benchmarking.jobs import BenchmarkJobError
 
 class FakePreparation:
     def __init__(self, tmp_path, monkeypatch):
-        from anvil_serving.benchmarking import performance_adapter
         self.cache = tmp_path / 'cache'
         self.run = tmp_path / 'run'
         self.calls = []
@@ -43,7 +42,7 @@ class FakePreparation:
                 hashes[name][relative] = hashlib.sha256(path.read_bytes()).hexdigest()
         source = self.cache / self.assets['aiperf']['cache_key']
         (source / 'lock-link').symlink_to('uv.lock')
-        monkeypatch.setattr(performance_adapter, 'SOURCE_HASHES', hashes)
+        monkeypatch.setattr(prep, 'SOURCE_HASHES', hashes)
         monkeypatch.setattr(prep.shutil, 'which', lambda name: '/fake/' + name)
         monkeypatch.setattr(prep.platform, 'system', lambda: 'Linux')
 

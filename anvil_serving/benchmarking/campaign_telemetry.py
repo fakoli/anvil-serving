@@ -214,7 +214,7 @@ def coverage(rows, contract, arm, start, end, *, complete):
 class BatchSampler:
     """One synchronous bounded cycle in the existing foreground coordinator."""
     def __init__(self, manifest, batch_id, *, run_root):
-        from .campaign_execution import _cells, _directory, _boot_id
+        from .campaign_identity import _cells, _directory, _boot_id
         self.manifest, self.batch_id, self.run_root = manifest, batch_id, run_root
         self.cells = _cells(manifest, batch_id)
         self.arm = next(a for a in manifest['arms'] if a['arm_id'] == self.cells[0]['arm_id'])
@@ -308,7 +308,7 @@ class BatchSampler:
     def finish(self, *, partial=False):
         if self.finished or not self.activation:
             return
-        from .campaign_execution import _receipt
+        from .campaign_identity import _receipt
         receipts = []
         try:
             receipts = [_receipt(c, self.manifest, self.run_root) for c in self.cells]
@@ -341,7 +341,7 @@ class BatchSampler:
 
 
 def verify_terminal(manifest, batch_id, release, *, run_root, reference=None):
-    from .campaign_execution import _directory, _cells
+    from .campaign_identity import _directory, _cells
     contract = manifest['telemetry_collection']
     validate_collection(contract, arms=[{**a, 'drain_policy': a.get('drain_policy', manifest.get('drain_policy', {}))} for a in manifest['arms']], reserve_s=manifest['budgets']['drain_reserve_s'])
     arm = next(a for a in manifest['arms'] if a['arm_id'] == _cells(manifest, batch_id)[0]['arm_id'])
@@ -391,7 +391,7 @@ def verify_terminal(manifest, batch_id, release, *, run_root, reference=None):
 
 def attach_terminal(store, spec, receipt, manifest, release):
     """Called before every immutable child artifact; never repair an anchored receipt."""
-    from .campaign_execution import _boot_id
+    from .campaign_identity import _boot_id
     if 'telemetry_collection' not in manifest or 'telemetry_terminal' in receipt:
         return receipt
     if release['boot_id'] == _boot_id():

@@ -171,7 +171,7 @@ def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tm
     monkeypatch.setattr(store_module, 'BenchmarkJobStore', lambda *args, **kwargs: unreadable)
     monkeypatch.setattr(worker, '_stop_owned_worker', lambda *args, **kwargs: stopped.append((args, kwargs)) or {'stopped': True})
     monkeypatch.setattr(execution.time, 'monotonic', lambda: release['traffic_deadline_monotonic'])
-    execution._watchdog(store.path, root, bound[0]['run_id'])
+    worker._campaign_watchdog(store.path, root, bound[0]['run_id'])
     assert stopped
     receipt = execution._read(execution._path(bound[0], root, 'campaign-execution.json'))
     assert receipt['status'] == 'blocked'
@@ -195,7 +195,7 @@ def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_p
     monkeypatch.setattr(worker, 'cancel_benchmark_job', lambda *args, **kwargs: (_ for _ in ()).throw(OSError('database lost')))
     monkeypatch.setattr(worker, '_stop_owned_worker', lambda *args, **kwargs: stopped.append(True) or {'stopped': True})
     monkeypatch.setattr(execution.time, 'monotonic', lambda: release['traffic_deadline_monotonic'])
-    execution._watchdog(store.path, root, bound[0]['run_id'])
+    worker._campaign_watchdog(store.path, root, bound[0]['run_id'])
     assert stopped == [True]
 
 

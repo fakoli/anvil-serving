@@ -12,11 +12,30 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+from collections.abc import Mapping
 
-from . import harnesses
-from .artifacts import atomic_write_json
-from .jobs import BenchmarkJobError, canonical_json_bytes
+from . import harness_runtime as runtime
+from .artifacts import atomic_write_json, path_is_within
+from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path
+from .swe_agent_adapter import validate_budgets
 
+SOURCE_HASHES = {
+    "lil": {"llm_decode_bench.py": "1abaf62aae74bc528ca456ea0674331b3bcfb8a95383f0365830d9a9f9cd3a74"},
+    "aiperf": {
+        "src/aiperf/config/flags/resolver.py": "b90b876cc9d66783cc8c3ac99a7c19273fd823b2c3f66d8438823290ed545e1f",
+        "src/aiperf/cli.py": "5e15615c92a6037ee0a5fc7e767a98ebde692dc8622004621d0117cd2c0e3ff3",
+        "src/aiperf/cli_commands/profile.py": "6f7495bb68cb42775e3613ecbd2a87eb2e2a0e6b1d0b845b92158d9bd4c9c0af",
+        "src/aiperf/cli_runner/_single_run.py": "68b4fca1d2992ec05049f6b9d06172d7e3d5f1c500e5948c4eb74e25c6b8bc04",
+        "src/aiperf/cli_runner/_process_setup.py": "0fab0def3f901533150beea7cf68e11e89b6c496470fb9cf9bfe7bc7b9be7f79",
+        "src/aiperf/controller/multiprocess_service_manager.py": "bb6540d72bc5bb6db12ac271333ecf8879253b614591bb23c1c9614c5f9389b1",
+        "src/aiperf/transports/aiohttp_client.py": "26a40b95c8cf83eb88381e0d9a676c02aba91abe2624f43367d2143c4270a271",
+        "src/aiperf/config/flags/cli_config.py": "2be937b185ddfe3a19e8090aa4411f1015a2e00899d29db3055d3f7e19bdd42b",
+        "src/aiperf/common/environment.py": "4e34cfc3edf5069c0d51741551b4b34c230115eefdabbf4d857ac44d92fd52e1",
+    },
+}
+
+MAX_SSE_EVENT_BYTES = 65536
+PERFORMANCE_PLAN_SCHEMA = "anvil-serving.performance-plan/v1"
 SCHEMA = "anvil-serving.performance-environment/v1"
 SOURCES = {
     "lil": {"source": "https://github.com/local-inference-lab/llm-inference-bench",
@@ -155,7 +174,6 @@ def verify_performance_environment(receipt, *, cache_root, runner_name):
                 _files(target / 'source', allow_links=True) != source_hashes or
                 not _packages_valid(runner_name, packages, target / 'source')):
             _fail('performance environment bytes, packages or receipt changed')
-        from .performance_adapter import SOURCE_HASHES
         if any(source_hashes.get(p) != digest for p, digest in SOURCE_HASHES[runner_name].items()):
             _fail('performance source guard changed')
         if runner_name == 'aiperf':
@@ -193,8 +211,8 @@ def _checked(runner, command, logs, *, cwd, env=None):
     except subprocess.TimeoutExpired as exc:
         raise BenchmarkJobError('performance_preparation_timeout', 'performance preparation command timed out') from exc
     stdout = result.stdout.decode('utf-8') if isinstance(result.stdout, bytes) else result.stdout or ''
-    stderr, truncated = harnesses._bounded_text(result.stderr)
-    bounded, output_truncated = harnesses._bounded_text(stdout)
+    stderr, truncated = runtime._bounded_text(result.stderr)
+    bounded, output_truncated = runtime._bounded_text(stdout)
     logs.append({'command': list(argv), 'returncode': result.returncode, 'stdout': bounded,
                  'stderr': stderr, 'output_truncated': truncated or output_truncated})
     if result.returncode or len(stdout.encode()) > 8 * 1024**2:
@@ -203,7 +221,6 @@ def _checked(runner, command, logs, *, cwd, env=None):
 
 
 def _sources(assets, cache_root, runner, logs, cwd, env):
-    from .performance_adapter import SOURCE_HASHES
     roots, inventories = {}, {}
     for name, expected in SOURCES.items():
         asset = assets.get(name, {})
@@ -314,8 +331,8 @@ def prepare_performance_environments(profile, assets, *, cache_root, run_path, o
                             _fail('offline tokenizer cache is empty')
                     if _files(target / 'source', allow_links=True) != inventories[name]:
                         _fail('performance build changed its pinned source snapshot')
-                    occupied = sum(harnesses._directory_bytes(str(_target(cache_root, r['cache_key']))) for r in receipts.values())
-                    occupied += harnesses._directory_bytes(str(target)) + harnesses._directory_bytes(str(scratch))
+                    occupied = sum(runtime._directory_bytes(str(_target(cache_root, r['cache_key']))) for r in receipts.values())
+                    occupied += runtime._directory_bytes(str(target)) + runtime._directory_bytes(str(scratch))
                     if occupied > max_download_bytes:
                         _fail('performance environment exceeded its disk bound')
                     for path in sorted((target / 'source').rglob('*'), reverse=True):
@@ -341,3 +358,67 @@ def prepare_performance_environments(profile, assets, *, cache_root, run_path, o
     except BaseException as exc:
         atomic_write_json(str(Path(run_path) / 'performance-preparation.json'), {'status': 'failed', 'error': str(exc), 'command_logs': logs})
         raise
+
+
+def instrumentation(runner):
+    return {"lil_unconditional_warmup_disabled": runner == "lil",
+            "native_stream_parser": True, "http_attempt_guard": True,
+            "receive_stream_observer": True, "receive_observer_overhead_included": True,
+            "max_sse_event_bytes": MAX_SSE_EVENT_BYTES}
+
+def validate_supported_parameters(parameters):
+    """One finite native cell, with no optional traffic-producing features."""
+    if (parameters.get("runner") not in SOURCE_HASHES
+            or type(parameters.get("request_count")) is not int
+            or parameters["request_count"] < 1 or parameters.get("duration_s") is not None
+            or parameters.get("warmup_requests", 0) != 0
+            or parameters.get("cache_condition", "basic") != "basic"):
+        raise ValueError("performance adapters require a finite request count and zero warmup")
+    if parameters["runner"] == "lil" and parameters["workload"]["input_tokens"] != 0:
+        raise ValueError("LIL supports only zero padding context; positive contexts require calibration qualification")
+
+
+def _supported(parameters):
+    try:
+        validate_supported_parameters(parameters)
+    except (ValueError, TypeError, KeyError) as exc:
+        raise BenchmarkJobError("unsupported_performance_parameters", str(exc)) from exc
+
+def _paths(run_path, runner):
+    base = Path(run_path) / "performance"
+    paths = {key: str(base / name) for key, name in {
+        "performance": ".", "work": "work", "home": "home", "output": "native", "plan": "plan.json",
+        "result": "result.json", "adapter_result": "adapter-result.json", "request_events": "requests.jsonl",
+        "process": "process.json"}.items()}
+    paths["work"] = str(Path(run_path) / "work" / "performance")
+    paths["home"] = str(Path(run_path) / "work" / "performance-home")
+    paths["native_output"] = str(base / "native" / ("lil.json" if runner == "lil" else "profile_export_aiperf.json"))
+    return paths
+
+def _adapter_command(python, plan_path):
+    # An explicit argv path also works when the checkout contains PYTHONPATH separators.
+    bootstrap = "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('anvil_serving.benchmarking.performance_adapter',run_name='__main__')"
+    return [python, "-B", "-c", bootstrap, str(Path(__file__).resolve().parents[2]), "--plan", plan_path]
+
+def verify_performance_plan(plan):
+
+    if sys.platform != "linux":
+        raise BenchmarkJobError("unsupported_performance_platform", "managed performance execution requires Linux")
+    if (not isinstance(plan, Mapping) or plan.get("schema") != PERFORMANCE_PLAN_SCHEMA
+            or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
+        raise BenchmarkJobError("bad_performance_plan", "performance plan identity changed")
+    _supported(plan["parameters"])
+    python = verify_performance_environment(plan["environment"], cache_root=plan["cache_root"], runner_name=plan["runner"])
+    owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
+    if owned != plan["run_path"] or plan["paths"] != _paths(owned, plan["runner"]):
+        raise BenchmarkJobError("bad_performance_plan", "performance artifact ownership changed")
+    if any(not path_is_within(path, owned) for path in plan["paths"].values()):
+        raise BenchmarkJobError("bad_performance_plan", "performance artifact escaped owned run")
+    if plan["command"] != _adapter_command(python, plan["paths"]["plan"]):
+        raise BenchmarkJobError("bad_performance_plan", "command does not match the prepared interpreter")
+    if hashlib.sha256(Path(__file__).with_name("performance_adapter.py").read_bytes()).hexdigest() != plan["adapter_sha256"]:
+        raise BenchmarkJobError("performance_adapter_mismatch", "performance containment adapter changed")
+    budgets = validate_budgets(plan["budgets"])
+    if (type(plan["timeout_s"]) not in {int, float}
+            or not 0 < plan["timeout_s"] <= budgets["deadline_s"]):
+        raise BenchmarkJobError("bad_performance_plan", "performance timeout exceeds its admitted budget")

@@ -10,13 +10,16 @@ import re
 import shutil
 import subprocess
 import sys
+from typing import Mapping
 
 from .artifacts import atomic_write_json, path_is_within, real_path
-from .jobs import BenchmarkJobError, canonical_json_bytes
-from . import harnesses
-from .aider_adapter import SOURCE_HASHES as ADAPTER_SOURCE_HASHES
+from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path
+from .aider_containment import task_snapshot
+from . import harness_runtime as runtime
+from .aider_containment import SOURCE_HASHES as ADAPTER_SOURCE_HASHES
 
 AIDER_PYTHON_ENVIRONMENT_SCHEMA = "anvil-serving.aider-python-environment/v1"
+AIDER_PLAN_SCHEMA = "anvil-serving.aider-plan/v1"
 AIDER_ENVIRONMENT_SCHEMA = "anvil-serving.aider-environment/v1"
 AIDER_REVISION = "5dc9490bb35f9729ef2c95d00a19ccd30c26339c"
 # The pinned __init__.py declares 0.86.3.dev. Normalize its implicit dev zero
@@ -56,7 +59,7 @@ def _bounded_runner(argv, cwd, timeout):
 
 
 def _copy_source(root, target, runner):
-    listing = harnesses._run(runner, ("git", "ls-files", "-z"), cwd=str(root))
+    listing = runtime._run(runner, ("git", "ls-files", "-z"), cwd=str(root))
     if listing["returncode"] or listing["output_truncated"]:
         _fail("pinned Aider source inventory could not be read")
     names = set(filter(None, listing["stdout"].split("\0")))
@@ -179,13 +182,13 @@ def _source(cache_root, assets, name):
     return path
 
 
-def verify_aider_sources(cache_root, assets, *, runner=harnesses._default_runner):
+def verify_aider_sources(cache_root, assets, *, runner=runtime._default_runner):
     """Verify cached Git bytes again; a previous acquisition lock is insufficient."""
     roots = {}
     for name in ("aider", "polyglot-benchmark"):
         root = _source(cache_root, assets, name)
-        head = harnesses._run(runner, ("git", "rev-parse", "HEAD"), cwd=str(root))
-        status = harnesses._run(runner, ("git", "status", "--porcelain", "--untracked-files=all"), cwd=str(root))
+        head = runtime._run(runner, ("git", "rev-parse", "HEAD"), cwd=str(root))
+        status = runtime._run(runner, ("git", "status", "--porcelain", "--untracked-files=all"), cwd=str(root))
         changes = [line for line in status["stdout"].splitlines()
                    if line != "?? .anvil-harness-lock.json"]
         if (head["returncode"] or status["returncode"] or changes or
@@ -201,7 +204,6 @@ def verify_aider_sources(cache_root, assets, *, runner=harnesses._default_runner
 
 
 def _selection(polyglot):
-    from .aider_adapter import task_snapshot
     selected = []
     for language in LANGUAGES:
         configs = sorted(polyglot.glob(f"{language}/exercises/practice/*/.meta/config.json"))
@@ -232,7 +234,7 @@ def _copy_task(source, destination, row, *, reference=False):
 
 
 def _checked(runner, command, logs, *, cwd=None, timeout=1800):
-    result = harnesses._run(runner, command, cwd=cwd, timeout=timeout)
+    result = runtime._run(runner, command, cwd=cwd, timeout=timeout)
     logs.append(result)
     if result["returncode"]:
         raise BenchmarkJobError("aider_preparation_failure", "managed Aider preparation command failed", {"step": result})
@@ -253,7 +255,7 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
         python = verify_aider_python_environment(
             {**lock, "cache_key": key, "executable": "bin/python", "reused": True}, cache_root=cache_root)
         version = _checked(runner, (python, "-I", "-B", "-c", "import platform; print(platform.python_version())"), logs)
-        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
+        inventory = runtime._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
         if (lock.get("identity") != identity or lock.get("python", {}).get("version") != version or
                 not version.startswith("3.12.") or lock.get("resolved_packages") != inventory or
                 lock.get("resolved_packages_sha256") != _digest(inventory) or
@@ -274,12 +276,12 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
         _checked(runner, ("env", SCM_VERSION_ASSIGNMENT, python, "-I", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--no-input",
                           str(build_source) + "[dev]"), logs, cwd=str(target))
         version = _checked(runner, (python, "-I", "-c", "import platform; print(platform.python_version())"), logs)
-        inventory = harnesses._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
+        inventory = runtime._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
         installed_version = _checked(runner, (python, "-I", "-c",
             "from importlib.metadata import version; print(version('aider-chat'))"), logs)
         if not version.startswith("3.12.") or not inventory or installed_version != AIDER_SOURCE_VERSION:
             _fail("Aider Python or pinned package version did not verify")
-        if harnesses._directory_bytes(str(target)) > max_bytes:
+        if runtime._directory_bytes(str(target)) > max_bytes:
             _fail("Aider Python environment exceeded the disk bound")
         lock = {**identity, "identity": identity, "python": {"version": version},
                 "resolved_packages": inventory, "resolved_packages_sha256": _digest(inventory),
@@ -368,7 +370,7 @@ WORKDIR /task
 '''
     (context / "Dockerfile").write_text(recipe)
     files = _build_files(context)
-    if harnesses._directory_bytes(str(context)) > max_bytes:
+    if runtime._directory_bytes(str(context)) > max_bytes:
         _fail("Aider build context exceeded the disk bound")
     build_config = target / "image-build.toml"
     build_config.write_text(
@@ -396,7 +398,7 @@ WORKDIR /task
 
 
 def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, runner, logs):
-    from .aider_adapter import load_test_callback, contained_test_callback
+    from .aider_containment import load_test_callback, contained_test_callback
     from .aider_containment import run_contained_test
     results = []
     receipt = Path(run_path) / "aider/preparation/oracle.json"
@@ -415,7 +417,7 @@ def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, ru
                     timeout=kwargs["timeout"], container_binary=container, runner=runner)
                 observed.append(value.returncode)
                 result["command"] = list(command)
-                output, truncated = harnesses._bounded_text(value.stdout)
+                output, truncated = runtime._bounded_text(value.stdout)
                 result[mode + "_output"] = output
                 result[mode + "_output_truncated"] = truncated
                 return value
@@ -444,7 +446,7 @@ def _image_inventory(image_id, run_path, ownership_id, run_id, container, runner
                               *LINT_CONTRACT["command_prefix"], "--version"],
         task_dir=task, run_path=run_path, ownership_id=ownership_id, run_id=run_id,
         image_id=image_id, container_binary=container, runner=runner)
-    lint_output, truncated = harnesses._bounded_text(lint.stdout)
+    lint_output, truncated = runtime._bounded_text(lint.stdout)
     if lint.returncode or truncated or not lint_output.startswith(LINT_CONTRACT["version"] + " "):
         _fail("prepared Aider flake8 dependency did not verify")
     command = ["sh", "-c", "set -e; dpkg-query -W; python3 -I -m pip freeze --all; "
@@ -479,7 +481,7 @@ def validate_aider_environment(environment, *, cache_root, assets):
     if (not isinstance(rows, list) or len(rows) != 6 or not all(isinstance(r, dict) for r in rows)
             or {r.get("language") for r in rows} != set(LANGUAGES)):
         _fail("six-language prepared selection is incomplete")
-    from .aider_adapter import validate_task_id
+    from .aider_containment import validate_task_id
     for row in rows:
         try:
             task_id = validate_task_id(row.get("task_id"))
@@ -508,11 +510,11 @@ def validate_aider_environment(environment, *, cache_root, assets):
 
 
 def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes,
-                              run_path, ownership_id, run_id, runner=harnesses._default_runner):
+                              run_path, ownership_id, run_id, runner=runtime._default_runner):
     """Return Python and image receipts only after all six independent oracles."""
     if platform.system().lower() not in {"linux", "darwin"}:
         _fail("Aider execution requires a POSIX container worker")
-    if runner is harnesses._default_runner:
+    if runner is runtime._default_runner:
         runner = _bounded_runner
     logs = []
     receipt_path = Path(run_path) / "aider/preparation/receipt.json"
@@ -527,7 +529,7 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
                     "preparer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
         key = "aider-environments/" + _digest(identity)
         target = _cache_target(cache_root, key)
-        container = harnesses.resolve_container_binary()
+        container = runtime.resolve_container_binary()
         if not container:
             _fail("Docker is required for Aider preparation", "container_capability_absent")
         lock_path = target / "environment.json"
@@ -563,8 +565,8 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
                            "oracle": oracle, "package_inventory": inventory, "package_inventory_sha256": _digest(inventory), "reused": False}
             validate_aider_environment(environment, cache_root=cache_root, assets=assets)
             atomic_write_json(str(lock_path), environment)
-        occupied = (harnesses._directory_bytes(str(target)) +
-                    harnesses._directory_bytes(str(Path(cache_root) / python["cache_key"])) +
+        occupied = (runtime._directory_bytes(str(target)) +
+                    runtime._directory_bytes(str(Path(cache_root) / python["cache_key"])) +
                     environment["build_inputs"]["image_size_bytes"])
         if occupied > max_download_bytes:
             _fail("Aider preparation exceeded the combined disk bound")
@@ -574,3 +576,27 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
     except BaseException as exc:
         atomic_write_json(str(receipt_path), {"status": "failed", "error": str(exc), "command_logs": logs})
         raise
+
+
+def verify_aider_plan(plan):
+    if (not isinstance(plan, Mapping) or plan.get("schema") != AIDER_PLAN_SCHEMA
+            or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
+        raise BenchmarkJobError("bad_aider_plan", "Aider plan identity changed")
+    python = verify_aider_python_environment(plan.get("python_environment"), cache_root=plan["cache_root"])
+    if plan.get("command") != [python, "-m", "anvil_serving.benchmarking.aider_adapter", "--plan", plan["paths"]["plan"]]:
+        raise BenchmarkJobError("bad_aider_plan", "Aider command does not match its prepared interpreter")
+    owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])
+    if owned != plan["run_path"] or plan["source_hashes"] != ADAPTER_SOURCE_HASHES:
+        raise BenchmarkJobError("bad_aider_plan", "Aider ownership or source identity changed")
+    for name, path in plan["paths"].items():
+        if name not in {"aider_root", "polyglot_root"} and not path_is_within(path, owned):
+            raise BenchmarkJobError("bad_aider_plan", "Aider artifact escaped owned run")
+    for relative, expected in ADAPTER_SOURCE_HASHES.items():
+        path = Path(plan["paths"]["aider_root"]) / relative
+        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise BenchmarkJobError("aider_source_mismatch", "pinned Aider callback or helper changed")
+    if hashlib.sha256(Path(__file__).with_name("aider_adapter.py").read_bytes()).hexdigest() != plan["adapter_sha256"]:
+        raise BenchmarkJobError("aider_adapter_mismatch", "Aider containment adapter changed")
+    for task_id, expected in plan["selection"]["files"].items():
+        if task_snapshot(plan["paths"]["polyglot_root"], task_id) != expected:
+            raise BenchmarkJobError("aider_task_mismatch", "pinned Aider task content changed")

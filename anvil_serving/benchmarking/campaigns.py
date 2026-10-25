@@ -1,15 +1,11 @@
 """Frozen campaign manifests and a foreground coordinator over durable jobs."""
 from __future__ import annotations
 
-from contextlib import contextmanager
 import copy
 import hashlib
-import json
 import math
-import os
 from pathlib import Path
 import socket
-import stat
 import re
 import time
 
@@ -17,22 +13,22 @@ from .artifacts import atomic_write_json
 from .jobs import (BenchmarkJobError, TERMINAL_JOB_STATES, canonical_json_bytes,
                    job_spec_sha256, resolve_owned_run_path, validate_job_id, _validate_json_value)
 from .submission import bind_submission_spec, validate_submission_spec
+from .campaign_execution import (
+    source_sha256 as source_sha256,
+    read_campaign_spec as read_campaign_spec,
+    campaign_lock as campaign_lock,
+    _new_state as _new_state,
+    _state as _state,
+    STATE_SCHEMA as STATE_SCHEMA,
+    MAX_CAMPAIGN_BYTES as MAX_CAMPAIGN_BYTES,
+    CAMPAIGN_LOCK_TIMEOUT_S as CAMPAIGN_LOCK_TIMEOUT_S,
+)
 
 SCHEMA = "anvil-serving.benchmark-campaign/v1"
-STATE_SCHEMA = "anvil-serving.benchmark-campaign-state/v1"
-MAX_CAMPAIGN_BYTES = 16 * 1024 * 1024
-CAMPAIGN_LOCK_TIMEOUT_S = 5.0
 
 
 def _digest(value):
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
-
-
-def source_sha256():
-    """Pin executable product bytes, including adapters and independent oracles."""
-    root = Path(__file__).resolve().parents[1]
-    return _digest({str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-                    for path in sorted(root.rglob("*.py"))})
 
 
 def _object(value, allowed, field):
@@ -53,20 +49,6 @@ def _bind_drain_model(policy, identity):
     labels = policy.get("metric_labels")
     if not isinstance(labels, dict) or len(labels) != 1 or set(labels) - {"model", "model_name"} or next(iter(labels.values()), None) != identity["served_model"]:
         raise BenchmarkJobError("bad_campaign_drain", "drain metric labels must bind exactly the served model")
-
-
-def read_campaign_spec(path):
-    try:
-        with open(path, "rb", opener=lambda name, flags: os.open(
-                name, flags | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0))) as handle:
-            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
-                raise ValueError("not a regular file")
-            raw = handle.read(MAX_CAMPAIGN_BYTES + 1)
-        if len(raw) > MAX_CAMPAIGN_BYTES:
-            raise ValueError("oversized")
-        return json.loads(raw)
-    except (OSError, ValueError, RecursionError) as exc:
-        raise BenchmarkJobError("bad_campaign_file", "campaign must be bounded JSON") from exc
 
 
 def plan_campaign(value):
@@ -202,72 +184,6 @@ def plan_campaign(value):
 def campaign_directory(run_root, ownership_id, campaign_id):
     return Path(resolve_owned_run_path(run_root, ownership_id=ownership_id,
                                       run_id=campaign_id, relative="campaign"))
-
-
-@contextmanager
-def campaign_lock(directory, *, timeout_s=CAMPAIGN_LOCK_TIMEOUT_S):
-    """Take a bounded, regular-file OS lock; process death releases it."""
-    directory = Path(directory)
-    if type(timeout_s) not in (int, float) or not math.isfinite(timeout_s) or timeout_s < 0:
-        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock timeout must be a non-negative finite number")
-    directory.mkdir(parents=True, exist_ok=True)
-    flags = (os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
-             | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
-    try:
-        descriptor = os.open(directory / ".lock", flags, 0o600)
-    except OSError as exc:
-        raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a readable regular file") from exc
-    try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-            raise BenchmarkJobError("campaign_lock_invalid", "campaign lock must be a regular file")
-        deadline = time.perf_counter() + timeout_s
-        acquired = False
-        while not acquired:
-            try:
-                if os.name == "nt":
-                    import msvcrt
-                    os.write(descriptor, b"0")
-                    os.lseek(descriptor, 0, os.SEEK_SET)
-                    msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
-                else:
-                    import fcntl
-                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                acquired = True
-            except OSError as exc:
-                if time.perf_counter() >= deadline:
-                    raise BenchmarkJobError("campaign_lock_timeout", "campaign lock acquisition exceeded its bounded deadline") from exc
-                time.sleep(min(0.05, max(0, deadline - time.perf_counter())))
-        try:
-            yield
-        finally:
-            if os.name == "nt":
-                os.lseek(descriptor, 0, os.SEEK_SET)
-                msvcrt.locking(descriptor, msvcrt.LK_UNLCK, 1)
-            else:
-                fcntl.flock(descriptor, fcntl.LOCK_UN)
-    finally:
-        os.close(descriptor)
-
-
-def _new_state(manifest):
-    return {"schema": STATE_SCHEMA, "manifest_sha256": manifest["manifest_sha256"],
-            "cancel_requested": False, "batches": {}}
-
-
-def _state(directory, *, manifest):
-    path = directory / "state.json"
-    try:
-        state = read_campaign_spec(path)
-    except BenchmarkJobError as exc:
-        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is unreadable or malformed") from exc
-    if (not isinstance(state, dict)
-            or set(state) != {"schema", "manifest_sha256", "cancel_requested", "batches"}
-            or state.get("schema") != STATE_SCHEMA
-            or state.get("manifest_sha256") != manifest.get("manifest_sha256")
-            or type(state.get("cancel_requested")) is not bool
-            or not isinstance(state.get("batches"), dict)):
-        raise BenchmarkJobError("campaign_state_invalid", "campaign state receipt is not bound to this frozen manifest")
-    return state
 
 
 def _check_source(manifest):

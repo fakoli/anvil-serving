@@ -6,6 +6,7 @@ import hashlib
 import http.client
 import json
 import os
+from pathlib import Path
 import re
 import socket
 import stat
@@ -14,7 +15,60 @@ import time
 import tomllib
 from urllib.parse import urlencode, urlsplit
 
-from .jobs import BenchmarkJobError
+from .jobs import (BenchmarkJobError, canonical_json_bytes, job_spec_sha256,
+                   resolve_owned_run_path, validate_job_spec)
+
+
+def _digest(value):
+    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def _manifest_digest(value):
+    return _digest({k: v for k, v in value.items() if k != 'manifest_sha256'})
+
+
+def _read(path):
+    with open(path, 'rb', opener=lambda p, f: os.open(p, f | os.O_NONBLOCK | os.O_NOFOLLOW)) as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise BenchmarkJobError('campaign_evidence_invalid', 'campaign evidence must be regular files')
+        raw = stream.read(16 * 1024 * 1024 + 1)
+    if len(raw) > 16 * 1024 * 1024:
+        raise BenchmarkJobError('campaign_evidence_invalid', 'campaign evidence exceeds size limit')
+    return json.loads(raw)
+
+
+def _path(spec, root, relative):
+    return Path(resolve_owned_run_path(root, ownership_id=spec['ownership_id'], run_id=spec['run_id'], relative=relative))
+
+
+def _directory(manifest, root):
+    return _path({'ownership_id': manifest['ownership_id'], 'run_id': manifest['campaign_id']}, root, 'campaign')
+
+
+def _boot_id():
+    return Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+
+
+def bind_campaign_child(spec, *, manifest_sha256, campaign_id, cell_id, arm_id, batch_id):
+    return validate_job_spec({**spec, 'campaign': dict(campaign_id=campaign_id, cell_id=cell_id,
+        arm_id=arm_id, batch_id=batch_id, manifest_sha256=manifest_sha256)})
+
+
+def _cells(manifest, batch_id):
+    cells = [c for c in manifest['cells'] if c['batch_id'] == batch_id]
+    if not cells or len(cells) > 4 or len({c['arm_id'] for c in cells}) != 1:
+        raise BenchmarkJobError('campaign_batch_invalid', 'batch must bind one through four children on one arm')
+    return cells
+
+
+def _receipt(cell, manifest, root):
+    value = _read(_path(cell['spec'], root, 'campaign-execution.json'))
+    expected = bind_campaign_child(cell['spec'], manifest_sha256=_manifest_digest(manifest),
+        campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+    if value.get('campaign') != expected['campaign'] or value.get('spec_sha256') != job_spec_sha256(expected):
+        raise BenchmarkJobError('campaign_receipt_mismatch', 'child receipt binding differs from manifest')
+    return value
+
 
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 
