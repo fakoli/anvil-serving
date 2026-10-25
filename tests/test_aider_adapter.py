@@ -90,7 +90,7 @@ def test_dotenv_never_searches_or_loads(monkeypatch):
     assert dotenv.load_dotenv is forbidden
 
 
-def transport(tmp_path, *, status=200, max_calls=2, max_retries=0):
+def transport(tmp_path, *, status=200, max_calls=2, max_retries=0, response_content=b"{}"):
     recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
     budget = adapter.SuiteBudget({"max_model_calls": max_calls, "max_completion_tokens": 8,
         "deadline_s": 60, "max_retries": max_retries, "min_free_disk_bytes": 0}, recorder)
@@ -102,7 +102,7 @@ def transport(tmp_path, *, status=200, max_calls=2, max_retries=0):
     class Client:
         def send(self, request, **kwargs):
             sent.append(kwargs)
-            return types.SimpleNamespace(status_code=status)
+            return types.SimpleNamespace(status_code=status, content=response_content)
     class Model:
         name = "openai/llm.primary"
         def send_completion(self, body=None):
@@ -151,6 +151,46 @@ def test_alias_substitution_fails_before_send(tmp_path):
         recorder.close(outcome="failed")
 
 
+@pytest.mark.parametrize("reason", ["length", "stop", "private-response-text"])
+def test_response_diagnostics_allowlist_preserves_response_and_usage(tmp_path, reason):
+    content = json.dumps({"choices": [{"finish_reason": reason, "message": {"content": "private-response-text"}}],
+        "usage": {"prompt_tokens": 11, "completion_tokens": 8, "total_tokens": 19,
+                  "completion_tokens_details": {"reasoning_tokens": 0, "private": "private-response-text"}},
+        "private": "private-response-text"}).encode()
+    Model, sent, budget, recorder, restore = transport(tmp_path, response_content=content)
+    try:
+        response = Model().send_completion()
+        assert response.content == content and len(sent) == budget.model_calls == 1
+    finally:
+        restore()
+        recorder.close(outcome="completed")
+    text = (tmp_path / "events.jsonl").read_text()
+    event = next(row for row in map(json.loads, text.splitlines()) if row["event"] == "aider_transport_response")
+    assert "private-response-text" not in text
+    assert event["finish_reason"] == (reason if reason != "private-response-text" else None)
+    assert event["output_truncated"] == (reason == "length" if reason != "private-response-text" else None)
+    assert event["usage"] == {"prompt_tokens": 11, "completion_tokens": 8, "total_tokens": 19, "reasoning_tokens": 0}
+    assert event["attempt"] == 1
+
+
+@pytest.mark.parametrize("content", [b"{}", b"not json", b"[]", b'"private"', b"{" * 2000,
+    b" " * (8 * 1024 * 1024 + 1),
+    json.dumps({"choices": [{"finish_reason": ["length"]}], "usage": {"prompt_tokens": True,
+        "completion_tokens": -1, "total_tokens": 1.5, "completion_tokens_details": {"reasoning_tokens": "7"}}}).encode()])
+def test_missing_invalid_response_metadata_stays_unknown_without_retry(tmp_path, content):
+    Model, sent, budget, recorder, restore = transport(tmp_path, response_content=content)
+    try:
+        assert Model().send_completion().content == content
+        assert len(sent) == budget.model_calls == 1
+    finally:
+        restore()
+        recorder.close(outcome="completed")
+    events = list(map(json.loads, (tmp_path / "events.jsonl").read_text().splitlines()))
+    event = next(row for row in events if row["event"] == "aider_transport_response")
+    assert event["finish_reason"] is event["output_truncated"] is None
+    assert set(event["usage"].values()) == {None}
+
+
 def test_generated_tree_cannot_redirect_host_edits_or_test_restore(tmp_path):
     task = tmp_path / "task"
     task.mkdir()
@@ -186,6 +226,41 @@ def test_timeout_cannot_return_an_unsafe_tree_to_host(tmp_path, monkeypatch):
     monkeypatch.setattr(aider_containment, "run_contained_test", clean_timeout)
     with pytest.raises(subprocess.TimeoutExpired):
         adapter.run_contained_callback(["pytest"], plan=plan, budget=budget, cwd=task, timeout=180)
+
+
+@pytest.mark.parametrize("mode", ["compiler", "test_failure", "timeout", "infrastructure"])
+def test_contained_diagnostics_preserve_result_and_exception_without_output(tmp_path, monkeypatch, mode):
+    from anvil_serving.benchmarking import aider_containment
+    task = tmp_path / "results/rust/exercises/practice/example"
+    task.mkdir(parents=True)
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = types.SimpleNamespace(check=lambda: 180, recorder=recorder)
+    plan = {"run_path": str(tmp_path), "ownership_id": "owner", "run_id": "run",
+            "aider_environment": {"image_id": "sha256:" + "a" * 64}, "container_executable": "docker"}
+    output = "error[E0594]: private-output\nerror[E0594]: duplicate\n" if mode == "compiler" else "assertion failed: private-output"
+    completed = subprocess.CompletedProcess(["cargo", "test"], 1, output, None)
+    error = subprocess.TimeoutExpired(["cargo", "test"], 180, output="private-output") if mode == "timeout" else RuntimeError("private-output")
+    def contained(*args, **kwargs):
+        if mode in {"timeout", "infrastructure"}:
+            raise error
+        return completed
+    monkeypatch.setattr(aider_containment, "run_contained_test", contained)
+    try:
+        if mode in {"timeout", "infrastructure"}:
+            with pytest.raises(type(error)) as caught:
+                adapter.run_contained_callback(["cargo", "test"], plan=plan, budget=budget, cwd=task, timeout=180)
+            assert caught.value is error
+        else:
+            assert adapter.run_contained_callback(["cargo", "test"], plan=plan, budget=budget, cwd=task, timeout=180) is completed
+    finally:
+        recorder.close(outcome="completed")
+    text = (tmp_path / "events.jsonl").read_text()
+    event = next(row for row in map(json.loads, text.splitlines()) if row["event"] == "aider_contained_command_finished")
+    assert "private-output" not in text
+    assert event["returncode"] == (1 if mode in {"compiler", "test_failure"} else None)
+    assert event["timed_out"] == (None if mode == "infrastructure" else mode == "timeout")
+    assert event["rust_compiler_error_codes"] == (["E0594"] if mode == "compiler" else None)
+    assert event["compiler_diagnostics_truncated"] is (False if mode in {"compiler", "test_failure"} else None)
 
 
 def test_model_paths_are_guarded_before_preview_reads(tmp_path):
