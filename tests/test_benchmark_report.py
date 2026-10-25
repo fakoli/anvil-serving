@@ -586,6 +586,10 @@ def test_retained_aider_diagnostics_require_versioned_incomplete_accounting(tmp_
     if change in {"legacy_incomplete", "adapter_only"}:
         del rows[0]["request_accounting_schema"]
         del rows[-1]["request_accounting"]
+    if change == "adapter_only":
+        rows[-1]["status"] = "complete"
+        rows[-1]["omitted_events"] = 0
+        rows[-1]["omitted_bytes"] = 0
     if change == "legacy_incomplete":
         del adapter_result["request_accounting"]
     elif change == "adapter_mismatch":
